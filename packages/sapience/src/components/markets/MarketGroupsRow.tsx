@@ -96,14 +96,18 @@ const MarketGroupsRow = ({
   };
 
   // Helper function to handle adding market to bet slip
-  const handleAddToBetSlip = (marketItem: MarketWithContext) => {
+  const handleAddToBetSlip = (
+    marketItem: MarketWithContext,
+    prediction?: boolean,
+    classificationOverride?: MarketGroupClassification
+  ) => {
     const position = {
-      prediction: true, // Default to true, will be overridden by smart defaults for YES_NO markets
+      prediction: typeof prediction === 'boolean' ? prediction : true,
       marketAddress: marketAddress,
       marketId: marketItem.marketId,
       question: marketItem.question || marketItem.optionName || displayQuestion,
       chainId: chainId, // Include chainId so betslip knows which chain this market is on
-      marketClassification, // Pass classification for intelligent defaults
+      marketClassification: classificationOverride || marketClassification, // Pass classification for intelligent defaults
       wagerAmount: DEFAULT_WAGER_AMOUNT,
     };
     addPosition(position);
@@ -304,23 +308,63 @@ const MarketGroupsRow = ({
                 </Button>
               </>
             ) : (
-              // For non-multichoice markets, show Wager button for the active market
+              // For non-multichoice markets
               activeMarket && (
                 <>
-                  <Button
-                    variant="default"
-                    size="lg"
-                    onClick={() => handleAddToBetSlip(activeMarket)}
-                    className="w-28 text-base"
-                  >
-                    <Image
-                      src="/susde-icon.svg"
-                      alt="sUSDe"
-                      width={20}
-                      height={20}
-                    />
-                    Predict
-                  </Button>
+                  {marketClassification ===
+                  MarketGroupClassificationEnum.NUMERIC ? (
+                    // Numeric markets keep single action
+                    <Button
+                      variant="default"
+                      size="lg"
+                      onClick={() => handleAddToBetSlip(activeMarket)}
+                      className="w-28 text-base"
+                    >
+                      <Image
+                        src="/susde-icon.svg"
+                        alt="sUSDe"
+                        width={20}
+                        height={20}
+                      />
+                      Predict
+                    </Button>
+                  ) : (
+                    // YES/NO markets: show Yes/No buttons
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const yesMarket =
+                          market.find((m) => m.optionName === 'Yes') ||
+                          activeMarket;
+                        const noMarket =
+                          market.find((m) => m.optionName === 'No') ||
+                          activeMarket;
+                        return (
+                          <>
+                            <Button
+                              variant="default"
+                              size="lg"
+                              onClick={() =>
+                                handleAddToBetSlip(yesMarket, true)
+                              }
+                              className="w-20 text-base"
+                            >
+                              Yes
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="lg"
+                              onClick={() =>
+                                handleAddToBetSlip(noMarket, false)
+                              }
+                              className="w-20 text-base"
+                            >
+                              No
+                            </Button>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
                 </>
               )
             )}
@@ -384,20 +428,37 @@ const MarketGroupsRow = ({
 
                           {/* Right Side: Actions */}
                           <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
-                            <Button
-                              variant="default"
-                              size="lg"
-                              onClick={() => handleAddToBetSlip(marketItem)}
-                              className="w-28 text-base"
-                            >
-                              <Image
-                                src="/susde-icon.svg"
-                                alt="sUSDe"
-                                width={20}
-                                height={20}
-                              />
-                              Predict
-                            </Button>
+                            {/* For multichoice rows, show Yes/No buttons for each option as an individual YES/NO market */}
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="default"
+                                size="lg"
+                                onClick={() =>
+                                  handleAddToBetSlip(
+                                    marketItem,
+                                    true,
+                                    MarketGroupClassificationEnum.YES_NO
+                                  )
+                                }
+                                className="w-20 text-base"
+                              >
+                                Yes
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="lg"
+                                onClick={() =>
+                                  handleAddToBetSlip(
+                                    marketItem,
+                                    false,
+                                    MarketGroupClassificationEnum.YES_NO
+                                  )
+                                }
+                                className="w-20 text-base"
+                              >
+                                No
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       ))}

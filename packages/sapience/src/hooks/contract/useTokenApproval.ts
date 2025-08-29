@@ -1,12 +1,9 @@
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
-import {
-  useAccount,
-  useReadContract,
-  useWaitForTransactionReceipt,
-  useWriteContract,
-} from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
+
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface UseTokenApprovalProps {
   tokenAddress?: `0x${string}`;
@@ -30,6 +27,8 @@ export function useTokenApproval({
 }: UseTokenApprovalProps) {
   const { address, isConnected } = useAccount();
   const [isApproving, setIsApproving] = useState(false);
+  const [isApproveSuccess, setIsApproveSuccess] = useState(false);
+  const [error, setError] = useState<Error | undefined>(undefined);
 
   // Parse amount to bigint
   const parsedAmount = useMemo(() => {
@@ -65,22 +64,29 @@ export function useTokenApproval({
     },
   });
 
-  // Write contract for approval
+  // Use Sapience write contract hook
   const {
-    data: approveHash,
-    writeContract: approveWrite,
+    writeContract: sapienceWriteContract,
     isPending: isWritePending,
-    isError: isWriteError,
-    error: writeError,
-  } = useWriteContract();
-
-  // Wait for transaction receipt
-  const {
-    isLoading: isConfirming,
-    isSuccess: isApproveSuccess,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: approveHash,
+    reset: resetWrite,
+  } = useSapienceWriteContract({
+    onSuccess: () => {
+      setIsApproving(false);
+      setIsApproveSuccess(true);
+      setError(undefined);
+      refetchAllowance();
+    },
+    onError: (error: Error) => {
+      setIsApproving(false);
+      setIsApproveSuccess(false);
+      setError(error);
+    },
+    onTxHash: () => {
+      // Transaction hash received, approval is in progress
+      setError(undefined);
+    },
+    successMessage: 'Token approval successful',
+    fallbackErrorMessage: 'Token approval failed',
   });
 
   // Check if token has sufficient allowance
@@ -97,15 +103,19 @@ export function useTokenApproval({
       !chainId ||
       parsedAmount === BigInt(0)
     ) {
-      console.error('Missing required parameters for token approval');
-      return;
+      const error = new Error('Missing required parameters for token approval');
+      console.error('Error approving tokens:', error);
+      setError(error);
+      throw error;
     }
 
+    // Reset success state and error before starting new approval
+    setIsApproveSuccess(false);
+    setError(undefined);
     setIsApproving(true);
 
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      await approveWrite({
+      await sapienceWriteContract({
         abi: erc20ABI,
         address: tokenAddress,
         functionName: 'approve',
@@ -115,34 +125,31 @@ export function useTokenApproval({
     } catch (error) {
       console.error('Error approving tokens:', error);
       setIsApproving(false);
+      setIsApproveSuccess(false);
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
+      setError(errorObj);
       throw error;
     }
   };
 
-  // Reset approving state when transaction is complete
-  useEffect(() => {
-    if (isApproveSuccess) {
-      setIsApproving(false);
-      refetchAllowance();
-    }
-  }, [isApproveSuccess, refetchAllowance]);
-
-  // Reset approving state if there's an error
-  useEffect(() => {
-    if (isWriteError && writeError) {
-      setIsApproving(false);
-    }
-  }, [isWriteError, writeError]);
+  // Reset function to clear all states
+  const reset = () => {
+    setIsApproving(false);
+    setIsApproveSuccess(false);
+    setError(undefined);
+    resetWrite();
+  };
 
   return {
     allowance: allowance as bigint | undefined,
     hasAllowance,
     isLoadingAllowance,
     approve,
-    isApproving: isApproving || isWritePending || isConfirming,
+    isApproving: isApproving || isWritePending,
     isApproveSuccess,
-    approveHash,
     refetchAllowance,
-    error: writeError || txError,
+    error,
+    reset,
   };
 }

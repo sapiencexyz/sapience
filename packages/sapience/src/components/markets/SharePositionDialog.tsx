@@ -59,6 +59,20 @@ export default function SharePositionDialog({
   }, [position.collateral]);
 
   const symbol = group?.collateralSymbol || '';
+  const maxPayout = useMemo(() => {
+    if (!isYesNo) return '';
+    try {
+      const base = BigInt(position.baseToken || '0');
+      const borrowed = BigInt(position.borrowedBaseToken || '0');
+      const net = base - borrowed;
+      const amount = net >= 0n ? base : borrowed;
+      const val = Number(amount) / 1e18;
+      if (!Number.isFinite(val)) return '0';
+      return val.toFixed(val < 1 ? 4 : 2);
+    } catch {
+      return '0';
+    }
+  }, [isYesNo, position.baseToken, position.borrowedBaseToken]);
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     // Prefer identifier-based params
@@ -72,16 +86,24 @@ export default function SharePositionDialog({
     sp.set('q', question);
     sp.set('dir', side);
     sp.set('wager', wager);
-    // Compute simple max payout when Yes/No with long/short semantics
-    // For Yes/No, assume payout = wager if win (simplified); can be improved later
-    if (isYesNo) {
-      sp.set('payout', wager);
+    // Compute max payout for Yes/No with long/short semantics
+    if (isYesNo && maxPayout) {
+      sp.set('payout', maxPayout);
     }
     if (symbol) sp.set('symbol', symbol);
     if (position.positionId) sp.set('pid', String(position.positionId));
     if (position.owner) sp.set('addr', position.owner);
     return sp.toString();
-  }, [question, side, wager, symbol, position.positionId, position.owner]);
+  }, [
+    question,
+    side,
+    wager,
+    symbol,
+    position.positionId,
+    position.owner,
+    isYesNo,
+    maxPayout,
+  ]);
 
   // Use relative URL for next/image to avoid remote host config
   const imageSrc = `/og/position?${queryString}`;

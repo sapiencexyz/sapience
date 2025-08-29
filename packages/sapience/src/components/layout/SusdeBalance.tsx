@@ -6,12 +6,19 @@ import { useReadContract } from 'wagmi';
 import { erc20Abi, formatUnits } from 'viem';
 import { useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
 
 interface SusdeBalanceProps {
   onClick?: () => void;
+  className?: string;
+  buttonClassName?: string;
 }
 
-export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
+export default function SusdeBalance({
+  onClick,
+  className,
+  buttonClassName,
+}: SusdeBalanceProps) {
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
 
@@ -52,23 +59,35 @@ export default function SusdeBalance({ onClick }: SusdeBalanceProps) {
   }, [balance, decimals]);
 
   return (
-    <div className="flex w-fit mx-3 mt-0">
+    <div className={`flex w-fit mx-3 md:mx-0 mt-0 ${className ?? ''}`}>
       <Button
         asChild
         variant="outline"
         size="xs"
-        className="rounded-full px-3 min-w-[122px] justify-start gap-2 border-black/30 dark:border-white/30"
+        className={`rounded-full px-3 min-w-[122px] justify-start gap-2 ${buttonClassName ?? ''}`}
         onClick={onClick}
       >
-        <div>
-          <Image
-            src="/usde.svg"
-            alt="USDe"
-            width={17}
-            height={17}
-            className="opacity-90 ml-[-2px]"
-          />
-          <span className="relative top-[1px]">{formattedBalance}</span>
+        <div className="flex items-center justify-between gap-2 w-full">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/usde.svg"
+              alt="USDe"
+              width={17}
+              height={17}
+              className="opacity-90 ml-[-2px] w-[17px] h-[17px] md:w-5 md:h-5"
+            />
+            <span className="relative top-[1px] md:top-0 text-xs md:text-sm">
+              {formattedBalance}
+            </span>
+          </div>
+          <div className="hidden md:inline-flex ml-1 rounded-full w-fit shadow-[0_0_10px_rgba(136,180,245,0.25)]">
+            <Badge
+              variant="outline"
+              className="rounded-full border-[#91B3F0]/80 bg-[#91B3F0]/20"
+            >
+              9% APY
+            </Badge>
+          </div>
         </div>
       </Button>
     </div>

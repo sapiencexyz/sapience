@@ -1,16 +1,17 @@
-import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useEffect, useMemo, useState } from 'react';
-import { parseUnits, type Abi } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import type { Hash } from 'viem';
+import { parseUnits, type Abi, encodeFunctionData } from 'viem';
+import erc20ABI from '@sapience/ui/abis/erc20abi.json';
 
+import { useMemo, useState } from 'react';
 import { useTokenApproval } from './useTokenApproval';
 import { calculateCollateralLimit } from '~/utils/trade';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 /**
  * Parameters for creating a trader position
  */
 export interface CreateTradeParams {
-  marketAddress: `0x${string}`;
+  marketAddress: Hash;
   marketAbi: Abi; // Assuming ABI is passed in
   chainId?: number;
   numericMarketId: number; // Added market ID
@@ -19,8 +20,9 @@ export interface CreateTradeParams {
   collateralAmount: string; // Estimated/max collateral as a string (e.g., "100.5") for display and approval
   slippagePercent: number; // Slippage tolerance as a percentage (e.g., 0.5 for 0.5%)
   enabled?: boolean;
-  collateralTokenAddress?: `0x${string}`;
-  collateralTokenSymbol?: string;
+  collateralTokenAddress?: Hash;
+  onTxHash?: (txHash: Hash) => void;
+  onSuccess?: () => void;
 }
 
 /**
@@ -29,14 +31,7 @@ export interface CreateTradeParams {
 export interface CreateTradeResult {
   createTrade: () => Promise<void>;
   isLoading: boolean;
-  isSuccess: boolean;
-  isError: boolean;
   error: Error | null;
-  txHash: `0x${string}` | undefined;
-  data?: `0x${string}` | undefined; // Use specific type
-  isApproving: boolean;
-  hasAllowance: boolean;
-  needsApproval: boolean;
 }
 
 // Assuming collateral uses 18 decimals
@@ -58,12 +53,10 @@ export function useCreateTrade({
   slippagePercent,
   enabled = true,
   collateralTokenAddress,
-  collateralTokenSymbol,
-}: CreateTradeParams): CreateTradeResult & { reset: () => void } {
-  const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  onSuccess,
+  onTxHash,
+}: CreateTradeParams): CreateTradeResult {
   const [error, setError] = useState<Error | null>(null);
-  const [processingTx, setProcessingTx] = useState(false);
 
   // Parse collateral amount once
   const parsedCollateralAmount = parseUnits(
@@ -79,14 +72,8 @@ export function useCreateTrade({
   // Combine external enabled flag with input validation
   const isEnabled = enabled && isValidInputs;
 
-  // Use token approval hook
-  const {
-    hasAllowance,
-    isApproving,
-    isApproveSuccess,
-    approve,
-    error: approvalError,
-  } = useTokenApproval({
+  // Use token approval hook to check current allowance
+  const { hasAllowance } = useTokenApproval({
     tokenAddress: collateralTokenAddress,
     spenderAddress: marketAddress,
     amount: collateralAmount, // Approve based on the user-facing max collateral amount
@@ -101,7 +88,7 @@ export function useCreateTrade({
   const needsApproval =
     isEnabled &&
     !hasAllowance &&
-    collateralTokenAddress !== undefined &&
+    !!collateralTokenAddress &&
     parsedCollateralAmount > BigInt(0);
 
   const limitCollateral = calculateCollateralLimit(
@@ -109,73 +96,27 @@ export function useCreateTrade({
     slippagePercent
   );
 
-  // Write contract hook for creating the trader position
-  const {
-    writeContractAsync,
-    isPending: isWritePending, // Renamed to avoid clash
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Use the unified write contract wrapper
+  const { sendCalls, isPending: isPendingWriteContract } =
+    useSapienceWriteContract({
+      onError: setError,
+      onTxHash: (hash) => {
+        onTxHash?.(hash);
+      },
+      onSuccess,
+      successMessage: 'Trade position created successfully',
+      fallbackErrorMessage: 'Failed to create trade position',
+    });
 
-  // Watch for transaction completion
-  const {
-    isLoading: isConfirming,
-    isSuccess,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-    chainId, // Pass chainId for potentially faster confirmation lookup
-  });
-
-  // Set error if any occur during the process
-  useEffect(() => {
-    setError(null); // Clear previous errors on new potential error
-    if (writeError) setError(writeError);
-    if (txError) setError(txError);
-    if (approvalError) setError(approvalError);
-  }, [writeError, txError, approvalError]);
-
-  // When approval is successful, proceed with creating the trade
-  useEffect(() => {
-    const handleApprovalSuccess = async () => {
-      if (!isEnabled || !processingTx || !isApproveSuccess) return;
-
-      toast({
-        title: 'Token Approved',
-        description: 'Proceeding to open trade...',
-      });
-
-      try {
-        await performCreateTrade();
-        // Keep processingTx true until tx is confirmed or fails
-      } catch (err) {
-        setProcessingTx(false); // Stop processing if performCreateTrade fails immediately
-        console.error('Error creating trade after approval:', err);
-        setError(
-          err instanceof Error
-            ? err
-            : new Error('Failed to create trade after approval')
-        );
-        toast({
-          title: 'Error',
-          description:
-            'Failed to create trade after approval. Please try again.',
-          variant: 'destructive',
-        });
-      }
-    };
-
-    handleApprovalSuccess();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isApproveSuccess, processingTx, isEnabled]); // Dependencies carefully chosen
-
-  // Function to actually create the trader position
+  // Function to actually create the trader position using sendCalls
   const performCreateTrade = async (): Promise<void> => {
     if (
       !isEnabled ||
       !marketAddress ||
+      !chainId ||
       size === BigInt(0) ||
-      limitCollateral === BigInt(0)
+      limitCollateral === BigInt(0) ||
+      !collateralTokenAddress
     ) {
       const errorMsg =
         'Missing or invalid parameters for creating trade position';
@@ -198,21 +139,37 @@ export function useCreateTrade({
         deadline,
       };
 
-      // Call the contract function
-      const hash = await writeContractAsync({
-        address: marketAddress,
+      // Build the calls array for sendCalls
+      const calls: { to: `0x${string}`; data: `0x${string}` }[] = [];
+
+      // Only include approval call if allowance is needed
+      if (needsApproval) {
+        const approveData = encodeFunctionData({
+          abi: erc20ABI,
+          functionName: 'approve',
+          args: [marketAddress, parsedCollateralAmount],
+        });
+        calls.push({
+          to: collateralTokenAddress,
+          data: approveData,
+        });
+      }
+
+      // Add createTraderPosition call
+      const tradeData = encodeFunctionData({
         abi: marketAbi,
         functionName: 'createTraderPosition',
-        chainId,
         args: [tradeParams],
-        // Consider adding gas estimation or manual limit if needed
+      });
+      calls.push({
+        to: marketAddress,
+        data: tradeData,
       });
 
-      setTxHash(hash);
-
-      toast({
-        title: 'Transaction Submitted',
-        description: 'Your trade transaction has been submitted.',
+      // Execute the batch of calls
+      await sendCalls({
+        calls,
+        chainId,
       });
     } catch (err) {
       console.error('Error creating trade position:', err);
@@ -227,37 +184,23 @@ export function useCreateTrade({
       }
 
       setError(err instanceof Error ? err : new Error(errorMessage));
-      toast({
-        title: 'Transaction Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
       throw err; // Re-throw to be caught by the calling flow controller if needed
     }
   };
 
-  // Main function that checks approval and handles the flow
+  // Main function that handles the trade creation
   const createTrade = async (): Promise<void> => {
     if (!isEnabled) {
       setError(new Error('Trade creation is disabled due to invalid inputs'));
       return;
     }
 
-    setProcessingTx(true);
     setError(null); // Clear previous errors before starting
 
     try {
-      if (needsApproval) {
-        toast({
-          title: 'Approval Required',
-          description: `Approving ${collateralAmount} ${collateralTokenSymbol || 'token(s)'}...`, // Be more specific
-        });
-        await approve();
-      } else {
-        await performCreateTrade();
-      }
+      // Execute the trade (approval is included in batch only if needed)
+      await performCreateTrade();
     } catch (err) {
-      setProcessingTx(false);
       console.error('Error in createTrade flow:', err);
       if (!error) {
         setError(
@@ -267,37 +210,9 @@ export function useCreateTrade({
     }
   };
 
-  // Reset processing state on final success or error
-  useEffect(() => {
-    // Only update state if it needs changing
-    if ((isSuccess || error) && processingTx) {
-      setProcessingTx(false);
-    }
-    // Keep dependencies simple: effect checks internal state (processingTx)
-  }, [isSuccess, error, processingTx]);
-
-  // Add a reset function to clear all state
-  const reset = () => {
-    setTxHash(undefined);
-    setError(null);
-    setProcessingTx(false);
-  };
-
-  const isLoading =
-    isWritePending || isConfirming || processingTx || isApproving;
-  const isError = !!error;
-
   return {
     createTrade,
-    isLoading,
-    isSuccess,
-    isError,
+    isLoading: isPendingWriteContract,
     error,
-    txHash,
-    data, // raw data from writeContractAsync result
-    isApproving,
-    hasAllowance,
-    needsApproval,
-    reset,
   };
 }

@@ -17,6 +17,7 @@ interface OwnershipDialogProps {
   onOpenChange: (open: boolean) => void;
   marketGroupAddress: Address;
   currentOwner?: string;
+  chainId: number;
 }
 
 const OwnershipDialog = ({
@@ -24,6 +25,7 @@ const OwnershipDialog = ({
   onOpenChange,
   marketGroupAddress,
   currentOwner,
+  chainId,
 }: OwnershipDialogProps) => {
   const { address: connectedAddress } = useAccount();
   const [nomineeAddress, setNomineeAddress] = useState('');
@@ -56,17 +58,17 @@ const OwnershipDialog = ({
     }
     setNomineeError('');
     try {
-      await nominateNewOwner(nomineeAddress as Address);
+      await nominateNewOwner(nomineeAddress as Address, chainId);
       setNomineeAddress('');
       onOpenChange(false);
     } catch (_err) {
-      setNomineeError(nominateError?.message || 'Failed to nominate owner');
+      setNomineeError(nominateError || 'Failed to nominate owner');
     }
   };
 
   const handleAccept = async () => {
     try {
-      await acceptOwnership();
+      await acceptOwnership(chainId);
       onOpenChange(false);
     } catch (_err) {
       // Optionally handle error
@@ -112,7 +114,7 @@ const OwnershipDialog = ({
               />
               {(nomineeError || nominateError) && (
                 <div className="text-destructive text-xs">
-                  {nomineeError || nominateError?.message}
+                  {nomineeError || nominateError}
                 </div>
               )}
               <Button
@@ -125,19 +127,19 @@ const OwnershipDialog = ({
             </div>
           )}
           {isNominated && (
-            <Button onClick={handleAccept} size="sm" disabled={acceptLoading}>
-              {acceptLoading ? 'Accepting...' : 'Accept Ownership'}
-            </Button>
+            <div className="space-y-2">
+              <Button onClick={handleAccept} size="sm" disabled={acceptLoading}>
+                {acceptLoading ? 'Accepting...' : 'Accept Ownership'}
+              </Button>
+              {acceptError && (
+                <div className="text-destructive text-xs">{acceptError}</div>
+              )}
+            </div>
           )}
           {!isOwner && !isNominated && (
             <div className="text-xs text-muted-foreground">
               Only the current owner can nominate a new owner. Only the
               nominated owner can accept ownership.
-            </div>
-          )}
-          {acceptError && (
-            <div className="text-destructive text-xs">
-              {acceptError.message}
             </div>
           )}
         </div>

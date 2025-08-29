@@ -34,7 +34,23 @@ interface LpPositionsTableProps {
 
 // Helper component for Market Cell (similar to app package but simpler for now)
 function MarketCell({ position }: { position: PositionType }) {
-  return position.market?.question || 'N/A';
+  const chainShortName = position.market?.marketGroup?.chainId
+    ? getChainShortName(position.market.marketGroup.chainId)
+    : 'unknown';
+  const marketAddress = position.market?.marketGroup?.address || '';
+  const marketId = position.market?.marketId;
+  const question = position.market?.question || 'N/A';
+
+  if (!marketAddress || marketId === undefined) return question;
+
+  return (
+    <Link
+      href={`/markets/${chainShortName}:${marketAddress}/${marketId}`}
+      className="hover:underline"
+    >
+      {question}
+    </Link>
+  );
 }
 
 // Helper component for Collateral Cell

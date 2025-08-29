@@ -27,7 +27,6 @@ const SellPositionButton = ({
     isSuccess,
     isError,
     error,
-    txHash,
   } = useModifyTrade({
     marketAddress: marketAddress as `0x${string}`,
     marketAbi: abi,
@@ -39,7 +38,7 @@ const SellPositionButton = ({
   const successHandled = useRef(false);
 
   useEffect(() => {
-    if (isSuccess && txHash && !successHandled.current) {
+    if (isSuccess && !successHandled.current) {
       successHandled.current = true;
       toast({
         title: 'Success!',
@@ -47,7 +46,7 @@ const SellPositionButton = ({
       });
       if (onSuccess) onSuccess();
     }
-  }, [isSuccess, txHash, onSuccess, toast]);
+  }, [isSuccess, onSuccess, toast]);
 
   useEffect(() => {
     if (isError && error) {

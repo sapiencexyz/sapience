@@ -51,7 +51,7 @@ interface ModifyTradeFormProps {
   marketDetails: TradeFormMarketDetails;
   isConnected: boolean;
   onConnectWallet: () => void;
-  onSuccess: (txHash: `0x${string}`) => void;
+  onSuccess: () => void;
   positionId: string; // Keep positionId
   permitData: PermitDataType | null | undefined; // Add permitData prop
   isPermitLoadingPermit: boolean; // Add isPermitLoadingPermit prop
@@ -243,7 +243,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     needsApproval,
     isApproving,
     isSuccess,
-    txHash,
     isLoading,
     isClosingPosition,
     isError: isModifyTradeError,
@@ -287,7 +286,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
   // Handle successful modification
   useEffect(() => {
-    if (isSuccess && txHash && onSuccess && !successHandled.current) {
+    if (isSuccess && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       // Determine if this was a close operation (either via form or close button)
@@ -321,13 +320,12 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         }
       );
 
-      onSuccess(txHash);
+      onSuccess();
     }
   }, [
     isSuccess,
     isClosing,
     isClosingPosition,
-    txHash,
     onSuccess,
     toast,
     sizeInputBigInt,

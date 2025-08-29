@@ -41,18 +41,22 @@ interface AddressDisplayProps {
   address: string;
   disableProfileLink?: boolean;
   className?: string;
+  compact?: boolean;
 }
 
 // Constants for the button and icon sizes
 const LARGE_BUTTON_SIZE = 'h-8 w-8 p-1';
 const SMALL_BUTTON_SIZE = 'h-5 w-5 p-0.5';
+const XS_BUTTON_SIZE = 'h-4 w-4 p-0';
 const LARGE_ICON_SIZE = 'h-5 w-5';
 const SMALL_ICON_SIZE = 'h-3 w-3';
+const XS_ICON_SIZE = 'h-2.5 w-2.5';
 
 const AddressDisplay = ({
   address,
   disableProfileLink,
   className,
+  compact,
 }: AddressDisplayProps) => {
   const { toast } = useToast();
   const { data: ensName } = useEnsName(address);
@@ -63,6 +67,18 @@ const AddressDisplay = ({
 
   const displayName = ensName || truncatedAddress;
   const isLarge = className?.includes('text-2xl');
+  const isCompact = !!compact;
+  const buttonSizeClass = isLarge
+    ? LARGE_BUTTON_SIZE
+    : isCompact
+      ? XS_BUTTON_SIZE
+      : SMALL_BUTTON_SIZE;
+  const buttonSvgOverrideClass = isCompact ? '[&_svg]:!h-3 [&_svg]:!w-3' : '';
+  const iconSizeClass = isLarge
+    ? LARGE_ICON_SIZE
+    : isCompact
+      ? XS_ICON_SIZE
+      : SMALL_ICON_SIZE;
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -74,20 +90,25 @@ const AddressDisplay = ({
     });
   };
 
+  const containerGapClass = isCompact ? 'gap-1' : 'gap-3';
+  const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-1.5';
+
   return (
-    <div className={`flex items-center gap-3 ${className || ''}`}>
+    <div
+      className={`flex items-center ${containerGapClass} ${className || ''}`}
+    >
       <span className={`font-mono ${isLarge ? 'text-2xl' : ''}`}>
         {displayName}
       </span>
-      <div className="flex items-center gap-1.5">
+      <div className={`flex items-center ${iconsGapClass}`}>
         <Button
           variant="ghost"
           size="icon"
-          className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
+          className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
           onClick={handleCopy}
         >
           <Copy
-            className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+            className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
           />
         </Button>
 
@@ -96,10 +117,10 @@ const AddressDisplay = ({
             <Button
               variant="ghost"
               size="icon"
-              className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
+              className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
             >
               <User
-                className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+                className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
               />
             </Button>
           </Link>
@@ -110,14 +131,14 @@ const AddressDisplay = ({
             <Button
               variant="ghost"
               size="icon"
-              className={isLarge ? LARGE_BUTTON_SIZE : SMALL_BUTTON_SIZE}
+              className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
             >
               <ExternalLink
-                className={`${isLarge ? LARGE_ICON_SIZE : SMALL_ICON_SIZE} text-muted-foreground hover:text-foreground`}
+                className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
               />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-30 p-1 flex flex-col gap-0.5">
+          <PopoverContent className="z-[70] w-30 p-1 flex flex-col gap-0.5">
             <a
               href={`https://app.zerion.io/${address}/history`}
               target="_blank"

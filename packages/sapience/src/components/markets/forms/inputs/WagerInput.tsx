@@ -20,6 +20,10 @@ interface WagerInputProps {
   chainId?: number;
   // Optional minimum amount (human units) to enforce via validation
   minAmount?: string | number;
+  // Hide the label and the buttons to the right of the label
+  hideHeader?: boolean;
+  // Additional classes for the input element (e.g., height overrides)
+  inputClassName?: string;
 }
 
 // Define the wager schema that will be used across all forms
@@ -73,6 +77,8 @@ export function WagerInput({
   collateralAddress = '0x0000000000000000000000000000000000000000',
   chainId = 432,
   minAmount,
+  hideHeader = false,
+  inputClassName,
 }: WagerInputProps) {
   const {
     register,
@@ -115,29 +121,31 @@ export function WagerInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <Label htmlFor={`${name}-input`}>Wager Amount</Label>
-        <CollateralBalance
-          collateralSymbol={collateralSymbol}
-          collateralAddress={collateralAddress}
-          chainId={chainId}
-          chainShortName={chainShortName}
-          onSetWagerAmount={(amount) =>
-            setValue(name, amount, {
-              shouldValidate: true,
-              shouldDirty: true,
-              shouldTouch: true,
-            })
-          }
-        />
-      </div>
+      {!hideHeader && (
+        <div className="flex justify-between items-center">
+          <Label htmlFor={`${name}-input`}>Wager Amount</Label>
+          <CollateralBalance
+            collateralSymbol={collateralSymbol}
+            collateralAddress={collateralAddress}
+            chainId={chainId}
+            chainShortName={chainShortName}
+            onSetWagerAmount={(amount) =>
+              setValue(name, amount, {
+                shouldValidate: true,
+                shouldDirty: true,
+                shouldTouch: true,
+              })
+            }
+          />
+        </div>
+      )}
       <div className="relative">
         <Input
           id={`${name}-input`}
           type="text"
           inputMode="decimal"
           placeholder="0.00"
-          className={`pr-24 ${errors[name] ? 'border-destructive' : ''}`}
+          className={`pr-24 ${errors[name] ? 'border-destructive' : ''} ${inputClassName || ''}`}
           {...register(name, {
             validate: (val) => {
               if (!val) return 'Please enter a wager amount';

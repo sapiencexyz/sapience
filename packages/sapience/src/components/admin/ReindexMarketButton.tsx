@@ -35,7 +35,7 @@ const ReindexMarketButton: React.FC<ReindexMarketButtonProps> = ({
         message: ADMIN_AUTHENTICATE_MSG,
       });
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL || ''}/reindex/market-events`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-events`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',

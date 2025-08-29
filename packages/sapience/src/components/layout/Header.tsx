@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -24,6 +25,8 @@ import { SiSubstack } from 'react-icons/si';
 
 import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
+import ChatButton from './ChatButton';
+import { shortenAddress } from '~/lib/utils/util';
 
 // Dynamically import LottieIcon
 const LottieIcon = dynamic(() => import('./LottieIcon'), {
@@ -57,6 +60,8 @@ const NavLinks = ({
     ? 'text-xl font-medium justify-start rounded-full'
     : 'text-base font-medium justify-start rounded-full';
   const activeClass = 'bg-secondary';
+
+  // No feature flag: Chat button is always available in the sidebar for authenticated users
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -114,24 +119,15 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
+      <div className="md:hidden">
+        <Suspense fallback={null}>
+          <ChatButton onAfterClick={handleLinkClick} />
+        </Suspense>
+      </div>
       {ready && authenticated && connectedWallet && (
-        <div className="mt-6">
-          <SusdeBalance onClick={handleLinkClick} />
-          <Link
-            href={`/profile/${connectedWallet.address}`}
-            passHref
-            className="flex w-fit mx-3 mt-4"
-          >
-            <Button
-              size="xs"
-              className="rounded-full px-3"
-              onClick={handleLinkClick}
-            >
-              <Wallet className="h-3 w-3 scale-[0.8]" />
-              Your Portfolio
-            </Button>
-          </Link>
-        </div>
+        <>
+          <SusdeBalance className="md:hidden" onClick={handleLinkClick} />
+        </>
       )}
     </nav>
   );
@@ -140,6 +136,8 @@ const NavLinks = ({
 const Header = () => {
   const pathname = usePathname();
   const { login, ready, authenticated, logout } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedWallet = wallets[0];
 
   return (
     <>
@@ -185,21 +183,48 @@ const Header = () => {
             <div className="block">
               {!pathname.startsWith('/earn') && <ModeToggle />}
             </div>
+            {/* Desktop chat icon next to ModeToggle */}
+            <div className="hidden md:block">
+              <Suspense fallback={null}>
+                <ChatButton iconOnly />
+              </Suspense>
+            </div>
             {ready && null}
             {!ready && null /* Render nothing while Privy is loading */}
+            {ready && authenticated && (
+              <SusdeBalance
+                className="hidden md:flex mx-0"
+                buttonClassName="h-9 px-3"
+              />
+            )}
             {ready && authenticated && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    size="icon"
-                    className="rounded-full"
+                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
                   >
                     <User className="h-5 w-5" />
+                    {connectedWallet?.address && (
+                      <span className="hidden md:inline text-sm">
+                        {shortenAddress(connectedWallet.address)}
+                      </span>
+                    )}
                     <span className="sr-only">User Menu</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {connectedWallet?.address && (
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href={`/profile/${connectedWallet.address}`}
+                        className="flex items-center"
+                      >
+                        <Wallet className="mr-2 h-4 w-4" />
+                        <span>Your Portfolio</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
                     onClick={logout}
                     className="flex items-center cursor-pointer"
@@ -210,6 +235,7 @@ const Header = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
+            {/* Address now displayed inside the black default button on desktop */}
             {ready && !authenticated && (
               <Button
                 onClick={login}

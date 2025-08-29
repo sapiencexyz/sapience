@@ -30,9 +30,65 @@ router.get(
   })
 );
 
-export { router };
+// DELETE /marketGroups/:id
+router.delete(
+  '/:id',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { signature, timestamp } = req.body as {
+      signature?: `0x${string}`;
+      timestamp?: number;
+    };
 
-// Add authenticated update endpoints for market groups and markets
+    // Authenticate request (required in all environments for destructive action)
+    const isAuthenticated = await isValidWalletSignature(
+      signature as `0x${string}`,
+      Number(timestamp)
+    );
+    if (!isAuthenticated) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Locate market group by numeric id
+    const groupId = Number(id);
+    if (!Number.isFinite(groupId)) {
+      res.status(400).json({ error: 'Invalid market group id' });
+      return;
+    }
+
+    const group = await prisma.marketGroup.findUnique({
+      where: { id: groupId },
+      include: { market: true },
+    });
+
+    if (!group) {
+      res.status(404).json({ error: 'MarketGroup not found' });
+      return;
+    }
+
+    // Disallow deleting deployed market groups
+    if (group.address) {
+      res.status(400).json({ error: 'Cannot delete deployed market group' });
+      return;
+    }
+
+    // Extra safety: ensure no markets are deployed
+    const hasDeployedMarkets = group.market.some((m) => !!m.poolAddress);
+    if (hasDeployedMarkets) {
+      res
+        .status(400)
+        .json({ error: 'Cannot delete market group with deployed markets' });
+      return;
+    }
+
+    // Delete markets first due to FK constraints, then the group
+    await prisma.market.deleteMany({ where: { marketGroupId: group.id } });
+    await prisma.marketGroup.delete({ where: { id: group.id } });
+
+    res.json({ success: true });
+  })
+);
 
 // PUT /marketGroups/:address
 router.put(
@@ -337,3 +393,5 @@ router.put(
     res.json(updated);
   })
 );
+
+export { router };

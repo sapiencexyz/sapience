@@ -259,7 +259,7 @@ const ForecastPageImp = () => {
           {/* Category Selection Section */}
           <div className="bg-background z-5 relative">
             <div
-              className={`flex overflow-x-auto max-w-[100dvw] ${
+              className={`flex overflow-x-auto max-w-[100dvw] no-scrollbar ${
                 isPopoverOpen ? 'overflow-x-hidden' : ''
               }`}
               style={{

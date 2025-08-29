@@ -9,17 +9,17 @@ import {
   NO_SQRT_PRICE_X96,
 } from '~/lib/utils/betslipUtils';
 
-interface YesNoWagerInputProps {
+interface BetslipYesNoWagerInputProps {
   marketGroupData: MarketGroupType;
   positionId: string; // Used to namespace form fields
   showWagerInput?: boolean; // Whether to show the per-position wager input
 }
 
-export default function YesNoWagerInput({
+export default function BetslipYesNoWagerInput({
   marketGroupData,
   positionId,
   showWagerInput = true,
-}: YesNoWagerInputProps) {
+}: BetslipYesNoWagerInputProps) {
   const { register, setValue, watch, getValues } = useFormContext();
 
   const predictionFieldName = `positions.${positionId}.predictionValue`;
@@ -40,10 +40,11 @@ export default function YesNoWagerInput({
   }, [predictionFieldName, setValue, getValues, positionId]);
 
   return (
-    <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4 items-start">
       <div>
-        <div className="grid grid-cols-2 gap-4 mt-2">
+        <div className="grid grid-cols-2 gap-2">
           <Button
+            size="sm"
             type="button"
             onClick={() =>
               setValue(predictionFieldName, YES_SQRT_PRICE_X96, {
@@ -59,6 +60,7 @@ export default function YesNoWagerInput({
             Yes
           </Button>
           <Button
+            size="sm"
             type="button"
             onClick={() =>
               setValue(predictionFieldName, NO_SQRT_PRICE_X96, {
@@ -85,6 +87,8 @@ export default function YesNoWagerInput({
           collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
           collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
           chainId={marketGroupData.chainId}
+          hideHeader
+          inputClassName="h-9"
         />
       )}
     </div>

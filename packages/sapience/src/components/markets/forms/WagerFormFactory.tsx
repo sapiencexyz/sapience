@@ -9,7 +9,7 @@ import { MarketGroupClassification } from '~/lib/types';
 interface WagerFormFactoryProps {
   marketClassification: MarketGroupClassification;
   marketGroupData: MarketGroupType;
-  onSuccess?: (txHash: `0x${string}`) => void;
+  onSuccess?: () => void;
 }
 
 export default function WagerFormFactory(props: WagerFormFactoryProps) {

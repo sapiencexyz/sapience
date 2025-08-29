@@ -80,14 +80,14 @@ export const getAttestationsByAddress = {
     marketId?: string;
   }): Promise<CallToolResult> => {
     try {
-      // Normalize address to lowercase for comparison
-      const normalizedAddress = attesterAddress.toLowerCase();
-
       const where: {
-        attester: string;
+        attester: { equals: string; mode: 'insensitive' };
         marketId?: string;
       } = {
-        attester: normalizedAddress,
+        attester: {
+          equals: attesterAddress,
+          mode: 'insensitive',
+        },
       };
 
       if (marketId) {

@@ -134,7 +134,7 @@ export const BetslipContent = ({
     <>
       <div className="w-full h-full flex flex-col">
         <div
-          className={`px-4 py-3 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
+          className={`px-4 py-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
         >
           <div className="flex items-center justify-between h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
@@ -338,7 +338,7 @@ export const BetslipContent = ({
                         className="pb-4 mb-4 border-b border-border"
                       >
                         <div className="mb-2 flex items-start justify-between gap-2">
-                          <h3 className="font-medium text-foreground pr-2">
+                          <h3 className="font-medium text-foreground pr-2 text-sm">
                             {positionData.marketGroupData?.markets?.find(
                               (m) =>
                                 m.marketId === positionData.position.marketId
@@ -348,7 +348,7 @@ export const BetslipContent = ({
                             onClick={() =>
                               removePosition(positionData.position.id)
                             }
-                            className="text-[24px] leading-none text-muted-foreground hover:text-foreground"
+                            className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
                             type="button"
                             aria-label="Remove"
                           >
@@ -385,7 +385,7 @@ export const BetslipContent = ({
                       <Popover>
                         <PopoverTrigger asChild>
                           <button className="text-primary underline">
-                            Add to orderbook
+                            Limit Order
                           </button>
                         </PopoverTrigger>
                         <PopoverContent className="w-80 space-y-3">

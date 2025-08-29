@@ -17,14 +17,9 @@ import {
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import type { Address } from 'viem';
-import {
-  useWriteContract,
-  useWaitForTransactionReceipt,
-  useSwitchChain,
-  useChainId,
-} from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface EnableBridgedMarketGroupButtonProps {
   group: EnrichedMarketGroup;
@@ -56,39 +51,35 @@ const EnableBridgedMarketGroupButton: React.FC<
   const [enableError, setEnableError] = useState<string | null>(null);
   const [enabledTxHash, setEnabledTxHash] = useState<string | null>(null);
 
+  // Use useSapienceWriteContract for transaction handling
   const {
-    data: hash,
-    error: writeError,
-    isPending: isWritePending,
     writeContract,
-    reset: resetWriteContract,
-  } = useWriteContract();
-
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({ hash });
-  const { switchChain } = useSwitchChain();
-  const currentChainId = useChainId();
+    isPending: isWritePending,
+    reset,
+  } = useSapienceWriteContract({
+    onSuccess: () => {
+      // Transaction completed successfully
+    },
+    onError: (error: Error) => {
+      console.error('Enable error:', error);
+      setEnableError(error.message);
+    },
+    onTxHash: (hash) => {
+      setEnabledTxHash(hash);
+      setEnableError(null);
+    },
+    successMessage: 'Market group enabled successfully',
+    fallbackErrorMessage: 'Failed to enable market group',
+  });
 
   // Effect to reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      resetWriteContract();
+      reset();
       setEnableError(null);
       setEnabledTxHash(null);
     }
-  }, [isOpen, resetWriteContract]);
-
-  // Effect for confirmation
-  useEffect(() => {
-    if (isConfirmed && receipt && receipt.transactionHash) {
-      setEnabledTxHash(receipt.transactionHash);
-      setEnableError(null);
-    }
-  }, [isConfirmed, receipt]);
+  }, [isOpen, reset]);
 
   // Validate group data and return error message if invalid
   const validateGroupData = () => {
@@ -107,7 +98,7 @@ const EnableBridgedMarketGroupButton: React.FC<
   const handleEnableClick = () => {
     setEnableError(null);
     setEnabledTxHash(null);
-    resetWriteContract();
+    reset();
 
     // Validate group data
     const validationError = validateGroupData();
@@ -126,16 +117,12 @@ const EnableBridgedMarketGroupButton: React.FC<
       ]);
       console.log('Target bridge contract:', bridgeAddress);
 
-      if (currentChainId !== group.chainId && switchChain) {
-        switchChain({ chainId: group.chainId });
-        return;
-      }
-
       writeContract({
         address: bridgeAddress,
         abi: MARKET_LAYER_ZERO_BRIDGE_ABI,
         functionName: 'enableMarketGroup',
         args: [marketGroupAddress],
+        chainId: group.chainId,
       });
     } catch (err) {
       console.error('Enable preparation error:', err);
@@ -146,14 +133,12 @@ const EnableBridgedMarketGroupButton: React.FC<
   };
 
   // Determine button state and error display
-  const isEnableDisabled = isWritePending || isConfirming;
-  const effectiveError =
-    enableError || writeError?.message || receiptError?.message;
+  const isEnableDisabled = isWritePending;
+  const effectiveError = enableError;
 
   const getButtonState = () => {
-    if (isConfirming) return { text: 'Confirming...', loading: true };
-    if (isWritePending) return { text: 'Sending...', loading: true };
-    if (isConfirmed && enabledTxHash)
+    if (isWritePending) return { text: 'Enabling...', loading: true };
+    if (enabledTxHash)
       return { text: 'Enabled', loading: false, success: true };
     return { text: 'Enable', loading: false };
   };
@@ -221,31 +206,23 @@ const EnableBridgedMarketGroupButton: React.FC<
               <AlertDescription>{effectiveError}</AlertDescription>
             </Alert>
           )}
-          {hash && !isConfirmed && !receiptError && (
-            <Alert variant="default">
-              {isConfirming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4" />
-              )}
-              <AlertTitle>
-                {isConfirming ? 'Confirming Transaction' : 'Transaction Sent'}
-              </AlertTitle>
-              <AlertDescription>
-                Hash: <code className="text-xs break-all">{hash}</code>
-                {isConfirming
-                  ? ' Waiting for blockchain confirmation...'
-                  : ' Sent to network.'}
-              </AlertDescription>
-            </Alert>
-          )}
-          {isConfirmed && enabledTxHash && (
+          {enabledTxHash && !isWritePending && (
             <Alert variant="default">
               <CheckCircle className="h-4 w-4" />
               <AlertTitle>Market Group Enabled!</AlertTitle>
               <AlertDescription>
                 Market group {group.address} enabled on bridge. Tx Hash:{' '}
                 <code className="text-xs break-all">{enabledTxHash}</code>
+              </AlertDescription>
+            </Alert>
+          )}
+          {enabledTxHash && isWritePending && (
+            <Alert variant="default">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertTitle>Confirming Transaction</AlertTitle>
+              <AlertDescription>
+                Hash: <code className="text-xs break-all">{enabledTxHash}</code>{' '}
+                Waiting for blockchain confirmation...
               </AlertDescription>
             </Alert>
           )}

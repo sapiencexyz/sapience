@@ -1,13 +1,18 @@
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import type { Abi } from 'abitype';
 import { useCallback, useState } from 'react';
-import { useSimulateContract, useWriteContract } from 'wagmi';
+import { useSimulateContract } from 'wagmi';
+
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface UseSettlePositionProps {
   marketAddress: string;
   chainId: number;
   positionId: string;
   enabled: boolean;
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+  onTxHash?: (txHash: string) => void;
 }
 
 export function useSettlePosition({
@@ -15,12 +20,25 @@ export function useSettlePosition({
   chainId,
   positionId,
   enabled,
+  onSuccess,
+  onError,
+  onTxHash,
 }: UseSettlePositionProps) {
-  const [isSettling, setIsSettling] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const [txHash, setTxHash] = useState<string | null>(null);
 
-  const { writeContractAsync } = useWriteContract();
+  const { writeContract, isPending } = useSapienceWriteContract({
+    onSuccess: () => {
+      setError(null); // Clear any previous errors on success
+      onSuccess?.();
+    },
+    onError: (error) => {
+      setError(error); // Store error for component access
+      onError?.(error); // Call the component's error handler
+    },
+    onTxHash,
+    successMessage: 'Position settled successfully',
+    fallbackErrorMessage: 'Failed to settle position',
+  });
 
   // Use wagmi's simulation hook with enabled: false so it only runs when we explicitly want it to
   const {
@@ -40,42 +58,29 @@ export function useSettlePosition({
   });
 
   // Function to settle a position
-  const settlePosition = useCallback(async (): Promise<string | undefined> => {
-    setIsSettling(true);
-    setError(null);
-    setTxHash(null);
-
+  const settlePosition = useCallback(async (): Promise<void> => {
     try {
-      // Call settle position function
-      const hash = await writeContractAsync({
+      setError(null); // Clear any previous errors
+      // Call settle position function using sapience write contract
+      await writeContract({
         address: marketAddress as `0x${string}`,
         abi: sapienceAbi().abi as Abi,
         functionName: 'settlePosition',
         args: [BigInt(positionId)],
         chainId,
       });
-
-      setTxHash(hash);
-      return hash;
     } catch (err) {
       console.error('Error settling position:', err);
-      setError(
-        err instanceof Error ? err : new Error('Failed to settle position')
-      );
-      return undefined;
-    } finally {
-      setIsSettling(false);
+      // Don't set error here as useSapienceWriteContract will handle it
     }
-  }, [marketAddress, chainId, writeContractAsync, positionId]);
+  }, [marketAddress, chainId, writeContract, positionId]);
 
   return {
     settlePosition,
     loadingSimulation,
     simulateSettlement,
     simulationData,
-    isSettling,
-    error,
-    txHash,
-    simulationError,
+    isSettling: isPending,
+    error: error || simulationError,
   };
 }
