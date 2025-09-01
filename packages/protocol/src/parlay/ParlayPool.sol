@@ -188,8 +188,6 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
     }
 
     function burn(uint256 tokenId) external {
-        // TODO
-
         // 1- Get parlay from Store
         IParlayStructs.ParlayData memory parlay = parlays[tokenId];
 
@@ -200,17 +198,26 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
 
         // 3- Ask resolver if markets are settled, and if parlay succeeded or not, it means maker won
         bool syncCallSucceded = IParlayPoolResolver(parlay.resolver).resolveParlay(parlay.predictedOutcomes, true, tokenId);
-
-        // TODO if is async mode, execute all code from here shold be in the callback
-        // 4- Send collateral to winner
-
-        // 5- Set the parlay state (identify who won and set as closed)
-
-        // 6- Burn NFTs 
+        resolveParlayCallback(tokenId, syncCallSucceded);
     }
 
-    function resolveParlayCallback() external {
-        // TODO Don't use callbacks yet, prepare for next iteration
+    function resolveParlayCallback(uint256 tokenId, bool validMarkets, bool makerWon) external {
+        // 4- Recover parlay from store 
+        IParlayStructs.ParlayData memory parlay = parlays[tokenId];
+        // 5- Send collateral to winner
+        if (makerWon) {
+            IERC20(config.collateralToken).safeTransfer(parlay.maker, parlay.payout);
+        } else {
+            IERC20(config.collateralToken).safeTransfer(parlay.taker, parlay.payout);
+        }
+
+        // 6- Set the parlay state (identify who won and set as closed)
+        parlay.settled = true;
+        parlay.makerWon = makerWon;
+
+        // 7- Burn NFTs 
+        _burn(parlay.makerNftTokenId);
+        _burn(parlay.takerNftTokenId);
     }
     // ============ Parlay Order Functions ============
 
