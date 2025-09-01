@@ -9,8 +9,6 @@ interface IParlayStructs {
     // ============ Structs ============
     struct Settings {
         address collateralToken; // collateral token
-        address makerNft; // NFT for maker
-        address takerNft; // NFT for taker
         uint256 maxParlayMarkets; // maximum number of markets for a parlay
         uint256 minCollateral; // minimum collateral amount for a parlay
         uint256 minRequestExpirationTime; // minimum expiration time for a parlay request

@@ -5,16 +5,15 @@ import "forge-std/Test.sol";
 import "../../src/parlay/ParlayPool.sol";
 import "../../src/parlay/interfaces/IParlayEvents.sol";
 import "../../src/parlay/interfaces/IParlayStructs.sol";
-import "../../src/parlay/ParlayNFT.sol";
 import "./MockSapience.sol";
 import "./MockERC20.sol";
+import "./MockResolver.sol";
 
 contract ParlayPoolIntegrationTest is Test {
     ParlayPool public pool;
-    ParlayNFT public makerNFT;
-    ParlayNFT public takerNFT;
     MockERC20 public collateralToken;
     MockSapience public mockSapience;
+    MockResolver public mockResolver;
 
     address public ana;
     address public bob;
@@ -32,25 +31,20 @@ contract ParlayPoolIntegrationTest is Test {
     function setUp() public {
         // Deploy mock contracts
         collateralToken = new MockERC20("USDC", "USDC", 6);
-        makerNFT = new ParlayNFT("Parlay Maker", "PMKR");
-        takerNFT = new ParlayNFT("Parlay Taker", "PTKR");
         mockSapience = new MockSapience();
+        mockResolver = new MockResolver();
 
         // Deploy ParlayPool
         pool = new ParlayPool(
+            "Parlay Pool NFT", 
+            "PP",
             address(collateralToken),
-            address(makerNFT),
-            address(takerNFT),
             MAX_PARLAY_MARKETS,
             MIN_COLLATERAL,
             MIN_EXPIRATION_TIME,
             MAX_EXPIRATION_TIME,
             new address[](0)
         );
-
-        // Transfer ownership of NFT contracts to ParlayPool
-        makerNFT.transferOwnership(address(pool));
-        takerNFT.transferOwnership(address(pool));
 
         // Setup test addresses
         ana = makeAddr("ana");
@@ -124,6 +118,7 @@ contract ParlayPoolIntegrationTest is Test {
         collateralToken.approve(address(pool), 1000e6);
         uint256 requestId = pool.submitParlayOrder(
             outcomes,
+            address(mockResolver),
             1000e6,
             1200e6,
             block.timestamp + 60,
@@ -239,7 +234,7 @@ contract ParlayPoolIntegrationTest is Test {
             requestId
         );
         assertEq(parlay.taker, bob);
-        assertEq(takerNFT.ownerOf(2), bob);
+        assertEq(pool.ownerOf(2), bob);
     }
 
     // ============ Complex Market Scenarios ============
@@ -265,6 +260,7 @@ contract ParlayPoolIntegrationTest is Test {
         collateralToken.approve(address(pool), 1000e6);
         uint256 requestId = pool.submitParlayOrder(
             outcomes,
+            address(mockResolver),
             1000e6,
             1200e6,
             block.timestamp + 60,
@@ -306,6 +302,7 @@ contract ParlayPoolIntegrationTest is Test {
         collateralToken.approve(address(pool), 1000e6);
         uint256 requestId = pool.submitParlayOrder(
             outcomes,
+            address(mockResolver),
             1000e6,
             1200e6,
             block.timestamp + 60,
@@ -520,6 +517,7 @@ contract ParlayPoolIntegrationTest is Test {
         collateralToken.approve(address(pool), collateral);
         requestId = pool.submitParlayOrder(
             outcomes,
+            address(mockResolver),
             collateral,
             payout,
             expirationTime,
