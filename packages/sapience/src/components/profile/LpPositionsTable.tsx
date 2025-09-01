@@ -330,6 +330,9 @@ export default function LpPositionsTable({
                                   positionId={position.positionId.toString()}
                                   marketAddress={marketAddress}
                                   chainId={chainId}
+                                  isMarketSettled={
+                                    position.market?.settled || false
+                                  }
                                   onSuccess={() => {
                                     console.log(
                                       `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
