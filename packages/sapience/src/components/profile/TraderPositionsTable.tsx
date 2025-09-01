@@ -216,6 +216,7 @@ export default function TraderPositionsTable({
     (a, b) => getPositionCreatedMs(b) - getPositionCreatedMs(a)
   );
 
+
   return (
     <div>
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
@@ -331,6 +332,7 @@ export default function TraderPositionsTable({
                                 chainId={
                                   position.market.marketGroup?.chainId || 0
                                 }
+                                isMarketSettled={position.market.settled || false}
                                 onSuccess={() => {
                                   console.log(
                                     `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
