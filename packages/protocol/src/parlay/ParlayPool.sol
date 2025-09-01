@@ -219,6 +219,28 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
         _burn(parlay.makerNftTokenId);
         _burn(parlay.takerNftTokenId);
     }
+
+    // ============ Parlay Consolidation (pre-close) ============
+    function consolidateParlay(uint256 tokenId) external {
+        // 1- Get parlay from store
+        IParlayStructs.ParlayData memory parlay = parlays[tokenId];
+        // 2- Initial checks
+        require(parlay.maker != address(0), "Parlay not found");
+        require(parlay.taker != address(0), "Parlay not found");
+
+        require(parlay.maker == parlay.taker, "Maker and taker are different. Cannot consolidate");
+
+        // 3- Set as settled and maker won and send the collateral to the maker
+        parlay.settled = true;
+        parlay.makerWon = true;
+        IERC20(config.collateralToken).safeTransfer(parlay.maker, parlay.payout);
+
+        // 4- Burn NFTs
+        _burn(parlay.makerNftTokenId);
+        _burn(parlay.takerNftTokenId);  
+    }
+
+
     // ============ Parlay Order Functions ============
 
     // function submitParlayOrder(
