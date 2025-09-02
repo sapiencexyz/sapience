@@ -15,17 +15,12 @@ export interface AuctionParams {
 }
 
 export interface QuoteBid {
-  bidId: string;
   auctionId: string;
   taker: string;
-  chainId: number;
-  quote: {
-    payout: string; // wei
-    delta: string; // wei
-    validUntil: number; // unix
-    maxSlippageBps?: number;
-  };
-  meta?: { version: string; refCode?: string };
+  takerWager: string; // wei
+  expirationTimestamp: number; // unix seconds
+  takerPermitSignature: string; // ERC20 permit signature
+  takerBidSignature: string; // Taker's bid signature
 }
 
 function toWsUrl(baseHttpUrl: string | undefined): string | null {
@@ -72,8 +67,32 @@ export function useAuctionQuotes() {
         if (msg?.type === 'auction.ack') {
           setAuctionId(msg.payload?.auctionId || null);
         } else if (msg?.type === 'auction.bids') {
-          const incoming: QuoteBid[] = msg.payload?.bids || [];
-          setBids(incoming);
+          const rawBids = Array.isArray(msg.payload?.bids)
+            ? (msg.payload.bids as any[])
+            : [];
+          const normalized: QuoteBid[] = rawBids
+            .map((b) => {
+              try {
+                const auctionIdVal: string = b.auctionId || auctionId || '';
+                const taker: string =
+                  b.taker || '0x0000000000000000000000000000000000000000';
+                const takerWager: string = b.takerWager || '0';
+                const expirationTimestamp: number = b.expirationTimestamp || 0;
+
+                return {
+                  auctionId: auctionIdVal,
+                  taker,
+                  takerWager,
+                  expirationTimestamp,
+                  takerPermitSignature: b.takerPermitSignature || '0x',
+                  takerBidSignature: b.takerBidSignature || '0x',
+                } as QuoteBid;
+              } catch {
+                return null;
+              }
+            })
+            .filter(Boolean) as QuoteBid[];
+          setBids(normalized);
         } else if (msg?.type === 'auction.started') {
           // noop for client for now
         }
@@ -122,31 +141,15 @@ export function useAuctionQuotes() {
   );
 
   const acceptBid = useCallback(
-    async (
-      bidId: string,
-      requestId: string,
-      maker: string,
-      txHashOfSubmit?: string
-    ) => {
+    (txHashOfSubmit?: string) => {
+      // Stub for now: submit directly to mint via app flow; emulate success
       if (!auctionId) throw new Error('auction_not_initialized');
-      const base = apiBase || '';
-      const url = `${base}/auction/accept`;
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          auctionId,
-          bidId,
-          requestId,
-          maker,
-          txHashOfSubmit,
-        }),
+      return Promise.resolve({
+        status: 'submitted',
+        relayTxHash: txHashOfSubmit || null,
       });
-      if (!res.ok) throw new Error('accept_failed');
-      const data = await res.json();
-      return data as { status: string; relayTxHash: string | null };
     },
-    [apiBase, auctionId]
+    [auctionId]
   );
 
   const notifyOrderCreated = useCallback(

@@ -21,6 +21,7 @@ import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionQuotes';
+import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -137,17 +138,37 @@ export const BetslipContent = ({
     if (!bids || bids.length === 0) return null;
 
     const now = Math.floor(Date.now() / 1000);
-    const validBids = bids.filter((bid) => bid.quote.validUntil > now);
+    const validBids = bids.filter((bid) => bid.expirationTimestamp > now);
 
     if (validBids.length === 0) return null;
 
-    // Find the bid with the highest payout
+    const makerWagerStr = parlayMethods.getValues('wagerAmount') || '0';
+    let makerWager: bigint;
+    try {
+      makerWager = BigInt(makerWagerStr);
+    } catch {
+      makerWager = 0n;
+    }
+
+    // Find the bid with the highest payout (maker + taker)
     return validBids.reduce((best, current) => {
-      const bestPayout = BigInt(best.quote.payout);
-      const currentPayout = BigInt(current.quote.payout);
+      const bestPayout = (() => {
+        try {
+          return makerWager + BigInt(best.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      const currentPayout = (() => {
+        try {
+          return makerWager + BigInt(current.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids]);
+  }, [bids, parlayMethods]);
 
   // Emit Auction when parlay form values change
   useEffect(() => {
@@ -159,30 +180,25 @@ export const BetslipContent = ({
     );
     if (yesNoPositions.length === 0) return;
 
-    const chainId = parlayChainId || yesNoPositions[0].position.chainId;
     const wager = parlayMethods.getValues('wagerAmount') || '0';
-    const minPayout = String(
-      Number(wager || '0') * Math.pow(2, yesNoPositions.length)
-    );
-    const predictedOutcomes = yesNoPositions.map((p) => ({
+    const rawOutcomes = yesNoPositions.map((p) => ({
       marketGroup: p.position.marketAddress,
       marketId: p.position.marketId,
       prediction: true,
     }));
 
-    const orderExpirationTime = Math.floor(Date.now() / 1000) + 30 * 60;
+    const { resolver, predictedOutcomes } =
+      buildAuctionStartPayload(rawOutcomes);
+
     requestQuotes({
-      chainId,
-      collateralWei: '0',
-      minPayoutWei: minPayout,
-      orderExpirationTime,
+      wager,
+      resolver,
       predictedOutcomes,
     });
   }, [
     effectiveParlayMode,
     positionsWithMarketData,
     parlayMethods,
-    parlayChainId,
     requestQuotes,
   ]);
   return (
@@ -460,14 +476,33 @@ export const BetslipContent = ({
                           size="lg"
                           variant="default"
                         >
-                          {isParlaySubmitting
-                            ? 'Submitting Wager...'
-                            : `Place Wager to Win ${bestBid.quote.payout} ${parlayCollateralSymbol || 'testUSDe'}`}
+                          {(() => {
+                            if (isParlaySubmitting)
+                              return 'Submitting Wager...';
+                            const makerWagerStr =
+                              parlayMethods.getValues('wagerAmount') || '0';
+                            let makerWager: bigint;
+                            try {
+                              makerWager = BigInt(makerWagerStr);
+                            } catch {
+                              makerWager = 0n;
+                            }
+                            const payout = (() => {
+                              try {
+                                return (
+                                  makerWager + BigInt(bestBid.takerWager)
+                                ).toString();
+                              } catch {
+                                return '0';
+                              }
+                            })();
+                            return `Place Wager to Win ${payout} ${parlayCollateralSymbol || 'testUSDe'}`;
+                          })()}
                         </Button>
                         <div className="text-xs text-muted-foreground mt-2 text-center">
                           {(() => {
                             const ms =
-                              bestBid.quote.validUntil * 1000 - Date.now();
+                              bestBid.expirationTimestamp * 1000 - Date.now();
                             if (ms <= 0) return 'Expired';
                             const mins = Math.ceil(ms / 60000);
                             return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;

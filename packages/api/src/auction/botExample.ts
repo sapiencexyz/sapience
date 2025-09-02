@@ -37,17 +37,12 @@ ws.on('message', (data: RawData) => {
           type: 'bid.submit',
           payload: {
             auctionId: auction.auctionId,
-            taker:
-              process.env.BOT_ADDRESS ||
-              '0x0000000000000000000000000000000000000000',
-            expirationTimestamp: Math.floor(Date.now() / 1000) + 60,
-            takerWager: takerWager.toString(),
             takerPermitSignature: '0x', // TODO: Generate actual ERC20 permit signature
-            takerBidSignature: '0x', // TODO: Generate signature allowing this specific bid
+            takerBidSignature: '0x', // TODO: Generate signature allowing this specific bid (encodes taker + takerWager + expiry)
           },
         };
         console.log(
-          `[BOT] Sending bid auctionId=${auction.auctionId} wager=${wager.toString()} takerWager=${takerWager.toString()} totalPayout=${totalPayout.toString()} expirationTimestamp=${bid.payload.expirationTimestamp}`
+          `[BOT] Sending bid auctionId=${auction.auctionId} wager=${wager.toString()} takerWager=${takerWager.toString()} totalPayout=${totalPayout.toString()}`
         );
         ws.send(JSON.stringify(bid));
         break;
@@ -57,7 +52,7 @@ ws.on('message', (data: RawData) => {
         if (ack.error) {
           console.log('[BOT] bid.ack error=', ack.error);
         } else {
-          console.log('[BOT] bid.ack bidId=', ack.bidId);
+          console.log('[BOT] bid.ack ok');
         }
         break;
       }
