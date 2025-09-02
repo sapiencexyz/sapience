@@ -23,7 +23,7 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
         uint256 requestId
     ) external returns (bool syncCallSucceded) {
         syncCallSucceded = true;
-        uint256 error;
+        // uint256 error;
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             require(
                 predictedOutcomes[i].market.marketGroup != address(0),
@@ -55,11 +55,35 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
         bool syncCall,
         uint256 parlayId
     ) external returns (bool syncCallSucceded, bool makerWon) {
+        makerWon = true;
+        syncCallSucceded = true;
+
+        for (uint256 i = 0; i < predictedOutcomes.length; i++) {
+            IParlayStructs.Market memory market = predictedOutcomes[i].market;
+            (bool marketOutcome, bool marketSettled) = _getMarketOutcome(
+                market
+            );
+            if (!marketSettled) {
+                if(!syncCall) {
+                    revert("At least one market not settled");
+                }
+                syncCallSucceded = false;
+                break;
+            }
+
+            if (predictedOutcomes[i].prediction != marketOutcome) {
+                makerWon = false;
+                break;
+            }
+        }
+
         IParlayPoolResolverCallback(parlayPool).resolveParlayCallback(
             parlayId,
             syncCallSucceded,
             makerWon
         );
+
+        return (syncCallSucceded, makerWon);
     }
 
     function _isYesNoMarket(
