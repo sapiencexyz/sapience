@@ -4,7 +4,7 @@ const API_BASE = process.env.FOIL_API_BASE || 'http://localhost:3001';
 const WS_URL =
   API_BASE.replace('https://', 'wss://')
     .replace('http://', 'ws://')
-    .replace(/\/$/, '') + '/ws/rfq';
+    .replace(/\/$/, '') + '/ws/auction';
 
 console.log('[BOT] Env FOIL_API_BASE =', process.env.FOIL_API_BASE);
 console.log('[BOT] Connecting to', WS_URL);
@@ -19,14 +19,14 @@ ws.on('message', (data: RawData) => {
     const msg = JSON.parse(String(data));
     const type = msg?.type as string | undefined;
     switch (type) {
-      case 'rfq.requested': {
-        const rfq = msg.payload || {};
+      case 'auction.requested': {
+        const auction = msg.payload || {};
         console.log(
-          `[BOT] rfq.requested rfqId=${rfq.rfqId} wager=${rfq.wager} outcomes=${rfq.predictedOutcomes?.length ?? 0}`
+          `[BOT] auction.requested auctionId=${auction.auctionId} wager=${auction.wager} outcomes=${auction.predictedOutcomes?.length ?? 0}`
         );
 
         // For the new mint flow, we need to provide taker collateral and signature
-        const wager = BigInt(rfq.wager || '0');
+        const wager = BigInt(auction.wager || '0');
 
         // Taker offers 50% of what the maker is offering
         // If maker offers 100, taker offers 50, total payout = 150
@@ -36,7 +36,7 @@ ws.on('message', (data: RawData) => {
         const bid = {
           type: 'bid.submit',
           payload: {
-            rfqId: rfq.rfqId,
+            auctionId: auction.auctionId,
             taker:
               process.env.BOT_ADDRESS ||
               '0x0000000000000000000000000000000000000000',
@@ -47,7 +47,7 @@ ws.on('message', (data: RawData) => {
           },
         };
         console.log(
-          `[BOT] Sending bid rfqId=${rfq.rfqId} wager=${wager.toString()} takerWager=${takerWager.toString()} totalPayout=${totalPayout.toString()} expirationTimestamp=${bid.payload.expirationTimestamp}`
+          `[BOT] Sending bid auctionId=${auction.auctionId} wager=${wager.toString()} takerWager=${takerWager.toString()} totalPayout=${totalPayout.toString()} expirationTimestamp=${bid.payload.expirationTimestamp}`
         );
         ws.send(JSON.stringify(bid));
         break;
@@ -61,11 +61,11 @@ ws.on('message', (data: RawData) => {
         }
         break;
       }
-      case 'rfq.bids': {
+      case 'auction.bids': {
         const payload = msg.payload || {};
         const bids = Array.isArray(payload.bids) ? payload.bids : [];
         console.log(
-          `[BOT] rfq.bids rfqId=${payload.rfqId} count=${bids.length}`
+          `[BOT] auction.bids auctionId=${payload.auctionId} count=${bids.length}`
         );
         if (bids.length > 0) {
           const top = bids[0];

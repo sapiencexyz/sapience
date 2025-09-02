@@ -13,7 +13,6 @@ import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
 import chatAuthRoutes from './chat-auth';
 import { Router } from 'express';
-import { router as rfqRoutes } from './rfq';
 
 const router = Router();
 
@@ -30,7 +29,7 @@ router.use('/crypto-prices', cryptoPricesRoutes);
 router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
 router.use('/create-market-group', createMarketRoutes);
-router.use('/rfq', rfqRoutes);
+
 router.use('/chat-auth', chatAuthRoutes);
 
 export { router };

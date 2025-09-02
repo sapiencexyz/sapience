@@ -40,7 +40,7 @@
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
-    "rfq:bot": "tsx src/rfq/botExample.ts"
+    "auction:bot": "tsx src/auction/botExample.ts"
   },
   "keywords": [],
   "dependencies": {

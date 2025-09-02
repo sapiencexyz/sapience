@@ -20,7 +20,7 @@ import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWit
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
-import type { RfqParams, QuoteBid } from '~/lib/rfq/useRfqQuotes';
+import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionQuotes';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -43,10 +43,10 @@ interface BetslipContentProps {
   parlayCollateralSymbol?: string;
   parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
-  // RFQ integration (provided by parent to share a single WS connection)
-  rfqId?: string | null;
+  // Auction integration (provided by parent to share a single WS connection)
+  auctionId?: string | null;
   bids?: QuoteBid[];
-  requestQuotes?: (params: RfqParams | null) => void;
+  requestQuotes?: (params: AuctionParams | null) => void;
 }
 
 export const BetslipContent = ({
@@ -63,6 +63,7 @@ export const BetslipContent = ({
   parlayCollateralSymbol,
   parlayCollateralAddress,
   parlayChainId,
+  auctionId: _auctionId,
   bids = [],
   requestQuotes,
 }: BetslipContentProps) => {
@@ -148,7 +149,7 @@ export const BetslipContent = ({
     });
   }, [bids]);
 
-  // Emit RFQ when parlay form values change
+  // Emit Auction when parlay form values change
   useEffect(() => {
     if (!effectiveParlayMode) return;
     if (positionsWithMarketData.length === 0) return;

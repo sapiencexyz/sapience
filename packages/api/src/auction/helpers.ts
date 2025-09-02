@@ -1,4 +1,4 @@
-import type { RfqRequestPayload } from './types';
+import type { AuctionRequestPayload } from './types';
 
 /**
  * Helper function to create MintParlayRequestData for the ParlayPool.mint() function
@@ -18,21 +18,21 @@ export interface MintParlayRequestData {
  * Creates the MintParlayRequestData struct for the ParlayPool.mint() function
  */
 export function createMintParlayRequestData(
-  rfq: RfqRequestPayload,
+  auction: AuctionRequestPayload,
   taker: string,
   takerCollateral: string,
   makerSignature: string,
   takerSignature: string
 ): MintParlayRequestData {
-  if (!rfq.resolver) {
-    throw new Error('RFQ must have a resolver address');
+  if (!auction.resolver) {
+    throw new Error('Auction must have a resolver address');
   }
 
   return {
     taker: taker,
-    predictedOutcomes: rfq.predictedOutcomes,
-    resolver: rfq.resolver,
-    wager: rfq.wager,
+    predictedOutcomes: auction.predictedOutcomes,
+    resolver: auction.resolver,
+    wager: auction.wager,
     takerCollateral: takerCollateral,
     makerSignature: makerSignature,
     takerSignature: takerSignature,
@@ -40,24 +40,24 @@ export function createMintParlayRequestData(
 }
 
 /**
- * Validates that an RFQ has all required fields for the mint flow
+ * Validates that an Auction has all required fields for the mint flow
  */
-export function validateRfqForMint(rfq: RfqRequestPayload): {
+export function validateAuctionForMint(auction: AuctionRequestPayload): {
   valid: boolean;
   error?: string;
 } {
-  if (!rfq.wager || BigInt(rfq.wager) <= 0n) {
+  if (!auction.wager || BigInt(auction.wager) <= 0n) {
     return { valid: false, error: 'Invalid wager' };
   }
-  if (!rfq.predictedOutcomes || rfq.predictedOutcomes.length === 0) {
+  if (!auction.predictedOutcomes || auction.predictedOutcomes.length === 0) {
     return { valid: false, error: 'No predicted outcomes' };
   }
-  if (!rfq.resolver) {
+  if (!auction.resolver) {
     return { valid: false, error: 'Missing resolver address' };
   }
 
   // Validate predicted outcomes are non-empty bytes strings
-  for (const outcome of rfq.predictedOutcomes) {
+  for (const outcome of auction.predictedOutcomes) {
     if (!outcome || typeof outcome !== 'string' || outcome.length === 0) {
       return {
         valid: false,

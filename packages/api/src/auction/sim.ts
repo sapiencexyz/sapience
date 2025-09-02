@@ -1,5 +1,5 @@
-import type { BidPayload, RfqRequestPayload } from './types';
-import { validateRfqForMint, createValidationError } from './helpers';
+import type { BidPayload, AuctionRequestPayload } from './types';
+import { validateAuctionForMint, createValidationError } from './helpers';
 
 export interface SimResult {
   ok: boolean;
@@ -7,24 +7,26 @@ export interface SimResult {
 }
 
 export function basicValidateBid(
-  rfq: RfqRequestPayload,
+  auction: AuctionRequestPayload,
   bid: BidPayload
 ): SimResult {
-  if (!rfq || !bid) return { ok: false, reason: 'invalid_payload' };
+  if (!auction || !bid) return { ok: false, reason: 'invalid_payload' };
 
-  // Validate RFQ structure for mint flow
-  const rfqValidation = validateRfqForMint(rfq);
-  if (!rfqValidation.valid) {
+  // Validate Auction structure for mint flow
+  const auctionValidation = validateAuctionForMint(auction);
+  if (!auctionValidation.valid) {
     return {
       ok: false,
-      reason: createValidationError(rfqValidation.error || 'invalid_rfq'),
+      reason: createValidationError(
+        auctionValidation.error || 'invalid_auction'
+      ),
     };
   }
 
   // Validate taker wager is reasonable
   try {
     const takerWager = BigInt(bid.takerWager);
-    const wager = BigInt(rfq.wager);
+    const wager = BigInt(auction.wager);
 
     // Basic validation: taker wager should be positive and not exceed maker wager
     if (takerWager <= 0n) {

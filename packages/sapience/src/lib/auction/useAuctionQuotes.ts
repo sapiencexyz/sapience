@@ -8,7 +8,7 @@ export interface PredictedOutcomeInput {
   prediction: boolean;
 }
 
-export interface RfqParams {
+export interface AuctionParams {
   chainId: number;
   collateralWei: string;
   minPayoutWei: string;
@@ -20,7 +20,7 @@ export interface RfqParams {
 
 export interface QuoteBid {
   bidId: string;
-  rfqId: string;
+  auctionId: string;
   taker: string;
   chainId: number;
   quote: {
@@ -39,11 +39,11 @@ function toWsUrl(baseHttpUrl: string | undefined): string | null {
       const loc = typeof window !== 'undefined' ? window.location : undefined;
       if (!loc) return null;
       const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/ws/rfq`;
+      return `${proto}//${loc.host}/ws/auction`;
     }
     const u = new URL(baseHttpUrl);
     u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.pathname = '/ws/rfq';
+    u.pathname = '/ws/auction';
     u.search = '';
     return u.toString();
   } catch {
@@ -55,8 +55,8 @@ function jsonStableStringify(value: unknown) {
   return JSON.stringify(value, Object.keys(value as object).sort());
 }
 
-export function useRfqQuotes() {
-  const [rfqId, setRfqId] = useState<string | null>(null);
+export function useAuctionQuotes() {
+  const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const inflightRef = useRef<string>('');
@@ -73,12 +73,12 @@ export function useRfqQuotes() {
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data as string);
-        if (msg?.type === 'rfq.ack') {
+        if (msg?.type === 'auction.ack') {
           // ignore
-        } else if (msg?.type === 'rfq.bids') {
+        } else if (msg?.type === 'auction.bids') {
           const incoming: QuoteBid[] = msg.payload?.bids || [];
           setBids(incoming);
-        } else if (msg?.type === 'rfq.requested') {
+        } else if (msg?.type === 'auction.requested') {
           // noop for client for now
         }
       } catch {
@@ -91,20 +91,20 @@ export function useRfqQuotes() {
     return ws;
   }, [wsUrl]);
 
-  // Debounced send of rfq.request when params change
+  // Debounced send of auction.request when params change
   const debounceTimer = useRef<number | null>(null);
   const requestQuotes = useCallback(
-    (params: RfqParams | null) => {
+    (params: AuctionParams | null) => {
       if (!params) return;
       const ws = ensureConnection();
       if (!ws) return;
-      const newRfqId = crypto?.randomUUID
+      const newAuctionId = crypto?.randomUUID
         ? crypto.randomUUID()
         : String(Date.now());
       const payload = {
-        type: 'rfq.request',
+        type: 'auction.request',
         payload: {
-          rfqId: newRfqId,
+          auctionId: newAuctionId,
           chainId: params.chainId,
           collateral: params.collateralWei,
           minPayout: params.minPayoutWei,
@@ -123,7 +123,7 @@ export function useRfqQuotes() {
       debounceTimer.current = window.setTimeout(() => {
         try {
           ws.send(JSON.stringify(payload));
-          setRfqId(newRfqId);
+          setAuctionId(newAuctionId);
           setBids([]);
         } catch {
           // ignore
@@ -140,14 +140,14 @@ export function useRfqQuotes() {
       maker: string,
       txHashOfSubmit?: string
     ) => {
-      if (!rfqId) throw new Error('rfq_not_initialized');
+      if (!auctionId) throw new Error('auction_not_initialized');
       const base = apiBase || '';
-      const url = `${base}/rfq/accept`;
+      const url = `${base}/auction/accept`;
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          rfqId,
+          auctionId,
           bidId,
           requestId,
           maker,
@@ -158,22 +158,22 @@ export function useRfqQuotes() {
       const data = await res.json();
       return data as { status: string; relayTxHash: string | null };
     },
-    [apiBase, rfqId]
+    [apiBase, auctionId]
   );
 
   const notifyOrderCreated = useCallback(
     (requestId: string, txHash?: string) => {
-      if (!rfqId) return;
+      if (!auctionId) return;
       const ws = wsRef.current;
       if (!ws || ws.readyState !== WebSocket.OPEN) return;
       ws.send(
         JSON.stringify({
           type: 'order.created',
-          payload: { rfqId, requestId, txHash },
+          payload: { auctionId, requestId, txHash },
         })
       );
     },
-    [rfqId]
+    [auctionId]
   );
 
   useEffect(
@@ -185,5 +185,5 @@ export function useRfqQuotes() {
     []
   );
 
-  return { rfqId, bids, requestQuotes, acceptBid, notifyOrderCreated };
+  return { auctionId, bids, requestQuotes, acceptBid, notifyOrderCreated };
 }

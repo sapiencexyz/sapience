@@ -1,7 +1,7 @@
 export type HexString = `0x${string}`;
 
-export interface RfqRequestPayload {
-  rfqId: string;
+export interface AuctionRequestPayload {
+  auctionId: string;
   wager: string; // wei string
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation
@@ -41,7 +41,7 @@ export interface MintParlayData {
 export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 
 export interface BidPayload {
-  rfqId: string;
+  auctionId: string;
   taker: string; // EOA
   expirationTimestamp: number; // unix seconds
   takerWager: string; // wei string
@@ -54,14 +54,17 @@ export interface ValidatedBid extends BidPayload {
 }
 
 export type ClientToServerMessage = {
-  type: 'rfq.request';
-  payload: RfqRequestPayload;
+  type: 'auction.request';
+  payload: AuctionRequestPayload;
 };
 
 export type BotToServerMessage = { type: 'bid.submit'; payload: BidPayload };
 
 export type ServerToClientMessage =
-  | { type: 'rfq.ack'; payload: { rfqId: string } }
+  | { type: 'auction.ack'; payload: { auctionId: string } }
   | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
-  | { type: 'rfq.bids'; payload: { rfqId: string; bids: ValidatedBid[] } }
-  | { type: 'rfq.requested'; payload: RfqRequestPayload };
+  | {
+      type: 'auction.bids';
+      payload: { auctionId: string; bids: ValidatedBid[] };
+    }
+  | { type: 'auction.requested'; payload: AuctionRequestPayload };

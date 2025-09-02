@@ -4,7 +4,7 @@ import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
-import { attachRfqWebSocketServer } from './rfq/ws';
+import { attachAuctionWebSocketServer } from './auction/ws';
 import { createChatWebSocketServer } from './websocket/chat';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
@@ -57,12 +57,14 @@ const startServer = async () => {
 
   const httpServer = createServer(app);
 
-  // Initialize RFQ WebSocket server
-  const rfqWsEnabled = process.env.ENABLE_RFQ_WS !== 'false';
-  if (rfqWsEnabled) {
-    attachRfqWebSocketServer(httpServer);
+  // Initialize Auction WebSocket server
+  const auctionWsEnabled = process.env.ENABLE_AUCTION_WS !== 'false';
+  if (auctionWsEnabled) {
+    attachAuctionWebSocketServer(httpServer);
   } else {
-    console.log('RFQ WebSocket server disabled via ENABLE_RFQ_WS=false');
+    console.log(
+      'Auction WebSocket server disabled via ENABLE_AUCTION_WS=false'
+    );
   }
 
   // Initialize WebSocket chat at /chat
@@ -71,8 +73,8 @@ const startServer = async () => {
   httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
-    if (rfqWsEnabled) {
-      console.log(`RFQ WebSocket endpoint available at /ws/rfq`);
+    if (auctionWsEnabled) {
+      console.log(`Auction WebSocket endpoint available at /ws/auction`);
     }
     console.log(`Chat WebSocket endpoint available at /chat`);
   });

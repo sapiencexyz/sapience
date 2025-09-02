@@ -1,13 +1,13 @@
-# RFQ WebSocket API Documentation
+# Auction WebSocket API Documentation
 
 ## Overview
 
-The RFQ (Request for Quote) WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market parlays using the ParlayPool contract. The system supports a mint-based flow where parlays are created immediately when both parties provide valid signatures.
+The Auction WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market parlays using the ParlayPool contract. The system supports a mint-based flow where parlays are created immediately when both parties provide valid signatures.
 
 ## WebSocket Endpoint
 
 ```
-ws://localhost:3001/ws/rfq
+ws://localhost:3001/ws/auction
 ```
 
 ## Connection Management
@@ -27,15 +27,15 @@ ws://localhost:3001/ws/rfq
 
 ### Client to Server Messages
 
-#### 1. RFQ Request
+#### 1. Auction Request
 
 Creates a new request for quotes from bots.
 
 ```typescript
 {
-  type: 'rfq.request',
+  type: 'auction.request',
   payload: {
-    rfqId: string,                    // Unique identifier for this RFQ
+    auctionId: string,                // Unique identifier for this Auction
     wager: string,                    // Maker's wager amount (wei)
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
       string,                         // Bytes string representing market prediction
@@ -46,19 +46,19 @@ Creates a new request for quotes from bots.
 }
 ```
 
-**Response**: `rfq.ack` with `rfqId`
+**Response**: `auction.ack` with `auctionId`
 
 ### Bot to Server Messages
 
 #### 1. Bid Submit
 
-Submits a bid/quote for an RFQ. The simplified structure provides only what the maker needs to complete the mint transaction.
+Submits a bid/quote for an Auction. The simplified structure provides only what the maker needs to complete the mint transaction.
 
 ```typescript
 {
   type: 'bid.submit',
   payload: {
-    rfqId: string,                    // RFQ ID to bid on
+    auctionId: string,                // Auction ID to bid on
     taker: string,                    // Taker's EOA address
     expirationTimestamp: number,      // Unix timestamp when quote expires
     takerWager: string,               // Taker's wager contribution (wei)
@@ -72,15 +72,15 @@ Submits a bid/quote for an RFQ. The simplified structure provides only what the 
 
 ### Server to Client Messages
 
-#### 1. RFQ Acknowledgment
+#### 1. Auction Acknowledgment
 
-Confirms receipt of an RFQ request.
+Confirms receipt of an Auction request.
 
 ```typescript
 {
-  type: 'rfq.ack',
+  type: 'auction.ack',
   payload: {
-    rfqId: string
+    auctionId: string
   }
 }
 ```
@@ -99,26 +99,26 @@ Confirms receipt of a bid or reports an error.
 }
 ```
 
-#### 3. RFQ Requested (Broadcast)
+#### 3. Auction Requested (Broadcast)
 
-Broadcasts new RFQ requests to all connected bots.
+Broadcasts new Auction requests to all connected bots.
 
 ```typescript
 {
-  type: 'rfq.requested',
-  payload: RfqRequestPayload          // Same as rfq.request payload
+  type: 'auction.requested',
+  payload: AuctionRequestPayload          // Same as auction.request payload
 }
 ```
 
-#### 4. RFQ Bids (Broadcast)
+#### 4. Auction Bids (Broadcast)
 
-Broadcasts current bids for an RFQ to all clients.
+Broadcasts current bids for an Auction to all clients.
 
 ```typescript
 {
-  type: 'rfq.bids',
+  type: 'auction.bids',
   payload: {
-    rfqId: string,
+    auctionId: string,
     bids: [                           // Array of validated bids
       {
         // ... BidPayload fields
@@ -135,7 +135,7 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 
 ## Validation Rules
 
-### RFQ Validation
+### Auction Validation
 
 - Wager must be positive
 - At least one predicted outcome required (as non-empty bytes strings)
@@ -163,14 +163,14 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 
 ## Example Flow
 
-### 1. Client Creates RFQ
+### 1. Client Creates Auction
 
 ```javascript
 ws.send(
   JSON.stringify({
-    type: 'rfq.request',
+    type: 'auction.request',
     payload: {
-      rfqId: 'rfq-123',
+      auctionId: 'auction-123',
       wager: '1000000000000000000', // 1 ETH
       predictedOutcomes: [
         '0x...', // Bytes string representing market prediction
@@ -189,7 +189,7 @@ ws.send(
   JSON.stringify({
     type: 'bid.submit',
     payload: {
-      rfqId: 'rfq-123',
+      auctionId: 'auction-123',
       taker: '0x...',
       expirationTimestamp: Math.floor(Date.now() / 1000) + 60,
       takerWager: '500000000000000000',
@@ -204,7 +204,7 @@ ws.send(
 
 After receiving and selecting a bid, the maker (client) constructs the `MintParlayRequestData` struct using:
 
-- The RFQ data (predictedOutcomes, resolver, makerCollateral from wager)
+- The Auction data (predictedOutcomes, resolver, makerCollateral from wager)
 - The bid data (taker, takerWager, takerPermitSignature, takerBidSignature)
 - Their own maker signature and refCode
 
@@ -215,7 +215,7 @@ The maker then calls the `mint()` function on the ParlayPool contract. The syste
 The system includes a reference bot implementation (`botExample.ts`) that:
 
 - Connects to the WebSocket endpoint
-- Listens for `rfq.requested` messages
+- Listens for `auction.requested` messages
 - Automatically calculates taker collateral as 50% of maker collateral
 - Submits bids with proper mint data structure
 - Handles bid acknowledgments and bid updates
@@ -226,7 +226,7 @@ The system includes a reference bot implementation (`botExample.ts`) that:
 2. **Message Size Limits**: Prevents memory exhaustion
 3. **Signature Validation**: ERC20 permit signatures are validated
 4. **Collateral Validation**: Ensures reasonable collateral amounts
-5. **Expiration Checks**: Prevents execution of expired quotes/RFQs
+5. **Expiration Checks**: Prevents execution of expired quotes/Auctions
 
 ## Error Handling
 

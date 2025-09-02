@@ -1,22 +1,30 @@
 import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
-import { addBid, getBids, upsertRfq, getRfq } from './registry';
+import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
 import Sentry from '../instrument';
 import type {
   BotToServerMessage,
   ClientToServerMessage,
   ServerToClientMessage,
-  RfqRequestPayload,
+  AuctionRequestPayload,
   BidPayload,
 } from './types';
 
 function isClientMessage(msg: unknown): msg is ClientToServerMessage {
-  return msg && typeof msg.type === 'string' && msg.type.startsWith('rfq.');
+  if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
+    return false;
+  }
+  const msgObj = msg as Record<string, unknown>;
+  return typeof msgObj.type === 'string' && msgObj.type === 'auction.request';
 }
 
 function isBotMessage(msg: unknown): msg is BotToServerMessage {
-  return msg && msg.type === 'bid.submit';
+  if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
+    return false;
+  }
+  const msgObj = msg as Record<string, unknown>;
+  return msgObj.type === 'bid.submit';
 }
 
 function safeParse<T = unknown>(data: RawData): T | null {
@@ -34,9 +42,9 @@ function send(ws: WebSocket, message: ServerToClientMessage) {
 const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_MESSAGES = 100;
 
-export function attachRfqWebSocketServer(server: HttpServer) {
-  const wss = new WebSocketServer({ server, path: '/ws/rfq' });
-  console.log('[RFQ-WS] WebSocket server attached at /ws/rfq');
+export function attachAuctionWebSocketServer(server: HttpServer) {
+  const wss = new WebSocketServer({ server, path: '/ws/auction' });
+  console.log('[Auction-WS] WebSocket server attached at /ws/auction');
 
   wss.on('connection', (ws, req) => {
     const ip =
@@ -44,12 +52,12 @@ export function attachRfqWebSocketServer(server: HttpServer) {
       req.socket.remoteAddress ||
       'unknown';
     const ua = (req.headers['user-agent'] as string) || 'unknown';
-    console.log(`[RFQ-WS] Connection opened from ${ip} ua="${ua}"`);
+    console.log(`[Auction-WS] Connection opened from ${ip} ua="${ua}"`);
 
     let rateCount = 0;
     let rateResetAt = Date.now() + RATE_LIMIT_WINDOW_MS;
 
-    ws.on('message', (data) => {
+    ws.on('message', (data: RawData) => {
       // basic rate limiting and size guard
       const now = Date.now();
       if (now > rateResetAt) {
@@ -58,7 +66,7 @@ export function attachRfqWebSocketServer(server: HttpServer) {
       }
       if (++rateCount > RATE_LIMIT_MAX_MESSAGES) {
         console.warn(
-          `[RFQ-WS] Rate limit exceeded from ${ip}; closing connection`
+          `[Auction-WS] Rate limit exceeded from ${ip}; closing connection`
         );
         try {
           ws.close(1008, 'rate_limited');
@@ -67,13 +75,13 @@ export function attachRfqWebSocketServer(server: HttpServer) {
         }
         return;
       }
-      if (
+      const dataSize =
         typeof data === 'string'
-          ? data.length > 64_000
-          : (data as Buffer).byteLength > 64_000
-      ) {
+          ? (data as string).length
+          : (data as Buffer).byteLength;
+      if (dataSize > 64_000) {
         console.warn(
-          `[RFQ-WS] Message too large from ${ip}; closing connection`
+          `[Auction-WS] Message too large from ${ip}; closing connection`
         );
         try {
           ws.close(1009, 'message_too_large');
@@ -84,36 +92,44 @@ export function attachRfqWebSocketServer(server: HttpServer) {
       }
       const msg = safeParse<ClientToServerMessage | BotToServerMessage>(data);
       if (!msg || typeof msg !== 'object') {
-        console.warn(`[RFQ-WS] Invalid JSON from ${ip}`);
+        console.warn(`[Auction-WS] Invalid JSON from ${ip}`);
         return;
       }
 
-      // Handle RFQ client messages
+      // Handle Auction client messages
       if (isClientMessage(msg)) {
-        if (msg.type === 'rfq.request') {
-          const payload = msg.payload as RfqRequestPayload;
-          upsertRfq(payload);
-          console.log(`[RFQ-WS] rfq.request received rfqId=${payload.rfqId}`);
-          send(ws, { type: 'rfq.ack', payload: { rfqId: payload.rfqId } });
-          // Broadcast the rfq.requested to bots/listeners
-          const requested = JSON.stringify({ type: 'rfq.requested', payload });
+        if (msg.type === 'auction.request') {
+          const payload = msg.payload as AuctionRequestPayload;
+          upsertAuction(payload);
+          console.log(
+            `[Auction-WS] auction.request received auctionId=${payload.auctionId}`
+          );
+          send(ws, {
+            type: 'auction.ack',
+            payload: { auctionId: payload.auctionId },
+          });
+          // Broadcast the auction.requested to bots/listeners
+          const requested = JSON.stringify({
+            type: 'auction.requested',
+            payload,
+          });
           let broadcastCount = 0;
           wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) client.send(requested);
             broadcastCount += client.readyState === WebSocket.OPEN ? 1 : 0;
           });
           console.log(
-            `[RFQ-WS] rfq.requested broadcast rfqId=${payload.rfqId} recipients=${broadcastCount}/${wss.clients.size}`
+            `[Auction-WS] auction.requested broadcast auctionId=${payload.auctionId} recipients=${broadcastCount}/${wss.clients.size}`
           );
-          // Immediately stream current bids for this rfq if any
-          const bids = getBids(payload.rfqId);
+          // Immediately stream current bids for this auction if any
+          const bids = getBids(payload.auctionId);
           if (bids.length > 0) {
             send(ws, {
-              type: 'rfq.bids',
-              payload: { rfqId: payload.rfqId, bids },
+              type: 'auction.bids',
+              payload: { auctionId: payload.auctionId, bids },
             });
             console.log(
-              `[RFQ-WS] Sent existing bids rfqId=${payload.rfqId} count=${bids.length}`
+              `[Auction-WS] Sent existing bids auctionId=${payload.auctionId} count=${bids.length}`
             );
           }
           return;
@@ -123,48 +139,48 @@ export function attachRfqWebSocketServer(server: HttpServer) {
       // Handle bot bid messages
       if (isBotMessage(msg)) {
         const bid = msg.payload as BidPayload;
-        const rec = getRfq(bid.rfqId);
+        const rec = getAuction(bid.auctionId);
         if (!rec) {
           send(ws, {
             type: 'bid.ack',
-            payload: { error: 'rfq_not_found_or_expired' },
+            payload: { error: 'auction_not_found_or_expired' },
           });
           console.warn(
-            `[RFQ-WS] bid.submit rejected rfqId=${bid.rfqId} reason=rfq_not_found_or_expired`
+            `[Auction-WS] bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
           );
           return;
         }
-        const sim = basicValidateBid(rec.rfq, bid);
+        const sim = basicValidateBid(rec.auction, bid);
         if (!sim.ok) {
           send(ws, {
             type: 'bid.ack',
             payload: { error: sim.reason || 'invalid_bid' },
           });
           console.warn(
-            `[RFQ-WS] bid.submit rejected rfqId=${bid.rfqId} reason=${sim.reason || 'invalid_bid'}`
+            `[Auction-WS] bid.submit rejected auctionId=${bid.auctionId} reason=${sim.reason || 'invalid_bid'}`
           );
           return;
         }
-        const validated = addBid(bid.rfqId, bid);
+        const validated = addBid(bid.auctionId, bid);
         if (!validated) {
           send(ws, {
             type: 'bid.ack',
-            payload: { error: 'rfq_not_found_or_expired' },
+            payload: { error: 'auction_not_found_or_expired' },
           });
           console.warn(
-            `[RFQ-WS] bid.submit failed rfqId=${bid.rfqId} reason=rfq_not_found_or_expired`
+            `[Auction-WS] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
           );
           return;
         }
         send(ws, { type: 'bid.ack', payload: { bidId: validated.bidId } });
         console.log(
-          `[RFQ-WS] bid.submit accepted rfqId=${bid.rfqId} bidId=${validated.bidId}`
+          `[Auction-WS] bid.submit accepted auctionId=${bid.auctionId} bidId=${validated.bidId}`
         );
 
         // Broadcast updated top bids to all clients
         const payload: ServerToClientMessage = {
-          type: 'rfq.bids',
-          payload: { rfqId: bid.rfqId, bids: getBids(bid.rfqId) },
+          type: 'auction.bids',
+          payload: { auctionId: bid.auctionId, bids: getBids(bid.auctionId) },
         };
         const dataStr = JSON.stringify(payload);
         let recipients = 0;
@@ -173,20 +189,20 @@ export function attachRfqWebSocketServer(server: HttpServer) {
           recipients += client.readyState === WebSocket.OPEN ? 1 : 0;
         });
         console.log(
-          `[RFQ-WS] rfq.bids broadcast rfqId=${bid.rfqId} recipients=${recipients}/${wss.clients.size}`
+          `[Auction-WS] auction.bids broadcast auctionId=${bid.auctionId} recipients=${recipients}/${wss.clients.size}`
         );
         return;
       }
 
       console.warn(
-        `[RFQ-WS] Unhandled message type from ${ip}: ${
+        `[Auction-WS] Unhandled message type from ${ip}: ${
           (msg as Record<string, unknown>)?.type ?? typeof msg
         }`
       );
     });
 
     ws.on('error', (err) => {
-      console.error(`[RFQ-WS] Socket error from ${ip}:`, err);
+      console.error(`[Auction-WS] Socket error from ${ip}:`, err);
       try {
         Sentry.captureException(err);
       } catch {
@@ -203,7 +219,7 @@ export function attachRfqWebSocketServer(server: HttpServer) {
         }
       })();
       console.log(
-        `[RFQ-WS] Connection closed from ${ip} code=${code} reason="${reasonStr}"`
+        `[Auction-WS] Connection closed from ${ip} code=${code} reason="${reasonStr}"`
       );
     });
   });
