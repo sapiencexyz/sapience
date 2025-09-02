@@ -1,7 +1,7 @@
 'use client';
 import { Switch } from '@sapience/ui/components/ui/switch';
 
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
+import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
@@ -23,6 +23,7 @@ import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -134,6 +135,16 @@ export const BetslipContent = ({
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
+  // Watch parlay form values to react to changes
+  const parlayWagerAmount = useWatch({
+    control: parlayMethods.control,
+    name: 'wagerAmount',
+  });
+  const parlayPositionsForm = useWatch({
+    control: parlayMethods.control,
+    name: 'positions',
+  }) as Record<string, { predictionValue?: string }> | undefined;
+
   // Get the best non-expired bid
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
@@ -143,7 +154,7 @@ export const BetslipContent = ({
 
     if (validBids.length === 0) return null;
 
-    const makerWagerStr = parlayMethods.getValues('wagerAmount') || '0';
+    const makerWagerStr = parlayWagerAmount || '0';
     let makerWager: bigint;
     try {
       makerWager = BigInt(makerWagerStr);
@@ -169,31 +180,74 @@ export const BetslipContent = ({
       })();
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, parlayMethods]);
+  }, [bids, parlayWagerAmount]);
 
   const { address: makerAddress } = useAccount();
 
   // Emit Auction when parlay form values change
   useEffect(() => {
-    if (!effectiveParlayMode) return;
-    if (positionsWithMarketData.length === 0) return;
-    if (!requestQuotes) return;
-    if (!makerAddress) return; // require connected wallet to request quotes
-    const yesNoPositions = positionsWithMarketData.filter(
+    if (!effectiveParlayMode) {
+      console.log('[OTC-BETSLIP] skip: not in parlay mode');
+      return;
+    }
+    if (positionsWithMarketData.length === 0) {
+      console.log('[OTC-BETSLIP] skip: no positions');
+      return;
+    }
+    if (!requestQuotes) {
+      console.log('[OTC-BETSLIP] skip: requestQuotes missing');
+      return;
+    }
+    if (!makerAddress) {
+      console.log('[OTC-BETSLIP] skip: no wallet connected');
+      return; // require connected wallet to request quotes
+    }
+    const eligiblePositions = positionsWithMarketData.filter(
       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
     );
-    if (yesNoPositions.length === 0) return;
+    if (eligiblePositions.length === 0) {
+      console.log('[OTC-BETSLIP] skip: no eligible positions');
+      return;
+    }
 
-    const wager = parlayMethods.getValues('wagerAmount') || '0';
-    const rawOutcomes = yesNoPositions.map((p) => ({
-      marketGroup: p.position.marketAddress,
-      marketId: p.position.marketId,
-      prediction: true,
-    }));
+    const wager = parlayWagerAmount || '0';
+
+    const rawOutcomes = eligiblePositions.map((p) => {
+      const posId = p.position.id;
+      const predValue = parlayPositionsForm?.[posId]?.predictionValue;
+
+      if (
+        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+      ) {
+        const selectedMarketId = Number(
+          predValue != null && predValue !== ''
+            ? predValue
+            : p.position.marketId
+        );
+        return {
+          marketGroup: p.position.marketAddress,
+          marketId: selectedMarketId,
+          prediction: true,
+        };
+      }
+
+      // YES/NO default path
+      const isYes = predValue === YES_SQRT_PRICE_X96;
+      return {
+        marketGroup: p.position.marketAddress,
+        marketId: p.position.marketId,
+        prediction: Boolean(isYes),
+      };
+    });
 
     const { resolver, predictedOutcomes } =
       buildAuctionStartPayload(rawOutcomes);
 
+    console.log('[OTC-BETSLIP] requestQuotes', {
+      wager,
+      resolver,
+      outcomesCount: predictedOutcomes.length,
+    });
     requestQuotes({
       wager,
       resolver,
@@ -204,6 +258,8 @@ export const BetslipContent = ({
     effectiveParlayMode,
     positionsWithMarketData,
     parlayMethods,
+    parlayWagerAmount,
+    parlayPositionsForm,
     requestQuotes,
     makerAddress,
   ]);
@@ -444,7 +500,7 @@ export const BetslipContent = ({
                   <div className="pt-1">
                     <WagerInput
                       minAmount={minParlayWager}
-                      collateralSymbol={parlayCollateralSymbol || 'sUSDe'}
+                      collateralSymbol={'testUSDe'}
                       collateralAddress={parlayCollateralAddress}
                       chainId={parlayChainId}
                     />
@@ -454,12 +510,15 @@ export const BetslipContent = ({
                     <div className="text-xs text-muted-foreground flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <LottieLoader width={16} height={16} />
-                        <span>Broadcasting a request for quotes...</span>
+                        <span>Broadcasting a request for bids...</span>
                       </span>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <button className="text-primary underline">
+                            <button
+                              type="button"
+                              className="text-primary underline"
+                            >
                               Limit Order
                             </button>
                           </TooltipTrigger>
@@ -525,7 +584,7 @@ export const BetslipContent = ({
                         size="lg"
                         variant="default"
                       >
-                        Awaiting Quotes
+                        Awaiting Bids
                       </Button>
                     )}
                   </div>

@@ -56,7 +56,19 @@ function toWsUrl(baseHttpUrl: string | undefined): string | null {
 }
 
 function jsonStableStringify(value: unknown) {
-  return JSON.stringify(value, Object.keys(value as object).sort());
+  // Deep-stable stringify: sorts object keys at every level
+  const serialize = (val: unknown): unknown => {
+    if (val === null || typeof val !== 'object') return val;
+    if (Array.isArray(val)) return (val as unknown[]).map(serialize);
+    const obj = val as Record<string, unknown>;
+    const sortedKeys = Object.keys(obj).sort();
+    const out: Record<string, unknown> = {};
+    for (const key of sortedKeys) {
+      out[key] = serialize(obj[key]);
+    }
+    return out;
+  };
+  return JSON.stringify(serialize(value));
 }
 
 export function useAuctionStart() {
@@ -67,6 +79,10 @@ export function useAuctionStart() {
   const apiBase = process.env.NEXT_PUBLIC_FOIL_API_URL;
   const wsUrl = useMemo(() => toWsUrl(apiBase), [apiBase]);
   const lastAuctionRef = useRef<AuctionParams | null>(null);
+  // Track latest auctionId in a ref to avoid stale closures in ws handlers
+  const latestAuctionIdRef = useRef<string | null>(null);
+  // Ignore any incoming bids while awaiting ack for the latest request
+  const isAwaitingAckRef = useRef<boolean>(false);
   const [currentAuctionParams, setCurrentAuctionParams] =
     useState<AuctionParams | null>(null);
 
@@ -77,19 +93,36 @@ export function useAuctionStart() {
     if (!wsUrl) return null;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+    ws.addEventListener('open', () => {
+      console.log('[OTC-WS] open');
+    });
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data as string);
         if (msg?.type === 'auction.ack') {
-          setAuctionId(msg.payload?.auctionId || null);
+          const newId = msg.payload?.auctionId || null;
+          latestAuctionIdRef.current = newId;
+          setAuctionId(newId);
+          isAwaitingAckRef.current = false;
         } else if (msg?.type === 'auction.bids') {
           const rawBids = Array.isArray(msg.payload?.bids)
             ? (msg.payload.bids as any[])
             : [];
+          // If awaiting ack for a newer auction, ignore any bids
+          if (isAwaitingAckRef.current) return;
+          // Only accept bids for the latest auction id
+          const targetAuctionId: string | null =
+            rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
+          if (
+            !targetAuctionId ||
+            targetAuctionId !== latestAuctionIdRef.current
+          )
+            return;
           const normalized: QuoteBid[] = rawBids
             .map((b) => {
               try {
-                const auctionIdVal: string = b.auctionId || auctionId || '';
+                const auctionIdVal: string =
+                  b.auctionId || latestAuctionIdRef.current || '';
                 const taker: string =
                   b.taker || '0x0000000000000000000000000000000000000000';
                 const takerWager: string = b.takerWager || '0';
@@ -115,9 +148,16 @@ export function useAuctionStart() {
         // ignore
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      console.log('[OTC-WS] close', {
+        code: ev?.code,
+        reason: ev?.reason,
+      });
       wsRef.current = null;
     };
+    ws.addEventListener('error', (err) => {
+      console.log('[OTC-WS] error', err);
+    });
     return ws;
   }, [wsUrl, auctionId]);
 
@@ -126,8 +166,6 @@ export function useAuctionStart() {
   const requestQuotes = useCallback(
     (params: AuctionParams | null) => {
       if (!params) return;
-      const ws = ensureConnection();
-      if (!ws) return;
       const payload = {
         type: 'auction.start',
         payload: {
@@ -140,20 +178,40 @@ export function useAuctionStart() {
 
       const key = jsonStableStringify(payload);
       if (inflightRef.current === key) return;
-      inflightRef.current = key;
 
       if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
       debounceTimer.current = window.setTimeout(() => {
-        try {
-          ws.send(JSON.stringify(payload));
-          setAuctionId(null); // Will be set when we receive auction.ack
-          setBids([]);
-          lastAuctionRef.current = params;
-          setCurrentAuctionParams(params);
-        } catch {
-          // ignore
+        const ws = ensureConnection();
+        if (!ws) return;
+        const sendStart = () => {
+          try {
+            isAwaitingAckRef.current = true;
+            inflightRef.current = key;
+            ws.send(JSON.stringify(payload));
+            console.log('[OTC-WS] sent auction.start');
+            setAuctionId(null); // Will be set when we receive auction.ack
+            setBids([]);
+            lastAuctionRef.current = params;
+            setCurrentAuctionParams(params);
+          } catch {
+            // ignore
+          }
+        };
+
+        if (ws.readyState === WebSocket.OPEN) {
+          sendStart();
+        } else {
+          const onOpen = () => {
+            ws.removeEventListener('open', onOpen as any);
+            sendStart();
+          };
+          ws.addEventListener('open', onOpen as any);
+          // Safety timeout in case 'open' never fires
+          window.setTimeout(() => {
+            if (ws.readyState === WebSocket.OPEN) sendStart();
+          }, 1000);
         }
-      }, 250);
+      }, 400);
     },
     [ensureConnection]
   );

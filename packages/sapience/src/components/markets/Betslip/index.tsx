@@ -620,9 +620,9 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
         );
       if (!quoteData) {
         toast({
-          title: 'Quote not found',
+          title: 'Bid not found',
           description:
-            'Pricing data for one of your positions is missing. Please refresh the quotes.',
+            'Pricing data for one of your positions is missing. Please refresh the bids.',
           variant: 'destructive',
           duration: 5000,
         });

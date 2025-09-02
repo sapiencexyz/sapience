@@ -132,7 +132,7 @@ export default function MultipleChoiceWagerForm({
         </div>
         <div>
           <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+            collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
             collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
             chainId={marketGroupData.chainId}
           />
