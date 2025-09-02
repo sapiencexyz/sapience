@@ -1,5 +1,9 @@
 import type { BidPayload, AuctionRequestPayload } from './types';
-import { validateAuctionForMint, createValidationError } from './helpers';
+import {
+  validateAuctionForMint,
+  createValidationError,
+  verifyTakerBid,
+} from './helpers';
 
 export interface SimResult {
   ok: boolean;
@@ -46,14 +50,16 @@ export function basicValidateBid(
     return { ok: false, reason: 'invalid_wager_values' };
   }
 
-  // Basic taker bid signature validation (format check only)
-  if (!bid.takerSignature || typeof bid.takerSignature !== 'string') {
-    return { ok: false, reason: 'invalid_taker_bid_signature_format' };
-  }
-
-  // Check if taker bid signature looks like a valid hex string
-  if (!bid.takerSignature.startsWith('0x') || bid.takerSignature.length < 10) {
-    return { ok: false, reason: 'invalid_taker_bid_signature_format' };
+  // Validate taker signature payload and deadline (format + expiry)
+  const sigCheck = verifyTakerBid({
+    auctionId: bid.auctionId,
+    taker: bid.taker,
+    takerWager: bid.takerWager,
+    takerDeadline: bid.takerDeadline,
+    takerSignature: bid.takerSignature,
+  });
+  if (!sigCheck.ok) {
+    return { ok: false, reason: sigCheck.reason };
   }
 
   // Note: Collateral transfer now relies on standard ERC20 approvals, not permits.

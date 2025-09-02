@@ -25,13 +25,14 @@ export interface QuoteBid {
 
 // Struct shape expected by PredictionMarket.mint()
 export interface MintPredictionRequestData {
-  encodedPredictedOutcomes: `0x${string}`[];
+  encodedPredictedOutcomes: `0x${string}`; // single bytes per contract
   resolver: `0x${string}`;
   makerCollateral: string; // wei
   takerCollateral: string; // wei
   maker: `0x${string}`;
   taker: `0x${string}`;
-  takerPredictionSignature: `0x${string}`; // taker approval for this prediction (off-chain)
+  takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
+  takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
 }
 
@@ -208,14 +209,14 @@ export function useAuctionStart() {
         if (!resolver || predictedOutcomes.length === 0) return null;
 
         return {
-          encodedPredictedOutcomes: predictedOutcomes,
+          encodedPredictedOutcomes: predictedOutcomes[0],
           resolver,
           makerCollateral: auction.wager,
           takerCollateral: args.selectedBid.takerWager,
           maker: args.maker,
           taker: args.selectedBid.taker as `0x${string}`,
-          takerPredictionSignature: args.selectedBid
-            .takerSignature as `0x${string}`,
+          takerSignature: args.selectedBid.takerSignature as `0x${string}`,
+          takerDeadline: String(args.selectedBid.takerDeadline),
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
         };
       } catch {
@@ -243,36 +244,30 @@ export function buildMintPredictionRequestData(args: {
   // Optional overrides if caller wants to provide resolver/outcomes directly
   resolver?: `0x${string}`;
   predictedOutcomes?: `0x${string}`[];
+  makerCollateral?: string; // wei
   refCode?: `0x${string}`; // bytes32
 }): MintPredictionRequestData | null {
   try {
     const zeroBytes32 = `0x${'0'.repeat(64)}`;
-    // We cannot directly capture last auction params here since hooks state is internal;
-    // require caller to pass resolver/outcomes explicitly for safety.
     const resolver = args.resolver || ('0x' as const);
     const predictedOutcomes = args.predictedOutcomes || [];
-
     if (!resolver || predictedOutcomes.length === 0) return null;
 
-    const makerCollateral = ((): string => {
-      // Maker's wager must match the auction's wager; caller is responsible for correctness
-      // We do not transform here to avoid unit mistakes
-      return '0';
-    })();
+    const makerCollateral = args.makerCollateral || '0';
+    if (!makerCollateral || BigInt(makerCollateral) === 0n) return null;
 
-    // Use taker data from the selected bid
     const taker = args.selectedBid.taker as `0x${string}`;
     const takerCollateral = args.selectedBid.takerWager;
 
     const out: MintPredictionRequestData = {
-      encodedPredictedOutcomes: predictedOutcomes,
+      encodedPredictedOutcomes: predictedOutcomes[0],
       resolver,
       makerCollateral,
       takerCollateral,
       maker: args.maker,
       taker,
-      takerPredictionSignature: args.selectedBid
-        .takerSignature as `0x${string}`,
+      takerSignature: args.selectedBid.takerSignature as `0x${string}`,
+      takerDeadline: String(args.selectedBid.takerDeadline),
       refCode: args.refCode || (zeroBytes32 as `0x${string}`),
     };
 

@@ -1,4 +1,10 @@
-import type { AuctionRequestPayload } from './types';
+import type { AuctionRequestPayload, BidPayload } from './types';
+import {
+  encodeAbiParameters,
+  keccak256,
+  verifyTypedData,
+  getAddress,
+} from 'viem';
 
 /**
  * Helper function to create MintParlayRequestData for the ParlayPool.mint() function
@@ -177,6 +183,80 @@ export function verifyTakerBid(params: {
     // TODO: Implement real signature verification (EIP-712) against the exact typed payload
     // For now, treat format-valid signatures as acceptable.
     return { ok: true };
+  } catch {
+    return { ok: false, reason: 'verification_failed' };
+  }
+}
+
+export async function verifyTakerBidStrict(params: {
+  auction: AuctionRequestPayload;
+  bid: BidPayload;
+  chainId: number;
+  verifyingContract: `0x${string}`;
+}): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    const { auction, bid, chainId, verifyingContract } = params;
+
+    // Basic guards
+    if (!auction || !bid) return { ok: false, reason: 'invalid_payload' };
+    if (!auction.predictedOutcomes?.length)
+      return { ok: false, reason: 'invalid_auction_outcomes' };
+
+    const encodedPredictedOutcomes = auction
+      .predictedOutcomes[0] as `0x${string}`;
+
+    // Hash the inner message per contract
+    const inner = encodeAbiParameters(
+      [
+        { type: 'bytes' },
+        { type: 'uint256' },
+        { type: 'uint256' },
+        { type: 'address' },
+        { type: 'address' },
+        { type: 'uint256' },
+      ],
+      [
+        encodedPredictedOutcomes,
+        BigInt(bid.takerWager),
+        BigInt(auction.wager),
+        auction.resolver as `0x${string}`,
+        auction.maker as `0x${string}`,
+        BigInt(bid.takerDeadline),
+      ]
+    );
+
+    const messageHash = keccak256(inner);
+
+    // EIP-712 domain and types must match SignatureProcessor
+    const domain = {
+      name: 'SignatureProcessor',
+      version: '1',
+      chainId,
+      verifyingContract,
+    } as const;
+
+    const types = {
+      Approve: [
+        { name: 'messageHash', type: 'bytes32' },
+        { name: 'owner', type: 'address' },
+      ],
+    } as const;
+
+    const message = {
+      messageHash,
+      owner: getAddress(bid.taker),
+    } as const;
+
+    const ok = await verifyTypedData({
+      address: getAddress(bid.taker),
+      domain,
+      primaryType: 'Approve',
+      types,
+      message,
+      signature: bid.takerSignature as `0x${string}`,
+    });
+
+    return ok ? { ok: true } : { ok: false, reason: 'invalid_signature' };
   } catch {
     return { ok: false, reason: 'verification_failed' };
   }

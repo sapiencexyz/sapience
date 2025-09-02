@@ -2,6 +2,11 @@ import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
+import { verifyTakerBidStrict } from './helpers';
+import {
+  PREDICTION_MARKET_ADDRESS_ARB1,
+  PREDICTION_MARKET_CHAIN_ID_ARB1,
+} from '../constants';
 import Sentry from '../instrument';
 import type {
   BotToServerMessage,
@@ -241,6 +246,24 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
           );
           return;
         }
+        // Optional strict EIP-712 verification when address is configured
+        (async () => {
+          try {
+            const strict = await verifyTakerBidStrict({
+              auction: rec.auction,
+              bid,
+              chainId: PREDICTION_MARKET_CHAIN_ID_ARB1,
+              verifyingContract: PREDICTION_MARKET_ADDRESS_ARB1,
+            });
+            if (!strict.ok) {
+              console.warn(
+                `[Auction-WS] bid.submit strict verification failed auctionId=${bid.auctionId} reason=${strict.reason}`
+              );
+            }
+          } catch {
+            // ignore strict verification errors; basic validation already passed
+          }
+        })().catch(() => undefined);
         const validated = addBid(bid.auctionId, bid);
         if (!validated) {
           send(ws, {
