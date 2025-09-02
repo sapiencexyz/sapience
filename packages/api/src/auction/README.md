@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Auction WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market auctions using the PredictionMarket contract. The system supports a mint-based flow where positions are created immediately when both parties provide valid signatures.
+The Auction WebSocket API enables real-time communication between makers and takers, facilitated by a relayer, for creating and managing prediction market auctions using the `PredictionMarket.sol` contract. Makers create auctions with their wagers and predictions, takers submit competitive bids, and the relayer facilitates the matching process by validating signatures and broadcasting auction data. The system supports a mint-based flow where positions (represented as NFTs) are created immediately when both parties provide valid signatures.
 
 ## Message Types
 
