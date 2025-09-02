@@ -28,6 +28,20 @@ contract PredictionMarket is
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
 
+    // ============ Custom Errors ============
+    error InvalidCollateralToken();
+    error InvalidMinCollateral();
+    error MakerIsNotCaller();
+    error CollateralBelowMinimum();
+    error MakerCollateralMustBeGreaterThanZero();
+    error TakerCollateralMustBeGreaterThanZero();
+    error InvalidTakerSignature();
+    error InvalidMarketsAccordingToResolver();
+    error PredictionNotFound();
+    error PredictionResolutionFailed();
+    error MakerAndTakerAreDifferent();
+    error PredictionDoesNotExist();
+
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
 
@@ -52,8 +66,8 @@ contract PredictionMarket is
         address _collateralToken,
         uint256 _minCollateral
     ) ERC721(name, symbol) {
-        require(_collateralToken != address(0), "Invalid collateral token");
-        require(_minCollateral > 0, "Invalid min collateral");
+        if (_collateralToken == address(0)) revert InvalidCollateralToken();
+        if (_minCollateral == 0) revert InvalidMinCollateral();
 
         config = IPredictionStructs.Settings({
             collateralToken: _collateralToken,
@@ -73,23 +87,11 @@ contract PredictionMarket is
         returns (uint256 makerNftTokenId, uint256 takerNftTokenId)
     {
         // 1- Initial checks
-        require(
-            mintPredictionRequestData.maker == msg.sender,
-            "Maker is not the caller"
-        );
+        if (mintPredictionRequestData.maker != msg.sender) revert MakerIsNotCaller();
 
-        require(
-            mintPredictionRequestData.makerCollateral >= config.minCollateral,
-            "Collateral below minimum"
-        );
-        require(
-            mintPredictionRequestData.makerCollateral > 0,
-            "Maker collateral must be greater than 0"
-        );
-        require(
-            mintPredictionRequestData.takerCollateral > 0,
-            "Taker collateral must be greater than 0"
-        );
+        if (mintPredictionRequestData.makerCollateral < config.minCollateral) revert CollateralBelowMinimum();
+        if (mintPredictionRequestData.makerCollateral == 0) revert MakerCollateralMustBeGreaterThanZero();
+        if (mintPredictionRequestData.takerCollateral == 0) revert TakerCollateralMustBeGreaterThanZero();
 
         // 2- Confirm the taker signature is valid for this prediction (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
         bytes32 messageHash = keccak256(
@@ -109,7 +111,7 @@ contract PredictionMarket is
                 mintPredictionRequestData.takerPredictionSignature
             )
         ) {
-            revert("Invalid taker signature");
+            revert InvalidTakerSignature();
         }
 
         // 3- Ask resolver if markets are OK
@@ -119,7 +121,7 @@ contract PredictionMarket is
                 mintPredictionRequestData.encodedPredictedOutcomes
             );
 
-        require(isValid, "Invalid markets according to resolver");
+        if (!isValid) revert InvalidMarketsAccordingToResolver();
 
         // 4- Set the prediction data
         uint256 predictionId = _predictionIdCounter++;
@@ -205,15 +207,15 @@ contract PredictionMarket is
         ];
 
         // 2- Initial checks
-        require(prediction.maker != address(0), "Prediction not found");
-        require(prediction.taker != address(0), "Prediction not found");
+        if (prediction.maker == address(0)) revert PredictionNotFound();
+        if (prediction.taker == address(0)) revert PredictionNotFound();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
         (bool isValid, , bool makerWon) = IPredictionMarketResolver(
             prediction.resolver
         ).resolvePrediction(prediction.encodedPredictedOutcomes);
 
-        require(isValid, "Prediction resolution failed");
+        if (!isValid) revert PredictionResolutionFailed();
 
         // 4- Send collateral to winner
         uint256 payout = prediction.makerCollateral +
@@ -253,13 +255,10 @@ contract PredictionMarket is
         ];
 
         // 2- Initial checks
-        require(prediction.maker != address(0), "Prediction not found");
-        require(prediction.taker != address(0), "Prediction not found");
+        if (prediction.maker == address(0)) revert PredictionNotFound();
+        if (prediction.taker == address(0)) revert PredictionNotFound();
 
-        require(
-            prediction.maker == prediction.taker,
-            "Maker and taker are different. Cannot consolidate"
-        );
+        if (prediction.maker != prediction.taker) revert MakerAndTakerAreDifferent();
 
         // 3- Set as settled and maker won and send the collateral to the maker
         prediction.settled = true;
@@ -298,10 +297,7 @@ contract PredictionMarket is
         returns (IPredictionStructs.PredictionData memory predictionData)
     {
         uint256 predictionId = nftToPredictionId[tokenId];
-        require(
-            predictionId != 0 && _isPrediction(predictionId),
-            "Prediction does not exist"
-        );
+        if (predictionId == 0 || !_isPrediction(predictionId)) revert PredictionDoesNotExist();
 
         predictionData = predictions[predictionId];
     }

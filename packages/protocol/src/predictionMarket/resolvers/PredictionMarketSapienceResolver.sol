@@ -10,6 +10,12 @@ import "../../market/interfaces/ISapienceStructs.sol";
  * @notice NFT contract for Prediction Market system
  */
 contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
+    // ============ Custom Errors ============
+    error MustHaveAtLeastOneMarket();
+    error TooManyMarkets();
+    error InvalidMarketGroupAddress();
+    error MarketIsNotYesNoMarket();
+
     struct Settings {
         uint256 maxPredictionMarkets;
     }
@@ -39,15 +45,8 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         error = Error.NO_ERROR;
         PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
 
-        require(
-            predictedOutcomes.length > 0,
-            "Must have at least one market"
-        );
-        require(
-            predictedOutcomes.length <=
-                config.maxPredictionMarkets,
-            "Too many markets"
-        );
+        if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
+        if (predictedOutcomes.length > config.maxPredictionMarkets) revert TooManyMarkets();
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             if (predictedOutcomes[i].market.marketGroup == address(0)) {
@@ -118,10 +117,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         MarketIdentifier memory market
     ) internal view returns (bool) {
         // Validate market address
-        require(
-            market.marketGroup != address(0),
-            "Invalid market group address"
-        );
+        if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
 
         // Get the specific market data from the Sapience market group
         (ISapienceStructs.MarketData memory marketData, ) = ISapience(
@@ -146,10 +142,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         MarketIdentifier memory market
     ) internal view returns (bool outcome, bool settled) {
         // Validate market address
-        require(
-            market.marketGroup != address(0),
-            "Invalid market group address"
-        );
+        if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
 
         // Get the specific market data from the Sapience market group
         (ISapienceStructs.MarketData memory marketData, ) = ISapience(
@@ -179,9 +172,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         } else {
             // This is a numeric market, not Yes/No
             // For prediction purposes, we only support Yes/No markets
-            revert(
-                "Market is not a Yes/No market - settlement price is not at bounds"
-            );
+            revert MarketIsNotYesNoMarket();
         }
     }
 }
