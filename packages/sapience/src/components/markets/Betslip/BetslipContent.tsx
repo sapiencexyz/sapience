@@ -1,8 +1,6 @@
 'use client';
 import { Switch } from '@sapience/ui/components/ui/switch';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
-import Link from 'next/link';
+
 import { FormProvider, type UseFormReturn } from 'react-hook-form';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
@@ -13,11 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
+
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
@@ -137,12 +131,7 @@ export const BetslipContent = ({
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
-  // Bid selection state and sorting
-  const [selectedBidId, setSelectedBidId] = useState<string | null>(null);
-  const formatAddress = (addr?: string) => {
-    if (!addr || addr.length < 10) return addr || '—';
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
+  // Bid sorting
   const sortedBids = useMemo(() => {
     const toBig = (v: string) => {
       try {
@@ -160,18 +149,7 @@ export const BetslipContent = ({
       return 0;
     });
   }, [bids]);
-  useEffect(() => {
-    if (!sortedBids || sortedBids.length === 0) {
-      setSelectedBidId(null);
-      return;
-    }
-    const exists = selectedBidId
-      ? sortedBids.some((b) => b.bidId === selectedBidId)
-      : false;
-    if (!selectedBidId || !exists) {
-      setSelectedBidId(sortedBids[0].bidId);
-    }
-  }, [sortedBids, selectedBidId]);
+
   // Emit RFQ when parlay form values change
   useEffect(() => {
     if (!effectiveParlayMode) return;
@@ -451,165 +429,66 @@ export const BetslipContent = ({
                     />
                   </div>
 
-                  {/* Minimum Payout moved into Add to orderbook popover */}
                   <div className="pt-2 space-y-2">
                     <div className="text-xs text-muted-foreground flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <LottieLoader width={16} height={16} />
                         <span>Broadcasting a request for quotes...</span>
                       </span>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="text-primary underline">
-                            Limit Order
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 space-y-3">
-                          <p className="text-sm">
-                            Submit your order onchain and it may be filled
-                            before expiration.
-                          </p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label
-                                htmlFor="limitAmount"
-                                className="text-sm font-medium"
-                              >
-                                Minimum Payout
-                              </Label>
-                              <div className="mt-1.5 relative">
-                                <Input
-                                  id="limitAmount"
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="0.00"
-                                  className="pr-16"
-                                  {...parlayMethods.register('limitAmount', {
-                                    required: 'Minimum payout is required',
-                                    min: {
-                                      value: 0,
-                                      message:
-                                        'Minimum payout must be positive',
-                                    },
-                                  })}
-                                />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                                  {parlayCollateralSymbol || 'sUSDe'}
-                                </div>
-                              </div>
-                              {parlayMethods.formState.errors.limitAmount && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {
-                                    parlayMethods.formState.errors.limitAmount
-                                      .message
-                                  }
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <Label
-                                htmlFor="orderExpiration"
-                                className="text-sm font-medium"
-                              >
-                                Expiration
-                              </Label>
-                              <div className="mt-1.5">
-                                <Input
-                                  id="orderExpiration"
-                                  type="datetime-local"
-                                  placeholder="Select expiration"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="pt-1 space-y-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="default"
-                              className="w-full"
-                            >
-                              Submit Order
-                            </Button>
-                            <div className="flex justify-center">
-                              <Link
-                                href="/otc"
-                                className="text-primary underline"
-                              >
-                                View all orders
-                              </Link>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                    </div>
-                    {effectiveParlayMode && sortedBids.length > 0 && (
-                      <div className="space-y-2">
-                        {sortedBids.map((bid) => {
-                          const isSelected = selectedBidId === bid.bidId;
-                          return (
-                            <button
-                              key={bid.bidId}
-                              type="button"
-                              onClick={() => setSelectedBidId(bid.bidId)}
-                              className={`w-full flex items-center justify-between text-xs border rounded p-2 transition-colors ${
-                                isSelected
-                                  ? 'border-primary ring-1 ring-primary/50 bg-primary/5'
-                                  : 'border-border hover:bg-muted/50'
-                              }`}
-                              aria-pressed={isSelected}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="flex flex-col text-left">
-                                  <span>
-                                    Potential Payout: {bid.quote.payout}{' '}
-                                    {parlayCollateralSymbol || 'sUSDe'}
-                                  </span>
-                                  <span>
-                                    Bidder: {formatAddress(bid.taker)}
-                                  </span>
-                                  <span>
-                                    {(() => {
-                                      const ms =
-                                        bid.quote.validUntil * 1000 -
-                                        Date.now();
-                                      if (ms <= 0) return 'Expired';
-                                      const mins = Math.ceil(ms / 60000);
-                                      return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;
-                                    })()}
-                                  </span>
-                                </div>
-                              </div>
-                              <span
-                                className={`text-[11px] font-medium ${isSelected ? 'text-primary' : 'text-muted-foreground'}`}
-                              >
-                                {isSelected ? 'Selected' : 'Select'}
-                              </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button className="text-primary underline">
+                              Limit Order
                             </button>
-                          );
-                        })}
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Coming Soon</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+
+                    {effectiveParlayMode && sortedBids.length > 0 && (
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={
+                            isParlaySubmitting ||
+                            positionsWithMarketData.some((p) => p.isLoading)
+                          }
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          {isParlaySubmitting
+                            ? 'Submitting Wager...'
+                            : `Place Wager to Win ${sortedBids[0].quote.payout} ${parlayCollateralSymbol || 'testUSDe'}`}
+                        </Button>
+                        <div className="text-xs text-muted-foreground mt-2 text-center">
+                          {(() => {
+                            const bestBid = sortedBids[0];
+                            const ms =
+                              bestBid.quote.validUntil * 1000 - Date.now();
+                            if (ms <= 0) return 'Expired';
+                            const mins = Math.ceil(ms / 60000);
+                            return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;
+                          })()}
+                        </div>
                       </div>
                     )}
 
-                    <Button
-                      className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                      disabled={
-                        isParlaySubmitting ||
-                        positionsWithMarketData.some((p) => p.isLoading) ||
-                        (effectiveParlayMode &&
-                          sortedBids.length > 0 &&
-                          !selectedBidId)
-                      }
-                      type="submit"
-                      size="lg"
-                      variant="default"
-                    >
-                      {isParlaySubmitting
-                        ? 'Submitting Wager...'
-                        : 'Submit Wager'}
-                    </Button>
-                    {/* View Parlays moved into Add to orderbook popover */}
+                    {effectiveParlayMode && sortedBids.length === 0 && (
+                      <Button
+                        className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                        disabled={true}
+                        type="submit"
+                        size="lg"
+                        variant="default"
+                      >
+                        Awaiting Quotes
+                      </Button>
+                    )}
                   </div>
                 </div>
 
