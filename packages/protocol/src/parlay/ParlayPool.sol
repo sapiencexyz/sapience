@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -16,6 +17,7 @@ import "./utils/ApproveWithSignature.sol";
 import "../market/interfaces/ISapience.sol";
 import "../market/interfaces/ISapienceStructs.sol";
 
+// TODO rename to PredictionMarket, and parlays to prediction
 /**
  * @title ParlayPool
  * @notice Implementation of the Parlay Pool contract with orderbook functionality
@@ -94,6 +96,8 @@ contract ParlayPool is
     function mint(
         MintParlayRequestData calldata mintParlayRequestData
     ) external returns (uint256 requestId) {
+        require(mintParlayRequestData.maker == msg.sender, "Maker is not the caller");
+
         // 1- Initial checks
         require(
             mintParlayRequestData.predictedOutcomes.length > 0,
@@ -116,6 +120,8 @@ contract ParlayPool is
             mintParlayRequestData.takerCollateral > 0,
             "Taker collateral must be greater than 0"
         );
+
+        // TODO Check if the signature of the taker is valid for this parlay (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
 
         // 2- Store parlay request data  (only if we are on a async mode)
         requestId = _parlayIdCounter++;
@@ -167,18 +173,21 @@ contract ParlayPool is
 
         // 7- Collact collateral
         // Approve collateral token for both maker and taker using the signatures
-        ApproveWithSignature.approveWithSignature(
-            config.collateralToken,
-            mintParlayRequestData.maker,
-            mintParlayRequestData.makerCollateral,
-            mintParlayRequestData.makerSignature
-        );
-        ApproveWithSignature.approveWithSignature(
-            config.collateralToken,
-            mintParlayRequestData.taker,
-            mintParlayRequestData.takerCollateral,
-            mintParlayRequestData.takerSignature
-        );
+
+        // USE ERC20 PERMIT TO GET THE APPROVALS
+
+        // ApproveWithSignature.approveWithSignature(
+        //     config.collateralToken,
+        //     mintParlayRequestData.maker,
+        //     mintParlayRequestData.makerCollateral,
+        //     mintParlayRequestData.makerSignature
+        // );
+        // ApproveWithSignature.approveWithSignature(
+        //     config.collateralToken,
+        //     mintParlayRequestData.taker,
+        //     mintParlayRequestData.takerCollateral,
+        //     mintParlayRequestData.takerSignature
+        // );
 
         IERC20(config.collateralToken).safeTransferFrom(
             mintParlayRequestData.maker,
@@ -219,6 +228,7 @@ contract ParlayPool is
         // 3- Ask resolver if markets are settled, and if parlay succeeded or not, it means maker won
         (bool syncCallSucceded, bool makerWon) = IParlayPoolResolver(parlay.resolver)
             .resolveParlay(parlayPredictedOutcomes[parlayId], true, parlayId);
+    // TODO Also remove async here
         resolveParlayCallback(tokenId, syncCallSucceded, makerWon);
     }
 

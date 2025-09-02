@@ -44,10 +44,12 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
         if (syncCall) {
             return syncCallSucceded;
         }
-        IParlayPoolResolverCallback(parlayPool).validateParlayMarketsCallback(
-            requestId,
-            syncCallSucceded
-        );
+
+        // TODO: remove the async callback for the mint
+        // IParlayPoolResolverCallback(parlayPool).validateParlayMarketsCallback(
+        //     requestId,
+        //     syncCallSucceded
+        // );
     }
 
     function resolveParlay(

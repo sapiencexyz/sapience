@@ -51,14 +51,16 @@ interface IParlayStructs {
 
     // Struct to store mint parlay data
     struct MintParlayRequestData {
+        // bytes packagedPredictedOutcomes;
         IParlayStructs.PredictedOutcome[] predictedOutcomes;
         address resolver;
         uint256 makerCollateral;
         uint256 takerCollateral;
         address maker;
         address taker;
-        bytes makerSignature;
-        bytes takerSignature;
+        bytes makerSignature; // Just ERC20 Permit
+        bytes takerSignature; // Just ERC20 Permit
+        bytes takerParlaySignature; // Taker is allowing just this parlay 
         bytes32 refCode;
     }
 }
