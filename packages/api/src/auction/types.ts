@@ -1,0 +1,71 @@
+export type HexString = `0x${string}`;
+
+export interface AuctionRequestPayload {
+  wager: string; // wei string
+  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
+  resolver: string; // contract address for market validation
+}
+
+export interface BidQuote {
+  expirationTimestamp: number; // unix seconds
+}
+
+export interface BidFillRawTx {
+  rawSignedTx: HexString; // RLP
+}
+
+export interface BidFillCallData {
+  callData: {
+    to: string;
+    data: HexString;
+    gas?: string;
+    maxFeePerGas?: string;
+    maxPriorityFeePerGas?: string;
+    nonce?: string;
+  };
+  signature?: {
+    r: HexString;
+    s: HexString;
+    v: number;
+  };
+}
+
+export interface MintParlayData {
+  taker: string; // EOA
+  takerWager: string; // wei string
+  takerPermitSignature: string; // ERC20 permit signature
+  takerBidSignature: string; // Taker's signature allowing this specific bid
+}
+
+export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
+
+export interface BidPayload {
+  auctionId: string;
+  takerPermitSignature: string; // ERC20 permit signature
+  takerBidSignature: string; // Taker's signature allowing this specific bid (contains takerWager and taker address)
+}
+
+export interface ValidatedBid extends BidPayload {
+  taker: string; // EOA - derived from takerBidSignature
+  expirationTimestamp: number; // unix seconds - derived by relayer
+  takerWager: string; // wei string - derived from takerBidSignature
+}
+
+export type ClientToServerMessage = {
+  type: 'auction.start';
+  payload: AuctionRequestPayload;
+};
+
+export type BotToServerMessage = { type: 'bid.submit'; payload: BidPayload };
+
+export type ServerToClientMessage =
+  | { type: 'auction.ack'; payload: { auctionId: string } }
+  | { type: 'bid.ack'; payload: { error?: string } }
+  | {
+      type: 'auction.bids';
+      payload: { bids: ValidatedBid[] };
+    }
+  | {
+      type: 'auction.started';
+      payload: AuctionRequestPayload & { auctionId: string };
+    };

@@ -12,7 +12,7 @@ const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
 
   const {
-    state: { messages, pendingText, setPendingText, canChat },
+    state: { messages, pendingText, setPendingText, canChat, canType },
     actions: { sendMessage, loginNow },
   } = useChatConnection(isOpen);
 
@@ -44,6 +44,7 @@ const ChatWidget = () => {
           onChange={setPendingText}
           onSend={sendMessage}
           canChat={canChat}
+          canType={canType}
           onLogin={loginNow}
         />
       </Card>

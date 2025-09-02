@@ -29,7 +29,6 @@ export function ChatMessages({ messages, showLoader }: Props) {
             <div className="mb-0.5 opacity-80">
               <AddressDisplay
                 address={m.address}
-                disableProfileLink
                 className="text-[10px]"
                 compact
               />

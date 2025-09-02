@@ -7,6 +7,7 @@ export type StoredMessage = {
   text: string;
   address?: string;
   timestamp: number;
+  clientId?: string;
 };
 
 const MESSAGE_LIMIT = 200;
@@ -39,14 +40,38 @@ export function createChatWebSocketServer(server: http.Server) {
       }
 
       ws.on('message', (raw: RawData) => {
+        let clientId: string | undefined;
         try {
           const data = JSON.parse(String(raw));
           const text = typeof data.text === 'string' ? data.text : '';
+          clientId =
+            typeof data.clientId === 'string' ? data.clientId : undefined;
           // Require authenticated address for posting
           const address = ws.userAddress || undefined;
           if (!address) {
             try {
-              ws.send(JSON.stringify({ type: 'error', text: 'auth_required' }));
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  text: 'auth_required',
+                  clientId,
+                })
+              );
+            } catch {
+              // no-op
+            }
+            return;
+          }
+          // Reject empty/whitespace-only messages
+          if (!text || text.trim().length === 0) {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  text: 'empty_message',
+                  clientId,
+                })
+              );
             } catch {
               // no-op
             }
@@ -62,7 +87,11 @@ export function createChatWebSocketServer(server: http.Server) {
             if (rate.count > SEND_RATE_MAX_PER_WINDOW) {
               try {
                 ws.send(
-                  JSON.stringify({ type: 'error', text: 'rate_limited' })
+                  JSON.stringify({
+                    type: 'error',
+                    text: 'rate_limited',
+                    clientId,
+                  })
                 );
               } catch {
                 // no-op
@@ -74,21 +103,34 @@ export function createChatWebSocketServer(server: http.Server) {
             text,
             address,
             timestamp: Date.now(),
+            clientId,
           };
           messages.push(stored);
           if (messages.length > MESSAGE_LIMIT)
             messages.splice(0, messages.length - MESSAGE_LIMIT);
 
-          // Broadcast to other clients only
+          // Broadcast to all clients, including sender, so the author sees confirmed echo
           wss.clients.forEach((client: WebSocket) => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-              client.send(JSON.stringify({ text, address }));
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(
+                JSON.stringify({
+                  type: 'message',
+                  text,
+                  address,
+                  clientId,
+                  timestamp: stored.timestamp,
+                })
+              );
             }
           });
         } catch (err) {
           try {
             ws.send(
-              JSON.stringify({ text: `Error: ${(err as Error).message}` })
+              JSON.stringify({
+                type: 'error',
+                text: (err as Error).message,
+                clientId,
+              })
             );
           } catch {
             // no-op

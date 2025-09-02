@@ -29,6 +29,7 @@ router.use('/crypto-prices', cryptoPricesRoutes);
 router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
 router.use('/create-market-group', createMarketRoutes);
+
 router.use('/chat-auth', chatAuthRoutes);
 
 export { router };

@@ -8,6 +8,7 @@ type Props = {
   onChange: (v: string) => void;
   onSend: () => void;
   canChat: boolean;
+  canType: boolean;
   onLogin: () => void;
 };
 
@@ -16,6 +17,7 @@ export function ChatInput({
   onChange,
   onSend,
   canChat,
+  canType,
   onLogin,
 }: Props) {
   return (
@@ -26,7 +28,8 @@ export function ChatInput({
         onKeyDown={(e) => {
           if (e.key === 'Enter') onSend();
         }}
-        disabled={!canChat}
+        disabled={!canType}
+        placeholder={canChat ? 'Type a message...' : 'Sign in to post'}
       />
       <Button
         onClick={() => (canChat ? onSend() : onLogin())}

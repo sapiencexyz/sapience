@@ -347,10 +347,20 @@ export function useChatConnection(isOpen: boolean) {
     [ready, authenticated, userAddress]
   );
 
+  const canType = useMemo(() => ready, [ready]);
+
   const sendMessage = useCallback(() => {
     const text = pendingText.trim();
     if (!text) return;
-    if (!canChat) return;
+    if (!canChat) {
+      // If not authenticated, try to login first
+      try {
+        login();
+      } catch {
+        /* noop */
+      }
+      return;
+    }
     setPendingText('');
 
     const clientId = crypto.randomUUID();
@@ -419,6 +429,7 @@ export function useChatConnection(isOpen: boolean) {
       pendingText,
       setPendingText,
       canChat,
+      canType,
       userAddress,
     },
     actions: {

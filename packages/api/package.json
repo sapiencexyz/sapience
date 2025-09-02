@@ -39,7 +39,8 @@
     "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "auction:bot": "tsx src/auction/botExample.ts"
   },
   "keywords": [],
   "dependencies": {
@@ -74,7 +75,7 @@
     "typegraphql-prisma": "^0.28.0",
     "typescript": "^5.7.2",
     "viem": "^2.21.49",
-    "ws": "8",
+    "ws": "^8.18.0",
     "zod": "3.23.6"
   },
   "devDependencies": {

@@ -3,7 +3,9 @@ import { initializeDataSource } from './db';
 import { expressMiddleware } from '@apollo/server/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
-import http from 'http';
+import { createServer } from 'http';
+import { attachAuctionWebSocketServer } from './auction/ws';
+import { createChatWebSocketServer } from './websocket/chat';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -14,7 +16,6 @@ import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
 import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
-import { createChatWebSocketServer } from './websocket/chat';
 const PORT = 3001;
 
 // Load environment variables
@@ -54,15 +55,28 @@ const startServer = async () => {
 
   handleMcpAppRequests(app, '/mcp');
 
-  const server = http.createServer(app);
+  const httpServer = createServer(app);
+
+  // Initialize Auction WebSocket server
+  const auctionWsEnabled = process.env.ENABLE_AUCTION_WS !== 'false';
+  if (auctionWsEnabled) {
+    attachAuctionWebSocketServer(httpServer);
+  } else {
+    console.log(
+      'Auction WebSocket server disabled via ENABLE_AUCTION_WS=false'
+    );
+  }
 
   // Initialize WebSocket chat at /chat
-  createChatWebSocketServer(server);
+  createChatWebSocketServer(httpServer);
 
-  server.listen(PORT, () => {
+  httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
-    console.log(`WebSocket endpoint available at /chat`);
+    if (auctionWsEnabled) {
+      console.log(`Auction WebSocket endpoint available at /ws/auction`);
+    }
+    console.log(`Chat WebSocket endpoint available at /chat`);
   });
 
   // Only set up Sentry error handling in production

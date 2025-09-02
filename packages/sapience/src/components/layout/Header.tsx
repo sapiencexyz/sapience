@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Wallet, LogIn } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -247,9 +247,11 @@ const Header = () => {
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full px-4 sm:px-6"
+                className="bg-primary hover:bg-primary/90 rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
               >
-                Log In
+                <LogIn className="h-5 w-5 md:hidden" />
+                <span className="hidden md:inline">Log in</span>
+                <span className="sr-only">Log In</span>
               </Button>
             )}
           </div>
