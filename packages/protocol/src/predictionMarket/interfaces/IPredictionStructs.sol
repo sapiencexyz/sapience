@@ -9,11 +9,7 @@ interface IPredictionStructs {
     // ============ Structs ============
     struct Settings {
         address collateralToken; // collateral token
-        uint256 maxPredictionMarkets; // maximum number of markets for a prediction
         uint256 minCollateral; // minimum collateral amount for a prediction
-        uint256 minRequestExpirationTime; // minimum expiration time for a prediction request
-        uint256 maxRequestExpirationTime; // maximum expiration time for a prediction request
-        // address[] approvedTakers; // Global list of approved takers (empty means anyone can fill)
     }
 
     struct PredictionData {

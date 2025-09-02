@@ -50,24 +50,14 @@ contract PredictionMarket is
         string memory name,
         string memory symbol,
         address _collateralToken,
-        uint256 _maxPredictionMarkets,
-        uint256 _minCollateral,
-        uint256 _minRequestExpirationTime,
-        uint256 _maxRequestExpirationTime
+        uint256 _minCollateral
     ) ERC721(name, symbol) {
         require(_collateralToken != address(0), "Invalid collateral token");
         require(_minCollateral > 0, "Invalid min collateral");
-        require(
-            _maxRequestExpirationTime > _minRequestExpirationTime,
-            "Invalid max expiration time"
-        );
 
         config = IPredictionStructs.Settings({
             collateralToken: _collateralToken,
-            maxPredictionMarkets: _maxPredictionMarkets,
-            minCollateral: _minCollateral,
-            minRequestExpirationTime: _minRequestExpirationTime,
-            maxRequestExpirationTime: _maxRequestExpirationTime
+            minCollateral: _minCollateral
         });
 
         _predictionIdCounter = 0;

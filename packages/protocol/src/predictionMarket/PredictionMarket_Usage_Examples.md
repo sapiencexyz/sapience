@@ -4,33 +4,15 @@ This document explains how to use the PredictionMarket contract with practical e
 
 ## Overview
 
-The PredictionMarket implements a true orderbook-style prediction system where:
-- **Makers** submit prediction orders with their collateral and desired outcomes
-- **Takers** compete by directly filling orders with their preferred payouts
-- The **first taker to fill** within the order expiration time wins
+The PredictionMarket implements a streamlined prediction system where:
+- **Makers** create predictions by calling `mint()` with their collateral and desired outcomes
+- **Takers** compete by calling `mint()` with the same prediction data and their delta amount
+- The **first taker to mint** within the time limit wins the opportunity
 - Takers only provide the delta (profit amount), not the full payout
-- After market resolution, the **winner** (maker or taker) withdraws collateral + payout
-- Predictions can only be settled after 30 days from creation (expiration period)
+- After market resolution, the **winner** (maker or taker) calls `burn()` to settle and withdraw winnings
+- Predictions can only be settled after markets are resolved
 
-## Approved Takers Feature
 
-The PredictionMarket supports a global approved takers list that restricts who can fill prediction orders:
-
-- **Empty List**: When the approved takers list is empty, anyone can fill any prediction order (unlimited access)
-- **Restricted List**: When the approved takers list contains addresses, only those addresses can fill prediction orders
-- **Global Setting**: The approved takers list is set at contract deployment and applies to all orders
-- **Security**: This feature allows for controlled access to prediction filling, useful for testing or restricted environments
-
-### Example Usage:
-```solidity
-// Allow anyone to fill orders
-address[] memory approvedTakers = new address[](0);
-
-// Restrict to specific addresses
-address[] memory approvedTakers = new address[](2);
-approvedTakers[0] = address(0x123...);
-approvedTakers[1] = address(0x456...);
-```
 
 ## Contract Setup
 
@@ -45,15 +27,154 @@ PredictionMarket market = new PredictionMarket(
     maxPredictionMarkets,
     minCollateral,
     minRequestExpirationTime,
-    maxRequestExpirationTime,
-    approvedTakers // List of approved takers (empty array = anyone can fill)
+    maxRequestExpirationTime
 );
 
 // Deploy the resolver
 PredictionMarketSapienceResolver resolver = new PredictionMarketSapienceResolver(address(market));
 ```
 
-## Example Scenario: Ana's Prediction Order
+## ERC20 Permit Signature Creation
+
+Before creating predictions, both makers and takers need to create ERC20 permit signatures. These signatures allow the contract to transfer tokens without requiring separate approval transactions.
+
+### Creating the Permit Signature
+
+The permit signature is created using the EIP-712 standard with the following parameters:
+
+```solidity
+// The permit function signature for ERC20 tokens
+bytes32 public constant PERMIT_TYPEHASH = keccak256(
+    "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+);
+
+// Example: Ana wants to permit the market to spend 1000 USDC
+function createPermitSignature(
+    address owner,           // Ana's address
+    address spender,         // PredictionMarket contract address
+    uint256 value,           // 1000e6 (1000 USDC)
+    uint256 nonce,           // Current nonce from the token contract
+    uint256 deadline,        // Block timestamp + 60 seconds
+    uint256 privateKey       // Ana's private key (off-chain)
+) external pure returns (bytes memory signature) {
+    // Create the struct hash
+    bytes32 structHash = keccak256(
+        abi.encode(
+            PERMIT_TYPEHASH,
+            owner,
+            spender,
+            value,
+            nonce,
+            deadline
+        )
+    );
+    
+    // Create the domain separator
+    bytes32 DOMAIN_SEPARATOR = keccak256(
+        abi.encode(
+            keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+            keccak256(bytes("USDC")),           // Token name
+            keccak256(bytes("1")),              // Version
+            1,                                  // Chain ID (mainnet)
+            address(0xA0b86a33E6441b8c4C8C0C0C0C0C0C0C0C0C0C0) // USDC contract address
+        )
+    );
+    
+    // Create the final hash
+    bytes32 hash = keccak256(
+        abi.encodePacked("\x19\x01", DOMAIN_SEPARATOR, structHash)
+    );
+    
+    // Sign the hash with the private key (this would be done off-chain)
+    // For demonstration purposes, we're showing the structure
+    // In practice, this would be done using a wallet or signing library
+    
+    return signature;
+}
+```
+
+### Getting the Current Nonce
+
+Each user has a unique nonce that increases with each permit signature:
+
+```solidity
+// Get the current nonce for a user
+uint256 currentNonce = IERC20Permit(collateralToken).nonces(ana);
+console.log("Ana's current nonce:", currentNonce);
+
+// The nonce should be used in the permit signature
+// Each new permit signature must use the next nonce value
+```
+
+### Setting the Deadline
+
+The deadline should be set to a reasonable time in the future:
+
+```solidity
+// Set deadline to 60 seconds from now
+uint256 deadline = block.timestamp + 60;
+
+// Make sure the deadline is not too far in the future
+require(deadline <= block.timestamp + 3600, "Deadline too far in future");
+```
+
+### Complete Permit Flow
+
+Here's how the complete permit flow works:
+
+```solidity
+// 1. Ana gets her current nonce
+uint256 anaNonce = IERC20Permit(collateralToken).nonces(ana);
+
+// 2. Ana creates the permit signature (off-chain)
+bytes memory anaPermitSignature = createPermitSignature(
+    ana,                                    // owner
+    address(market),                        // spender (PredictionMarket)
+    1000e6,                                 // value (1000 USDC)
+    anaNonce,                               // current nonce
+    block.timestamp + 60,                   // deadline
+    anaPrivateKey                           // Ana's private key
+);
+
+// 3. Bob gets his current nonce
+uint256 bobNonce = IERC20Permit(collateralToken).nonces(bob);
+
+// 4. Bob creates the permit signature (off-chain)
+bytes memory bobPermitSignature = createPermitSignature(
+    bob,                                    // owner
+    address(market),                        // spender (PredictionMarket)
+    200e6,                                  // value (200 USDC)
+    bobNonce,                               // current nonce
+    block.timestamp + 60,                   // deadline
+    bobPrivateKey                           // Bob's private key
+);
+
+// 5. Both signatures are used in the mint() call
+market.mint(
+    encodedPredictionOutcomes,
+    address(resolver),
+    1000e6,                    // maker collateral
+    200e6,                     // taker collateral
+    ana,                       // maker
+    bob,                       // taker
+    anaPermitSignature,        // Ana's permit signature
+    bobPermitSignature,        // Bob's permit signature
+    block.timestamp + 60,      // Ana's deadline
+    block.timestamp + 60,      // Bob's deadline
+    bobPredictionSignature,    // Bob's prediction approval
+    bytes32(0)                 // ref code
+);
+```
+
+### Important Notes
+
+- **Nonce Management**: Each permit signature must use a unique, sequential nonce
+- **Deadline**: Set reasonable deadlines to prevent signature replay attacks
+- **Off-chain Signing**: Permit signatures are created off-chain using the user's private key
+- **Gas Efficiency**: Permits eliminate the need for separate approval transactions
+- **Security**: Only the contract address specified in the permit can spend the tokens
+
+## Example Scenario: Ana's Prediction
 
 ### Initial Setup
 
@@ -61,190 +182,146 @@ PredictionMarketSapienceResolver resolver = new PredictionMarketSapienceResolver
 - Market 1: "Will Bitcoin reach $200k by end of year?" (YES)
 - Market 2: "Will Ethereum reach $20k by end of year?" (YES)
 
-**Bob** and **Carl** are takers who want to provide liquidity and compete for Ana's order.
+**Bob** and **Carl** are takers who want to provide liquidity and compete for Ana's prediction.
 
 ### Step 1: Takers Prepare for Competition
 
-Takers need to have sufficient balance and approve the market to spend their tokens:
+Takers need to have sufficient balance and prepare their signatures:
 
 ```solidity
-// Bob approves the market to spend his USDC (he'll need this when filling orders)
-IERC20(collateralToken).approve(address(market), 10000e6);
+// Bob and Carl need to have sufficient USDC balance
+// They'll also need to create ERC20 permit signatures and prediction approval signatures
+// These signatures will be used when they call mint()
 
-// Carl approves the market to spend his USDC
-IERC20(collateralToken).approve(address(market), 8000e6);
-
-// Note: No pre-deposits needed! Takers transfer funds directly when filling orders
-// The market checks their actual token balance at fill time
+// Note: No pre-approvals needed! Takers provide signatures directly when minting
 ```
 
-### Step 2: Ana Submits Prediction Order
+### Step 2: Ana Creates the Prediction
 
-Ana submits her prediction order with 1,000 USDC collateral:
+Ana creates her prediction by calling `mint()` with her collateral:
 
 ```solidity
-// Ana approves the market to spend her USDC
-IERC20(collateralToken).approve(address(market), 1000e6);
-
-// Ana creates the predicted outcomes array
-IPredictionStructs.PredictedOutcome[] memory predictedOutcomes = new IPredictionStructs.PredictedOutcome[](2);
-
-// Market 1: Bitcoin market
-predictedOutcomes[0] = IPredictionStructs.PredictedOutcome({
-    market: IPredictionStructs.Market({
-        marketGroup: marketGroup1, // Bitcoin market group address
-        marketId: 1               // Specific market ID
-    }),
-    prediction: true // YES for Bitcoin
-});
-
-// Market 2: Ethereum market
-predictedOutcomes[1] = IPredictionStructs.PredictedOutcome({
-    market: IPredictionStructs.Market({
-        marketGroup: marketGroup2, // Ethereum market group address
-        marketId: 2               // Specific market ID
-    }),
-    prediction: true // YES for Ethereum
-});
-
-// Ana submits prediction order
-uint256 requestId = market.mint(
-    IPredictionStructs.MintPredictionRequestData({
-        predictedOutcomes: predictedOutcomes,
-        resolver: address(resolver),
-        makerCollateral: 1000e6,                    // 1,000 USDC collateral
-        takerCollateral: 200e6,                     // 200 USDC delta from taker
-        maker: ana,
-        taker: address(0),                          // Will be set when taker fills
-        makerSignature: makerSignature,             // ERC20 permit signature
-        takerSignature: takerSignature,             // ERC20 permit signature
-        makerSignatureDeadline: block.timestamp + 60,
-        takerSignatureDeadline: block.timestamp + 60,
-        takerPredictionSignature: takerPredictionSignature, // Taker's approval signature
-        refCode: bytes32(0)
-    })
+// Ana prepares her prediction data
+// The resolver will encode the prediction outcomes into bytes
+bytes memory encodedPredictionOutcomes = resolver.encodePredictionOutcomes(
+    marketGroup1, // Bitcoin market group address
+    1,            // Bitcoin market ID
+    true,         // YES for Bitcoin
+    marketGroup2, // Ethereum market group address
+    2,            // Ethereum market ID
+    true          // YES for Ethereum
 );
 
-console.log("Prediction order submitted with ID:", requestId);
-// Output: Prediction order submitted with ID: 1
+// Ana creates the prediction by calling mint()
+(uint256 makerNftTokenId, uint256 takerNftTokenId) = market.mint(
+    encodedPredictionOutcomes,
+    address(resolver),
+    1000e6,                    // 1,000 USDC collateral
+    200e6,                     // 200 USDC delta from taker
+    ana,                       // Maker address
+    address(0),                // Taker address (will be set when taker fills)
+    makerSignature,            // ERC20 permit signature for Ana
+    takerSignature,            // ERC20 permit signature for taker (placeholder)
+    block.timestamp + 60,      // Maker signature deadline
+    block.timestamp + 60,      // Taker signature deadline
+    takerPredictionSignature,  // Taker's approval signature
+    bytes32(0)                 // Ref code
+);
+
+console.log("Prediction created! Maker NFT ID:", makerNftTokenId);
+console.log("Taker NFT ID:", takerNftTokenId);
+// Output: Prediction created! Maker NFT ID: 1
+// Output: Taker NFT ID: 2
 ```
 
-**Event Emitted:**
-```
-PredictionOrderSubmitted(
-    maker: ana,
-    requestId: 1,
-    predictedOutcomes: [Bitcoin(YES), Ethereum(YES)],
-    collateral: 1000000000,
-    payout: 1200000000,
-    orderExpirationTime: 1703123456
-)
-```
+**What happens during mint:**
+- The resolver validates that all markets are valid Yes/No markets and not settled
+- Ana's 1,000 USDC collateral is transferred to the contract using ERC20 permit
+- Two NFTs are minted: one for the maker (Ana) and one for the taker
+- The prediction is stored with the maker's data
+- The taker NFT is held by the contract until a taker claims it
 
-### Step 3: Takers Compete by Filling the Order
+### Step 3: Takers Compete by Claiming the Taker NFT
 
-Bob and Carl now compete by directly filling the order. The first one to fill within 60 seconds wins:
+Bob and Carl now compete by calling `mint()` with the same prediction data to claim the taker position:
 
 ```solidity
-// Bob tries to fill the order
+// Bob tries to claim the taker position
 market.mint(
-    IPredictionStructs.MintPredictionRequestData({
-        predictedOutcomes: predictedOutcomes,
-        resolver: address(resolver),
-        makerCollateral: 1000e6,
-        takerCollateral: 200e6,
-        maker: ana,
-        taker: bob,
-        makerSignature: makerSignature,
-        takerSignature: bobTakerSignature,
-        makerSignatureDeadline: block.timestamp + 60,
-        takerSignatureDeadline: block.timestamp + 60,
-        takerPredictionSignature: bobPredictionSignature,
-        refCode: bytes32(0)
-    })
+    encodedPredictionOutcomes,
+    address(resolver),
+    1000e6,                    // Maker collateral
+    200e6,                     // Taker collateral (delta)
+    ana,                       // Maker address
+    bob,                       // Taker address
+    makerSignature,            // Maker's ERC20 permit signature
+    bobTakerSignature,         // Bob's ERC20 permit signature
+    block.timestamp + 60,      // Maker signature deadline
+    block.timestamp + 60,      // Taker signature deadline
+    bobPredictionSignature,    // Bob's prediction approval signature
+    bytes32(0)                 // Ref code
 );
 
-// If Bob's transaction goes through first, he wins!
+// If Bob's transaction goes through first, he wins the taker position!
 // If Carl's transaction goes through first, Carl wins!
 
-// Carl tries to fill the order
+// Carl tries to claim the taker position
 market.mint(
-    IPredictionStructs.MintPredictionRequestData({
-        predictedOutcomes: predictedOutcomes,
-        resolver: address(resolver),
-        makerCollateral: 1000e6,
-        takerCollateral: 200e6,
-        maker: ana,
-        taker: carl,
-        makerSignature: makerSignature,
-        takerSignature: carlTakerSignature,
-        makerSignatureDeadline: block.timestamp + 60,
-        takerSignatureDeadline: block.timestamp + 60,
-        takerPredictionSignature: carlPredictionSignature,
-        refCode: bytes32(0)
-    })
-);
+    encodedPredictionOutcomes,
+    address(resolver),
+    1000e6,                    // Maker collateral
+    200e6,                     // Taker collateral (delta)
+    ana,                       // Maker address
+    carl,                      // Taker address
+    makerSignature,            // Maker's ERC20 permit signature
+    carlTakerSignature,        // Carl's ERC20 permit signature
+    block.timestamp + 60,      // Maker signature deadline
+    block.timestamp + 60,      // Taker signature deadline
+    carlPredictionSignature,   // Carl's prediction approval signature
+    bytes32(0)                 // Ref code
+ );
 
 // Only one of these transactions will succeed - the first one to be mined
 ```
 
-**Event Emitted (for the winner):**
-```
-PredictionOrderFilled(
-    requestId: 1,
-    maker: ana,
-    taker: bob, // or carl, depending on who filled first
-    makerNftTokenId: 1,
-    takerNftTokenId: 2,
-    collateral: 1000000000,
-    delta: 200000000, // 200 USDC delta provided by taker
-    payout: 1200000000
-)
-```
+**What happens when a taker wins:**
+- The taker's 200 USDC delta is transferred to the contract using ERC20 permit
+- The taker NFT is transferred from the contract to the winning taker
+- The prediction is now fully funded and active
 
-### Step 4: Order is Filled (First Taker Wins)
+### Step 4: Check Prediction Status
 
-The first taker to successfully fill the order within 60 seconds wins. Let's say Bob's transaction was mined first:
+After a taker successfully claims the position:
 
 ```solidity
 // Get prediction data
 (IPredictionStructs.PredictionData memory predictionData, IPredictionStructs.PredictedOutcome[] memory predictedOutcomes) = market.getPrediction(1);
 
-console.log("Order filled by:", predictionData.taker);
+console.log("Taker:", predictionData.taker);
 console.log("Maker NFT ID:", predictionData.makerNftTokenId);
 console.log("Taker NFT ID:", predictionData.takerNftTokenId);
 console.log("Maker Collateral:", predictionData.makerCollateral);
 console.log("Taker Collateral:", predictionData.takerCollateral);
 console.log("Total Payout:", predictionData.makerCollateral + predictionData.takerCollateral);
-// Output: Order filled by: bob
+console.log("Filled:", predictionData.filled);
+// Output: Taker: bob (or carl, depending on who won)
 // Output: Maker NFT ID: 1
 // Output: Taker NFT ID: 2
 // Output: Maker Collateral: 1000000000
 // Output: Taker Collateral: 200000000
 // Output: Total Payout: 1200000000
+// Output: Filled: true
 ```
-
-**What happens:**
-- Ana's 1,000 USDC collateral is locked in the contract
-- Bob's 200 USDC delta is transferred from Bob to the contract
-- Maker NFT #1 is minted to Ana
-- Taker NFT #2 is minted to Bob
-- The prediction ID is the same as the request ID (1)
 
 ### Step 5: Market Resolution and Settlement
 
-After the markets resolve, the prediction can be settled, but only after 30 days from creation:
+After the markets resolve, the prediction can be settled by calling `burn()`:
 
 ```solidity
-// Check if prediction can be settled (must be 30 days after creation)
-uint256 timeSinceCreation = block.timestamp - predictionData.createdAt;
-console.log("Days since creation:", timeSinceCreation / 86400);
-// Output: Days since creation: 25 (not ready yet)
+// Wait for markets to resolve...
+// The resolver checks if all markets are settled
 
-// Wait for 30 days to pass...
-// block.timestamp >= predictionData.createdAt + 30 days
-
-// Now someone can call burn (could be anyone)
+// Now someone can call burn to settle the prediction (could be anyone)
 market.burn(1); // Using maker NFT token ID
 
 // Check if prediction is settled
@@ -255,35 +332,23 @@ console.log("Maker won:", settledPrediction.makerWon);
 // Output: Maker won: true (assuming Ana's predictions were correct)
 ```
 
-**Event Emitted:**
-```
-PredictionSettled(
-    makerNftTokenId: 1,
-    takerNftTokenId: 2,
-    payout: 1200000000, // 1,000 + 200 USDC
-    makerWon: true
-)
-```
+**What happens during burn:**
+- The resolver determines the outcome of all markets
+- If Ana's predictions were correct, she wins (makerWon = true)
+- If Ana's predictions were wrong, the taker wins (makerWon = false)
+- The winning party receives the full payout (1,200 USDC)
+- Both NFTs are burned
 
-### Step 6: Winner Withdraws Winnings
+### Step 6: Winner Receives Winnings
 
-Since Ana won (all predictions were correct), she can withdraw her collateral + payout:
+Since Ana won (all predictions were correct), she receives the full payout:
 
 ```solidity
-// Ana withdraws her winnings using her maker NFT
-market.burn(1); // This burns the NFT and transfers winnings
+// Ana's winnings are automatically transferred when burn() is called
+// The NFT is burned and the payout is sent to her address
 
-console.log("Ana's USDC balance after withdrawal:", IERC20(collateralToken).balanceOf(ana));
-// Output: Ana's USDC balance after withdrawal: 1200000000 (1,200 USDC)
-```
-
-**Event Emitted:**
-```
-PredictionCollateralWithdrawn(
-    nftTokenId: 1,
-    owner: ana,
-    amount: 1200000000
-)
+console.log("Ana's USDC balance after settlement:", IERC20(collateralToken).balanceOf(ana));
+// Output: Ana's USDC balance after settlement: 1200000000 (1,200 USDC)
 ```
 
 ## Alternative Scenario: Taker Wins
@@ -294,123 +359,84 @@ If Ana's predictions were wrong, Bob (the taker) would win:
 // In burn function, if makerWon = false:
 // The taker wins and gets the full payout
 
-// Bob withdraws his winnings using his taker NFT
-market.burn(2); // Using taker NFT token ID
+// Bob's winnings are automatically transferred when burn() is called
+// The NFT is burned and the payout is sent to his address
 
-console.log("Bob's USDC balance after withdrawal:", IERC20(collateralToken).balanceOf(bob));
-// Output: Bob's USDC balance after withdrawal: 1200000000 (1,200 USDC)
+console.log("Bob's USDC balance after settlement:", IERC20(collateralToken).balanceOf(bob));
+// Output: Bob's USDC balance after settlement: 1200000000 (1,200 USDC)
 ```
 
-## Order Expiration Example
+## Consolidation for Self-Trading
 
-If no taker fills Ana's order before expiration:
+If Ana wants to trade against herself (useful for testing or specific strategies):
 
 ```solidity
-// Wait for order to expire
-// block.timestamp >= request.orderExpirationTime
-
-// Ana cancels her expired order
-market.cancelExpiredOrder(1);
-
-// Ana's collateral is returned to her
-console.log("Ana's balance after canceling expired order:", IERC20(collateralToken).balanceOf(ana));
-// Output: Ana's balance after canceling expired order: 1000000000 (1,000 USDC)
-```
-
-**Event Emitted:**
-```
-OrderExpired(
-    requestId: 1,
-    maker: ana,
-    collateralReturned: 1000000000
-)
-```
-
-## Prediction Expiration Example
-
-If a prediction is not settled within 30 days, it can be consolidated:
-
-```solidity
-// Wait for prediction to expire (30 days after creation)
-// block.timestamp >= prediction.createdAt + 30 days
-
-// Anyone can consolidate the expired prediction
+// Ana can consolidate her own prediction
 market.consolidatePrediction(1);
 
-// NFTs are burned and collateral remains in the pool
-console.log("Maker NFT exists:", market.ownerOf(1));
-// Output: Maker NFT exists: Revert (token does not exist)
-```
-
-**Event Emitted:**
-```
-PredictionExpired(
-    makerNftTokenId: 1,
-    takerNftTokenId: 2,
-    collateralReclaimed: 1000000000
-)
+// This immediately settles the prediction with Ana as the winner
+// Both NFTs are burned and Ana receives the full payout
 ```
 
 ## Key Features Summary
 
 ### For Makers (like Ana):
-- ✅ Submit prediction orders with collateral
-- ✅ Set expected payout amount
-- ✅ Get filled by best available taker
-- ✅ Withdraw winnings if predictions correct
-- ✅ Cancel expired orders and recover collateral
+- ✅ Create predictions by calling `mint()` with collateral
+- ✅ Set the prediction outcomes and amount
+- ✅ Get matched with a taker automatically
+- ✅ Receive winnings if predictions correct
+- ✅ No need to manage order books or expiration
 
 ### For Takers (like Bob and Carl):
-- ✅ Approve token spending to participate
-- ✅ Compete by directly filling orders
-- ✅ First to fill within time limit wins
-- ✅ Transfer delta directly when filling
-- ✅ No deposit/withdrawal management needed
-- ✅ Withdraw winnings if maker loses
+- ✅ Compete by calling `mint()` with the same prediction data
+- ✅ First to mint wins the taker position
+- ✅ Provide delta amount directly when minting
+- ✅ No pre-deposits or order management needed
+- ✅ Receive winnings if maker loses
 
-### Competition Mechanism:
-- ✅ Takers compete by calling mint directly
-- ✅ First transaction to be mined wins
-- ✅ No pre-deposits required
-- ✅ Winner is determined by transaction order
+### Simplified Flow:
+- ✅ **Mint**: Create prediction (maker) or claim taker position
+- ✅ **Burn**: Settle prediction and distribute winnings
+- ✅ **Consolidate**: Self-trade option for makers
 
-### Delta-Based System:
-- ✅ Takers only provide the profit amount (delta)
-- ✅ Delta = payout - collateral
-- ✅ More efficient capital usage
-- ✅ Clear risk/reward structure
-
-### Settlement Timeline:
-- ✅ Predictions can only be settled after 30 days from creation
-- ✅ Markets must be settled before prediction settlement
-- ✅ Only Yes/No markets are supported
-- ✅ Winner takes full payout amount
+### Signature System:
+- ✅ **ERC20 Permit**: No need for token approvals
+- ✅ **Taker Prediction Signature**: Ensures taker approves the specific prediction
+- ✅ **Automatic Validation**: Resolver validates markets and outcomes
 
 ### Security Features:
 - ✅ Reentrancy protection
 - ✅ Proper balance tracking
 - ✅ NFT-based ownership verification
-- ✅ Expiration handling
-- ✅ Safe token transfers
-- ✅ Market validation (Yes/No markets only)
+- ✅ Market validation through resolver
+- ✅ Safe token transfers using permits
+- ✅ Yes/No market validation only
 
 ## Resolver Integration
 
-The `PredictionMarketSapienceResolver` is used to validate and resolve predictions:
+The `PredictionMarketSapienceResolver` is crucial for the system:
 
 ```solidity
 // Deploy the resolver
 PredictionMarketSapienceResolver resolver = new PredictionMarketSapienceResolver(address(market));
 
-// The resolver validates that markets are:
-// 1. Valid Yes/No markets
-// 2. Not already settled
-// 3. Compatible with the prediction system
+// The resolver provides:
+// 1. Market validation (Yes/No markets only, not settled)
+// 2. Outcome resolution (determines winner)
+// 3. Market compatibility checks
+// 4. Prediction outcome encoding (converts market data to bytes)
 
-// When resolving predictions, the resolver:
-// 1. Checks if all markets are settled
-// 2. Determines the outcome of each market
-// 3. Calculates whether the maker won or lost
+// During mint():
+// - Encodes prediction outcomes into bytes for efficient storage
+// - Validates all markets are valid Yes/No markets
+// - Ensures markets are not already settled
+// - Checks market compatibility
+
+// During burn():
+// - Decodes the stored prediction outcomes
+// - Verifies all markets are settled
+// - Determines the outcome of each market
+// - Calculates whether the maker won or lost
 ```
 
-This orderbook-style system ensures fair competition among takers while providing makers with the best possible payouts for their predictions. The 30-day settlement requirement ensures markets have time to resolve before any payouts are distributed. 
+This streamlined system eliminates the complexity of order books while maintaining the competitive nature of prediction markets. The `mint`/`burn` pattern makes it easy to create and settle predictions, while the resolver ensures proper market validation and outcome determination. 
