@@ -142,21 +142,6 @@ contract PredictionMarket is
         });
 
         // 5- Collact collateral
-        _callPermit(
-            config.collateralToken,
-            mintPredictionRequestData.maker,
-            mintPredictionRequestData.makerCollateral,
-            mintPredictionRequestData.makerSignatureDeadline,
-            mintPredictionRequestData.makerSignature
-        );
-        _callPermit(
-            config.collateralToken,
-            mintPredictionRequestData.taker,
-            mintPredictionRequestData.takerCollateral,
-            mintPredictionRequestData.takerSignatureDeadline,
-            mintPredictionRequestData.takerSignature
-        );
-
         IERC20(config.collateralToken).safeTransferFrom(
             mintPredictionRequestData.maker,
             address(this),

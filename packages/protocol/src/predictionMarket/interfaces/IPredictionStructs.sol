@@ -39,10 +39,6 @@ interface IPredictionStructs {
         uint256 takerCollateral;
         address maker;
         address taker;
-        bytes makerSignature; // Just ERC20 Permit
-        bytes takerSignature; // Just ERC20 Permit
-        uint256 makerSignatureDeadline;
-        uint256 takerSignatureDeadline;
         bytes takerPredictionSignature; // Taker is allowing just this prediction 
         bytes32 refCode;
     }
