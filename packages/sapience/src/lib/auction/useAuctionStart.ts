@@ -229,7 +229,7 @@ export function useAuctionStart() {
           ),
           takerPredictionSignature: args.selectedBid
             .takerBidSignature as `0x${string}`,
-          refCode: args.refCode || zeroBytes32,
+          refCode: args.refCode || (zeroBytes32 as `0x${string}`),
         };
       } catch {
         return null;
@@ -295,7 +295,7 @@ export function buildMintPredictionRequestData(args: {
       takerSignatureDeadline: takerSignatureDeadline,
       takerPredictionSignature: args.selectedBid
         .takerBidSignature as `0x${string}`,
-      refCode: args.refCode || zeroBytes32,
+      refCode: args.refCode || (zeroBytes32 as `0x${string}`),
     };
 
     return out;

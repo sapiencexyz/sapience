@@ -15,7 +15,7 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 
 // Shared Coming Soon Overlay Component
 const ComingSoonOverlay = () => (
-  <div className="absolute inset-0 bg-background/30 backdrop-blur-sm flex items-center justify-center rounded-md z-50">
+  <div className="absolute inset-0 z-[60] bg-background/30 backdrop-blur-sm flex items-center justify-center rounded-md">
     <div className="text-center">
       <h3 className="text-lg font-semibold text-muted-foreground">
         Coming Soon
@@ -135,7 +135,7 @@ const VaultsPage = () => {
           <div>
             {parlayFeatureOverrideEnabled ? (
               /* Active Vault Interface */
-              <Card className="relative bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
                 <CardContent className="p-6">
                   <div className="space-y-6">
                     {/* Vault Header */}
@@ -380,8 +380,8 @@ const VaultsPage = () => {
               </Card>
             ) : (
               /* Coming Soon State - Normal Interface with Overlay */
-              <Card className="relative bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
-                <CardContent className="p-6">
+              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+                <CardContent className="relative z-10 p-6 pointer-events-none select-none filter blur-sm">
                   <div className="space-y-6">
                     {/* Vault Header */}
                     <div className="flex items-center justify-between">
@@ -614,7 +614,7 @@ const VaultsPage = () => {
                           }
                         >
                           {!isConnected
-                            ? 'Connect Wallet →'
+                            ? 'Connect Wallet'
                             : isVaultPending
                               ? 'Processing...'
                               : vaultData?.paused
@@ -636,7 +636,7 @@ const VaultsPage = () => {
             <h2 className="text-2xl font-heading font-normal mb-4">
               User Vaults
             </h2>
-            <p className="text-muted-foreground mb-4">Coming soon</p>
+            <p className="text-muted-foreground mb-4">Coming soon.</p>
           </div>
         </div>
       </div>
