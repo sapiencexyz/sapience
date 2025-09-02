@@ -46,7 +46,7 @@ function jsonStableStringify(value: unknown) {
   return JSON.stringify(value, Object.keys(value as object).sort());
 }
 
-export function useAuctionQuotes() {
+export function useAuctionStart() {
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
@@ -104,7 +104,7 @@ export function useAuctionQuotes() {
       wsRef.current = null;
     };
     return ws;
-  }, [wsUrl]);
+  }, [wsUrl, auctionId]);
 
   // Debounced send of auction.start when params change
   const debounceTimer = useRef<number | null>(null);

@@ -50,7 +50,7 @@ import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
 import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
-import { useAuctionQuotes } from '~/lib/auction/useAuctionQuotes';
+import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {
@@ -96,7 +96,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   // Parlay config: read minCollateral and collateral token decimals
   const parlayChainId = betSlipPositions[0]?.chainId || 8453;
   const { auctionId, bids, requestQuotes, notifyOrderCreated } =
-    useAuctionQuotes();
+    useAuctionStart();
 
   const configRead = useReadContracts({
     contracts: [

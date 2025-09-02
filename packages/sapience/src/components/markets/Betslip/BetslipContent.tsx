@@ -20,7 +20,7 @@ import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWit
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
-import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionQuotes';
+import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 
 interface BetslipContentProps {
