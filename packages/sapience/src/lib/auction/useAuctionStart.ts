@@ -23,6 +23,22 @@ export interface QuoteBid {
   takerBidSignature: string; // Taker's bid signature
 }
 
+// Struct shape expected by PredictionMarket.mint()
+export interface MintPredictionRequestData {
+  encodedPredictedOutcomes: `0x${string}`[];
+  resolver: `0x${string}`;
+  makerCollateral: string; // wei
+  takerCollateral: string; // wei
+  maker: `0x${string}`;
+  taker: `0x${string}`;
+  makerSignature: `0x${string}`; // ERC20 permit signature (maker)
+  takerSignature: `0x${string}`; // ERC20 permit signature (taker)
+  makerSignatureDeadline: bigint; // unix seconds
+  takerSignatureDeadline: bigint; // unix seconds
+  takerPredictionSignature: `0x${string}`; // taker approval for this prediction (off-chain)
+  refCode: `0x${string}`; // bytes32
+}
+
 function toWsUrl(baseHttpUrl: string | undefined): string | null {
   try {
     if (!baseHttpUrl || baseHttpUrl.length === 0) {
@@ -53,6 +69,9 @@ export function useAuctionStart() {
   const inflightRef = useRef<string>('');
   const apiBase = process.env.NEXT_PUBLIC_FOIL_API_URL;
   const wsUrl = useMemo(() => toWsUrl(apiBase), [apiBase]);
+  const lastAuctionRef = useRef<AuctionParams | null>(null);
+  const [currentAuctionParams, setCurrentAuctionParams] =
+    useState<AuctionParams | null>(null);
 
   // Open connection lazily when first request is sent
   const ensureConnection = useCallback(() => {
@@ -132,6 +151,8 @@ export function useAuctionStart() {
           ws.send(JSON.stringify(payload));
           setAuctionId(null); // Will be set when we receive auction.ack
           setBids([]);
+          lastAuctionRef.current = params;
+          setCurrentAuctionParams(params);
         } catch {
           // ignore
         }
@@ -176,5 +197,109 @@ export function useAuctionStart() {
     []
   );
 
-  return { auctionId, bids, requestQuotes, acceptBid, notifyOrderCreated };
+  const buildMintRequestDataFromBid = useCallback(
+    (args: {
+      maker: `0x${string}`;
+      makerPermitSignature: `0x${string}`;
+      makerPermitSignatureDeadline: bigint;
+      selectedBid: QuoteBid;
+      refCode?: `0x${string}`;
+    }): MintPredictionRequestData | null => {
+      const auction = lastAuctionRef.current;
+      if (!auction) return null;
+      try {
+        const zeroBytes32 = `0x${'0'.repeat(64)}`;
+        const resolver = auction.resolver as `0x${string}`;
+        const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
+        if (!resolver || predictedOutcomes.length === 0) return null;
+
+        return {
+          encodedPredictedOutcomes: predictedOutcomes,
+          resolver,
+          makerCollateral: auction.wager,
+          takerCollateral: args.selectedBid.takerWager,
+          maker: args.maker,
+          taker: args.selectedBid.taker as `0x${string}`,
+          makerSignature: args.makerPermitSignature,
+          takerSignature: args.selectedBid
+            .takerPermitSignature as `0x${string}`,
+          makerSignatureDeadline: args.makerPermitSignatureDeadline,
+          takerSignatureDeadline: BigInt(
+            args.selectedBid.expirationTimestamp || 0
+          ),
+          takerPredictionSignature: args.selectedBid
+            .takerBidSignature as `0x${string}`,
+          refCode: args.refCode || zeroBytes32,
+        };
+      } catch {
+        return null;
+      }
+    },
+    []
+  );
+
+  return {
+    auctionId,
+    bids,
+    requestQuotes,
+    acceptBid,
+    notifyOrderCreated,
+    currentAuctionParams,
+    buildMintRequestDataFromBid,
+  };
+}
+
+// Helper to build PredictionMarket.mint() request from current auction + selected bid
+export function buildMintPredictionRequestData(args: {
+  maker: `0x${string}`;
+  makerPermitSignature: `0x${string}`;
+  makerPermitSignatureDeadline: bigint;
+  selectedBid: QuoteBid;
+  // Optional overrides if caller wants to provide resolver/outcomes directly
+  resolver?: `0x${string}`;
+  predictedOutcomes?: `0x${string}`[];
+  refCode?: `0x${string}`; // bytes32
+}): MintPredictionRequestData | null {
+  try {
+    const zeroBytes32 = `0x${'0'.repeat(64)}`;
+    // We cannot directly capture last auction params here since hooks state is internal;
+    // require caller to pass resolver/outcomes explicitly for safety.
+    const resolver = args.resolver || ('0x' as const);
+    const predictedOutcomes = args.predictedOutcomes || [];
+
+    if (!resolver || predictedOutcomes.length === 0) return null;
+
+    const makerCollateral = ((): string => {
+      // Maker's wager must match the auction's wager; caller is responsible for correctness
+      // We do not transform here to avoid unit mistakes
+      return '0';
+    })();
+
+    // Use taker data from the selected bid
+    const taker = args.selectedBid.taker as `0x${string}`;
+    const takerCollateral = args.selectedBid.takerWager;
+    const takerSignatureDeadline = BigInt(
+      args.selectedBid.expirationTimestamp || 0
+    );
+
+    const out: MintPredictionRequestData = {
+      encodedPredictedOutcomes: predictedOutcomes,
+      resolver,
+      makerCollateral,
+      takerCollateral,
+      maker: args.maker,
+      taker,
+      makerSignature: args.makerPermitSignature,
+      takerSignature: args.selectedBid.takerPermitSignature as `0x${string}`,
+      makerSignatureDeadline: args.makerPermitSignatureDeadline,
+      takerSignatureDeadline: takerSignatureDeadline,
+      takerPredictionSignature: args.selectedBid
+        .takerBidSignature as `0x${string}`,
+      refCode: args.refCode || zeroBytes32,
+    };
+
+    return out;
+  } catch {
+    return null;
+  }
 }
