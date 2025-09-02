@@ -4,25 +4,6 @@
 
 The Auction WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market auctions using the PredictionMarket contract. The system supports a mint-based flow where positions are created immediately when both parties provide valid signatures.
 
-## WebSocket Endpoint
-
-```
-ws://localhost:3001/ws/auction
-```
-
-## Connection Management
-
-### Rate Limiting
-
-- **Window**: 10 seconds
-- **Max Messages**: 100 messages per window
-- **Exceeded**: Connection closed with code `1008` and reason `rate_limited`
-
-### Message Size Limit
-
-- **Max Size**: 64KB per message
-- **Exceeded**: Connection closed with code `1009` and reason `message_too_large`
-
 ## Message Types
 
 ### 1. auction.start
@@ -124,6 +105,19 @@ Broadcasts current bids for an Auction to subscribed makers only. Makers are aut
   }
 }
 ```
+
+## Connection Management
+
+### Rate Limiting
+
+- **Window**: 10 seconds
+- **Max Messages**: 100 messages per window
+- **Exceeded**: Connection closed with code `1008` and reason `rate_limited`
+
+### Message Size Limit
+
+- **Max Size**: 64KB per message
+- **Exceeded**: Connection closed with code `1009` and reason `message_too_large`
 
 ## Bid Selection
 
