@@ -27,6 +27,9 @@ interface IParlayStructs {
     }
 
     struct ParlayData {
+        // Parlay metadata
+        uint256 parlayId;
+        address resolver;
         // Request data
         address maker;
         // Parlay fill data
@@ -44,5 +47,19 @@ interface IParlayStructs {
         // Timestamps
         uint256 createdAt; // timestamp
         uint256 orderExpirationTime;
+    }
+
+    // Struct to store mint parlay data
+    struct MintParlayRequestData {
+        IParlayStructs.PredictedOutcome[] predictedOutcomes;
+        address resolver;
+        uint256 makerCollateral;
+        uint256 takerCollateral;
+        address maker;
+        address taker;
+        bytes makerSignature;
+        bytes takerSignature;
+        uint256 mintExpirationTime;
+        bytes32 refCode;
     }
 }

@@ -16,25 +16,16 @@ import "../market/interfaces/ISapience.sol";
 import "../market/interfaces/ISapienceStructs.sol";
 import "./ApproveWithSignature.sol";
 
-    // Struct to store mint parlay data
-    struct MintParlayRequestData {
-        IParlayStructs.PredictedOutcome[] predictedOutcomes;
-        address resolver;
-        uint256 makerCollateral;
-        uint256 takerCollateral;
-        address maker;
-        address taker;
-        bytes makerSignature;
-        bytes takerSignature;
-        uint256 mintExpirationTime;
-        bytes32 refCode;
-    }
-
 /**
  * @title ParlayPool
  * @notice Implementation of the Parlay Pool contract with orderbook functionality
  */
-contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignature {
+contract ParlayPool is
+    ERC721,
+    IParlayPool,
+    ReentrancyGuard,
+    ApproveWithSignature
+{
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
     // ============ State Variables ============
@@ -47,7 +38,7 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
     // Mapping to store mint parlay data by requestId
     mapping(uint256 => MintParlayRequestData) private mintParlayDataByRequestId; // requestId => MintParlayData
 
-    mapping(uint256 => IParlayStructs.ParlayData) public parlays;
+    mapping(uint256 => IParlayStructs.ParlayData) public parlays; // parlayId => ParlayData
     mapping(uint256 => IParlayStructs.PredictedOutcome[])
         public parlayPredictedOutcomes;
 
@@ -63,7 +54,6 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
 
     // Auxiliary mapping to track approved takers
     mapping(address => bool) private approvedTakers;
-
 
     // ============ Constructor ============
 
@@ -102,94 +92,128 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
     }
 
     function mint(
-        MintParlayRequestData memory mintParlayRequestData,
-    ) external nonReentrant returns (uint256 requestId)  {
+        MintParlayRequestData calldata mintParlayRequestData
+    ) external returns (uint256 requestId) {
         // 1- Initial checks
         require(
             mintParlayRequestData.mintExpirationTime > block.timestamp,
             "Order expiration must be in future"
         );
-        require(mintParlayRequestData.predictedOutcomes.length > 0, "Must have at least one market");
         require(
-            mintParlayRequestData.predictedOutcomes.length <= config.maxParlayMarkets,
+            mintParlayRequestData.predictedOutcomes.length > 0,
+            "Must have at least one market"
+        );
+        require(
+            mintParlayRequestData.predictedOutcomes.length <=
+                config.maxParlayMarkets,
             "Too many markets"
         );
-        require(mintParlayRequestData.makerCollateral >= config.minCollateral, "Collateral below minimum");
-        require(mintParlayRequestData.makerCollateral > 0, "Maker collateral must be greater than 0");
-        require(mintParlayRequestData.takerCollateral > 0, "Taker collateral must be greater than 0");
+        require(
+            mintParlayRequestData.makerCollateral >= config.minCollateral,
+            "Collateral below minimum"
+        );
+        require(
+            mintParlayRequestData.makerCollateral > 0,
+            "Maker collateral must be greater than 0"
+        );
+        require(
+            mintParlayRequestData.takerCollateral > 0,
+            "Taker collateral must be greater than 0"
+        );
 
-        // 2- Store partial parlay state (only if we are on a async mode)
+        // 2- Store parlay request data  (only if we are on a async mode)
         requestId = _parlayIdCounter++;
-        mintParlayDataByRequestId[requestId] = MintParlayRequestData({
-            predictedOutcomes: mintParlayRequestData.predictedOutcomes,
-            resolver: mintParlayRequestData.resolver,
-            makerCollateral: mintParlayRequestData.makerCollateral,
-            takerCollateral: mintParlayRequestData.takerCollateral,
-            maker: mintParlayRequestData.maker,
-            taker: mintParlayRequestData.taker,
-            makerSignature: mintParlayRequestData.makerSignature,
-            takerSignature: mintParlayRequestData.takerSignature,
-            mintExpirationTime: mintParlayRequestData.mintExpirationTime,
-            refCode: mintParlayRequestData.refCode
-        });
+        mintParlayDataByRequestId[requestId] = mintParlayRequestData;
 
         // 3- Ask resolver if markets are OK
-        bool syncCallSucceded = IParlayPoolResolver(mintParlayRequestData.resolver).validateParlayMarkets(mintParlayRequestData.predictedOutcomes, true, requestId);
+        bool syncCallSucceded = IParlayPoolResolver(
+            mintParlayRequestData.resolver
+        ).validateParlayMarkets(
+                mintParlayRequestData.predictedOutcomes,
+                true,
+                requestId
+            );
         validateParlayMarketsCallback(requestId, syncCallSucceded);
     }
 
-    function validateParlayMarketsCallback(uint256 requestId, bool validMarkets) public {
+    function validateParlayMarketsCallback(
+        uint256 requestId,
+        bool validMarkets
+    ) public nonReentrant {
         require(validMarkets, "Invalid markets according to resolver");
-        
-        // 4- Recover the mint parlay data 
-        MintParlayRequestData memory mintParlayRequestData = mintParlayDataByRequestId[requestId];
+
+        // 4- Recover the mint parlay request data
+        MintParlayRequestData
+            memory mintParlayRequestData = mintParlayDataByRequestId[requestId];
 
         // 5- Check if called by appropiate address
-        _onlySelfOrResolver(mintParlayData);
+        _onlySelfOrResolver(mintParlayRequestData);
 
         // 6- Set the parlay data
         uint256 makerNftTokenId = _nftTokenIdCounter++;
         uint256 takerNftTokenId = _nftTokenIdCounter++;
         parlays[requestId] = IParlayStructs.ParlayData({
-            maker: mintParlayData.maker,
-            taker: mintParlayData.taker,
+            parlayId: requestId,
+            resolver: mintParlayRequestData.resolver,
+            maker: mintParlayRequestData.maker,
+            taker: mintParlayRequestData.taker,
             filled: true,
             makerNftTokenId: makerNftTokenId,
             takerNftTokenId: takerNftTokenId,
-            collateral: mintParlayData.makerCollateral,
-            payout: mintParlayData.makerCollateral + mintParlayData.takerCollateral,
+            collateral: mintParlayRequestData.makerCollateral,
+            payout: mintParlayRequestData.makerCollateral +
+                mintParlayRequestData.takerCollateral,
             createdAt: block.timestamp,
-            orderExpirationTime: mintParlayData.mintExpirationTime
+            orderExpirationTime: mintParlayRequestData.mintExpirationTime,
+            settled: false,
+            makerWon: false
         });
 
         // 7- Collact collateral
         // Approve collateral token for both maker and taker using the signatures
-        ApproveWithSignature.approveWithSignature(config.collateralToken, mintParlayData.maker, mintParlayData.makerCollateral, mintParlayRequestData.makerSignature);
-        ApproveWithSignature.approveWithSignature(config.collateralToken, mintParlayData.taker, mintParlayData.takerCollateral, mintParlayRequestData.takerSignature);
+        ApproveWithSignature.approveWithSignature(
+            config.collateralToken,
+            mintParlayRequestData.maker,
+            mintParlayRequestData.makerCollateral,
+            mintParlayRequestData.makerSignature
+        );
+        ApproveWithSignature.approveWithSignature(
+            config.collateralToken,
+            mintParlayRequestData.taker,
+            mintParlayRequestData.takerCollateral,
+            mintParlayRequestData.takerSignature
+        );
 
         IERC20(config.collateralToken).safeTransferFrom(
-            mintParlayData.maker,
+            mintParlayRequestData.maker,
             address(this),
-            mintParlayData.makerCollateral
+            mintParlayRequestData.makerCollateral
         );
         IERC20(config.collateralToken).safeTransferFrom(
-            mintParlayData.taker,
+            mintParlayRequestData.taker,
             address(this),
-            mintParlayData.takerCollateral
+            mintParlayRequestData.takerCollateral
         );
-        
+
         // 8- Mint NFTs and set parlay
-        _safeMint(mintParlayData.maker, makerNftTokenId);
-        _safeMint(mintParlayData.taker, takerNftTokenId);
+        _safeMint(mintParlayRequestData.maker, makerNftTokenId);
+        _safeMint(mintParlayRequestData.taker, takerNftTokenId);
     }
 
-    function _onlySelfOrResolver(MintParlayData memory mintParlayData) internal {
-        require(msg.sender == address(this) || msg.sender == mintParlayData.resolver, "Not allowed to call this function");
+    function _onlySelfOrResolver(
+        MintParlayRequestData memory mintParlayRequestData
+    ) internal {
+        require(
+            msg.sender == address(this) ||
+                msg.sender == mintParlayRequestData.resolver,
+            "Not allowed to call this function"
+        );
     }
 
     function burn(uint256 tokenId) external {
+        uint256 parlayId = nftToParlayId[tokenId];
         // 1- Get parlay from Store
-        IParlayStructs.ParlayData memory parlay = parlays[tokenId];
+        IParlayStructs.ParlayData memory parlay = parlays[parlayId];
 
         // 2- Initial checks
         require(parlay.maker != address(0), "Parlay not found");
@@ -197,25 +221,37 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
         require(parlay.filled, "Parlay not filled");
 
         // 3- Ask resolver if markets are settled, and if parlay succeeded or not, it means maker won
-        bool syncCallSucceded = IParlayPoolResolver(parlay.resolver).resolveParlay(parlay.predictedOutcomes, true, tokenId);
-        resolveParlayCallback(tokenId, syncCallSucceded);
+        (bool syncCallSucceded, bool makerWon) = IParlayPoolResolver(parlay.resolver)
+            .resolveParlay(parlayPredictedOutcomes[parlayId], true, parlayId);
+        resolveParlayCallback(tokenId, syncCallSucceded, makerWon);
     }
 
-    function resolveParlayCallback(uint256 tokenId, bool validMarkets, bool makerWon) external {
-        // 4- Recover parlay from store 
-        IParlayStructs.ParlayData memory parlay = parlays[tokenId];
+    function resolveParlayCallback(
+        uint256 parlayId,
+        bool syncCallSucceded,
+        bool makerWon
+    ) public nonReentrant {
+        require(syncCallSucceded, "Parlay resolution failed");
+        // 4- Recover parlay from store
+        IParlayStructs.ParlayData memory parlay = parlays[parlayId];
         // 5- Send collateral to winner
         if (makerWon) {
-            IERC20(config.collateralToken).safeTransfer(parlay.maker, parlay.payout);
+            IERC20(config.collateralToken).safeTransfer(
+                parlay.maker,
+                parlay.payout
+            );
         } else {
-            IERC20(config.collateralToken).safeTransfer(parlay.taker, parlay.payout);
+            IERC20(config.collateralToken).safeTransfer(
+                parlay.taker,
+                parlay.payout
+            );
         }
 
         // 6- Set the parlay state (identify who won and set as closed)
         parlay.settled = true;
         parlay.makerWon = makerWon;
 
-        // 7- Burn NFTs 
+        // 7- Burn NFTs
         _burn(parlay.makerNftTokenId);
         _burn(parlay.takerNftTokenId);
     }
@@ -228,18 +264,23 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
         require(parlay.maker != address(0), "Parlay not found");
         require(parlay.taker != address(0), "Parlay not found");
 
-        require(parlay.maker == parlay.taker, "Maker and taker are different. Cannot consolidate");
+        require(
+            parlay.maker == parlay.taker,
+            "Maker and taker are different. Cannot consolidate"
+        );
 
         // 3- Set as settled and maker won and send the collateral to the maker
         parlay.settled = true;
         parlay.makerWon = true;
-        IERC20(config.collateralToken).safeTransfer(parlay.maker, parlay.payout);
+        IERC20(config.collateralToken).safeTransfer(
+            parlay.maker,
+            parlay.payout
+        );
 
         // 4- Burn NFTs
         _burn(parlay.makerNftTokenId);
-        _burn(parlay.takerNftTokenId);  
+        _burn(parlay.takerNftTokenId);
     }
-
 
     // ============ Parlay Order Functions ============
 
@@ -777,6 +818,4 @@ contract ParlayPool is ERC721, IParlayPool, ReentrancyGuard, ApproveWithSignatur
         uint256 parlayId = nftToParlayId[tokenId];
         require(parlayId != 0 && _isParlay(parlayId), "Parlay does not exist");
     }
-
-
 }

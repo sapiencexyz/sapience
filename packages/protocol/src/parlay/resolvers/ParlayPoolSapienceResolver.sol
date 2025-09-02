@@ -12,19 +12,19 @@ import "../../market/interfaces/ISapienceStructs.sol";
  * @notice NFT contract for Parlay Pool system
  */
 contract ParlayPoolSapienceResolver is IParlayPoolResolver {
-  address parlayPool;
-  constructor(address _parlayPool) {
-    parlayPool = _parlayPool;
-  }
+    address parlayPool;
+    constructor(address _parlayPool) {
+        parlayPool = _parlayPool;
+    }
 
-  function validateParlayMarkets(
-            IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-            bool syncCall
-  ) external returns (bool syncCallSucceded) {
-    syncCallSucceded = true;
-    uint256 error;
+    function validateParlayMarkets(
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
+        bool syncCall,
+        uint256 requestId
+    ) external returns (bool syncCallSucceded) {
+        syncCallSucceded = true;
+        uint256 error;
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
-
             require(
                 predictedOutcomes[i].market.marketGroup != address(0),
                 "Invalid market group address"
@@ -41,15 +41,26 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
             require(!settled, "Market is already settled");
         }
 
-  if(syncCall) {
-    return syncCallSucceded;
-  }
-    IParlayPoolResolverCallback(parlayPool).validateParlayMarketsCallback();
-  }
+        if (syncCall) {
+            return syncCallSucceded;
+        }
+        IParlayPoolResolverCallback(parlayPool).validateParlayMarketsCallback(
+            requestId,
+            syncCallSucceded
+        );
+    }
 
-  function resolveParlay() external {
-    IParlayPoolResolverCallback(parlayPool).resolveParlayCallback();
-  }
+    function resolveParlay(
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
+        bool syncCall,
+        uint256 parlayId
+    ) external returns (bool syncCallSucceded, bool makerWon) {
+        IParlayPoolResolverCallback(parlayPool).resolveParlayCallback(
+            parlayId,
+            syncCallSucceded,
+            makerWon
+        );
+    }
 
     function _isYesNoMarket(
         IParlayStructs.Market memory market
@@ -121,6 +132,4 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
             );
         }
     }
-
 }
-

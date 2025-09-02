@@ -6,6 +6,7 @@ import "./IParlayStructs.sol";
 import "./IParlayEvents.sol";
 import "./IParlayPoolResolverCallback.sol";
 
+
 /**
  * @title IParlayPool
  * @notice Main interface for the Parlay Pool contract
@@ -76,24 +77,11 @@ interface IParlayPool is IERC721,  IParlayStructs, IParlayEvents, IParlayPoolRes
      *   3- create the parlay -> maker and taker NFT ids, predictedOutcomes, amount of collateral used from each party, total collateral on the parlay. (winner takes all)
      *   4- mint the taker and maker NFT
      *   5- emit an event with the right information
-     * @param predictedOutcomes Array of predicted outcomes for the parlay
-     * @param resolver Address of the resolver contract
-     * @param makerCollateral Amount of collateral provided by the maker
-     * @param takerCollateral Amount of collateral provided by the taker
-     * @param makerSignature Signature from the maker authorizing the parlay
-     * @param takerSignature Signature from the taker authorizing the parlay
-     * @param mintExpirationTime Expiration time for the parlay
-     * @param refCode Reference code for the parlay
+     * @param mintParlayRequestData Struct containing the mint parlay request data
      */
     function mint(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        address resolver,
-        uint256 makerCollateral,
-        uint256 takerCollateral,
-        bytes calldata makerSignature,
-        bytes calldata takerSignature,
-        uint256 mintExpirationTime,
-        bytes32 refCode) external returns (uint256 requestId);
+        IParlayStructs.MintParlayRequestData calldata mintParlayRequestData
+    ) external returns (uint256 requestId);
 
     /**
      * @notice Burn a parlay NFT and release any remaining collateral

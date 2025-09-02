@@ -13,12 +13,17 @@ contract MockResolver is IParlayPoolResolver {
 
     function validateParlayMarkets(
         IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall
+        bool syncCall,
+        uint256 requestId
     ) external returns (bool) {
         return shouldValidate;
     }
 
-    function resolveParlay() external {
+    function resolveParlay(
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
+        bool syncCall,
+        uint256 parlayId
+    ) external returns (bool syncCallSucceded, bool makerWon) {
         // Mock implementation - does nothing
     }
 }
