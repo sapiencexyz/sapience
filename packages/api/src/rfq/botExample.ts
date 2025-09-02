@@ -30,12 +30,8 @@ ws.on('message', (data: RawData) => {
 
         // Taker offers 50% of what the maker is offering
         // If maker offers 100, taker offers 50, total payout = 150
-        const takerCollateral = wager / 2n; // 50% of wager
-        const totalPayout = wager + takerCollateral;
-
-        // Quote a simple payout: total payout and expire in 60s
-        const payout = totalPayout;
-        const delta = takerCollateral; // The delta is the taker's collateral contribution
+        const takerWager = wager / 2n; // 50% of wager
+        const totalPayout = wager + takerWager;
 
         const bid = {
           type: 'bid.submit',
@@ -44,29 +40,14 @@ ws.on('message', (data: RawData) => {
             taker:
               process.env.BOT_ADDRESS ||
               '0x0000000000000000000000000000000000000000',
-            quote: {
-              payout: payout.toString(),
-              delta: delta.toString(),
-              validUntil: Math.floor(Date.now() / 1000) + 60,
-            },
-            fill: {
-              taker:
-                process.env.BOT_ADDRESS ||
-                '0x0000000000000000000000000000000000000000',
-              takerCollateral: takerCollateral.toString(),
-              takerSignature: '0x', // TODO: Generate actual ERC20 permit signature
-              callData: {
-                to:
-                  rfq.parlayPoolAddress ||
-                  '0x0000000000000000000000000000000000000000',
-                data: '0x', // TODO: Encode mint() function call with MintParlayRequestData
-              },
-            },
-            meta: { version: '0.0.1' },
+            expirationTimestamp: Math.floor(Date.now() / 1000) + 60,
+            takerWager: takerWager.toString(),
+            takerPermitSignature: '0x', // TODO: Generate actual ERC20 permit signature
+            takerBidSignature: '0x', // TODO: Generate signature allowing this specific bid
           },
         };
         console.log(
-          `[BOT] Sending bid rfqId=${rfq.rfqId} wager=${wager.toString()} takerCollateral=${takerCollateral.toString()} totalPayout=${payout.toString()} validUntil=${bid.payload.quote.validUntil}`
+          `[BOT] Sending bid rfqId=${rfq.rfqId} wager=${wager.toString()} takerWager=${takerWager.toString()} totalPayout=${totalPayout.toString()} expirationTimestamp=${bid.payload.expirationTimestamp}`
         );
         ws.send(JSON.stringify(bid));
         break;
@@ -89,7 +70,7 @@ ws.on('message', (data: RawData) => {
         if (bids.length > 0) {
           const top = bids[0];
           console.log(
-            `[BOT] top bid payout=${top?.quote?.payout} validUntil=${top?.quote?.validUntil}`
+            `[BOT] top bid takerWager=${top?.takerWager} expirationTimestamp=${top?.expirationTimestamp}`
           );
         }
         break;

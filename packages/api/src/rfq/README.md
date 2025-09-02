@@ -52,7 +52,7 @@ Creates a new request for quotes from bots.
 
 #### 1. Bid Submit
 
-Submits a bid/quote for an RFQ.
+Submits a bid/quote for an RFQ. The simplified structure provides only what the maker needs to complete the mint transaction.
 
 ```typescript
 {
@@ -60,30 +60,10 @@ Submits a bid/quote for an RFQ.
   payload: {
     rfqId: string,                    // RFQ ID to bid on
     taker: string,                    // Taker's EOA address
-    quote: {
-      payout: string,                 // Total payout amount (wei)
-      delta: string,                  // Taker's collateral contribution (wei)
-      validUntil: number,             // Unix timestamp when quote expires
-      maxSlippageBps?: number         // Optional max slippage in basis points
-    },
-    fill: {                           // Transaction data for execution
-      taker: string,                  // Taker address
-      takerCollateral: string,        // Taker's collateral amount
-      takerSignature: string,         // ERC20 permit signature
-      makerSignature: string,         // ERC20 permit signature for maker
-      callData: {
-        to: string,                   // ParlayPool contract address
-        data: string,                 // Encoded mint() function call
-        gas?: string,                 // Gas limit
-        maxFeePerGas?: string,        // Max fee per gas
-        maxPriorityFeePerGas?: string, // Max priority fee per gas
-        nonce?: string                // Transaction nonce
-      }
-    },
-    meta?: {
-      version: string,                // Bot version
-      refCode?: string                // Optional reference code
-    }
+    expirationTimestamp: number,      // Unix timestamp when quote expires
+    takerWager: string,               // Taker's wager contribution (wei)
+    takerPermitSignature: string,     // ERC20 permit signature
+    takerBidSignature: string         // Taker's signature allowing this specific bid
   }
 }
 ```
@@ -151,7 +131,7 @@ Broadcasts current bids for an RFQ to all clients.
 
 ## Bid Selection
 
-The UI presents the best available bid that hasn't expired yet. The best bid is determined by the highest payout amount among all valid (non-expired) bids.
+The UI presents the best available bid that hasn't expired yet. The best bid is determined by the highest taker wager amount among all valid (non-expired) bids.
 
 ## Validation Rules
 
@@ -163,23 +143,23 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 
 ### Bid Validation
 
-- Payout must equal wager + taker collateral
 - Quote must not be expired
-- Taker collateral must be positive and ≤ wager
-- Mint data must be complete and consistent
+- Taker wager must be positive and ≤ maker wager
+- Mint data must be complete and consistent:
+  - Taker address must be provided
+  - Taker wager must be provided
+  - Both taker signatures (ERC20 permit and bid) must be provided
+  - All signatures must be valid hex strings
 
 ### Common Error Codes
 
 - `invalid_payload`: Missing or invalid message structure
-- `payout_mismatch`: Payout doesn't equal expected amount
 - `quote_expired`: Quote has expired
-- `invalid_taker_collateral`: Taker collateral is invalid
-- `taker_collateral_too_high`: Taker collateral exceeds wager
-- `missing_fill`: Transaction data missing
+- `invalid_taker_wager`: Taker wager is invalid
+- `taker_wager_too_high`: Taker wager exceeds maker wager
 - `incomplete_mint_data`: Mint data incomplete
-- `invalid_taker_signature_format`: Taker signature format is invalid
-- `taker_mismatch`: Taker address mismatch
-- `mint_collateral_mismatch`: Collateral amounts don't match
+- `invalid_taker_permit_signature_format`: Taker permit signature format is invalid
+- `invalid_taker_bid_signature_format`: Taker bid signature format is invalid
 
 ## Example Flow
 
@@ -211,21 +191,10 @@ ws.send(
     payload: {
       rfqId: 'rfq-123',
       taker: '0x...',
-      quote: {
-        payout: '1500000000000000000',
-        delta: '500000000000000000',
-        validUntil: Math.floor(Date.now() / 1000) + 60,
-      },
-      fill: {
-        taker: '0x...',
-        takerCollateral: '500000000000000000',
-        takerSignature: '0x...',
-        callData: {
-          to: '0x...', // ParlayPool address
-          data: '0x...', // Encoded mint() call
-        },
-      },
-      meta: { version: '1.0.0' },
+      expirationTimestamp: Math.floor(Date.now() / 1000) + 60,
+      takerWager: '500000000000000000',
+      takerPermitSignature: '0x...', // ERC20 permit signature
+      takerBidSignature: '0x...', // Signature allowing this bid
     },
   })
 );
@@ -233,7 +202,13 @@ ws.send(
 
 ### 3. Client Executes Transaction
 
-After receiving and selecting a bid, the client executes the transaction directly on the blockchain. The system will automatically detect the minting through blockchain event listeners.
+After receiving and selecting a bid, the maker (client) constructs the `MintParlayRequestData` struct using:
+
+- The RFQ data (predictedOutcomes, resolver, makerCollateral from wager)
+- The bid data (taker, takerWager, takerPermitSignature, takerBidSignature)
+- Their own maker signature and refCode
+
+The maker then calls the `mint()` function on the ParlayPool contract. The system will automatically detect the minting through blockchain event listeners.
 
 ## Bot Example
 

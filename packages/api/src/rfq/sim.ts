@@ -1,9 +1,5 @@
 import type { BidPayload, RfqRequestPayload } from './types';
-import {
-  validateRfqForMint,
-  validatePayout,
-  createValidationError,
-} from './helpers';
+import { validateRfqForMint, createValidationError } from './helpers';
 
 export interface SimResult {
   ok: boolean;
@@ -25,88 +21,63 @@ export function basicValidateBid(
     };
   }
 
-  // Validate payout matches expected total (wager + taker collateral)
+  // Validate taker wager is reasonable
   try {
-    // For mint flow, payout should equal wager + takerCollateral
-    if (!validatePayout(rfq.wager, bid.quote.delta, bid.quote.payout)) {
-      return { ok: false, reason: 'payout_mismatch' };
+    const takerWager = BigInt(bid.takerWager);
+    const wager = BigInt(rfq.wager);
+
+    // Basic validation: taker wager should be positive and not exceed maker wager
+    if (takerWager <= 0n) {
+      return { ok: false, reason: 'invalid_taker_wager' };
+    }
+    if (takerWager > wager) {
+      return { ok: false, reason: 'taker_wager_too_high' };
     }
   } catch {
-    return { ok: false, reason: 'invalid_payout_values' };
+    return { ok: false, reason: 'invalid_wager_values' };
   }
 
-  if (bid.quote.validUntil <= Math.floor(Date.now() / 1000)) {
+  if (bid.expirationTimestamp <= Math.floor(Date.now() / 1000)) {
     return { ok: false, reason: 'quote_expired' };
   }
 
-  // Validate taker collateral is reasonable (for now, allow bots to offer different amounts)
-  try {
-    const bidTakerCollateral = BigInt(bid.quote.delta);
-    const wager = BigInt(rfq.wager);
-
-    // Basic validation: taker collateral should be positive and not exceed wager
-    if (bidTakerCollateral <= 0n) {
-      return { ok: false, reason: 'invalid_taker_collateral' };
-    }
-    if (bidTakerCollateral > wager) {
-      return { ok: false, reason: 'taker_collateral_too_high' };
-    }
-  } catch {
-    return { ok: false, reason: 'invalid_collateral_values' };
-  }
-
-  // Ensure fill structure is present and valid for mint flow
-  const fillData = bid.fill as unknown;
+  // Validate mint data structure
   if (
-    !('rawSignedTx' in (fillData as Record<string, unknown>)) &&
-    !('callData' in (fillData as Record<string, unknown>)) &&
-    !('taker' in (fillData as Record<string, unknown>))
+    !bid.taker ||
+    !bid.takerWager ||
+    !bid.takerPermitSignature ||
+    !bid.takerBidSignature
   ) {
-    return { ok: false, reason: 'missing_fill' };
+    return { ok: false, reason: 'incomplete_mint_data' };
   }
 
-  // For mint flow, validate MintParlayData structure
-  if ('taker' in (fillData as Record<string, unknown>)) {
-    const mintData = fillData as Record<string, unknown>;
-    if (
-      !mintData.taker ||
-      !mintData.takerCollateral ||
-      !mintData.takerSignature
-    ) {
-      return { ok: false, reason: 'incomplete_mint_data' };
-    }
+  // Basic taker permit signature validation (format check only)
+  if (
+    !bid.takerPermitSignature ||
+    typeof bid.takerPermitSignature !== 'string'
+  ) {
+    return { ok: false, reason: 'invalid_taker_permit_signature_format' };
+  }
 
-    // Validate taker matches bid taker
-    if (
-      typeof mintData.taker === 'string' &&
-      mintData.taker.toLowerCase() !== bid.taker.toLowerCase()
-    ) {
-      return { ok: false, reason: 'taker_mismatch' };
-    }
+  // Check if taker permit signature looks like a valid hex string
+  if (
+    !bid.takerPermitSignature.startsWith('0x') ||
+    bid.takerPermitSignature.length < 10
+  ) {
+    return { ok: false, reason: 'invalid_taker_permit_signature_format' };
+  }
 
-    // Validate taker collateral matches bid delta
-    if (
-      typeof mintData.takerCollateral === 'string' &&
-      BigInt(mintData.takerCollateral) !== BigInt(bid.quote.delta)
-    ) {
-      return { ok: false, reason: 'mint_collateral_mismatch' };
-    }
+  // Basic taker bid signature validation (format check only)
+  if (!bid.takerBidSignature || typeof bid.takerBidSignature !== 'string') {
+    return { ok: false, reason: 'invalid_taker_bid_signature_format' };
+  }
 
-    // Basic taker signature validation (format check only)
-    if (
-      !mintData.takerSignature ||
-      typeof mintData.takerSignature !== 'string'
-    ) {
-      return { ok: false, reason: 'invalid_taker_signature_format' };
-    }
-
-    // Check if taker signature looks like a valid hex string
-    if (
-      !mintData.takerSignature.startsWith('0x') ||
-      mintData.takerSignature.length < 10
-    ) {
-      return { ok: false, reason: 'invalid_taker_signature_format' };
-    }
+  // Check if taker bid signature looks like a valid hex string
+  if (
+    !bid.takerBidSignature.startsWith('0x') ||
+    bid.takerBidSignature.length < 10
+  ) {
+    return { ok: false, reason: 'invalid_taker_bid_signature_format' };
   }
 
   // TODO: decode tx target and calldata to verify it calls mint(MintParlayRequestData)

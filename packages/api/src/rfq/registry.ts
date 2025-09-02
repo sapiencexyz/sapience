@@ -8,7 +8,7 @@ interface RfqRecord {
 
 const rfqs = new Map<string, RfqRecord>();
 
-// Ranking algorithm removed - UI will select best bid based on highest payout
+// Ranking algorithm removed - UI will select best bid based on highest taker collateral
 
 export function upsertRfq(rfq: RfqRequestPayload) {
   const ttl = 60_000; // default 60s

@@ -8,10 +8,7 @@ export interface RfqRequestPayload {
 }
 
 export interface BidQuote {
-  payout: string; // wei
-  delta: string; // wei
-  validUntil: number; // unix seconds
-  maxSlippageBps?: number;
+  expirationTimestamp: number; // unix seconds
 }
 
 export interface BidFillRawTx {
@@ -36,17 +33,9 @@ export interface BidFillCallData {
 
 export interface MintParlayData {
   taker: string; // EOA
-  takerCollateral: string; // wei string
-  takerSignature: string; // ERC20 permit signature
-  makerSignature: string; // ERC20 permit signature for maker
-  callData: {
-    to: string; // ParlayPool contract address
-    data: HexString; // mint() function call data
-    gas?: string;
-    maxFeePerGas?: string;
-    maxPriorityFeePerGas?: string;
-    nonce?: string;
-  };
+  takerWager: string; // wei string
+  takerPermitSignature: string; // ERC20 permit signature
+  takerBidSignature: string; // Taker's signature allowing this specific bid
 }
 
 export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
@@ -54,9 +43,10 @@ export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 export interface BidPayload {
   rfqId: string;
   taker: string; // EOA
-  quote: BidQuote;
-  fill: BidFill;
-  meta?: { version: string; refCode?: string };
+  expirationTimestamp: number; // unix seconds
+  takerWager: string; // wei string
+  takerPermitSignature: string; // ERC20 permit signature
+  takerBidSignature: string; // Taker's signature allowing this specific bid
 }
 
 export interface ValidatedBid extends BidPayload {
