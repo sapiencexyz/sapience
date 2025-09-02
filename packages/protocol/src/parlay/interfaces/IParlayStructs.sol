@@ -30,28 +30,20 @@ interface IParlayStructs {
         // Parlay metadata
         uint256 parlayId;
         address resolver;
-        // Request data
-        address maker;
-        // Parlay fill data
-        address taker;
-        bool filled;
         // Parlay ownership data
         uint256 makerNftTokenId; // NFT token id of the maker
         uint256 takerNftTokenId; // NFT token id of the taker
         // Notice: the maker deposited the collateral in the pool, and the taker escrowed the delta to reach the payout amount
-        uint256 collateral; // in collateralToken (deposited by the maker)
-        uint256 payout; // in collateralToken (total payout to the winner)
+        uint256 makerCollateral;
+        uint256 takerCollateral;
         // Parlay result data
         bool settled; // true if the parlay has been settled
         bool makerWon; // true if maker won, false if taker won (only set after settlement)
-        // Timestamps
-        uint256 createdAt; // timestamp
-        uint256 orderExpirationTime;
     }
 
     // Struct to store mint parlay data
     struct MintParlayRequestData {
-        // bytes packagedPredictedOutcomes;
+        // bytes packedPredictedOutcomes;
         IParlayStructs.PredictedOutcome[] predictedOutcomes;
         address resolver;
         uint256 makerCollateral;
@@ -60,6 +52,8 @@ interface IParlayStructs {
         address taker;
         bytes makerSignature; // Just ERC20 Permit
         bytes takerSignature; // Just ERC20 Permit
+        uint256 makerSignatureDeadline;
+        uint256 takerSignatureDeadline;
         bytes takerParlaySignature; // Taker is allowing just this parlay 
         bytes32 refCode;
     }

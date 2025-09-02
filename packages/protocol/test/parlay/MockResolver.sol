@@ -6,24 +6,26 @@ import "../../src/parlay/interfaces/IParlayStructs.sol";
 
 contract MockResolver is IParlayPoolResolver {
     bool public shouldValidate = true;
+    bool public makerWon = true;
 
     function setShouldValidate(bool _shouldValidate) external {
         shouldValidate = _shouldValidate;
     }
 
+    function setMakerWon(bool _makerWon) external {
+        makerWon = _makerWon;
+    }
+
     function validateParlayMarkets(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 requestId
-    ) external returns (bool) {
-        return shouldValidate;
+        IParlayStructs.PredictedOutcome[] calldata
+    ) external view returns (bool, Error) {
+        return (shouldValidate, Error.NO_ERROR);
     }
 
     function resolveParlay(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 parlayId
-    ) external returns (bool syncCallSucceded, bool makerWon) {
+        IParlayStructs.PredictedOutcome[] calldata
+    ) external view returns (bool, Error, bool) {
         // Mock implementation - does nothing
+        return (shouldValidate, Error.NO_ERROR, makerWon);
     }
 }

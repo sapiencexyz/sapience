@@ -7,15 +7,19 @@ import "./IParlayStructs.sol";
  * @title IParlayPoolResolver
  */
 interface IParlayPoolResolver {
+    enum Error {
+        NO_ERROR,
+        INVALID_MARKET_GROUP,
+        INVALID_MARKET,
+        MARKET_SETTLED,
+        MARKET_NOT_SETTLED
+    }
+
     function validateParlayMarkets(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 requestId
-    ) external returns (bool syncCallSucceded);
-    
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    ) external view returns (bool isValid, Error error);
+
     function resolveParlay(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 parlayId
-    ) external returns (bool syncCallSucceded, bool makerWon);
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    ) external view returns (bool isValid, Error error, bool makerWon);
 }

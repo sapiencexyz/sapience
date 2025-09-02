@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import "../interfaces/IParlayPoolResolver.sol";
-import "../interfaces/IParlayPoolResolverCallback.sol";
 import "../interfaces/IParlayStructs.sol";
 import "../../market/interfaces/ISapience.sol";
 import "../../market/interfaces/ISapienceStructs.sol";
@@ -12,53 +11,46 @@ import "../../market/interfaces/ISapienceStructs.sol";
  * @notice NFT contract for Parlay Pool system
  */
 contract ParlayPoolSapienceResolver is IParlayPoolResolver {
+
     address parlayPool;
     constructor(address _parlayPool) {
         parlayPool = _parlayPool;
     }
 
     function validateParlayMarkets(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 requestId
-    ) external returns (bool syncCallSucceded) {
-        syncCallSucceded = true;
-        // uint256 error;
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    ) external view returns (bool isValid, Error error) {
+        isValid = true;
+        error = Error.NO_ERROR;
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
-            require(
-                predictedOutcomes[i].market.marketGroup != address(0),
-                "Invalid market group address"
-            );
+            if (predictedOutcomes[i].market.marketGroup == address(0)) {
+                isValid = false;
+                error = Error.INVALID_MARKET_GROUP;
+                break;
+            }
 
-            // Check that the market is a Yes/No market
-            require(
-                _isYesNoMarket(predictedOutcomes[i].market),
-                "Market is not a Yes/No market"
-            );
+            if (!_isYesNoMarket(predictedOutcomes[i].market)) {
+                isValid = false;
+                error = Error.INVALID_MARKET;
+                break;
+            }
 
-            // Check that the market is not settled
             (, bool settled) = _getMarketOutcome(predictedOutcomes[i].market);
-            require(!settled, "Market is already settled");
+            if (settled) {
+                isValid = false;
+                error = Error.MARKET_SETTLED;
+                break;
+            }
         }
-
-        if (syncCall) {
-            return syncCallSucceded;
-        }
-
-        // TODO: remove the async callback for the mint
-        // IParlayPoolResolverCallback(parlayPool).validateParlayMarketsCallback(
-        //     requestId,
-        //     syncCallSucceded
-        // );
+        return (isValid, error);
     }
 
     function resolveParlay(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes,
-        bool syncCall,
-        uint256 parlayId
-    ) external returns (bool syncCallSucceded, bool makerWon) {
+        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    ) external view returns (bool isValid, Error error, bool makerWon) {
         makerWon = true;
-        syncCallSucceded = true;
+        isValid = true;
+        error = Error.NO_ERROR;
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             IParlayStructs.Market memory market = predictedOutcomes[i].market;
@@ -66,10 +58,8 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
                 market
             );
             if (!marketSettled) {
-                if(!syncCall) {
-                    revert("At least one market not settled");
-                }
-                syncCallSucceded = false;
+                isValid = false;
+                error = Error.MARKET_NOT_SETTLED;
                 break;
             }
 
@@ -79,13 +69,7 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
             }
         }
 
-        IParlayPoolResolverCallback(parlayPool).resolveParlayCallback(
-            parlayId,
-            syncCallSucceded,
-            makerWon
-        );
-
-        return (syncCallSucceded, makerWon);
+        return (isValid, error, makerWon);
     }
 
     function _isYesNoMarket(
