@@ -13,6 +13,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { useAccount } from 'wagmi';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
@@ -170,11 +171,14 @@ export const BetslipContent = ({
     });
   }, [bids, parlayMethods]);
 
+  const { address: makerAddress } = useAccount();
+
   // Emit Auction when parlay form values change
   useEffect(() => {
     if (!effectiveParlayMode) return;
     if (positionsWithMarketData.length === 0) return;
     if (!requestQuotes) return;
+    if (!makerAddress) return; // require connected wallet to request quotes
     const yesNoPositions = positionsWithMarketData.filter(
       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
     );
@@ -194,12 +198,14 @@ export const BetslipContent = ({
       wager,
       resolver,
       predictedOutcomes,
+      maker: makerAddress,
     });
   }, [
     effectiveParlayMode,
     positionsWithMarketData,
     parlayMethods,
     requestQuotes,
+    makerAddress,
   ]);
   return (
     <>

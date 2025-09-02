@@ -14,12 +14,13 @@ Starts a new auction to receive bids from takers.
 {
   type: 'auction.start',
   payload: {
-    wager: string,                    // Maker's wager amount (wei)
+    maker: string                     // Maker's EOA address
+    wager: string,                    // Maker's wager amount (in collateral native units, likely 18 decimals places)
     resolver: string,                 // Resolver contract address
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
       string,                         // Bytes string representing market prediction
       string                          // Additional prediction bytes strings...
-    ]
+    ],
   }
 }
 ```
@@ -46,6 +47,7 @@ Broadcasts new Auction starts to all connected takers.
   type: 'auction.started',
   payload: {
     auctionId: string,                // Server-generated unique identifier for this Auction
+    maker: string,                    // Maker's EOA address
     wager: string,                    // Maker's wager amount (wei)
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
       string,                         // Bytes string representing market prediction
@@ -130,6 +132,7 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 - Wager must be positive
 - At least one predicted outcome required (as non-empty bytes strings)
 - Resolver address must be provided
+- Maker address must be provided and a valid `0x` address
 
 ### Bid Validation
 
@@ -166,6 +169,7 @@ ws.send(
         '0x...', // Additional prediction bytes strings...
       ],
       resolver: '0x...',
+      maker: '0xYourMakerAddressHere',
     },
   })
 );

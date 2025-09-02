@@ -12,6 +12,7 @@ export interface AuctionParams {
   wager: string; // wei string - maker's wager amount
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
+  maker: `0x${string}`; // maker EOA address
 }
 
 export interface QuoteBid {
@@ -138,6 +139,7 @@ export function useAuctionStart() {
           wager: params.wager,
           resolver: params.resolver,
           predictedOutcomes: params.predictedOutcomes,
+          maker: params.maker,
         },
       };
 
