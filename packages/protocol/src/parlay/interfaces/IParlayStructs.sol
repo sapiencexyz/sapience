@@ -59,7 +59,6 @@ interface IParlayStructs {
         address taker;
         bytes makerSignature;
         bytes takerSignature;
-        uint256 mintExpirationTime;
         bytes32 refCode;
     }
 }

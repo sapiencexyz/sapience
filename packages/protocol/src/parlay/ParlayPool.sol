@@ -96,10 +96,6 @@ contract ParlayPool is
     ) external returns (uint256 requestId) {
         // 1- Initial checks
         require(
-            mintParlayRequestData.mintExpirationTime > block.timestamp,
-            "Order expiration must be in future"
-        );
-        require(
             mintParlayRequestData.predictedOutcomes.length > 0,
             "Must have at least one market"
         );
@@ -164,7 +160,7 @@ contract ParlayPool is
             payout: mintParlayRequestData.makerCollateral +
                 mintParlayRequestData.takerCollateral,
             createdAt: block.timestamp,
-            orderExpirationTime: mintParlayRequestData.mintExpirationTime,
+            orderExpirationTime: block.timestamp, // maintained in the struct for compatibility
             settled: false,
             makerWon: false
         });
