@@ -4,6 +4,7 @@ export interface AuctionRequestPayload {
   wager: string; // wei string
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation
+  maker: string; // EOA address of the maker initiating the auction
 }
 
 export interface BidQuote {

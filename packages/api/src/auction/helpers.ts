@@ -55,6 +55,17 @@ export function validateAuctionForMint(auction: AuctionRequestPayload): {
   if (!auction.resolver) {
     return { valid: false, error: 'Missing resolver address' };
   }
+  if (!auction.maker) {
+    return { valid: false, error: 'Missing maker address' };
+  }
+
+  // Basic maker address validation (0x-prefixed 40-hex)
+  if (
+    typeof auction.maker !== 'string' ||
+    !/^0x[a-fA-F0-9]{40}$/.test(auction.maker)
+  ) {
+    return { valid: false, error: 'Invalid maker address' };
+  }
 
   // Validate predicted outcomes are non-empty bytes strings
   for (const outcome of auction.predictedOutcomes) {
