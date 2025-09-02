@@ -25,17 +25,16 @@ ws://localhost:3001/ws/auction
 
 ## Message Types
 
-### Client to Server Messages
+### Maker to Relayer Messages
 
 #### 1. Auction Start
 
-Starts a new auction to receive bids from bots.
+Starts a new auction to receive bids from takers.
 
 ```typescript
 {
   type: 'auction.start',
   payload: {
-    auctionId: string,                // Unique identifier for this Auction
     wager: string,                    // Maker's wager amount (wei)
     resolver: string,                 // Resolver contract address
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
@@ -46,9 +45,9 @@ Starts a new auction to receive bids from bots.
 }
 ```
 
-**Response**: `auction.ack` with `auctionId`
+**Response**: `auction.ack` with server-generated `auctionId`
 
-### Bot to Server Messages
+### Taker to Relayer Messages
 
 #### 1. Bid Submit
 
@@ -67,7 +66,7 @@ Submits a bid/quote for an Auction. The simplified structure provides only what 
 
 **Response**: `bid.ack` with success or `error`
 
-### Server to Client Messages
+### Relayer to Maker/Taker Messages
 
 #### 1. Auction Acknowledgment
 
@@ -97,13 +96,13 @@ Confirms receipt of a bid or reports an error.
 
 #### 3. Auction Started (Broadcast)
 
-Broadcasts new Auction starts to all connected bots.
+Broadcasts new Auction starts to all connected takers.
 
 ```typescript
 {
   type: 'auction.started',
   payload: {
-    auctionId: string,                // Unique identifier for this Auction
+    auctionId: string,                // Server-generated unique identifier for this Auction
     wager: string,                    // Maker's wager amount (wei)
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
       string,                         // Bytes string representing market prediction
@@ -116,7 +115,7 @@ Broadcasts new Auction starts to all connected bots.
 
 #### 4. Auction Bids (Broadcast)
 
-Broadcasts current bids for an Auction to subscribed clients only. Clients are automatically subscribed to an auction channel when they send an `auction.start` for that specific auction ID.
+Broadcasts current bids for an Auction to subscribed makers only. Makers are automatically subscribed to an auction channel when they send an `auction.start` for that specific auction ID.
 
 ```typescript
 {
@@ -170,14 +169,13 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 
 ## Example Flow
 
-### 1. Client Creates Auction
+### 1. Maker Creates Auction
 
 ```javascript
 ws.send(
   JSON.stringify({
     type: 'auction.start',
     payload: {
-      auctionId: 'auction-123',
       wager: '1000000000000000000', // 1 ETH
       predictedOutcomes: [
         '0x...', // Bytes string representing market prediction
@@ -189,7 +187,7 @@ ws.send(
 );
 ```
 
-### 2. Bot Responds with Bid
+### 2. Taker Responds with Bid
 
 ```javascript
 ws.send(
@@ -204,9 +202,9 @@ ws.send(
 );
 ```
 
-### 3. Client Executes Transaction
+### 3. Maker Executes Transaction
 
-After receiving and selecting a bid, the maker (client) constructs the `MintParlayRequestData` struct using:
+After receiving and selecting a bid, the maker constructs the `MintParlayRequestData` struct using:
 
 - The Auction data (predictedOutcomes, resolver, makerCollateral from wager)
 - The bid data (taker, takerWager, takerPermitSignature, takerBidSignature)
@@ -214,9 +212,9 @@ After receiving and selecting a bid, the maker (client) constructs the `MintParl
 
 The maker then calls the `mint()` function on the ParlayPool contract. The system will automatically detect the minting through blockchain event listeners.
 
-## Bot Example
+## Taker Example
 
-The system includes a reference bot implementation (`botExample.ts`) that:
+The system includes a reference taker implementation (`botExample.ts`) that:
 
 - Connects to the WebSocket endpoint
 - Listens for `auction.started` messages
@@ -234,7 +232,7 @@ The system includes a reference bot implementation (`botExample.ts`) that:
 
 ## Error Handling
 
-All errors are returned in the `bid.ack` message with descriptive error codes. Clients should implement proper error handling and retry logic for transient failures.
+All errors are returned in the `bid.ack` message with descriptive error codes. Makers and takers should implement proper error handling and retry logic for transient failures.
 
 ## Future Enhancements
 

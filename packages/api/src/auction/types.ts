@@ -1,7 +1,6 @@
 export type HexString = `0x${string}`;
 
 export interface AuctionRequestPayload {
-  auctionId: string;
   wager: string; // wei string
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation
@@ -66,4 +65,7 @@ export type ServerToClientMessage =
       type: 'auction.bids';
       payload: { bids: ValidatedBid[] };
     }
-  | { type: 'auction.started'; payload: AuctionRequestPayload };
+  | {
+      type: 'auction.started';
+      payload: AuctionRequestPayload & { auctionId: string };
+    };

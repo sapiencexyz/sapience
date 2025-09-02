@@ -174,23 +174,23 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
       if (isClientMessage(msg)) {
         if (msg.type === 'auction.start') {
           const payload = msg.payload as AuctionRequestPayload;
-          upsertAuction(payload);
+          const auctionId = upsertAuction(payload);
           console.log(
-            `[Auction-WS] auction.start received auctionId=${payload.auctionId}`
+            `[Auction-WS] auction.start received auctionId=${auctionId}`
           );
 
           // Subscribe this client to the auction channel
-          subscribeToAuction(payload.auctionId, ws, auctionSubscriptions);
+          subscribeToAuction(auctionId, ws, auctionSubscriptions);
 
           send(ws, {
             type: 'auction.ack',
-            payload: { auctionId: payload.auctionId },
+            payload: { auctionId },
           });
 
           // Broadcast the auction.started to bots/listeners (all clients for now)
           const requested = JSON.stringify({
             type: 'auction.started',
-            payload,
+            payload: { ...payload, auctionId },
           });
           let broadcastCount = 0;
           wss.clients.forEach((client) => {
@@ -198,18 +198,18 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
             broadcastCount += client.readyState === WebSocket.OPEN ? 1 : 0;
           });
           console.log(
-            `[Auction-WS] auction.started broadcast auctionId=${payload.auctionId} recipients=${broadcastCount}/${wss.clients.size}`
+            `[Auction-WS] auction.started broadcast auctionId=${auctionId} recipients=${broadcastCount}/${wss.clients.size}`
           );
 
           // Immediately stream current bids for this auction if any
-          const bids = getBids(payload.auctionId);
+          const bids = getBids(auctionId);
           if (bids.length > 0) {
             send(ws, {
               type: 'auction.bids',
               payload: { bids },
             });
             console.log(
-              `[Auction-WS] Sent existing bids auctionId=${payload.auctionId} count=${bids.length}`
+              `[Auction-WS] Sent existing bids auctionId=${auctionId} count=${bids.length}`
             );
           }
           return;

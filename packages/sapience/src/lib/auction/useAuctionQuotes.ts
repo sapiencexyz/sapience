@@ -9,13 +9,9 @@ export interface PredictedOutcomeInput {
 }
 
 export interface AuctionParams {
-  chainId: number;
-  collateralWei: string;
-  minPayoutWei: string;
-  orderExpirationTime: number; // unix seconds
-  predictedOutcomes: PredictedOutcomeInput[];
-  maker?: string;
-  constraints?: { ttlMs?: number; maxQuotes?: number };
+  wager: string; // wei string - maker's wager amount
+  resolver: string; // contract address for market validation
+  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
 }
 
 export interface QuoteBid {
@@ -74,11 +70,11 @@ export function useAuctionQuotes() {
       try {
         const msg = JSON.parse(evt.data as string);
         if (msg?.type === 'auction.ack') {
-          // ignore
+          setAuctionId(msg.payload?.auctionId || null);
         } else if (msg?.type === 'auction.bids') {
           const incoming: QuoteBid[] = msg.payload?.bids || [];
           setBids(incoming);
-        } else if (msg?.type === 'auction.requested') {
+        } else if (msg?.type === 'auction.started') {
           // noop for client for now
         }
       } catch {
@@ -91,27 +87,19 @@ export function useAuctionQuotes() {
     return ws;
   }, [wsUrl]);
 
-  // Debounced send of auction.request when params change
+  // Debounced send of auction.start when params change
   const debounceTimer = useRef<number | null>(null);
   const requestQuotes = useCallback(
     (params: AuctionParams | null) => {
       if (!params) return;
       const ws = ensureConnection();
       if (!ws) return;
-      const newAuctionId = crypto?.randomUUID
-        ? crypto.randomUUID()
-        : String(Date.now());
       const payload = {
-        type: 'auction.request',
+        type: 'auction.start',
         payload: {
-          auctionId: newAuctionId,
-          chainId: params.chainId,
-          collateral: params.collateralWei,
-          minPayout: params.minPayoutWei,
-          orderExpirationTime: params.orderExpirationTime,
+          wager: params.wager,
+          resolver: params.resolver,
           predictedOutcomes: params.predictedOutcomes,
-          maker: params.maker,
-          constraints: params.constraints,
         },
       };
 
@@ -123,7 +111,7 @@ export function useAuctionQuotes() {
       debounceTimer.current = window.setTimeout(() => {
         try {
           ws.send(JSON.stringify(payload));
-          setAuctionId(newAuctionId);
+          setAuctionId(null); // Will be set when we receive auction.ack
           setBids([]);
         } catch {
           // ignore

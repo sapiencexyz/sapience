@@ -14,10 +14,12 @@ const auctions = new Map<string, AuctionRecord>();
 
 // Ranking algorithm removed - UI will select best bid based on highest taker collateral
 
-export function upsertAuction(auction: AuctionRequestPayload) {
+export function upsertAuction(auction: AuctionRequestPayload): string {
+  const auctionId = crypto.randomUUID();
   const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
-  auctions.set(auction.auctionId, { auction, bids: [], deadlineMs });
+  auctions.set(auctionId, { auction, bids: [], deadlineMs });
+  return auctionId;
 }
 
 export function getAuction(auctionId: string): AuctionRecord | undefined {
