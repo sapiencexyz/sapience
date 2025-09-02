@@ -25,9 +25,7 @@ ws://localhost:3001/ws/auction
 
 ## Message Types
 
-### Maker to Relayer Messages
-
-#### 1. Auction Start
+### 1. auction.start
 
 Starts a new auction to receive bids from takers.
 
@@ -45,32 +43,9 @@ Starts a new auction to receive bids from takers.
 }
 ```
 
-**Response**: `auction.ack` with server-generated `auctionId`
+### 2. Response (auction.ack)
 
-### Taker to Relayer Messages
-
-#### 1. Bid Submit
-
-Submits a bid/quote for an Auction. The simplified structure provides only what the maker needs to complete the mint transaction.
-
-```typescript
-{
-  type: 'bid.submit',
-  payload: {
-    auctionId: string,                // Auction ID to bid on
-    takerPermitSignature: string,     // ERC20 permit signature
-    takerBidSignature: string         // Taker's signature allowing this specific bid (contains taker address and wager)
-  }
-}
-```
-
-**Response**: `bid.ack` with success or `error`
-
-### Relayer to Maker/Taker Messages
-
-#### 1. Auction Acknowledgment
-
-Confirms receipt of an Auction start.
+Confirms receipt of an Auction start and automatically subscribes the maker to a channel for bids for that auctionId.
 
 ```typescript
 {
@@ -81,20 +56,7 @@ Confirms receipt of an Auction start.
 }
 ```
 
-#### 2. Bid Acknowledgment
-
-Confirms receipt of a bid or reports an error.
-
-```typescript
-{
-  type: 'bid.ack',
-  payload: {
-    error?: string                    // Error message if bid rejected
-  }
-}
-```
-
-#### 3. Auction Started (Broadcast)
+### 3. auction.started (Broadcast)
 
 Broadcasts new Auction starts to all connected takers.
 
@@ -113,7 +75,35 @@ Broadcasts new Auction starts to all connected takers.
 }
 ```
 
-#### 4. Auction Bids (Broadcast)
+### 4. bid.submit
+
+Submits a bid/quote for an Auction. The payload provides only what the maker needs to complete the mint transaction.
+
+```typescript
+{
+  type: 'bid.submit',
+  payload: {
+    auctionId: string,                // Auction ID to bid on
+    takerPermitSignature: string,     // ERC20 permit signature
+    takerBidSignature: string         // Taker's signature allowing this specific bid (contains taker address and wager)
+  }
+}
+```
+
+### 5. Response (bid.ack)
+
+Confirms receipt of a bid or reports an error.
+
+```typescript
+{
+  type: 'bid.ack',
+  payload: {
+    error?: string                    // Error message if bid rejected
+  }
+}
+```
+
+### 6. auction.bids (Broadcast)
 
 Broadcasts current bids for an Auction to subscribed makers only. Makers are automatically subscribed to an auction channel when they send an `auction.start` for that specific auction ID.
 
@@ -233,12 +223,3 @@ The system includes a reference taker implementation (`botExample.ts`) that:
 ## Error Handling
 
 All errors are returned in the `bid.ack` message with descriptive error codes. Makers and takers should implement proper error handling and retry logic for transient failures.
-
-## Future Enhancements
-
-- [ ] Full ERC20 permit signature validation
-- [ ] Contract interaction simulation
-- [ ] Market validation integration
-- [ ] Advanced bid ranking algorithms
-- [ ] Multi-chain support
-- [ ] Order book persistence
