@@ -10,8 +10,7 @@ export interface MintParlayRequestData {
   resolver: string;
   wager: string;
   takerCollateral: string;
-  makerSignature: string;
-  takerSignature: string;
+  // Note: ERC-20 approvals are handled off-chain by maker and taker separately
 }
 
 /**
@@ -20,9 +19,7 @@ export interface MintParlayRequestData {
 export function createMintParlayRequestData(
   auction: AuctionRequestPayload,
   taker: string,
-  takerCollateral: string,
-  makerSignature: string,
-  takerSignature: string
+  takerCollateral: string
 ): MintParlayRequestData {
   if (!auction.resolver) {
     throw new Error('Auction must have a resolver address');
@@ -34,8 +31,6 @@ export function createMintParlayRequestData(
     resolver: auction.resolver,
     wager: auction.wager,
     takerCollateral: takerCollateral,
-    makerSignature: makerSignature,
-    takerSignature: takerSignature,
   };
 }
 
@@ -122,95 +117,67 @@ export function createValidationError(
 }
 
 /**
- * Extracts taker address from takerBidSignature
+ * Extracts taker address from takerSignature (deprecated helper)
  * The signature should be signed by the taker's private key
  * This is a simplified implementation - in production you'd want proper signature recovery
  */
-export function extractTakerFromSignature(
-  takerBidSignature: string
-): string | null {
-  try {
-    // Basic validation
-    if (
-      !takerBidSignature ||
-      !takerBidSignature.startsWith('0x') ||
-      takerBidSignature.length < 10
-    ) {
-      return null;
-    }
-
-    // For now, we'll use a simple approach where the signature contains encoded data
-    // In a real implementation, you'd recover the address from the signature using ecrecover
-    // This is a placeholder that extracts from the signature bytes
-
-    // Remove '0x' prefix and get the signature data
-    const signatureData = takerBidSignature.slice(2);
-
-    // For demonstration, we'll extract the first 40 bytes (80 hex chars) as the taker address
-    // In reality, you'd need to properly recover the address from the signature
-    if (signatureData.length >= 80) {
-      // Extract the first 40 bytes (80 hex chars) as taker address
-      const addressHex = signatureData.slice(0, 80);
-      const taker = '0x' + addressHex;
-
-      // Basic validation - address should be valid format
-      if (/^0x[a-fA-F0-9]{40}$/.test(taker)) {
-        return taker;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.warn('Failed to extract taker from signature:', error);
-    return null;
-  }
+export function extractTakerFromSignature(): string | null {
+  // Deprecated: taker is not derivable from a signature alone. Use verifyTakerBid instead.
+  return null;
 }
 
 /**
- * Extracts takerWager from takerBidSignature
+ * Extracts takerWager from takerSignature (deprecated helper)
  * The signature should sign a message containing the takerWager amount
  * This is a simplified implementation - in production you'd want proper EIP-712 verification
  */
-export function extractTakerWagerFromSignature(
-  takerBidSignature: string
-): string | null {
+export function extractTakerWagerFromSignature(): string | null {
+  // Deprecated: wager is not derivable from a signature alone. Use verifyTakerBid instead.
+  return null;
+}
+
+/**
+ * Verifies a taker bid using a typed payload scheme (e.g., EIP-712 or personal_sign preimage).
+ * This function currently does structural checks only; wire in real signature recovery for production.
+ */
+export function verifyTakerBid(params: {
+  auctionId: string;
+  taker: string;
+  takerWager: string;
+  takerDeadline: number;
+  takerSignature: string;
+}): { ok: boolean; reason?: string } {
   try {
-    // Basic validation
+    const { auctionId, taker, takerWager, takerDeadline, takerSignature } =
+      params;
+    if (!auctionId || typeof auctionId !== 'string') {
+      return { ok: false, reason: 'invalid_auction_id' };
+    }
+    if (typeof taker !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(taker)) {
+      return { ok: false, reason: 'invalid_taker' };
+    }
+    if (!takerWager || BigInt(takerWager) <= 0n) {
+      return { ok: false, reason: 'invalid_taker_wager' };
+    }
     if (
-      !takerBidSignature ||
-      !takerBidSignature.startsWith('0x') ||
-      takerBidSignature.length < 10
+      typeof takerDeadline !== 'number' ||
+      !Number.isFinite(takerDeadline) ||
+      takerDeadline <= Math.floor(Date.now() / 1000)
     ) {
-      return null;
+      return { ok: false, reason: 'quote_expired' };
+    }
+    if (
+      typeof takerSignature !== 'string' ||
+      !takerSignature.startsWith('0x') ||
+      takerSignature.length < 10
+    ) {
+      return { ok: false, reason: 'invalid_taker_bid_signature_format' };
     }
 
-    // For now, we'll use a simple approach where the signature contains encoded data
-    // In a real implementation, you'd decode the signature and verify it properly
-    // This is a placeholder that extracts from the signature bytes
-
-    // Remove '0x' prefix and get the signature data
-    const signatureData = takerBidSignature.slice(2);
-
-    // For demonstration, we'll extract the last 32 bytes (64 hex chars) as the takerWager
-    // In reality, you'd need to properly decode the signed message
-    if (signatureData.length >= 64) {
-      // Extract the last 32 bytes (64 hex chars) as takerWager
-      const wagerHex = signatureData.slice(-64);
-      const takerWager = BigInt('0x' + wagerHex).toString();
-
-      // Basic validation - wager should be reasonable
-      if (
-        BigInt(takerWager) > 0n &&
-        BigInt(takerWager) < BigInt('1000000000000000000000000')
-      ) {
-        // Max 1M tokens
-        return takerWager;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.warn('Failed to extract takerWager from signature:', error);
-    return null;
+    // TODO: Implement real signature verification (EIP-712) against the exact typed payload
+    // For now, treat format-valid signatures as acceptable.
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'verification_failed' };
   }
 }

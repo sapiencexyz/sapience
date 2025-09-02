@@ -1,4 +1,12 @@
 import WebSocket, { RawData } from 'ws';
+import {
+  createWalletClient,
+  createPublicClient,
+  http,
+  erc20Abi,
+  getAddress,
+} from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
 const API_BASE = process.env.FOIL_API_BASE || 'http://localhost:3001';
 const WS_URL =
@@ -13,6 +21,68 @@ const ws = new WebSocket(WS_URL);
 ws.on('open', () => {
   console.log('[BOT] Connected. readyState=', ws.readyState);
 });
+
+async function ensureApprovalIfConfigured(amount: bigint) {
+  try {
+    const rpcUrl = process.env.BOT_RPC_URL;
+    const pk = process.env.BOT_PRIVATE_KEY;
+    const collateralToken = process.env.BOT_COLLATERAL_TOKEN;
+    const spender = process.env.BOT_PARLAY_CONTRACT; // contract that will pull taker collateral
+    const chainId = Number(process.env.BOT_CHAIN_ID || '8453');
+
+    if (!rpcUrl || !pk || !collateralToken || !spender) {
+      console.log(
+        '[BOT] Skipping approval (set BOT_RPC_URL, BOT_PRIVATE_KEY, BOT_COLLATERAL_TOKEN, BOT_PARLAY_CONTRACT to enable)'
+      );
+      return;
+    }
+
+    const account = privateKeyToAccount(`0x${pk.replace(/^0x/, '')}`);
+    const publicClient = createPublicClient({ transport: http(rpcUrl) });
+    const walletClient = createWalletClient({
+      account,
+      chain: {
+        id: chainId,
+        name: 'custom',
+        nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+        rpcUrls: { default: { http: [rpcUrl] } },
+      },
+      transport: http(rpcUrl),
+    });
+
+    const owner = getAddress(account.address);
+    const token = getAddress(collateralToken as `0x${string}`);
+    const spenderAddr = getAddress(spender as `0x${string}`);
+
+    const allowance = (await publicClient.readContract({
+      address: token,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [owner, spenderAddr],
+    })) as bigint;
+
+    if (allowance >= amount) {
+      console.log(
+        '[BOT] Approval sufficient, allowance=',
+        allowance.toString()
+      );
+      return;
+    }
+
+    console.log(
+      `[BOT] Sending approval tx for ${amount.toString()} to spender ${spenderAddr} on token ${token}`
+    );
+    const hash = await walletClient.writeContract({
+      address: token,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [spenderAddr, amount],
+    });
+    console.log('[BOT] Approval submitted hash=', hash);
+  } catch (e) {
+    console.error('[BOT] Approval step failed (continuing anyway):', e);
+  }
+}
 
 ws.on('message', (data: RawData) => {
   try {
@@ -33,16 +103,20 @@ ws.on('message', (data: RawData) => {
         const takerWager = wager / 2n; // 50% of wager
         const totalPayout = wager + takerWager;
 
-        // NOTE: For the on-chain contract, the taker must provide two signatures:
-        // 1) ERC-20 permit that allows the contract to transfer takerCollateral
-        // 2) Off-chain approval signature authorizing this specific prediction (encoded outcomes + maker/taker collateral + resolver + maker)
-        // This example uses placeholder hex strings; a real bot would compute EIP-2612 permit and EIP-712 approval.
+        // Ensure ERC-20 approval is set up for the taker (optional, requires env vars)
+        void ensureApprovalIfConfigured(takerWager);
+
+        // Collateral transfers use ERC-20 approvals (not permit).
+        // This example demonstrates submitting a bid with explicit fields and an off-chain signature over them.
+        const nowSec = Math.floor(Date.now() / 1000);
         const bid = {
           type: 'bid.submit',
           payload: {
             auctionId: auction.auctionId,
-            takerPermitSignature: '0xdeadbeef',
-            takerBidSignature: '0x' + '11'.repeat(32) + '22'.repeat(32),
+            taker: '0x0000000000000000000000000000000000000001',
+            takerWager: takerWager.toString(),
+            takerDeadline: nowSec + 60,
+            takerSignature: '0x' + '11'.repeat(32) + '22'.repeat(32),
           },
         };
         console.log(
@@ -69,7 +143,7 @@ ws.on('message', (data: RawData) => {
         if (bids.length > 0) {
           const top = bids[0];
           console.log(
-            `[BOT] top bid takerWager=${top?.takerWager} expirationTimestamp=${top?.expirationTimestamp}`
+            `[BOT] top bid takerWager=${top?.takerWager} takerDeadline=${top?.takerDeadline}`
           );
         }
         break;

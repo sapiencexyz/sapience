@@ -8,7 +8,7 @@ export interface AuctionRequestPayload {
 }
 
 export interface BidQuote {
-  expirationTimestamp: number; // unix seconds
+  takerDeadline: number; // unix seconds
 }
 
 export interface BidFillRawTx {
@@ -34,23 +34,20 @@ export interface BidFillCallData {
 export interface MintParlayData {
   taker: string; // EOA
   takerWager: string; // wei string
-  takerPermitSignature: string; // ERC20 permit signature
-  takerBidSignature: string; // Taker's signature allowing this specific bid
+  takerSignature: string; // Taker's signature allowing this specific bid
 }
 
 export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 
 export interface BidPayload {
   auctionId: string;
-  takerPermitSignature: string; // ERC20 permit signature
-  takerBidSignature: string; // Taker's signature allowing this specific bid (contains takerWager and taker address)
+  taker: string; // Taker's EOA address (0x...)
+  takerWager: string; // wei string
+  takerDeadline: number; // unix seconds
+  takerSignature: string; // Taker's signature authorizing this specific bid over the typed payload
 }
 
-export interface ValidatedBid extends BidPayload {
-  taker: string; // EOA - derived from takerBidSignature
-  expirationTimestamp: number; // unix seconds - derived by relayer
-  takerWager: string; // wei string - derived from takerBidSignature
-}
+export type ValidatedBid = BidPayload;
 
 export type ClientToServerMessage = {
   type: 'auction.start';

@@ -19,9 +19,8 @@ export interface QuoteBid {
   auctionId: string;
   taker: string;
   takerWager: string; // wei
-  expirationTimestamp: number; // unix seconds
-  takerPermitSignature: string; // ERC20 permit signature
-  takerBidSignature: string; // Taker's bid signature
+  takerDeadline: number; // unix seconds
+  takerSignature: string; // Taker's bid signature
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -32,10 +31,6 @@ export interface MintPredictionRequestData {
   takerCollateral: string; // wei
   maker: `0x${string}`;
   taker: `0x${string}`;
-  makerSignature: `0x${string}`; // ERC20 permit signature (maker)
-  takerSignature: `0x${string}`; // ERC20 permit signature (taker)
-  makerSignatureDeadline: bigint; // unix seconds
-  takerSignatureDeadline: bigint; // unix seconds
   takerPredictionSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   refCode: `0x${string}`; // bytes32
 }
@@ -97,15 +92,14 @@ export function useAuctionStart() {
                 const taker: string =
                   b.taker || '0x0000000000000000000000000000000000000000';
                 const takerWager: string = b.takerWager || '0';
-                const expirationTimestamp: number = b.expirationTimestamp || 0;
+                const takerDeadline: number = b.takerDeadline || 0;
 
                 return {
                   auctionId: auctionIdVal,
                   taker,
                   takerWager,
-                  expirationTimestamp,
-                  takerPermitSignature: b.takerPermitSignature || '0x',
-                  takerBidSignature: b.takerBidSignature || '0x',
+                  takerDeadline,
+                  takerSignature: b.takerSignature || '0x',
                 } as QuoteBid;
               } catch {
                 return null;
@@ -202,8 +196,6 @@ export function useAuctionStart() {
   const buildMintRequestDataFromBid = useCallback(
     (args: {
       maker: `0x${string}`;
-      makerPermitSignature: `0x${string}`;
-      makerPermitSignatureDeadline: bigint;
       selectedBid: QuoteBid;
       refCode?: `0x${string}`;
     }): MintPredictionRequestData | null => {
@@ -222,15 +214,8 @@ export function useAuctionStart() {
           takerCollateral: args.selectedBid.takerWager,
           maker: args.maker,
           taker: args.selectedBid.taker as `0x${string}`,
-          makerSignature: args.makerPermitSignature,
-          takerSignature: args.selectedBid
-            .takerPermitSignature as `0x${string}`,
-          makerSignatureDeadline: args.makerPermitSignatureDeadline,
-          takerSignatureDeadline: BigInt(
-            args.selectedBid.expirationTimestamp || 0
-          ),
           takerPredictionSignature: args.selectedBid
-            .takerBidSignature as `0x${string}`,
+            .takerSignature as `0x${string}`,
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
         };
       } catch {
@@ -254,8 +239,6 @@ export function useAuctionStart() {
 // Helper to build PredictionMarket.mint() request from current auction + selected bid
 export function buildMintPredictionRequestData(args: {
   maker: `0x${string}`;
-  makerPermitSignature: `0x${string}`;
-  makerPermitSignatureDeadline: bigint;
   selectedBid: QuoteBid;
   // Optional overrides if caller wants to provide resolver/outcomes directly
   resolver?: `0x${string}`;
@@ -280,9 +263,6 @@ export function buildMintPredictionRequestData(args: {
     // Use taker data from the selected bid
     const taker = args.selectedBid.taker as `0x${string}`;
     const takerCollateral = args.selectedBid.takerWager;
-    const takerSignatureDeadline = BigInt(
-      args.selectedBid.expirationTimestamp || 0
-    );
 
     const out: MintPredictionRequestData = {
       encodedPredictedOutcomes: predictedOutcomes,
@@ -291,12 +271,8 @@ export function buildMintPredictionRequestData(args: {
       takerCollateral,
       maker: args.maker,
       taker,
-      makerSignature: args.makerPermitSignature,
-      takerSignature: args.selectedBid.takerPermitSignature as `0x${string}`,
-      makerSignatureDeadline: args.makerPermitSignatureDeadline,
-      takerSignatureDeadline: takerSignatureDeadline,
       takerPredictionSignature: args.selectedBid
-        .takerBidSignature as `0x${string}`,
+        .takerSignature as `0x${string}`,
       refCode: args.refCode || (zeroBytes32 as `0x${string}`),
     };
 

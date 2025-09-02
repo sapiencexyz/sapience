@@ -684,7 +684,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     // If OTC/Parlay flow is enabled, and we have a bid, build the mint request for PredictionMarket
     try {
       const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter((b) => b.expirationTimestamp > nowSec);
+      const validBids = bids.filter((b) => b.takerDeadline > nowSec);
       // Pick highest takerWager
       const best = validBids.reduce((best, cur) => {
         try {
@@ -697,8 +697,6 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       if (best && address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
           maker: address,
-          makerPermitSignature: '0x' as `0x${string}`,
-          makerPermitSignatureDeadline: BigInt(nowSec + 3600),
           selectedBid: best,
           // Optional refCode left empty (0x00..00)
         });

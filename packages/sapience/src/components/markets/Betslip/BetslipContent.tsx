@@ -139,7 +139,7 @@ export const BetslipContent = ({
     if (!bids || bids.length === 0) return null;
 
     const now = Math.floor(Date.now() / 1000);
-    const validBids = bids.filter((bid) => bid.expirationTimestamp > now);
+    const validBids = bids.filter((bid) => bid.takerDeadline > now);
 
     if (validBids.length === 0) return null;
 
@@ -508,7 +508,7 @@ export const BetslipContent = ({
                         <div className="text-xs text-muted-foreground mt-2 text-center">
                           {(() => {
                             const ms =
-                              bestBid.expirationTimestamp * 1000 - Date.now();
+                              bestBid.takerDeadline * 1000 - Date.now();
                             if (ms <= 0) return 'Expired';
                             const mins = Math.ceil(ms / 60000);
                             return `Expires in ${mins} minute${mins === 1 ? '' : 's'}`;

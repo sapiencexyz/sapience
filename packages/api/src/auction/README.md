@@ -60,15 +60,17 @@ Broadcasts new Auction starts to all connected takers.
 
 ### 4. bid.submit
 
-Submits a bid/quote for an Auction. The payload provides only what the maker needs to complete the mint transaction.
+Submits a bid/quote for an Auction. The payload MUST explicitly include the taker address, taker wager, and a quote expiration. These values are NOT derivable from a signature and must be provided and then verified against the signed payload.
 
 ```typescript
 {
   type: 'bid.submit',
   payload: {
     auctionId: string,                // Auction ID to bid on
-    takerPermitSignature: string,     // ERC20 permit signature
-    takerBidSignature: string         // Taker's signature allowing this specific bid (contains taker address and wager)
+    taker: string,                    // Taker's EOA address (0x...)
+    takerWager: string,               // Taker's wager contribution (wei)
+    takerDeadline: number,            // Unix timestamp when quote expires
+    takerSignature: string            // Off-chain signature over the typed payload to authorize this bid
   }
 }
 ```
@@ -97,11 +99,10 @@ Broadcasts current bids for an Auction to subscribed makers only. Makers are aut
     bids: [                           // Array of validated bids
       {
         auctionId: string,            // Auction ID this bid is for
-        takerPermitSignature: string, // ERC20 permit signature
-        takerBidSignature: string,    // Taker's signature allowing this specific bid
-        taker: string,                // Taker's EOA address - derived from takerBidSignature by relayer
-        takerWager: string,           // Taker's wager contribution (wei) - derived from takerBidSignature by relayer
-        expirationTimestamp: number   // Unix timestamp when quote expires - derived from takerBidSignature by relayer
+        takerSignature: string,       // Taker's off-chain signature authorizing the bid
+        taker: string,                // Taker's EOA address
+        takerWager: string,           // Taker's wager contribution (collateral units, typically represented with 18 decimals)
+        takerDeadline: number         // Unix timestamp when quote expires
       }
     ]
   }
@@ -138,11 +139,14 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 
 - Quote must not be expired
 - Taker wager must be positive and ≤ maker wager
-- Mint data must be complete and consistent:
-  - Taker address must be provided
-  - Taker wager must be provided
-  - Both taker signatures (ERC20 permit and bid) must be provided
-  - All signatures must be valid hex strings
+- Off-chain bid signature must be provided and be a valid hex string
+
+### Token Approvals
+
+Both parties must perform standard ERC-20 approvals in their own wallets:
+
+- Maker must approve the contract to spend the maker collateral prior to minting
+- Taker must approve the contract to spend the taker collateral prior to filling
 
 ### Common Error Codes
 
@@ -150,8 +154,6 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 - `quote_expired`: Quote has expired
 - `invalid_taker_wager`: Taker wager is invalid
 - `taker_wager_too_high`: Taker wager exceeds maker wager
-- `incomplete_mint_data`: Mint data incomplete
-- `invalid_taker_permit_signature_format`: Taker permit signature format is invalid
 - `invalid_taker_bid_signature_format`: Taker bid signature format is invalid
 
 ## Example Flow
@@ -183,8 +185,10 @@ ws.send(
     type: 'bid.submit',
     payload: {
       auctionId: 'auction-123',
-      takerPermitSignature: '0x...', // ERC20 permit signature
-      takerBidSignature: '0x...', // Signature allowing this bid (contains taker address and wager)
+      taker: '0xTakerAddress',
+      takerWager: '500000000000000000', // 0.5 ETH
+      takerDeadline: Math.floor(Date.now() / 1000) + 60,
+      takerSignature: '0x...', // Signature over the typed payload
     },
   })
 );
@@ -195,7 +199,7 @@ ws.send(
 After receiving and selecting a bid, the maker constructs the `MintParlayRequestData` struct using:
 
 - The Auction data (predictedOutcomes, resolver, makerCollateral from wager)
-- The bid data (taker, takerWager, takerPermitSignature, takerBidSignature)
+- The bid data (taker, takerWager, takerSignature)
 - Their own maker signature and refCode
 
 The maker then calls the `mint()` function on the ParlayPool contract. The system will automatically detect the minting through blockchain event listeners.
@@ -214,7 +218,7 @@ The system includes a reference taker implementation (`botExample.ts`) that:
 
 1. **Rate Limiting**: Prevents spam and DoS attacks
 2. **Message Size Limits**: Prevents memory exhaustion
-3. **Signature Validation**: ERC20 permit signatures are validated
+3. **Approvals**: Standard ERC-20 approvals must be completed by both maker and taker
 4. **Collateral Validation**: Ensures reasonable collateral amounts
 5. **Expiration Checks**: Prevents execution of expired quotes/Auctions
 

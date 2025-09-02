@@ -1,10 +1,5 @@
 import type { BidPayload, AuctionRequestPayload } from './types';
-import {
-  validateAuctionForMint,
-  createValidationError,
-  extractTakerWagerFromSignature,
-  extractTakerFromSignature,
-} from './helpers';
+import { validateAuctionForMint, createValidationError } from './helpers';
 
 export interface SimResult {
   ok: boolean;
@@ -28,22 +23,16 @@ export function basicValidateBid(
     };
   }
 
-  // Derive taker address from signature
-  const taker = extractTakerFromSignature(bid.takerBidSignature);
-
-  if (!taker) {
-    return { ok: false, reason: 'invalid_taker_signature' };
+  // Validate taker fields in payload
+  if (!bid.taker || typeof bid.taker !== 'string') {
+    return { ok: false, reason: 'invalid_taker' };
   }
-
-  // Derive taker wager from signature and validate
-  const takerWager = extractTakerWagerFromSignature(bid.takerBidSignature);
-
-  if (!takerWager) {
+  if (!bid.takerWager) {
     return { ok: false, reason: 'invalid_taker_wager' };
   }
 
   try {
-    const takerWagerBigInt = BigInt(takerWager);
+    const takerWagerBigInt = BigInt(bid.takerWager);
     const wager = BigInt(auction.wager);
 
     // Basic validation: taker wager should be positive and not exceed maker wager
@@ -57,42 +46,18 @@ export function basicValidateBid(
     return { ok: false, reason: 'invalid_wager_values' };
   }
 
-  // Validate mint data structure
-  if (!bid.takerPermitSignature || !bid.takerBidSignature) {
-    return { ok: false, reason: 'incomplete_mint_data' };
-  }
-
-  // Basic taker permit signature validation (format check only)
-  if (
-    !bid.takerPermitSignature ||
-    typeof bid.takerPermitSignature !== 'string'
-  ) {
-    return { ok: false, reason: 'invalid_taker_permit_signature_format' };
-  }
-
-  // Check if taker permit signature looks like a valid hex string
-  if (
-    !bid.takerPermitSignature.startsWith('0x') ||
-    bid.takerPermitSignature.length < 10
-  ) {
-    return { ok: false, reason: 'invalid_taker_permit_signature_format' };
-  }
-
   // Basic taker bid signature validation (format check only)
-  if (!bid.takerBidSignature || typeof bid.takerBidSignature !== 'string') {
+  if (!bid.takerSignature || typeof bid.takerSignature !== 'string') {
     return { ok: false, reason: 'invalid_taker_bid_signature_format' };
   }
 
   // Check if taker bid signature looks like a valid hex string
-  if (
-    !bid.takerBidSignature.startsWith('0x') ||
-    bid.takerBidSignature.length < 10
-  ) {
+  if (!bid.takerSignature.startsWith('0x') || bid.takerSignature.length < 10) {
     return { ok: false, reason: 'invalid_taker_bid_signature_format' };
   }
 
-  // TODO: decode tx target and calldata to verify it calls mint(MintParlayRequestData)
-  // TODO: validate ERC20 permit signature for taker (maker signature provided on bid submission)
+  // Note: Collateral transfer now relies on standard ERC20 approvals, not permits.
+  // Bots should ensure the taker has approved the Parlay contract prior to bid submission.
   // TODO: verify resolver address and market validation
 
   return { ok: true };
