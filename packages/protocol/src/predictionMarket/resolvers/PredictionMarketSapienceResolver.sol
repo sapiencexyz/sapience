@@ -1,27 +1,54 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../interfaces/IParlayPoolResolver.sol";
-import "../interfaces/IParlayStructs.sol";
+import "../interfaces/IPredictionMarketResolver.sol";
 import "../../market/interfaces/ISapience.sol";
 import "../../market/interfaces/ISapienceStructs.sol";
 
 /**
- * @title ParlayNFT
- * @notice NFT contract for Parlay Pool system
+ * @title PredictionNFT
+ * @notice NFT contract for Prediction Market system
  */
-contract ParlayPoolSapienceResolver is IParlayPoolResolver {
-
-    address parlayPool;
-    constructor(address _parlayPool) {
-        parlayPool = _parlayPool;
+contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
+    struct Settings {
+        uint256 maxPredictionMarkets;
     }
 
-    function validateParlayMarkets(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    Settings public config;
+
+    constructor(Settings memory _config) {
+        config = _config;
+    }
+
+    // ============ Sapience Market Resolver Structs ============
+    struct MarketIdentifier {
+        address marketGroup;
+        uint256 marketId;
+    }
+
+    struct PredictedOutcome {
+        MarketIdentifier market;
+        bool prediction; // true for YES, false for NO
+    }
+
+    // ============ Resolver Functions ============
+    function validatePredictionMarkets(
+        bytes calldata encodedPredictedOutcomes
     ) external view returns (bool isValid, Error error) {
         isValid = true;
         error = Error.NO_ERROR;
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+
+        require(
+            predictedOutcomes.length > 0,
+            "Must have at least one market"
+        );
+        require(
+            predictedOutcomes.length <=
+                config.maxPredictionMarkets,
+            "Too many markets"
+        );
+
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             if (predictedOutcomes[i].market.marketGroup == address(0)) {
                 isValid = false;
@@ -45,15 +72,16 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
         return (isValid, error);
     }
 
-    function resolveParlay(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    function resolvePrediction(
+        bytes calldata encodedPredictedOutcomes
     ) external view returns (bool isValid, Error error, bool makerWon) {
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
         makerWon = true;
         isValid = true;
         error = Error.NO_ERROR;
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
-            IParlayStructs.Market memory market = predictedOutcomes[i].market;
+            MarketIdentifier memory market = predictedOutcomes[i].market;
             (bool marketOutcome, bool marketSettled) = _getMarketOutcome(
                 market
             );
@@ -72,8 +100,22 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
         return (isValid, error, makerWon);
     }
 
+    // ============ Sapience Encoding and Decoding Functions ============
+    function encodePredictionOutcomes(
+        PredictedOutcome[] calldata predictedOutcomes
+    ) external pure returns (bytes memory) {
+        return abi.encode(predictedOutcomes);
+    }
+
+    function decodePredictionOutcomes(
+        bytes calldata encodedPredictedOutcomes
+    ) public pure returns (PredictedOutcome[] memory) {
+        return abi.decode(encodedPredictedOutcomes, (PredictedOutcome[]));
+    }
+
+    // ============ Sapience Market Validation Functions ============
     function _isYesNoMarket(
-        IParlayStructs.Market memory market
+        MarketIdentifier memory market
     ) internal view returns (bool) {
         // Validate market address
         require(
@@ -101,7 +143,7 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
      * @return settled Whether the market has been settled
      */
     function _getMarketOutcome(
-        IParlayStructs.Market memory market
+        MarketIdentifier memory market
     ) internal view returns (bool outcome, bool settled) {
         // Validate market address
         require(
@@ -136,7 +178,7 @@ contract ParlayPoolSapienceResolver is IParlayPoolResolver {
             outcome = false;
         } else {
             // This is a numeric market, not Yes/No
-            // For parlay purposes, we only support Yes/No markets
+            // For prediction purposes, we only support Yes/No markets
             revert(
                 "Market is not a Yes/No market - settlement price is not at bounds"
             );

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./IParlayStructs.sol";
+import "./IPredictionStructs.sol";
 
 /**
- * @title IParlayPoolResolver
+ * @title IPredictionMarketResolver
  */
-interface IParlayPoolResolver {
+interface IPredictionMarketResolver {
     enum Error {
         NO_ERROR,
         INVALID_MARKET_GROUP,
@@ -15,11 +15,11 @@ interface IParlayPoolResolver {
         MARKET_NOT_SETTLED
     }
 
-    function validateParlayMarkets(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    function validatePredictionMarkets(
+        bytes calldata encodedPredictedOutcomes
     ) external view returns (bool isValid, Error error);
 
-    function resolveParlay(
-        IParlayStructs.PredictedOutcome[] calldata predictedOutcomes
+    function resolvePrediction(
+        bytes calldata encodedPredictedOutcomes
     ) external view returns (bool isValid, Error error, bool makerWon);
 }
