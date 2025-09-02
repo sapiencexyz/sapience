@@ -42,19 +42,18 @@ export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 
 export interface BidPayload {
   auctionId: string;
-  taker: string; // EOA
-  expirationTimestamp: number; // unix seconds
-  takerWager: string; // wei string
   takerPermitSignature: string; // ERC20 permit signature
-  takerBidSignature: string; // Taker's signature allowing this specific bid
+  takerBidSignature: string; // Taker's signature allowing this specific bid (contains takerWager and taker address)
 }
 
 export interface ValidatedBid extends BidPayload {
-  bidId: string;
+  taker: string; // EOA - derived from takerBidSignature
+  expirationTimestamp: number; // unix seconds - derived by relayer
+  takerWager: string; // wei string - derived from takerBidSignature
 }
 
 export type ClientToServerMessage = {
-  type: 'auction.request';
+  type: 'auction.start';
   payload: AuctionRequestPayload;
 };
 
@@ -62,9 +61,9 @@ export type BotToServerMessage = { type: 'bid.submit'; payload: BidPayload };
 
 export type ServerToClientMessage =
   | { type: 'auction.ack'; payload: { auctionId: string } }
-  | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
+  | { type: 'bid.ack'; payload: { error?: string } }
   | {
       type: 'auction.bids';
-      payload: { auctionId: string; bids: ValidatedBid[] };
+      payload: { bids: ValidatedBid[] };
     }
-  | { type: 'auction.requested'; payload: AuctionRequestPayload };
+  | { type: 'auction.started'; payload: AuctionRequestPayload };

@@ -109,3 +109,97 @@ export function createValidationError(
   }
   return baseMessage;
 }
+
+/**
+ * Extracts taker address from takerBidSignature
+ * The signature should be signed by the taker's private key
+ * This is a simplified implementation - in production you'd want proper signature recovery
+ */
+export function extractTakerFromSignature(
+  takerBidSignature: string
+): string | null {
+  try {
+    // Basic validation
+    if (
+      !takerBidSignature ||
+      !takerBidSignature.startsWith('0x') ||
+      takerBidSignature.length < 10
+    ) {
+      return null;
+    }
+
+    // For now, we'll use a simple approach where the signature contains encoded data
+    // In a real implementation, you'd recover the address from the signature using ecrecover
+    // This is a placeholder that extracts from the signature bytes
+
+    // Remove '0x' prefix and get the signature data
+    const signatureData = takerBidSignature.slice(2);
+
+    // For demonstration, we'll extract the first 40 bytes (80 hex chars) as the taker address
+    // In reality, you'd need to properly recover the address from the signature
+    if (signatureData.length >= 80) {
+      // Extract the first 40 bytes (80 hex chars) as taker address
+      const addressHex = signatureData.slice(0, 80);
+      const taker = '0x' + addressHex;
+
+      // Basic validation - address should be valid format
+      if (/^0x[a-fA-F0-9]{40}$/.test(taker)) {
+        return taker;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Failed to extract taker from signature:', error);
+    return null;
+  }
+}
+
+/**
+ * Extracts takerWager from takerBidSignature
+ * The signature should sign a message containing the takerWager amount
+ * This is a simplified implementation - in production you'd want proper EIP-712 verification
+ */
+export function extractTakerWagerFromSignature(
+  takerBidSignature: string
+): string | null {
+  try {
+    // Basic validation
+    if (
+      !takerBidSignature ||
+      !takerBidSignature.startsWith('0x') ||
+      takerBidSignature.length < 10
+    ) {
+      return null;
+    }
+
+    // For now, we'll use a simple approach where the signature contains encoded data
+    // In a real implementation, you'd decode the signature and verify it properly
+    // This is a placeholder that extracts from the signature bytes
+
+    // Remove '0x' prefix and get the signature data
+    const signatureData = takerBidSignature.slice(2);
+
+    // For demonstration, we'll extract the last 32 bytes (64 hex chars) as the takerWager
+    // In reality, you'd need to properly decode the signed message
+    if (signatureData.length >= 64) {
+      // Extract the last 32 bytes (64 hex chars) as takerWager
+      const wagerHex = signatureData.slice(-64);
+      const takerWager = BigInt('0x' + wagerHex).toString();
+
+      // Basic validation - wager should be reasonable
+      if (
+        BigInt(takerWager) > 0n &&
+        BigInt(takerWager) < BigInt('1000000000000000000000000')
+      ) {
+        // Max 1M tokens
+        return takerWager;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('Failed to extract takerWager from signature:', error);
+    return null;
+  }
+}

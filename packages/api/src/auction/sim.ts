@@ -1,5 +1,10 @@
 import type { BidPayload, AuctionRequestPayload } from './types';
-import { validateAuctionForMint, createValidationError } from './helpers';
+import {
+  validateAuctionForMint,
+  createValidationError,
+  extractTakerWagerFromSignature,
+  extractTakerFromSignature,
+} from './helpers';
 
 export interface SimResult {
   ok: boolean;
@@ -23,33 +28,37 @@ export function basicValidateBid(
     };
   }
 
-  // Validate taker wager is reasonable
+  // Derive taker address from signature
+  const taker = extractTakerFromSignature(bid.takerBidSignature);
+
+  if (!taker) {
+    return { ok: false, reason: 'invalid_taker_signature' };
+  }
+
+  // Derive taker wager from signature and validate
+  const takerWager = extractTakerWagerFromSignature(bid.takerBidSignature);
+
+  if (!takerWager) {
+    return { ok: false, reason: 'invalid_taker_wager' };
+  }
+
   try {
-    const takerWager = BigInt(bid.takerWager);
+    const takerWagerBigInt = BigInt(takerWager);
     const wager = BigInt(auction.wager);
 
     // Basic validation: taker wager should be positive and not exceed maker wager
-    if (takerWager <= 0n) {
+    if (takerWagerBigInt <= 0n) {
       return { ok: false, reason: 'invalid_taker_wager' };
     }
-    if (takerWager > wager) {
+    if (takerWagerBigInt > wager) {
       return { ok: false, reason: 'taker_wager_too_high' };
     }
   } catch {
     return { ok: false, reason: 'invalid_wager_values' };
   }
 
-  if (bid.expirationTimestamp <= Math.floor(Date.now() / 1000)) {
-    return { ok: false, reason: 'quote_expired' };
-  }
-
   // Validate mint data structure
-  if (
-    !bid.taker ||
-    !bid.takerWager ||
-    !bid.takerPermitSignature ||
-    !bid.takerBidSignature
-  ) {
+  if (!bid.takerPermitSignature || !bid.takerBidSignature) {
     return { ok: false, reason: 'incomplete_mint_data' };
   }
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Auction WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market parlays using the ParlayPool contract. The system supports a mint-based flow where parlays are created immediately when both parties provide valid signatures.
+The Auction WebSocket API enables real-time communication between clients, bots, and the system for creating and managing prediction market auctions using the PredictionMarket contract. The system supports a mint-based flow where positions are created immediately when both parties provide valid signatures.
 
 ## WebSocket Endpoint
 
@@ -27,21 +27,21 @@ ws://localhost:3001/ws/auction
 
 ### Client to Server Messages
 
-#### 1. Auction Request
+#### 1. Auction Start
 
-Creates a new request for quotes from bots.
+Starts a new auction to receive bids from bots.
 
 ```typescript
 {
-  type: 'auction.request',
+  type: 'auction.start',
   payload: {
     auctionId: string,                // Unique identifier for this Auction
     wager: string,                    // Maker's wager amount (wei)
+    resolver: string,                 // Resolver contract address
     predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
       string,                         // Bytes string representing market prediction
       string                          // Additional prediction bytes strings...
-    ],
-    resolver: string                  // Resolver contract address
+    ]
   }
 }
 ```
@@ -59,22 +59,19 @@ Submits a bid/quote for an Auction. The simplified structure provides only what 
   type: 'bid.submit',
   payload: {
     auctionId: string,                // Auction ID to bid on
-    taker: string,                    // Taker's EOA address
-    expirationTimestamp: number,      // Unix timestamp when quote expires
-    takerWager: string,               // Taker's wager contribution (wei)
     takerPermitSignature: string,     // ERC20 permit signature
-    takerBidSignature: string         // Taker's signature allowing this specific bid
+    takerBidSignature: string         // Taker's signature allowing this specific bid (contains taker address and wager)
   }
 }
 ```
 
-**Response**: `bid.ack` with `bidId` or `error`
+**Response**: `bid.ack` with success or `error`
 
 ### Server to Client Messages
 
 #### 1. Auction Acknowledgment
 
-Confirms receipt of an Auction request.
+Confirms receipt of an Auction start.
 
 ```typescript
 {
@@ -93,36 +90,46 @@ Confirms receipt of a bid or reports an error.
 {
   type: 'bid.ack',
   payload: {
-    bidId?: string,                   // Unique bid identifier
     error?: string                    // Error message if bid rejected
   }
 }
 ```
 
-#### 3. Auction Requested (Broadcast)
+#### 3. Auction Started (Broadcast)
 
-Broadcasts new Auction requests to all connected bots.
+Broadcasts new Auction starts to all connected bots.
 
 ```typescript
 {
-  type: 'auction.requested',
-  payload: AuctionRequestPayload          // Same as auction.request payload
+  type: 'auction.started',
+  payload: {
+    auctionId: string,                // Unique identifier for this Auction
+    wager: string,                    // Maker's wager amount (wei)
+    predictedOutcomes: [              // Array of bytes strings that the resolver validates/understands
+      string,                         // Bytes string representing market prediction
+      string                          // Additional prediction bytes strings...
+    ],
+    resolver: string                  // Resolver contract address
+  }
 }
 ```
 
 #### 4. Auction Bids (Broadcast)
 
-Broadcasts current bids for an Auction to all clients.
+Broadcasts current bids for an Auction to subscribed clients only. Clients are automatically subscribed to an auction channel when they send an `auction.start` for that specific auction ID.
 
 ```typescript
 {
   type: 'auction.bids',
   payload: {
-    auctionId: string,
     bids: [                           // Array of validated bids
       {
-        // ... BidPayload fields
-        bidId: string                 // Unique bid identifier
+        auctionId: string,            // Auction ID this bid is for
+        takerPermitSignature: string, // ERC20 permit signature
+        takerBidSignature: string,    // Taker's signature allowing this specific bid
+        taker: string,                // Taker's EOA address - derived from takerBidSignature by relayer
+        takerWager: string,           // Taker's wager contribution (wei) - derived from takerBidSignature by relayer
+        expirationTimestamp: number   // Unix timestamp when quote expires - derived from takerBidSignature by relayer
       }
     ]
   }
@@ -168,7 +175,7 @@ The UI presents the best available bid that hasn't expired yet. The best bid is 
 ```javascript
 ws.send(
   JSON.stringify({
-    type: 'auction.request',
+    type: 'auction.start',
     payload: {
       auctionId: 'auction-123',
       wager: '1000000000000000000', // 1 ETH
@@ -190,11 +197,8 @@ ws.send(
     type: 'bid.submit',
     payload: {
       auctionId: 'auction-123',
-      taker: '0x...',
-      expirationTimestamp: Math.floor(Date.now() / 1000) + 60,
-      takerWager: '500000000000000000',
       takerPermitSignature: '0x...', // ERC20 permit signature
-      takerBidSignature: '0x...', // Signature allowing this bid
+      takerBidSignature: '0x...', // Signature allowing this bid (contains taker address and wager)
     },
   })
 );
@@ -215,7 +219,7 @@ The maker then calls the `mint()` function on the ParlayPool contract. The syste
 The system includes a reference bot implementation (`botExample.ts`) that:
 
 - Connects to the WebSocket endpoint
-- Listens for `auction.requested` messages
+- Listens for `auction.started` messages
 - Automatically calculates taker collateral as 50% of maker collateral
 - Submits bids with proper mint data structure
 - Handles bid acknowledgments and bid updates

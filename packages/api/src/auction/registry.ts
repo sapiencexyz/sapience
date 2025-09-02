@@ -1,4 +1,8 @@
 import { BidPayload, ValidatedBid, AuctionRequestPayload } from './types';
+import {
+  extractTakerWagerFromSignature,
+  extractTakerFromSignature,
+} from './helpers';
 
 interface AuctionRecord {
   auction: AuctionRequestPayload;
@@ -32,10 +36,29 @@ export function addBid(
 ): ValidatedBid | undefined {
   const rec = getAuction(auctionId);
   if (!rec) return undefined;
-  const bidId = `${auctionId}:${Date.now()}:${Math.floor(Math.random() * 1e6)}`;
+
+  // Derive expiration timestamp (60 seconds from now by default)
+  const expirationTimestamp = Math.floor(Date.now() / 1000) + 60;
+
+  // Derive taker address from signature
+  const taker = extractTakerFromSignature(bid.takerBidSignature);
+
+  if (!taker) {
+    return undefined; // Invalid signature
+  }
+
+  // Derive taker wager from signature
+  const takerWager = extractTakerWagerFromSignature(bid.takerBidSignature);
+
+  if (!takerWager) {
+    return undefined; // Invalid signature
+  }
+
   const validated: ValidatedBid = {
     ...bid,
-    bidId,
+    taker,
+    expirationTimestamp,
+    takerWager,
   };
   rec.bids.push(validated);
   // Keep all bids - UI will select the best one

@@ -16,7 +16,7 @@ function isClientMessage(msg: unknown): msg is ClientToServerMessage {
     return false;
   }
   const msgObj = msg as Record<string, unknown>;
-  return typeof msgObj.type === 'string' && msgObj.type === 'auction.request';
+  return typeof msgObj.type === 'string' && msgObj.type === 'auction.start';
 }
 
 function isBotMessage(msg: unknown): msg is BotToServerMessage {
@@ -39,12 +39,86 @@ function send(ws: WebSocket, message: ServerToClientMessage) {
   ws.send(JSON.stringify(message));
 }
 
+function subscribeToAuction(
+  auctionId: string,
+  ws: WebSocket,
+  auctionSubscriptions: Map<string, Set<WebSocket>>
+) {
+  if (!auctionSubscriptions.has(auctionId)) {
+    auctionSubscriptions.set(auctionId, new Set());
+  }
+  auctionSubscriptions.get(auctionId)!.add(ws);
+  console.log(`[Auction-WS] Client subscribed to auction ${auctionId}`);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function unsubscribeFromAuction(
+  auctionId: string,
+  ws: WebSocket,
+  auctionSubscriptions: Map<string, Set<WebSocket>>
+) {
+  const subscribers = auctionSubscriptions.get(auctionId);
+  if (subscribers) {
+    subscribers.delete(ws);
+    if (subscribers.size === 0) {
+      auctionSubscriptions.delete(auctionId);
+    }
+    console.log(`[Auction-WS] Client unsubscribed from auction ${auctionId}`);
+  }
+}
+
+function unsubscribeFromAllAuctions(
+  ws: WebSocket,
+  auctionSubscriptions: Map<string, Set<WebSocket>>
+) {
+  for (const [auctionId, subscribers] of auctionSubscriptions.entries()) {
+    if (subscribers.has(ws)) {
+      subscribers.delete(ws);
+      if (subscribers.size === 0) {
+        auctionSubscriptions.delete(auctionId);
+      }
+    }
+  }
+}
+
+function broadcastToAuctionSubscribers(
+  auctionId: string,
+  message: ServerToClientMessage,
+  auctionSubscriptions: Map<string, Set<WebSocket>>
+) {
+  const subscribers = auctionSubscriptions.get(auctionId);
+  if (!subscribers || subscribers.size === 0) {
+    return 0;
+  }
+
+  const dataStr = JSON.stringify(message);
+  let recipients = 0;
+  subscribers.forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(dataStr);
+        recipients++;
+      } catch (error) {
+        console.warn(`[Auction-WS] Failed to send to subscriber:`, error);
+        subscribers.delete(ws);
+      }
+    } else {
+      subscribers.delete(ws);
+    }
+  });
+
+  return recipients;
+}
+
 const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_MESSAGES = 100;
 
 export function attachAuctionWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({ server, path: '/ws/auction' });
   console.log('[Auction-WS] WebSocket server attached at /ws/auction');
+
+  // Track which clients are subscribed to which auction channels
+  const auctionSubscriptions = new Map<string, Set<WebSocket>>();
 
   wss.on('connection', (ws, req) => {
     const ip =
@@ -98,19 +172,24 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
 
       // Handle Auction client messages
       if (isClientMessage(msg)) {
-        if (msg.type === 'auction.request') {
+        if (msg.type === 'auction.start') {
           const payload = msg.payload as AuctionRequestPayload;
           upsertAuction(payload);
           console.log(
-            `[Auction-WS] auction.request received auctionId=${payload.auctionId}`
+            `[Auction-WS] auction.start received auctionId=${payload.auctionId}`
           );
+
+          // Subscribe this client to the auction channel
+          subscribeToAuction(payload.auctionId, ws, auctionSubscriptions);
+
           send(ws, {
             type: 'auction.ack',
             payload: { auctionId: payload.auctionId },
           });
-          // Broadcast the auction.requested to bots/listeners
+
+          // Broadcast the auction.started to bots/listeners (all clients for now)
           const requested = JSON.stringify({
-            type: 'auction.requested',
+            type: 'auction.started',
             payload,
           });
           let broadcastCount = 0;
@@ -119,14 +198,15 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
             broadcastCount += client.readyState === WebSocket.OPEN ? 1 : 0;
           });
           console.log(
-            `[Auction-WS] auction.requested broadcast auctionId=${payload.auctionId} recipients=${broadcastCount}/${wss.clients.size}`
+            `[Auction-WS] auction.started broadcast auctionId=${payload.auctionId} recipients=${broadcastCount}/${wss.clients.size}`
           );
+
           // Immediately stream current bids for this auction if any
           const bids = getBids(payload.auctionId);
           if (bids.length > 0) {
             send(ws, {
               type: 'auction.bids',
-              payload: { auctionId: payload.auctionId, bids },
+              payload: { bids },
             });
             console.log(
               `[Auction-WS] Sent existing bids auctionId=${payload.auctionId} count=${bids.length}`
@@ -172,24 +252,23 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
           );
           return;
         }
-        send(ws, { type: 'bid.ack', payload: { bidId: validated.bidId } });
+        send(ws, { type: 'bid.ack', payload: {} });
         console.log(
-          `[Auction-WS] bid.submit accepted auctionId=${bid.auctionId} bidId=${validated.bidId}`
+          `[Auction-WS] bid.submit accepted auctionId=${bid.auctionId}`
         );
 
-        // Broadcast updated top bids to all clients
+        // Broadcast updated top bids only to auction subscribers
         const payload: ServerToClientMessage = {
           type: 'auction.bids',
-          payload: { auctionId: bid.auctionId, bids: getBids(bid.auctionId) },
+          payload: { bids: getBids(bid.auctionId) },
         };
-        const dataStr = JSON.stringify(payload);
-        let recipients = 0;
-        wss.clients.forEach((client) => {
-          if (client.readyState === WebSocket.OPEN) client.send(dataStr);
-          recipients += client.readyState === WebSocket.OPEN ? 1 : 0;
-        });
+        const recipients = broadcastToAuctionSubscribers(
+          bid.auctionId,
+          payload,
+          auctionSubscriptions
+        );
         console.log(
-          `[Auction-WS] auction.bids broadcast auctionId=${bid.auctionId} recipients=${recipients}/${wss.clients.size}`
+          `[Auction-WS] auction.bids broadcast auctionId=${bid.auctionId} recipients=${recipients}`
         );
         return;
       }
@@ -218,6 +297,10 @@ export function attachAuctionWebSocketServer(server: HttpServer) {
           return '';
         }
       })();
+
+      // Clean up auction subscriptions for this client
+      unsubscribeFromAllAuctions(ws, auctionSubscriptions);
+
       console.log(
         `[Auction-WS] Connection closed from ${ip} code=${code} reason="${reasonStr}"`
       );

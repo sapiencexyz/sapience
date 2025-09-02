@@ -19,10 +19,10 @@ ws.on('message', (data: RawData) => {
     const msg = JSON.parse(String(data));
     const type = msg?.type as string | undefined;
     switch (type) {
-      case 'auction.requested': {
+      case 'auction.started': {
         const auction = msg.payload || {};
         console.log(
-          `[BOT] auction.requested auctionId=${auction.auctionId} wager=${auction.wager} outcomes=${auction.predictedOutcomes?.length ?? 0}`
+          `[BOT] auction.started auctionId=${auction.auctionId} wager=${auction.wager} outcomes=${auction.predictedOutcomes?.length ?? 0}`
         );
 
         // For the new mint flow, we need to provide taker collateral and signature
