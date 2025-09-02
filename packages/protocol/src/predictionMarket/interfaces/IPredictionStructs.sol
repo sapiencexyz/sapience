@@ -40,6 +40,7 @@ interface IPredictionStructs {
         address maker;
         address taker;
         bytes takerPredictionSignature; // Taker is allowing just this prediction 
+        uint256 takerSignatureDeadline; // deadline for the taker signature
         bytes32 refCode;
     }
 }
