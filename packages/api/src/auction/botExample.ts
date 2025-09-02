@@ -33,12 +33,16 @@ ws.on('message', (data: RawData) => {
         const takerWager = wager / 2n; // 50% of wager
         const totalPayout = wager + takerWager;
 
+        // NOTE: For the on-chain contract, the taker must provide two signatures:
+        // 1) ERC-20 permit that allows the contract to transfer takerCollateral
+        // 2) Off-chain approval signature authorizing this specific prediction (encoded outcomes + maker/taker collateral + resolver + maker)
+        // This example uses placeholder hex strings; a real bot would compute EIP-2612 permit and EIP-712 approval.
         const bid = {
           type: 'bid.submit',
           payload: {
             auctionId: auction.auctionId,
-            takerPermitSignature: '0x', // TODO: Generate actual ERC20 permit signature
-            takerBidSignature: '0x', // TODO: Generate signature allowing this specific bid (encodes taker + takerWager + expiry)
+            takerPermitSignature: '0xdeadbeef',
+            takerBidSignature: '0x' + '11'.repeat(32) + '22'.repeat(32),
           },
         };
         console.log(

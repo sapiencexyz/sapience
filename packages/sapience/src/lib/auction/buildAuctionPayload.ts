@@ -1,33 +1,47 @@
+import { encodeAbiParameters } from 'viem';
+
 export interface PredictedOutcomeInputStub {
   marketGroup: string; // address
   marketId: number;
   prediction: boolean;
 }
 
-function toHexAscii(input: string): string {
-  let hex = '';
-  for (let i = 0; i < input.length; i++) {
-    const h = input.charCodeAt(i).toString(16).padStart(2, '0');
-    hex += h;
-  }
-  return hex.length % 2 === 0 ? hex : hex + '0';
-}
-
 function isHexAddress(value: string | undefined): value is `0x${string}` {
   return !!value && /^0x[a-fA-F0-9]{40}$/.test(value);
 }
 
-export function encodeOutcomeBytesStub(
-  outcome: PredictedOutcomeInputStub
+function encodePredictedOutcomes(
+  outcomes: PredictedOutcomeInputStub[]
 ): `0x${string}` {
-  // Stub encoding: JSON-serialize the outcome and encode as ASCII-hex bytes
-  const json = JSON.stringify({
-    m: outcome.marketGroup,
-    i: outcome.marketId,
-    p: outcome.prediction ? 1 : 0,
-  });
-  const hex = toHexAscii(json);
-  return `0x${hex}`;
+  const normalized = outcomes.map((o) => ({
+    market: {
+      marketGroup: isHexAddress(o.marketGroup)
+        ? o.marketGroup
+        : ('0x0000000000000000000000000000000000000000' as `0x${string}`),
+      marketId: BigInt(o.marketId),
+    },
+    prediction: !!o.prediction,
+  }));
+
+  return encodeAbiParameters(
+    [
+      {
+        type: 'tuple[]',
+        components: [
+          {
+            name: 'market',
+            type: 'tuple',
+            components: [
+              { name: 'marketGroup', type: 'address' },
+              { name: 'marketId', type: 'uint256' },
+            ],
+          },
+          { name: 'prediction', type: 'bool' },
+        ],
+      },
+    ],
+    [normalized]
+  );
 }
 
 export function buildAuctionStartPayload(
@@ -38,6 +52,8 @@ export function buildAuctionStartPayload(
     ? resolverOverride
     : ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
-  const predictedOutcomes = outcomes.map((o) => encodeOutcomeBytesStub(o));
+  // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
+  const encoded = encodePredictedOutcomes(outcomes);
+  const predictedOutcomes = [encoded];
   return { resolver, predictedOutcomes };
 }
