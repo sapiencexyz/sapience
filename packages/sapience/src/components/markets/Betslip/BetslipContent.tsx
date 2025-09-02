@@ -131,22 +131,20 @@ export const BetslipContent = ({
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
-  // Bid sorting
-  const sortedBids = useMemo(() => {
-    const toBig = (v: string) => {
-      try {
-        return BigInt(v);
-      } catch {
-        const n = Number(v);
-        return BigInt(Number.isFinite(n) ? Math.floor(n) : 0);
-      }
-    };
-    return [...(bids || [])].sort((a, b) => {
-      const aP = toBig(a.quote.payout);
-      const bP = toBig(b.quote.payout);
-      if (bP > aP) return 1;
-      if (bP < aP) return -1;
-      return 0;
+  // Get the best non-expired bid
+  const bestBid = useMemo(() => {
+    if (!bids || bids.length === 0) return null;
+
+    const now = Math.floor(Date.now() / 1000);
+    const validBids = bids.filter((bid) => bid.quote.validUntil > now);
+
+    if (validBids.length === 0) return null;
+
+    // Find the bid with the highest payout
+    return validBids.reduce((best, current) => {
+      const bestPayout = BigInt(best.quote.payout);
+      const currentPayout = BigInt(current.quote.payout);
+      return currentPayout > bestPayout ? current : best;
     });
   }, [bids]);
 
@@ -449,7 +447,7 @@ export const BetslipContent = ({
                       </TooltipProvider>
                     </div>
 
-                    {effectiveParlayMode && sortedBids.length > 0 && (
+                    {effectiveParlayMode && bestBid && (
                       <div className="text-center">
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
@@ -463,11 +461,10 @@ export const BetslipContent = ({
                         >
                           {isParlaySubmitting
                             ? 'Submitting Wager...'
-                            : `Place Wager to Win ${sortedBids[0].quote.payout} ${parlayCollateralSymbol || 'testUSDe'}`}
+                            : `Place Wager to Win ${bestBid.quote.payout} ${parlayCollateralSymbol || 'testUSDe'}`}
                         </Button>
                         <div className="text-xs text-muted-foreground mt-2 text-center">
                           {(() => {
-                            const bestBid = sortedBids[0];
                             const ms =
                               bestBid.quote.validUntil * 1000 - Date.now();
                             if (ms <= 0) return 'Expired';
@@ -478,7 +475,7 @@ export const BetslipContent = ({
                       </div>
                     )}
 
-                    {effectiveParlayMode && sortedBids.length === 0 && (
+                    {effectiveParlayMode && !bestBid && (
                       <Button
                         className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                         disabled={true}

@@ -11,7 +11,14 @@ router.post('/accept', async (req, res) => {
     return;
   }
   // TODO: simulate and relay raw signed tx matching the bid (Phase 2)
-  res.json({ status: 'accepted', relayTxHash: null, rfqId, bidId, requestId, txHashOfSubmit });
+  res.json({
+    status: 'accepted',
+    relayTxHash: null,
+    rfqId,
+    bidId,
+    requestId,
+    txHashOfSubmit,
+  });
 });
 
 // GET /rfq/:rfqId -> return top-of-book and bids
@@ -27,5 +34,3 @@ router.get('/:rfqId', (req, res) => {
 });
 
 export { router };
-
-

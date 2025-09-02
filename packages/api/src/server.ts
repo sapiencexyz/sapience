@@ -56,7 +56,7 @@ const startServer = async () => {
   handleMcpAppRequests(app, '/mcp');
 
   const httpServer = createServer(app);
-  
+
   // Initialize RFQ WebSocket server
   const rfqWsEnabled = process.env.ENABLE_RFQ_WS !== 'false';
   if (rfqWsEnabled) {

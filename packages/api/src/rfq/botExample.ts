@@ -1,9 +1,10 @@
 import WebSocket, { RawData } from 'ws';
 
 const API_BASE = process.env.FOIL_API_BASE || 'http://localhost:3001';
-const WS_URL = API_BASE.replace('https://', 'wss://')
-  .replace('http://', 'ws://')
-  .replace(/\/$/, '') + '/ws/rfq';
+const WS_URL =
+  API_BASE.replace('https://', 'wss://')
+    .replace('http://', 'ws://')
+    .replace(/\/$/, '') + '/ws/rfq';
 
 console.log('[BOT] Env FOIL_API_BASE =', process.env.FOIL_API_BASE);
 console.log('[BOT] Connecting to', WS_URL);
@@ -21,12 +22,21 @@ ws.on('message', (data: RawData) => {
       case 'rfq.requested': {
         const rfq = msg.payload || {};
         console.log(
-          `[BOT] rfq.requested rfqId=${rfq.rfqId} chainId=${rfq.chainId} minPayout=${rfq.minPayout} collateral=${rfq.collateral} outcomes=${rfq.predictedOutcomes?.length ?? 0}`
+          `[BOT] rfq.requested rfqId=${rfq.rfqId} wager=${rfq.wager} outcomes=${rfq.predictedOutcomes?.length ?? 0}`
         );
-        // Quote a simple payout: minPayout + 1% and expire in 60s
-        const minPayout = BigInt(rfq.minPayout || '0');
-        const payout = (minPayout * 101n) / 100n;
-        const delta = payout - BigInt(rfq.collateral || '0');
+
+        // For the new mint flow, we need to provide taker collateral and signature
+        const wager = BigInt(rfq.wager || '0');
+
+        // Taker offers 50% of what the maker is offering
+        // If maker offers 100, taker offers 50, total payout = 150
+        const takerCollateral = wager / 2n; // 50% of wager
+        const totalPayout = wager + takerCollateral;
+
+        // Quote a simple payout: total payout and expire in 60s
+        const payout = totalPayout;
+        const delta = takerCollateral; // The delta is the taker's collateral contribution
+
         const bid = {
           type: 'bid.submit',
           payload: {
@@ -39,19 +49,24 @@ ws.on('message', (data: RawData) => {
               delta: delta.toString(),
               validUntil: Math.floor(Date.now() / 1000) + 60,
             },
-            chainId: rfq.chainId,
             fill: {
-              // Raw signed tx omitted in example; server will reject as non-firm later
+              taker:
+                process.env.BOT_ADDRESS ||
+                '0x0000000000000000000000000000000000000000',
+              takerCollateral: takerCollateral.toString(),
+              takerSignature: '0x', // TODO: Generate actual ERC20 permit signature
               callData: {
-                to: '0x0000000000000000000000000000000000000000',
-                data: '0x',
+                to:
+                  rfq.parlayPoolAddress ||
+                  '0x0000000000000000000000000000000000000000',
+                data: '0x', // TODO: Encode mint() function call with MintParlayRequestData
               },
             },
             meta: { version: '0.0.1' },
           },
         };
         console.log(
-          `[BOT] Sending bid rfqId=${rfq.rfqId} payout=${bid.payload.quote.payout} delta=${bid.payload.quote.delta} validUntil=${bid.payload.quote.validUntil}`
+          `[BOT] Sending bid rfqId=${rfq.rfqId} wager=${wager.toString()} takerCollateral=${takerCollateral.toString()} totalPayout=${payout.toString()} validUntil=${bid.payload.quote.validUntil}`
         );
         ws.send(JSON.stringify(bid));
         break;
@@ -79,6 +94,7 @@ ws.on('message', (data: RawData) => {
         }
         break;
       }
+
       default: {
         console.log('[BOT] unhandled message type:', type);
         break;
@@ -101,4 +117,3 @@ ws.on('close', (code, reason) => {
     console.log(`[BOT] ws closed code=${code}`);
   }
 });
-

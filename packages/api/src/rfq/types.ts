@@ -1,23 +1,10 @@
 export type HexString = `0x${string}`;
 
-export interface PredictedOutcome {
-  marketGroup: string;
-  marketId: number;
-  prediction: boolean;
-}
-
 export interface RfqRequestPayload {
   rfqId: string;
-  chainId: number;
-  collateral: string; // wei string
-  minPayout: string; // wei string
-  orderExpirationTime: number; // unix seconds
-  predictedOutcomes: PredictedOutcome[];
-  maker?: string; // EOA
-  constraints?: {
-    ttlMs?: number;
-    maxQuotes?: number;
-  };
+  wager: string; // wei string
+  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
+  resolver: string; // contract address for market validation
 }
 
 export interface BidQuote {
@@ -47,27 +34,39 @@ export interface BidFillCallData {
   };
 }
 
-export type BidFill = BidFillRawTx | BidFillCallData;
+export interface MintParlayData {
+  taker: string; // EOA
+  takerCollateral: string; // wei string
+  takerSignature: string; // ERC20 permit signature
+  makerSignature: string; // ERC20 permit signature for maker
+  callData: {
+    to: string; // ParlayPool contract address
+    data: HexString; // mint() function call data
+    gas?: string;
+    maxFeePerGas?: string;
+    maxPriorityFeePerGas?: string;
+    nonce?: string;
+  };
+}
+
+export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 
 export interface BidPayload {
   rfqId: string;
   taker: string; // EOA
   quote: BidQuote;
-  chainId: number;
   fill: BidFill;
   meta?: { version: string; refCode?: string };
 }
 
 export interface ValidatedBid extends BidPayload {
   bidId: string;
-  rankingScore: number;
-  simResult?: { ok: boolean; reason?: string };
 }
 
-export type ClientToServerMessage =
-  | { type: 'rfq.request'; payload: RfqRequestPayload }
-  | { type: 'rfq.cancel'; payload: { rfqId: string } }
-  | { type: 'order.created'; payload: { rfqId: string; requestId: string; txHash?: HexString } };
+export type ClientToServerMessage = {
+  type: 'rfq.request';
+  payload: RfqRequestPayload;
+};
 
 export type BotToServerMessage = { type: 'bid.submit'; payload: BidPayload };
 
@@ -75,7 +74,4 @@ export type ServerToClientMessage =
   | { type: 'rfq.ack'; payload: { rfqId: string } }
   | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
   | { type: 'rfq.bids'; payload: { rfqId: string; bids: ValidatedBid[] } }
-  | { type: 'rfq.requested'; payload: RfqRequestPayload }
-  | { type: 'order.filled'; payload: { requestId: string; txHash: HexString; makerNftTokenId?: string; takerNftTokenId?: string } };
-
-
+  | { type: 'rfq.requested'; payload: RfqRequestPayload };

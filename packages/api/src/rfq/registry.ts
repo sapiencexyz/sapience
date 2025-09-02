@@ -8,26 +8,12 @@ interface RfqRecord {
 
 const rfqs = new Map<string, RfqRecord>();
 
-function computeRankingScore(bid: BidPayload): number {
-  // Lower score is better: prioritize higher payout (-payout), then earlier validUntil
-  const payout = BigInt(bid.quote.payout || '0');
-  const validUntil = BigInt(bid.quote.validUntil || 0);
-  // Combine into a single bigint-based score and cast to number where safe
-  // Use negative payout to ensure higher payout ranks first
-  const scoreBig = (-payout) * 1_000_000n + validUntil;
-  // Clamp to number for simplicity (MVP). If overflow, fallback to 0.
-  const score = Number(scoreBig);
-  return Number.isFinite(score) ? score : 0;
-}
+// Ranking algorithm removed - UI will select best bid based on highest payout
 
 export function upsertRfq(rfq: RfqRequestPayload) {
-  const ttl = rfq.constraints?.ttlMs ?? 60_000; // default 60s
+  const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
   rfqs.set(rfq.rfqId, { rfq, bids: [], deadlineMs });
-}
-
-export function cancelRfq(rfqId: string) {
-  rfqs.delete(rfqId);
 }
 
 export function getRfq(rfqId: string): RfqRecord | undefined {
@@ -40,19 +26,19 @@ export function getRfq(rfqId: string): RfqRecord | undefined {
   return rec;
 }
 
-export function addBid(rfqId: string, bid: BidPayload): ValidatedBid | undefined {
+export function addBid(
+  rfqId: string,
+  bid: BidPayload
+): ValidatedBid | undefined {
   const rec = getRfq(rfqId);
   if (!rec) return undefined;
   const bidId = `${rfqId}:${Date.now()}:${Math.floor(Math.random() * 1e6)}`;
   const validated: ValidatedBid = {
     ...bid,
     bidId,
-    rankingScore: computeRankingScore(bid),
   };
   rec.bids.push(validated);
-  // Keep only top 3 by rankingScore
-  rec.bids.sort((a, b) => a.rankingScore - b.rankingScore);
-  rec.bids = rec.bids.slice(0, 3);
+  // Keep all bids - UI will select the best one
   rfqs.set(rfqId, rec);
   return validated;
 }
@@ -71,5 +57,3 @@ setInterval(() => {
     }
   }
 }, 30_000).unref?.();
-
-
