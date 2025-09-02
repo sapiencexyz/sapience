@@ -39,8 +39,8 @@ interface IPredictionStructs {
         uint256 takerCollateral;
         address maker;
         address taker;
-        bytes takerPredictionSignature; // Taker is allowing just this prediction 
-        uint256 takerSignatureDeadline; // deadline for the taker signature
+        bytes takerSignature; // Taker is allowing just this prediction 
+        uint256 takerDeadline; // deadline for the taker signature
         bytes32 refCode;
     }
 }

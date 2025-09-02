@@ -41,7 +41,7 @@ contract PredictionMarket is
     error PredictionResolutionFailed();
     error MakerAndTakerAreDifferent();
     error PredictionDoesNotExist();
-    error TakerSignatureDeadlineHasPassed();
+    error TakerDeadlineExpired();
 
     // ============ State Variables ============
     IPredictionStructs.Settings public config;
@@ -89,7 +89,7 @@ contract PredictionMarket is
     {
         // 1- Initial checks
         if (mintPredictionRequestData.maker != msg.sender) revert MakerIsNotCaller();
-        if (mintPredictionRequestData.takerSignatureDeadline < block.timestamp) revert TakerSignatureDeadlineHasPassed();   
+        if (mintPredictionRequestData.takerDeadline < block.timestamp) revert TakerDeadlineExpired();   
 
         if (mintPredictionRequestData.makerCollateral < config.minCollateral) revert CollateralBelowMinimum();
         if (mintPredictionRequestData.makerCollateral == 0) revert MakerCollateralMustBeGreaterThanZero();
@@ -103,7 +103,7 @@ contract PredictionMarket is
                 mintPredictionRequestData.makerCollateral,
                 mintPredictionRequestData.resolver,
                 mintPredictionRequestData.maker,
-                mintPredictionRequestData.takerSignatureDeadline
+                mintPredictionRequestData.takerDeadline
             )
         );
 
@@ -111,7 +111,7 @@ contract PredictionMarket is
             !_isApprovalValid(
                 messageHash,
                 mintPredictionRequestData.taker,
-                mintPredictionRequestData.takerPredictionSignature
+                mintPredictionRequestData.takerSignature
             )
         ) {
             revert InvalidTakerSignature();
