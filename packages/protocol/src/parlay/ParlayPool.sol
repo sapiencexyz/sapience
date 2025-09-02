@@ -12,9 +12,9 @@ import "./interfaces/IParlayStructs.sol";
 import "./interfaces/IParlayPoolResolverCallback.sol";
 import "./interfaces/IParlayPoolResolver.sol";
 import "./interfaces/IParlayEvents.sol";
+import "./utils/ApproveWithSignature.sol";
 import "../market/interfaces/ISapience.sol";
 import "../market/interfaces/ISapienceStructs.sol";
-import "./ApproveWithSignature.sol";
 
 /**
  * @title ParlayPool
