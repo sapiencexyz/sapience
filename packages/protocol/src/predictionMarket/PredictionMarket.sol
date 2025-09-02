@@ -65,10 +65,18 @@ contract PredictionMarket is
     }
 
     function mint(
-        IPredictionStructs.MintPredictionRequestData calldata mintPredictionRequestData
-    ) external nonReentrant returns (uint256 makerNftTokenId, uint256 takerNftTokenId) {
+        IPredictionStructs.MintPredictionRequestData
+            calldata mintPredictionRequestData
+    )
+        external
+        nonReentrant
+        returns (uint256 makerNftTokenId, uint256 takerNftTokenId)
+    {
         // 1- Initial checks
-        require(mintPredictionRequestData.maker == msg.sender, "Maker is not the caller");
+        require(
+            mintPredictionRequestData.maker == msg.sender,
+            "Maker is not the caller"
+        );
 
         require(
             mintPredictionRequestData.makerCollateral >= config.minCollateral,
@@ -94,16 +102,18 @@ contract PredictionMarket is
             )
         );
 
-        if (!_isApprovalValid(
-            messageHash,
-            mintPredictionRequestData.taker,
-            mintPredictionRequestData.takerPredictionSignature
-        )) {
+        if (
+            !_isApprovalValid(
+                messageHash,
+                mintPredictionRequestData.taker,
+                mintPredictionRequestData.takerPredictionSignature
+            )
+        ) {
             revert("Invalid taker signature");
         }
 
         // 3- Ask resolver if markets are OK
-        (bool isValid,) = IPredictionMarketResolver(
+        (bool isValid, ) = IPredictionMarketResolver(
             mintPredictionRequestData.resolver
         ).validatePredictionMarkets(
                 mintPredictionRequestData.encodedPredictedOutcomes
@@ -117,7 +127,8 @@ contract PredictionMarket is
         makerNftTokenId = _nftTokenIdCounter++;
         takerNftTokenId = _nftTokenIdCounter++;
         predictions[predictionId] = IPredictionStructs.PredictionData({
-            encodedPredictedOutcomes: mintPredictionRequestData.encodedPredictedOutcomes,
+            encodedPredictedOutcomes: mintPredictionRequestData
+                .encodedPredictedOutcomes,
             predictionId: predictionId,
             resolver: mintPredictionRequestData.resolver,
             maker: mintPredictionRequestData.maker,
@@ -170,43 +181,60 @@ contract PredictionMarket is
         nftByTakerAddress[mintPredictionRequestData.taker].add(takerNftTokenId);
 
         // 9- Create and store prediction data
-        predictions[predictionId].encodedPredictedOutcomes = mintPredictionRequestData.encodedPredictedOutcomes;
+        predictions[predictionId]
+            .encodedPredictedOutcomes = mintPredictionRequestData
+            .encodedPredictedOutcomes;
         predictions[predictionId].resolver = mintPredictionRequestData.resolver;
         predictions[predictionId].maker = mintPredictionRequestData.maker;
         predictions[predictionId].taker = mintPredictionRequestData.taker;
         predictions[predictionId].makerNftTokenId = makerNftTokenId;
         predictions[predictionId].takerNftTokenId = takerNftTokenId;
-        predictions[predictionId].makerCollateral = mintPredictionRequestData.makerCollateral;
-        predictions[predictionId].takerCollateral = mintPredictionRequestData.takerCollateral;
+        predictions[predictionId].makerCollateral = mintPredictionRequestData
+            .makerCollateral;
+        predictions[predictionId].takerCollateral = mintPredictionRequestData
+            .takerCollateral;
         predictions[predictionId].settled = false;
         predictions[predictionId].makerWon = false;
+
+        emit PredictionMinted(
+            mintPredictionRequestData.maker,
+            mintPredictionRequestData.taker,
+            makerNftTokenId,
+            takerNftTokenId,
+            mintPredictionRequestData.makerCollateral,
+            mintPredictionRequestData.takerCollateral,
+            mintPredictionRequestData.makerCollateral +
+                mintPredictionRequestData.takerCollateral,
+            mintPredictionRequestData.refCode
+        );
 
         return (makerNftTokenId, takerNftTokenId);
     }
 
-    function burn(uint256 tokenId) external nonReentrant {
+    function burn(uint256 tokenId, bytes32 refCode) external nonReentrant {
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from Store
-        IPredictionStructs.PredictionData memory prediction = predictions[predictionId];
+        IPredictionStructs.PredictionData memory prediction = predictions[
+            predictionId
+        ];
 
         // 2- Initial checks
         require(prediction.maker != address(0), "Prediction not found");
         require(prediction.taker != address(0), "Prediction not found");
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isValid, , bool makerWon) = IPredictionMarketResolver(prediction.resolver)
-            .resolvePrediction(prediction.encodedPredictedOutcomes);
+        (bool isValid, , bool makerWon) = IPredictionMarketResolver(
+            prediction.resolver
+        ).resolvePrediction(prediction.encodedPredictedOutcomes);
 
         require(isValid, "Prediction resolution failed");
 
         // 4- Send collateral to winner
-        uint256 payout = prediction.makerCollateral + prediction.takerCollateral;
+        uint256 payout = prediction.makerCollateral +
+            prediction.takerCollateral;
         address winner = makerWon ? prediction.maker : prediction.taker;
-        IERC20(config.collateralToken).safeTransfer(
-            winner,
-            payout
-        );
+        IERC20(config.collateralToken).safeTransfer(winner, payout);
 
         // 5- Set the prediction state (identify who won and set as closed)
         prediction.settled = true;
@@ -215,14 +243,29 @@ contract PredictionMarket is
         // 6- Burn NFTs
         _burn(prediction.makerNftTokenId);
         _burn(prediction.takerNftTokenId);
+
+        emit PredictionBurned(
+            prediction.maker,
+            prediction.taker,
+            prediction.makerNftTokenId,
+            prediction.takerNftTokenId,
+            payout,
+            makerWon,
+            refCode
+        );
     }
 
     // ============ Prediction Consolidation (pre-close) ============
-    function consolidatePrediction(uint256 tokenId) external nonReentrant {
+    function consolidatePrediction(
+        uint256 tokenId,
+        bytes32 refCode
+    ) external nonReentrant {
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from store
-        IPredictionStructs.PredictionData memory prediction = predictions[predictionId];
+        IPredictionStructs.PredictionData memory prediction = predictions[
+            predictionId
+        ];
 
         // 2- Initial checks
         require(prediction.maker != address(0), "Prediction not found");
@@ -236,15 +279,20 @@ contract PredictionMarket is
         // 3- Set as settled and maker won and send the collateral to the maker
         prediction.settled = true;
         prediction.makerWon = true;
-        uint256 payout = prediction.makerCollateral + prediction.takerCollateral;
-        IERC20(config.collateralToken).safeTransfer(
-            prediction.maker,
-            payout
-        );
+        uint256 payout = prediction.makerCollateral +
+            prediction.takerCollateral;
+        IERC20(config.collateralToken).safeTransfer(prediction.maker, payout);
 
         // 4- Burn NFTs
         _burn(prediction.makerNftTokenId);
         _burn(prediction.takerNftTokenId);
+
+        emit PredictionConsolidated(
+            prediction.makerNftTokenId,
+            prediction.takerNftTokenId,
+            payout,
+            refCode
+        );
     }
 
     // ============ View Functions ============
@@ -262,12 +310,13 @@ contract PredictionMarket is
     )
         external
         view
-        returns (
-            IPredictionStructs.PredictionData memory predictionData
-        )
+        returns (IPredictionStructs.PredictionData memory predictionData)
     {
         uint256 predictionId = nftToPredictionId[tokenId];
-        require(predictionId != 0 && _isPrediction(predictionId), "Prediction does not exist");
+        require(
+            predictionId != 0 && _isPrediction(predictionId),
+            "Prediction does not exist"
+        );
 
         predictionData = predictions[predictionId];
     }
@@ -301,7 +350,9 @@ contract PredictionMarket is
     function getOwnedPredictionsCount(
         address account
     ) external view returns (uint256 count) {
-        return nftByMakerAddress[account].length() + nftByTakerAddress[account].length();
+        return
+            nftByMakerAddress[account].length() +
+            nftByTakerAddress[account].length();
     }
 
     // ============ Internal Functions ============
@@ -309,6 +360,6 @@ contract PredictionMarket is
     function _isPrediction(uint256 id) internal view returns (bool) {
         return
             predictions[id].maker != address(0) &&
-            predictions[id].taker != address(0) ;
+            predictions[id].taker != address(0);
     }
 }

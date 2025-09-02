@@ -38,8 +38,21 @@ interface IPredictionMarket is IERC721,  IPredictionStructs, IPredictionEvents {
      *   6- emit an event with the right information
      * @param tokenId The NFT token ID to burn
      */
-    function burn(uint256 tokenId) external;
+    function burn(uint256 tokenId, bytes32 refCode) external;
 
+    /**
+     * @notice Consolidate a prediction NFT and release any remaining collateral
+     * @dev it will: 
+     *   1- identify the prediction based on the token id (can be the maker or taker NFT id)
+     *   2- confirm the maker and taker are the same
+     *   3- set the prediction as settled
+     *   4- set the maker as the winner
+     *   5- transfer the collateral to the maker
+     *   6- burn the two NFTs
+     *   7- emit an event with the right information
+     * @param tokenId The NFT token ID to consolidate
+     */
+    function consolidatePrediction(uint256 tokenId, bytes32 refCode) external;
 
     // ============ View Functions ============
 

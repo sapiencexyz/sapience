@@ -22,9 +22,19 @@ interface IPredictionEvents {
     );
 
     event PredictionBurned(
+        address indexed maker,
+        address indexed taker,
+        uint256 makerNftTokenId,
+        uint256 takerNftTokenId,
+        uint256 totalCollateral,
+        bool makerWon,
+        bytes32 refCode
+    );
+
+    event PredictionConsolidated(
         uint256 indexed makerNftTokenId,
         uint256 indexed takerNftTokenId,
         uint256 totalCollateral,
-        bool makerWon
+        bytes32 refCode
     );
 }
