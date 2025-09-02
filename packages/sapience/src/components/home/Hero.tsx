@@ -83,9 +83,7 @@ export default function Hero() {
               <FeaturedMarketGroupSection />
               <div className="md:hidden w-full flex justify-center my-5 px-4">
                 <Link href="/markets" passHref>
-                  <Button size="sm" variant="default">
-                    Explore Prediction Markets
-                  </Button>
+                  <Button variant="default">Explore Prediction Markets</Button>
                 </Link>
               </div>
             </div>

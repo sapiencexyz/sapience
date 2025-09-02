@@ -618,7 +618,7 @@ input CategoryWhereUniqueInput {
 }
 
 type CollateralTransfer {
-  collateral: Decimal!
+  collateral: String!
   createdAt: DateTimeISO!
   id: Int!
   owner: String!
@@ -646,7 +646,7 @@ input CollateralTransferWhereInput {
   AND: [CollateralTransferWhereInput!]
   NOT: [CollateralTransferWhereInput!]
   OR: [CollateralTransferWhereInput!]
-  collateral: DecimalFilter
+  collateral: StringFilter
   createdAt: DateTimeFilter
   id: IntFilter
   owner: StringFilter
@@ -2658,6 +2658,9 @@ enum NullsOrder {
 }
 
 type PnLType {
+  collateralAddress: String
+  collateralDecimals: Int
+  collateralSymbol: String
   marketId: Int!
   openPositionsPnL: String!
   owner: String!

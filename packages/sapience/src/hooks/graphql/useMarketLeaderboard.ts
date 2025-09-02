@@ -6,6 +6,9 @@ import { foilApi } from '~/lib/utils/util';
 export interface MarketLeaderboardEntry {
   owner: string;
   totalPnL: number;
+  collateralAddress?: string;
+  collateralSymbol?: string;
+  collateralDecimals?: number;
 }
 
 interface RawMarketLeaderboardEntry {
@@ -16,6 +19,9 @@ interface RawMarketLeaderboardEntry {
   totalDeposits: string;
   totalWithdrawals: string;
   positionCount: number;
+  collateralAddress?: string;
+  collateralSymbol?: string;
+  collateralDecimals?: number;
 }
 
 const GET_MARKET_LEADERBOARD = /* GraphQL */ `
@@ -36,6 +42,9 @@ const GET_MARKET_LEADERBOARD = /* GraphQL */ `
       totalDeposits
       totalWithdrawals
       positionCount
+      collateralAddress
+      collateralSymbol
+      collateralDecimals
     }
   }
 `;
@@ -56,6 +65,7 @@ const useCryptoPrices = () => {
           ethereum: { usd: response?.eth ?? null },
           bitcoin: { usd: response?.btc ?? null },
           solana: { usd: response?.sol ?? null },
+          testusde: { usd: response?.testusde ?? null },
         };
 
         prices.ethereum.usd =
@@ -64,6 +74,8 @@ const useCryptoPrices = () => {
           prices.bitcoin.usd !== null ? Number(prices.bitcoin.usd) : null;
         prices.solana.usd =
           prices.solana.usd !== null ? Number(prices.solana.usd) : null;
+        prices.testusde.usd =
+          prices.testusde.usd !== null ? Number(prices.testusde.usd) : null;
 
         if (Number.isNaN(prices.ethereum.usd as number)) {
           prices.ethereum.usd = null;
@@ -74,6 +86,9 @@ const useCryptoPrices = () => {
         if (Number.isNaN(prices.solana.usd as number)) {
           prices.solana.usd = null;
         }
+        if (Number.isNaN(prices.testusde.usd as number)) {
+          prices.testusde.usd = null;
+        }
 
         return prices;
       } catch (error) {
@@ -82,6 +97,7 @@ const useCryptoPrices = () => {
           ethereum: { usd: null },
           bitcoin: { usd: null },
           solana: { usd: null },
+          testusde: { usd: null },
         };
       }
     },
@@ -141,12 +157,15 @@ export const useMarketLeaderboard = (
 
         const rawData = data?.getMarketLeaderboard || [];
 
+        console.log(`[useMarketLeaderboard DEBUG] Raw GraphQL data:`, rawData);
+
         const processedData: MarketLeaderboardEntry[] = rawData
           .map((entry) => {
             try {
               const pnlString = entry.totalPnL || '0';
-              const pnlValue = BigInt(pnlString);
-              const pnlNumber = Number(pnlValue);
+              const collateralDecimals = entry.collateralDecimals || 18; // Default to 18 if not specified
+              const divisor = Math.pow(10, collateralDecimals);
+              const pnlNumber = parseFloat(pnlString) / divisor;
 
               if (Number.isNaN(pnlNumber)) {
                 return null;
@@ -155,7 +174,10 @@ export const useMarketLeaderboard = (
               return {
                 owner: entry.owner,
                 totalPnL: pnlNumber,
-              };
+                collateralAddress: entry.collateralAddress,
+                collateralSymbol: entry.collateralSymbol,
+                collateralDecimals: entry.collateralDecimals,
+              } as MarketLeaderboardEntry;
             } catch (error) {
               console.error(
                 `Error processing entry for owner ${entry.owner}:`,
@@ -167,6 +189,10 @@ export const useMarketLeaderboard = (
           .filter((entry): entry is MarketLeaderboardEntry => entry !== null)
           .sort((a, b) => b.totalPnL - a.totalPnL);
 
+        console.log(
+          `[useMarketLeaderboard DEBUG] Processed data:`,
+          processedData
+        );
         return processedData.slice(0, 10);
       } catch (error) {
         console.error('Error in useMarketLeaderboard:', error);

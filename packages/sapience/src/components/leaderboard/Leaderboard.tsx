@@ -41,7 +41,7 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
-  const { leaderboardData, isLoading, wstEthPriceUsd } = useLeaderboard();
+  const { leaderboardData, isLoading } = useLeaderboard();
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
@@ -71,7 +71,8 @@ const Leaderboard = () => {
     columns,
     getCoreRowModel: getCoreRowModel(),
     meta: {
-      wstEthPriceUsd,
+      isAlreadyUsd: true, // Signal that values are already in USD
+      collateralAddress: undefined, // Not applicable for aggregated view
     },
   });
 

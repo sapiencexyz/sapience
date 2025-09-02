@@ -13,14 +13,12 @@ interface CollateralBalanceProps {
 }
 
 export default function CollateralBalance({
-  collateralSymbol,
   collateralAddress,
   onSetWagerAmount,
   chainId,
-  chainShortName,
 }: CollateralBalanceProps) {
   const { address: accountAddress, isConnected } = useAccount();
-  const { login, authenticated } = usePrivy();
+  const { authenticated } = usePrivy();
 
   const {
     data: balanceData,
@@ -74,6 +72,7 @@ export default function CollateralBalance({
   if (!authenticated || !isConnected || !accountAddress) {
     return (
       <div className="flex items-center space-x-2">
+        {/*
         <Button
           variant="default"
           size="xs"
@@ -83,6 +82,7 @@ export default function CollateralBalance({
         >
           Get {collateralSymbol}
         </Button>
+        */}
       </div>
     );
   }
@@ -96,6 +96,7 @@ export default function CollateralBalance({
   ) {
     return (
       <div className="flex items-center space-x-2">
+        {/*
         <a
           href={`https://swap.defillama.com/?chain=${chainShortName}&to=${collateralAddress}`}
           target="_blank"
@@ -105,6 +106,7 @@ export default function CollateralBalance({
             Get {collateralSymbol}
           </Button>
         </a>
+        */}
       </div>
     );
   }

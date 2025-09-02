@@ -6,19 +6,38 @@ import type React from 'react';
 // Helper component for displaying the formatted PnL value
 const PnLDisplay = ({
   value,
-  wstEthPriceUsd,
+  collateralAddress,
+  isAlreadyUsd = false,
 }: {
   value: number;
-  wstEthPriceUsd: number | null;
+  collateralAddress?: string;
+  isAlreadyUsd?: boolean;
 }) => {
-  const displayValue = value / 1e18;
-  // Use a fallback price if the price is unavailable, maybe log this occurrence
-  const effectivePrice = wstEthPriceUsd ?? 1800;
-  const usdValue = displayValue * effectivePrice;
+  let usdValue: number;
+
+  if (isAlreadyUsd) {
+    // Value is already in USD (from aggregated leaderboard)
+    usdValue = value;
+  } else {
+    // Value is already in token amounts, convert to USD for known tokens
+    if (
+      collateralAddress?.toLowerCase() ===
+      '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3'
+    ) {
+      // testUSDe is always $1
+      usdValue = value * 1.0;
+    } else {
+      // For other tokens, just show the token amount (no USD conversion)
+      usdValue = value;
+    }
+  }
 
   // Handle potential NaN values gracefully
   if (Number.isNaN(usdValue)) {
-    console.error('Calculated PnL resulted in NaN', { value, wstEthPriceUsd });
+    console.error('Calculated PnL resulted in NaN', {
+      value,
+      collateralAddress,
+    });
     return <span>-</span>; // Display a dash or placeholder for NaN
   }
 
@@ -38,7 +57,8 @@ interface ProfitCellProps<TData> {
   table: Table<TData> & {
     options: {
       meta?: {
-        wstEthPriceUsd?: number | null;
+        collateralAddress?: string;
+        isAlreadyUsd?: boolean;
       };
     };
   };
@@ -50,11 +70,9 @@ const ProfitCell = <TData,>({
 }: ProfitCellProps<TData>): React.ReactElement => {
   // Ensure the correct column ID is used, assumed to be 'totalPnL' based on previous context
   const rawValue = row.getValue('totalPnL');
-  // Convert bigint to number if needed, with additional safety checks
+  // Convert to number (values should already be in correct format after DB change)
   let value: number;
-  if (typeof rawValue === 'bigint') {
-    value = Number(rawValue);
-  } else if (typeof rawValue === 'string') {
+  if (typeof rawValue === 'string') {
     value = parseFloat(rawValue);
   } else if (typeof rawValue === 'number') {
     value = rawValue;
@@ -62,10 +80,17 @@ const ProfitCell = <TData,>({
     value = 0; // fallback for any other type
   }
 
-  const wstEthPriceUsd = table.options.meta?.wstEthPriceUsd ?? null; // Provide null as default
+  const collateralAddress = table.options.meta?.collateralAddress;
+  const isAlreadyUsd = table.options.meta?.isAlreadyUsd ?? false;
 
-  // Render the display component with the extracted value and price
-  return <PnLDisplay value={value} wstEthPriceUsd={wstEthPriceUsd} />;
+  // Render the display component with the extracted value
+  return (
+    <PnLDisplay
+      value={value}
+      collateralAddress={collateralAddress}
+      isAlreadyUsd={isAlreadyUsd}
+    />
+  );
 };
 
 export default ProfitCell;

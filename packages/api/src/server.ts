@@ -5,6 +5,7 @@ import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
 import { attachRfqWebSocketServer } from './rfq/ws';
+import { createChatWebSocketServer } from './websocket/chat';
 import dotenv from 'dotenv';
 import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -55,18 +56,25 @@ const startServer = async () => {
   handleMcpAppRequests(app, '/mcp');
 
   const httpServer = createServer(app);
+  
+  // Initialize RFQ WebSocket server
   const rfqWsEnabled = process.env.ENABLE_RFQ_WS !== 'false';
   if (rfqWsEnabled) {
     attachRfqWebSocketServer(httpServer);
   } else {
     console.log('RFQ WebSocket server disabled via ENABLE_RFQ_WS=false');
   }
+
+  // Initialize WebSocket chat at /chat
+  createChatWebSocketServer(httpServer);
+
   httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
     if (rfqWsEnabled) {
-      console.log(`WS endpoint available at /ws/rfq`);
+      console.log(`RFQ WebSocket endpoint available at /ws/rfq`);
     }
+    console.log(`Chat WebSocket endpoint available at /chat`);
   });
 
   // Only set up Sentry error handling in production

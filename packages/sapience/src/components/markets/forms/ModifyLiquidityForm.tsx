@@ -49,7 +49,7 @@ export interface WalletData {
 type ModifyLiquidityFormProps = {
   marketDetails: LiquidityFormMarketDetails;
   walletData: WalletData;
-  onSuccess: (txHash: `0x${string}`) => void;
+  onSuccess: () => void;
   positionId: string;
   mode: 'add' | 'remove';
   permitData?: { permitted?: boolean } | null | undefined;
@@ -150,7 +150,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     isLoading: isModifying,
     isSuccess: isModified,
     error: modifyError,
-    txHash,
     isApproving,
     needsApproval,
   } = useModifyLP({
@@ -183,28 +182,17 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
   // Refetch position data when transaction is successful
   useEffect(() => {
-    if (isModified && txHash && onSuccess && !successHandled.current) {
+    if (isModified && onSuccess && !successHandled.current) {
       successHandled.current = true;
 
       // Refetch position data to update UI
       refetchPositionData();
 
-      // Display success toast
-      toast({
-        title: isClosePosition
-          ? 'Position Closed'
-          : `Liquidity ${mode === 'add' ? 'Added' : 'Removed'}`,
-        description: isClosePosition
-          ? 'Your position has been successfully closed!'
-          : `Your liquidity has been successfully ${mode === 'add' ? 'added' : 'removed'}.`,
-      });
-
-      // Call the onSuccess callback
-      onSuccess(txHash);
+      // Call the onSuccess callback with a placeholder hash since useSapienceWriteContract handles txHash internally
+      onSuccess();
     }
   }, [
     isModified,
-    txHash,
     refetchPositionData,
     onSuccess,
     isClosePosition,

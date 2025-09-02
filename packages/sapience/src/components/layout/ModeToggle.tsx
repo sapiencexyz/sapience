@@ -16,7 +16,7 @@ export default function ModeToggle() {
       variant="outline"
       size="icon"
       onClick={toggleTheme}
-      className="rounded-full"
+      className="rounded-full md:h-9 md:w-9"
     >
       <Sun className="dark:hidden" />
       <Moon className="hidden dark:block" />

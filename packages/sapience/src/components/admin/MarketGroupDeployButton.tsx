@@ -17,15 +17,10 @@ import {
 import { sapienceFactoryAbi } from '@sapience/ui/lib/abi';
 import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import type { AbiEvent, Address } from 'viem';
+import type { AbiEvent, Address, TransactionReceipt } from 'viem';
 import { decodeEventLog, parseAbiItem } from 'viem';
-import {
-  useWaitForTransactionReceipt,
-  useWriteContract,
-  useSwitchChain,
-  useChainId,
-} from 'wagmi';
 
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 
 // Event ABI item for parsing logs (from MarketGroupFactory)
@@ -43,90 +38,92 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
   const [isOpen, setIsOpen] = useState(false); // Control dialog open state
   const [deployError, setDeployError] = useState<string | null>(null);
   const [deployedAddress, setDeployedAddress] = useState<Address | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
   const ICON_SIZE = 'h-4 w-4'; // Define constant for icon size classes
   const NOT_AVAILABLE = 'Not available'; // Constant for unavailable data
 
-  const {
-    data: hash,
-    error: writeError,
-    isPending: isWritePending,
-    writeContract,
-    reset: resetWriteContract, // Function to reset write state
-  } = useWriteContract();
-  const { switchChain } = useSwitchChain();
-  const currentChainId = useChainId();
+  const { writeContract, isPending, reset } = useSapienceWriteContract({
+    onSuccess: (receipt: unknown) => {
+      if (receipt && typeof receipt === 'object' && 'logs' in receipt) {
+        const txReceipt = receipt as TransactionReceipt;
+        try {
+          const logs = txReceipt.logs
+            .map((log) => {
+              try {
+                // Ensure topics is an array and create a mutable copy
+                const safeTopics = Array.isArray(log.topics)
+                  ? [...log.topics] // Create a mutable copy
+                  : [];
+                // Cast to the specific mutable tuple type expected by decodeEventLog
+                const typedTopics = safeTopics as
+                  | []
+                  | [`0x${string}`, ...`0x${string}`[]];
+                return decodeEventLog({
+                  abi: [marketGroupDeployedEvent],
+                  data: log.data,
+                  topics: typedTopics,
+                });
+              } catch {
+                return null;
+              }
+            })
+            .filter(
+              (decodedLog) =>
+                decodedLog !== null &&
+                decodedLog.eventName === 'MarketGroupDeployed'
+            );
 
-  const {
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({ hash });
+          if (
+            logs.length > 0 &&
+            logs[0]?.args &&
+            'marketGroup' in logs[0].args
+          ) {
+            console.log('HERE');
+            setDeployedAddress(logs[0].args.marketGroup as Address);
+            setDeployError(null);
+            // TODO: Optionally call PATCH endpoint here
+            // invalidate query cache
+          } else {
+            console.warn(
+              'MarketGroupDeployed event not found in transaction logs.',
+              txReceipt
+            );
+            setDeployError(
+              'Deployment transaction confirmed, but event emission was not detected.'
+            );
+          }
+        } catch (e) {
+          console.error('Error processing deployment logs:', e);
+          setDeployError('Error processing deployment transaction logs.');
+        }
+      }
+    },
+    onError: (error) => {
+      setDeployError(error.message);
+    },
+    onTxHash: (hash) => {
+      setTxHash(hash);
+    },
+    successMessage: 'Market group deployed successfully!',
+    fallbackErrorMessage: 'Failed to deploy market group',
+  });
 
   // Effect to reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      resetWriteContract();
+      reset();
       setDeployError(null);
       setDeployedAddress(null);
+      setTxHash(null);
     }
-  }, [isOpen, resetWriteContract]);
+  }, [isOpen, reset]);
 
-  // Effect to parse logs on confirmation
-  useEffect(() => {
-    if (isConfirmed && receipt) {
-      try {
-        const logs = receipt.logs
-          .map((log) => {
-            try {
-              // Ensure topics is an array and create a mutable copy
-              const safeTopics = Array.isArray(log.topics)
-                ? [...log.topics] // Create a mutable copy
-                : [];
-              // Cast to the specific mutable tuple type expected by decodeEventLog
-              const typedTopics = safeTopics as
-                | []
-                | [`0x${string}`, ...`0x${string}`[]];
-              return decodeEventLog({
-                abi: [marketGroupDeployedEvent],
-                data: log.data,
-                topics: typedTopics,
-              });
-            } catch {
-              return null;
-            }
-          })
-          .filter(
-            (decodedLog) =>
-              decodedLog !== null &&
-              decodedLog.eventName === 'MarketGroupDeployed'
-          );
-
-        if (logs.length > 0 && logs[0]?.args && 'marketGroup' in logs[0].args) {
-          setDeployedAddress(logs[0].args.marketGroup as Address);
-          setDeployError(null);
-          // TODO: Optionally call PATCH endpoint here
-          // invalidate query cache
-        } else {
-          console.warn(
-            'MarketGroupDeployed event not found in transaction logs.',
-            receipt
-          );
-          setDeployError(
-            'Deployment transaction confirmed, but event emission was not detected.'
-          );
-        }
-      } catch (e) {
-        console.error('Error processing deployment logs:', e);
-        setDeployError('Error processing deployment transaction logs.');
-      }
-    }
-  }, [isConfirmed, receipt]);
-
-  const handleDeployClick = () => {
+  const handleDeployClick = async () => {
     setDeployError(null);
     setDeployedAddress(null);
-    resetWriteContract(); // Reset previous states
+    setTxHash(null);
+    reset(); // Reset previous states
+
     // --- Validation ---
     if (
       !group.factoryAddress ||
@@ -192,12 +189,8 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
 
       console.log('Calling writeContract with args:', args);
 
-      if (currentChainId !== group.chainId && switchChain) {
-        switchChain({ chainId: group.chainId });
-        return;
-      }
-
-      writeContract({
+      await writeContract({
+        chainId: group.chainId,
         address: group.factoryAddress as Address,
         abi: sapienceFactoryAbi().abi,
         functionName: 'cloneAndInitializeMarketGroup',
@@ -216,15 +209,12 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
     !!group.address ||
     !group.initializationNonce ||
     !group.factoryAddress ||
-    isWritePending ||
-    isConfirming;
-  const effectiveError =
-    deployError || writeError?.message || receiptError?.message;
+    isPending;
+  const effectiveError = deployError;
 
   const getButtonState = () => {
-    if (isConfirming) return { text: 'Confirming...', loading: true };
-    if (isWritePending) return { text: 'Sending...', loading: true };
-    if (isConfirmed && deployedAddress)
+    if (isPending) return { text: 'Deploying...', loading: true };
+    if (deployedAddress)
       return { text: 'Deployed', loading: false, success: true };
     return { text: 'Deploy', loading: false };
   };
@@ -289,41 +279,23 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
               <AlertDescription>{effectiveError}</AlertDescription>
             </Alert>
           )}
-          {hash && !isConfirmed && (
+          {txHash && !deployedAddress && (
             <Alert variant="default">
-              {isConfirming ? (
-                <Loader2 className={`${ICON_SIZE} animate-spin`} />
-              ) : (
-                <CheckCircle className={ICON_SIZE} />
-              )}
-              <AlertTitle>
-                {isConfirming ? 'Confirming Transaction' : 'Transaction Sent'}
-              </AlertTitle>
+              <Loader2 className={`${ICON_SIZE} animate-spin`} />
+              <AlertTitle>Transaction Sent</AlertTitle>
               <AlertDescription>
-                Hash: <code className="text-xs break-all">{hash}</code>
-                {isConfirming
-                  ? ' Waiting for blockchain confirmation...'
-                  : ' Sent to network.'}
+                Hash: <code className="text-xs break-all">{txHash}</code>
+                {' Waiting for blockchain confirmation...'}
               </AlertDescription>
             </Alert>
           )}
-          {isConfirmed && deployedAddress && (
+          {deployedAddress && (
             <Alert variant="default">
               <CheckCircle className={ICON_SIZE} />
               <AlertTitle>Deployment Successful!</AlertTitle>
               <AlertDescription>
                 Market Group Deployed at:{' '}
                 <code className="text-xs break-all">{deployedAddress}</code>
-              </AlertDescription>
-            </Alert>
-          )}
-          {isConfirmed && !deployedAddress && !receiptError && (
-            <Alert variant="destructive">
-              <AlertCircle className={ICON_SIZE} />
-              <AlertTitle>Deployment Issue</AlertTitle>
-              <AlertDescription>
-                {deployError ||
-                  'Transaction confirmed, but failed to find the deployment event.'}
               </AlertDescription>
             </Alert>
           )}

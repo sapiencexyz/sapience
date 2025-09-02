@@ -688,7 +688,7 @@ export type CategoryWhereUniqueInput = {
 
 export type CollateralTransfer = {
   __typename?: 'CollateralTransfer';
-  collateral: Scalars['Decimal']['output'];
+  collateral: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   owner: Scalars['String']['output'];
@@ -721,7 +721,7 @@ export type CollateralTransferWhereInput = {
   AND?: InputMaybe<Array<CollateralTransferWhereInput>>;
   NOT?: InputMaybe<Array<CollateralTransferWhereInput>>;
   OR?: InputMaybe<Array<CollateralTransferWhereInput>>;
-  collateral?: InputMaybe<DecimalFilter>;
+  collateral?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<IntFilter>;
   owner?: InputMaybe<StringFilter>;
@@ -2819,6 +2819,9 @@ export type NullsOrder =
 
 export type PnLType = {
   __typename?: 'PnLType';
+  collateralAddress?: Maybe<Scalars['String']['output']>;
+  collateralDecimals?: Maybe<Scalars['Int']['output']>;
+  collateralSymbol?: Maybe<Scalars['String']['output']>;
   marketId: Scalars['Int']['output'];
   openPositionsPnL: Scalars['String']['output'];
   owner: Scalars['String']['output'];

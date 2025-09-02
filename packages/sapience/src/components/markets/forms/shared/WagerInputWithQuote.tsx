@@ -1,6 +1,7 @@
 import { useFormContext } from 'react-hook-form';
 import type { MarketGroupType } from '@sapience/ui/types';
 import WagerInputFactory from '../inputs/WagerInputFactory';
+import BetslipYesNoWagerInput from '../inputs/BetslipYesNoWagerInput';
 import QuoteDisplay from './QuoteDisplay';
 import { MarketGroupClassification } from '~/lib/types';
 import { useQuoter } from '~/hooks/forms/useQuoter';
@@ -36,6 +37,7 @@ export default function WagerInputWithQuote({
     marketClassification,
     predictionValue,
     wagerAmount,
+    selectedMarketId,
   });
 
   // Use quoter hook for this position
@@ -61,10 +63,10 @@ export default function WagerInputWithQuote({
   return (
     <div className="border-b border-border last:border-b-0">
       <div className="mb-2 flex items-start justify-between gap-2">
-        <h3 className="font-medium text-foreground pr-2">{question}</h3>
+        <h3 className="font-medium text-foreground pr-2 text-sm">{question}</h3>
         <button
           onClick={onRemove}
-          className="text-[24px] leading-none text-muted-foreground hover:text-foreground"
+          className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
           type="button"
           aria-label="Remove"
         >
@@ -72,12 +74,19 @@ export default function WagerInputWithQuote({
         </button>
       </div>
 
-      <WagerInputFactory
-        marketClassification={marketClassification}
-        marketGroupData={marketGroupData}
-        positionId={positionId}
-        defaultSelectedMarketId={selectedMarketId}
-      />
+      {marketClassification === MarketGroupClassification.YES_NO ? (
+        <BetslipYesNoWagerInput
+          marketGroupData={marketGroupData}
+          positionId={positionId}
+        />
+      ) : (
+        <WagerInputFactory
+          marketClassification={marketClassification}
+          marketGroupData={marketGroupData}
+          positionId={positionId}
+          defaultSelectedMarketId={selectedMarketId}
+        />
+      )}
 
       {/* Quote Display */}
       {wagerAmount && Number(wagerAmount) > 0 && (

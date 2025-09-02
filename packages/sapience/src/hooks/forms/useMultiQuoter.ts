@@ -8,6 +8,7 @@ export interface PositionQuoteData {
   marketClassification: MarketGroupClassification;
   predictionValue: string;
   wagerAmount: string;
+  selectedMarketId?: number;
 }
 
 export interface QuoteParams {
@@ -35,7 +36,11 @@ export function getQuoteParamsFromPosition(
   switch (marketClassification) {
     case MarketGroupClassification.YES_NO:
       expectedPrice = predictionValue === YES_SQRT_PRICE_X96 ? 1 : 0.0000009;
-      marketId = marketGroupData.markets?.[0]?.marketId ?? 0;
+      // Prefer an explicitly selected market when provided (e.g., multi-choice treated as YES/NO)
+      marketId =
+        position.selectedMarketId ??
+        marketGroupData.markets?.[0]?.marketId ??
+        0;
       break;
     case MarketGroupClassification.MULTIPLE_CHOICE:
       expectedPrice = 1; // 1 for YES

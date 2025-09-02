@@ -19,13 +19,9 @@ import { AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { Address } from 'viem';
 import { bytesToHex, toBytes } from 'viem';
-import {
-  useWaitForTransactionReceipt,
-  useWriteContract,
-  useSwitchChain,
-  useChainId,
-} from 'wagmi';
+
 import type { MarketType } from '@sapience/ui/types';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface MarketDeployButtonProps {
   market: MarketType; // Use the adjusted market type
@@ -40,44 +36,38 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
-  const [deployedTxHash, setDeployedTxHash] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  const {
-    // Wagmi hooks for contract interaction
-    data: hash,
-    error: writeError,
-    isPending: isWritePending,
-    writeContract,
-    reset: resetWriteContract,
-  } = useWriteContract();
-  const { switchChain } = useSwitchChain();
-  const currentChainId = useChainId();
-
-  const {
-    // Wagmi hook for transaction receipt
-    data: receipt,
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    error: receiptError,
-  } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, isPending, reset } = useSapienceWriteContract({
+    onSuccess: (receipt: unknown) => {
+      if (
+        receipt &&
+        typeof receipt === 'object' &&
+        'transactionHash' in receipt
+      ) {
+        const txReceipt = receipt as { transactionHash: string };
+        setTxHash(txReceipt.transactionHash);
+        setDeployError(null);
+      }
+    },
+    onError: (error) => {
+      setDeployError(error.message);
+    },
+    onTxHash: (hash) => {
+      setTxHash(hash);
+    },
+    successMessage: 'Market deployed successfully!',
+    fallbackErrorMessage: 'Failed to deploy market',
+  });
 
   // Effect to reset state when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      resetWriteContract();
+      reset();
       setDeployError(null);
-      setDeployedTxHash(null);
+      setTxHash(null);
     }
-  }, [isOpen, resetWriteContract]);
-
-  // Simplified Effect for confirmation
-  useEffect(() => {
-    // Only run if confirmed and receipt exists
-    if (isConfirmed && receipt && receipt.transactionHash) {
-      setDeployedTxHash(receipt.transactionHash);
-      setDeployError(null);
-    }
-  }, [isConfirmed, receipt]);
+  }, [isOpen, reset]);
 
   // Validate market data and return error message if invalid
   const validateMarketData = () => {
@@ -112,10 +102,10 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     return null;
   };
 
-  const handleDeployClick = () => {
+  const handleDeployClick = async () => {
     setDeployError(null);
-    setDeployedTxHash(null);
-    resetWriteContract();
+    setTxHash(null);
+    reset();
 
     // Validate market data
     const validationError = validateMarketData();
@@ -171,12 +161,8 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
       console.log('Calling writeContract (createMarket) with args:', args);
       console.log('Target contract:', marketGroupAddress);
 
-      if (currentChainId !== chainId && switchChain) {
-        switchChain({ chainId });
-        return;
-      }
-
-      writeContract({
+      await writeContract({
+        chainId,
         address: marketGroupAddress as Address,
         abi: sapienceAbi().abi,
         functionName: 'createMarket',
@@ -192,15 +178,12 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
 
   // Determine button state and error display
   const isAlreadyDeployed = !!market.poolAddress;
-  const isDeployDisabled = isAlreadyDeployed || isWritePending || isConfirming;
-  const effectiveError =
-    deployError || writeError?.message || receiptError?.message;
+  const isDeployDisabled = isAlreadyDeployed || isPending;
+  const effectiveError = deployError;
 
   const getButtonState = () => {
-    if (isConfirming) return { text: 'Confirming...', loading: true };
-    if (isWritePending) return { text: 'Sending...', loading: true };
-    if (isConfirmed && deployedTxHash)
-      return { text: 'Deployed', loading: false, success: true };
+    if (isPending) return { text: 'Deploying...', loading: true };
+    if (txHash) return { text: 'Deployed', loading: false, success: true };
     if (isAlreadyDeployed)
       return { text: 'Already Deployed', loading: false, success: true }; // Handle already deployed case
     return { text: 'Deploy', loading: false };
@@ -293,37 +276,26 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
               <AlertDescription>{effectiveError}</AlertDescription>
             </Alert>
           )}
-          {hash &&
-            !isConfirmed &&
-            !receiptError && ( // Show pending state
-              <Alert variant="default">
-                {isConfirming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4" />
-                )}
-                <AlertTitle>
-                  {isConfirming ? 'Confirming Transaction' : 'Transaction Sent'}
-                </AlertTitle>
-                <AlertDescription>
-                  Hash: <code className="text-xs break-all">{hash}</code>
-                  {isConfirming
-                    ? ' Waiting for blockchain confirmation...'
-                    : ' Sent to network.'}
-                </AlertDescription>
-              </Alert>
-            )}
-          {isConfirmed &&
-            deployedTxHash && ( // Show success state
-              <Alert variant="default">
-                <CheckCircle className="h-4 w-4" />
-                <AlertTitle>Deployment Successful!</AlertTitle>
-                <AlertDescription>
-                  Market {market.marketId} deployed. Tx Hash:{' '}
-                  <code className="text-xs break-all">{deployedTxHash}</code>
-                </AlertDescription>
-              </Alert>
-            )}
+          {txHash && !buttonSuccess && (
+            <Alert variant="default">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertTitle>Transaction Sent</AlertTitle>
+              <AlertDescription>
+                Hash: <code className="text-xs break-all">{txHash}</code>
+                {' Waiting for blockchain confirmation...'}
+              </AlertDescription>
+            </Alert>
+          )}
+          {txHash && buttonSuccess && (
+            <Alert variant="default">
+              <CheckCircle className="h-4 w-4" />
+              <AlertTitle>Deployment Successful!</AlertTitle>
+              <AlertDescription>
+                Market {market.marketId} deployed. Tx Hash:{' '}
+                <code className="text-xs break-all">{txHash}</code>
+              </AlertDescription>
+            </Alert>
+          )}
         </div>
       </DialogContent>
     </Dialog>

@@ -26,4 +26,13 @@ export class PnLType {
 
   @Field(() => Int)
   positionCount: number;
+
+  @Field(() => String, { nullable: true })
+  collateralAddress?: string;
+
+  @Field(() => String, { nullable: true })
+  collateralSymbol?: string;
+
+  @Field(() => Int, { nullable: true })
+  collateralDecimals?: number;
 }

@@ -10,6 +10,8 @@ import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
 import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
+import { ChatProvider } from '~/lib/context/ChatContext';
+import ChatWidget from '~/components/shared/ChatWidget';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -109,10 +111,13 @@ const RootLayout = ({ children }: RootLayoutProps) => {
       <body>
         <Providers>
           <LoadingProvider>
-            <PasswordScrim />
-            <GlobalLoader />
-            <Layout>{children}</Layout>
-            <Toaster />
+            <ChatProvider>
+              <PasswordScrim />
+              <GlobalLoader />
+              <Layout>{children}</Layout>
+              <Toaster />
+              <ChatWidget />
+            </ChatProvider>
           </LoadingProvider>
         </Providers>
         <Analytics />

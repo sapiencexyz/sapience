@@ -55,7 +55,6 @@ export default function MultipleChoicePredict({
       <div>
         {options && options.length > 1 ? (
           <>
-            <Label>Your Prediction</Label>
             <div className="grid grid-cols-1 gap-2 mt-2 mb-4">
               {options
                 .slice()

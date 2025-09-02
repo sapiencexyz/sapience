@@ -188,9 +188,9 @@ const VaultsPage = () => {
               Pre-deposit Vault
             </h2>
             <p className="text-muted-foreground mb-6">
-              Earn points by providing sUSDe to this vault, signaling your
-              intent to roll this liquidity into other vaults upon launch.
-              Withdraw at any time. <LearnMoreLink />
+              Earn points by providing USDe to this vault, signaling your intent
+              to roll this liquidity into other vaults upon launch. Withdraw at
+              any time. <LearnMoreLink />
             </p>
 
             {/* Conversion UI */}
@@ -214,7 +214,7 @@ const VaultsPage = () => {
                             placeholder="0.0"
                             className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
                           />
-                          <Select defaultValue="sUSDe">
+                          <Select defaultValue="USDe">
                             <SelectTrigger className="w-auto bg-transparent border-none h-auto p-0 gap-2">
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
@@ -226,7 +226,7 @@ const VaultsPage = () => {
                               </div>
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="sUSDe">sUSDe</SelectItem>
+                              <SelectItem value="USDe">USDe</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -241,7 +241,7 @@ const VaultsPage = () => {
                               MAX
                             </Button>
                             <div className="flex items-center gap-1 text-muted-foreground">
-                              <span>0 sUSDe</span>
+                              <span>0 USDe</span>
                             </div>
                           </div>
                         </div>
@@ -342,9 +342,9 @@ const VaultsPage = () => {
                         </span>
                       </TableCell>
                       <TableCell>{formatAPR(vault.apr)}</TableCell>
-                      <TableCell>{formatCurrency(vault.tvl)} sUSDe</TableCell>
+                      <TableCell>{formatCurrency(vault.tvl)} USDe</TableCell>
                       <TableCell>
-                        {formatCurrency(vault.yourDeposit)} sUSDe
+                        {formatCurrency(vault.yourDeposit)} USDe
                       </TableCell>
                       <TableCell>{vault.age} days</TableCell>
                       <TableCell>
@@ -397,9 +397,9 @@ const VaultsPage = () => {
                         </span>
                       </TableCell>
                       <TableCell>{formatAPR(vault.apr)}</TableCell>
-                      <TableCell>{formatCurrency(vault.tvl)} sUSDe</TableCell>
+                      <TableCell>{formatCurrency(vault.tvl)} USDe</TableCell>
                       <TableCell>
-                        {formatCurrency(vault.yourDeposit)} sUSDe
+                        {formatCurrency(vault.yourDeposit)} USDe
                       </TableCell>
                       <TableCell>{vault.age} days</TableCell>
                       <TableCell>

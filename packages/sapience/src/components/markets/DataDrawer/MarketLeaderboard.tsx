@@ -51,8 +51,15 @@ const MarketLeaderboard = ({
   chainId,
   marketId,
 }: MarketLeaderboardProps) => {
+  console.log(
+    '[MARKET LEADERBOARD DEBUG] Component rendering (this is inside a specific market page)...'
+  );
   const { leaderboardData, isLoading, error, wstEthPriceUsd } =
     useMarketLeaderboard(marketAddress, chainId, marketId);
+  console.log('[MARKET LEADERBOARD DEBUG] Hook data:', {
+    leaderboardData,
+    isLoading,
+  });
 
   const columns = useMemo<ColumnDef<MarketLeaderboardEntry>[]>(
     () => [
@@ -77,12 +84,16 @@ const MarketLeaderboard = ({
     []
   );
 
+  // Get collateral info from first entry (all entries have same market/collateral)
+  const collateralAddress = (leaderboardData as any)?.[0]?.collateralAddress;
+
   const table = useReactTable<MarketLeaderboardEntry>({
     data: leaderboardData ?? [],
     columns,
     getCoreRowModel: getCoreRowModel(),
     meta: {
       wstEthPriceUsd,
+      collateralAddress,
     },
   });
 

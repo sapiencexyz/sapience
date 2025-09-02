@@ -2,9 +2,9 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useEffect, useState, useCallback } from 'react';
 import type { Abi } from 'viem';
 import { parseUnits } from 'viem';
-import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 
 import { useTokenApproval } from './useTokenApproval';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 /**
  * Parameters for modifying a liquidity position
@@ -33,8 +33,6 @@ export interface ModifyLPResult {
   isSuccess: boolean;
   isError: boolean;
   error: Error | null;
-  txHash: `0x${string}` | undefined;
-  data?: `0x${string}` | undefined;
   isApproving: boolean;
   hasAllowance: boolean;
   needsApproval: boolean;
@@ -58,9 +56,9 @@ export function useModifyLP({
   collateralTokenAddress,
 }: ModifyLPParams): ModifyLPResult {
   const { toast } = useToast();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [processingTx, setProcessingTx] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   // Only need approval when adding liquidity
   const isAddMode = mode === 'add';
@@ -101,15 +99,30 @@ export function useModifyLP({
   const minAmount0 = calculateMinAmount(amount0, slippagePercent);
   const minAmount1 = calculateMinAmount(amount1, slippagePercent);
 
-  // Write contract hook for modifying the liquidity position
-  const {
-    writeContractAsync,
-    isPending,
-    data,
-    error: writeError,
-  } = useWriteContract();
+  // Use Sapience write contract hook for modifying the liquidity position
+  const { writeContract: sapienceWriteContract, isPending } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        setIsSuccess(true);
+        setProcessingTx(false);
+        setError(null);
+      },
+      onError: (error: Error) => {
+        setError(error);
+        setProcessingTx(false);
+        setIsSuccess(false);
+      },
+      onTxHash: (_txHash: `0x${string}`) => {
+        toast({
+          title: 'Transaction Submitted',
+          description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submitted.`,
+        });
+      },
+      successMessage: `Your liquidity has been ${isAddMode ? 'increased' : 'decreased'} successfully`,
+      fallbackErrorMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} failed.`,
+    });
 
-  // Helper function to call increaseLiquidityPosition (defined *after* writeContractAsync)
+  // Helper function to call increaseLiquidityPosition
   const callIncreaseLiquidity = useCallback(
     async (deadline: bigint) => {
       const increaseParams = {
@@ -121,7 +134,7 @@ export function useModifyLP({
         minQuoteAmount: minAmount1,
         deadline,
       };
-      return writeContractAsync({
+      return sapienceWriteContract({
         address: marketAddress,
         abi: marketAbi,
         functionName: 'increaseLiquidityPosition',
@@ -136,14 +149,13 @@ export function useModifyLP({
       amount1,
       minAmount0,
       minAmount1,
-      writeContractAsync,
       marketAddress,
       marketAbi,
       chainId,
     ]
   );
 
-  // Helper function to call decreaseLiquidityPosition (defined *after* writeContractAsync)
+  // Helper function to call decreaseLiquidityPosition
   const callDecreaseLiquidity = useCallback(
     async (deadline: bigint) => {
       const decreaseParams = {
@@ -153,7 +165,7 @@ export function useModifyLP({
         minQuoteAmount: minAmount1,
         deadline,
       };
-      return writeContractAsync({
+      return sapienceWriteContract({
         address: marketAddress,
         abi: marketAbi,
         functionName: 'decreaseLiquidityPosition',
@@ -166,37 +178,19 @@ export function useModifyLP({
       liquidityDelta,
       minAmount0,
       minAmount1,
-      writeContractAsync,
       marketAddress,
       marketAbi,
       chainId,
     ]
   );
 
-  // Watch for transaction completion
-  const {
-    isLoading: isConfirming,
-    isSuccess,
-    error: txError,
-  } = useWaitForTransactionReceipt({
-    hash: txHash,
-  });
-
-  // Set error if any occur during the process
+  // Set error if approval error occurs
   useEffect(() => {
-    if (writeError) {
-      setError(writeError);
-      setProcessingTx(false); // Reset processing state on write error
-    }
-    if (txError) {
-      setError(txError);
-      setProcessingTx(false); // Reset processing state on transaction error
-    }
     if (approvalError) {
       setError(approvalError);
-      setProcessingTx(false); // Reset processing state on approval error
+      setProcessingTx(false);
     }
-  }, [writeError, txError, approvalError]);
+  }, [approvalError]);
 
   // Function to actually modify the liquidity position
   const performModifyLP = useCallback(async (): Promise<void> => {
@@ -206,29 +200,22 @@ export function useModifyLP({
         'Missing required parameters for modifying liquidity position';
       console.error('performModifyLP check failed:', errorMsg);
       setError(new Error(errorMsg));
-      setProcessingTx(false); // Ensure processing state is reset
+      setProcessingTx(false);
       return;
     }
 
     setError(null);
     setProcessingTx(true);
+    setIsSuccess(false);
 
     try {
-      // Inlined executeContractCall logic:
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60);
-      let hash: `0x${string}` | undefined;
 
       if (isAddMode) {
-        hash = await callIncreaseLiquidity(deadline);
+        await callIncreaseLiquidity(deadline);
       } else {
-        hash = await callDecreaseLiquidity(deadline);
+        await callDecreaseLiquidity(deadline);
       }
-
-      setTxHash(hash);
-      toast({
-        title: 'Transaction Submitted',
-        description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submitted.`,
-      });
     } catch (err) {
       console.error(
         `Error performing ${isAddMode ? 'increase' : 'decrease'} LP:`,
@@ -237,33 +224,26 @@ export function useModifyLP({
       setError(
         err instanceof Error ? err : new Error('Failed to send transaction')
       );
-      setProcessingTx(false); // Ensure processing state is reset on error
+      setProcessingTx(false);
     }
-    // Note: processingTx contributes to the overall isLoading state and is managed there.
-    // It is reset here only on early return or error.
   }, [
     enabled,
     marketAddress,
     positionId,
     isAddMode,
-    setTxHash,
     setError,
     setProcessingTx,
-    toast,
     callIncreaseLiquidity,
     callDecreaseLiquidity,
-    // Dependencies updated based on direct usage and helper callbacks
   ]);
 
   // When approval is successful, proceed with modifying the LP
   useEffect(() => {
     const handleApprovalSuccess = async () => {
-      // Return early if the conditions aren't met
       if (!isApproveSuccess || !processingTx) {
         return;
       }
 
-      // Conditions are met, proceed with the logic
       const actionDescription = isAddMode ? 'Adding to' : 'Removing from';
       toast({
         title: 'Token Approved',
@@ -273,7 +253,6 @@ export function useModifyLP({
       try {
         await performModifyLP();
       } catch (err) {
-        // Handle potential errors during the LP modification after approval
         setProcessingTx(false);
         console.error(`Error ${actionDescription} LP after approval:`, err);
         setError(
@@ -285,7 +264,6 @@ export function useModifyLP({
     };
 
     handleApprovalSuccess();
-    // Dependencies remain the same as the logic using them hasn't fundamentally changed paths
   }, [isApproveSuccess, processingTx, isAddMode, performModifyLP, toast]);
 
   // Main function exposed by the hook
@@ -297,6 +275,7 @@ export function useModifyLP({
 
     setProcessingTx(true);
     setError(null);
+    setIsSuccess(false);
 
     try {
       if (isAddMode && needsApproval) {
@@ -319,12 +298,10 @@ export function useModifyLP({
 
   return {
     modifyLP,
-    isLoading: isPending || isConfirming || processingTx,
+    isLoading: isPending || processingTx,
     isSuccess,
     isError: !!error,
     error,
-    txHash,
-    data,
     isApproving,
     hasAllowance,
     needsApproval,

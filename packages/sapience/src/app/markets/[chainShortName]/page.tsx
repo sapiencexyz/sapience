@@ -119,7 +119,7 @@ const WagerForm = ({
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   permitData: { permitted: boolean };
-  onWagerSuccess: (txnHash: string) => void;
+  onWagerSuccess: () => void;
   activeMarket?: MarketType;
 }) => {
   // Check if market is active (not expired or settled)

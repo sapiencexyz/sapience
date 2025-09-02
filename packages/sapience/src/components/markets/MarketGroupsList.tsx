@@ -656,10 +656,12 @@ const ForecastingTable = () => {
   // Render content once both are loaded
   return (
     <div className="relative flex flex-col md:flex-row items-start">
-      {/* Mobile-only betslip drawer trigger */}
-      <div className="block md:hidden">
-        <Betslip />
-      </div>
+      {/* Render only one betslip instance based on viewport */}
+      {isMobile ? (
+        <div className="block md:hidden">
+          <Betslip />
+        </div>
+      ) : null}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col gap-6 md:gap-10 pr-0 md:pr-12">
@@ -780,13 +782,15 @@ const ForecastingTable = () => {
       </div>
 
       {/* Desktop/Tablet sticky betslip sidebar */}
-      <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
-        <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
-          <div className="h-full overflow-y-auto">
-            <Betslip variant="panel" />
+      {!isMobile ? (
+        <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
+          <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
+            <div className="h-full overflow-y-auto">
+              <Betslip variant="panel" />
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 };

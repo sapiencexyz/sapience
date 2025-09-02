@@ -4,7 +4,7 @@ import prisma from '../db';
 export const router = Router();
 
 // Define all supported crypto tickers
-const TICKERS = ['btc', 'eth', 'sol', 'susds', 'wsteth'] as const;
+const TICKERS = ['btc', 'eth', 'sol', 'susds', 'wsteth', 'testusde'] as const;
 type Ticker = (typeof TICKERS)[number];
 
 // Map our tickers to CoinGecko IDs
@@ -14,6 +14,7 @@ const COINGECKO_ID_MAP: Record<Ticker, string> = {
   sol: 'solana',
   susds: 'susds',
   wsteth: 'wrapped-steth',
+  testusde: 'testusde',
 };
 
 const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
@@ -79,7 +80,10 @@ async function getCoinGeckoPrices(): Promise<Record<Ticker, number | null>> {
 
     // Fill in available prices
     for (const [ticker, coingeckoId] of Object.entries(COINGECKO_ID_MAP)) {
-      if (data[coingeckoId]?.usd) {
+      if (ticker === 'testusde') {
+        // testUSDe is always $1 USD
+        result[ticker] = 1.0;
+      } else if (data[coingeckoId]?.usd) {
         result[ticker] = data[coingeckoId].usd;
       }
     }
@@ -128,7 +132,12 @@ router.get('/', async (req, res) => {
     // 4. Combine fresh and cached prices, prioritizing fresh ones
     const finalPrices: Record<string, number | null> = {};
     TICKERS.forEach((ticker) => {
-      finalPrices[ticker] = freshPrices[ticker] ?? cachedPrices[ticker];
+      if (ticker === 'testusde') {
+        // testUSDe is always $1 USD, don't rely on cache/API
+        finalPrices[ticker] = 1.0;
+      } else {
+        finalPrices[ticker] = freshPrices[ticker] ?? cachedPrices[ticker];
+      }
     });
 
     // 5. Update DB with fresh prices (only those successfully fetched)
@@ -137,7 +146,14 @@ router.get('/', async (req, res) => {
     const currentTimestamp = new Date();
 
     TICKERS.forEach((ticker) => {
-      if (freshPrices[ticker] !== null) {
+      if (ticker === 'testusde') {
+        // Always save testUSDe as $1
+        pricesToSave.push({
+          ticker,
+          price: 1.0,
+          timestamp: currentTimestamp,
+        });
+      } else if (freshPrices[ticker] !== null) {
         pricesToSave.push({
           ticker,
           price: freshPrices[ticker]!,

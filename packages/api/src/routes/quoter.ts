@@ -132,7 +132,7 @@ async function getMaxSizeForCollateral(
     expectedPrice,
     collateralAvailable,
     isLong,
-    maxIterations = 10,
+    maxIterations = 15,
   } = params;
 
   console.log('Running binary search with maxIterations:', maxIterations);

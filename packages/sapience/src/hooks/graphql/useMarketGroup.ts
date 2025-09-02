@@ -35,6 +35,7 @@ const MARKET_GROUP_BY_ADDRESS_QUERY = /* GraphQL */ `
         endTimestamp
         settled
         settlementPriceD18
+        poolAddress
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
       }
@@ -64,6 +65,7 @@ const MARKET_GROUP_BY_ID_QUERY = /* GraphQL */ `
         endTimestamp
         settled
         settlementPriceD18
+        poolAddress
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
       }
@@ -98,6 +100,7 @@ const MARKET_GROUP_BY_NONCE_QUERY = /* GraphQL */ `
         endTimestamp
         settled
         settlementPriceD18
+        poolAddress
         baseAssetMinPriceTick
         baseAssetMaxPriceTick
       }

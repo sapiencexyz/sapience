@@ -17,7 +17,10 @@ import SharePositionDialog from '../markets/SharePositionDialog';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionBadge from '~/components/shared/PositionBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { calculateEffectiveEntryPrice } from '~/lib/utils/util';
+import {
+  calculateEffectiveEntryPrice,
+  getChainShortName,
+} from '~/lib/utils/util';
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
@@ -266,7 +269,30 @@ export default function TraderPositionsTable({
                     #{position.positionId}
                   </TableCell>
                   {displayQuestionColumn && (
-                    <TableCell>{position.market.question || 'N/A'}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const chainShortName = position.market?.marketGroup
+                          ?.chainId
+                          ? getChainShortName(
+                              position.market.marketGroup.chainId
+                            )
+                          : 'unknown';
+                        const marketAddress =
+                          position.market?.marketGroup?.address || '';
+                        const marketId = position.market?.marketId;
+                        const question = position.market?.question || 'N/A';
+                        if (!marketAddress || marketId === undefined)
+                          return question;
+                        return (
+                          <a
+                            href={`/markets/${chainShortName}:${marketAddress}/${marketId}`}
+                            className="hover:underline"
+                          >
+                            {question}
+                          </a>
+                        );
+                      })()}
+                    </TableCell>
                   )}
                   {isClosed ? (
                     <TableCell

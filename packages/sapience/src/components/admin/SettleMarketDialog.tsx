@@ -8,10 +8,11 @@ import { useSapienceAbi } from '@sapience/ui/hooks/useSapienceAbi'; // Import th
 import { Loader2 } from 'lucide-react'; // Import Loader2
 import { useState } from 'react'; // Import useState and useMemo
 import { erc20Abi, fromHex, zeroAddress } from 'viem'; // Import Abi type and fromHex
-import { useReadContract, useWriteContract } from 'wagmi'; // Import wagmi hooks
+import { useReadContract } from 'wagmi'; // Import wagmi hooks
 import type { MarketType as Market } from '@sapience/ui/types'; // Import types
 
 import { NO_SQRT_X96_PRICE, YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 // Define MarketParams interface (consider moving to a shared location if needed)
 interface MarketParams {
@@ -184,7 +185,6 @@ const SettleMarketDialog = ({
     | undefined; // Extract address
 
   const { toast } = useToast();
-  const [isApproving, setIsApproving] = useState(false);
 
   // 1. Get the ABI using the hook
   const { abi: sapienceAbi } = useSapienceAbi();
@@ -245,32 +245,25 @@ const SettleMarketDialog = ({
     },
   });
 
-  // 4. Prepare approve transaction
-  const { writeContract: approveWrite } = useWriteContract({
-    mutation: {
-      onMutate: () => setIsApproving(true),
-      onError: (error) => {
-        console.error('Failed to approve: ', error);
-        setIsApproving(false);
-        toast({
-          variant: 'destructive',
-          title: 'Failed to approve',
-          description: error.message,
-        });
+  // 4. Prepare approve transaction using useSapienceWriteContract
+  const { writeContract: approveWrite, isPending: isApproving } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        // Refetch allowance after successful approval
+        setTimeout(() => refetchAllowance(), 3000);
       },
-      onSuccess: (hash) => {
-        // Optional: Wait for transaction confirmation before showing success toast
-        // For now, we show it immediately after submission
+      onError: (error: Error) => {
+        console.error('Failed to approve: ', error);
+      },
+      onTxHash: (hash) => {
         toast({
           title: 'Approval submitted',
           description: `Transaction Hash: ${hash}`,
         });
-        setIsApproving(false);
-        // TODO: Ideally wait for tx confirmation then refetch
-        setTimeout(() => refetchAllowance(), 3000); // Simple refetch after 3s
       },
-    },
-  });
+      successMessage: 'Bond approval successful',
+      fallbackErrorMessage: 'Failed to approve bond',
+    });
 
   const handleApprove = () => {
     if (!bondAmount || !bondCurrency || !connectedAddress) return;
@@ -296,31 +289,25 @@ const SettleMarketDialog = ({
 
   // --- Settlement State ---
   const [settlementValue, setSettlementValue] = useState<string>(''); // Use string to handle number input and '0'/'1'
-  const [isSettling, setIsSettling] = useState(false);
 
-  // --- Prepare Settle Tx ---
-  const { writeContract: settleWrite } = useWriteContract({
-    mutation: {
-      onMutate: () => setIsSettling(true),
-      onError: (settleError) => {
-        console.error('Failed to settle market: ', settleError);
-        setIsSettling(false);
-        toast({
-          variant: 'destructive',
-          title: 'Failed to settle market',
-          description: settleError.message, // Assuming settleError has a message
-        });
+  // --- Prepare Settle Tx using useSapienceWriteContract ---
+  const { writeContract: settleWrite, isPending: isSettling } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        // Optionally: Refetch market data or trigger other updates after settlement
       },
-      onSuccess: (hash) => {
+      onError: (error: Error) => {
+        console.error('Failed to settle market: ', error);
+      },
+      onTxHash: (hash) => {
         toast({
           title: 'Settlement submitted',
           description: `Transaction Hash: ${hash}`,
         });
-        setIsSettling(false);
-        // Optionally: Refetch market data or trigger other updates after settlement
       },
-    },
-  });
+      successMessage: 'Market settlement successful',
+      fallbackErrorMessage: 'Failed to settle market',
+    });
 
   // Add this helper function to calculate settlement price
   const calculateSettlementPrice = (
@@ -366,51 +353,34 @@ const SettleMarketDialog = ({
       return;
     }
 
-    try {
-      const marketId = BigInt(market.marketId);
-      const { price, errorMessage } = calculateSettlementPrice(
-        settlementValue,
-        isYesNoMarket
-      );
+    const marketId = BigInt(market.marketId);
+    const { price, errorMessage } = calculateSettlementPrice(
+      settlementValue,
+      isYesNoMarket
+    );
 
-      if (errorMessage || price === null) {
-        toast({
-          variant: 'destructive',
-          title: 'Invalid Settlement',
-          description: errorMessage || 'Invalid price calculation',
-        });
-        return;
-      }
-
-      const args = {
-        marketId,
-        asserter: connectedAddress,
-        settlementSqrtPriceX96: price,
-      };
-
-      settleWrite({
-        address: marketGroup.address as `0x${string}`, // Settle is called on the market group address
-        abi: sapienceAbi, // Use the dynamically loaded ABI
-        functionName: 'submitSettlementPrice', // Corrected function name
-        args: [args],
-        chainId: marketGroup.chainId,
-      });
-    } catch (settlePrepareError: unknown) {
-      console.error(
-        'Error preparing settlement transaction:',
-        settlePrepareError
-      );
-      setIsSettling(false);
-      const message =
-        settlePrepareError instanceof Error
-          ? settlePrepareError.message
-          : 'An unexpected error occurred preparing the transaction.';
+    if (errorMessage || price === null) {
       toast({
         variant: 'destructive',
-        title: 'Settlement Error',
-        description: message,
+        title: 'Invalid Settlement',
+        description: errorMessage || 'Invalid price calculation',
       });
+      return;
     }
+
+    const args = {
+      marketId,
+      asserter: connectedAddress,
+      settlementSqrtPriceX96: price,
+    };
+
+    settleWrite({
+      address: marketGroup.address as `0x${string}`, // Settle is called on the market group address
+      abi: sapienceAbi, // Use the dynamically loaded ABI
+      functionName: 'submitSettlementPrice', // Corrected function name
+      args: [args],
+      chainId: marketGroup.chainId,
+    });
   };
 
   // Determine input type and unit display

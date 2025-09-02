@@ -108,10 +108,12 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
       !marketGroupData && queryState?.fetchStatus === 'fetching';
     const isError = !marketGroupData && !!queryState?.error;
 
-    // Get market classification from the data
-    const marketClassification = marketGroupData
+    // Determine market classification, preferring any explicit classification on the position
+    const computedClassification = marketGroupData
       ? getMarketGroupClassification(marketGroupData)
       : undefined;
+    const marketClassification =
+      position.marketClassification ?? computedClassification;
 
     return {
       position: {

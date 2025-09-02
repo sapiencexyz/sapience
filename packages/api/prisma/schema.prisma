@@ -79,7 +79,7 @@ model CollateralTransfer {
   transactionHash String       @unique(map: "UQ_1ebf6f07652ca11d9f4618b64a3") @db.VarChar
   timestamp       Int
   owner           String       @db.VarChar
-  collateral      Decimal      @db.Decimal(78, 0)
+  collateral      String       @db.VarChar
   transaction     Transaction?
 
   @@index([transactionHash], map: "IDX_1ebf6f07652ca11d9f4618b64a")
