@@ -1,5 +1,4 @@
-import type { Server as HttpServer, IncomingMessage } from 'http';
-import type { Socket } from 'net';
+import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
@@ -122,28 +121,6 @@ const RATE_LIMIT_MAX_MESSAGES = 100;
 export function attachAuctionWebSocketServer(server: HttpServer) {
   const wss = new WebSocketServer({ server, path: '/auction' });
   console.log('[Auction-WS] WebSocket server attached at /auction');
-
-  // Backwards-compatibility: also accept legacy path "/ws/auction"
-  // This ensures older clients/bots can still connect while we transition.
-  server.on(
-    'upgrade',
-    (request: IncomingMessage, socket: Socket, head: Buffer) => {
-      const url = request.url || '';
-      if (url.startsWith('/ws/auction')) {
-        try {
-          wss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-            wss.emit('connection', ws, request);
-          });
-        } catch {
-          try {
-            socket.destroy();
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-    }
-  );
 
   // Track which clients are subscribed to which auction channels
   const auctionSubscriptions = new Map<string, Set<WebSocket>>();
