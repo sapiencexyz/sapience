@@ -16,14 +16,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet, LogIn } from 'lucide-react';
+import { LogOut, Menu, User, BookOpen, Wallet, Settings } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
-import ModeToggle from './ModeToggle';
 import SusdeBalance from './SusdeBalance';
 import ChatButton from './ChatButton';
 import { shortenAddress } from '~/lib/utils/util';
@@ -120,6 +119,18 @@ const NavLinks = ({
           Build Bots
         </Button>
       </Link>
+      {/* Mobile settings button when logged out, placed under links */}
+      {ready && !authenticated && (
+        <Link href="/settings" passHref className="flex w-fit md:hidden">
+          <Button
+            variant="ghost"
+            className={`${linkClass}`}
+            onClick={handleLinkClick}
+          >
+            Settings
+          </Button>
+        </Link>
+      )}
       {ready && authenticated && connectedWallet && (
         <>
           <SusdeBalance className="md:hidden" onClick={handleLinkClick} />
@@ -192,7 +203,18 @@ const Header = () => {
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
-              <ModeToggle />
+              {ready && authenticated ? null : (
+                <Link href="/settings" className="hidden md:block">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-full md:h-9 md:w-9"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span className="sr-only">Settings</span>
+                  </Button>
+                </Link>
+              )}
             </div>
             <div className="block">
               <Suspense fallback={null}>
@@ -233,6 +255,12 @@ const Header = () => {
                       </Link>
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
                     onClick={handleLogout}
                     className="flex items-center cursor-pointer"
@@ -247,11 +275,9 @@ const Header = () => {
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
+                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 gap-2"
               >
-                <LogIn className="h-5 w-5 md:hidden" />
-                <span className="hidden md:inline">Log in</span>
-                <span className="sr-only">Log In</span>
+                <span>Log in</span>
               </Button>
             )}
           </div>
