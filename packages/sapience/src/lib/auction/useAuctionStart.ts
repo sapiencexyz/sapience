@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export interface PredictedOutcomeInput {
   marketGroup: string; // address
@@ -46,8 +47,8 @@ function toWsUrl(baseHttpUrl: string | undefined): string | null {
       return `${proto}//${loc.host}/auction`;
     }
     const u = new URL(baseHttpUrl);
+    // Preserve any existing path from settings (which should already include /auction)
     u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.pathname = '/auction';
     u.search = '';
     return u.toString();
   } catch {
@@ -76,25 +77,18 @@ export function useAuctionStart() {
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const inflightRef = useRef<string>('');
+  const { apiBaseUrl } = useSettings();
   const apiBase = useMemo(() => {
+    if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
+    const root = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
     try {
-      if (typeof window !== 'undefined') {
-        const v = window.localStorage.getItem('sapience.settings.apiBaseUrl');
-        if (v) {
-          try {
-            const u = new URL(v);
-            return u.origin;
-          } catch {
-            return v;
-          }
-        }
-      }
+      const u = new URL(root);
+      return `${u.origin}/auction`;
     } catch {
-      /* noop */
+      return `${root}/auction`;
     }
-    return process.env.NEXT_PUBLIC_FOIL_API_URL;
-  }, []);
-  const wsUrl = useMemo(() => toWsUrl(apiBase), [apiBase]);
+  }, [apiBaseUrl]);
+  const wsUrl = useMemo(() => toWsUrl(apiBase || undefined), [apiBase]);
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);
