@@ -1,10 +1,8 @@
 'use client';
 import { Switch } from '@sapience/ui/components/ui/switch';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
-import Link from 'next/link';
-import { FormProvider, type UseFormReturn } from 'react-hook-form';
-import { useRef, useState, useEffect } from 'react';
+
+import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 import {
@@ -13,12 +11,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
+
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { useAccount } from 'wagmi';
+import { Gavel } from 'lucide-react';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
@@ -26,6 +22,9 @@ import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWit
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
+import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -48,6 +47,10 @@ interface BetslipContentProps {
   parlayCollateralSymbol?: string;
   parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
+  // Auction integration (provided by parent to share a single WS connection)
+  auctionId?: string | null;
+  bids?: QuoteBid[];
+  requestQuotes?: (params: AuctionParams | null) => void;
 }
 
 export const BetslipContent = ({
@@ -64,6 +67,9 @@ export const BetslipContent = ({
   parlayCollateralSymbol,
   parlayCollateralAddress,
   parlayChainId,
+  auctionId: _auctionId,
+  bids = [],
+  requestQuotes,
 }: BetslipContentProps) => {
   // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
   const PARLAY_FEATURE_ENABLED = false;
@@ -130,29 +136,194 @@ export const BetslipContent = ({
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
+  // Watch parlay form values to react to changes
+  const parlayWagerAmount = useWatch({
+    control: parlayMethods.control,
+    name: 'wagerAmount',
+  });
+  const parlayPositionsForm = useWatch({
+    control: parlayMethods.control,
+    name: 'positions',
+  }) as Record<string, { predictionValue?: string }> | undefined;
+
+  // Ticking clock reference for expiry countdowns
+  const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
+    null
+  );
+
+  // Get the best non-expired bid (recomputed as time passes)
+  const bestBid = useMemo(() => {
+    if (!bids || bids.length === 0) return null;
+
+    const validBids = bids.filter((bid) => bid.takerDeadline * 1000 > nowMs);
+
+    if (validBids.length === 0) return null;
+
+    const makerWagerStr = parlayWagerAmount || '0';
+    let makerWager: bigint;
+    try {
+      makerWager = BigInt(makerWagerStr);
+    } catch {
+      makerWager = 0n;
+    }
+
+    // Find the bid with the highest payout (maker + taker)
+    return validBids.reduce((best, current) => {
+      const bestPayout = (() => {
+        try {
+          return makerWager + BigInt(best.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      const currentPayout = (() => {
+        try {
+          return makerWager + BigInt(current.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      return currentPayout > bestPayout ? current : best;
+    });
+  }, [bids, parlayWagerAmount, nowMs]);
+
+  // All unexpired bids sorted by payout (desc)
+  const unexpiredBids = useMemo(() => {
+    if (!bids || bids.length === 0) return [] as QuoteBid[];
+
+    const makerWagerStr = parlayWagerAmount || '0';
+    let makerWager: bigint;
+    try {
+      makerWager = BigInt(makerWagerStr);
+    } catch {
+      makerWager = 0n;
+    }
+
+    const active = bids.filter((b) => b.takerDeadline * 1000 > nowMs);
+    return active.slice().sort((a, b) => {
+      const aPayout = (() => {
+        try {
+          return makerWager + BigInt(a.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      const bPayout = (() => {
+        try {
+          return makerWager + BigInt(b.takerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+      if (aPayout === bPayout) return 0;
+      return bPayout > aPayout ? 1 : -1;
+    });
+  }, [bids, parlayWagerAmount, nowMs]);
+
+  const showNoBidsHint =
+    effectiveParlayMode &&
+    !bestBid &&
+    lastQuoteRequestMs != null &&
+    nowMs - lastQuoteRequestMs >= 5000;
+
+  const { address: makerAddress } = useAccount();
+
+  // Ticking clock for expiry countdowns
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Emit Auction when parlay form values change
+  useEffect(() => {
+    if (!effectiveParlayMode) {
+      console.log('[OTC-BETSLIP] skip: not in parlay mode');
+      return;
+    }
+    if (positionsWithMarketData.length === 0) {
+      console.log('[OTC-BETSLIP] skip: no positions');
+      return;
+    }
+    if (!requestQuotes) {
+      console.log('[OTC-BETSLIP] skip: requestQuotes missing');
+      return;
+    }
+    if (!makerAddress) {
+      console.log('[OTC-BETSLIP] skip: no wallet connected');
+      return; // require connected wallet to request quotes
+    }
+    const eligiblePositions = positionsWithMarketData.filter(
+      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+    );
+    if (eligiblePositions.length === 0) {
+      console.log('[OTC-BETSLIP] skip: no eligible positions');
+      return;
+    }
+
+    const wager = parlayWagerAmount || '0';
+
+    const rawOutcomes = eligiblePositions.map((p) => {
+      const posId = p.position.id;
+      const predValue = parlayPositionsForm?.[posId]?.predictionValue;
+
+      if (
+        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+      ) {
+        const selectedMarketId = Number(
+          predValue != null && predValue !== ''
+            ? predValue
+            : p.position.marketId
+        );
+        return {
+          marketGroup: p.position.marketAddress,
+          marketId: selectedMarketId,
+          prediction: true,
+        };
+      }
+
+      // YES/NO default path
+      const isYes = predValue === YES_SQRT_PRICE_X96;
+      return {
+        marketGroup: p.position.marketAddress,
+        marketId: p.position.marketId,
+        prediction: Boolean(isYes),
+      };
+    });
+
+    const { resolver, predictedOutcomes } =
+      buildAuctionStartPayload(rawOutcomes);
+
+    console.log('[OTC-BETSLIP] requestQuotes', {
+      wager,
+      resolver,
+      outcomesCount: predictedOutcomes.length,
+    });
+    requestQuotes({
+      wager,
+      resolver,
+      predictedOutcomes,
+      maker: makerAddress,
+    });
+    setLastQuoteRequestMs(Date.now());
+  }, [
+    effectiveParlayMode,
+    positionsWithMarketData,
+    parlayMethods,
+    parlayWagerAmount,
+    parlayPositionsForm,
+    requestQuotes,
+    makerAddress,
+  ]);
   return (
     <>
       <div className="w-full h-full flex flex-col">
         <div
-          className={`px-4 py-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
+          className={`relative px-4 pt-1.5 pb-1.5 bg-muted/50 border-b border-border/40 ${isMobile ? 'border-t' : ''}`}
         >
-          <div className="flex items-center justify-between h-10">
+          <div className="grid grid-cols-[auto_1fr_auto] items-center h-10">
             <span className="text-lg font-medium">Make a Prediction</span>
-            <div className="flex items-center gap-4">
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={clearBetSlip}
-                type="button"
-                aria-hidden={betSlipPositions.length === 0}
-                className={`transition-opacity duration-200 ${
-                  betSlipPositions.length > 0
-                    ? 'opacity-100'
-                    : 'opacity-0 pointer-events-none'
-                }`}
-              >
-                Clear
-              </Button>
+            <div className="flex items-center gap-4 col-start-3 justify-self-end">
               <div className="flex items-center gap-2">
                 {!isParlayFeatureEnabled ? (
                   <TooltipProvider>
@@ -169,7 +340,11 @@ export const BetslipContent = ({
                           aria-disabled="true"
                         >
                           <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                            OTC/Parlays
+                            <Gavel
+                              className="w-4 h-4 opacity-70"
+                              style={{ transform: 'scaleX(-1)' }}
+                            />
+                            Auction Mode
                           </span>
                           <span className="flex items-center">
                             <Switch checked={false} disabled />
@@ -184,7 +359,11 @@ export const BetslipContent = ({
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                      OTC/Parlays
+                      <Gavel
+                        className="w-4 h-4 opacity-70"
+                        style={{ transform: 'scaleX(-1)' }}
+                      />
+                      Auction Mode
                     </span>
                     <span className="flex items-center">
                       <Switch
@@ -199,8 +378,6 @@ export const BetslipContent = ({
               </div>
             </div>
           </div>
-
-          {effectiveParlayMode && null}
         </div>
 
         <div
@@ -244,6 +421,7 @@ export const BetslipContent = ({
 
                       {positionData.error && (
                         <>
+                          w{' '}
                           <div className="mb-2">
                             <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
@@ -369,120 +547,133 @@ export const BetslipContent = ({
                   <div className="pt-1">
                     <WagerInput
                       minAmount={minParlayWager}
-                      collateralSymbol={parlayCollateralSymbol || 'sUSDe'}
+                      collateralSymbol={'testUSDe'}
                       collateralAddress={parlayCollateralAddress}
                       chainId={parlayChainId}
                     />
                   </div>
 
-                  {/* Minimum Payout moved into Add to orderbook popover */}
                   <div className="pt-2 space-y-2">
                     <div className="text-xs text-muted-foreground flex items-center justify-between">
                       <span className="flex items-center gap-1">
                         <LottieLoader width={16} height={16} />
-                        <span>Broadcasting a request for quotes...</span>
+                        <span>Broadcasting a request for bids...</span>
                       </span>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <button className="text-primary underline">
-                            Limit Order
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-80 space-y-3">
-                          <p className="text-sm">
-                            Submit your order onchain and it may be filled
-                            before expiration.
-                          </p>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label
-                                htmlFor="limitAmount"
-                                className="text-sm font-medium"
-                              >
-                                Minimum Payout
-                              </Label>
-                              <div className="mt-1.5 relative">
-                                <Input
-                                  id="limitAmount"
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="0.00"
-                                  className="pr-16"
-                                  {...parlayMethods.register('limitAmount', {
-                                    required: 'Minimum payout is required',
-                                    min: {
-                                      value: 0,
-                                      message:
-                                        'Minimum payout must be positive',
-                                    },
-                                  })}
-                                />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none">
-                                  {parlayCollateralSymbol || 'sUSDe'}
-                                </div>
-                              </div>
-                              {parlayMethods.formState.errors.limitAmount && (
-                                <p className="text-sm text-destructive mt-1">
-                                  {
-                                    parlayMethods.formState.errors.limitAmount
-                                      .message
-                                  }
-                                </p>
-                              )}
-                            </div>
-                            <div>
-                              <Label
-                                htmlFor="orderExpiration"
-                                className="text-sm font-medium"
-                              >
-                                Expiration
-                              </Label>
-                              <div className="mt-1.5">
-                                <Input
-                                  id="orderExpiration"
-                                  type="datetime-local"
-                                  placeholder="Select expiration"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                          <div className="pt-1 space-y-2">
-                            <Button
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
                               type="button"
-                              size="sm"
-                              variant="default"
-                              className="w-full"
+                              className="text-primary underline"
                             >
-                              Submit Order
-                            </Button>
-                            <div className="flex justify-center">
-                              <Link
-                                href="/otc"
-                                className="text-primary underline"
-                              >
-                                View all orders
-                              </Link>
-                            </div>
-                          </div>
-                        </PopoverContent>
-                      </Popover>
+                              Limit Order
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Coming Soon</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
-                    <Button
-                      className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                      disabled={
-                        isParlaySubmitting ||
-                        positionsWithMarketData.some((p) => p.isLoading)
-                      }
-                      type="submit"
-                      size="lg"
-                      variant="default"
-                    >
-                      {isParlaySubmitting
-                        ? 'Submitting Wager...'
-                        : 'Submit Wager'}
-                    </Button>
-                    {/* View Parlays moved into Add to orderbook popover */}
+
+                    {effectiveParlayMode && bestBid && (
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={
+                            isParlaySubmitting ||
+                            positionsWithMarketData.some((p) => p.isLoading) ||
+                            bestBid.takerDeadline * 1000 - nowMs <= 0
+                          }
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          {(() => {
+                            if (isParlaySubmitting)
+                              return 'Submitting Wager...';
+                            return 'Submit Wager';
+                          })()}
+                        </Button>
+                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                          {(() => {
+                            const makerWagerStr =
+                              parlayMethods.getValues('wagerAmount') || '0';
+                            let makerWager: bigint;
+                            try {
+                              makerWager = BigInt(makerWagerStr);
+                            } catch {
+                              makerWager = 0n;
+                            }
+                            const symbol = parlayCollateralSymbol || 'testUSDe';
+                            return unexpiredBids.map((bid, idx) => {
+                              const payout = (() => {
+                                try {
+                                  return (
+                                    makerWager + BigInt(bid.takerWager)
+                                  ).toString();
+                                } catch {
+                                  return '0';
+                                }
+                              })();
+                              const remainingMs =
+                                bid.takerDeadline * 1000 - nowMs;
+                              const secs = Math.max(
+                                0,
+                                Math.ceil(remainingMs / 1000)
+                              );
+                              const suffix = secs === 1 ? 'second' : 'seconds';
+                              return (
+                                <div
+                                  key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
+                                  className="flex items-center justify-between"
+                                >
+                                  <span>
+                                    <span className="font-medium">{`To Win: `}</span>
+                                    {`${payout} ${symbol}`}
+                                  </span>
+                                  <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    )}
+
+                    {effectiveParlayMode && !bestBid && (
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={true}
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          Waiting for Bids...
+                        </Button>
+                        {showNoBidsHint && (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            <span>If no bids appear, you can place a </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    type="button"
+                                    className="text-primary underline"
+                                  >
+                                    limit order
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Coming Soon</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -494,6 +685,21 @@ export const BetslipContent = ({
               </form>
             </FormProvider>
           )}
+        </div>
+        <div className="py-4 mt-auto flex justify-center">
+          <button
+            onClick={clearBetSlip}
+            type="button"
+            aria-hidden={betSlipPositions.length === 0}
+            title="Reset"
+            className={`text-xs leading-none text-muted-foreground cursor-pointer transition-opacity duration-300 ${
+              betSlipPositions.length > 0
+                ? 'opacity-100'
+                : 'opacity-0 pointer-events-none'
+            }`}
+          >
+            Clear all
+          </button>
         </div>
       </div>
     </>

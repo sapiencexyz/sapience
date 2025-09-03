@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { foilApi } from '~/lib/utils/util';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
@@ -127,7 +128,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
 
   const addMarketApiCall = async (payload: AddMarketApiPayload) => {
     // marketGroupAddress is now part of the URL
-    const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/create-market-group/${marketGroupAddress}/markets`;
+    const apiUrl = `${foilApi.baseUrl}/create-market-group/${marketGroupAddress}/markets`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

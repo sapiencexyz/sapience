@@ -54,25 +54,44 @@ export function useChatConnection(isOpen: boolean) {
           }
         }
 
-        const resNonce = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/chat-auth/nonce`
-        );
+        const base =
+          (typeof window !== 'undefined' &&
+            window.localStorage.getItem('sapience.settings.chatBaseUrl')) ||
+          (process.env.NEXT_PUBLIC_FOIL_API_URL as string);
+        // Build chat auth endpoints from chat base path
+        const authBase = (() => {
+          try {
+            const u = new URL(base);
+            // If base already includes a path (e.g., https://api.sapience.xyz/chat), append /auth under that path
+            const path =
+              u.pathname && u.pathname !== '/' ? u.pathname : '/chat';
+            return `${u.origin}${path}/auth`;
+          } catch {
+            // If base is just an origin, default to /chat/auth
+            try {
+              const u2 = new URL(`${base}`);
+              const path =
+                u2.pathname && u2.pathname !== '/' ? u2.pathname : '/chat';
+              return `${u2.origin}${path}/auth`;
+            } catch {
+              return `${base}/chat/auth`;
+            }
+          }
+        })();
+        const resNonce = await fetch(`${authBase}/nonce`);
         const { message } = await resNonce.json();
         const wallet = connectedWallet;
         if (!wallet) return null;
         const signature = await wallet.sign(message);
-        const resVerify = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/chat-auth/verify`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address: userAddress,
-              signature,
-              nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
-            }),
-          }
-        );
+        const resVerify = await fetch(`${authBase}/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: userAddress,
+            signature,
+            nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
+          }),
+        });
         if (!resVerify.ok) return null;
         const { token, expiresAt } = await resVerify.json();
         tokenRef.current = token;

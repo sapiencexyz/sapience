@@ -12,3 +12,8 @@ export const WSTETH_ADDRESS_MAINNET =
   '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0';
 export const WSTETH_ADDRESS_SEPOLIA =
   '0xb82381a3fbd3fafa77b3a7be693342618240067b';
+
+// PredictionMarket deployed addresses
+export const PREDICTION_MARKET_ADDRESS_ARB1 =
+  '0x85b38C1e35F42163C5b9DbDe357b191E1042F5f0' as const;
+export const PREDICTION_MARKET_CHAIN_ID_ARB1 = 42161 as const;

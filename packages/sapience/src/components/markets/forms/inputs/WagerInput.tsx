@@ -73,7 +73,7 @@ function SUsdsHelp() {
 
 export function WagerInput({
   name = 'wagerAmount',
-  collateralSymbol = 'sUSDe',
+  collateralSymbol = 'testUSDe',
   collateralAddress = '0x0000000000000000000000000000000000000000',
   chainId = 432,
   minAmount,
