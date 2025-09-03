@@ -19,9 +19,7 @@ import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+import { sqrtPriceX96ToPriceD18, foilApi } from '~/lib/utils/util';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -122,7 +120,7 @@ const EditMarketDialog = ({ group, market }: Props) => {
         );
     }
 
-    const url = `${API_BASE_URL}/marketGroups/${group.address}/markets/${
+    const url = `${foilApi.baseUrl}/marketGroups/${group.address}/markets/${
       market.marketId || market.id
     }`;
     const res = await fetch(url, {

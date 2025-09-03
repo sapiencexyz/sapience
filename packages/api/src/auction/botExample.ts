@@ -12,7 +12,7 @@ const API_BASE = process.env.FOIL_API_BASE || 'http://localhost:3001';
 const WS_URL =
   API_BASE.replace('https://', 'wss://')
     .replace('http://', 'ws://')
-    .replace(/\/$/, '') + '/ws/auction';
+    .replace(/\/$/, '') + '/auction';
 
 console.log('[BOT] Env FOIL_API_BASE =', process.env.FOIL_API_BASE);
 console.log('[BOT] Connecting to', WS_URL);

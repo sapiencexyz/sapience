@@ -74,7 +74,7 @@ const startServer = async () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
     if (auctionWsEnabled) {
-      console.log(`Auction WebSocket endpoint available at /ws/auction`);
+      console.log(`Auction WebSocket endpoint available at /auction`);
     }
     console.log(`Chat WebSocket endpoint available at /chat`);
   });

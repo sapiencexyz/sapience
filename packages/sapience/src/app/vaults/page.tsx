@@ -145,7 +145,7 @@ const VaultsPage = () => {
                           Protocol Vault
                         </h3>
                         <p className="text-muted-foreground">
-                          This vault is used to fill auction orders.
+                          This vault is used to bid on auction orders.
                         </p>
                         {vaultData && (
                           <div className="mt-2 text-xs text-muted-foreground">
@@ -388,7 +388,7 @@ const VaultsPage = () => {
                       <div>
                         <h3 className="text-lg font-medium">Protocol Vault</h3>
                         <p className="text-sm text-muted-foreground">
-                          This vault is used to fill auction orders.
+                          This vault is used to bid on auction orders.
                         </p>
                         {vaultData && (
                           <div className="mt-2 text-xs text-muted-foreground">

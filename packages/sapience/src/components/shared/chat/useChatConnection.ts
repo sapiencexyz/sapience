@@ -54,25 +54,33 @@ export function useChatConnection(isOpen: boolean) {
           }
         }
 
-        const resNonce = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/chat-auth/nonce`
-        );
+        const base =
+          (typeof window !== 'undefined' &&
+            window.localStorage.getItem('sapience.settings.chatBaseUrl')) ||
+          (process.env.NEXT_PUBLIC_FOIL_API_URL as string);
+        // Build chat-auth endpoints from an origin-only base
+        const origin = (() => {
+          try {
+            const u = new URL(base);
+            return u.origin;
+          } catch {
+            return base;
+          }
+        })();
+        const resNonce = await fetch(`${origin}/chat-auth/nonce`);
         const { message } = await resNonce.json();
         const wallet = connectedWallet;
         if (!wallet) return null;
         const signature = await wallet.sign(message);
-        const resVerify = await fetch(
-          `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/chat-auth/verify`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              address: userAddress,
-              signature,
-              nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
-            }),
-          }
-        );
+        const resVerify = await fetch(`${origin}/chat-auth/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: userAddress,
+            signature,
+            nonce: (message.match(/Nonce: (.+)/)?.[1] || '').trim(),
+          }),
+        });
         if (!resVerify.ok) return null;
         const { token, expiresAt } = await resVerify.json();
         tokenRef.current = token;

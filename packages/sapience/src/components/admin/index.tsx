@@ -28,7 +28,6 @@ import columns from './columns';
 import DataTable from './data-table';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { foilApi } from '~/lib/utils/util';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -183,17 +182,25 @@ const IndexResourceForm = () => {
         });
       }
 
-      const response = await foilApi.post('/reindex/resource', {
-        slug: selectedResource,
-        startTimestamp,
-        ...(endTimestamp && { endTimestamp }),
-        ...(signature && {
-          signature,
-          signatureTimestamp: timestamp,
+      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/resource`;
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          slug: selectedResource,
+          startTimestamp,
+          ...(endTimestamp && { endTimestamp }),
+          ...(signature && {
+            signature,
+            signatureTimestamp: timestamp,
+          }),
         }),
       });
+      const response = await res.json();
 
-      if (response.success) {
+      if (res.ok && response.success) {
         toast({
           title: 'Indexing complete',
           description: 'Resource has been reindexed successfully',
@@ -313,14 +320,18 @@ const RefreshCacheForm = () => {
       });
 
       // Build the endpoint URL based on whether a specific resource is selected
-      const endpoint =
+      const base = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+      const url =
         refreshResourceSlug && refreshResourceSlug !== 'all'
-          ? `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
-          : `/cache/refresh-candle-cache?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
+          ? `${base}/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
+          : `${base}/cache/refresh-candle-cache?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
 
-      const response = await foilApi.get(endpoint);
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const response = await res.json();
 
-      if (response.success) {
+      if (res.ok && response.success) {
         toast({
           title: 'Cache refreshed',
           description:

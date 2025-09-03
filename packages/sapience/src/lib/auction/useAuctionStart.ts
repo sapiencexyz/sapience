@@ -43,11 +43,11 @@ function toWsUrl(baseHttpUrl: string | undefined): string | null {
       const loc = typeof window !== 'undefined' ? window.location : undefined;
       if (!loc) return null;
       const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/ws/auction`;
+      return `${proto}//${loc.host}/auction`;
     }
     const u = new URL(baseHttpUrl);
     u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.pathname = '/ws/auction';
+    u.pathname = '/auction';
     u.search = '';
     return u.toString();
   } catch {
@@ -76,7 +76,24 @@ export function useAuctionStart() {
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
   const inflightRef = useRef<string>('');
-  const apiBase = process.env.NEXT_PUBLIC_FOIL_API_URL;
+  const apiBase = useMemo(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const v = window.localStorage.getItem('sapience.settings.apiBaseUrl');
+        if (v) {
+          try {
+            const u = new URL(v);
+            return u.origin;
+          } catch {
+            return v;
+          }
+        }
+      }
+    } catch {
+      /* noop */
+    }
+    return process.env.NEXT_PUBLIC_FOIL_API_URL;
+  }, []);
   const wsUrl = useMemo(() => toWsUrl(apiBase), [apiBase]);
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers

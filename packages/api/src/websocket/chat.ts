@@ -145,7 +145,9 @@ export function createChatWebSocketServer(server: http.Server) {
     'upgrade',
     (request: http.IncomingMessage, socket: Socket, head: Buffer) => {
       const { url } = request;
-      if (url && url.startsWith('/chat')) {
+      const isChatPath =
+        !!url && (url.startsWith('/chat') || url.startsWith('/api/chat'));
+      if (isChatPath) {
         try {
           const parsedUrl = new URL(url, 'http://localhost');
           const token = parsedUrl.searchParams.get('token');
@@ -186,7 +188,7 @@ export function createChatWebSocketServer(server: http.Server) {
           socket.destroy();
         }
       } else {
-        // Not a chat upgrade path; allow other WebSocket handlers (e.g., /ws/auction)
+        // Not a chat upgrade path; allow other WebSocket handlers (e.g., /auction)
         // to process this upgrade without destroying the socket here.
         return;
       }

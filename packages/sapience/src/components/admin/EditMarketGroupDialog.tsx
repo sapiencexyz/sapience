@@ -26,8 +26,7 @@ import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+import { foilApi } from '~/lib/utils/util';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -88,16 +87,19 @@ const EditMarketGroupDialog = ({ group }: Props) => {
       data.quoteTokenName = quoteTokenName;
     }
 
-    const res = await fetch(`${API_BASE_URL}/marketGroups/${group.address}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chainId: group.chainId,
-        data,
-        signature,
-        timestamp,
-      }),
-    });
+    const res = await fetch(
+      `${foilApi.baseUrl}/marketGroups/${group.address}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chainId: group.chainId,
+          data,
+          signature,
+          timestamp,
+        }),
+      }
+    );
     const json = await res.json();
     if (!res.ok) {
       throw new Error(json?.error || 'Failed to update market group');

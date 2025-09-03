@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
@@ -83,6 +84,7 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
+  const { authenticated } = usePrivy();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -109,7 +111,11 @@ const ForecastPageImp = () => {
   // Show loading state while data is being fetched
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pt-32">
+      <div
+        className={`min-h-screen bg-background ${
+          authenticated ? 'pt-32' : 'pt-24 md:pt-0'
+        }`}
+      >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
@@ -127,7 +133,11 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div className="min-h-screen bg-background pt-24">
+      <div
+        className={`min-h-screen bg-background ${
+          authenticated ? 'pt-24' : 'pt-24 md:pt-0'
+        }`}
+      >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
@@ -205,7 +215,11 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background pt-24">
+    <div
+      className={`min-h-screen bg-background ${
+        authenticated ? 'pt-24' : 'pt-24 md:pt-0'
+      }`}
+    >
       {/* Main content container with Twitter-like layout */}
       <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
         <>

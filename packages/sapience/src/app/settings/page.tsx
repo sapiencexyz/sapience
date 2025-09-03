@@ -10,18 +10,169 @@ import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useTheme } from 'next-themes';
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Button } from '@sapience/ui/components/ui/button';
 import { useChat } from '~/lib/context/ChatContext';
+import { useSettings } from '~/lib/context/SettingsContext';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 const SettingsPage = () => {
   const { theme, setTheme } = useTheme();
   const { openChat } = useChat();
+  const {
+    graphqlEndpoint,
+    apiBaseUrl,
+    quoterBaseUrl,
+    chatBaseUrl,
+    arbitrumRpcUrl,
+    setGraphqlEndpoint,
+    setApiBaseUrl,
+    setQuoterBaseUrl,
+    setChatBaseUrl,
+    setArbitrumRpcUrl,
+    defaults,
+  } = useSettings();
   const [mounted, setMounted] = useState(false);
+  const [gqlInput, setGqlInput] = useState('');
+  const [apiInput, setApiInput] = useState('');
+  const [quoterInput, setQuoterInput] = useState('');
+  const [chatInput, setChatInput] = useState('');
+  const [rpcInput, setRpcInput] = useState('');
+
+  const [gqlError, setGqlError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [quoterError, setQuoterError] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [rpcError, setRpcError] = useState<string | null>(null);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  return (
+  useEffect(() => {
+    if (!mounted) return;
+    setGqlInput(graphqlEndpoint || defaults.graphqlEndpoint);
+    setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
+    setQuoterInput(quoterBaseUrl ?? defaults.quoterBaseUrl);
+    setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
+    setRpcInput(arbitrumRpcUrl ?? defaults.arbitrumRpcUrl);
+    setHydrated(true);
+  }, [
+    mounted,
+    graphqlEndpoint,
+    apiBaseUrl,
+    quoterBaseUrl,
+    chatBaseUrl,
+    arbitrumRpcUrl,
+    defaults,
+  ]);
+
+  const isHttpUrl = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  const normalizeBase = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+  };
+
+  // Live update: values persist on change when valid; reset removes override.
+
+  type SettingFieldProps = {
+    id: string;
+    value: string;
+    setValue: (v: string) => void;
+    defaultValue: string;
+    onPersist: (v: string | null) => void;
+    validate: (v: string) => boolean;
+    normalizeOnChange?: (v: string) => string;
+    setError: (msg: string | null) => void;
+    invalidMessage: string;
+  };
+
+  const SettingField = ({
+    id,
+    value,
+    setValue,
+    defaultValue,
+    onPersist,
+    validate,
+    normalizeOnChange,
+    setError,
+    invalidMessage,
+  }: SettingFieldProps) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const raw = e.target.value;
+      const next = normalizeOnChange ? normalizeOnChange(raw) : raw;
+      setValue(next);
+      if (!next) {
+        setError(null);
+        return;
+      }
+      if (validate(next)) {
+        setError(null);
+      } else {
+        setError(invalidMessage);
+      }
+    };
+
+    const handleBlur = () => {
+      const current = value;
+      if (!current) {
+        onPersist(null);
+        return;
+      }
+      if (validate(current)) {
+        onPersist(current);
+      }
+    };
+
+    const showReset = value !== defaultValue;
+
+    return (
+      <div className="flex gap-3 items-start">
+        <Input
+          id={id}
+          value={value}
+          onChange={handleChange}
+          onBlur={handleBlur}
+        />
+        {showReset ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10"
+            onClick={() => {
+              setValue(defaultValue);
+              setError(null);
+              onPersist(null);
+            }}
+          >
+            Reset
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
+
+  return !hydrated ? (
+    <div className="container mx-auto px-4 md:p-8 max-w-3xl mt-16">
+      <h1 className="text-2xl font-semibold mb-6">Settings</h1>
+      <Card>
+        <CardContent className="px-6 py-8">
+          <div className="h-[720px] flex items-center justify-center">
+            <LottieLoader width={48} height={48} />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  ) : (
     <div className="container mx-auto px-4 md:p-8 max-w-3xl mt-16">
       <h1 className="text-2xl font-semibold mb-6">Settings</h1>
       <Card>
@@ -60,44 +211,23 @@ const SettingsPage = () => {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="graphql-endpoint">GraphQL Endpoint</Label>
-              <Input id="graphql-endpoint" />
-              <p className="text-xs text-muted-foreground">
-                URL used to fetch market metadata, history, and on-chain data
-                via GraphQL.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="relayer-endpoint">Relayer Endpoint</Label>
-              <Input id="relayer-endpoint" />
-              <p className="text-xs text-muted-foreground">
-                URL of the relayer service used to submit orders in{' '}
-                <em>Auction Mode</em>.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="chat-endpoint">Chat Endpoint</Label>
-              <Input id="chat-endpoint" />
-              <p className="text-xs text-muted-foreground">
-                Used by the in-app{' '}
-                <button
-                  type="button"
-                  onClick={openChat}
-                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                >
-                  chat widget
-                </button>
-                to send and receive messages.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
               <Label htmlFor="ethereum-rpc-endpoint">
                 Ethereum RPC Endpoint
               </Label>
-              <Input id="ethereum-rpc-endpoint" />
+              <SettingField
+                id="ethereum-rpc-endpoint"
+                value={rpcInput}
+                setValue={setRpcInput}
+                defaultValue={defaults.arbitrumRpcUrl}
+                onPersist={setArbitrumRpcUrl}
+                validate={isHttpUrl}
+                normalizeOnChange={(s) => s.trim()}
+                setError={setRpcError}
+                invalidMessage="Must be an absolute http(s) URL"
+              />
+              {rpcError ? (
+                <p className="text-xs text-red-500">{rpcError}</p>
+              ) : null}
               <p className="text-xs text-muted-foreground">
                 JSON-RPC URL for the{' '}
                 <a
@@ -108,7 +238,99 @@ const SettingsPage = () => {
                 >
                   Arbitrum
                 </a>{' '}
-                network.
+                network
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="graphql-endpoint">GraphQL Endpoint</Label>
+              <SettingField
+                id="graphql-endpoint"
+                value={gqlInput}
+                setValue={setGqlInput}
+                defaultValue={defaults.graphqlEndpoint}
+                onPersist={setGraphqlEndpoint}
+                validate={isHttpUrl}
+                setError={setGqlError}
+                invalidMessage="Must be an absolute http(s) URL"
+              />
+              {gqlError ? (
+                <p className="text-xs text-red-500">{gqlError}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Used to fetch metadata, historical data, and onchain data via
+                GraphQL
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="quoter-endpoint">Quoter Endpoint</Label>
+              <SettingField
+                id="quoter-endpoint"
+                value={quoterInput}
+                setValue={setQuoterInput}
+                defaultValue={defaults.quoterBaseUrl}
+                onPersist={setQuoterBaseUrl}
+                validate={isHttpUrl}
+                normalizeOnChange={normalizeBase}
+                setError={setQuoterError}
+                invalidMessage="Must be an absolute http(s) base URL"
+              />
+              {quoterError ? (
+                <p className="text-xs text-red-500">{quoterError}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Used to generate quotes based on liquidity available onchain
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="relayer-endpoint">Relayer Endpoint</Label>
+              <SettingField
+                id="relayer-endpoint"
+                value={apiInput}
+                setValue={setApiInput}
+                defaultValue={defaults.apiBaseUrl}
+                onPersist={setApiBaseUrl}
+                validate={isHttpUrl}
+                normalizeOnChange={normalizeBase}
+                setError={setApiError}
+                invalidMessage="Must be an absolute http(s) base URL"
+              />
+              {apiError ? (
+                <p className="text-xs text-red-500">{apiError}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Used to relay bids in <em>Auction Mode</em>
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="chat-endpoint">Chat Endpoint</Label>
+              <SettingField
+                id="chat-endpoint"
+                value={chatInput}
+                setValue={setChatInput}
+                defaultValue={defaults.chatBaseUrl}
+                onPersist={setChatBaseUrl}
+                validate={isHttpUrl}
+                normalizeOnChange={normalizeBase}
+                setError={setChatError}
+                invalidMessage="Must be an absolute http(s) base URL"
+              />
+              {chatError ? (
+                <p className="text-xs text-red-500">{chatError}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Used by the{' '}
+                <button
+                  type="button"
+                  onClick={openChat}
+                  className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                >
+                  chat widget
+                </button>{' '}
+                to send and receive signed messages
               </p>
             </div>
           </div>
