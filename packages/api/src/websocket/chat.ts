@@ -140,13 +140,12 @@ export function createChatWebSocketServer(server: http.Server) {
     }
   );
 
-  // Upgrade handler for /chat (and /api/chat) path
+  // Upgrade handler for /chat path
   server.on(
     'upgrade',
     (request: http.IncomingMessage, socket: Socket, head: Buffer) => {
       const { url } = request;
-      const isChatPath =
-        !!url && (url.startsWith('/chat') || url.startsWith('/api/chat'));
+      const isChatPath = !!url && url.startsWith('/chat');
       if (isChatPath) {
         try {
           const parsedUrl = new URL(url, 'http://localhost');
