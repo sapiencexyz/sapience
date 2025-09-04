@@ -2,7 +2,6 @@ import prisma from '../../db';
 import { initializeDataSource } from '../../db';
 import {
   scoreSelectedForecastsForSettledMarket,
-  scoreTimeWeightedForSettledMarket,
   selectLatestPreEndForMarket,
   upsertAttestationScoreFromAttestation,
 } from '../../helpers/scoringService';
@@ -49,10 +48,6 @@ export async function backfillBrier(): Promise<void> {
   for (const m of settledMarkets) {
     if (!m.market_group?.address) continue;
     await scoreSelectedForecastsForSettledMarket(
-      m.market_group.address,
-      m.marketId.toString()
-    );
-    await scoreTimeWeightedForSettledMarket(
       m.market_group.address,
       m.marketId.toString()
     );

@@ -132,63 +132,23 @@ export async function scoreSelectedForecastsForSettledMarket(
   if (selected.length === 0) return;
 
   await prisma.$transaction(
-    selected.flatMap((row) => {
+    selected.map((row) => {
       const p = row.probabilityFloat as number;
       const err = (p - outcome) * (p - outcome);
-      return [
-        prisma.attestationScore.update({
-          where: { attestationId: row.attestationId },
-          data: { errorSquared: err, scoredAt: new Date(), outcome },
-        }),
-        prisma.forecasterScore.upsert({
-          where: { attester: row.attester },
-          update: {
-            numScored: { increment: 1 },
-            sumErrorSquared: { increment: err },
-            meanBrier: { set: 0 }, // set later via compute
-            updatedAt: new Date(),
-          },
-          create: {
-            attester: row.attester,
-            numScored: 1,
-            sumErrorSquared: err,
-            meanBrier: err,
-          },
-        }),
-      ];
-    })
-  );
-
-  // Recompute meanBrier in a second pass to avoid drift
-  const attesters = Array.from(new Set(selected.map((r) => r.attester)));
-  await Promise.all(
-    attesters.map(async (a) => {
-      const fs = await prisma.forecasterScore.findUnique({
-        where: { attester: a },
-      });
-      if (!fs || fs.numScored <= 0) return;
-      const mean = fs.sumErrorSquared / fs.numScored;
-      await prisma.forecasterScore.update({
-        where: { attester: a },
-        data: { meanBrier: mean, updatedAt: new Date() },
+      return prisma.attestationScore.update({
+        where: { attestationId: row.attestationId },
+        data: { errorSquared: err, scoredAt: new Date(), outcome },
       });
     })
   );
 }
 
-export async function getTopForecasters(limit = 10) {
-  return prisma.forecasterScore.findMany({
-    orderBy: { timeWeightedMeanBrier: 'asc' },
-    take: limit,
-  });
-}
-
-// Horizon-weighted Brier (HWBS): compute per-attester per-market and update aggregates idempotently
-async function computeTimeWeightedForAttesterMarket(
+// Horizon-weighted Brier (HWBS): compute per-attester per-market (pure compute, no writes)
+export async function computeTimeWeightedForAttesterMarketValue(
   marketAddress: string,
   marketId: string,
   attester: string
-) {
+): Promise<number | null> {
   const market = await prisma.market.findFirst({
     where: {
       market_group: { address: marketAddress.toLowerCase() },
@@ -196,9 +156,9 @@ async function computeTimeWeightedForAttesterMarket(
     },
   });
   if (!market || market.endTimestamp == null || market.startTimestamp == null)
-    return;
+    return null;
   const outcome = outcomeFromSettlement(market);
-  if (outcome === null) return;
+  if (outcome === null) return null;
 
   const rows = await prisma.attestationScore.findMany({
     where: {
@@ -210,12 +170,12 @@ async function computeTimeWeightedForAttesterMarket(
     },
     orderBy: { madeAt: 'asc' },
   });
-  if (rows.length === 0) return;
+  if (rows.length === 0) return null;
 
   // Build intervals from each forecast to next or end
   const start = Math.max(rows[0].madeAt, market.startTimestamp);
   const end = market.endTimestamp;
-  if (end <= start) return;
+  if (end <= start) return null;
 
   const alphaEnv = process.env.HWBS_ALPHA;
   const alpha =
@@ -239,86 +199,7 @@ async function computeTimeWeightedForAttesterMarket(
     totalWeight += weight;
   }
 
-  if (totalWeight <= 0) return;
+  if (totalWeight <= 0) return null;
   const twError = weightedSum / totalWeight;
-
-  await prisma.attesterMarketScore.upsert({
-    where: {
-      attester_marketAddress_marketId: {
-        attester,
-        marketAddress: marketAddress.toLowerCase(),
-        marketId,
-      },
-    },
-    update: { timeWeightedError: twError, scoredAt: new Date() },
-    create: {
-      attester,
-      marketAddress: marketAddress.toLowerCase(),
-      marketId,
-      timeWeightedError: twError,
-      scoredAt: new Date(),
-    },
-  });
-}
-
-async function recomputeForecasterTimeWeightedAggregate(attester: string) {
-  const rows = await prisma.attesterMarketScore.findMany({
-    where: { attester },
-  });
-  const count = rows.length;
-  const sum = rows.reduce((acc, r) => acc + r.timeWeightedError, 0);
-  const mean = count > 0 ? sum / count : 0;
-  await prisma.forecasterScore.upsert({
-    where: { attester },
-    update: {
-      numTimeWeighted: count,
-      sumTimeWeightedError: sum,
-      timeWeightedMeanBrier: mean,
-      updatedAt: new Date(),
-    },
-    create: {
-      attester,
-      numScored: 0,
-      sumErrorSquared: 0,
-      meanBrier: 0,
-      numTimeWeighted: count,
-      sumTimeWeightedError: sum,
-      timeWeightedMeanBrier: mean,
-    },
-  });
-}
-
-export async function scoreTimeWeightedForSettledMarket(
-  marketAddress: string,
-  marketId: string
-) {
-  const market = await prisma.market.findFirst({
-    where: {
-      market_group: { address: marketAddress.toLowerCase() },
-      marketId: parseInt(marketId, 16) || Number(marketId) || 0,
-    },
-  });
-  if (!market || !market.settled) return;
-
-  // All attesters who made a pre-end forecast in this market
-  const attesters = await prisma.attestationScore.findMany({
-    where: {
-      marketAddress: marketAddress.toLowerCase(),
-      marketId,
-      madeAt: { lte: market.endTimestamp ?? 0 },
-      probabilityFloat: { not: null },
-    },
-    distinct: ['attester'],
-    select: { attester: true },
-  });
-  if (attesters.length === 0) return;
-
-  for (const { attester } of attesters) {
-    await computeTimeWeightedForAttesterMarket(
-      marketAddress,
-      marketId,
-      attester
-    );
-    await recomputeForecasterTimeWeightedAggregate(attester);
-  }
+  return twError;
 }

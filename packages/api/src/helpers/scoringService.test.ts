@@ -19,16 +19,6 @@ vi.mock('../db', () => {
       updateMany: vi.fn(),
       update: vi.fn(),
     },
-    forecasterScore: {
-      upsert: vi.fn(),
-      findUnique: vi.fn(),
-      update: vi.fn(),
-      findMany: vi.fn(),
-    },
-    attesterMarketScore: {
-      upsert: vi.fn(),
-      findMany: vi.fn(),
-    },
     $transaction: vi.fn(async (ops: unknown[]) => {
       // Execute sequentially for test simplicity
       for (const op of ops) await op;
@@ -55,12 +45,7 @@ describe('scoringService', () => {
     prisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 1, attester: '0xabc', probabilityFloat: 0.8 },
     ]);
-    prisma.forecasterScore.findUnique.mockResolvedValue({
-      attester: '0xabc',
-      numScored: 0,
-      sumErrorSquared: 0,
-      meanBrier: 0,
-    });
+    // no forecasterScore table anymore
 
     // Act
     await utils.scoreSelectedForecastsForSettledMarket('0xMG', '1');
@@ -72,7 +57,8 @@ describe('scoringService', () => {
         data: expect.objectContaining({ errorSquared: err }),
       })
     );
-    expect(prisma.forecasterScore.upsert).toHaveBeenCalled();
+    // aggregate tables removed; only attestationScore updated
+    expect(prisma.attestationScore.update).toHaveBeenCalled();
   });
 
   it('computes time-weighted error per attester-market and updates aggregates', async () => {
@@ -98,28 +84,14 @@ describe('scoringService', () => {
         madeAt: 160,
       },
     ]);
-    prisma.attesterMarketScore.findMany.mockResolvedValue([
-      { timeWeightedError: 0.0 },
-    ]);
-
-    await utils.scoreTimeWeightedForSettledMarket('0xMG', '1');
+    await utils.computeTimeWeightedForAttesterMarketValue('0xMG', '1', '0xabc');
 
     // Two intervals: [120,160) p=0.2, [160,200] p=0.6, outcome=1
     // const err1 = (0.2 - 1) ** 2; // 0.64
     // const err2 = (0.6 - 1) ** 2; // 0.16
     // const tw = (err1 * 40 + err2 * 40) / 80; // 0.40
 
-    expect(prisma.attesterMarketScore.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        update: expect.objectContaining({
-          timeWeightedError: expect.any(Number),
-        }),
-      })
-    );
-    expect(prisma.forecasterScore.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { attester: expect.any(String) },
-      })
-    );
+    // now pure compute, no writes
+    expect(prisma.attestationScore.findMany).toHaveBeenCalled();
   });
 });

@@ -18,18 +18,6 @@ CREATE TABLE "attestation_score" (
     CONSTRAINT "attestation_score_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "forecaster_score" (
-    "attester" VARCHAR NOT NULL,
-    "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "numScored" INTEGER NOT NULL DEFAULT 0,
-    "sumErrorSquared" DOUBLE PRECISION NOT NULL DEFAULT 0,
-    "meanBrier" DOUBLE PRECISION NOT NULL DEFAULT 0,
-
-    CONSTRAINT "forecaster_score_pkey" PRIMARY KEY ("attester")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "attestation_score_attestationId_key" ON "attestation_score"("attestationId");
 

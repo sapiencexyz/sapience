@@ -67,23 +67,20 @@ const Leaderboard = () => {
       <Tabs defaultValue="pnl" className="w-full">
         <div className="mb-6">
           <TabsList>
-            <TabsTrigger value="pnl">Realized Profit</TabsTrigger>
-            <TabsTrigger value="brier">
-              Horizon-Weighted Brier Score
-            </TabsTrigger>
+            <TabsTrigger value="pnl">Profit</TabsTrigger>
+            <TabsTrigger value="brier">Accuracy</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="pnl">
           <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
-            The Realized Profit shows the Ethereum accounts which have won the
-            most when participating in{' '}
+            Realized profit ranks{' '}
             <Link
               href="/markets"
               className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
             >
-              prediction markets
-            </Link>
-            .
+              prediction market
+            </Link>{' '}
+            participants by how much they&apos;ve won.
           </p>
           <PnLLeaderboard />
         </TabsContent>
@@ -124,7 +121,7 @@ const PnLLeaderboard = () => {
       },
       {
         id: 'totalPnL',
-        header: () => 'Profit',
+        header: () => 'Realized Profit',
         accessorKey: 'totalPnL',
         cell: ProfitCell,
       },

@@ -4,7 +4,6 @@ import {
   upsertAttestationScoreFromAttestation,
   selectLatestPreEndForMarket,
   scoreSelectedForecastsForSettledMarket,
-  scoreTimeWeightedForSettledMarket,
 } from '../../helpers/scoringService';
 import { backfillBrier } from './backfillBrier';
 
@@ -48,6 +47,5 @@ export async function reindexBrier(
 
     // 3) If settled, score
     await scoreSelectedForecastsForSettledMarket(normalizedAddress, mId);
-    await scoreTimeWeightedForSettledMarket(normalizedAddress, mId);
   }
 }

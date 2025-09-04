@@ -7,7 +7,6 @@ vi.mock('../db', () => {
     market: { findFirst: vi.fn() },
     attestationScore: { findMany: vi.fn() },
     attestation: { findUnique: vi.fn() },
-    forecasterScore: { upsert: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(async () => {}),
   };
   return { default: prisma, __esModule: true };
@@ -31,6 +30,5 @@ describe('scoreSelectedForecastsForSettledMarket idempotency', () => {
     await scoreSelectedForecastsForSettledMarket('0xMG', '1');
 
     expect(prisma.$transaction).not.toHaveBeenCalled();
-    expect(prisma.forecasterScore.upsert).not.toHaveBeenCalled();
   });
 });

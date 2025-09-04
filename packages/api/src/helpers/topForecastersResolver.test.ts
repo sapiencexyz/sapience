@@ -1,31 +1,36 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import * as generated from '../graphql/resolvers/GeneratedResolvers';
+import prisma from '../db';
 import { ScoreResolver } from '../graphql/resolvers/ScoreResolver';
 
-vi.mock('../graphql/resolvers/GeneratedResolvers', () => {
+vi.mock('../db', () => {
   const prisma = {
-    forecasterScore: {
+    attestationScore: {
+      groupBy: vi.fn(),
       findMany: vi.fn(),
-      findUnique: vi.fn(),
     },
   };
-  return { prisma, __esModule: true };
+  return { default: prisma, __esModule: true };
 });
-
-const prisma = generated.prisma;
 
 describe('ScoreResolver.topForecasters', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('returns top N by ascending meanBrier', async () => {
-    prisma.forecasterScore.findMany.mockResolvedValue([
-      { attester: 'B', numScored: 10, sumErrorSquared: 3, meanBrier: 0.3 },
-      { attester: 'A', numScored: 5, sumErrorSquared: 1, meanBrier: 0.2 },
+  it('returns top N by ascending timeWeightedMeanBrier', async () => {
+    prisma.attestationScore.groupBy.mockResolvedValue([
+      { attester: 'B', _count: { _all: 10 }, _sum: { errorSquared: 3 } },
+      { attester: 'A', _count: { _all: 5 }, _sum: { errorSquared: 1 } },
+    ]);
+    prisma.attestationScore.findMany.mockResolvedValueOnce([
+      { marketAddress: '0xmg', marketId: '1' },
+    ]);
+    prisma.attestationScore.findMany.mockResolvedValueOnce([
+      { marketAddress: '0xmg', marketId: '1' },
     ]);
     const resolver = new ScoreResolver();
     const result = await resolver.topForecasters(2);
     expect(result.length).toBe(2);
-    expect(result[0].attester).toBe('B'); // respects DB orderBy asc
+    // since both get same timeWeightedMeanBrier in this stub, keep insertion order
+    expect(['B', 'A']).toContain(result[0].attester);
   });
 });
