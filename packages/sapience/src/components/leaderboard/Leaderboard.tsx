@@ -60,7 +60,7 @@ const LoadingIndicator = () => (
 
 const Leaderboard = () => {
   return (
-    <div className="container max-w-[720px] mx-auto py-32">
+    <div className="container max-w-[540px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
         Leaderboard
       </h1>
@@ -93,8 +93,7 @@ const Leaderboard = () => {
             >
               forecasters
             </Link>
-            , rewarding early predictions more when they&apos;re verified to be
-            accurate.
+            , rewarding accurate predictions more when they&apos;re early.
           </p>
           <BrierLeaderboard />
         </TabsContent>
@@ -159,6 +158,7 @@ const PnLLeaderboard = () => {
                     'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
                     {
                       'text-center': header.id === 'rank',
+                      'w-14 md:w-16': header.id === 'rank',
                       'text-right': header.id === 'totalPnL',
                     }
                   )}
@@ -184,6 +184,7 @@ const PnLLeaderboard = () => {
                     key={cell.id}
                     className={cn('p-3 text-sm md:text-base', {
                       'text-right font-normal': cell.column.id === 'rank',
+                      'w-14 md:w-16': cell.column.id === 'rank',
                       'text-right': cell.column.id === 'totalPnL',
                     })}
                   >
@@ -279,6 +280,7 @@ const BrierLeaderboard = () => {
                     'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
                     {
                       'text-center': header.id === 'rank',
+                      'w-14 md:w-16': header.id === 'rank',
                       'text-right': header.id === 'meanBrier',
                     }
                   )}
@@ -303,6 +305,7 @@ const BrierLeaderboard = () => {
                   key={cell.id}
                   className={cn('p-3 text-sm md:text-base', {
                     'text-right font-normal': cell.column.id === 'rank',
+                    'w-14 md:w-16': cell.column.id === 'rank',
                     'text-right': cell.column.id === 'meanBrier',
                   })}
                 >

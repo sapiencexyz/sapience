@@ -37,8 +37,8 @@ import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
-import { scoreSelectedForecastsForSettledMarket } from '../helpers/scoringService';
 import { fetchRenderServices, createRenderJob } from '../utils/utils';
+import { reindexBrier } from '../workers/jobs/reindexBrier';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -823,9 +823,9 @@ export const upsertEntitiesFromEvent = async (
 
               if (!worker?.service?.id) {
                 console.error(
-                  'Background worker not found for Brier reindex. Falling back to inline scoring.'
+                  'Background worker not found for Brier reindex. Falling back to inline reindex.'
                 );
-                await scoreSelectedForecastsForSettledMarket(addr, mId);
+                await reindexBrier(addr, mId);
                 return;
               }
 
@@ -848,14 +848,14 @@ export const upsertEntitiesFromEvent = async (
             }
           } catch (err) {
             console.error(
-              '[Brier] Failed to enqueue async reindex, falling back to inline scoring:',
+              '[Brier] Failed to enqueue async reindex, falling back to inline reindex:',
               err
             );
             try {
-              await scoreSelectedForecastsForSettledMarket(addr, mId);
+              await reindexBrier(addr, mId);
             } catch (fallbackErr) {
               console.error(
-                '[Brier] Inline scoring fallback failed:',
+                '[Brier] Inline reindex fallback failed:',
                 fallbackErr
               );
             }
