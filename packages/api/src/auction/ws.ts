@@ -1,4 +1,3 @@
-import type { Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
@@ -118,9 +117,8 @@ function broadcastToAuctionSubscribers(
 const RATE_LIMIT_WINDOW_MS = 10_000;
 const RATE_LIMIT_MAX_MESSAGES = 100;
 
-export function attachAuctionWebSocketServer(server: HttpServer) {
-  const wss = new WebSocketServer({ server, path: '/auction' });
-  console.log('[Auction-WS] WebSocket server attached at /auction');
+export function createAuctionWebSocketServer() {
+  const wss = new WebSocketServer({ noServer: true });
 
   // Track which clients are subscribed to which auction channels
   const auctionSubscriptions = new Map<string, Set<WebSocket>>();
