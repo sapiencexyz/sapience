@@ -71,6 +71,7 @@ const startServer = async () => {
         const url = request.url || '/';
         // Origin validation for staging/prod if configured
         if (
+          url.startsWith('/chat') &&
           process.env.NODE_ENV !== 'development' &&
           process.env.CHAT_ALLOWED_ORIGINS
         ) {

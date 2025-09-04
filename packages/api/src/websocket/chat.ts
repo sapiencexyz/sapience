@@ -43,8 +43,8 @@ export function createChatWebSocketServer() {
       // Extract IP and token on connect
       try {
         const ip =
-          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
           req.socket.remoteAddress ||
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
           'unknown';
         ws._ip = ip;
         ipToConnectionCount.set(ip, (ipToConnectionCount.get(ip) || 0) + 1);
@@ -256,6 +256,22 @@ export function createChatWebSocketServer() {
               } catch {
                 /* noop */
               }
+            }
+            return;
+          }
+
+          // Chat send path - enforce explicit type
+          if (type !== 'send') {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  text: 'invalid_message_type',
+                  clientId,
+                })
+              );
+            } catch {
+              /* noop */
             }
             return;
           }

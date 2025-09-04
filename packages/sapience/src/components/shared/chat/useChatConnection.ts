@@ -491,6 +491,36 @@ export function useChatConnection(isOpen: boolean) {
 
   const canType = useMemo(() => true, []);
 
+  // Clear chat auth when wallet disconnects or address changes
+  const prevAddressRef = useRef<string | null>(null);
+  useEffect(() => {
+    const current = (userAddress || '').toLowerCase();
+    const prev = prevAddressRef.current;
+    if (prev === null) {
+      prevAddressRef.current = current;
+      return;
+    }
+    if (!current || current !== prev) {
+      tokenRef.current = null;
+      tokenExpiryRef.current = null;
+      try {
+        window.localStorage.removeItem('sapience.chat.token');
+        window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
+      } catch {
+        /* noop */
+      }
+      try {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+      } catch {
+        /* noop */
+      }
+      prevAddressRef.current = current;
+    }
+  }, [userAddress]);
+
   const sendMessage = useCallback(() => {
     const text = pendingText.trim();
     if (!text) return;

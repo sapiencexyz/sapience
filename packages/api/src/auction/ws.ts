@@ -125,8 +125,8 @@ export function createAuctionWebSocketServer() {
 
   wss.on('connection', (ws, req) => {
     const ip =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket.remoteAddress ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       'unknown';
     const ua = (req.headers['user-agent'] as string) || 'unknown';
     console.log(`[Auction-WS] Connection opened from ${ip} ua="${ua}"`);
