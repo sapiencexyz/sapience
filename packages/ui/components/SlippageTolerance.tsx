@@ -15,7 +15,8 @@ export const SlippageTolerance: React.FC = () => {
   const { setValue, watch } = useFormContext();
   const currentSlippage = watch('slippage');
 
-  const handleSlippageChange = (value: number) => {
+  const handleSlippageChange = (value: number, e: React.MouseEvent<HTMLButtonElement> | React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault();
     setValue('slippage', value.toString(), {
       shouldValidate: false,
     });
@@ -23,7 +24,10 @@ export const SlippageTolerance: React.FC = () => {
 
   return (
     <div>
-      <Label className="flex items-center">
+      <Label 
+        className="flex items-center"
+        onClick={(e) => e.preventDefault()}
+      >
         Slippage Tolerance
         <TooltipProvider>
           <Tooltip>
@@ -41,7 +45,7 @@ export const SlippageTolerance: React.FC = () => {
       <div className="flex items-center gap-4 mt-2">
         <Button
           type="button"
-          onClick={() => handleSlippageChange(0.1)}
+          onClick={(e) => handleSlippageChange(0.1, e)}
           variant={Number(currentSlippage) === 0.1 ? 'default' : 'outline'}
           size="sm"
         >
@@ -49,7 +53,7 @@ export const SlippageTolerance: React.FC = () => {
         </Button>
         <Button
           type="button"
-          onClick={() => handleSlippageChange(0.5)}
+          onClick={(e) => handleSlippageChange(0.5, e)}
           variant={Number(currentSlippage) === 0.5 ? 'default' : 'outline'}
           size="sm"
         >
@@ -57,7 +61,7 @@ export const SlippageTolerance: React.FC = () => {
         </Button>
         <Button
           type="button"
-          onClick={() => handleSlippageChange(1.0)}
+          onClick={(e) => handleSlippageChange(1.0, e)}
           variant={Number(currentSlippage) === 1.0 ? 'default' : 'outline'}
           size="sm"
         >
@@ -66,7 +70,7 @@ export const SlippageTolerance: React.FC = () => {
         <div className="relative w-[100px]">
           <Input
             value={currentSlippage}
-            onChange={(e) => handleSlippageChange(Number(e.target.value))}
+            onChange={(e) => handleSlippageChange(Number(e.target.value), e)}
             min={0}
             max={100}
             step={0.1}
