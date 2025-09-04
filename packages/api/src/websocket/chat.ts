@@ -1,5 +1,4 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
-import type { Server as HttpServer } from 'http';
 import {
   createChallenge,
   refreshToken,
@@ -15,7 +14,9 @@ export type StoredMessage = {
 };
 
 const MESSAGE_LIMIT = 200;
-const MAX_CONNECTIONS_PER_IP = Number(process.env.CHAT_MAX_CONNECTIONS_PER_IP || 50);
+const MAX_CONNECTIONS_PER_IP = Number(
+  process.env.CHAT_MAX_CONNECTIONS_PER_IP || 50
+);
 const SEND_RATE_WINDOW_MS = 10_000; // 10s
 const SEND_RATE_MAX_PER_WINDOW = 20; // max 20 messages per 10s per IP
 const REQUIRE_AUTH = (process.env.CHAT_REQUIRE_AUTH ?? 'true') !== 'false';
@@ -131,7 +132,8 @@ export function createChatWebSocketServer() {
             return;
           }
           if (type === 'auth_response') {
-            const address = typeof data.address === 'string' ? data.address : '';
+            const address =
+              typeof data.address === 'string' ? data.address : '';
             const signature =
               typeof data.signature === 'string' ? data.signature : '';
             const nonce = typeof data.nonce === 'string' ? data.nonce : '';
@@ -144,7 +146,10 @@ export function createChatWebSocketServer() {
                 });
                 if (!result) {
                   ws.send(
-                    JSON.stringify({ type: 'auth_error', reason: 'auth_failed' })
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'auth_failed',
+                    })
                   );
                   return;
                 }
@@ -168,7 +173,10 @@ export function createChatWebSocketServer() {
               } catch {
                 try {
                   ws.send(
-                    JSON.stringify({ type: 'auth_error', reason: 'auth_failed' })
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'auth_failed',
+                    })
                   );
                 } catch {
                   /* noop */
@@ -183,7 +191,10 @@ export function createChatWebSocketServer() {
               const sess = validateToken(token);
               if (!sess) {
                 ws.send(
-                  JSON.stringify({ type: 'auth_error', reason: 'invalid_token' })
+                  JSON.stringify({
+                    type: 'auth_error',
+                    reason: 'invalid_token',
+                  })
                 );
                 return;
               }
@@ -199,7 +210,10 @@ export function createChatWebSocketServer() {
             } catch {
               try {
                 ws.send(
-                  JSON.stringify({ type: 'auth_error', reason: 'invalid_token' })
+                  JSON.stringify({
+                    type: 'auth_error',
+                    reason: 'invalid_token',
+                  })
                 );
               } catch {
                 /* noop */

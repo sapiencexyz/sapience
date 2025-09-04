@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { buildWebSocketUrl } from './types';
 import { useAccount, useSignMessage } from 'wagmi';
+import { buildWebSocketUrl } from './types';
 import type { ChatMessage } from './types';
 
 type SendQueueItem = { text: string; clientId: string };
@@ -35,17 +35,26 @@ export function useChatConnection(isOpen: boolean) {
   const outgoingQueueRef = useRef<SendQueueItem[]>([]);
   const reconnectAttemptsRef = useRef<number>(0);
   const reconnectPromiseRef = useRef<Promise<void> | null>(null);
-  const requireAuth = (process.env.NEXT_PUBLIC_CHAT_REQUIRE_AUTH ?? 'true') !== 'false';
+  const requireAuth =
+    (process.env.NEXT_PUBLIC_CHAT_REQUIRE_AUTH ?? 'true') !== 'false';
 
   const ensureAuthToken = useCallback(async () => {
+    // Ensure function remains truly async for linting consistency
+    await Promise.resolve();
     // Use in-memory token during a session; optionally persist to localStorage
-    if (tokenRef.current && tokenExpiryRef.current && tokenExpiryRef.current > Date.now() + 60_000) {
+    if (
+      tokenRef.current &&
+      tokenExpiryRef.current &&
+      tokenExpiryRef.current > Date.now() + 60_000
+    ) {
       return tokenRef.current;
     }
     // Try to load a persisted token
     try {
       const stored = window.localStorage.getItem('sapience.chat.token');
-      const storedExp = window.localStorage.getItem('sapience.chat.tokenExpiresAt');
+      const storedExp = window.localStorage.getItem(
+        'sapience.chat.tokenExpiresAt'
+      );
       if (stored && storedExp) {
         const exp = Number(storedExp);
         if (Number.isFinite(exp) && exp > Date.now() + 60_000) {
@@ -62,7 +71,7 @@ export function useChatConnection(isOpen: boolean) {
   }, []);
 
   const connectSocket = useCallback(
-    (url: string, token: string | null) => {
+    (url: string, _token: string | null) => {
       const ws = new WebSocket(url);
       socketRef.current = ws;
       // no auth token in simplified mode
@@ -75,17 +84,26 @@ export function useChatConnection(isOpen: boolean) {
             if (data.authenticated && typeof data.expiresAt === 'number') {
               tokenExpiryRef.current = data.expiresAt;
               try {
-                window.localStorage.setItem('sapience.chat.tokenExpiresAt', String(data.expiresAt));
+                window.localStorage.setItem(
+                  'sapience.chat.tokenExpiresAt',
+                  String(data.expiresAt)
+                );
               } catch {
                 /* noop */
               }
             }
             return;
           }
-          if (data?.type === 'auth_challenge' && typeof data.message === 'string' && typeof data.nonce === 'string') {
+          if (
+            data?.type === 'auth_challenge' &&
+            typeof data.message === 'string' &&
+            typeof data.nonce === 'string'
+          ) {
             (async () => {
               try {
-                const signature = await signMessageAsync({ message: data.message });
+                const signature = await signMessageAsync({
+                  message: data.message,
+                });
                 ws.send(
                   JSON.stringify({
                     type: 'auth_response',
@@ -102,11 +120,18 @@ export function useChatConnection(isOpen: boolean) {
           }
           if (data?.type === 'auth_ok' && typeof data.token === 'string') {
             tokenRef.current = data.token as string;
-            tokenExpiryRef.current = typeof data.expiresAt === 'number' ? data.expiresAt : null;
+            tokenExpiryRef.current =
+              typeof data.expiresAt === 'number' ? data.expiresAt : null;
             try {
               if (tokenRef.current && tokenExpiryRef.current) {
-                window.localStorage.setItem('sapience.chat.token', tokenRef.current);
-                window.localStorage.setItem('sapience.chat.tokenExpiresAt', String(tokenExpiryRef.current));
+                window.localStorage.setItem(
+                  'sapience.chat.token',
+                  tokenRef.current
+                );
+                window.localStorage.setItem(
+                  'sapience.chat.tokenExpiresAt',
+                  String(tokenExpiryRef.current)
+                );
               }
             } catch {
               /* noop */
@@ -122,7 +147,12 @@ export function useChatConnection(isOpen: boolean) {
                   if (!tokenRef.current || !tokenExpiryRef.current) return;
                   const msLeft = tokenExpiryRef.current - Date.now();
                   if (msLeft <= 60_000) {
-                    ws.send(JSON.stringify({ type: 'auth_refresh', token: tokenRef.current }));
+                    ws.send(
+                      JSON.stringify({
+                        type: 'auth_refresh',
+                        token: tokenRef.current,
+                      })
+                    );
                   }
                 } catch {
                   /* noop */
@@ -529,7 +559,9 @@ export function useChatConnection(isOpen: boolean) {
           if (!requireAuth) return;
           const ws = socketRef.current;
           if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'auth_init', address: userAddress }));
+            ws.send(
+              JSON.stringify({ type: 'auth_init', address: userAddress })
+            );
           }
         } catch {
           /* noop */
