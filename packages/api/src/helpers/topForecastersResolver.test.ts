@@ -20,11 +20,21 @@ vi.mock('../helpers/scoringService', () => ({
   computeTimeWeightedForAttesterMarketValue: vi.fn(async () => 0.5),
 }));
 
-import prisma from '../db';
+import prismaDefault from '../db';
 import { ScoreResolver } from '../graphql/resolvers/ScoreResolver';
 
 describe('ScoreResolver.topForecasters', () => {
   beforeEach(() => vi.clearAllMocks());
+
+  const prisma = prismaDefault as unknown as {
+    attestationScore: {
+      groupBy: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
+    };
+    market: {
+      findFirst: ReturnType<typeof vi.fn>;
+    };
+  };
 
   it('returns top N by ascending timeWeightedMeanBrier', async () => {
     prisma.attestationScore.groupBy.mockResolvedValue([

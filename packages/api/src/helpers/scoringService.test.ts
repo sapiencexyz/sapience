@@ -27,7 +27,24 @@ vi.mock('../db', () => {
   return { default: prisma, __esModule: true };
 });
 
-const prisma = dbModule.default;
+const prisma = dbModule.default as unknown as {
+  attestation: {
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+  };
+  market: {
+    findFirst: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+  attestationScore: {
+    upsert: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+  $transaction: ReturnType<typeof vi.fn>;
+};
 
 describe('scoringService', () => {
   beforeEach(() => {

@@ -115,15 +115,9 @@ export function outcomeFromSettlement(
   const max = BigInt(market.maxPriceD18.toString());
   if (max <= min) return null;
 
-  // Treat explicit 0/1 D18 as binary outcomes regardless of bounds
-  if (setD18 === 0n) return 0;
-  if (setD18 === 10n ** 18n) return 1;
-
-  // Midpoint rule: outcome = 1 if settlement >= midpoint, else 0
-  // Compare without division: 2 * (set - min) >= (max - min)
-  const range = max - min;
-  const two = 2n;
-  const lhs = two * (setD18 - min);
-  const rhs = range;
-  return lhs >= rhs ? 1 : 0;
+  // Skip scoring for numeric markets: only treat as binary if settlement
+  // is exactly at the bounds. Otherwise return null (non-binary).
+  if (setD18 === min) return 0;
+  if (setD18 === max) return 1;
+  return null;
 }

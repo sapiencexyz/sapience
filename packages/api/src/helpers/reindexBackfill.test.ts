@@ -12,8 +12,11 @@ vi.mock('../db', () => {
   return { default: prisma, initializeDataSource, __esModule: true };
 });
 
-vi.mock('./scoringService', async (orig) => {
-  const mod = await (orig as () => Promise<unknown>).default;
+vi.mock('./scoringService', async () => {
+  const mod =
+    await vi.importActual<typeof import('./scoringService')>(
+      './scoringService'
+    );
   return {
     ...mod,
     upsertAttestationScoreFromAttestation: vi.fn(),
@@ -23,7 +26,10 @@ vi.mock('./scoringService', async (orig) => {
   };
 });
 
-const prisma = dbModule.default;
+const prisma = dbModule.default as unknown as {
+  attestation: { findMany: ReturnType<typeof vi.fn> };
+  market: { findMany: ReturnType<typeof vi.fn> };
+};
 
 describe('reindexBrier', () => {
   beforeEach(() => vi.clearAllMocks());

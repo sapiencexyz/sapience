@@ -12,7 +12,12 @@ vi.mock('../db', () => {
   return { default: prisma, __esModule: true };
 });
 
-const prisma = dbModule.default;
+const prisma = dbModule.default as unknown as {
+  market: { findFirst: ReturnType<typeof vi.fn> };
+  attestationScore: { findMany: ReturnType<typeof vi.fn> };
+  attestation: { findUnique: ReturnType<typeof vi.fn> };
+  $transaction: ReturnType<typeof vi.fn>;
+};
 
 describe('scoreSelectedForecastsForSettledMarket idempotency', () => {
   beforeEach(() => vi.clearAllMocks());

@@ -18,7 +18,16 @@ vi.mock('../db', () => {
   return { default: prisma, __esModule: true };
 });
 
-const prisma = dbModule.default;
+const prisma = dbModule.default as unknown as {
+  market: { findFirst: ReturnType<typeof vi.fn> };
+  attestationScore: {
+    findMany: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+  $transaction: ReturnType<typeof vi.fn>;
+};
 
 describe('selection flipping when a newer pre-end attestation arrives', () => {
   beforeEach(() => vi.clearAllMocks());

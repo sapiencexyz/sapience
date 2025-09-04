@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Prisma } from '../../generated/prisma';
 import {
   normalizePredictionToProbability,
   outcomeFromSettlement,
@@ -50,8 +51,8 @@ describe('normalizePredictionToProbability', () => {
   it('parses sqrtPriceX96 using market bounds', () => {
     // sqrtPriceX96=0 -> priceD18=0 => p=0
     const market = {
-      minPriceD18: BigInt(0),
-      maxPriceD18: BigInt(10n ** 18n),
+      minPriceD18: new Prisma.Decimal(0),
+      maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
     const res0 = normalizePredictionToProbability('0', market);
     expect(res0.probabilityFloat).toBe(0);
@@ -59,8 +60,8 @@ describe('normalizePredictionToProbability', () => {
 
   it('treats large integers as sqrtPriceX96 when market provided, not D18', () => {
     const market = {
-      minPriceD18: BigInt(0),
-      maxPriceD18: BigInt(10n ** 18n),
+      minPriceD18: new Prisma.Decimal(0),
+      maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
     // Use a realistic sqrtPriceX96 that maps to mid-range price within bounds.
     // Let sqrtPrice be 1e9 (arbitrary). Then sqrtPriceX96 = 1e9 * 2^96
@@ -78,9 +79,9 @@ describe('outcomeFromSettlement', () => {
   it('returns 1 when settlement at max', () => {
     const m = {
       settled: true,
-      settlementPriceD18: BigInt(10n ** 18n),
-      minPriceD18: BigInt(0),
-      maxPriceD18: BigInt(10n ** 18n),
+      settlementPriceD18: new Prisma.Decimal('1000000000000000000'),
+      minPriceD18: new Prisma.Decimal(0),
+      maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
     expect(outcomeFromSettlement(m)).toBe(1);
   });
@@ -88,9 +89,9 @@ describe('outcomeFromSettlement', () => {
   it('returns 0 when settlement at min', () => {
     const m = {
       settled: true,
-      settlementPriceD18: BigInt(0),
-      minPriceD18: BigInt(0),
-      maxPriceD18: BigInt(10n ** 18n),
+      settlementPriceD18: new Prisma.Decimal(0),
+      minPriceD18: new Prisma.Decimal(0),
+      maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
     expect(outcomeFromSettlement(m)).toBe(0);
   });
@@ -98,9 +99,9 @@ describe('outcomeFromSettlement', () => {
   it('returns null for numeric/non-binary', () => {
     const m = {
       settled: true,
-      settlementPriceD18: BigInt(5n * 10n ** 17n), // 0.5
-      minPriceD18: BigInt(0),
-      maxPriceD18: BigInt(10n ** 18n),
+      settlementPriceD18: new Prisma.Decimal('500000000000000000'), // 0.5
+      minPriceD18: new Prisma.Decimal(0),
+      maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
     expect(outcomeFromSettlement(m)).toBeNull();
   });
