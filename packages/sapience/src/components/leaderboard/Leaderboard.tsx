@@ -93,7 +93,7 @@ const Leaderboard = () => {
             >
               forecasters
             </Link>
-            , rewarding accurate predictions more when they&apos;re early.
+            , rewarding accurate predictions more the earlier they are.
           </p>
           <BrierLeaderboard />
         </TabsContent>
@@ -233,7 +233,10 @@ const BrierLeaderboard = () => {
         id: 'meanBrier',
         header: () => (
           <div className="w-full flex items-center justify-end gap-1">
-            <span>Horizon-Weighted Brier Score</span>
+            <span className="md:hidden">HWBS</span>
+            <span className="hidden md:inline">
+              Horizon-Weighted Brier Score
+            </span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
