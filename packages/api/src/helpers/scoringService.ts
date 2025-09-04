@@ -127,19 +127,22 @@ export async function scoreSelectedForecastsForSettledMarket(
       scoredAt: null,
       probabilityFloat: { not: null },
     },
+    select: { attestationId: true, probabilityFloat: true },
   });
 
   if (selected.length === 0) return;
 
   await prisma.$transaction(
-    selected.map((row) => {
-      const p = row.probabilityFloat as number;
-      const err = (p - outcome) * (p - outcome);
-      return prisma.attestationScore.update({
-        where: { attestationId: row.attestationId },
-        data: { errorSquared: err, scoredAt: new Date(), outcome },
-      });
-    })
+    selected.map(
+      (row: { attestationId: number; probabilityFloat: number | null }) => {
+        const p = row.probabilityFloat as number;
+        const err = (p - outcome) * (p - outcome);
+        return prisma.attestationScore.update({
+          where: { attestationId: row.attestationId },
+          data: { errorSquared: err, scoredAt: new Date(), outcome },
+        });
+      }
+    )
   );
 }
 
@@ -155,8 +158,7 @@ export async function computeTimeWeightedForAttesterMarketValue(
       marketId: parseInt(marketId, 16) || Number(marketId) || 0,
     },
   });
-  if (!market || market.endTimestamp == null || market.startTimestamp == null)
-    return null;
+  if (!market || market.endTimestamp == null) return null;
   const outcome = outcomeFromSettlement(market);
   if (outcome === null) return null;
 
@@ -173,7 +175,7 @@ export async function computeTimeWeightedForAttesterMarketValue(
   if (rows.length === 0) return null;
 
   // Build intervals from each forecast to next or end
-  const start = Math.max(rows[0].madeAt, market.startTimestamp);
+  const start = rows[0].madeAt;
   const end = market.endTimestamp;
   if (end <= start) return null;
 
@@ -181,7 +183,7 @@ export async function computeTimeWeightedForAttesterMarketValue(
   const alpha =
     Number.isFinite(Number(alphaEnv)) && Number(alphaEnv) > 0
       ? Number(alphaEnv)
-      : 1;
+      : 2;
 
   let weightedSum = 0;
   let totalWeight = 0;

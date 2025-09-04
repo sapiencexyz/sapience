@@ -64,7 +64,6 @@ describe('scoringService', () => {
   it('computes time-weighted error per attester-market and updates aggregates', async () => {
     prisma.market.findFirst.mockResolvedValue({
       settled: true,
-      startTimestamp: 100,
       endTimestamp: 200,
       settlementPriceD18: BigInt(10n ** 18n),
       minPriceD18: BigInt(0),
@@ -84,12 +83,17 @@ describe('scoringService', () => {
         madeAt: 160,
       },
     ]);
-    await utils.computeTimeWeightedForAttesterMarketValue('0xMG', '1', '0xabc');
+    const value = await utils.computeTimeWeightedForAttesterMarketValue(
+      '0xMG',
+      '1',
+      '0xabc'
+    );
 
-    // Two intervals: [120,160) p=0.2, [160,200] p=0.6, outcome=1
-    // const err1 = (0.2 - 1) ** 2; // 0.64
-    // const err2 = (0.6 - 1) ** 2; // 0.16
-    // const tw = (err1 * 40 + err2 * 40) / 80; // 0.40
+    // With alpha=2 (default), weights are duration * tau^2 where tau = end - midpoint
+    // Interval1 [120,160): p=0.2, err=0.64, midpoint=140, tau=60 => weight=40 * 3600 = 144000
+    // Interval2 [160,200]: p=0.6, err=0.16, midpoint=180, tau=20 => weight=40 * 400 = 16000
+    // Weighted error = (0.64*144000 + 0.16*16000) / (144000 + 16000) = (92160 + 2560) / 160000 = 0.59
+    expect(value).toBeCloseTo(0.592, 5);
 
     // now pure compute, no writes
     expect(prisma.attestationScore.findMany).toHaveBeenCalled();

@@ -72,7 +72,7 @@ const Leaderboard = () => {
           </TabsList>
         </div>
         <TabsContent value="pnl">
-          <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
+          <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
             Realized profit ranks{' '}
             <Link
               href="/markets"
@@ -85,7 +85,7 @@ const Leaderboard = () => {
           <PnLLeaderboard />
         </TabsContent>
         <TabsContent value="brier">
-          <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
+          <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
             The Horizon-Weighted Brier Score ranks{' '}
             <Link
               href="/forecast"
@@ -93,8 +93,8 @@ const Leaderboard = () => {
             >
               forecasters
             </Link>
-            , weighing accuracy more the further in advance their predictions
-            were made.
+            , rewarding early predictions more when they&apos;re verified to be
+            accurate.
           </p>
           <BrierLeaderboard />
         </TabsContent>
