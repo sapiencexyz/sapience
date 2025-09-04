@@ -311,6 +311,9 @@ model Attestation {
   prediction      String   @db.VarChar
   comment         String?  @db.Text
 
+  // Relation to scores
+  attestation_score AttestationScore?
+
   @@unique([uid], map: "UQ_attestation_uid")
   @@index([attester], map: "IDX_attestation_attester")
   @@index([recipient], map: "IDX_attestation_recipient")
@@ -319,6 +322,70 @@ model Attestation {
   @@index([marketId], map: "IDX_attestation_market_id")
   @@index([questionId], map: "IDX_attestation_question_id")
   @@map("attestation")
+}
+
+model AttestationScore {
+  id               Int         @id @default(autoincrement())
+  createdAt        DateTime    @default(now()) @db.Timestamp(6)
+
+  // Foreign keys and identifiers
+  attestationId    Int         @unique
+  attestation      Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attester         String      @db.VarChar
+  marketAddress    String      @db.VarChar
+  marketId         String      @db.VarChar
+  questionId       String?     @db.VarChar
+
+  // Forecast metadata
+  madeAt           Int
+  used             Boolean     @default(false)
+
+  // Probability and scoring
+  probabilityD18   String?     @db.VarChar
+  probabilityFloat Float?
+  outcome          Int?
+  errorSquared     Float?
+  scoredAt         DateTime?   @db.Timestamp(6)
+
+  @@index([attester], map: "IDX_attestation_score_attester")
+  @@index([marketAddress], map: "IDX_attestation_score_market_address")
+  @@index([marketId], map: "IDX_attestation_score_market_id")
+  @@index([attester, marketAddress, marketId], map: "IDX_attestation_score_attester_market")
+  @@map("attestation_score")
+}
+
+model ForecasterScore {
+  attester        String   @id @db.VarChar
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  updatedAt       DateTime @default(now()) @db.Timestamp(6)
+  numScored       Int      @default(0)
+  sumErrorSquared Float    @default(0)
+  meanBrier       Float    @default(0)
+
+  // Time-weighted aggregates across markets
+  numTimeWeighted        Int   @default(0)
+  sumTimeWeightedError   Float @default(0)
+  timeWeightedMeanBrier  Float @default(0)
+
+  @@map("forecaster_score")
+}
+
+model AttesterMarketScore {
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+
+  attester         String   @db.VarChar
+  marketAddress    String   @db.VarChar
+  marketId         String   @db.VarChar
+
+  // Per-attester per-market time-weighted error (normalized by market duration)
+  timeWeightedError Float
+  scoredAt          DateTime? @db.Timestamp(6)
+
+  @@unique([attester, marketAddress, marketId])
+  @@index([attester], map: "IDX_attester_market_score_attester")
+  @@index([marketAddress, marketId], map: "IDX_attester_market_score_market")
+  @@map("attester_market_score")
 }
 
 model Transaction {

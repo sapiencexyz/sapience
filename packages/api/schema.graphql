@@ -84,6 +84,7 @@ type AggregateTransaction {
 }
 
 type Attestation {
+  attestation_score(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
   blockNumber: Int!
   comment: String
@@ -278,6 +279,7 @@ input AttestationOrderByWithAggregationInput {
 }
 
 input AttestationOrderByWithRelationInput {
+  attestation_score: AttestationScoreOrderByWithRelationInput
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
@@ -294,6 +296,11 @@ input AttestationOrderByWithRelationInput {
   time: SortOrder
   transactionHash: SortOrder
   uid: SortOrder
+}
+
+input AttestationRelationFilter {
+  is: AttestationWhereInput
+  isNot: AttestationWhereInput
 }
 
 enum AttestationScalarFieldEnum {
@@ -337,6 +344,68 @@ input AttestationScalarWhereWithAggregatesInput {
   uid: StringWithAggregatesFilter
 }
 
+type AttestationScore {
+  attestation: Attestation!
+  attestationId: Int!
+  attester: String!
+  createdAt: DateTimeISO!
+  errorSquared: Float
+  id: Int!
+  madeAt: Int!
+  marketAddress: String!
+  marketId: String!
+  outcome: Int
+  probabilityD18: String
+  probabilityFloat: Float
+  questionId: String
+  scoredAt: DateTimeISO
+  used: Boolean!
+}
+
+input AttestationScoreNullableRelationFilter {
+  is: AttestationScoreWhereInput
+  isNot: AttestationScoreWhereInput
+}
+
+input AttestationScoreOrderByWithRelationInput {
+  attestation: AttestationOrderByWithRelationInput
+  attestationId: SortOrder
+  attester: SortOrder
+  createdAt: SortOrder
+  errorSquared: SortOrderInput
+  id: SortOrder
+  madeAt: SortOrder
+  marketAddress: SortOrder
+  marketId: SortOrder
+  outcome: SortOrderInput
+  probabilityD18: SortOrderInput
+  probabilityFloat: SortOrderInput
+  questionId: SortOrderInput
+  scoredAt: SortOrderInput
+  used: SortOrder
+}
+
+input AttestationScoreWhereInput {
+  AND: [AttestationScoreWhereInput!]
+  NOT: [AttestationScoreWhereInput!]
+  OR: [AttestationScoreWhereInput!]
+  attestation: AttestationRelationFilter
+  attestationId: IntFilter
+  attester: StringFilter
+  createdAt: DateTimeFilter
+  errorSquared: FloatNullableFilter
+  id: IntFilter
+  madeAt: IntFilter
+  marketAddress: StringFilter
+  marketId: StringFilter
+  outcome: IntNullableFilter
+  probabilityD18: StringNullableFilter
+  probabilityFloat: FloatNullableFilter
+  questionId: StringNullableFilter
+  scoredAt: DateTimeNullableFilter
+  used: BoolFilter
+}
+
 type AttestationSumAggregate {
   blockNumber: Int
   id: Int
@@ -353,6 +422,7 @@ input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
+  attestation_score: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -375,6 +445,7 @@ input AttestationWhereUniqueInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
   OR: [AttestationWhereInput!]
+  attestation_score: AttestationScoreNullableRelationFilter
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
@@ -809,6 +880,17 @@ A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `dat
 """
 scalar DateTimeISO
 
+input DateTimeNullableFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeNullableFilter
+  notIn: [DateTimeISO!]
+}
+
 input DateTimeWithAggregatesFilter {
   _count: NestedIntFilter
   _max: NestedDateTimeFilter
@@ -1002,6 +1084,17 @@ input FloatFilter {
   notIn: [Float!]
 }
 
+input FloatNullableFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatNullableFilter
+  notIn: [Float!]
+}
+
 input FloatWithAggregatesFilter {
   _avg: NestedFloatFilter
   _count: NestedIntFilter
@@ -1016,6 +1109,16 @@ input FloatWithAggregatesFilter {
   lte: Float
   not: NestedFloatWithAggregatesFilter
   notIn: [Float!]
+}
+
+type ForecasterScoreType {
+  attester: String!
+  meanBrier: Float!
+  numScored: Int!
+  numTimeWeighted: Int!
+  sumErrorSquared: Float!
+  sumTimeWeightedError: Float!
+  timeWeightedMeanBrier: Float!
 }
 
 input IntFilter {
@@ -2413,6 +2516,17 @@ input NestedDateTimeFilter {
   notIn: [DateTimeISO!]
 }
 
+input NestedDateTimeNullableFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeNullableFilter
+  notIn: [DateTimeISO!]
+}
+
 input NestedDateTimeWithAggregatesFilter {
   _count: NestedIntFilter
   _max: NestedDateTimeFilter
@@ -3061,6 +3175,7 @@ type Query {
   findManyCryptoPrices(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): [CryptoPrices!]!
   findUniqueCryptoPrices(where: CryptoPricesWhereUniqueInput!): CryptoPrices
   findUniqueCryptoPricesOrThrow(where: CryptoPricesWhereUniqueInput!): CryptoPrices
+  forecasterScore(attester: String!): ForecasterScoreType
   getAttestation(where: AttestationWhereUniqueInput!): Attestation
   getCategory(where: CategoryWhereUniqueInput!): Category
   getMarket(where: MarketWhereUniqueInput!): Market
@@ -3099,6 +3214,7 @@ type Query {
   resourcePrices(cursor: ResourcePriceWhereUniqueInput, distinct: [ResourcePriceScalarFieldEnum!], orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): [ResourcePrice!]!
   resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): CandleAndTimestampType!
   resources(cursor: ResourceWhereUniqueInput, distinct: [ResourceScalarFieldEnum!], orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): [Resource!]!
+  topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transaction(where: TransactionWhereUniqueInput!): Transaction
   transactions(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): [Transaction!]!

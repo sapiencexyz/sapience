@@ -1,0 +1,48 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as dbModule from '../db';
+import { reindexBrier } from '../workers/jobs/reindexBrier';
+import * as scoring from './scoringService';
+
+vi.mock('../db', () => {
+  const prisma = {
+    attestation: { findMany: vi.fn() },
+    market: { findMany: vi.fn() },
+  };
+  const initializeDataSource = vi.fn();
+  return { default: prisma, initializeDataSource, __esModule: true };
+});
+
+vi.mock('./scoringService', async (orig) => {
+  const mod = await (orig as () => Promise<unknown>).default;
+  return {
+    ...mod,
+    upsertAttestationScoreFromAttestation: vi.fn(),
+    selectLatestPreEndForMarket: vi.fn(),
+    scoreSelectedForecastsForSettledMarket: vi.fn(),
+    scoreTimeWeightedForSettledMarket: vi.fn(),
+  };
+});
+
+const prisma = dbModule.default;
+
+describe('reindexBrier', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('scoped to address and marketId calls scoring routines', async () => {
+    prisma.attestation.findMany.mockResolvedValue([{ id: 1 }]);
+
+    await reindexBrier('0xMG', '1');
+
+    expect(scoring.upsertAttestationScoreFromAttestation).toHaveBeenCalledWith(
+      1
+    );
+    expect(scoring.selectLatestPreEndForMarket).toHaveBeenCalledWith(
+      '0xmg',
+      '1'
+    );
+    expect(scoring.scoreSelectedForecastsForSettledMarket).toHaveBeenCalledWith(
+      '0xmg',
+      '1'
+    );
+  });
+});

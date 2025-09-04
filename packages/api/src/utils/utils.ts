@@ -353,14 +353,15 @@ export async function getBlockBeforeTimestamp(
 export function sqrtPriceX96ToSettlementPriceD18(
   settlementSqrtPriceX96: bigint
 ): bigint {
-  // First divide by 2^96 to get sqrt price
-  const sqrtPrice = settlementSqrtPriceX96 / BigInt(2 ** 96);
+  // First divide by 2^96 to get sqrt price (use BigInt-safe Q96)
+  const Q96 = 1n << 96n;
+  const sqrtPrice = settlementSqrtPriceX96 / Q96;
 
   // Square the price
   const price = sqrtPrice * sqrtPrice;
 
   // Convert to D18 by multiplying by 10^18
-  return price * BigInt(10 ** 18);
+  return price * 10n ** 18n;
 }
 
 export const convertGasToGgas = (value: string) => {

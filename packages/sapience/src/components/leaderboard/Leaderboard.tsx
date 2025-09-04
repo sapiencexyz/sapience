@@ -18,10 +18,27 @@ import dynamic from 'next/dynamic';
 import { useMemo } from 'react';
 
 import { cn } from '@sapience/ui/lib/utils';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import ProfitCell from './ProfitCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
+import {
+  useBrierLeaderboard,
+  type ForecasterScore,
+} from '~/hooks/graphql/useBrierLeaderboard';
 
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -41,6 +58,30 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
+  return (
+    <div className="container max-w-[720px] mx-auto py-32">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
+        Leaderboard
+      </h1>
+      <Tabs defaultValue="pnl" className="w-full">
+        <div className="mb-6">
+          <TabsList>
+            <TabsTrigger value="pnl">Realized PnL</TabsTrigger>
+            <TabsTrigger value="brier">Brier Score</TabsTrigger>
+          </TabsList>
+        </div>
+        <TabsContent value="pnl">
+          <PnLLeaderboard />
+        </TabsContent>
+        <TabsContent value="brier">
+          <BrierLeaderboard />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const PnLLeaderboard = () => {
   const { leaderboardData, isLoading } = useLeaderboard();
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
@@ -81,96 +122,66 @@ const Leaderboard = () => {
   }
 
   return (
-    <div className="container max-w-[440px] mx-auto py-32">
-      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
-        Leaderboard
-      </h1>
-
-      <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
-        Sapience&apos;s{' '}
-        <a
-          target="_blank"
-          rel="noopener noreferrer"
-          href="https://api.sapience.xyz/graphql"
-          className="border-b border-current pb-px hover:opacity-80 hover:text-foreground"
-        >
-          open source blockchain indexer
-        </a>{' '}
-        tracks the realized P&L of Ethereum wallets active in prediction
-        markets.
-      </p>
-      <div className="grid grid-cols-1 gap-8">
-        <div>
-          <div className="border border-border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow
-                    key={headerGroup.id}
-                    className="hover:bg-transparent border-b"
+    <div className="border border-border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow
+              key={headerGroup.id}
+              className="hover:bg-transparent border-b"
+            >
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
+                    {
+                      'text-center': header.id === 'rank',
+                      'text-right': header.id === 'totalPnL',
+                    }
+                  )}
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.length > 0 ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="hover:bg-muted/50 border-b last:border-b-0"
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={cn('p-3 text-sm md:text-base', {
+                      'text-right font-normal': cell.column.id === 'rank',
+                      'text-right': cell.column.id === 'totalPnL',
+                    })}
                   >
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={cn(
-                          'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
-                          {
-                            'text-center': header.id === 'rank',
-                            'text-right': header.id === 'totalPnL',
-                          }
-                        )}
-                      >
-                        <>
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                        </>
-                      </TableHead>
-                    ))}
-                  </TableRow>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
                 ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.length > 0 ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="hover:bg-muted/50 border-b last:border-b-0"
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className={cn('p-3 text-sm md:text-base', {
-                            'text-right font-normal': cell.column.id === 'rank',
-                            'text-right': cell.column.id === 'totalPnL',
-                          })}
-                        >
-                          <>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </>
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center text-muted-foreground text-sm md:text-base"
-                    >
-                      No results found for this period
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </div>
-      </div>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell
+                colSpan={columns.length}
+                className="h-24 text-center text-muted-foreground text-sm md:text-base"
+              >
+                No results found for this period
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 };
@@ -180,3 +191,106 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 );
 
 export default Leaderboard;
+
+const BrierLeaderboard = () => {
+  const { data, isLoading } = useBrierLeaderboard(10);
+
+  const columns = useMemo<ColumnDef<ForecasterScore>[]>(
+    () => [
+      { id: 'rank', header: () => '', cell: RankCell },
+      {
+        id: 'attester',
+        header: () => 'Ethereum Account Address',
+        accessorKey: 'attester',
+        cell: ({ cell }) => (
+          <AddressDisplay address={cell.getValue() as string} />
+        ),
+      },
+      {
+        id: 'meanBrier',
+        header: () => (
+          <TooltipProvider>
+            <div className="w-full flex items-center justify-end gap-1">
+              <span>Time-weighted Brier Score</span>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3 w-3 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent>Lower is better</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+        ),
+        accessorKey: 'meanBrier',
+        cell: ({ getValue }) => {
+          const v = getValue<number>();
+          return <span className="font-mono">{v.toFixed(4)}</span>;
+        },
+      },
+    ],
+    []
+  );
+
+  const table = useReactTable<ForecasterScore>({
+    data: data ?? [],
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  if (isLoading) {
+    return <LoadingIndicator />;
+  }
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow
+              key={headerGroup.id}
+              className="hover:bg-transparent border-b"
+            >
+              {headerGroup.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    'p-3 text-left text-muted-foreground font-medium text-xs md:text-sm',
+                    {
+                      'text-center': header.id === 'rank',
+                      'text-right': header.id === 'meanBrier',
+                    }
+                  )}
+                >
+                  {flexRender(
+                    header.column.columnDef.header,
+                    header.getContext()
+                  )}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              className="hover:bg-muted/50 border-b last:border-b-0"
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell
+                  key={cell.id}
+                  className={cn('p-3 text-sm md:text-base', {
+                    'text-right font-normal': cell.column.id === 'rank',
+                    'text-right': cell.column.id === 'meanBrier',
+                  })}
+                >
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+};
