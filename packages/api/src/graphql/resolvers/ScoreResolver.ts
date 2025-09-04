@@ -44,7 +44,7 @@ export class ScoreResolver {
 
     const agg = await prisma.attestationScore.groupBy({
       by: ['attester'],
-      where: { attester: a, used: true, errorSquared: { not: null } },
+      where: { attester: a, errorSquared: { not: null } },
       _count: { _all: true },
       _sum: { errorSquared: true },
     });
@@ -73,7 +73,7 @@ export class ScoreResolver {
       }
     }
     const timeWeightedMeanBrier =
-      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : 0;
+      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanBrier;
 
     return {
       attester: a,
@@ -95,7 +95,7 @@ export class ScoreResolver {
     // Base aggregation order by meanBrier (simple) as a fallback
     const agg = await prisma.attestationScore.groupBy({
       by: ['attester'],
-      where: { used: true, errorSquared: { not: null } },
+      where: { errorSquared: { not: null } },
       _count: { _all: true },
       _sum: { errorSquared: true },
     });
@@ -127,7 +127,9 @@ export class ScoreResolver {
         }
       }
       const timeWeightedMeanBrier =
-        numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : 0;
+        numTimeWeighted > 0
+          ? sumTimeWeightedError / numTimeWeighted
+          : meanBrier;
 
       results.push({
         attester: a,

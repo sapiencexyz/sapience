@@ -2,7 +2,6 @@ import prisma from '../../db';
 import { initializeDataSource } from '../../db';
 import {
   upsertAttestationScoreFromAttestation,
-  selectLatestPreEndForMarket,
   scoreSelectedForecastsForSettledMarket,
 } from '../../helpers/scoringService';
 import { backfillBrier } from './backfillBrier';
@@ -42,10 +41,7 @@ export async function reindexBrier(
       await upsertAttestationScoreFromAttestation(att.id);
     }
 
-    // 2) Reselect latest pre-end
-    await selectLatestPreEndForMarket(normalizedAddress, mId);
-
-    // 3) If settled, score
+    // 2) If settled, score (no selection step; we score all pre-end forecasts)
     await scoreSelectedForecastsForSettledMarket(normalizedAddress, mId);
   }
 }

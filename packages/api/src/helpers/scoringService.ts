@@ -117,14 +117,27 @@ export async function scoreSelectedForecastsForSettledMarket(
   if (!market) return;
 
   const outcome = outcomeFromSettlement(market);
-  if (outcome === null) return; // not binary or not settled
+  if (outcome === null) {
+    // Non-binary market or not strictly settled at bounds: clear any stale scores
+    await prisma.attestationScore.updateMany({
+      where: {
+        marketAddress: marketAddress.toLowerCase(),
+        marketId,
+      },
+      data: { errorSquared: null, scoredAt: null, outcome: null },
+    });
+    return;
+  }
+
+  // Score all pre-end forecasts (not just a selected/latest one)
+  const end = market.endTimestamp ?? null;
+  if (end == null) return;
 
   const selected = await prisma.attestationScore.findMany({
     where: {
       marketAddress: marketAddress.toLowerCase(),
       marketId,
-      used: true,
-      scoredAt: null,
+      madeAt: { lte: end },
       probabilityFloat: { not: null },
     },
     select: { attestationId: true, probabilityFloat: true },

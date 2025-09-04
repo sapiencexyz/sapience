@@ -2,7 +2,6 @@ import prisma from '../../db';
 import { initializeDataSource } from '../../db';
 import {
   scoreSelectedForecastsForSettledMarket,
-  selectLatestPreEndForMarket,
   upsertAttestationScoreFromAttestation,
 } from '../../helpers/scoringService';
 
@@ -30,14 +29,7 @@ export async function backfillBrier(): Promise<void> {
     lastId = atts[atts.length - 1].id;
   }
 
-  // 2) Recompute selection (latest pre-end) for each market pair that has attestations
-  const marketPairs = await prisma.attestation.groupBy({
-    by: ['marketAddress', 'marketId'],
-  });
-
-  for (const pair of marketPairs) {
-    await selectLatestPreEndForMarket(pair.marketAddress, pair.marketId);
-  }
+  // 2) No selection step needed; we score all pre-end forecasts
 
   // 3) Score all settled markets
   const settledMarkets = await prisma.market.findMany({

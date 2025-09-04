@@ -114,10 +114,12 @@ export function outcomeFromSettlement(
   const min = BigInt(market.minPriceD18.toString());
   const max = BigInt(market.maxPriceD18.toString());
   if (max <= min) return null;
-
-  // Skip scoring for numeric markets: only treat as binary if settlement
-  // is exactly at the bounds. Otherwise return null (non-binary).
-  if (setD18 === min) return 0;
-  if (setD18 === max) return 1;
-  return null;
+  // Map settlement to [0,1] and round to nearest bound (0 = No, 1 = Yes)
+  const range = max - min;
+  const ratioNum = setD18 - min;
+  if (ratioNum <= 0n) return 0;
+  if (ratioNum >= range) return 1;
+  // Use midpoint threshold: < 0.5 -> 0, >= 0.5 -> 1
+  // Compare 2*ratioNum with range to avoid floating point
+  return 2n * ratioNum < range ? 0 : 1;
 }
