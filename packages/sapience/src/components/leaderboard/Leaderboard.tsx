@@ -67,7 +67,7 @@ const Leaderboard = () => {
       <Tabs defaultValue="pnl" className="w-full">
         <div className="mb-6">
           <TabsList>
-            <TabsTrigger value="pnl">Realized Profit/Loss</TabsTrigger>
+            <TabsTrigger value="pnl">Realized Profit</TabsTrigger>
             <TabsTrigger value="brier">
               Horizon-Weighted Brier Score
             </TabsTrigger>
@@ -75,8 +75,15 @@ const Leaderboard = () => {
         </div>
         <TabsContent value="pnl">
           <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
-            The Realized PnL shows the Ethereum accounts which have profited the
-            most by participating in prediction markets.
+            The Realized Profit shows the Ethereum accounts which have won the
+            most when participating in{' '}
+            <Link
+              href="/markets"
+              className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
+            >
+              prediction markets
+            </Link>
+            .
           </p>
           <PnLLeaderboard />
         </TabsContent>
@@ -234,7 +241,7 @@ const BrierLeaderboard = () => {
                 <TooltipTrigger>
                   <Info className="w-3 h-3 opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>Smaller is better.</TooltipContent>
+                <TooltipContent>Smaller is better</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
