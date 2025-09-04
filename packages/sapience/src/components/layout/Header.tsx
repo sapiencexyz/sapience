@@ -149,7 +149,8 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('chatToken');
+        window.localStorage.removeItem('sapience.chat.token');
+        window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
       }
     } catch {
       /* noop */
