@@ -15,6 +15,7 @@ import {
   type ColumnDef,
 } from '@tanstack/react-table';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useMemo } from 'react';
 
 import { cn } from '@sapience/ui/lib/utils';
@@ -66,14 +67,31 @@ const Leaderboard = () => {
       <Tabs defaultValue="pnl" className="w-full">
         <div className="mb-6">
           <TabsList>
-            <TabsTrigger value="pnl">Realized PnL</TabsTrigger>
-            <TabsTrigger value="brier">Brier Score</TabsTrigger>
+            <TabsTrigger value="pnl">Realized Profit/Loss</TabsTrigger>
+            <TabsTrigger value="brier">
+              Horizon-Weighted Brier Score
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="pnl">
+          <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
+            The Realized PnL shows the Ethereum accounts which have profited the
+            most by participating in prediction markets.
+          </p>
           <PnLLeaderboard />
         </TabsContent>
         <TabsContent value="brier">
+          <p className="text-xl font-heading font-normal mb-10 text-muted-foreground leading-relaxed">
+            The Horizon-Weighted Brier Score ranks{' '}
+            <Link
+              href="/forecast"
+              className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
+            >
+              forecasters
+            </Link>
+            , weighing accuracy more the further in advance their predictions
+            were made.
+          </p>
           <BrierLeaderboard />
         </TabsContent>
       </Tabs>
@@ -209,19 +227,19 @@ const BrierLeaderboard = () => {
       {
         id: 'meanBrier',
         header: () => (
-          <TooltipProvider>
-            <div className="w-full flex items-center justify-end gap-1">
-              <span>Time-weighted Brier Score</span>
+          <div className="w-full flex items-center justify-end gap-1">
+            <span>Horizon-Weighted Brier Score</span>
+            <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-3 w-3 text-muted-foreground" />
+                  <Info className="w-3 h-3 opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>Lower is better</TooltipContent>
+                <TooltipContent>Smaller is better.</TooltipContent>
               </Tooltip>
-            </div>
-          </TooltipProvider>
+            </TooltipProvider>
+          </div>
         ),
-        accessorKey: 'meanBrier',
+        accessorKey: 'timeWeightedMeanBrier',
         cell: ({ getValue }) => {
           const v = getValue<number>();
           return <span className="font-mono">{v.toFixed(4)}</span>;

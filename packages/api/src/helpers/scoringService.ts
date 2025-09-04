@@ -183,7 +183,7 @@ export async function getTopForecasters(limit = 10) {
   });
 }
 
-// Time-weighted Brier: compute per-attester per-market and update aggregates idempotently
+// Horizon-weighted Brier (HWBS): compute per-attester per-market and update aggregates idempotently
 async function computeTimeWeightedForAttesterMarket(
   marketAddress: string,
   marketId: string,
@@ -217,8 +217,14 @@ async function computeTimeWeightedForAttesterMarket(
   const end = market.endTimestamp;
   if (end <= start) return;
 
+  const alphaEnv = process.env.HWBS_ALPHA;
+  const alpha =
+    Number.isFinite(Number(alphaEnv)) && Number(alphaEnv) > 0
+      ? Number(alphaEnv)
+      : 1;
+
   let weightedSum = 0;
-  let totalDuration = 0;
+  let totalWeight = 0;
   for (let i = 0; i < rows.length; i++) {
     const p = rows[i].probabilityFloat as number;
     const t0 = i === 0 ? start : Math.max(rows[i].madeAt, start);
@@ -226,12 +232,15 @@ async function computeTimeWeightedForAttesterMarket(
     const duration = Math.max(0, t1 - t0);
     if (duration <= 0) continue;
     const err = (p - outcome) * (p - outcome);
-    weightedSum += err * duration;
-    totalDuration += duration;
+    const midpoint = (t0 + t1) / 2;
+    const tau = Math.max(0, end - midpoint);
+    const weight = duration * Math.pow(tau, alpha);
+    weightedSum += err * weight;
+    totalWeight += weight;
   }
 
-  if (totalDuration <= 0) return;
-  const twError = weightedSum / totalDuration;
+  if (totalWeight <= 0) return;
+  const twError = weightedSum / totalWeight;
 
   await prisma.attesterMarketScore.upsert({
     where: {
