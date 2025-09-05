@@ -5,10 +5,9 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../../db';
 
-// Initialize Prisma client
-const prisma = new PrismaClient();
+// Use shared Prisma client
 
 export async function startGraphQLServer() {
   // Build the GraphQL schema with generated resolvers (queries and relation resolvers only)

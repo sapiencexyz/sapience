@@ -182,29 +182,99 @@ export default function FeaturedMarketGroup() {
       }
     );
 
-    // 5. Sort by earliest end time and take first 8
-    return result
-      .sort((a, b) => {
-        const aValidMarkets = a.markets.filter(
-          (m) => typeof m.endTimestamp === 'number'
-        );
-        const bValidMarkets = b.markets.filter(
-          (m) => typeof m.endTimestamp === 'number'
-        );
+    // 5. Randomize selection prioritizing category variety and avoiding repeats
+    // Helper: Fisher-Yates shuffle
+    function shuffle<T>(arr: T[]): T[] {
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
 
-        if (aValidMarkets.length === 0 || bValidMarkets.length === 0) {
-          return 0; // Don't change order if no valid timestamps
+    // Group by category
+    const byCategory = result.reduce<Record<string, GroupedMarketGroup[]>>(
+      (acc, group) => {
+        const key = group.categoryId || 'unknown';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(group);
+        return acc;
+      },
+      {}
+    );
+
+    // Shuffle groups within each category
+    Object.keys(byCategory).forEach((cat) => {
+      byCategory[cat] = shuffle(byCategory[cat]);
+    });
+
+    // Create a shuffled list of categories
+    let categoryEntries = shuffle(Object.entries(byCategory));
+
+    const selected: GroupedMarketGroup[] = [];
+    let lastCategoryId: string | null = null;
+    let safety = 0;
+
+    // Total available items
+    const totalAvailable = Object.values(byCategory).reduce(
+      (sum, arr) => sum + arr.length,
+      0
+    );
+
+    while (
+      selected.length < 8 &&
+      selected.length < totalAvailable &&
+      categoryEntries.length > 0 &&
+      safety < 1000
+    ) {
+      safety++;
+      // Try a round-robin pass across categories
+      let addedThisPass = false;
+
+      for (let idx = 0; idx < categoryEntries.length; idx++) {
+        const [catId, groups] = categoryEntries[idx];
+        if (groups.length === 0) continue;
+
+        // Avoid picking same category consecutively when possible
+        if (lastCategoryId !== null && catId === lastCategoryId) {
+          // Look ahead for a different category with available items
+          const altIdx = categoryEntries.findIndex(
+            ([altCatId, altGroups]) =>
+              altCatId !== lastCategoryId && altGroups.length > 0
+          );
+          if (altIdx !== -1) {
+            const [altCatId, altGroups] = categoryEntries[altIdx];
+            const next = altGroups.shift()!;
+            selected.push(next);
+            lastCategoryId = altCatId;
+            addedThisPass = true;
+          } else {
+            // Only this category remains; allow consecutive pick
+            const next = groups.shift()!;
+            selected.push(next);
+            lastCategoryId = catId;
+            addedThisPass = true;
+          }
+        } else {
+          const next = groups.shift()!;
+          selected.push(next);
+          lastCategoryId = catId;
+          addedThisPass = true;
         }
 
-        const aEarliestEnd = Math.min(
-          ...aValidMarkets.map((m) => m.endTimestamp as number)
-        );
-        const bEarliestEnd = Math.min(
-          ...bValidMarkets.map((m) => m.endTimestamp as number)
-        );
-        return aEarliestEnd - bEarliestEnd;
-      })
-      .slice(0, 8);
+        if (selected.length >= 8) break;
+      }
+
+      // Remove empty categories and reshuffle order to keep randomness
+      categoryEntries = shuffle(
+        categoryEntries.filter(([, groups]) => groups.length > 0)
+      );
+
+      if (!addedThisPass) break;
+    }
+
+    return selected;
   }, [enrichedMarketGroups]);
 
   if (isLoadingMarketGroups) {
@@ -274,10 +344,10 @@ function MobileAndDesktopLists({
   }, [state, openMobile, mobileApi, desktopApi]);
 
   const desktopItemClass = React.useMemo(() => {
-    if (items.length >= 4) return 'pl-4 basis-1/2 lg:basis-1/4';
-    if (items.length === 3) return 'pl-4 basis-1/2';
-    if (items.length === 2) return 'pl-4 basis-[60%]';
-    return 'pl-4 basis-[80%]';
+    if (items.length >= 4) return 'pl-8 basis-1/2 lg:basis-1/4';
+    if (items.length === 3) return 'pl-8 basis-1/2 lg:basis-2/5';
+    if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2';
+    return 'pl-8 basis-[80%] lg:basis-3/4';
   }, [items.length]);
 
   return (
@@ -299,9 +369,9 @@ function MobileAndDesktopLists({
           setApi={setMobileApi}
           className="w-full"
         >
-          <CarouselContent className="-ml-4">
+          <CarouselContent className="-ml-8">
             {items.map((marketGroup) => (
-              <CarouselItem key={marketGroup.key} className="pl-4 basis-[80%]">
+              <CarouselItem key={marketGroup.key} className="pl-8 basis-[80%]">
                 <MarketGroupCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}
@@ -328,7 +398,7 @@ function MobileAndDesktopLists({
           setApi={setDesktopApi}
           className="w-full"
         >
-          <CarouselContent className="-ml-4">
+          <CarouselContent className="-ml-8">
             {items.map((marketGroup) => (
               <CarouselItem key={marketGroup.key} className={desktopItemClass}>
                 <MarketGroupCard

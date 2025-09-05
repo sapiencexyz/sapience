@@ -12,7 +12,7 @@ type ChatButtonProps = {
 };
 
 const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
-  const { openChat } = useChat();
+  const { toggleChat } = useChat();
 
   if (iconOnly) {
     return (
@@ -22,9 +22,9 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
         className="rounded-full md:h-9 md:w-9"
         onClick={() => {
           if (onAfterClick) onAfterClick();
-          openChat();
+          toggleChat();
         }}
-        aria-label="Open chat"
+        aria-label="Toggle chat"
       >
         <MessageCircle />
       </Button>
@@ -40,7 +40,7 @@ const ChatButton = ({ onAfterClick, iconOnly = false }: ChatButtonProps) => {
           className="rounded-full px-3 justify-start gap-2"
           onClick={() => {
             if (onAfterClick) onAfterClick();
-            openChat();
+            toggleChat();
           }}
         >
           <MessageCircle className="h-3 w-3 scale-[0.8]" />

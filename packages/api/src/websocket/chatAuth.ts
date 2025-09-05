@@ -8,8 +8,16 @@ export type NonceRecord = { message: string; expiresAt: number; used: boolean };
 const nonces = new Map<string, NonceRecord>();
 const sessions = new Map<string, ChatSession>();
 
-export const NONCE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-export const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+export const NONCE_TTL_MS = (() => {
+  const raw = process.env.CHAT_NONCE_TTL_MS;
+  const parsed = raw ? Number(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5 * 60 * 1000; // default 5m
+})();
+export const TOKEN_TTL_MS = (() => {
+  const raw = process.env.CHAT_TOKEN_TTL_MS;
+  const parsed = raw ? Number(raw) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 15 * 60 * 1000; // default 15m
+})();
 export const MAX_NONCES = 5000;
 export const MAX_SESSIONS = 10000;
 
@@ -110,4 +118,18 @@ export function validateToken(
 
 export function revokeToken(token: string) {
   sessions.delete(token);
+}
+
+export function refreshToken(
+  oldToken: string
+): { token: string; expiresAt: number; address: string } | null {
+  const sess = validateToken(oldToken);
+  if (!sess) return null;
+  // rotate token
+  sessions.delete(oldToken);
+  const token = generateToken();
+  const expiresAt = Date.now() + TOKEN_TTL_MS;
+  sessions.set(token, { address: sess.address, expiresAt });
+  enforceCap(sessions, MAX_SESSIONS);
+  return { token, expiresAt, address: sess.address };
 }

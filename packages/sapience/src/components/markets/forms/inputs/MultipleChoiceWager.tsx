@@ -7,7 +7,7 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { useFormContext } from 'react-hook-form';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface MultipleChoicePredictProps {
   name?: string;
@@ -24,6 +24,63 @@ export default function MultipleChoiceWagerChoiceSelect({
 }: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name) ?? defaultValue;
+
+  // Overflow indicators
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
+  const [dropdownOverflowing, setDropdownOverflowing] = useState(false);
+  const [dropdownAtBottom, setDropdownAtBottom] = useState(true);
+
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const [listOverflowing, setListOverflowing] = useState(false);
+  const [listAtBottom, setListAtBottom] = useState(true);
+
+  useEffect(() => {
+    const el = dropdownRef.current;
+    if (!el) return;
+    const update = () => {
+      const isOverflow = el.scrollHeight > el.clientHeight + 1;
+      setDropdownOverflowing(isOverflow);
+      setDropdownAtBottom(
+        !isOverflow || el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+      );
+    };
+    update();
+    const onScroll = () => update();
+    el.addEventListener('scroll', onScroll);
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(update)
+        : undefined;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
+  }, [options]);
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const update = () => {
+      const isOverflow = el.scrollHeight > el.clientHeight + 1;
+      setListOverflowing(isOverflow);
+      setListAtBottom(
+        !isOverflow || el.scrollTop + el.clientHeight >= el.scrollHeight - 1
+      );
+    };
+    update();
+    const onScroll = () => update();
+    el.addEventListener('scroll', onScroll);
+    const ro =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(update)
+        : undefined;
+    ro?.observe(el);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      ro?.disconnect();
+    };
+  }, [options]);
 
   useEffect(() => {
     if (options && options.length === 1) {
@@ -51,7 +108,12 @@ export default function MultipleChoiceWagerChoiceSelect({
           <SelectTrigger>
             <SelectValue placeholder="Select an option..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            ref={dropdownRef}
+            className={`relative ${
+              dropdownOverflowing ? 'overflow-y-scroll' : 'overflow-y-auto'
+            } ${dropdownOverflowing && !dropdownAtBottom ? 'border-b' : ''}`}
+          >
             {options
               .slice()
               .sort((a, b) => a.marketId - b.marketId)
@@ -60,6 +122,9 @@ export default function MultipleChoiceWagerChoiceSelect({
                   {optionName}
                 </SelectItem>
               ))}
+            {dropdownOverflowing && !dropdownAtBottom && (
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent" />
+            )}
           </SelectContent>
         </Select>
 
@@ -71,7 +136,12 @@ export default function MultipleChoiceWagerChoiceSelect({
 
   return (
     <div className="space-y-4">
-      <div>
+      <div
+        ref={listRef}
+        className={`md:max-h-[175px] pr-1 relative ${
+          listOverflowing ? 'md:overflow-y-scroll' : 'md:overflow-y-auto'
+        } ${listOverflowing && !listAtBottom ? 'border-b' : ''}`}
+      >
         <div className="grid grid-cols-1 gap-2 mt-2">
           {options
             .slice()

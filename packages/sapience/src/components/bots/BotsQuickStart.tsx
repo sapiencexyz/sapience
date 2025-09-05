@@ -5,7 +5,7 @@ export default function ElizaHomepageFeature() {
   return (
     <div>
       {/* ElizaOS Section */}
-      <section className="pt-16 lg:pt-24 pb-8 lg:pb-12 px-4 sm:px-6 w-full">
+      <section className="pt-8 lg:pt-12 pb-8 lg:pb-12 px-4 sm:px-6 w-full">
         <div className="max-w-6xl mx-auto w-full">
           <div className="flex flex-col-reverse lg:flex-row gap-8 lg:gap-28 lg:items-center lg:justify-center">
             {/* Left side: Explanatory text and CTAs */}

@@ -41,13 +41,18 @@ const PnLDisplay = ({
     return <span>-</span>; // Display a dash or placeholder for NaN
   }
 
+  const shouldUseTestUSDe =
+    isAlreadyUsd ||
+    collateralAddress?.toLowerCase() ===
+      '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3';
+
   return (
     <span>
-      $
       {usdValue.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}
+      {shouldUseTestUSDe ? ' testUSDe' : ''}
     </span>
   );
 };

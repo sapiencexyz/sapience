@@ -145,6 +145,10 @@ export function WagerInput({
           type="text"
           inputMode="decimal"
           placeholder="0.00"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          autoCapitalize="none"
           className={`pr-24 ${errors[name] ? 'border-destructive' : ''} ${inputClassName || ''}`}
           {...register(name, {
             validate: (val) => {

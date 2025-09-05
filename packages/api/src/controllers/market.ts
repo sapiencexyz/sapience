@@ -37,6 +37,8 @@ import Sapience from '@sapience/protocol/deployments/Sapience.json';
 import { PublicClient } from 'viem';
 import Sentry from '../instrument';
 import { Transaction } from '../../generated/prisma';
+import { fetchRenderServices, createRenderJob } from '../utils/utils';
+import { reindexBrier } from '../workers/jobs/reindexBrier';
 
 const settledPositions: any[] = [];
 // Called when the process starts, upserts markets in the database to match those in the constants.ts file
@@ -227,8 +229,11 @@ export const indexMarketGroupEvents = async (
         const logData = JSON.parse(serializedLog);
         const marketId = logData.args?.marketId || 0;
 
+        console.log(`[MarketEventWatcher] 1. Before alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         await alertEvent(chainId, marketGroup.address, logData);
+        console.log(`[MarketEventWatcher] 2. After alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
 
+        console.log(`[MarketEventWatcher] 3. Before upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         await upsertEvent(
           chainId,
           marketGroup.address,
@@ -238,6 +243,7 @@ export const indexMarketGroupEvents = async (
           logIndex,
           logData
         );
+        console.log(`[MarketEventWatcher] 4. After upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         // Reset reconnect attempts on successful processing of a log entry
         // Potentially, we might want to reset only if all logs in the batch are processed successfully.
         // For now, resetting on any successful log processing to mimic evmIndexer's onBlock success.
@@ -798,6 +804,67 @@ export const upsertEntitiesFromEvent = async (
             settlementPriceD18: settlementPriceD18.toString(),
           },
         });
+
+        // Kick off Brier scoring for this market asynchronously (idempotent)
+        // Prefer background job to avoid blocking the event loop
+        const addr = event.market_group.address;
+        const mId = String(event.logData.args.marketId);
+        const isProduction =
+          process.env.NODE_ENV === 'production' ||
+          process.env.NODE_ENV === 'staging';
+
+        (async () => {
+          try {
+            if (isProduction) {
+              const renderServices = await fetchRenderServices();
+              const worker = renderServices.find(
+                (item: any) =>
+                  item?.service?.type === 'background_worker' &&
+                  item?.service?.name?.startsWith('background-worker') &&
+                  item?.service?.branch ===
+                    (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
+              );
+
+              if (!worker?.service?.id) {
+                console.error(
+                  'Background worker not found for Brier reindex. Falling back to inline reindex.'
+                );
+                await reindexBrier(addr, mId);
+                return;
+              }
+
+              const startCommand = `pnpm run start:reindex-brier ${addr} ${mId}`;
+              await createRenderJob(worker.service.id, startCommand);
+              console.log('[Brier] Enqueued background reindex job via Render');
+            } else {
+              // Local dev: spawn detached process
+              const { spawn } = await import('child_process');
+              const child = spawn(
+                'pnpm',
+                ['run', 'start:reindex-brier', addr, mId],
+                {
+                  stdio: 'ignore',
+                  detached: true,
+                }
+              );
+              child.unref();
+              console.log('[Brier] Spawned local detached reindex process');
+            }
+          } catch (err) {
+            console.error(
+              '[Brier] Failed to enqueue async reindex, falling back to inline reindex:',
+              err
+            );
+            try {
+              await reindexBrier(addr, mId);
+            } catch (fallbackErr) {
+              console.error(
+                '[Brier] Inline reindex fallback failed:',
+                fallbackErr
+              );
+            }
+          }
+        })();
       } else {
         console.error('Market not found for market: ', event.market_group);
       }

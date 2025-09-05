@@ -89,6 +89,12 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
       });
     }
 
+    if (collateralAvailable > maxSize) {
+      return res.status(400).json({
+        error: 'Insufficient liquidity. Try a smaller size.',
+      });
+    }
+
     return res.json({
       direction: isLong ? 'LONG' : 'SHORT',
       maxSize: maxSize.toString(),
