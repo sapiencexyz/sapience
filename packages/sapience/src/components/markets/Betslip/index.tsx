@@ -319,12 +319,12 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   }>({
     defaultValues: {
       ...generateFormValues,
-      wagerAmount: DEFAULT_WAGER_AMOUNT,
+      wagerAmount: '10',
       limitAmount:
         positionsWithMarketData.filter(
           (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
         ).length > 0
-          ? parseFloat(DEFAULT_WAGER_AMOUNT) *
+          ? 10 *
             Math.pow(
               2,
               positionsWithMarketData.filter(
@@ -414,7 +414,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
         (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
       ).length > 0
         ? String(
-            parseFloat(DEFAULT_WAGER_AMOUNT) *
+            10 *
               Math.pow(
                 2,
                 positionsWithMarketData.filter(
@@ -428,7 +428,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     parlayMethods.reset(
       {
         positions: mergedPositions,
-        wagerAmount: existingWager || (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
+        wagerAmount: existingWager || (minParlayWager ?? '10'),
         limitAmount: existingLimit ?? defaultLimit,
       },
       { keepDirty: true, keepTouched: true }
@@ -710,7 +710,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       return;
     }
 
-    // If OTC/Parlay flow is enabled, and we have a bid, build the mint request for PredictionMarket
+    // If Auction flow is enabled, and we have a bid, build the mint request for PredictionMarket
     try {
       const nowSec = Math.floor(Date.now() / 1000);
       const validBids = bids.filter((b) => b.takerDeadline > nowSec);

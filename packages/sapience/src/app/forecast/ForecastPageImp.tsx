@@ -22,6 +22,7 @@ import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import QuestionSuggestions from '~/components/markets/QuestionSuggestions';
 import WalletAddressPopover from '~/components/markets/DataDrawer/WalletAddressPopover';
 import QuestionSelect from '~/components/shared/QuestionSelect';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 type TabsHeaderProps = {
   isAskTooltipOpen: boolean;
@@ -122,7 +123,9 @@ const ForecastPageImp = () => {
             setIsAskTooltipOpen={setIsAskTooltipOpen}
           />
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 flex items-center justify-center">
+              <LottieLoader width={32} height={32} />
+            </div>
             <p className="text-muted-foreground">Loading market data...</p>
           </div>
         </div>
@@ -174,6 +177,9 @@ const ForecastPageImp = () => {
       group,
     }))
   );
+
+  // All public markets (for suggestions we want any market that hasn't ended yet)
+  const publicMarkets = allMarkets.filter((market) => market.public);
 
   // Filter to only show active markets
   const activeMarkets = allMarkets.filter((market) => {
@@ -248,13 +254,19 @@ const ForecastPageImp = () => {
               >
                 deploy an agent
               </Link>{' '}
-              that does. Forecasts can provide signal for prediction market
-              participants and trigger automation.
+              that does. Forecasts can{' '}
+              <Link
+                href="/leaderboard#accuracy"
+                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+              >
+                provide signal
+              </Link>{' '}
+              for prediction market participants and trigger automation.
             </p>
           </div>
 
           {/* Market Selector (direct market search) - always visible */}
-          <div className="backdrop-blur-sm z-10">
+          <div className="backdrop-blur-sm relative z-50">
             <div className="p-6 pb-0">
               <QuestionSelect
                 key={selectedMarket?.id || 'no-selection'}
@@ -280,7 +292,7 @@ const ForecastPageImp = () => {
           <div className="border-b border-border relative pb-3">
             {!selectedMarket ? (
               <QuestionSuggestions
-                markets={activeMarkets}
+                markets={publicMarkets}
                 onMarketSelect={handleMarketSelect}
               />
             ) : (

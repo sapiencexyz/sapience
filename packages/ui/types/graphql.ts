@@ -114,6 +114,7 @@ export type AggregateTransaction = {
 
 export type Attestation = {
   __typename?: 'Attestation';
+  attestation_score?: Maybe<AttestationScore>;
   attester: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   comment?: Maybe<Scalars['String']['output']>;
@@ -130,6 +131,11 @@ export type Attestation = {
   time: Scalars['Int']['output'];
   transactionHash: Scalars['String']['output'];
   uid: Scalars['String']['output'];
+};
+
+
+export type AttestationAttestation_ScoreArgs = {
+  where?: InputMaybe<AttestationScoreWhereInput>;
 };
 
 export type AttestationAvgAggregate = {
@@ -313,6 +319,7 @@ export type AttestationOrderByWithAggregationInput = {
 };
 
 export type AttestationOrderByWithRelationInput = {
+  attestation_score?: InputMaybe<AttestationScoreOrderByWithRelationInput>;
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrderInput>;
@@ -329,6 +336,11 @@ export type AttestationOrderByWithRelationInput = {
   time?: InputMaybe<SortOrder>;
   transactionHash?: InputMaybe<SortOrder>;
   uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationRelationFilter = {
+  is?: InputMaybe<AttestationWhereInput>;
+  isNot?: InputMaybe<AttestationWhereInput>;
 };
 
 export type AttestationScalarFieldEnum =
@@ -371,6 +383,69 @@ export type AttestationScalarWhereWithAggregatesInput = {
   uid?: InputMaybe<StringWithAggregatesFilter>;
 };
 
+export type AttestationScore = {
+  __typename?: 'AttestationScore';
+  attestation: Attestation;
+  attestationId: Scalars['Int']['output'];
+  attester: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  errorSquared?: Maybe<Scalars['Float']['output']>;
+  id: Scalars['Int']['output'];
+  madeAt: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  marketId: Scalars['String']['output'];
+  outcome?: Maybe<Scalars['Int']['output']>;
+  probabilityD18?: Maybe<Scalars['String']['output']>;
+  probabilityFloat?: Maybe<Scalars['Float']['output']>;
+  questionId?: Maybe<Scalars['String']['output']>;
+  scoredAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  used: Scalars['Boolean']['output'];
+};
+
+export type AttestationScoreNullableRelationFilter = {
+  is?: InputMaybe<AttestationScoreWhereInput>;
+  isNot?: InputMaybe<AttestationScoreWhereInput>;
+};
+
+export type AttestationScoreOrderByWithRelationInput = {
+  attestation?: InputMaybe<AttestationOrderByWithRelationInput>;
+  attestationId?: InputMaybe<SortOrder>;
+  attester?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  errorSquared?: InputMaybe<SortOrderInput>;
+  id?: InputMaybe<SortOrder>;
+  madeAt?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  marketId?: InputMaybe<SortOrder>;
+  outcome?: InputMaybe<SortOrderInput>;
+  probabilityD18?: InputMaybe<SortOrderInput>;
+  probabilityFloat?: InputMaybe<SortOrderInput>;
+  questionId?: InputMaybe<SortOrderInput>;
+  scoredAt?: InputMaybe<SortOrderInput>;
+  used?: InputMaybe<SortOrder>;
+};
+
+export type AttestationScoreWhereInput = {
+  AND?: InputMaybe<Array<AttestationScoreWhereInput>>;
+  NOT?: InputMaybe<Array<AttestationScoreWhereInput>>;
+  OR?: InputMaybe<Array<AttestationScoreWhereInput>>;
+  attestation?: InputMaybe<AttestationRelationFilter>;
+  attestationId?: InputMaybe<IntFilter>;
+  attester?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  errorSquared?: InputMaybe<FloatNullableFilter>;
+  id?: InputMaybe<IntFilter>;
+  madeAt?: InputMaybe<IntFilter>;
+  marketAddress?: InputMaybe<StringFilter>;
+  marketId?: InputMaybe<StringFilter>;
+  outcome?: InputMaybe<IntNullableFilter>;
+  probabilityD18?: InputMaybe<StringNullableFilter>;
+  probabilityFloat?: InputMaybe<FloatNullableFilter>;
+  questionId?: InputMaybe<StringNullableFilter>;
+  scoredAt?: InputMaybe<DateTimeNullableFilter>;
+  used?: InputMaybe<BoolFilter>;
+};
+
 export type AttestationSumAggregate = {
   __typename?: 'AttestationSumAggregate';
   blockNumber?: Maybe<Scalars['Int']['output']>;
@@ -388,6 +463,7 @@ export type AttestationWhereInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
   OR?: InputMaybe<Array<AttestationWhereInput>>;
+  attestation_score?: InputMaybe<AttestationScoreNullableRelationFilter>;
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
@@ -410,6 +486,7 @@ export type AttestationWhereUniqueInput = {
   AND?: InputMaybe<Array<AttestationWhereInput>>;
   NOT?: InputMaybe<Array<AttestationWhereInput>>;
   OR?: InputMaybe<Array<AttestationWhereInput>>;
+  attestation_score?: InputMaybe<AttestationScoreNullableRelationFilter>;
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
@@ -885,6 +962,17 @@ export type DateTimeFilter = {
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
 };
 
+export type DateTimeNullableFilter = {
+  equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  gte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  in?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+  lt?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  not?: InputMaybe<NestedDateTimeNullableFilter>;
+  notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+};
+
 export type DateTimeWithAggregatesFilter = {
   _count?: InputMaybe<NestedIntFilter>;
   _max?: InputMaybe<NestedDateTimeFilter>;
@@ -1083,6 +1171,17 @@ export type FloatFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
+export type FloatNullableFilter = {
+  equals?: InputMaybe<Scalars['Float']['input']>;
+  gt?: InputMaybe<Scalars['Float']['input']>;
+  gte?: InputMaybe<Scalars['Float']['input']>;
+  in?: InputMaybe<Array<Scalars['Float']['input']>>;
+  lt?: InputMaybe<Scalars['Float']['input']>;
+  lte?: InputMaybe<Scalars['Float']['input']>;
+  not?: InputMaybe<NestedFloatNullableFilter>;
+  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
+};
+
 export type FloatWithAggregatesFilter = {
   _avg?: InputMaybe<NestedFloatFilter>;
   _count?: InputMaybe<NestedIntFilter>;
@@ -1097,6 +1196,17 @@ export type FloatWithAggregatesFilter = {
   lte?: InputMaybe<Scalars['Float']['input']>;
   not?: InputMaybe<NestedFloatWithAggregatesFilter>;
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
+};
+
+export type ForecasterScoreType = {
+  __typename?: 'ForecasterScoreType';
+  attester: Scalars['String']['output'];
+  meanBrier: Scalars['Float']['output'];
+  numScored: Scalars['Int']['output'];
+  numTimeWeighted: Scalars['Int']['output'];
+  sumErrorSquared: Scalars['Float']['output'];
+  sumTimeWeightedError: Scalars['Float']['output'];
+  timeWeightedMeanBrier: Scalars['Float']['output'];
 };
 
 export type IntFilter = {
@@ -2574,6 +2684,17 @@ export type NestedDateTimeFilter = {
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
 };
 
+export type NestedDateTimeNullableFilter = {
+  equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  gte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  in?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+  lt?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  not?: InputMaybe<NestedDateTimeNullableFilter>;
+  notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+};
+
 export type NestedDateTimeWithAggregatesFilter = {
   _count?: InputMaybe<NestedIntFilter>;
   _max?: InputMaybe<NestedDateTimeFilter>;
@@ -3250,6 +3371,7 @@ export type Query = {
   findManyCryptoPrices: Array<CryptoPrices>;
   findUniqueCryptoPrices?: Maybe<CryptoPrices>;
   findUniqueCryptoPricesOrThrow?: Maybe<CryptoPrices>;
+  forecasterScore?: Maybe<ForecasterScoreType>;
   getAttestation?: Maybe<Attestation>;
   getCategory?: Maybe<Category>;
   getMarket?: Maybe<Market>;
@@ -3288,6 +3410,7 @@ export type Query = {
   resourcePrices: Array<ResourcePrice>;
   resourceTrailingAverageCandles: CandleAndTimestampType;
   resources: Array<Resource>;
+  topForecasters: Array<ForecasterScoreType>;
   totalVolumeByMarket: Scalars['Float']['output'];
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
@@ -3634,6 +3757,11 @@ export type QueryFindUniqueCryptoPricesOrThrowArgs = {
 };
 
 
+export type QueryForecasterScoreArgs = {
+  attester: Scalars['String']['input'];
+};
+
+
 export type QueryGetAttestationArgs = {
   where: AttestationWhereUniqueInput;
 };
@@ -3928,6 +4056,11 @@ export type QueryResourcesArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ResourceWhereInput>;
+};
+
+
+export type QueryTopForecastersArgs = {
+  limit?: Scalars['Int']['input'];
 };
 
 

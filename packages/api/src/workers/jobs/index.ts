@@ -5,6 +5,8 @@ import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
 import { reindexMarketGroupFactory } from './reindexMarketGroupFactory';
 import { reindexEAS } from './reindexEAS';
+import { backfillBrier } from './backfillBrier';
+import { reindexBrier } from './reindexBrier';
 
 const callReindex = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -119,6 +121,12 @@ const callReindexEAS = async (argv: string[]) => {
   process.exit(0);
 };
 
+const callBackfillBrier = async () => {
+  await backfillBrier();
+  console.log('Done backfilling Brier scores');
+  process.exit(0);
+};
+
 export async function handleJobCommand(argv: string[]): Promise<boolean> {
   const command = argv[2];
 
@@ -142,6 +150,18 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     case 'reindexEAS': {
       await callReindexEAS(argv);
       return true; // Indicate a job command was handled
+    }
+    case 'backfillBrier': {
+      await callBackfillBrier();
+      return true;
+    }
+    case 'reindexBrier': {
+      const address = argv[3];
+      const marketId = argv[4];
+      await reindexBrier(address, marketId);
+      console.log('Done reindexing Brier');
+      process.exit(0);
+      return true;
     }
     default: {
       // No specific job command matched

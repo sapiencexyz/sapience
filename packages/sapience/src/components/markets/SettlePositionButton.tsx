@@ -10,6 +10,7 @@ interface SettlePositionButtonProps {
   positionId: string;
   marketAddress: string;
   chainId: number;
+  isMarketSettled: boolean;
   onSuccess?: () => void;
 }
 
@@ -17,6 +18,7 @@ const SettlePositionButton = ({
   positionId,
   marketAddress,
   chainId,
+  isMarketSettled,
   onSuccess,
 }: SettlePositionButtonProps) => {
   const { toast } = useToast();
@@ -53,7 +55,7 @@ const SettlePositionButton = ({
 
   // Handle simulation errors (separate from transaction errors)
   useEffect(() => {
-    if (error) {
+    if (error && isMarketSettled) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -70,6 +72,19 @@ const SettlePositionButton = ({
       console.error('Settlement error:', err);
     }
   };
+
+  if (!isMarketSettled) {
+    return (
+      <Button
+        variant="outline"
+        size="xs"
+        disabled
+        className="disabled:cursor-not-allowed"
+      >
+        Awaiting Market Settlement
+      </Button>
+    );
+  }
 
   // If the position is lost, show a "Wager Lost" badge
   if (isLost && !loadingSimulation) {

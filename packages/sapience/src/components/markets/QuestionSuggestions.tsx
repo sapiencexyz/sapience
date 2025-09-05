@@ -54,23 +54,68 @@ const QuestionSuggestions = ({
 
     // Recompute when markets change, on first init, or when user requests refresh
     if (marketsChanged || !isInitializedRef.current || refreshNonce > 0) {
-      // Sort markets by end timestamp (ascending - soonest ending first)
-      const sortedByEndTime = [...markets].sort((a, b) => {
-        const aEnd = a.endTimestamp || 0;
-        const bEnd = b.endTimestamp || 0;
-        return aEnd - bEnd;
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      // Filter to only future-ending markets
+      const futureMarkets = markets.filter((m) => {
+        const end = typeof m?.endTimestamp === 'number' ? m.endTimestamp : 0;
+        return end > nowSeconds;
       });
 
-      // Take the next 12 markets that are ending
-      const next12Ending = sortedByEndTime.slice(0, 12);
+      const pool = futureMarkets.slice(0, 1000); // cap to avoid huge arrays
 
-      // Initial client render: deterministic first 3 to avoid flicker in StrictMode
-      let suggested = next12Ending.slice(0, 3);
+      // Helpers
+      const shuffle = (arr: any[]) => {
+        const copy = [...arr];
+        for (let i = copy.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [copy[i], copy[j]] = [copy[j], copy[i]];
+        }
+        return copy;
+      };
 
-      // Only randomize when the user explicitly refreshes
-      if (refreshNonce > 0) {
-        const shuffled = [...next12Ending].sort(() => Math.random() - 0.5);
-        suggested = shuffled.slice(0, 3);
+      const pickRandom = <T,>(arr: T[]): T | null => {
+        if (!arr || arr.length === 0) return null;
+        return arr[Math.floor(Math.random() * arr.length)];
+      };
+
+      // Build a map of category -> markets
+      const categoryToMarkets: Record<string, any[]> = {};
+      for (const m of pool) {
+        const categoryKey =
+          m?.group?.category?.slug ?? m?.group?.category?.id ?? 'unknown';
+        if (!categoryToMarkets[categoryKey]) {
+          categoryToMarkets[categoryKey] = [];
+        }
+        categoryToMarkets[categoryKey].push(m);
+      }
+
+      const categoryKeys = Object.keys(categoryToMarkets);
+      const suggested: any[] = [];
+
+      if (categoryKeys.length >= 3) {
+        // Pick three distinct categories at random
+        const chosenCategories = shuffle(categoryKeys).slice(0, 3);
+        for (const key of chosenCategories) {
+          const pick = pickRandom(categoryToMarkets[key]);
+          if (pick) suggested.push(pick);
+        }
+      } else {
+        // Fewer than three categories available: pick one per category first
+        for (const key of categoryKeys) {
+          const pick = pickRandom(categoryToMarkets[key]);
+          if (pick) suggested.push(pick);
+        }
+        // Fill remaining slots from remaining pool (avoiding duplicates) up to 3
+        if (suggested.length < 3) {
+          const remaining = pool.filter(
+            (m) => !suggested.some((s) => s.id === m.id)
+          );
+          const shuffledRemaining = shuffle(remaining);
+          for (const m of shuffledRemaining) {
+            if (suggested.length >= 3) break;
+            suggested.push(m);
+          }
+        }
       }
 
       suggestionsRef.current = suggested;

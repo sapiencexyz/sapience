@@ -6,6 +6,69 @@ import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
 
 const router = Router();
+router.post(
+  '/brier',
+  handleAsyncErrors(async (req, res) => {
+    const { signature, timestamp, address, marketId } = req.body;
+
+    const startCommand =
+      `pnpm run start:reindex-brier ${address || ''} ${marketId || ''}`.trim();
+
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    if (isProduction) {
+      const isAuthenticated = await isValidWalletSignature(
+        signature as `0x${string}`,
+        Number(timestamp)
+      );
+      if (!isAuthenticated) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      const renderServices = await fetchRenderServices();
+      const worker = renderServices.find(
+        (item: {
+          service?: {
+            type?: string;
+            name?: string;
+            branch?: string;
+            id?: string;
+          };
+        }) =>
+          item?.service?.type === 'background_worker' &&
+          item?.service?.name?.startsWith('background-worker') &&
+          item?.service?.branch ===
+            (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
+      );
+
+      if (!worker?.service?.id) {
+        throw new Error('Background worker not found');
+      }
+
+      const job = await createRenderJob(worker.service.id, startCommand);
+      await prisma.renderJob.create({
+        data: { jobId: job.id, serviceId: job.serviceId },
+      });
+      res.json({ success: true, job });
+      return;
+    }
+
+    // local development
+    try {
+      const result = await executeLocalReindex(startCommand);
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
 
 const executeLocalReindex = async (
   startCommand: string
