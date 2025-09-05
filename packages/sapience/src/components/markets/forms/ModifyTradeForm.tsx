@@ -25,9 +25,9 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, RotateCcw } from 'lucide-react';
 import type React from 'react';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import { useAccount, useChainId, useReadContract, useSwitchChain } from 'wagmi';
 
@@ -141,6 +141,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 }) => {
   const { address } = useAccount();
   const { toast } = useToast();
+  const [isSizeInputFocused, setIsSizeInputFocused] = useState(false);
   const {
     baseTokenName,
     quoteTokenName,
@@ -206,7 +207,18 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       slippage: '0.5',
     },
   });
-  const { control, watch, handleSubmit, setValue, formState } = form;
+  const { control, watch, handleSubmit, setValue, formState, reset } = form;
+
+  // Reset form when position changes
+  useEffect(() => {
+    if (initialSize && originalPositionDirection) {
+      reset({
+        size: initialSize,
+        direction: originalPositionDirection,
+        slippage: '0.5',
+      });
+    }
+  }, [positionId, initialSize, originalPositionDirection, reset]);
 
   // Watch form fields
   const sizeInput = watch('size'); // Represents the target absolute size
@@ -473,7 +485,11 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               <FormItem>
                 <FormLabel>Target Size</FormLabel>
                 <FormControl>
-                  <div className="flex">
+                  <div
+                    className={`flex rounded-md ${
+                      isSizeInputFocused ? 'ring-2 ring-ring ring-offset-2' : ''
+                    }`}
+                  >
                     <Input
                       placeholder={originalSizeFormatted}
                       type="number"
@@ -481,11 +497,25 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                       className={
                         marketClassification ===
                         MarketGroupClassification.NUMERIC
-                          ? ''
-                          : 'rounded-r-none'
+                          ? 'rounded-r-none focus-visible:ring-0 focus-visible:ring-offset-0'
+                          : 'rounded-r-none focus-visible:ring-0 focus-visible:ring-offset-0'
                       }
                       {...field}
+                      onFocus={() => setIsSizeInputFocused(true)}
+                      onBlur={() => setIsSizeInputFocused(false)}
                     />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="rounded-l-none border-l-0 ml-[-1px] px-2 h-10"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        field.onChange(originalSizeFormatted);
+                      }}
+                      title="Revert to original size"
+                    >
+                      <RotateCcw />
+                    </Button>
                     {marketClassification ===
                       MarketGroupClassification.NUMERIC && (
                       <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">

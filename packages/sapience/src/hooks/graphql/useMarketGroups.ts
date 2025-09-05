@@ -395,7 +395,7 @@ export const useLatestIndexPrice = (market: {
         return { timestamp: null, value: null };
       }
     },
-    refetchInterval: 12000,
+    refetchInterval: 15000, 
     enabled: !!market.address && !!market.chainId && market.marketId !== 0,
   });
 };
@@ -448,7 +448,7 @@ export const useMarketCandles = (market: {
       }
     },
     enabled: !!market.address && !!market.chainId && market.marketId !== 0,
-    refetchInterval: 60000,
+    refetchInterval: 15000, 
   });
 };
 

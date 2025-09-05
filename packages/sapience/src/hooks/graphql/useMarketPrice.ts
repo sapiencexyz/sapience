@@ -109,8 +109,8 @@ export function useMarketPrice(
       }
     },
     enabled,
-    staleTime: 60000, // 1 minute
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 15000, // 15 seconds
+    refetchInterval: 15000, // Refetch every 15 seconds
     placeholderData: 0, // Default price while loading
   });
 }

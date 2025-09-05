@@ -6,11 +6,17 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { FrownIcon } from 'lucide-react';
+import { FrownIcon, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionButton from '../markets/SellPositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
@@ -148,6 +154,93 @@ function PositionValueCell({ position }: { position: PositionType }) {
   );
 }
 
+function AvgCurrentPriceCell({ position }: { position: PositionType }) {
+  const { transactions } = position;
+  const marketId = position.market?.marketId;
+  const marketGroup = position.market?.marketGroup;
+  const address = marketGroup?.address || '';
+  const chainId = marketGroup?.chainId || 0;
+  const baseTokenName = marketGroup?.baseTokenName;
+
+  // --- Fetch Current Market Price ---
+  const { data: currentMarketPriceRaw, isLoading: priceLoading } =
+    useMarketPrice(address, chainId, marketId);
+
+  // Default to 0 if undefined after loading, handling the linter error
+  const currentMarketPrice = currentMarketPriceRaw ?? 0;
+
+  const baseTokenAmount = Number(
+    formatEther(BigInt(position.baseToken || '0'))
+  );
+  const borrowedBaseTokenAmount = Number(
+    formatEther(BigInt(position.borrowedBaseToken || '0'))
+  );
+
+  const netPosition = baseTokenAmount - borrowedBaseTokenAmount;
+  const isLong = netPosition >= 0;
+
+  // --- Calculate Effective Entry Price ---
+  const entryPrice = calculateEffectiveEntryPrice(transactions || [], isLong);
+
+  // --- Calculate Position Size and Values ---
+  let positionSize = 0;
+  let currentPositionValue = 0;
+
+  if (baseTokenName === 'Yes') {
+    // Yes/No Market
+    if (isLong) {
+      // Long YES
+      positionSize = baseTokenAmount;
+      currentPositionValue = positionSize * currentMarketPrice;
+    } else {
+      // Short YES (Long NO)
+      positionSize = borrowedBaseTokenAmount;
+      currentPositionValue = positionSize * (1 - currentMarketPrice);
+    }
+  } else if (isLong) {
+    // Linear or other Market Types - Long Position
+    positionSize = baseTokenAmount;
+    currentPositionValue = positionSize * currentMarketPrice;
+  } else {
+    // Linear or other Market Types - Short Position
+    positionSize = borrowedBaseTokenAmount;
+    const pnlPerUnit = entryPrice - currentMarketPrice;
+    const totalPnl = positionSize * pnlPerUnit;
+    const costBasis = positionSize * entryPrice;
+    currentPositionValue = costBasis + totalPnl;
+  }
+
+  // --- Calculate Prices ---
+  const totalCollateral = Number(
+    formatEther(BigInt(position.collateral || '0'))
+  );
+
+  // avg price per token = total collateral / position size
+  const avgPricePerToken =
+    positionSize !== 0 ? totalCollateral / positionSize : 0;
+
+  // current price per token = position value / position size
+  const currentPricePerToken =
+    positionSize !== 0 ? currentPositionValue / positionSize : 0;
+
+  // Display loading state
+  if (priceLoading) {
+    return <span className="text-muted-foreground text-xs">Loading...</span>;
+  }
+
+  // Handle edge cases
+  if (positionSize === 0) {
+    return <span className="text-muted-foreground">N/A</span>;
+  }
+
+  return (
+    <div className="text-sm">
+      <NumberDisplay value={avgPricePerToken} /> →{' '}
+      <NumberDisplay value={currentPricePerToken} />
+    </div>
+  );
+}
+
 export default function TraderPositionsTable({
   positions,
   parentMarketAddress,
@@ -200,7 +293,7 @@ export default function TraderPositionsTable({
 
   // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
   const getPositionCreatedMs = (p: PositionType) => {
-    const direct = (p as any).createdAt as unknown as string | undefined;
+    const direct = (p as PositionType & { createdAt?: string }).createdAt;
     if (direct) {
       const ms = new Date(direct).getTime();
       if (Number.isFinite(ms)) return ms;
@@ -227,12 +320,27 @@ export default function TraderPositionsTable({
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}
-              <TableHead className="whitespace-nowrap">Position</TableHead>
+              <TableHead className="whitespace-nowrap">Position Size</TableHead>
               <TableHead className="whitespace-nowrap">Wager</TableHead>
-              <TableHead className="whitespace-nowrap">
-                Position Value
-              </TableHead>
               <TableHead className="whitespace-nowrap">Max Payout</TableHead>
+              <TableHead className="whitespace-nowrap">
+                <span className="flex items-center gap-1">
+                  Position Value
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-normal">
+                          The position value is approximate due to slippage.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+              </TableHead>
+              <TableHead className="whitespace-nowrap">Avg → Current</TableHead>
               <TableHead className="whitespace-nowrap" />
             </TableRow>
           </TableHeader>
@@ -277,15 +385,15 @@ export default function TraderPositionsTable({
                               position.market.marketGroup.chainId
                             )
                           : 'unknown';
-                        const marketAddress =
+                        const marketAddr =
                           position.market?.marketGroup?.address || '';
                         const marketId = position.market?.marketId;
                         const question = position.market?.question || 'N/A';
-                        if (!marketAddress || marketId === undefined)
+                        if (!marketAddr || marketId === undefined)
                           return question;
                         return (
                           <a
-                            href={`/markets/${chainShortName}:${marketAddress}/${marketId}`}
+                            href={`/markets/${chainShortName}:${marketAddr}/${marketId}`}
                             className="hover:underline"
                           >
                             {question}
@@ -296,7 +404,7 @@ export default function TraderPositionsTable({
                   )}
                   {isClosed ? (
                     <TableCell
-                      colSpan={displayQuestionColumn ? 7 : 6}
+                      colSpan={displayQuestionColumn ? 8 : 7}
                       className="text-center font-medium text-muted-foreground tracking-wider"
                     >
                       CLOSED
@@ -316,10 +424,13 @@ export default function TraderPositionsTable({
                           'Unknown'}
                       </TableCell>
                       <TableCell>
+                        <MaxPayoutCell position={position} />
+                      </TableCell>
+                      <TableCell>
                         <PositionValueCell position={position} />
                       </TableCell>
                       <TableCell>
-                        <MaxPayoutCell position={position} />
+                        <AvgCurrentPriceCell position={position} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">

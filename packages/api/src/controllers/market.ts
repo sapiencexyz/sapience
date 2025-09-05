@@ -229,8 +229,11 @@ export const indexMarketGroupEvents = async (
         const logData = JSON.parse(serializedLog);
         const marketId = logData.args?.marketId || 0;
 
+        console.log(`[MarketEventWatcher] 1. Before alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         await alertEvent(chainId, marketGroup.address, logData);
+        console.log(`[MarketEventWatcher] 2. After alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
 
+        console.log(`[MarketEventWatcher] 3. Before upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         await upsertEvent(
           chainId,
           marketGroup.address,
@@ -240,6 +243,7 @@ export const indexMarketGroupEvents = async (
           logIndex,
           logData
         );
+        console.log(`[MarketEventWatcher] 4. After upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
         // Reset reconnect attempts on successful processing of a log entry
         // Potentially, we might want to reset only if all logs in the batch are processed successfully.
         // For now, resetting on any successful log processing to mimic evmIndexer's onBlock success.
