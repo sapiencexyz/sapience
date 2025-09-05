@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as dbModule from '../db';
-import { reindexBrier } from '../workers/jobs/reindexBrier';
+import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import * as scoring from './scoringService';
 
 vi.mock('../db', () => {
@@ -31,13 +31,13 @@ const prisma = dbModule.default as unknown as {
   market: { findMany: ReturnType<typeof vi.fn> };
 };
 
-describe('reindexBrier', () => {
+describe('reindexAccuracy', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('scoped to address and marketId calls scoring routines', async () => {
     prisma.attestation.findMany.mockResolvedValue([{ id: 1 }]);
 
-    await reindexBrier('0xMG', '1');
+    await reindexAccuracy('0xMG', '1');
 
     expect(scoring.upsertAttestationScoreFromAttestation).toHaveBeenCalledWith(
       1

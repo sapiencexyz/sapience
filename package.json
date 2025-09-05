@@ -19,8 +19,8 @@
     "start:reindex-resource": "pnpm --filter api run start:reindex-resource",
     "start:reindex-market-group-factory": "pnpm --filter api run start:reindex-market-group-factory",
     "start:reindex-eas": "pnpm --filter api run start:reindex-eas",
-    "start:reindex-brier": "pnpm --filter api run start:reindex-brier",
-    "start:backfill-brier": "pnpm --filter api run start:backfill-brier"
+    "start:reindex-accuracy": "pnpm --filter api run start:reindex-accuracy",
+    "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy"
   },
   "keywords": [],
   "devDependencies": {

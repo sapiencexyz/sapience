@@ -1201,12 +1201,11 @@ export type FloatWithAggregatesFilter = {
 export type ForecasterScoreType = {
   __typename?: 'ForecasterScoreType';
   attester: Scalars['String']['output'];
-  meanBrier: Scalars['Float']['output'];
   numScored: Scalars['Int']['output'];
   numTimeWeighted: Scalars['Int']['output'];
   sumErrorSquared: Scalars['Float']['output'];
   sumTimeWeightedError: Scalars['Float']['output'];
-  timeWeightedMeanBrier: Scalars['Float']['output'];
+  accuracyScore: Scalars['Float']['output'];
 };
 
 export type IntFilter = {
