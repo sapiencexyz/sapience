@@ -1225,6 +1225,7 @@ type Market {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]!
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -1292,6 +1293,7 @@ type MarketCountAggregate {
   question: Int!
   settled: Int!
   settlementPriceD18: Int!
+  similarMarkets: Int!
   startTimestamp: Int!
   startingSqrtPriceX96: Int!
 }
@@ -1322,6 +1324,7 @@ input MarketCountOrderByAggregateInput {
   question: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
+  similarMarkets: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
 }
@@ -1427,6 +1430,7 @@ type MarketGroupBy {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -2099,6 +2103,7 @@ input MarketOrderByWithAggregationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -2131,6 +2136,7 @@ input MarketOrderByWithRelationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -2312,6 +2318,7 @@ enum MarketScalarFieldEnum {
   question
   settled
   settlementPriceD18
+  similarMarkets
   startTimestamp
   startingSqrtPriceX96
 }
@@ -2345,6 +2352,7 @@ input MarketScalarWhereWithAggregatesInput {
   question: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableWithAggregatesFilter
   startingSqrtPriceX96: StringNullableWithAggregatesFilter
 }
@@ -2412,6 +2420,7 @@ input MarketWhereInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -2448,6 +2457,7 @@ input MarketWhereUniqueInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -3670,6 +3680,14 @@ input StringNullableFilter {
   not: NestedStringNullableFilter
   notIn: [String!]
   startsWith: String
+}
+
+input StringNullableListFilter {
+  equals: [String!]
+  has: String
+  hasEvery: [String!]
+  hasSome: [String!]
+  isEmpty: Boolean
 }
 
 input StringNullableWithAggregatesFilter {
