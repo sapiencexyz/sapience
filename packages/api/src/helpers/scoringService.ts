@@ -113,8 +113,21 @@ export async function scoreSelectedForecastsForSettledMarket(
       market_group: { address: marketAddress.toLowerCase() },
       marketId: parseInt(marketId, 16) || Number(marketId) || 0,
     },
+    include: { market_group: true },
   });
   if (!market) return;
+
+  // Gate Brier scoring to YES/NO markets by checking baseTokenName
+  if (market.market_group?.baseTokenName !== 'Yes') {
+    await prisma.attestationScore.updateMany({
+      where: {
+        marketAddress: marketAddress.toLowerCase(),
+        marketId,
+      },
+      data: { errorSquared: null, scoredAt: null, outcome: null },
+    });
+    return;
+  }
 
   const outcome = outcomeFromSettlement(market);
   if (outcome === null) {
@@ -132,7 +145,6 @@ export async function scoreSelectedForecastsForSettledMarket(
   // Score all pre-end forecasts (not just a selected/latest one)
   const end = market.endTimestamp ?? null;
   if (end == null) return;
-
   const selected = await prisma.attestationScore.findMany({
     where: {
       marketAddress: marketAddress.toLowerCase(),
@@ -170,8 +182,10 @@ export async function computeTimeWeightedForAttesterMarketValue(
       market_group: { address: marketAddress.toLowerCase() },
       marketId: parseInt(marketId, 16) || Number(marketId) || 0,
     },
+    include: { market_group: true },
   });
   if (!market || market.endTimestamp == null) return null;
+  if (market.market_group?.baseTokenName !== 'Yes') return null;
   const outcome = outcomeFromSettlement(market);
   if (outcome === null) return null;
 

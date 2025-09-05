@@ -96,13 +96,14 @@ describe('outcomeFromSettlement', () => {
     expect(outcomeFromSettlement(m)).toBe(0);
   });
 
-  it('returns null for numeric/non-binary', () => {
+  it('rounds mid-range settlement >= 0.5 to 1 for YES markets', () => {
     const m = {
       settled: true,
       settlementPriceD18: new Prisma.Decimal('500000000000000000'), // 0.5
       minPriceD18: new Prisma.Decimal(0),
       maxPriceD18: new Prisma.Decimal('1000000000000000000'),
     };
-    expect(outcomeFromSettlement(m)).toBeNull();
+    // Under YES markets, midpoint rounds up
+    expect(outcomeFromSettlement(m)).toBe(1);
   });
 });

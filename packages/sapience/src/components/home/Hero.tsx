@@ -36,7 +36,7 @@ export default function Hero() {
 
   return (
     <>
-      <div className="relative h-[100dvh] w-full flex flex-col justify-end">
+      <div className="relative h-[100dvh] w-full flex flex-col justify-end pt-6 md:pt-0 pb-8 md:pb-16 lg:pb-24">
         {/* Spline embed background - made larger than viewport */}
         <div
           className="absolute inset-0 z-0 light"
@@ -67,7 +67,7 @@ export default function Hero() {
         {/* Content container - positioned at bottom, left-aligned */}
         <div className="w-full z-10">
           <div className="container px-0 pb-0">
-            <div className="text-left px-4 md:px-8 pt-2 pb-2 md:pt-24">
+            <div className="text-left px-0 md:px-8 pt-2 pb-2 md:pt-24">
               <h1 className="font-sans text-3xl md:text-5xl font-normal mb-4">
                 The World&apos;s Frontier
                 <br />

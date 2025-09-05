@@ -118,3 +118,29 @@ jobs:
       - name: Compile API
         run: pnpm run compile
         working-directory: packages/api
+
+  test-api:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15.4
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Generate Prisma client
+        run: pnpm prisma:generate
+        working-directory: packages/api
+
+      - name: Run API tests
+        run: pnpm test -- --run
+        working-directory: packages/api
