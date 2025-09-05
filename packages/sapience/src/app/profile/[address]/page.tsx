@@ -90,7 +90,7 @@ export default function PortfolioPage() {
             Prediction Market Liquidity
           </TabsTrigger>
           <TabsTrigger className="w-full" value="auction">
-            Auction Wagers/Parlays
+            Parlays
           </TabsTrigger>
           <TabsTrigger className="w-full" value="forecasts">
             Forecasts

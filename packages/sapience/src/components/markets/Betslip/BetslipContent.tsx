@@ -14,7 +14,6 @@ import {
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useAccount } from 'wagmi';
-import { Gavel } from 'lucide-react';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
@@ -130,9 +129,21 @@ export const BetslipContent = ({
   const hasNumericMarket = positionsWithMarketData.some(
     (p) => p.marketClassification === MarketGroupClassification.NUMERIC
   );
+  const parlayEligiblePositionsCount = useMemo(() => {
+    return positionsWithMarketData.filter(
+      (p) =>
+        p.marketClassification !== MarketGroupClassification.NUMERIC &&
+        !p.isLoading &&
+        !p.error &&
+        p.marketGroupData &&
+        p.marketClassification
+    ).length;
+  }, [positionsWithMarketData]);
   const isParlayFeatureEnabled =
     PARLAY_FEATURE_ENABLED || parlayFeatureOverrideEnabled;
-  const effectiveParlayMode = isParlayFeatureEnabled && isParlayMode;
+  const canBuildParlay = parlayEligiblePositionsCount >= 2;
+  const effectiveParlayMode =
+    isParlayFeatureEnabled && isParlayMode && canBuildParlay;
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
     positionsWithMarketData.every((p) => p.isLoading);
@@ -325,7 +336,7 @@ export const BetslipContent = ({
             <span className="text-lg font-medium">Make a Prediction</span>
             <div className="flex items-center gap-4 col-start-3 justify-self-end">
               <div className="flex items-center gap-2">
-                {!isParlayFeatureEnabled ? (
+                {!isParlayFeatureEnabled || !canBuildParlay ? (
                   <TooltipProvider>
                     <Tooltip
                       open={isMobile ? parlayTooltipOpen : undefined}
@@ -340,11 +351,7 @@ export const BetslipContent = ({
                           aria-disabled="true"
                         >
                           <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                            <Gavel
-                              className="w-4 h-4 opacity-70"
-                              style={{ transform: 'scaleX(-1)' }}
-                            />
-                            Auction Mode
+                            Parlay
                           </span>
                           <span className="flex items-center">
                             <Switch checked={false} disabled />
@@ -352,18 +359,18 @@ export const BetslipContent = ({
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>Coming Soon</p>
+                        <p>
+                          {isParlayFeatureEnabled
+                            ? 'Add more than one prediction to build a parlay.'
+                            : 'Coming Soon'}
+                        </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-muted-foreground flex items-center gap-1 font-medium leading-none">
-                      <Gavel
-                        className="w-4 h-4 opacity-70"
-                        style={{ transform: 'scaleX(-1)' }}
-                      />
-                      Auction Mode
+                      Parlay
                     </span>
                     <span className="flex items-center">
                       <Switch

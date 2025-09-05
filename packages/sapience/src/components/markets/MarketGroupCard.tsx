@@ -9,6 +9,7 @@ import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 export interface MarketGroupCardProps {
   chainId: number;
@@ -31,6 +32,8 @@ const MarketGroupCard = ({
   marketClassification,
   displayUnit,
 }: MarketGroupCardProps) => {
+  const { addPosition } = useBetSlipContext();
+
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
     [chainId]
@@ -75,6 +78,57 @@ const MarketGroupCard = ({
     if (price <= 0) return 'Price N/A';
     const percentage = price * 100;
     return `${Math.round(percentage)}% chance`;
+  };
+
+  // Helper function to handle adding market to bet slip
+  const handleAddToBetSlip = (
+    marketItem: MarketWithContext,
+    prediction: boolean
+  ) => {
+    const position = {
+      prediction,
+      marketAddress,
+      marketId: marketItem.marketId,
+      question: marketItem.question || marketItem.optionName || displayQuestion,
+      chainId,
+      marketClassification,
+      wagerAmount: '10', // Default wager amount
+    };
+    addPosition(position);
+  };
+
+  // Handler for Yes button
+  const handleYesClick = () => {
+    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
+    handleAddToBetSlip(yesMarket, true);
+  };
+
+  // Handler for No button
+  const handleNoClick = () => {
+    const noMarket = market.find((m) => m.optionName === 'No') || market[0];
+    handleAddToBetSlip(noMarket, false);
+  };
+
+  // Handler for Multiple Choice predict button (selects first option)
+  const handlePredictClick = () => {
+    if (market.length === 0) return;
+
+    // Mirror the MarketPrediction logic: choose the highest priced option if available
+    const marketPriceData = market.map((marketItem) => ({
+      marketItem,
+      price: latestPrices[marketItem.marketId] || 0,
+    }));
+
+    const highestPricedMarket = marketPriceData.reduce((highest, current) =>
+      current.price > highest.price ? current : highest
+    );
+
+    const selectedMarket =
+      highestPricedMarket.price > 0
+        ? highestPricedMarket.marketItem
+        : sortedMarkets[0];
+
+    handleAddToBetSlip(selectedMarket, true);
   };
 
   const MarketPrediction = () => {
@@ -143,8 +197,6 @@ const MarketGroupCard = ({
 
   const canShowPredictionElement = isActive && market.length > 0;
 
-  const baseHref = `/markets/${chainShortName}:${marketAddress}`;
-
   return (
     <div className="w-full h-full">
       <motion.div
@@ -193,17 +245,29 @@ const MarketGroupCard = ({
             {isActive &&
               marketClassification ===
                 MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
-                <Link href={baseHref} className="block">
+                <Link
+                  href="/markets"
+                  className="block"
+                  onClick={handlePredictClick}
+                >
                   <Button className="w-full">Make a Prediction</Button>
                 </Link>
               )}
             {isActive &&
               marketClassification === MarketGroupClassificationEnum.YES_NO && (
                 <div className="flex items-center gap-2">
-                  <Link href={`${baseHref}?prediction=yes`} className="flex-1">
+                  <Link
+                    href="/markets"
+                    className="flex-1"
+                    onClick={handleYesClick}
+                  >
                     <Button className="w-full">Yes</Button>
                   </Link>
-                  <Link href={`${baseHref}?prediction=no`} className="flex-1">
+                  <Link
+                    href="/markets"
+                    className="flex-1"
+                    onClick={handleNoClick}
+                  >
                     <Button variant="outline" className="w-full">
                       No
                     </Button>

@@ -349,7 +349,7 @@ const SettingsPage = () => {
                     invalidMessage="Must be an absolute http(s) base URL"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Used to relay bids in <em>Auction Mode</em>
+                    Used to relay bids for parlays
                   </p>
                 </div>
 
