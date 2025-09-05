@@ -37,9 +37,9 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 import {
-  useBrierLeaderboard,
+  useAccuracyLeaderboard,
   type ForecasterScore,
-} from '~/hooks/graphql/useBrierLeaderboard';
+} from '~/hooks/graphql/useAccuracyLeaderboard';
 
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   ssr: false,
@@ -59,13 +59,13 @@ const LoadingIndicator = () => (
 );
 
 const Leaderboard = () => {
-  const [tabValue, setTabValue] = useState<'pnl' | 'brier'>('pnl');
+  const [tabValue, setTabValue] = useState<'pnl' | 'accuracy'>('pnl');
 
   useEffect(() => {
     const setFromHash = () => {
       const hash = window.location.hash;
       if (hash === '#accuracy') {
-        setTabValue('brier');
+        setTabValue('accuracy');
       } else if (hash === '#profit') {
         setTabValue('pnl');
       } else {
@@ -79,8 +79,8 @@ const Leaderboard = () => {
   }, []);
 
   const handleTabChange = (value: string) => {
-    setTabValue(value as 'pnl' | 'brier');
-    const newHash = value === 'brier' ? '#accuracy' : '#profit';
+    setTabValue(value as 'pnl' | 'accuracy');
+    const newHash = value === 'accuracy' ? '#accuracy' : '#profit';
     if (window.location.hash !== newHash) {
       // Update URL hash without triggering default anchor scrolling
       window.history.replaceState(null, '', newHash);
@@ -88,7 +88,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="container max-w-[540px] mx-auto py-32">
+    <div className="container max-w-[480px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
         Leaderboard
       </h1>
@@ -96,7 +96,7 @@ const Leaderboard = () => {
         <div className="mb-6">
           <TabsList>
             <TabsTrigger value="pnl">Profit</TabsTrigger>
-            <TabsTrigger value="brier">Accuracy</TabsTrigger>
+            <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="pnl">
@@ -112,19 +112,19 @@ const Leaderboard = () => {
           </p>
           <PnLLeaderboard />
         </TabsContent>
-        <TabsContent value="brier">
+        <TabsContent value="accuracy">
           <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
-            The Horizon-Weighted Brier Score ranks{' '}
+            The accuracy score ranks{' '}
             <Link
               href="/forecast"
               className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
             >
               forecasters
-            </Link>{' '}
-            based on how accurate and early their predictions are.
+            </Link>
+            , favoring early predictions.
           </p>
 
-          <BrierLeaderboard />
+          <AccuracyLeaderboard />
         </TabsContent>
       </Tabs>
     </div>
@@ -244,8 +244,8 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 
 export default Leaderboard;
 
-const BrierLeaderboard = () => {
-  const { data, isLoading } = useBrierLeaderboard(10);
+const AccuracyLeaderboard = () => {
+  const { data, isLoading } = useAccuracyLeaderboard(10);
 
   const columns = useMemo<ColumnDef<ForecasterScore>[]>(
     () => [
@@ -259,32 +259,29 @@ const BrierLeaderboard = () => {
         ),
       },
       {
-        id: 'meanBrier',
+        id: 'accuracyScore',
         header: () => (
           <div className="w-full flex items-center justify-end gap-1">
-            <span className="md:hidden">HWBS</span>
-            <span className="hidden md:inline">
-              Horizon-Weighted Brier Score
-            </span>
+            <span className="hidden md:inline">Accuracy Score</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
                   <Info className="w-3 h-3 opacity-80" />
                 </TooltipTrigger>
-                <TooltipContent>Lower is better</TooltipContent>
+                <TooltipContent>
+                  Inverted Horizon-Weighted Brier Score
+                </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           </div>
         ),
-        accessorKey: 'timeWeightedMeanBrier',
+        accessorKey: 'accuracyScore',
         cell: ({ getValue }) => {
           const v = getValue<number>();
-          return (
-            <>
-              <span className="font-mono md:hidden">{v.toFixed(4)}</span>
-              <span className="font-mono hidden md:inline">{v.toFixed(8)}</span>
-            </>
-          );
+          const formatted = Number.isFinite(v)
+            ? v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+            : '-';
+          return <span>{formatted}</span>;
         },
       },
     ],
@@ -318,7 +315,7 @@ const BrierLeaderboard = () => {
                     {
                       'text-center': header.id === 'rank',
                       'w-14 md:w-16': header.id === 'rank',
-                      'text-right': header.id === 'meanBrier',
+                      'text-right': header.id === 'accuracyScore',
                     }
                   )}
                 >
@@ -343,7 +340,7 @@ const BrierLeaderboard = () => {
                   className={cn('p-3 text-sm md:text-base', {
                     'text-right font-normal': cell.column.id === 'rank',
                     'w-14 md:w-16': cell.column.id === 'rank',
-                    'text-right': cell.column.id === 'meanBrier',
+                    'text-right': cell.column.id === 'accuracyScore',
                   })}
                 >
                   {flexRender(cell.column.columnDef.cell, cell.getContext())}

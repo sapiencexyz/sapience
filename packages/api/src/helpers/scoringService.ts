@@ -117,7 +117,7 @@ export async function scoreSelectedForecastsForSettledMarket(
   });
   if (!market) return;
 
-  // Gate Brier scoring to YES/NO markets by checking baseTokenName
+  // Gate accuracy scoring to YES/NO markets by checking baseTokenName
   if (market.market_group?.baseTokenName !== 'Yes') {
     await prisma.attestationScore.updateMany({
       where: {
@@ -171,7 +171,7 @@ export async function scoreSelectedForecastsForSettledMarket(
   );
 }
 
-// Horizon-weighted Brier (HWBS): compute per-attester per-market (pure compute, no writes)
+// Horizon-weighted error (formerly HWBS): compute per-attester per-market (pure compute, no writes)
 export async function computeTimeWeightedForAttesterMarketValue(
   marketAddress: string,
   marketId: string,

@@ -7,12 +7,12 @@ import { Request, Response } from 'express';
 
 const router = Router();
 router.post(
-  '/brier',
+  '/accuracy',
   handleAsyncErrors(async (req, res) => {
     const { signature, timestamp, address, marketId } = req.body;
 
     const startCommand =
-      `pnpm run start:reindex-brier ${address || ''} ${marketId || ''}`.trim();
+      `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
 
     const isProduction =
       process.env.NODE_ENV === 'production' ||

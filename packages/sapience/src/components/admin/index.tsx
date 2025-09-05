@@ -37,7 +37,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
 
-const ReindexBrierForm = () => {
+const ReindexAccuracyForm = () => {
   const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -56,7 +56,7 @@ const ReindexBrierForm = () => {
         signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/brier`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/accuracy`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,20 +70,20 @@ const ReindexBrierForm = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to start Brier reindex');
+        throw new Error(data.error || 'Failed to start accuracy reindex');
       }
 
       toast({
         title: 'Reindex started',
         description: address
-          ? `Brier reindex started for ${address}${marketId ? `, market ${marketId}` : ''}`
-          : 'Global Brier backfill started',
+          ? `Accuracy score reindex started for ${address}${marketId ? `, market ${marketId}` : ''}`
+          : 'Global accuracy score backfill started',
       });
 
       setAddress('');
       setMarketId('');
     } catch (error) {
-      console.error('Reindex Brier error:', error);
+      console.error('Reindex accuracy error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -98,11 +98,11 @@ const ReindexBrierForm = () => {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label htmlFor="brierAddress" className="text-sm font-medium">
+        <label htmlFor="accuracyAddress" className="text-sm font-medium">
           Market Group Address (optional)
         </label>
         <Input
-          id="brierAddress"
+          id="accuracyAddress"
           placeholder="0x... (leave blank for global backfill)"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
@@ -110,11 +110,11 @@ const ReindexBrierForm = () => {
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="brierMarketId" className="text-sm font-medium">
+        <label htmlFor="accuracyMarketId" className="text-sm font-medium">
           Market ID (optional)
         </label>
         <Input
-          id="brierMarketId"
+          id="accuracyMarketId"
           placeholder="e.g. 123 (scoped to address if provided)"
           value={marketId}
           onChange={(e) => setMarketId(e.target.value)}
@@ -128,7 +128,7 @@ const ReindexBrierForm = () => {
             <span className="ml-2">Processing...</span>
           </>
         ) : (
-          'Reindex Brier'
+          'Reindex Accuracy Scores'
         )}
       </Button>
     </form>
@@ -511,7 +511,7 @@ const Admin = () => {
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
-  const [brierReindexOpen, setBrierReindexOpen] = useState(false);
+  const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Sort market groups with most recent (highest ID) first
@@ -560,17 +560,20 @@ const Admin = () => {
               <IndexResourceForm />
             </DialogContent>
           </Dialog>
-          <Dialog open={brierReindexOpen} onOpenChange={setBrierReindexOpen}>
+          <Dialog
+            open={accuracyReindexOpen}
+            onOpenChange={setAccuracyReindexOpen}
+          >
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
-                Reindex Brier
+                Reindex Accuracy Scores
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Reindex Brier Scores</DialogTitle>
+                <DialogTitle>Reindex Accuracy Scores</DialogTitle>
               </DialogHeader>
-              <ReindexBrierForm />
+              <ReindexAccuracyForm />
             </DialogContent>
           </Dialog>
           <Dialog open={refreshCacheOpen} onOpenChange={setRefreshCacheOpen}>

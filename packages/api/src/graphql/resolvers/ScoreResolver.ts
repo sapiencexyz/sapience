@@ -21,17 +21,16 @@ class ForecasterScoreType {
   @Field(() => Float)
   sumErrorSquared!: number;
 
-  @Field(() => Float)
-  meanBrier!: number;
-
   @Field(() => Int)
   numTimeWeighted!: number;
 
   @Field(() => Float)
   sumTimeWeightedError!: number;
 
+  // Higher is better. Defined as 1 / (horizon-weighted mean error),
+  // falling back to 1 / (mean error) when horizon weighting is unavailable.
   @Field(() => Float)
-  timeWeightedMeanBrier!: number;
+  accuracyScore!: number;
 }
 
 @Resolver()
@@ -51,7 +50,7 @@ export class ScoreResolver {
     if (agg.length === 0) return null;
     const numScored = agg[0]._count._all ?? 0;
     const sumErrorSquared = (agg[0]._sum.errorSquared as number | null) ?? 0;
-    const meanBrier = numScored > 0 ? sumErrorSquared / numScored : 0;
+    const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
 
     // Compute time-weighted across markets on the fly
     const markets = await prisma.attestationScore.findMany({
@@ -72,17 +71,22 @@ export class ScoreResolver {
         numTimeWeighted += 1;
       }
     }
-    const timeWeightedMeanBrier =
-      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanBrier;
+    // Prefer horizon-weighted mean error when available
+    const horizonWeightedMeanError =
+      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
+
+    const accuracyScore =
+      horizonWeightedMeanError && horizonWeightedMeanError > 0
+        ? 1 / horizonWeightedMeanError
+        : 0;
 
     return {
       attester: a,
       numScored,
       sumErrorSquared,
-      meanBrier,
       numTimeWeighted,
       sumTimeWeightedError,
-      timeWeightedMeanBrier,
+      accuracyScore,
     };
   }
 
@@ -92,7 +96,7 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // Base aggregation order by meanBrier (simple) as a fallback
+    // Base aggregation to compute mean error as a fallback
     const agg = await prisma.attestationScore.groupBy({
       by: ['attester'],
       where: { errorSquared: { not: null } },
@@ -106,7 +110,7 @@ export class ScoreResolver {
       const a = row.attester as string;
       const numScored = row._count._all ?? 0;
       const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-      const meanBrier = numScored > 0 ? sumErrorSquared / numScored : 0;
+      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
 
       const markets = await prisma.attestationScore.findMany({
         where: { attester: a },
@@ -126,24 +130,28 @@ export class ScoreResolver {
           numTimeWeighted += 1;
         }
       }
-      const timeWeightedMeanBrier =
+      const horizonWeightedMeanError =
         numTimeWeighted > 0
           ? sumTimeWeightedError / numTimeWeighted
-          : meanBrier;
+          : meanError;
+
+      const accuracyScore =
+        horizonWeightedMeanError && horizonWeightedMeanError > 0
+          ? 1 / horizonWeightedMeanError
+          : 0;
 
       results.push({
         attester: a,
         numScored,
         sumErrorSquared,
-        meanBrier,
         numTimeWeighted,
         sumTimeWeightedError,
-        timeWeightedMeanBrier,
+        accuracyScore,
       });
     }
 
-    // Order by timeWeightedMeanBrier asc
-    results.sort((a, b) => a.timeWeightedMeanBrier - b.timeWeightedMeanBrier);
+    // Order by accuracyScore desc (higher is better)
+    results.sort((a, b) => b.accuracyScore - a.accuracyScore);
     return results.slice(0, capped);
   }
 }
