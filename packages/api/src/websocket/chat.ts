@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
+import prisma from '../db';
 import {
   createChallenge,
   refreshToken,
@@ -13,7 +14,8 @@ export type StoredMessage = {
   clientId?: string;
 };
 
-const MESSAGE_LIMIT = 200;
+const MESSAGE_LIMIT = 100;
+const MESSAGE_DB_LIMIT = MESSAGE_LIMIT;
 const MAX_CONNECTIONS_PER_IP = Number(
   process.env.CHAT_MAX_CONNECTIONS_PER_IP || 50
 );
@@ -30,7 +32,46 @@ const addressToSendRate = new Map<
   { windowStart: number; count: number }
 >();
 
+let historyLoaded = false;
+let historyLoadingPromise: Promise<void> | null = null;
+
+function loadHistoryFromDbOnce(): Promise<void> {
+  if (historyLoaded) return Promise.resolve();
+  if (historyLoadingPromise) return historyLoadingPromise;
+  historyLoadingPromise = (async () => {
+    try {
+      const rows = (await prisma.$queryRaw<
+        Array<{
+          id: number;
+          text: string;
+          address: string | null;
+          timestamp: bigint | number | string;
+        }>
+      >`SELECT id, text, address, timestamp FROM chat_message ORDER BY timestamp DESC LIMIT ${MESSAGE_LIMIT}`) as Array<{
+        id: number;
+        text: string;
+        address: string | null;
+        timestamp: bigint | number | string;
+      }>;
+      // Oldest first in memory
+      for (const row of rows.reverse()) {
+        messages.push({
+          text: row.text,
+          address: row.address || undefined,
+          timestamp: Number(row.timestamp as unknown as number),
+        });
+      }
+      historyLoaded = true;
+    } catch {
+      // ignore load errors; keep memory empty
+    }
+  })();
+  return historyLoadingPromise;
+}
+
 export function createChatWebSocketServer() {
+  // Kick off history load on server creation
+  void loadHistoryFromDbOnce();
   const wss = new WebSocketServer({
     noServer: true,
     maxPayload: 4096,
@@ -93,11 +134,16 @@ export function createChatWebSocketServer() {
       } catch {
         /* ignore */
       }
-      try {
-        ws.send(JSON.stringify({ type: 'history', messages }));
-      } catch {
-        // no-op
-      }
+      // Ensure history is loaded before sending to this client
+      loadHistoryFromDbOnce()
+        .catch(() => undefined)
+        .finally(() => {
+          try {
+            ws.send(JSON.stringify({ type: 'history', messages }));
+          } catch {
+            // no-op
+          }
+        });
 
       ws.on('message', (raw: RawData) => {
         let clientId: string | undefined;
@@ -259,6 +305,21 @@ export function createChatWebSocketServer() {
             }
             return;
           }
+          if (type === 'auth_logout') {
+            try {
+              // Clear any bound address on this socket and notify client
+              delete ws._address;
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_status',
+                  authenticated: false,
+                })
+              );
+            } catch {
+              /* noop */
+            }
+            return;
+          }
 
           // Chat send path - enforce explicit type
           if (type !== 'send') {
@@ -371,6 +432,19 @@ export function createChatWebSocketServer() {
           messages.push(stored);
           if (messages.length > MESSAGE_LIMIT)
             messages.splice(0, messages.length - MESSAGE_LIMIT);
+
+          // Persist to DB (fire-and-forget) with transactional prune
+          (async () => {
+            try {
+              await prisma.$transaction(async (tx) => {
+                await tx.$executeRaw`INSERT INTO chat_message (text, address, timestamp) VALUES (${text}, ${boundAddress || null}, ${stored.timestamp})`;
+                // Keep only the most recent MESSAGE_DB_LIMIT rows by timestamp (deterministic with id tie-breaker)
+                await tx.$executeRaw`DELETE FROM chat_message WHERE id IN (SELECT id FROM chat_message ORDER BY timestamp DESC, id DESC OFFSET ${MESSAGE_DB_LIMIT})`;
+              });
+            } catch {
+              // ignore persistence errors
+            }
+          })();
 
           // Broadcast to all clients, including sender, so the author sees confirmed echo
           wss.clients.forEach((client: WebSocket) => {

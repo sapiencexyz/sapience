@@ -1,6 +1,7 @@
 'use client';
 
 import { Card } from '@sapience/ui/components/ui/card';
+import { useWallets, usePrivy } from '@privy-io/react-auth';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessages } from './chat/ChatMessages';
 import { ChatInput } from './chat/ChatInput';
@@ -10,11 +11,16 @@ import { useChat } from '~/lib/context/ChatContext';
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
+  const { wallets } = useWallets();
+  const { ready, authenticated } = usePrivy();
+  const connectedWallet = wallets[0];
+  const addressOverride =
+    ready && authenticated ? connectedWallet?.address : undefined;
 
   const {
     state: { messages, pendingText, setPendingText, canChat, canType },
     actions: { sendMessage, loginNow },
-  } = useChatConnection(isOpen);
+  } = useChatConnection(isOpen, addressOverride);
 
   const {
     refs: { containerRef, headerRef, closeBtnRef },

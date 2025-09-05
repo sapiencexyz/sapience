@@ -387,3 +387,16 @@ enum transaction_type_enum {
   short
   settledPosition
 }
+
+/// Chat message history for ephemeral chat websocket
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  text      String   @db.Text
+  address   String?  @db.VarChar
+  timestamp BigInt   @db.BigInt
+
+  @@index([timestamp], map: "IDX_chat_message_timestamp")
+  @@index([address], map: "IDX_chat_message_address")
+  @@map("chat_message")
+}

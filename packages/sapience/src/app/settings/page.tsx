@@ -11,7 +11,7 @@ import { useTheme } from 'next-themes';
 import { Moon, Sun, Monitor, Key } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
-import { usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -130,12 +130,13 @@ const SettingsPage = () => {
   const [quoterInput, setQuoterInput] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [rpcInput, setRpcInput] = useState('');
-  const { ready, authenticated, user, exportWallet } = usePrivy();
-  const hasEmbeddedWallet = !!user?.linkedAccounts?.find(
-    (account) =>
-      account.type === 'wallet' &&
-      account.walletClientType === 'privy' &&
-      account.chainType === 'ethereum'
+  const { ready, authenticated, exportWallet } = usePrivy();
+  const { wallets } = useWallets();
+  const activeWallet = (
+    wallets && wallets.length > 0 ? (wallets[0] as any) : undefined
+  ) as (typeof wallets extends Array<infer T> ? T : any) | undefined;
+  const isActiveEmbeddedWallet = Boolean(
+    (activeWallet as any)?.walletClientType === 'privy'
   );
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
@@ -331,7 +332,7 @@ const SettingsPage = () => {
               </p>
             </div>
 
-            {ready && hasEmbeddedWallet ? (
+            {ready && isActiveEmbeddedWallet ? (
               <div className="grid gap-2">
                 <Label htmlFor="export-wallet">Back Up Account</Label>
                 <div id="export-wallet">

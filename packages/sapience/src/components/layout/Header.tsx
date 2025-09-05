@@ -151,6 +151,11 @@ const Header = () => {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('sapience.chat.token');
         window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
+        try {
+          window.dispatchEvent(new Event('sapience:chat_logout'));
+        } catch {
+          /* noop */
+        }
       }
     } catch {
       /* noop */

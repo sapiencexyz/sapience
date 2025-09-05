@@ -120,9 +120,10 @@ const Leaderboard = () => {
               className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
             >
               forecasters
-            </Link>
-            , rewarding accurate predictions more the earlier they are.
+            </Link>{' '}
+            based on how accurate and early their predictions are.
           </p>
+
           <BrierLeaderboard />
         </TabsContent>
       </Tabs>

@@ -1,14 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useSignMessage } from 'wagmi';
 import { buildWebSocketUrl } from './types';
 import type { ChatMessage } from './types';
 
 type SendQueueItem = { text: string; clientId: string };
 
-export function useChatConnection(isOpen: boolean) {
-  const { address: userAddress } = useAccount();
+export function useChatConnection(isOpen: boolean, addressOverride?: string) {
+  const userAddress: string | undefined = addressOverride;
   const normalizedUserAddress = (userAddress || '').toLowerCase();
   const { signMessageAsync } = useSignMessage();
 
@@ -37,6 +37,41 @@ export function useChatConnection(isOpen: boolean) {
   const reconnectPromiseRef = useRef<Promise<void> | null>(null);
   const requireAuth =
     (process.env.NEXT_PUBLIC_CHAT_REQUIRE_AUTH ?? 'true') !== 'false';
+
+  // Authorship does not depend on chat auth; only wallet address.
+  // But we suppress authorship after an explicit logout until reconnect/auth.
+  const suppressAuthorshipRef = useRef<boolean>(false);
+  const pendingAuthInitRef = useRef<boolean>(false);
+
+  // Recompute authorship of existing messages based on current address and auth state
+  const recomputeAuthors = useCallback(() => {
+    setMessagesAndRef((prev) => {
+      let changed = false;
+      const next = prev.map((m) => {
+        if (m.address) {
+          const shouldBeMe =
+            !!normalizedUserAddress &&
+            m.address.toLowerCase() === normalizedUserAddress;
+          if (shouldBeMe && m.author !== 'me') {
+            changed = true;
+            return { ...m, author: 'me' as const };
+          }
+          if (!shouldBeMe && m.author === 'me') {
+            changed = true;
+            return { ...m, author: 'server' as const };
+          }
+          return m;
+        }
+        // Messages without an address are never authored by "me"
+        if (m.author === 'me') {
+          changed = true;
+          return { ...m, author: 'server' as const };
+        }
+        return m;
+      });
+      return changed ? next : prev;
+    });
+  }, [normalizedUserAddress, setMessagesAndRef]);
 
   const ensureAuthToken = useCallback(async () => {
     // Ensure function remains truly async for linting consistency
@@ -91,6 +126,43 @@ export function useChatConnection(isOpen: boolean) {
               } catch {
                 /* noop */
               }
+              // If we connected with a token, treat auth as active and persist it
+              if (_token) {
+                tokenRef.current = _token;
+                try {
+                  window.localStorage.setItem('sapience.chat.token', _token);
+                } catch {
+                  /* noop */
+                }
+                // ensure refresh loop is running for this token
+                try {
+                  if (refreshIntervalRef.current) {
+                    clearInterval(refreshIntervalRef.current);
+                  }
+                  refreshIntervalRef.current = window.setInterval(() => {
+                    try {
+                      if (!requireAuth) return;
+                      if (!tokenRef.current || !tokenExpiryRef.current) return;
+                      const msLeft = tokenExpiryRef.current - Date.now();
+                      if (msLeft <= 60_000) {
+                        ws.send(
+                          JSON.stringify({
+                            type: 'auth_refresh',
+                            token: tokenRef.current,
+                          })
+                        );
+                      }
+                    } catch {
+                      /* noop */
+                    }
+                  }, 15_000);
+                } catch {
+                  /* noop */
+                }
+              }
+              // Auth is active; clear suppression and recompute authorship
+              suppressAuthorshipRef.current = false;
+              recomputeAuthors();
             }
             return;
           }
@@ -161,6 +233,9 @@ export function useChatConnection(isOpen: boolean) {
             } catch {
               /* noop */
             }
+            // Auth is active; clear suppression and recompute authorship
+            suppressAuthorshipRef.current = false;
+            recomputeAuthors();
             // flush any queued messages now that we're authenticated
             try {
               if (outgoingQueueRef.current.length > 0) {
@@ -197,6 +272,8 @@ export function useChatConnection(isOpen: boolean) {
             } catch {
               /* noop */
             }
+            // Recompute authorship now that auth is gone (do not force suppression here)
+            recomputeAuthors();
             return;
           }
           if (data?.type === 'history' && Array.isArray(data.messages)) {
@@ -233,7 +310,7 @@ export function useChatConnection(isOpen: boolean) {
                 }
                 if (data.clientId) {
                   const pending = messagesRef.current.find(
-                    (m) => m.author === 'me' && m.clientId === data.clientId
+                    (m) => m.clientId === data.clientId
                   );
                   if (pending?.text) {
                     outgoingQueueRef.current.push({
@@ -290,7 +367,7 @@ export function useChatConnection(isOpen: boolean) {
               // Reconcile by clientId regardless of address presence
               if (data.clientId) {
                 const byIdIdx = prev.findIndex(
-                  (m) => m.author === 'me' && m.clientId === data.clientId
+                  (m) => m.clientId === data.clientId
                 );
                 if (byIdIdx !== -1) {
                   const next = [...prev];
@@ -302,7 +379,7 @@ export function useChatConnection(isOpen: boolean) {
                 }
               }
 
-              // Determine authorship if address matches current user
+              // Determine authorship if address matches current user and not suppressed
               const isMe =
                 !!data.address &&
                 data.address.toLowerCase() === normalizedUserAddress;
@@ -372,7 +449,9 @@ export function useChatConnection(isOpen: boolean) {
         });
       };
 
-      const onError = () => scheduleReconnect();
+      const onError = () => {
+        scheduleReconnect();
+      };
       const onClose = () => {
         try {
           if (refreshIntervalRef.current) {
@@ -409,8 +488,18 @@ export function useChatConnection(isOpen: boolean) {
               /* noop */
             }
           }
-          // If auth is required and we lack a bound token, kick off auth_init
-          // do not auto-auth on open; trigger only when user sends and server requires auth
+          // Optionally trigger auth_init if a send initiated unauthenticated
+          try {
+            if (requireAuth && pendingAuthInitRef.current) {
+              pendingAuthInitRef.current = false;
+              ws.send(
+                JSON.stringify({ type: 'auth_init', address: userAddress })
+              );
+            }
+          } catch {
+            /* noop */
+          }
+          // Do not auto-trigger auth_init to avoid signature prompts on open
           resolve(detach);
         };
 
@@ -420,11 +509,12 @@ export function useChatConnection(isOpen: boolean) {
         ws.addEventListener('close', onClose);
       });
     },
-    [ensureAuthToken, normalizedUserAddress]
+    [ensureAuthToken, normalizedUserAddress, recomputeAuthors]
   );
 
   useEffect(() => {
     isMountedRef.current = true;
+    // No persisted flags; rely on Privy address and events
     if (!isOpen) return;
 
     const baseUrl = buildWebSocketUrl();
@@ -469,23 +559,8 @@ export function useChatConnection(isOpen: boolean) {
   }, [isOpen, ensureAuthToken, connectSocket]);
 
   useEffect(() => {
-    if (!normalizedUserAddress) return;
-    setMessagesAndRef((prev) => {
-      let changed = false;
-      const next = prev.map((m) => {
-        if (
-          m.author !== 'me' &&
-          m.address &&
-          m.address.toLowerCase() === normalizedUserAddress
-        ) {
-          changed = true;
-          return { ...m, author: 'me' as const };
-        }
-        return m;
-      });
-      return changed ? next : prev;
-    });
-  }, [normalizedUserAddress]);
+    recomputeAuthors();
+  }, [normalizedUserAddress, recomputeAuthors]);
 
   const canChat = useMemo(() => true, []);
 
@@ -498,6 +573,9 @@ export function useChatConnection(isOpen: boolean) {
     const prev = prevAddressRef.current;
     if (prev === null) {
       prevAddressRef.current = current;
+      // Ensure suppression reflects current address on first run
+      suppressAuthorshipRef.current = current ? false : true;
+      recomputeAuthors();
       return;
     }
     if (!current || current !== prev) {
@@ -517,9 +595,77 @@ export function useChatConnection(isOpen: boolean) {
       } catch {
         /* noop */
       }
+      try {
+        const ws = socketRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'auth_logout' }));
+        }
+      } catch {
+        /* noop */
+      }
+      // If user has connected a new address, lift suppression; otherwise keep messages as not-me
+      suppressAuthorshipRef.current = current ? false : true;
       prevAddressRef.current = current;
+      // Recompute authorship on address change or disconnect
+      recomputeAuthors();
     }
   }, [userAddress]);
+
+  // Listen for explicit logout events (same-tab) and localStorage changes (cross-tab)
+  useEffect(() => {
+    const onAppLogout = () => {
+      try {
+        tokenRef.current = null;
+        tokenExpiryRef.current = null;
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
+      } catch {
+        /* noop */
+      }
+      try {
+        const ws = socketRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'auth_logout' }));
+        }
+      } catch {
+        /* noop */
+      }
+      // Suppress authorship until user reconnects or reauths
+      suppressAuthorshipRef.current = true;
+      // No persistence
+      recomputeAuthors();
+    };
+
+    const onStorage = (e: StorageEvent) => {
+      if (!e) return;
+      if (e.key === 'sapience.chat.token' && !e.newValue) {
+        onAppLogout();
+      }
+    };
+
+    try {
+      window.addEventListener(
+        'sapience:chat_logout',
+        onAppLogout as EventListener
+      );
+      window.addEventListener('storage', onStorage);
+    } catch {
+      /* noop */
+    }
+    return () => {
+      try {
+        window.removeEventListener(
+          'sapience:chat_logout',
+          onAppLogout as EventListener
+        );
+        window.removeEventListener('storage', onStorage);
+      } catch {
+        /* noop */
+      }
+    };
+  }, [recomputeAuthors]);
 
   const sendMessage = useCallback(() => {
     const text = pendingText.trim();
@@ -530,7 +676,7 @@ export function useChatConnection(isOpen: boolean) {
     const clientId = crypto.randomUUID();
     const optimistic: ChatMessage = {
       id: crypto.randomUUID(),
-      author: 'me',
+      author: userAddress ? 'me' : 'server',
       text,
       address: userAddress,
       clientId,
@@ -542,20 +688,41 @@ export function useChatConnection(isOpen: boolean) {
     const isAuthed = !requireAuth || !!tokenRef.current;
     if (!isSocketOpen || !isAuthed) {
       outgoingQueueRef.current.push({ text, clientId });
-      let url = buildWebSocketUrl();
-      if (requireAuth && tokenRef.current) {
-        url = `${url}?token=${encodeURIComponent(tokenRef.current)}`;
+      // Ensure auth flow starts promptly when sending while unauthenticated
+      if (requireAuth) {
+        try {
+          if (isSocketOpen) {
+            socketRef.current?.send(
+              JSON.stringify({ type: 'auth_init', address: userAddress })
+            );
+          } else {
+            pendingAuthInitRef.current = true;
+          }
+        } catch {
+          /* noop */
+        }
       }
       if (!reconnectPromiseRef.current) {
         reconnectPromiseRef.current = (async () => {
-          // no token handling in simplified mode
           try {
             try {
               socketRef.current?.close();
             } catch {
               /* noop */
             }
-            await connectSocket(url, null);
+            let url = buildWebSocketUrl();
+            let token: string | null = null;
+            if (requireAuth) {
+              try {
+                token = await ensureAuthToken();
+              } catch {
+                /* noop */
+              }
+            }
+            if (token) {
+              url = `${url}?token=${encodeURIComponent(token)}`;
+            }
+            await connectSocket(url, token || null);
           } catch {
             /* noop */
           }
@@ -571,7 +738,14 @@ export function useChatConnection(isOpen: boolean) {
     } catch {
       outgoingQueueRef.current.push({ text, clientId });
     }
-  }, [pendingText, canChat, userAddress, connectSocket]);
+  }, [
+    pendingText,
+    canChat,
+    userAddress,
+    connectSocket,
+    ensureAuthToken,
+    requireAuth,
+  ]);
 
   return {
     state: {
@@ -592,6 +766,8 @@ export function useChatConnection(isOpen: boolean) {
             ws.send(
               JSON.stringify({ type: 'auth_init', address: userAddress })
             );
+          } else {
+            pendingAuthInitRef.current = true;
           }
         } catch {
           /* noop */
