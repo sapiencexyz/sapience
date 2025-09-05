@@ -29,7 +29,7 @@ export function ChatInput({
           if (e.key === 'Enter') onSend();
         }}
         disabled={!canType}
-        placeholder={canChat ? 'Type a message...' : 'Sign in to post'}
+        placeholder={canChat ? 'Type a message...' : 'Log in to chat'}
       />
       <Button
         onClick={() => (canChat ? onSend() : onLogin())}

@@ -16,7 +16,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@sapience/ui/components/ui/sidebar';
-import { LogOut, Menu, User, BookOpen, Wallet, Settings } from 'lucide-react';
+import {
+  LogOut,
+  Menu,
+  User,
+  BookOpen,
+  Settings,
+  LineChart,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -73,70 +80,94 @@ const NavLinks = ({
   };
 
   return (
-    <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-44 pl-4">
-      <Link href="/markets" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Prediction Markets
-        </Button>
-      </Link>
-      <Link href="/vaults" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Vaults
-        </Button>
-      </Link>
-      <Link href="/leaderboard" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/leaderboard', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Leaderboard
-        </Button>
-      </Link>
-      <Link href="/forecast" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Forecasting
-        </Button>
-      </Link>
-      <Link href="/bots" passHref className="flex w-fit">
-        <Button
-          variant="ghost"
-          className={`${linkClass} ${isActive('/bots', pathname) ? activeClass : ''}`}
-          onClick={handleLinkClick}
-        >
-          Build Bots
-        </Button>
-      </Link>
-      {/* Mobile settings button when logged out, placed under links */}
-      {ready && !authenticated && (
-        <Link href="/settings" passHref className="flex w-fit md:hidden">
-          <Button
-            variant="ghost"
-            className={`${linkClass}`}
-            onClick={handleLinkClick}
-          >
-            Settings
-          </Button>
-        </Link>
-      )}
+    <>
       {ready && authenticated && connectedWallet && (
         <>
-          <SusdeBalance className="md:hidden" onClick={handleLinkClick} />
+          <div className="flex w-fit md:hidden mt-5 ml-4">
+            <Button
+              asChild
+              variant="default"
+              size="xs"
+              className="rounded-full h-9 px-3 min-w-[122px] justify-start gap-2"
+              onClick={handleLinkClick}
+            >
+              <Link
+                href={`/profile/${connectedWallet.address}`}
+                className="flex items-center gap-2"
+              >
+                <LineChart className="h-4 w-4" />
+                <span className="relative top-[1px] md:top-0 text-sm mr-1">
+                  Your Predictions
+                </span>
+              </Link>
+            </Button>
+          </div>
+          <SusdeBalance
+            className="md:hidden mt-2 ml-4"
+            onClick={handleLinkClick}
+          />
         </>
       )}
-    </nav>
+      <nav className="flex flex-col gap-3 w-full mt-32 lg:mt-44 pl-4">
+        <Link href="/markets" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/markets', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Prediction Markets
+          </Button>
+        </Link>
+        <Link href="/forecast" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/forecast', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Forecasting
+          </Button>
+        </Link>
+        <Link href="/vaults" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/vaults', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Vaults
+          </Button>
+        </Link>
+        <Link href="/bots" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/bots', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Build Bots
+          </Button>
+        </Link>
+        <Link href="/leaderboard" passHref className="flex w-fit">
+          <Button
+            variant="ghost"
+            className={`${linkClass} ${isActive('/leaderboard', pathname) ? activeClass : ''}`}
+            onClick={handleLinkClick}
+          >
+            Leaderboard
+          </Button>
+        </Link>
+        {/* Mobile settings button when logged out, placed under links */}
+        {ready && !authenticated && (
+          <Link href="/settings" passHref className="flex w-fit md:hidden">
+            <Button
+              variant="ghost"
+              className={`${linkClass}`}
+              onClick={handleLinkClick}
+            >
+              Settings
+            </Button>
+          </Link>
+        )}
+      </nav>
+    </>
   );
 };
 
@@ -149,7 +180,13 @@ const Header = () => {
   const handleLogout = async () => {
     try {
       if (typeof window !== 'undefined') {
-        window.localStorage.removeItem('chatToken');
+        window.localStorage.removeItem('sapience.chat.token');
+        window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
+        try {
+          window.dispatchEvent(new Event('sapience:chat_logout'));
+        } catch {
+          /* noop */
+        }
       }
     } catch {
       /* noop */
@@ -203,29 +240,24 @@ const Header = () => {
 
           <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
             <div className="block">
-              {ready && authenticated ? null : (
-                <Link href="/settings" className="hidden md:block">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full md:h-9 md:w-9"
-                  >
-                    <Settings className="h-4 w-4" />
-                    <span className="sr-only">Settings</span>
-                  </Button>
-                </Link>
-              )}
-            </div>
-            <div className="block">
               <Suspense fallback={null}>
                 <ChatButton iconOnly />
               </Suspense>
             </div>
+            {ready && !authenticated && (
+              <Link href="/settings" className="hidden md:block">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full md:h-9 md:w-9"
+                >
+                  <Settings className="h-4 w-4" />
+                  <span className="sr-only">Settings</span>
+                </Button>
+              </Link>
+            )}
             {ready && authenticated && (
-              <SusdeBalance
-                className="hidden md:flex mx-0"
-                buttonClassName="h-9 px-3"
-              />
+              <SusdeBalance className="hidden md:flex" />
             )}
             {ready && authenticated && (
               <DropdownMenu>
@@ -250,14 +282,14 @@ const Header = () => {
                         href={`/profile/${connectedWallet.address}`}
                         className="flex items-center"
                       >
-                        <Wallet className="mr-2 h-4 w-4" />
-                        <span>Your Portfolio</span>
+                        <LineChart className="mr-0.5 opacity-75 h-4 w-4" />
+                        <span>Your Predictions</span>
                       </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem asChild>
                     <Link href="/settings" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
+                      <Settings className="mr-0.5 opacity-75 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
@@ -265,7 +297,7 @@ const Header = () => {
                     onClick={handleLogout}
                     className="flex items-center cursor-pointer"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
                     <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>

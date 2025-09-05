@@ -11,6 +11,10 @@ import Sentry from '../../instrument';
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IResourcePriceIndexer } from '../../interfaces';
 import type { Resource } from '../../../generated/prisma';
+import {
+  upsertAttestationScoreFromAttestation,
+  selectLatestPreEndForMarket,
+} from '../../helpers/scoringService';
 
 const BLOCK_BATCH_SIZE = 100;
 
@@ -277,7 +281,7 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
         (key, value) => (typeof value === 'bigint' ? value.toString() : value)
       );
 
-      await prisma.attestation.upsert({
+      const att = await prisma.attestation.upsert({
         where: {
           uid: event.uid,
         },
@@ -311,6 +315,13 @@ class EASPredictionIndexer implements IResourcePriceIndexer {
           comment: decodedData.comment || null,
         },
       });
+
+      // Update per-attestation scoring info and selection
+      await upsertAttestationScoreFromAttestation(att.id);
+      await selectLatestPreEndForMarket(
+        decodedData.marketAddress,
+        decodedData.marketId
+      );
 
       console.log(
         `[EASPredictionIndexer] Stored prediction attestation ${event.uid} for market ${decodedData.marketAddress} (questionId: ${decodedData.questionId}) with prediction ${decodedData.prediction}`

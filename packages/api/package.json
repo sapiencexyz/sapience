@@ -26,7 +26,10 @@
     "start:reindex-resource": "tsx src/workers/worker.ts reindexResource $*",
     "start:reindex-market-group-factory": "tsx src/workers/worker.ts reindexMarketGroupFactory $*",
     "start:reindex-eas": "tsx src/workers/worker.ts reindexEAS $*",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:reindex-brier": "tsx src/workers/worker.ts reindexBrier $*",
+    "start:backfill-brier": "tsx src/workers/worker.ts backfillBrier $*",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src --max-warnings 0",
@@ -93,7 +96,8 @@
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^9.15.0",
     "globals": "^15.14.0",
-    "typescript-eslint": "^8.21.0"
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^2.0.5"
   },
   "engines": {
     "node": ">=20.14.x",

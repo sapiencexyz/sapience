@@ -43,6 +43,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
 }) => {
   const MARKET_PREDICTION_LABEL = 'Market Prediction';
   const displayDataPoint = hoveredDataPoint || latestDataPoint;
+  const isMultipleChoice = Boolean(optionNames && optionNames.length > 1);
 
   if (!displayDataPoint) {
     return null; // No data to display legend for
@@ -54,11 +55,30 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
     return yAxisConfig.tooltipValueFormatter(value);
   };
 
+  // Prepare items and sort if multiple choice
+  const items = marketIds
+    .map((marketIdNum, index) => {
+      const marketIdStr = String(marketIdNum);
+      const value = displayDataPoint.markets?.[marketIdStr];
+      return { marketIdNum, index, value };
+    })
+    .sort((a, b) => {
+      if (!isMultipleChoice) return 0;
+      const aVal = a.value ?? Number.NEGATIVE_INFINITY;
+      const bVal = b.value ?? Number.NEGATIVE_INFINITY;
+      return bVal - aVal;
+    });
+
   return (
-    <div className="flex flex-col items-start gap-y-1 pb-4 text-sm">
-      {marketIds.map((marketIdNum, index) => {
+    <div
+      className={
+        isMultipleChoice
+          ? 'flex flex-wrap items-center gap-x-3 gap-y-1 pb-4 text-sm'
+          : 'flex flex-col items-start gap-y-1 pb-4 text-sm'
+      }
+    >
+      {items.map(({ marketIdNum, index, value }) => {
         const marketIdStr = String(marketIdNum);
-        const value = displayDataPoint.markets?.[marketIdStr];
         const color = lineColors[index % lineColors.length];
 
         // Determine label based on hover state and option names
@@ -70,15 +90,16 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         }
 
         let label: string;
-        if (optionNames && optionNames.length > 1) {
+        if (isMultipleChoice) {
           label = baseLabel;
         } else {
           label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
         }
 
-        const isMultipleChoice = optionNames && optionNames.length > 1;
         const isPercentageMarket = yAxisConfig.unit === '%';
-        const itemClassName = `flex items-center gap-1.5 mb-0.5 ${isMultipleChoice ? '' : 'text-lg'}`;
+        const itemClassName = `flex items-center gap-1.5 ${
+          isMultipleChoice ? '' : 'mb-0.5 text-lg'
+        }`;
 
         return (
           <div key={marketIdStr} className={itemClassName}>

@@ -1,7 +1,11 @@
 import { WebSocketServer, WebSocket, RawData } from 'ws';
-import http from 'http';
-import type { Socket } from 'net';
-import { validateToken } from './chatAuth';
+import prisma from '../db';
+import {
+  createChallenge,
+  refreshToken,
+  validateToken,
+  verifyAndCreateToken,
+} from './chatAuth';
 
 export type StoredMessage = {
   text: string;
@@ -10,20 +14,64 @@ export type StoredMessage = {
   clientId?: string;
 };
 
-const MESSAGE_LIMIT = 200;
-const MAX_CONNECTIONS_PER_IP = 50; // simple cap
+const MESSAGE_LIMIT = 100;
+const MESSAGE_DB_LIMIT = MESSAGE_LIMIT;
+const MAX_CONNECTIONS_PER_IP = Number(
+  process.env.CHAT_MAX_CONNECTIONS_PER_IP || 50
+);
 const SEND_RATE_WINDOW_MS = 10_000; // 10s
-const SEND_RATE_MAX_PER_WINDOW = 20; // max 20 messages per 10s per address
+const SEND_RATE_MAX_PER_WINDOW = 20; // max 20 messages per 10s per IP
+const REQUIRE_AUTH = (process.env.CHAT_REQUIRE_AUTH ?? 'true') !== 'false';
 
 // In-memory message history for all chat clients
 const messages: StoredMessage[] = [];
 const ipToConnectionCount = new Map<string, number>();
+const ipToSendRate = new Map<string, { windowStart: number; count: number }>();
 const addressToSendRate = new Map<
   string,
   { windowStart: number; count: number }
 >();
 
-export function createChatWebSocketServer(server: http.Server) {
+let historyLoaded = false;
+let historyLoadingPromise: Promise<void> | null = null;
+
+function loadHistoryFromDbOnce(): Promise<void> {
+  if (historyLoaded) return Promise.resolve();
+  if (historyLoadingPromise) return historyLoadingPromise;
+  historyLoadingPromise = (async () => {
+    try {
+      const rows = (await prisma.$queryRaw<
+        Array<{
+          id: number;
+          text: string;
+          address: string | null;
+          timestamp: bigint | number | string;
+        }>
+      >`SELECT id, text, address, timestamp FROM chat_message ORDER BY timestamp DESC LIMIT ${MESSAGE_LIMIT}`) as Array<{
+        id: number;
+        text: string;
+        address: string | null;
+        timestamp: bigint | number | string;
+      }>;
+      // Oldest first in memory
+      for (const row of rows.reverse()) {
+        messages.push({
+          text: row.text,
+          address: row.address || undefined,
+          timestamp: Number(row.timestamp as unknown as number),
+        });
+      }
+      historyLoaded = true;
+    } catch {
+      // ignore load errors; keep memory empty
+    }
+  })();
+  return historyLoadingPromise;
+}
+
+export function createChatWebSocketServer() {
+  // Kick off history load on server creation
+  void loadHistoryFromDbOnce();
   const wss = new WebSocketServer({
     noServer: true,
     maxPayload: 4096,
@@ -32,36 +80,265 @@ export function createChatWebSocketServer(server: http.Server) {
 
   wss.on(
     'connection',
-    (ws: WebSocket & { userAddress?: string; _ip?: string }) => {
+    (ws: WebSocket & { _ip?: string; _address?: string }, req) => {
+      // Extract IP and token on connect
       try {
-        ws.send(JSON.stringify({ type: 'history', messages }));
+        const ip =
+          req.socket.remoteAddress ||
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+          'unknown';
+        ws._ip = ip;
+        ipToConnectionCount.set(ip, (ipToConnectionCount.get(ip) || 0) + 1);
+        if ((ipToConnectionCount.get(ip) || 0) > MAX_CONNECTIONS_PER_IP) {
+          try {
+            ws.close(1008, 'too_many_connections');
+          } catch {
+            /* ignore */
+          }
+          return;
+        }
       } catch {
-        // no-op
+        /* ignore */
       }
+
+      try {
+        // Bind token from query if present and valid
+        const url = req.url || '/chat';
+        // Use a dummy base to parse relative URL
+        const u = new URL(url, 'http://localhost');
+        const token = u.searchParams.get('token');
+        const sess = validateToken(token);
+        if (sess) {
+          ws._address = sess.address;
+          try {
+            ws.send(
+              JSON.stringify({
+                type: 'auth_status',
+                authenticated: true,
+                address: sess.address,
+                expiresAt: sess.expiresAt,
+              })
+            );
+          } catch {
+            /* noop */
+          }
+        } else {
+          try {
+            ws.send(
+              JSON.stringify({ type: 'auth_status', authenticated: false })
+            );
+          } catch {
+            /* noop */
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      // Ensure history is loaded before sending to this client
+      loadHistoryFromDbOnce()
+        .catch(() => undefined)
+        .finally(() => {
+          try {
+            ws.send(JSON.stringify({ type: 'history', messages }));
+          } catch {
+            // no-op
+          }
+        });
 
       ws.on('message', (raw: RawData) => {
         let clientId: string | undefined;
         try {
           const data = JSON.parse(String(raw));
-          const text = typeof data.text === 'string' ? data.text : '';
+          const type = typeof data.type === 'string' ? data.type : undefined;
           clientId =
             typeof data.clientId === 'string' ? data.clientId : undefined;
-          // Require authenticated address for posting
-          const address = ws.userAddress || undefined;
-          if (!address) {
+
+          // Handle auth messages
+          if (type === 'auth_init') {
+            try {
+              const hostHeader = (req.headers['host'] as string) || 'unknown';
+              const challenge = createChallenge(hostHeader);
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_challenge',
+                  nonce: challenge.nonce,
+                  message: challenge.message,
+                  expiresAt: challenge.expiresAt,
+                })
+              );
+            } catch {
+              try {
+                ws.send(
+                  JSON.stringify({ type: 'auth_error', reason: 'init_failed' })
+                );
+              } catch {
+                /* noop */
+              }
+            }
+            return;
+          }
+          if (type === 'auth_response') {
+            const address =
+              typeof data.address === 'string' ? data.address : '';
+            const signature =
+              typeof data.signature === 'string' ? data.signature : '';
+            const nonce = typeof data.nonce === 'string' ? data.nonce : '';
+            (async () => {
+              try {
+                const result = await verifyAndCreateToken({
+                  address,
+                  signature,
+                  nonce,
+                });
+                if (!result) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'auth_failed',
+                    })
+                  );
+                  return;
+                }
+                ws._address = address.toLowerCase();
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_ok',
+                    token: result.token,
+                    expiresAt: result.expiresAt,
+                    address: ws._address,
+                  })
+                );
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_status',
+                    authenticated: true,
+                    address: ws._address,
+                    expiresAt: result.expiresAt,
+                  })
+                );
+              } catch {
+                try {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'auth_failed',
+                    })
+                  );
+                } catch {
+                  /* noop */
+                }
+              }
+            })();
+            return;
+          }
+          if (type === 'auth_use_token') {
+            const token = typeof data.token === 'string' ? data.token : '';
+            try {
+              const sess = validateToken(token);
+              if (!sess) {
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_error',
+                    reason: 'invalid_token',
+                  })
+                );
+                return;
+              }
+              ws._address = sess.address;
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_status',
+                  authenticated: true,
+                  address: sess.address,
+                  expiresAt: sess.expiresAt,
+                })
+              );
+            } catch {
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_error',
+                    reason: 'invalid_token',
+                  })
+                );
+              } catch {
+                /* noop */
+              }
+            }
+            return;
+          }
+          if (type === 'auth_refresh') {
+            const token = typeof data.token === 'string' ? data.token : '';
+            try {
+              const rotated = refreshToken(token);
+              if (!rotated) {
+                ws.send(
+                  JSON.stringify({ type: 'auth_error', reason: 'auth_expired' })
+                );
+                return;
+              }
+              ws._address = rotated.address;
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_ok',
+                  token: rotated.token,
+                  expiresAt: rotated.expiresAt,
+                  address: rotated.address,
+                })
+              );
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_status',
+                  authenticated: true,
+                  address: rotated.address,
+                  expiresAt: rotated.expiresAt,
+                })
+              );
+            } catch {
+              try {
+                ws.send(
+                  JSON.stringify({ type: 'auth_error', reason: 'auth_failed' })
+                );
+              } catch {
+                /* noop */
+              }
+            }
+            return;
+          }
+          if (type === 'auth_logout') {
+            try {
+              // Clear any bound address on this socket and notify client
+              delete ws._address;
+              ws.send(
+                JSON.stringify({
+                  type: 'auth_status',
+                  authenticated: false,
+                })
+              );
+            } catch {
+              /* noop */
+            }
+            return;
+          }
+
+          // Chat send path - enforce explicit type
+          if (type !== 'send') {
             try {
               ws.send(
                 JSON.stringify({
                   type: 'error',
-                  text: 'auth_required',
+                  text: 'invalid_message_type',
                   clientId,
                 })
               );
             } catch {
-              // no-op
+              /* noop */
             }
             return;
           }
+
+          // Chat send path
+          const text = typeof data.text === 'string' ? data.text : '';
           // Reject empty/whitespace-only messages
           if (!text || text.trim().length === 0) {
             try {
@@ -77,14 +354,32 @@ export function createChatWebSocketServer(server: http.Server) {
             }
             return;
           }
-          // Per-address rate limiting
+          // If auth required, ensure bound address
+          const boundAddress = ws._address;
+          if (REQUIRE_AUTH && !boundAddress) {
+            try {
+              ws.send(
+                JSON.stringify({
+                  type: 'error',
+                  text: 'auth_required',
+                  clientId,
+                })
+              );
+            } catch {
+              /* noop */
+            }
+            return;
+          }
+
+          // Rate limiting per IP and per-address (when bound)
           const now = Date.now();
-          const rate = addressToSendRate.get(address);
-          if (!rate || now - rate.windowStart > SEND_RATE_WINDOW_MS) {
-            addressToSendRate.set(address, { windowStart: now, count: 1 });
+          const ip = ws._ip || 'unknown';
+          const ipRate = ipToSendRate.get(ip);
+          if (!ipRate || now - ipRate.windowStart > SEND_RATE_WINDOW_MS) {
+            ipToSendRate.set(ip, { windowStart: now, count: 1 });
           } else {
-            rate.count += 1;
-            if (rate.count > SEND_RATE_MAX_PER_WINDOW) {
+            ipRate.count += 1;
+            if (ipRate.count > SEND_RATE_MAX_PER_WINDOW) {
               try {
                 ws.send(
                   JSON.stringify({
@@ -99,15 +394,57 @@ export function createChatWebSocketServer(server: http.Server) {
               return;
             }
           }
+          if (boundAddress) {
+            const addrRate = addressToSendRate.get(boundAddress) || {
+              windowStart: now,
+              count: 0,
+            };
+            if (now - addrRate.windowStart > SEND_RATE_WINDOW_MS) {
+              addressToSendRate.set(boundAddress, {
+                windowStart: now,
+                count: 1,
+              });
+            } else {
+              addrRate.count += 1;
+              addressToSendRate.set(boundAddress, addrRate);
+              if (addrRate.count > SEND_RATE_MAX_PER_WINDOW) {
+                try {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'error',
+                      text: 'rate_limited',
+                      clientId,
+                    })
+                  );
+                } catch {
+                  // no-op
+                }
+                return;
+              }
+            }
+          }
           const stored: StoredMessage = {
             text,
-            address,
+            address: boundAddress,
             timestamp: Date.now(),
             clientId,
           };
           messages.push(stored);
           if (messages.length > MESSAGE_LIMIT)
             messages.splice(0, messages.length - MESSAGE_LIMIT);
+
+          // Persist to DB (fire-and-forget) with transactional prune
+          (async () => {
+            try {
+              await prisma.$transaction(async (tx) => {
+                await tx.$executeRaw`INSERT INTO chat_message (text, address, timestamp) VALUES (${text}, ${boundAddress || null}, ${stored.timestamp})`;
+                // Keep only the most recent MESSAGE_DB_LIMIT rows by timestamp (deterministic with id tie-breaker)
+                await tx.$executeRaw`DELETE FROM chat_message WHERE id IN (SELECT id FROM chat_message ORDER BY timestamp DESC, id DESC OFFSET ${MESSAGE_DB_LIMIT})`;
+              });
+            } catch {
+              // ignore persistence errors
+            }
+          })();
 
           // Broadcast to all clients, including sender, so the author sees confirmed echo
           wss.clients.forEach((client: WebSocket) => {
@@ -116,7 +453,7 @@ export function createChatWebSocketServer(server: http.Server) {
                 JSON.stringify({
                   type: 'message',
                   text,
-                  address,
+                  address: boundAddress,
                   clientId,
                   timestamp: stored.timestamp,
                 })
@@ -140,59 +477,19 @@ export function createChatWebSocketServer(server: http.Server) {
     }
   );
 
-  // Upgrade handler for /chat path
-  server.on(
-    'upgrade',
-    (request: http.IncomingMessage, socket: Socket, head: Buffer) => {
-      const { url } = request;
-      const isChatPath = !!url && url.startsWith('/chat');
-      if (isChatPath) {
-        try {
-          const parsedUrl = new URL(url, 'http://localhost');
-          const token = parsedUrl.searchParams.get('token');
-          const session = validateToken(token);
-          // Per-IP connection limiting
-          const ip =
-            (request.headers['x-forwarded-for'] as string)
-              ?.split(',')[0]
-              ?.trim() ||
-            request.socket.remoteAddress ||
-            'unknown';
-          const current = ipToConnectionCount.get(ip) || 0;
-          if (current >= MAX_CONNECTIONS_PER_IP) {
-            socket.destroy();
-            return;
-          }
-          // Allow connection for read-only even if unauthenticated; we'll require auth on send
-          wss.handleUpgrade(
-            request,
-            socket,
-            head,
-            (ws: WebSocket & { userAddress?: string; _ip?: string }) => {
-              ws._ip = ip;
-              ipToConnectionCount.set(
-                ip,
-                (ipToConnectionCount.get(ip) || 0) + 1
-              );
-              if (session) ws.userAddress = session.address;
-              wss.emit('connection', ws, request);
-              ws.on('close', () => {
-                const prev = ipToConnectionCount.get(ip) || 1;
-                if (prev <= 1) ipToConnectionCount.delete(ip);
-                else ipToConnectionCount.set(ip, prev - 1);
-              });
-            }
-          );
-        } catch {
-          socket.destroy();
-        }
-      } else {
-        // Not a chat upgrade path; allow other WebSocket handlers (e.g., /auction)
-        // to process this upgrade without destroying the socket here.
-        return;
+  // Track connection counts cleanup
+  wss.on('connection', (ws: WebSocket & { _ip?: string }) => {
+    ws.on('close', () => {
+      try {
+        const ip = ws._ip || 'unknown';
+        const prev = ipToConnectionCount.get(ip) || 1;
+        if (prev <= 1) ipToConnectionCount.delete(ip);
+        else ipToConnectionCount.set(ip, prev - 1);
+      } catch {
+        /* ignore */
       }
-    }
-  );
+    });
+  });
 
   return wss;
 }

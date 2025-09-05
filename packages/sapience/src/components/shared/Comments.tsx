@@ -472,7 +472,7 @@ const Comments = ({
                                 <Image
                                   alt={comment.address}
                                   src={blo(comment.address as `0x${string}`)}
-                                  className="w-5 h-5 rounded-full ring-1 ring-border/50"
+                                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                                   width={20}
                                   height={20}
                                 />
