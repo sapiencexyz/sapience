@@ -6,11 +6,17 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { FrownIcon } from 'lucide-react';
+import { FrownIcon, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionButton from '../markets/SellPositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
@@ -205,19 +211,21 @@ function AvgCurrentPriceCell({ position }: { position: PositionType }) {
   }
 
   // --- Calculate Prices ---
-  const totalCollateral = Number(formatEther(BigInt(position.collateral || '0')));
-  
+  const totalCollateral = Number(
+    formatEther(BigInt(position.collateral || '0'))
+  );
+
   // avg price per token = total collateral / position size
-  const avgPricePerToken = positionSize !== 0 ? totalCollateral / positionSize : 0;
-  
+  const avgPricePerToken =
+    positionSize !== 0 ? totalCollateral / positionSize : 0;
+
   // current price per token = position value / position size
-  const currentPricePerToken = positionSize !== 0 ? currentPositionValue / positionSize : 0;
+  const currentPricePerToken =
+    positionSize !== 0 ? currentPositionValue / positionSize : 0;
 
   // Display loading state
   if (priceLoading) {
-    return (
-      <span className="text-muted-foreground text-xs">Loading...</span>
-    );
+    return <span className="text-muted-foreground text-xs">Loading...</span>;
   }
 
   // Handle edge cases
@@ -227,7 +235,8 @@ function AvgCurrentPriceCell({ position }: { position: PositionType }) {
 
   return (
     <div className="text-sm">
-      <NumberDisplay value={avgPricePerToken} /> → <NumberDisplay value={currentPricePerToken} />
+      <NumberDisplay value={avgPricePerToken} /> →{' '}
+      <NumberDisplay value={currentPricePerToken} />
     </div>
   );
 }
@@ -311,13 +320,27 @@ export default function TraderPositionsTable({
               {displayQuestionColumn && (
                 <TableHead className="whitespace-nowrap">Question</TableHead>
               )}
-              <TableHead className="whitespace-nowrap">Position</TableHead>
+              <TableHead className="whitespace-nowrap">Position Size</TableHead>
               <TableHead className="whitespace-nowrap">Wager</TableHead>
+              <TableHead className="whitespace-nowrap">Max Payout</TableHead>
               <TableHead className="whitespace-nowrap">
-                Position Value
+                <span className="flex items-center gap-1">
+                  Position Value
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <InfoIcon className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="font-normal">
+                          The position value is approximate due to slippage.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
               </TableHead>
               <TableHead className="whitespace-nowrap">Avg → Current</TableHead>
-              <TableHead className="whitespace-nowrap">Max Payout</TableHead>
               <TableHead className="whitespace-nowrap" />
             </TableRow>
           </TableHeader>
@@ -401,13 +424,13 @@ export default function TraderPositionsTable({
                           'Unknown'}
                       </TableCell>
                       <TableCell>
+                        <MaxPayoutCell position={position} />
+                      </TableCell>
+                      <TableCell>
                         <PositionValueCell position={position} />
                       </TableCell>
                       <TableCell>
                         <AvgCurrentPriceCell position={position} />
-                      </TableCell>
-                      <TableCell>
-                        <MaxPayoutCell position={position} />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex gap-2 justify-end">

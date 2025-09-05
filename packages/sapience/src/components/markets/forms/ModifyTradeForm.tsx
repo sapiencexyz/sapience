@@ -485,9 +485,11 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
               <FormItem>
                 <FormLabel>Target Size</FormLabel>
                 <FormControl>
-                  <div className={`flex rounded-md ${
-                    isSizeInputFocused ? 'ring-2 ring-ring ring-offset-2' : ''
-                  }`}>
+                  <div
+                    className={`flex rounded-md ${
+                      isSizeInputFocused ? 'ring-2 ring-ring ring-offset-2' : ''
+                    }`}
+                  >
                     <Input
                       placeholder={originalSizeFormatted}
                       type="number"
