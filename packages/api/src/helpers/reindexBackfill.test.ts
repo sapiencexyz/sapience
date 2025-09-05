@@ -42,7 +42,7 @@ describe('reindexBrier', () => {
     expect(scoring.upsertAttestationScoreFromAttestation).toHaveBeenCalledWith(
       1
     );
-    // selection may be skipped; only scoring is required now
+
     expect(scoring.scoreSelectedForecastsForSettledMarket).toHaveBeenCalledWith(
       '0xmg',
       '1'

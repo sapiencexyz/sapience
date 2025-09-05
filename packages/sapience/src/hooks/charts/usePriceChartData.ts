@@ -506,8 +506,8 @@ export const usePriceChartData = ({
     queryFn: fetchData,
     // Enable query only if essential base params are present
     enabled: !!marketAddress && !!chainId && !!marketId && interval > 0,
-    staleTime: 15 * 1000, 
-    refetchInterval: 15 * 1000, 
+    staleTime: 15 * 1000,
+    refetchInterval: 15 * 1000,
   });
   return { chartData: data ?? [], isLoading, isFetching, isError, error };
 };
