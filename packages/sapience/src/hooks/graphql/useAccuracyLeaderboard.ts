@@ -37,5 +37,3 @@ export const useAccuracyLeaderboard = (limit = 10) => {
 };
 
 export type { ForecasterScore };
-
-

@@ -43,5 +43,3 @@ export async function backfillAccuracy(): Promise<void> {
     );
   }
 }
-
-

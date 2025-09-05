@@ -73,9 +73,7 @@ export class ScoreResolver {
     }
     // Prefer horizon-weighted mean error when available
     const horizonWeightedMeanError =
-      numTimeWeighted > 0
-        ? sumTimeWeightedError / numTimeWeighted
-        : meanError;
+      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
 
     const accuracyScore =
       horizonWeightedMeanError && horizonWeightedMeanError > 0

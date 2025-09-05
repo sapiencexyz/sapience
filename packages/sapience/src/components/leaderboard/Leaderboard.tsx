@@ -88,7 +88,7 @@ const Leaderboard = () => {
   };
 
   return (
-    <div className="container max-w-[540px] mx-auto py-32">
+    <div className="container max-w-[480px] mx-auto py-32">
       <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
         Leaderboard
       </h1>
@@ -114,14 +114,14 @@ const Leaderboard = () => {
         </TabsContent>
         <TabsContent value="accuracy">
           <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
-            The Accuracy Score ranks{' '}
+            The accuracy score ranks{' '}
             <Link
               href="/forecast"
               className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
             >
               forecasters
-            </Link>{' '}
-            based on how accurate and early their predictions are.
+            </Link>
+            , favoring early predictions.
           </p>
 
           <AccuracyLeaderboard />
@@ -269,7 +269,7 @@ const AccuracyLeaderboard = () => {
                   <Info className="w-3 h-3 opacity-80" />
                 </TooltipTrigger>
                 <TooltipContent>
-                  This is the inverted horizon-weighted brier score.
+                  Inverted Horizon-Weighted Brier Score
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -278,12 +278,10 @@ const AccuracyLeaderboard = () => {
         accessorKey: 'accuracyScore',
         cell: ({ getValue }) => {
           const v = getValue<number>();
-          return (
-            <>
-              <span className="font-mono md:hidden">{v.toFixed(4)}</span>
-              <span className="font-mono hidden md:inline">{v.toFixed(8)}</span>
-            </>
-          );
+          const formatted = Number.isFinite(v)
+            ? v.toLocaleString('en-US', { maximumFractionDigits: 0 })
+            : '-';
+          return <span>{formatted}</span>;
         },
       },
     ],

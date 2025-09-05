@@ -45,5 +45,3 @@ export async function reindexAccuracy(
     await scoreSelectedForecastsForSettledMarket(normalizedAddress, mId);
   }
 }
-
-

@@ -229,11 +229,17 @@ export const indexMarketGroupEvents = async (
         const logData = JSON.parse(serializedLog);
         const marketId = logData.args?.marketId || 0;
 
-        console.log(`[MarketEventWatcher] 1. Before alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
+        console.log(
+          `[MarketEventWatcher] 1. Before alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`
+        );
         await alertEvent(chainId, marketGroup.address, logData);
-        console.log(`[MarketEventWatcher] 2. After alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
+        console.log(
+          `[MarketEventWatcher] 2. After alertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`
+        );
 
-        console.log(`[MarketEventWatcher] 3. Before upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
+        console.log(
+          `[MarketEventWatcher] 3. Before upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`
+        );
         await upsertEvent(
           chainId,
           marketGroup.address,
@@ -243,7 +249,9 @@ export const indexMarketGroupEvents = async (
           logIndex,
           logData
         );
-        console.log(`[MarketEventWatcher] 4. After upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`);
+        console.log(
+          `[MarketEventWatcher] 4. After upsertEvent - nostradamus, eventName: ${logData.eventName}, blockNumber: ${blockNumber}, marketGroup: ${marketGroup.address}, marketId: ${marketId}, sender: ${logData.args?.sender || 'N/A'}`
+        );
         // Reset reconnect attempts on successful processing of a log entry
         // Potentially, we might want to reset only if all logs in the batch are processed successfully.
         // For now, resetting on any successful log processing to mimic evmIndexer's onBlock success.
@@ -835,7 +843,9 @@ export const upsertEntitiesFromEvent = async (
 
               const startCommand = `pnpm run start:reindex-accuracy ${addr} ${mId}`;
               await createRenderJob(worker.service.id, startCommand);
-              console.log('[Accuracy] Enqueued background reindex job via Render');
+              console.log(
+                '[Accuracy] Enqueued background reindex job via Render'
+              );
             } else {
               // Local dev: spawn detached process
               const { spawn } = await import('child_process');
@@ -851,11 +861,17 @@ export const upsertEntitiesFromEvent = async (
               console.log('[Accuracy] Spawned local detached reindex process');
             }
           } catch (err) {
-            console.error('[Accuracy] Failed to enqueue async reindex, falling back to inline reindex:', err);
+            console.error(
+              '[Accuracy] Failed to enqueue async reindex, falling back to inline reindex:',
+              err
+            );
             try {
               await reindexAccuracy(addr, mId);
             } catch (fallbackErr) {
-              console.error('[Accuracy] Inline reindex fallback failed:', fallbackErr);
+              console.error(
+                '[Accuracy] Inline reindex fallback failed:',
+                fallbackErr
+              );
             }
           }
         })();

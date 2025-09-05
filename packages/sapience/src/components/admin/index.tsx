@@ -560,7 +560,10 @@ const Admin = () => {
               <IndexResourceForm />
             </DialogContent>
           </Dialog>
-          <Dialog open={accuracyReindexOpen} onOpenChange={setAccuracyReindexOpen}>
+          <Dialog
+            open={accuracyReindexOpen}
+            onOpenChange={setAccuracyReindexOpen}
+          >
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
                 Reindex Accuracy Scores
