@@ -1,0 +1,28 @@
+name="prediction-market"
+version="1.0.0"
+preset="test"
+
+[var.settings]
+collateralToken = "0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3" # testUSDe on Arb1
+maxPredictionMarkets = "5"
+minCollateral = "1000000000000000000" # 1 sUSDe (18 decimals)
+depends = []
+
+[deploy.PredictionMarket]
+artifact="PredictionMarket"
+args=[
+  "Prediction Market",
+  "SPM",
+  "<%= settings.collateralToken %>",
+  "<%= settings.minCollateral %>"
+]
+depends=[]
+highlight=true
+
+[deploy.SapienceResolver]
+artifact="PredictionMarketSapienceResolver"
+args=[
+  ["<%= settings.maxPredictionMarkets %>"]
+]
+depends=["deploy.PredictionMarket"]
+highlight=true

@@ -8,10 +8,11 @@ import {
   stringToHex,
   parseUnits,
 } from 'viem';
-import { useAccount } from 'wagmi';
+
 import ParlayPool from '@/protocol/deployments/ParlayPool.json';
 import type { Abi } from 'abitype';
 import { useRouter } from 'next/navigation';
+import { useAccount, usePublicClient } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 interface ParlayPosition {
@@ -33,6 +34,7 @@ interface UseSubmitParlayProps {
   onSuccess?: () => void;
   enabled?: boolean;
   refCode?: string; // Optional referral code; empty/undefined allowed
+  onOrderCreated?: (requestId: bigint, txHash?: string) => void;
 }
 
 export function useSubmitParlay({
@@ -47,8 +49,10 @@ export function useSubmitParlay({
   onSuccess,
   enabled = true,
   refCode,
+  onOrderCreated,
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
+  const publicClient = usePublicClient({ chainId });
   const { toast } = useToast();
   const router = useRouter();
 
@@ -57,6 +61,10 @@ export function useSubmitParlay({
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
+    onTxHash: (hash) => {
+      // no-op; we'll re-read order ids on success
+      void hash;
+    },
     onSuccess: () => {
       setSuccess('Parlay order submitted successfully');
       setError(null);
@@ -66,6 +74,26 @@ export function useSubmitParlay({
           'Your parlay order has been submitted and is available for other users to fill',
         duration: 5000,
       });
+      // Attempt to read latest maker order id and notify
+      (async () => {
+        try {
+          if (!publicClient || !address) return;
+          const ids = (await publicClient.readContract({
+            address: parlayContractAddress,
+            abi: ParlayPool.abi as Abi,
+            functionName: 'getOrderIdsByAddress',
+            args: [address],
+          })) as bigint[];
+          const requestId =
+            ids && ids.length > 0 ? ids[ids.length - 1] : undefined;
+          if (requestId != null) {
+            onOrderCreated?.(requestId);
+          }
+        } catch {
+          // ignore
+        }
+      })();
+
       onSuccess?.();
       if (address) {
         router.push(`/profile/${address.toLowerCase()}#parlays`);

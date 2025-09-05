@@ -311,6 +311,9 @@ model Attestation {
   prediction      String   @db.VarChar
   comment         String?  @db.Text
 
+  // Relation to scores
+  attestation_score AttestationScore?
+
   @@unique([uid], map: "UQ_attestation_uid")
   @@index([attester], map: "IDX_attestation_attester")
   @@index([recipient], map: "IDX_attestation_recipient")
@@ -319,6 +322,36 @@ model Attestation {
   @@index([marketId], map: "IDX_attestation_market_id")
   @@index([questionId], map: "IDX_attestation_question_id")
   @@map("attestation")
+}
+
+model AttestationScore {
+  id               Int         @id @default(autoincrement())
+  createdAt        DateTime    @default(now()) @db.Timestamp(6)
+
+  // Foreign keys and identifiers
+  attestationId    Int         @unique
+  attestation      Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attester         String      @db.VarChar
+  marketAddress    String      @db.VarChar
+  marketId         String      @db.VarChar
+  questionId       String?     @db.VarChar
+
+  // Forecast metadata
+  madeAt           Int
+  used             Boolean     @default(false)
+
+  // Probability and scoring
+  probabilityD18   String?     @db.VarChar
+  probabilityFloat Float?
+  outcome          Int?
+  errorSquared     Float?
+  scoredAt         DateTime?   @db.Timestamp(6)
+
+  @@index([attester], map: "IDX_attestation_score_attester")
+  @@index([marketAddress], map: "IDX_attestation_score_market_address")
+  @@index([marketId], map: "IDX_attestation_score_market_id")
+  @@index([attester, marketAddress, marketId], map: "IDX_attestation_score_attester_market")
+  @@map("attestation_score")
 }
 
 model Transaction {
@@ -353,4 +386,17 @@ enum transaction_type_enum {
   long
   short
   settledPosition
+}
+
+/// Chat message history for ephemeral chat websocket
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  text      String   @db.Text
+  address   String?  @db.VarChar
+  timestamp BigInt   @db.BigInt
+
+  @@index([timestamp], map: "IDX_chat_message_timestamp")
+  @@index([address], map: "IDX_chat_message_address")
+  @@map("chat_message")
 }

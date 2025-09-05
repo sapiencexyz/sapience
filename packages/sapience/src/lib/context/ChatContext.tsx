@@ -1,7 +1,13 @@
 'use client';
 
 import type React from 'react';
-import { createContext, useCallback, useContext, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from 'react';
 
 type ChatContextValue = {
   isOpen: boolean;
@@ -19,9 +25,47 @@ type ChatProviderProps = {
 export const ChatProvider = ({ children }: ChatProviderProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  const openChat = useCallback(() => setIsOpen(true), []);
-  const closeChat = useCallback(() => setIsOpen(false), []);
-  const toggleChat = useCallback(() => setIsOpen((v) => !v), []);
+  // Initialize from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('sapience.chat.isOpen');
+      if (stored !== null) {
+        setIsOpen(stored === 'true');
+      }
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const openChat = useCallback(() => {
+    setIsOpen(true);
+    try {
+      window.localStorage.setItem('sapience.chat.isOpen', 'true');
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const closeChat = useCallback(() => {
+    setIsOpen(false);
+    try {
+      window.localStorage.setItem('sapience.chat.isOpen', 'false');
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const toggleChat = useCallback(() => {
+    setIsOpen((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem('sapience.chat.isOpen', String(next));
+      } catch {
+        /* noop */
+      }
+      return next;
+    });
+  }, []);
 
   return (
     <ChatContext.Provider value={{ isOpen, openChat, closeChat, toggleChat }}>

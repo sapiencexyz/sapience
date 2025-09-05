@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import * as React from 'react';
+import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
@@ -142,40 +143,76 @@ const MarketGroupCard = ({
 
   const canShowPredictionElement = isActive && market.length > 0;
 
+  const baseHref = `/markets/${chainShortName}:${marketAddress}`;
+
   return (
     <div className="w-full h-full">
-      <Link
-        href={`/markets/${chainShortName}:${marketAddress}`}
-        className="block h-full group"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row items-stretch h-full relative overflow-hidden shadow shadow-md transition-shadow duration-200"
       >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[88px] md:min-h-[126px] h-full relative overflow-hidden"
-        >
-          <div
-            className="w-1 min-w-[4px] max-w-[4px]"
-            style={{ backgroundColor: color, margin: '-1px 0' }}
-          />
+        <div
+          className="w-1 min-w-[4px] max-w-[4px]"
+          style={{ backgroundColor: color, margin: '-1px 0' }}
+        />
 
-          <div className="flex-grow flex flex-col px-5 py-3 gap-3 h-full">
-            <div className="flex flex-col flex-grow justify-between h-full">
-              <h3 className="text-sm md:text-base leading-tight mb-2">
-                <span className="transition-colors">{displayQuestion}</span>
-              </h3>
-              {canShowPredictionElement && (
-                <div className="text-xs md:text-sm text-muted-foreground mt-0">
-                  <span className="text-muted-foreground">
-                    Market Prediction:{' '}
-                  </span>
-                  <MarketPrediction />
+        <div className="flex-1 flex flex-col h-full">
+          <div className="block group flex-1">
+            <div className="transition-colors h-full">
+              <div className="flex flex-col px-4 py-3 gap-3 h-full">
+                <div className="flex flex-col h-full">
+                  <h3 className="text-sm md:text-base leading-snug mb-1">
+                    <span
+                      className="transition-colors block overflow-hidden"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {displayQuestion}
+                    </span>
+                  </h3>
+                  {canShowPredictionElement && (
+                    <div className="text-xs md:text-sm text-muted-foreground mt-auto">
+                      <span className="text-muted-foreground">
+                        Market Prediction:{' '}
+                      </span>
+                      <MarketPrediction />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </motion.div>
-      </Link>
+
+          <div className="px-4 pb-4 pt-0">
+            {isActive &&
+              marketClassification ===
+                MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
+                <Link href={baseHref} className="block">
+                  <Button className="w-full">Make a Prediction</Button>
+                </Link>
+              )}
+            {isActive &&
+              marketClassification === MarketGroupClassificationEnum.YES_NO && (
+                <div className="flex items-center gap-2">
+                  <Link href={`${baseHref}?prediction=yes`} className="flex-1">
+                    <Button className="w-full">Yes</Button>
+                  </Link>
+                  <Link href={`${baseHref}?prediction=no`} className="flex-1">
+                    <Button variant="outline" className="w-full">
+                      No
+                    </Button>
+                  </Link>
+                </div>
+              )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

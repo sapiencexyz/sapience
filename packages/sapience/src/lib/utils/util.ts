@@ -6,7 +6,17 @@ import { mainnet } from 'viem/chains';
 import type { MarketType, TransactionType } from '@sapience/ui/types';
 
 export const foilApi = {
-  baseUrl: process.env.NEXT_PUBLIC_FOIL_API_URL || '',
+  get baseUrl() {
+    try {
+      if (typeof window !== 'undefined') {
+        const v = window.localStorage.getItem('sapience.settings.apiBaseUrl');
+        if (v) return v;
+      }
+    } catch {
+      /* noop */
+    }
+    return process.env.NEXT_PUBLIC_FOIL_API_URL || '';
+  },
   token: process.env.NEXT_PUBLIC_FOIL_API_TOKEN,
 
   getHeaders() {

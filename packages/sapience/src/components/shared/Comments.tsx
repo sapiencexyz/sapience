@@ -472,7 +472,7 @@ const Comments = ({
                                 <Image
                                   alt={comment.address}
                                   src={blo(comment.address as `0x${string}`)}
-                                  className="w-5 h-5 rounded-full ring-1 ring-border/50"
+                                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                                   width={20}
                                   height={20}
                                 />
@@ -489,7 +489,7 @@ const Comments = ({
                         </div>
                         {/* Comment content */}
                         {(comment.content || '').trim().length > 0 && (
-                          <div className="border border-border/50 rounded-lg p-4 shadow-sm bg-background">
+                          <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden p-4">
                             <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
                               {comment.content}
                             </div>
