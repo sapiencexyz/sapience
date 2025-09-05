@@ -2,12 +2,17 @@
 
 import { Card } from '@sapience/ui/components/ui/card';
 import { useWallets, usePrivy } from '@privy-io/react-auth';
-import { AnimatePresence, motion } from 'framer-motion';
+import {
+  AnimatePresence,
+  motion,
+  useDragControls,
+  useMotionValue,
+} from 'framer-motion';
+import { useCallback, useRef } from 'react';
 import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessages } from './chat/ChatMessages';
 import { ChatInput } from './chat/ChatInput';
 import { useChatConnection } from './chat/useChatConnection';
-import { useDraggable } from './chat/useDraggable';
 import { useChat } from '~/lib/context/ChatContext';
 
 const ChatWidget = () => {
@@ -35,45 +40,75 @@ const ChatWidget = () => {
     loginNow();
   };
 
-  const {
-    refs: { containerRef, headerRef, closeBtnRef },
-    position,
-    handlers: { onHeaderMouseDown, onHeaderTouchStart },
-  } = useDraggable();
+  const constraintsRef = useRef<HTMLDivElement | null>(null);
+  const widgetRef = useRef<HTMLDivElement | null>(null);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const dragControls = useDragControls();
+
+  const onHeaderPointerDown = useCallback(
+    (e: React.PointerEvent<Element>) => {
+      if (closeBtnRef.current && closeBtnRef.current.contains(e.target as Node))
+        return;
+      try {
+        e.preventDefault();
+        // Ensure the header keeps receiving pointer events even if the cursor leaves the widget
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* noop */
+      }
+      dragControls.start(e);
+    },
+    [dragControls]
+  );
 
   return (
     <AnimatePresence initial={false}>
       {isOpen && (
-        <motion.div
-          ref={containerRef}
-          className={`fixed z-[60] origin-center ${position ? '' : 'bottom-4 right-4'}`}
-          style={
-            position ? { top: position.top, left: position.left } : undefined
-          }
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          transition={{ duration: 0.14, ease: 'easeOut' }}
+        <div
+          ref={constraintsRef}
+          className="fixed inset-0 p-2 z-[60] pointer-events-none flex items-end justify-end"
         >
-          <Card className="w-80 shadow-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <ChatHeader
-              onClose={closeChat}
-              headerRef={headerRef as React.RefObject<HTMLDivElement>}
-              closeBtnRef={closeBtnRef as React.RefObject<HTMLButtonElement>}
-              onHeaderMouseDown={onHeaderMouseDown}
-              onHeaderTouchStart={onHeaderTouchStart}
-            />
-            <ChatMessages messages={messages} showLoader={canChat} />
-            <ChatInput
-              value={pendingText}
-              onChange={setPendingText}
-              onSend={sendMessage}
-              canChat={canChat}
-              canType={canType}
-              onLogin={handleLogin}
-            />
-          </Card>
-        </motion.div>
+          <motion.div
+            ref={widgetRef}
+            className="origin-center pointer-events-auto"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+            drag
+            dragListener={false}
+            dragControls={dragControls}
+            dragConstraints={constraintsRef}
+            dragElastic={0}
+            dragMomentum={false}
+            style={{ x, y }}
+            onDragEnd={() => {
+              // No persistence for simplicity; landing position is preserved for session
+            }}
+          >
+            <Card className="w-80 shadow-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+              <ChatHeader
+                onClose={closeChat}
+                headerRef={headerRef as React.RefObject<HTMLDivElement>}
+                closeBtnRef={closeBtnRef as React.RefObject<HTMLButtonElement>}
+                onHeaderPointerDown={onHeaderPointerDown}
+              />
+              <ChatMessages messages={messages} showLoader={canChat} />
+              <ChatInput
+                value={pendingText}
+                onChange={setPendingText}
+                onSend={sendMessage}
+                canChat={canChat}
+                canType={canType}
+                onLogin={handleLogin}
+              />
+            </Card>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );
