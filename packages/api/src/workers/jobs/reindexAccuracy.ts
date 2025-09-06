@@ -4,9 +4,9 @@ import {
   upsertAttestationScoreFromAttestation,
   scoreSelectedForecastsForSettledMarket,
 } from '../../helpers/scoringService';
-import { backfillBrier } from './backfillBrier';
+import { backfillAccuracy } from './backfillAccuracy';
 
-export async function reindexBrier(
+export async function reindexAccuracy(
   address?: string,
   marketId?: string
 ): Promise<void> {
@@ -14,7 +14,7 @@ export async function reindexBrier(
 
   // Global backfill if no scope provided
   if (!address) {
-    await backfillBrier();
+    await backfillAccuracy();
     return;
   }
 

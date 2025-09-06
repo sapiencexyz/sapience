@@ -55,9 +55,11 @@ describe('scoringService', () => {
     // Arrange
     prisma.market.findFirst.mockResolvedValue({
       settled: true,
+      endTimestamp: 100,
       settlementPriceD18: BigInt(10n ** 18n),
       minPriceD18: BigInt(0),
       maxPriceD18: BigInt(10n ** 18n),
+      market_group: { baseTokenName: 'Yes' },
     });
     prisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 1, attester: '0xabc', probabilityFloat: 0.8 },
@@ -85,6 +87,7 @@ describe('scoringService', () => {
       settlementPriceD18: BigInt(10n ** 18n),
       minPriceD18: BigInt(0),
       maxPriceD18: BigInt(10n ** 18n),
+      market_group: { baseTokenName: 'Yes' },
     });
     prisma.attestationScore.findMany.mockResolvedValue([
       {

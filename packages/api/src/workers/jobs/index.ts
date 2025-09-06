@@ -5,8 +5,8 @@ import { reindexMissingBlocks } from './reindexMissingBlocks';
 import { reindexResource } from './reindexResource';
 import { reindexMarketGroupFactory } from './reindexMarketGroupFactory';
 import { reindexEAS } from './reindexEAS';
-import { backfillBrier } from './backfillBrier';
-import { reindexBrier } from './reindexBrier';
+import { backfillAccuracy } from './backfillAccuracy';
+import { reindexAccuracy } from './reindexAccuracy';
 
 const callReindex = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -121,9 +121,9 @@ const callReindexEAS = async (argv: string[]) => {
   process.exit(0);
 };
 
-const callBackfillBrier = async () => {
-  await backfillBrier();
-  console.log('Done backfilling Brier scores');
+const callBackfillAccuracy = async () => {
+  await backfillAccuracy();
+  console.log('Done backfilling accuracy scores');
   process.exit(0);
 };
 
@@ -151,15 +151,15 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       await callReindexEAS(argv);
       return true; // Indicate a job command was handled
     }
-    case 'backfillBrier': {
-      await callBackfillBrier();
+    case 'backfillAccuracy': {
+      await callBackfillAccuracy();
       return true;
     }
-    case 'reindexBrier': {
+    case 'reindexAccuracy': {
       const address = argv[3];
       const marketId = argv[4];
-      await reindexBrier(address, marketId);
-      console.log('Done reindexing Brier');
+      await reindexAccuracy(address, marketId);
+      console.log('Done reindexing accuracy scores');
       process.exit(0);
       return true;
     }

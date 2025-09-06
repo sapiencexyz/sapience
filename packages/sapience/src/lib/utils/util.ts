@@ -83,6 +83,62 @@ export const formatNumber = (value: number, decimals: number = 2): string => {
 };
 
 /**
+ * Formats a number to display exactly 5 digits ("figures") including decimals.
+ * - Uses thousands separators
+ * - Truncates (does not round) to avoid overstating values
+ * - Adds K/M/B/T suffix when it shortens the display while keeping 5 digits
+ *
+ * Examples:
+ *  0.1320
+ *  1.2435
+ *  12.325
+ *  123.43
+ *  1,232.5
+ *  12,546
+ *  123.45K (for 123456)
+ */
+export const formatFiveSigFigs = (rawValue: number): string => {
+  if (!Number.isFinite(rawValue)) return '0';
+
+  const isNegative = rawValue < 0;
+  const value = Math.abs(rawValue);
+
+  const suffixes = ['', 'K', 'M', 'B', 'T'];
+
+  const countIntegerDigits = (n: number): number => {
+    if (n === 0) return 1; // display '0'
+    return Math.floor(Math.log10(Math.floor(Math.abs(n)))) + 1;
+  };
+
+  // Choose the highest suffix that keeps integer digits <= 5 and scaled >= 1
+  let chosenIndex = 0;
+  for (let i = suffixes.length - 1; i >= 1; i--) {
+    const scaled = value / 1000 ** i;
+    if (scaled >= 1 && countIntegerDigits(scaled) <= 5) {
+      chosenIndex = i;
+      break;
+    }
+  }
+
+  const scaledValue = value / 1000 ** chosenIndex;
+  const integerDigits = countIntegerDigits(scaledValue);
+  const decimals = Math.max(0, 5 - integerDigits);
+
+  const factor = 10 ** decimals;
+  const truncated =
+    (isNegative ? Math.ceil : Math.floor)(scaledValue * factor) / factor;
+
+  const formatted = truncated.toLocaleString('en-US', {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+
+  const sign = isNegative ? '-' : '';
+  const suffix = suffixes[chosenIndex];
+  return `${sign}${formatted}${suffix}`;
+};
+
+/**
  * Formats a question string by capitalizing the first letter and ensuring it ends with a question mark
  */
 export const formatQuestion = (

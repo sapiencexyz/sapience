@@ -5,7 +5,7 @@ import { scoreSelectedForecastsForSettledMarket } from './scoringService';
 vi.mock('../db', () => {
   const prisma = {
     market: { findFirst: vi.fn() },
-    attestationScore: { findMany: vi.fn() },
+    attestationScore: { findMany: vi.fn(), updateMany: vi.fn() },
     attestation: { findUnique: vi.fn() },
     $transaction: vi.fn(async () => {}),
   };
@@ -25,9 +25,11 @@ describe('scoreSelectedForecastsForSettledMarket idempotency', () => {
   it('does nothing when all selected forecasts already scored', async () => {
     prisma.market.findFirst.mockResolvedValue({
       settled: true,
+      endTimestamp: 100,
       settlementPriceD18: BigInt(10n ** 18n),
       minPriceD18: BigInt(0),
       maxPriceD18: BigInt(10n ** 18n),
+      market_group: { baseTokenName: 'Yes' },
     });
     // Filter in service uses scoredAt: null, so simulate empty result set
     prisma.attestationScore.findMany.mockResolvedValue([]);

@@ -7,7 +7,7 @@ import {
 
 const BATCH_SIZE = 1000;
 
-export async function backfillBrier(): Promise<void> {
+export async function backfillAccuracy(): Promise<void> {
   await initializeDataSource();
 
   // 1) Build/refresh attestation_score for all attestations
@@ -29,9 +29,7 @@ export async function backfillBrier(): Promise<void> {
     lastId = atts[atts.length - 1].id;
   }
 
-  // 2) No selection step needed; we score all pre-end forecasts
-
-  // 3) Score all settled markets
+  // 2) Score all settled markets
   const settledMarkets = await prisma.market.findMany({
     where: { settled: true },
     include: { market_group: true },

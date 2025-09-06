@@ -13,18 +13,19 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import { formatFiveSigFigs } from '~/lib/utils/util';
 
-interface SusdeBalanceProps {
+interface CollateralBalanceButtonProps {
   onClick?: () => void;
   className?: string;
   buttonClassName?: string;
 }
 
-export default function SusdeBalance({
+export default function CollateralBalanceButton({
   onClick,
   className,
   buttonClassName,
-}: SusdeBalanceProps) {
+}: CollateralBalanceButtonProps) {
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
 
@@ -58,7 +59,7 @@ export default function SusdeBalance({
       const human = formatUnits(balance, dec);
       const num = Number(human);
       if (Number.isNaN(num)) return `0 testUSDe`;
-      return `${num.toLocaleString(undefined, { maximumFractionDigits: 4 })} testUSDe`;
+      return `${formatFiveSigFigs(num)} testUSDe`;
     } catch {
       return `0 testUSDe`;
     }

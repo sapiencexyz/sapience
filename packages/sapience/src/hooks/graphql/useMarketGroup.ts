@@ -108,10 +108,29 @@ const MARKET_GROUP_BY_NONCE_QUERY = /* GraphQL */ `
   }
 `;
 
+// Normalize any market group identifier to a stable cache key segment
+export function normalizeMarketIdentifier(marketIdentifier: string): string {
+  const addressRegex = /^0x[a-fA-F0-9]{40}$/;
+  const mgIdMatch = /^mg-(\d+)$/i.exec(marketIdentifier || '');
+  const nonceMatch = /^(?:nonce-)?(\d+)$/i.exec(marketIdentifier || '');
+
+  const isAddress = addressRegex.test(marketIdentifier || '');
+  const mgId = mgIdMatch ? parseInt(mgIdMatch[1], 10) : null;
+  const nonce = !isAddress && !mgIdMatch && nonceMatch ? nonceMatch[1] : null;
+
+  return isAddress
+    ? `addr:${marketIdentifier}`
+    : mgId !== null
+      ? `mg:${mgId}`
+      : nonce !== null
+        ? `nonce:${nonce}`
+        : marketIdentifier;
+}
+
 // Shared configuration for market group queries
 export const marketGroupQueryConfig = {
-  queryKey: (identifier: string, chainId: number) =>
-    ['marketGroup', identifier, chainId] as const,
+  queryKey: (normalizedIdentifier: string, chainId: number) =>
+    ['marketGroup', normalizedIdentifier, chainId] as const,
 };
 
 async function fetchMarketGroup(
@@ -236,7 +255,8 @@ export function getMarketGroupFromCache(
   chainId: number,
   marketAddress: string
 ): MarketGroupType | undefined {
-  const queryKey = marketGroupQueryConfig.queryKey(marketAddress, chainId);
+  const normalized = normalizeMarketIdentifier(marketAddress);
+  const queryKey = marketGroupQueryConfig.queryKey(normalized, chainId);
   return queryClient.getQueryData(queryKey);
 }
 
@@ -245,7 +265,8 @@ export async function prefetchMarketGroup(
   chainId: number,
   marketAddress: string
 ): Promise<MarketGroupType | null> {
-  const queryKey = marketGroupQueryConfig.queryKey(marketAddress, chainId);
+  const normalized = normalizeMarketIdentifier(marketAddress);
+  const queryKey = marketGroupQueryConfig.queryKey(normalized, chainId);
 
   // If we already have data, return it immediately
   const existingData = queryClient.getQueryData<MarketGroupType>(queryKey);

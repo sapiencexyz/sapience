@@ -31,7 +31,9 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
     ) {
       return res
         .status(400)
-        .json({ error: 'maxIterations must be between 1 and 5' });
+        .json({
+          error: `maxIterations must be between 1 and ${MAX_ITERATIONS}`,
+        });
     }
 
     const market = await getMarket(chainId, marketAddress, marketId);
@@ -89,7 +91,9 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
       });
     }
 
-    if (collateralAvailable > maxSize) {
+    const absBigint = (n: bigint) => (n < 0n ? -n : n);
+
+    if (collateralAvailable > absBigint(maxSize)) {
       return res.status(400).json({
         error: 'Insufficient liquidity. Try a smaller size.',
       });

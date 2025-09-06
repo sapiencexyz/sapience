@@ -5,10 +5,9 @@ type ForecasterScore = {
   attester: string;
   numScored: number;
   sumErrorSquared: number;
-  meanBrier: number;
   numTimeWeighted: number;
   sumTimeWeightedError: number;
-  timeWeightedMeanBrier: number;
+  accuracyScore: number;
 };
 
 const GET_TOP_FORECASTERS = /* GraphQL */ `
@@ -17,17 +16,16 @@ const GET_TOP_FORECASTERS = /* GraphQL */ `
       attester
       numScored
       sumErrorSquared
-      meanBrier
       numTimeWeighted
       sumTimeWeightedError
-      timeWeightedMeanBrier
+      accuracyScore
     }
   }
 `;
 
-export const useBrierLeaderboard = (limit = 10) => {
+export const useAccuracyLeaderboard = (limit = 10) => {
   return useQuery<ForecasterScore[]>({
-    queryKey: ['brierLeaderboard', limit],
+    queryKey: ['accuracyLeaderboard', limit],
     queryFn: async () => {
       const data = await graphqlRequest<{ topForecasters: ForecasterScore[] }>(
         GET_TOP_FORECASTERS,

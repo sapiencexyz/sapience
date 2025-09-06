@@ -1112,13 +1112,12 @@ input FloatWithAggregatesFilter {
 }
 
 type ForecasterScoreType {
+  accuracyScore: Float!
   attester: String!
-  meanBrier: Float!
   numScored: Int!
   numTimeWeighted: Int!
   sumErrorSquared: Float!
   sumTimeWeightedError: Float!
-  timeWeightedMeanBrier: Float!
 }
 
 input IntFilter {

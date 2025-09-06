@@ -36,7 +36,7 @@ describe('ScoreResolver.topForecasters', () => {
     };
   };
 
-  it('returns top N by ascending timeWeightedMeanBrier', async () => {
+  it('returns top N by descending accuracyScore', async () => {
     prisma.attestationScore.groupBy.mockResolvedValue([
       { attester: 'B', _count: { _all: 10 }, _sum: { errorSquared: 3 } },
       { attester: 'A', _count: { _all: 5 }, _sum: { errorSquared: 1 } },
@@ -50,6 +50,8 @@ describe('ScoreResolver.topForecasters', () => {
     const resolver = new ScoreResolver();
     const result = await resolver.topForecasters(2);
     expect(result.length).toBe(2);
-    expect(['B', 'A']).toContain(result[0].attester);
+    expect(result[0].accuracyScore).toBeGreaterThanOrEqual(
+      result[1].accuracyScore
+    );
   });
 });

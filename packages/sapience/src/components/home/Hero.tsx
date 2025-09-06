@@ -36,7 +36,7 @@ export default function Hero() {
 
   return (
     <>
-      <div className="relative h-[100dvh] w-full flex flex-col justify-end">
+      <div className="relative h-[100dvh] w-full flex flex-col justify-end pt-6 md:pt-0 pb-2 md:pb-3 lg:pb-4">
         {/* Spline embed background - made larger than viewport */}
         <div
           className="absolute inset-0 z-0 light"
@@ -81,10 +81,22 @@ export default function Hero() {
             </div>
             <div className="px-0 md:px-8">
               <FeaturedMarketGroupSection />
-              <div className="md:hidden w-full flex justify-center my-5 px-4">
-                <Link href="/markets" passHref>
-                  <Button variant="default">Explore Prediction Markets</Button>
-                </Link>
+              <div className="md:hidden w-full flex justify-center mt-3 mb-3 px-4">
+                <Button
+                  variant="link"
+                  size="xs"
+                  asChild
+                  className="h-6 px-0 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                >
+                  <Link
+                    href="/markets"
+                    className="group inline-flex items-center"
+                  >
+                    <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                      Explore Prediction Markets
+                    </span>
+                  </Link>
+                </Button>
               </div>
             </div>
           </div>

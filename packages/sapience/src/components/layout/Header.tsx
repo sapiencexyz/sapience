@@ -30,7 +30,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
-import SusdeBalance from './SusdeBalance';
+import CollateralBalanceButton from './CollateralBalanceButton';
 import ChatButton from './ChatButton';
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
@@ -102,7 +102,7 @@ const NavLinks = ({
               </Link>
             </Button>
           </div>
-          <SusdeBalance
+          <CollateralBalanceButton
             className="md:hidden mt-2 ml-4"
             onClick={handleLinkClick}
           />
@@ -257,14 +257,14 @@ const Header = () => {
               </Link>
             )}
             {ready && authenticated && (
-              <SusdeBalance className="hidden md:flex" />
+              <CollateralBalanceButton className="hidden md:flex" />
             )}
             {ready && authenticated && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="default"
-                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 gap-2"
+                    className="rounded-full h-10 w-10 md:h-9 md:w-auto md:px-4 ml-1.5 md:ml-0 gap-2"
                   >
                     <User className="h-5 w-5" />
                     {connectedWallet?.address && (
@@ -307,7 +307,7 @@ const Header = () => {
             {ready && !authenticated && (
               <Button
                 onClick={login}
-                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 gap-2"
+                className="bg-primary hover:bg-primary/90 rounded-full h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
               >
                 <span>Log in</span>
               </Button>
