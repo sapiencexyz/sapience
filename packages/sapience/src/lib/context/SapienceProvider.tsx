@@ -79,7 +79,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   const { toast } = useToast();
   // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
-  // Permit logic removed: default to permitted while preserving scaffolding
+  // Permit: temporarily disabled. Always return permitted=true and do not fetch.
   const {
     data: permitData,
     isLoading: isPermitLoading,
