@@ -27,6 +27,7 @@ import CategoryFilter from './CategoryFilter';
 import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
+import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 
@@ -44,6 +45,7 @@ const ReindexAccuracyForm = () => {
   const { toast } = useToast();
   const [address, setAddress] = useState('');
   const [marketId, setMarketId] = useState('');
+  const { adminBaseUrl, defaults } = useSettings();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,13 +53,14 @@ const ReindexAccuracyForm = () => {
     try {
       setIsLoading(true);
 
-      const timestamp = Date.now();
+      const timestamp = Math.floor(Date.now() / 1000);
       let signature = '';
       if (process.env.NODE_ENV === 'production') {
         signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/accuracy`;
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+      const apiUrl = `${base}/reindex/accuracy`;
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,6 +145,7 @@ const ReindexFactoryForm = () => {
   const { toast } = useToast();
   const [factoryAddress, setFactoryAddress] = useState(DEFAULT_FACTORY_ADDRESS);
   const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
+  const { adminBaseUrl, defaults } = useSettings();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,13 +164,14 @@ const ReindexFactoryForm = () => {
       setIsLoading(true);
 
       // Generate timestamp and signature
-      const timestamp = Date.now(); // Use Date.now() for consistency
+      const timestamp = Math.floor(Date.now() / 1000);
       const signature = await signMessageAsync({
         message: ADMIN_AUTHENTICATE_MSG, // Use standard auth message
       });
 
-      // Construct the API URL from environment variable
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-group-factory`;
+      // Construct the API URL from settings admin base
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+      const apiUrl = `${base}/reindex/market-group-factory`;
 
       // Call the API endpoint
       const response = await fetch(apiUrl, {
@@ -266,11 +271,12 @@ const IndexResourceForm = () => {
   const [selectedResource, setSelectedResource] = useState('');
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
+  const { adminBaseUrl, defaults } = useSettings();
 
   const handleIndexResource = async () => {
     try {
       setIsLoading(true);
-      const timestamp = Date.now();
+      const timestamp = Math.floor(Date.now() / 1000);
 
       let signature = '';
       if (process.env.NODE_ENV === 'production') {
@@ -279,7 +285,8 @@ const IndexResourceForm = () => {
         });
       }
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/resource`;
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+      const apiUrl = `${base}/reindex/resource`;
       const res = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -405,6 +412,7 @@ const RefreshCacheForm = () => {
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [refreshResourceSlug, setRefreshResourceSlug] = useState('all');
+  const { adminBaseUrl, defaults } = useSettings();
 
   const handleRefreshCache = async () => {
     try {
@@ -417,7 +425,7 @@ const RefreshCacheForm = () => {
       });
 
       // Build the endpoint URL based on whether a specific resource is selected
-      const base = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
       const url =
         refreshResourceSlug && refreshResourceSlug !== 'all'
           ? `${base}/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
@@ -512,6 +520,21 @@ const Admin = () => {
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminDraft, setAdminDraft] = useState(
+    adminBaseUrl ?? defaults.adminBaseUrl
+  );
+  const [adminError, setAdminError] = useState<string | null>(null);
+
+  const isHttpUrl = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
 
   // Sort market groups with most recent (highest ID) first
   const sortedMarketGroups = marketGroups
@@ -526,6 +549,79 @@ const Admin = () => {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
+          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Admin Endpoint
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Admin Endpoint</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <label htmlFor="admin-endpoint" className="text-sm font-medium">
+                  Base URL
+                </label>
+                <Input
+                  id="admin-endpoint"
+                  value={adminDraft}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAdminDraft(v);
+                    setAdminError(
+                      v && !isHttpUrl(v)
+                        ? 'Must be an absolute http(s) base URL'
+                        : null
+                    );
+                  }}
+                  onBlur={() => {
+                    if (!adminDraft) {
+                      setAdminBaseUrl(null);
+                      setAdminDraft(defaults.adminBaseUrl);
+                      setAdminError(null);
+                      return;
+                    }
+                    if (isHttpUrl(adminDraft)) {
+                      const normalized =
+                        adminDraft.endsWith('/') && adminDraft !== '/'
+                          ? adminDraft.slice(0, -1)
+                          : adminDraft;
+                      setAdminDraft(normalized);
+                      setAdminBaseUrl(normalized);
+                      setAdminError(null);
+                    } else {
+                      setAdminError('Must be an absolute http(s) base URL');
+                    }
+                  }}
+                />
+                {adminError ? (
+                  <p className="text-xs text-red-500">{adminError}</p>
+                ) : null}
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setAdminBaseUrl(null);
+                      setAdminDraft(defaults.adminBaseUrl);
+                      setAdminError(null);
+                    }}
+                  >
+                    Reset
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setAdminDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button asChild>
             <a href="/admin/create">
               <Plus className="mr-1 h-4 w-4" />

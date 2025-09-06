@@ -95,5 +95,3 @@ export function OPTIONS(req: Request) {
     headers: corsHeaders(origin),
   });
 }
-
-

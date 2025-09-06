@@ -21,15 +21,15 @@ describe('api/permit edge route', () => {
     expect(body).toEqual({ permitted: true });
   });
 
-  it('handles CORS preflight', async () => {
+  it('handles CORS preflight', () => {
     const req = new Request('http://localhost/api/permit', {
       method: 'OPTIONS',
       headers: { Origin: 'http://example.com' },
     });
-    const res = await OPTIONS(req);
+    const res = OPTIONS(req);
     expect(res.status).toBe(204);
-    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('http://example.com');
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe(
+      'http://example.com'
+    );
   });
 });
-
-

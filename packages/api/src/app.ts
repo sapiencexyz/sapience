@@ -47,8 +47,13 @@ const corsOptions: cors.CorsOptions = {
   optionsSuccessStatus: 200,
   // Allow the Authorization header to be exposed to the client
   exposedHeaders: ['Authorization'],
-  // Allow the Authorization header to be sent
-  allowedHeaders: ['Authorization', 'Content-Type'],
+  // Allow required headers to be sent
+  allowedHeaders: [
+    'Authorization',
+    'Content-Type',
+    'x-admin-signature',
+    'x-admin-signature-timestamp',
+  ],
 };
 
 const app = express();

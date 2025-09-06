@@ -19,7 +19,8 @@ import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { tickToPrice } from '~/lib/utils/tickUtils';
-import { sqrtPriceX96ToPriceD18, foilApi } from '~/lib/utils/util';
+import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -67,6 +68,7 @@ const EditMarketDialog = ({ group, market }: Props) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
+  const { adminBaseUrl, defaults } = useSettings();
 
   const isDeployed = Boolean(market.poolAddress);
 
@@ -120,7 +122,8 @@ const EditMarketDialog = ({ group, market }: Props) => {
         );
     }
 
-    const url = `${foilApi.baseUrl}/marketGroups/${group.address}/markets/${
+    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+    const url = `${base}/marketGroups/${group.address}/markets/${
       market.marketId || market.id
     }`;
     const res = await fetch(url, {

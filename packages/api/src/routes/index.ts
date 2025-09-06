@@ -6,11 +6,17 @@ import { router as createMarketRoutes } from './createMarket';
 import { Router } from 'express';
 
 const router = Router();
+const adminRouter = Router();
 
-router.use('/marketGroups', marketRoutes);
-router.use('/reindex', reindexRoutes);
-router.use('/cache', refreshCacheRoutes);
 router.use('/quoter', quoterRoutes);
-router.use('/create-market-group', createMarketRoutes);
+// Legacy mounts removed; admin-only under /admin
+
+// Dual-mount admin routes under /admin while keeping legacy mounts
+adminRouter.use('/marketGroups', marketRoutes);
+adminRouter.use('/reindex', reindexRoutes);
+adminRouter.use('/cache', refreshCacheRoutes);
+adminRouter.use('/create-market-group', createMarketRoutes);
+
+router.use('/admin', adminRouter);
 
 export { router };

@@ -36,7 +36,7 @@ import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useResources } from '~/hooks/useResources';
-import { foilApi } from '~/lib/utils/util';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 // API base URL resolved at call time via foilApi
 
@@ -496,8 +496,11 @@ const CreateMarketGroupForm = () => {
     }
   };
 
+  const { adminBaseUrl, defaults } = useSettings();
+
   const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
-    const response = await fetch(`${foilApi.baseUrl}/create-market-group`, {
+    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+    const response = await fetch(`${base}/create-market-group`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

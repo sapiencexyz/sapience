@@ -17,7 +17,7 @@ import { useSignMessage } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { foilApi } from '~/lib/utils/util';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 type Props = { group: EnrichedMarketGroup };
 
@@ -26,6 +26,7 @@ export default function DeleteUndeployedGroupButton({ group }: Props) {
   const queryClient = useQueryClient();
   const { signMessageAsync } = useSignMessage();
   const [open, setOpen] = useState(false);
+  const { adminBaseUrl, defaults } = useSettings();
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -33,9 +34,10 @@ export default function DeleteUndeployedGroupButton({ group }: Props) {
       const signature = await signMessageAsync({
         message: ADMIN_AUTHENTICATE_MSG,
       });
-      const res = await fetch(`${foilApi.baseUrl}/marketGroups/${group.id}`, {
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+      const res = await fetch(`${base}/marketGroups/${group.id}`, {
         method: 'DELETE',
-        headers: foilApi.getHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ signature, timestamp }),
       });
       if (!res.ok) {

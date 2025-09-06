@@ -26,7 +26,7 @@ import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useResources } from '~/hooks/useResources';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { foilApi } from '~/lib/utils/util';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -38,6 +38,7 @@ const EditMarketGroupDialog = ({ group }: Props) => {
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
   const queryClient = useQueryClient();
+  const { adminBaseUrl, defaults } = useSettings();
 
   const [open, setOpen] = useState(false);
   const [question, setQuestion] = useState(group.question || '');
@@ -87,19 +88,17 @@ const EditMarketGroupDialog = ({ group }: Props) => {
       data.quoteTokenName = quoteTokenName;
     }
 
-    const res = await fetch(
-      `${foilApi.baseUrl}/marketGroups/${group.address}`,
-      {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chainId: group.chainId,
-          data,
-          signature,
-          timestamp,
-        }),
-      }
-    );
+    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+    const res = await fetch(`${base}/marketGroups/${group.address}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chainId: group.chainId,
+        data,
+        signature,
+        timestamp,
+      }),
+    });
     const json = await res.json();
     if (!res.ok) {
       throw new Error(json?.error || 'Failed to update market group');

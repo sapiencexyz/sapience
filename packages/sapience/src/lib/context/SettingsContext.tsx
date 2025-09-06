@@ -15,17 +15,20 @@ type SettingsContextValue = {
   apiBaseUrl: string | null;
   quoterBaseUrl: string | null;
   chatBaseUrl: string | null;
+  adminBaseUrl: string | null;
   arbitrumRpcUrl: string | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setQuoterBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
+  setAdminBaseUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
     quoterBaseUrl: string;
     chatBaseUrl: string;
+    adminBaseUrl: string;
     arbitrumRpcUrl: string;
   };
 };
@@ -35,6 +38,7 @@ const STORAGE_KEYS = {
   api: 'sapience.settings.apiBaseUrl',
   quoter: 'sapience.settings.quoterBaseUrl',
   chat: 'sapience.settings.chatBaseUrl',
+  admin: 'sapience.settings.adminBaseUrl',
   arbitrum: 'sapience.settings.arbitrumRpcUrl',
 } as const;
 
@@ -106,6 +110,17 @@ function getDefaultChatBase(): string {
   }
 }
 
+function getDefaultAdminBase(): string {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  try {
+    const u = new URL(baseUrl);
+    return `${u.origin}/admin`;
+  } catch {
+    return 'https://api.sapience.xyz/admin';
+  }
+}
+
 function getDefaultArbitrumRpcUrl(): string {
   const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
   return infuraKey
@@ -128,6 +143,9 @@ export const SettingsProvider = ({
     null
   );
   const [chatBaseOverride, setChatBaseOverride] = useState<string | null>(null);
+  const [adminBaseOverride, setAdminBaseOverride] = useState<string | null>(
+    null
+  );
   const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
     null
   );
@@ -152,6 +170,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.chat)
           : null;
+      const admin =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.admin)
+          : null;
       const r =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.arbitrum)
@@ -163,6 +185,8 @@ export const SettingsProvider = ({
         setQuoterBaseOverride(normalizeBaseUrlPreservePath(q));
       if (c && isHttpUrl(c))
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
+      if (admin && isHttpUrl(admin))
+        setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
       if (r && isHttpUrl(r)) setArbitrumRpcOverride(r);
     } catch {
       /* noop */
@@ -175,6 +199,7 @@ export const SettingsProvider = ({
       apiBaseUrl: getDefaultApiBase(),
       quoterBaseUrl: getDefaultQuoterBase(),
       chatBaseUrl: getDefaultChatBase(),
+      adminBaseUrl: getDefaultAdminBase(),
       arbitrumRpcUrl: getDefaultArbitrumRpcUrl(),
     }),
     []
@@ -188,7 +213,12 @@ export const SettingsProvider = ({
     ? quoterBaseOverride || defaults.quoterBaseUrl
     : null;
   const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
-  const arbitrumRpcUrl = mounted ? arbitrumRpcOverride || null : null;
+  const adminBaseUrl = mounted
+    ? adminBaseOverride || defaults.adminBaseUrl
+    : null;
+  const arbitrumRpcUrl = mounted
+    ? arbitrumRpcOverride || defaults.arbitrumRpcUrl
+    : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
     try {
@@ -258,6 +288,23 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setAdminBaseUrl = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.admin);
+        setAdminBaseOverride(null);
+        return;
+      }
+      const v = normalizeBaseUrlPreservePath(value);
+      if (!isHttpUrl(v)) return;
+      window.localStorage.setItem(STORAGE_KEYS.admin, v);
+      setAdminBaseOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const setArbitrumRpcUrl = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
@@ -280,11 +327,13 @@ export const SettingsProvider = ({
     apiBaseUrl,
     quoterBaseUrl,
     chatBaseUrl,
+    adminBaseUrl,
     arbitrumRpcUrl,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
     setChatBaseUrl,
+    setAdminBaseUrl,
     setArbitrumRpcUrl,
     defaults,
   };
@@ -326,6 +375,10 @@ export const settingsStorage = {
   },
   getChatBaseUrl(): string | null {
     const v = this.read('chat');
+    return v ? normalizeBaseUrlPreservePath(v) : null;
+  },
+  getAdminBaseUrl(): string | null {
+    const v = this.read('admin');
     return v ? normalizeBaseUrlPreservePath(v) : null;
   },
   getGraphqlEndpoint(): string | null {

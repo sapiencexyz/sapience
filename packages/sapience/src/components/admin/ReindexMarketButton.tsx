@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useSignMessage } from 'wagmi';
 
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -26,16 +27,18 @@ const ReindexMarketButton: React.FC<ReindexMarketButtonProps> = ({
   const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { adminBaseUrl, defaults } = useSettings();
 
   const handleReindex = async () => {
     setIsLoading(true);
     try {
-      const timestamp = Date.now();
+      const timestamp = Math.floor(Date.now() / 1000);
       const signature = await signMessageAsync({
         message: ADMIN_AUTHENTICATE_MSG,
       });
 
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-events`;
+      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+      const apiUrl = `${base}/reindex/market-events`;
 
       const response = await fetch(apiUrl, {
         method: 'POST',

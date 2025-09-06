@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { foilApi } from '~/lib/utils/util';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
@@ -120,6 +120,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { signMessageAsync } = useSignMessage();
+  const { adminBaseUrl, defaults } = useSettings();
 
   const handleMarketChange = (
     field: keyof MarketInput,
@@ -130,7 +131,8 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
 
   const addMarketApiCall = async (payload: AddMarketApiPayload) => {
     // marketGroupAddress is now part of the URL
-    const apiUrl = `${foilApi.baseUrl}/create-market-group/${marketGroupAddress}/markets`;
+    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
+    const apiUrl = `${base}/create-market-group/${marketGroupAddress}/markets`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -193,7 +195,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
       return;
     }
 
-    const timestamp = Date.now();
+    const timestamp = Math.floor(Date.now() / 1000);
     let signature: `0x${string}` | undefined;
     try {
       signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });

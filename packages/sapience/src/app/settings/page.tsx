@@ -117,11 +117,13 @@ const SettingsPage = () => {
     apiBaseUrl,
     quoterBaseUrl,
     chatBaseUrl,
+    adminBaseUrl,
     arbitrumRpcUrl,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
     setChatBaseUrl,
+    setAdminBaseUrl,
     setArbitrumRpcUrl,
     defaults,
   } = useSettings();
@@ -130,6 +132,7 @@ const SettingsPage = () => {
   const [apiInput, setApiInput] = useState('');
   const [quoterInput, setQuoterInput] = useState('');
   const [chatInput, setChatInput] = useState('');
+  const [adminInput, setAdminInput] = useState('');
   const [rpcInput, setRpcInput] = useState('');
   const { ready, authenticated, exportWallet } = usePrivy();
   const { wallets } = useWallets();
@@ -177,6 +180,7 @@ const SettingsPage = () => {
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
     setQuoterInput(quoterBaseUrl ?? defaults.quoterBaseUrl);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
+    setAdminInput(adminBaseUrl ?? defaults.adminBaseUrl);
     setRpcInput(arbitrumRpcUrl ?? defaults.arbitrumRpcUrl);
     setHydrated(true);
     // Intentionally initialize once after mount to avoid overwriting while typing
@@ -333,6 +337,23 @@ const SettingsPage = () => {
                   />
                   <p className="text-xs text-muted-foreground">
                     Used to generate quotes based on liquidity available onchain
+                  </p>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label htmlFor="admin-endpoint">Admin Endpoint</Label>
+                  <SettingField
+                    id="admin-endpoint"
+                    value={adminInput}
+                    setValue={setAdminInput}
+                    defaultValue={defaults.adminBaseUrl}
+                    onPersist={setAdminBaseUrl}
+                    validate={isHttpUrl}
+                    normalizeOnChange={normalizeBase}
+                    invalidMessage="Must be an absolute http(s) base URL"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Base URL for admin-only REST endpoints
                   </p>
                 </div>
 
