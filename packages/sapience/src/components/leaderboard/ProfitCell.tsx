@@ -4,47 +4,17 @@ import type { Row, Table } from '@tanstack/react-table';
 import type React from 'react';
 
 // Helper component for displaying the formatted PnL value
-const PnLDisplay = ({
-  value,
-  collateralAddress,
-  isAlreadyUsd = false,
-}: {
-  value: number;
-  collateralAddress?: string;
-  isAlreadyUsd?: boolean;
-}) => {
-  let usdValue: number;
-
-  if (isAlreadyUsd) {
-    // Value is already in USD (from aggregated leaderboard)
-    usdValue = value;
-  } else {
-    // Value is already in token amounts, convert to USD for known tokens
-    if (
-      collateralAddress?.toLowerCase() ===
-      '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3'
-    ) {
-      // testUSDe is always $1
-      usdValue = value * 1.0;
-    } else {
-      // For other tokens, just show the token amount (no USD conversion)
-      usdValue = value;
-    }
-  }
+const PnLDisplay = ({ value }: { value: number }) => {
+  // Assume all tokens are worth $1 and display in testUSDe
+  const usdValue = value;
 
   // Handle potential NaN values gracefully
   if (Number.isNaN(usdValue)) {
     console.error('Calculated PnL resulted in NaN', {
       value,
-      collateralAddress,
     });
     return <span>-</span>; // Display a dash or placeholder for NaN
   }
-
-  const shouldUseTestUSDe =
-    isAlreadyUsd ||
-    collateralAddress?.toLowerCase() ===
-      '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3';
 
   return (
     <span>
@@ -52,7 +22,7 @@ const PnLDisplay = ({
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })}
-      {shouldUseTestUSDe ? ' testUSDe' : ''}
+      {' testUSDe'}
     </span>
   );
 };
@@ -71,7 +41,7 @@ interface ProfitCellProps<TData> {
 
 const ProfitCell = <TData,>({
   row,
-  table,
+  table: _table,
 }: ProfitCellProps<TData>): React.ReactElement => {
   // Ensure the correct column ID is used, assumed to be 'totalPnL' based on previous context
   const rawValue = row.getValue('totalPnL');
@@ -85,17 +55,8 @@ const ProfitCell = <TData,>({
     value = 0; // fallback for any other type
   }
 
-  const collateralAddress = table.options.meta?.collateralAddress;
-  const isAlreadyUsd = table.options.meta?.isAlreadyUsd ?? false;
-
   // Render the display component with the extracted value
-  return (
-    <PnLDisplay
-      value={value}
-      collateralAddress={collateralAddress}
-      isAlreadyUsd={isAlreadyUsd}
-    />
-  );
+  return <PnLDisplay value={value} />;
 };
 
 export default ProfitCell;

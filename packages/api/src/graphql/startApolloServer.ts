@@ -19,14 +19,7 @@ import {
   FindUniqueCategoryOrThrowResolver,
   GroupByCategoryResolver,
 
-  // CryptoPrices queries
-  AggregateCryptoPricesResolver,
-  FindFirstCryptoPricesResolver,
-  FindFirstCryptoPricesOrThrowResolver,
-  FindManyCryptoPricesResolver,
-  FindUniqueCryptoPricesResolver,
-  FindUniqueCryptoPricesOrThrowResolver,
-  GroupByCryptoPricesResolver,
+  // (removed) CryptoPrices queries
 
   // Market queries
   AggregateMarketResolver,
@@ -126,14 +119,7 @@ export const initializeApolloServer = async () => {
     FindUniqueCategoryOrThrowResolver,
     GroupByCategoryResolver,
 
-    // CryptoPrices queries
-    AggregateCryptoPricesResolver,
-    FindFirstCryptoPricesResolver,
-    FindFirstCryptoPricesOrThrowResolver,
-    FindManyCryptoPricesResolver,
-    FindUniqueCryptoPricesResolver,
-    FindUniqueCryptoPricesOrThrowResolver,
-    GroupByCryptoPricesResolver,
+    // (removed) CryptoPrices queries
 
     // Market queries
     AggregateMarketResolver,

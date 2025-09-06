@@ -5,31 +5,6 @@ import { isValidWalletSignature } from '../middleware';
 
 const router = Router();
 
-router.get(
-  '/',
-  handleAsyncErrors(async (_, res: Response) => {
-    const markets = await prisma.marketGroup.findMany({
-      include: {
-        market: true,
-        resource: true,
-        category: true,
-      },
-    });
-
-    const formattedMarkets = markets.map((marketGroup) => ({
-      ...marketGroup,
-      markets: marketGroup.market.map((market) => ({
-        ...market,
-        startTimestamp: Number(market.startTimestamp),
-        endTimestamp: Number(market.endTimestamp),
-        question: market.question,
-      })),
-    }));
-
-    res.json(formattedMarkets);
-  })
-);
-
 // DELETE /marketGroups/:id
 router.delete(
   '/:id',

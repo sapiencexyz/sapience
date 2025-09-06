@@ -86,15 +86,6 @@ model CollateralTransfer {
   @@map("collateral_transfer")
 }
 
-model CryptoPrices {
-  id        Int      @id(map: "PK_89cb6d0cae37e526edadf4ce7c2") @default(autoincrement())
-  ticker    String?
-  price     Float
-  timestamp DateTime @default(now()) @db.Timestamp(6)
-
-  @@map("crypto_prices")
-}
-
 model Event {
   id              Int           @id(map: "PK_30c2f3bbaf6d34a55f8ae6e4614") @default(autoincrement())
   createdAt       DateTime      @default(now()) @db.Timestamp(6)
