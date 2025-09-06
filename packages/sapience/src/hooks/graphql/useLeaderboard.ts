@@ -150,7 +150,7 @@ const useAllTimeLeaderboard = () => {
 
               if (Number.isNaN(pnlUsd)) {
                 console.error(
-                  `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: ${collateralSymbol}`
+                  `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: testUSDe`
                 );
                 return;
               }
