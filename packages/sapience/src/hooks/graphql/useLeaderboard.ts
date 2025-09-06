@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 
-import { foilApi } from '~/lib/utils/util';
+// All tokens are assumed to be worth $1; no REST price lookups.
 
 // Interface for aggregated data after processing
 interface AggregatedLeaderboardEntry {
@@ -65,7 +65,7 @@ type MarketLeaderboardQueryResponse = {
 };
 
 // Hook revised for client-side aggregation
-const useAllTimeLeaderboard = (cryptoPrices: any) => {
+const useAllTimeLeaderboard = () => {
   return useQuery<AggregatedLeaderboardEntry[]>({
     queryKey: ['allTimeLeaderboard'], // Query key remains simple for now
     queryFn: async () => {
@@ -118,7 +118,7 @@ const useAllTimeLeaderboard = (cryptoPrices: any) => {
 
         const leaderboardResponses = await Promise.all(leaderboardPromises);
 
-        // 4. Aggregate results (need to convert to USD for each market's collateral)
+        // 4. Aggregate results (assume all tokens are $1)
         const aggregatedPnL: { [owner: string]: number } = {};
 
         leaderboardResponses.forEach((response) => {
@@ -129,9 +129,7 @@ const useAllTimeLeaderboard = (cryptoPrices: any) => {
           const marketLeaderboard = response.getMarketLeaderboard;
 
           if (marketLeaderboard) {
-            // Get collateral info for this market
-            const collateralAddress = marketLeaderboard[0]?.collateralAddress;
-            const collateralSymbol = marketLeaderboard[0]?.collateralSymbol;
+            // Determine decimals for this market
             const collateralDecimals =
               marketLeaderboard[0]?.collateralDecimals || 18; // Default to 18 if not specified
 
@@ -147,35 +145,12 @@ const useAllTimeLeaderboard = (cryptoPrices: any) => {
               const divisor = Math.pow(10, collateralDecimals);
               const pnlTokenAmount = parseFloat(pnlStringToConvert) / divisor;
 
-              // Determine USD value based on collateral
-              let pnlUsd: number;
-              if (
-                collateralAddress?.toLowerCase() ===
-                '0xeedd0ed0e6cc8adc290189236d9645393ae54bc3'
-              ) {
-                // testUSDe is always $1
-                pnlUsd = pnlTokenAmount * 1.0;
-              } else {
-                // For other tokens, try to get price from crypto prices API
-                let tokenPrice = null;
-                if (collateralSymbol?.toLowerCase() === 'eth') {
-                  tokenPrice = cryptoPrices?.ethereum?.usd;
-                } else if (collateralSymbol?.toLowerCase() === 'btc') {
-                  tokenPrice = cryptoPrices?.bitcoin?.usd;
-                } else if (collateralSymbol?.toLowerCase() === 'sol') {
-                  tokenPrice = cryptoPrices?.solana?.usd;
-                } else if (collateralSymbol?.toLowerCase() === 'susde') {
-                  tokenPrice = cryptoPrices?.susde?.usd;
-                }
-
-                pnlUsd = tokenPrice
-                  ? pnlTokenAmount * tokenPrice
-                  : pnlTokenAmount;
-              }
+              // Assume $1 per token
+              const pnlUsd = pnlTokenAmount;
 
               if (Number.isNaN(pnlUsd)) {
                 console.error(
-                  `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: ${collateralSymbol}`
+                  `Converted PnL USD is NaN for owner ${owner}. Token amount: ${pnlTokenAmount}, collateral: testUSDe`
                 );
                 return;
               }
@@ -204,75 +179,7 @@ const useAllTimeLeaderboard = (cryptoPrices: any) => {
   });
 };
 
-// Query hook for crypto prices
-const useCryptoPrices = () => {
-  return useQuery({
-    queryKey: ['cryptoPrices'],
-    queryFn: async () => {
-      try {
-        const response = await foilApi.get('/crypto-prices');
-
-        // The response itself is the data object, not response.data
-        const prices = {
-          ethereum: { usd: response?.eth ?? null },
-          bitcoin: { usd: response?.btc ?? null },
-          solana: { usd: response?.sol ?? null },
-          testusde: { usd: response?.testusde ?? null },
-        };
-        // Ensure prices are numbers or null
-        prices.ethereum.usd =
-          prices.ethereum.usd !== null ? Number(prices.ethereum.usd) : null;
-        prices.bitcoin.usd =
-          prices.bitcoin.usd !== null ? Number(prices.bitcoin.usd) : null;
-        prices.solana.usd =
-          prices.solana.usd !== null ? Number(prices.solana.usd) : null;
-        prices.testusde.usd =
-          prices.testusde.usd !== null ? Number(prices.testusde.usd) : null;
-
-        // Check for NaN explicitly after conversion
-        if (Number.isNaN(prices.ethereum.usd as number)) {
-          console.warn(
-            'Ethereum price is NaN after conversion. API response:',
-            response?.eth
-          );
-          prices.ethereum.usd = null; // Fallback to null if NaN
-        }
-        if (Number.isNaN(prices.bitcoin.usd as number)) {
-          console.warn(
-            'Bitcoin price is NaN after conversion. API response:',
-            response?.btc
-          );
-          prices.bitcoin.usd = null;
-        }
-        if (Number.isNaN(prices.solana.usd as number)) {
-          console.warn(
-            'Solana price is NaN after conversion. API response:',
-            response?.sol
-          );
-          prices.solana.usd = null;
-        }
-        if (Number.isNaN(prices.testusde.usd as number)) {
-          console.warn(
-            'testUSDe price is NaN after conversion. API response:',
-            response?.testusde
-          );
-          prices.testusde.usd = null;
-        }
-
-        return prices;
-      } catch (error) {
-        console.error('Error fetching crypto prices:', error);
-        return {
-          ethereum: { usd: null },
-          bitcoin: { usd: null },
-          solana: { usd: null },
-          testusde: { usd: null },
-        };
-      }
-    },
-    staleTime: 60 * 1000, // 1 minute
-  });
-};
+// No crypto prices hook; tokens are assumed $1
 
 // // Query hook for stETH per token data
 // const useStEthPerToken = (chainId = 1) => {
@@ -309,15 +216,12 @@ const useCryptoPrices = () => {
 // --- Main Hook ---
 
 export const useLeaderboard = () => {
-  const { data: cryptoPrices } = useCryptoPrices();
-  const { data: leaderboardData, isLoading } =
-    useAllTimeLeaderboard(cryptoPrices);
+  const { data: leaderboardData, isLoading } = useAllTimeLeaderboard();
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('all');
 
   return {
     leaderboardData,
     isLoading,
-    cryptoPrices,
     selectedTimeframe,
     setSelectedTimeframe,
   };

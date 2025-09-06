@@ -40,15 +40,6 @@ export type AggregateCategory = {
   _sum?: Maybe<CategorySumAggregate>;
 };
 
-export type AggregateCryptoPrices = {
-  __typename?: 'AggregateCryptoPrices';
-  _avg?: Maybe<CryptoPricesAvgAggregate>;
-  _count?: Maybe<CryptoPricesCountAggregate>;
-  _max?: Maybe<CryptoPricesMaxAggregate>;
-  _min?: Maybe<CryptoPricesMinAggregate>;
-  _sum?: Maybe<CryptoPricesSumAggregate>;
-};
-
 export type AggregateMarket = {
   __typename?: 'AggregateMarket';
   _avg?: Maybe<MarketAvgAggregate>;
@@ -807,150 +798,6 @@ export type CollateralTransferWhereInput = {
   transactionHash?: InputMaybe<StringFilter>;
 };
 
-export type CryptoPrices = {
-  __typename?: 'CryptoPrices';
-  id: Scalars['Int']['output'];
-  price: Scalars['Float']['output'];
-  ticker?: Maybe<Scalars['String']['output']>;
-  timestamp: Scalars['DateTimeISO']['output'];
-};
-
-export type CryptoPricesAvgAggregate = {
-  __typename?: 'CryptoPricesAvgAggregate';
-  id?: Maybe<Scalars['Float']['output']>;
-  price?: Maybe<Scalars['Float']['output']>;
-};
-
-export type CryptoPricesAvgOrderByAggregateInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesCountAggregate = {
-  __typename?: 'CryptoPricesCountAggregate';
-  _all: Scalars['Int']['output'];
-  id: Scalars['Int']['output'];
-  price: Scalars['Int']['output'];
-  ticker: Scalars['Int']['output'];
-  timestamp: Scalars['Int']['output'];
-};
-
-export type CryptoPricesCountOrderByAggregateInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-  ticker?: InputMaybe<SortOrder>;
-  timestamp?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesGroupBy = {
-  __typename?: 'CryptoPricesGroupBy';
-  _avg?: Maybe<CryptoPricesAvgAggregate>;
-  _count?: Maybe<CryptoPricesCountAggregate>;
-  _max?: Maybe<CryptoPricesMaxAggregate>;
-  _min?: Maybe<CryptoPricesMinAggregate>;
-  _sum?: Maybe<CryptoPricesSumAggregate>;
-  id: Scalars['Int']['output'];
-  price: Scalars['Float']['output'];
-  ticker?: Maybe<Scalars['String']['output']>;
-  timestamp: Scalars['DateTimeISO']['output'];
-};
-
-export type CryptoPricesMaxAggregate = {
-  __typename?: 'CryptoPricesMaxAggregate';
-  id?: Maybe<Scalars['Int']['output']>;
-  price?: Maybe<Scalars['Float']['output']>;
-  ticker?: Maybe<Scalars['String']['output']>;
-  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
-};
-
-export type CryptoPricesMaxOrderByAggregateInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-  ticker?: InputMaybe<SortOrder>;
-  timestamp?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesMinAggregate = {
-  __typename?: 'CryptoPricesMinAggregate';
-  id?: Maybe<Scalars['Int']['output']>;
-  price?: Maybe<Scalars['Float']['output']>;
-  ticker?: Maybe<Scalars['String']['output']>;
-  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
-};
-
-export type CryptoPricesMinOrderByAggregateInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-  ticker?: InputMaybe<SortOrder>;
-  timestamp?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesOrderByWithAggregationInput = {
-  _avg?: InputMaybe<CryptoPricesAvgOrderByAggregateInput>;
-  _count?: InputMaybe<CryptoPricesCountOrderByAggregateInput>;
-  _max?: InputMaybe<CryptoPricesMaxOrderByAggregateInput>;
-  _min?: InputMaybe<CryptoPricesMinOrderByAggregateInput>;
-  _sum?: InputMaybe<CryptoPricesSumOrderByAggregateInput>;
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-  ticker?: InputMaybe<SortOrderInput>;
-  timestamp?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesOrderByWithRelationInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-  ticker?: InputMaybe<SortOrderInput>;
-  timestamp?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesScalarFieldEnum =
-  | 'id'
-  | 'price'
-  | 'ticker'
-  | 'timestamp';
-
-export type CryptoPricesScalarWhereWithAggregatesInput = {
-  AND?: InputMaybe<Array<CryptoPricesScalarWhereWithAggregatesInput>>;
-  NOT?: InputMaybe<Array<CryptoPricesScalarWhereWithAggregatesInput>>;
-  OR?: InputMaybe<Array<CryptoPricesScalarWhereWithAggregatesInput>>;
-  id?: InputMaybe<IntWithAggregatesFilter>;
-  price?: InputMaybe<FloatWithAggregatesFilter>;
-  ticker?: InputMaybe<StringNullableWithAggregatesFilter>;
-  timestamp?: InputMaybe<DateTimeWithAggregatesFilter>;
-};
-
-export type CryptoPricesSumAggregate = {
-  __typename?: 'CryptoPricesSumAggregate';
-  id?: Maybe<Scalars['Int']['output']>;
-  price?: Maybe<Scalars['Float']['output']>;
-};
-
-export type CryptoPricesSumOrderByAggregateInput = {
-  id?: InputMaybe<SortOrder>;
-  price?: InputMaybe<SortOrder>;
-};
-
-export type CryptoPricesWhereInput = {
-  AND?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  NOT?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  OR?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  id?: InputMaybe<IntFilter>;
-  price?: InputMaybe<FloatFilter>;
-  ticker?: InputMaybe<StringNullableFilter>;
-  timestamp?: InputMaybe<DateTimeFilter>;
-};
-
-export type CryptoPricesWhereUniqueInput = {
-  AND?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  NOT?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  OR?: InputMaybe<Array<CryptoPricesWhereInput>>;
-  id?: InputMaybe<Scalars['Int']['input']>;
-  price?: InputMaybe<FloatFilter>;
-  ticker?: InputMaybe<StringNullableFilter>;
-  timestamp?: InputMaybe<DateTimeFilter>;
-};
-
 export type DateTimeFilter = {
   equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
   gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
@@ -1160,17 +1007,6 @@ export type EventWhereUniqueInput = {
   transactionHash_marketGroupId_blockNumber_logIndex?: InputMaybe<EventTransactionHashMarketGroupIdBlockNumberLogIndexCompoundUniqueInput>;
 };
 
-export type FloatFilter = {
-  equals?: InputMaybe<Scalars['Float']['input']>;
-  gt?: InputMaybe<Scalars['Float']['input']>;
-  gte?: InputMaybe<Scalars['Float']['input']>;
-  in?: InputMaybe<Array<Scalars['Float']['input']>>;
-  lt?: InputMaybe<Scalars['Float']['input']>;
-  lte?: InputMaybe<Scalars['Float']['input']>;
-  not?: InputMaybe<NestedFloatFilter>;
-  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
-};
-
 export type FloatNullableFilter = {
   equals?: InputMaybe<Scalars['Float']['input']>;
   gt?: InputMaybe<Scalars['Float']['input']>;
@@ -1179,22 +1015,6 @@ export type FloatNullableFilter = {
   lt?: InputMaybe<Scalars['Float']['input']>;
   lte?: InputMaybe<Scalars['Float']['input']>;
   not?: InputMaybe<NestedFloatNullableFilter>;
-  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
-};
-
-export type FloatWithAggregatesFilter = {
-  _avg?: InputMaybe<NestedFloatFilter>;
-  _count?: InputMaybe<NestedIntFilter>;
-  _max?: InputMaybe<NestedFloatFilter>;
-  _min?: InputMaybe<NestedFloatFilter>;
-  _sum?: InputMaybe<NestedFloatFilter>;
-  equals?: InputMaybe<Scalars['Float']['input']>;
-  gt?: InputMaybe<Scalars['Float']['input']>;
-  gte?: InputMaybe<Scalars['Float']['input']>;
-  in?: InputMaybe<Array<Scalars['Float']['input']>>;
-  lt?: InputMaybe<Scalars['Float']['input']>;
-  lte?: InputMaybe<Scalars['Float']['input']>;
-  not?: InputMaybe<NestedFloatWithAggregatesFilter>;
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
@@ -1308,6 +1128,7 @@ export type Market = {
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  similarMarkets: Array<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -1398,6 +1219,7 @@ export type MarketCountAggregate = {
   question: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
   settlementPriceD18: Scalars['Int']['output'];
+  similarMarkets: Scalars['Int']['output'];
   startTimestamp: Scalars['Int']['output'];
   startingSqrtPriceX96: Scalars['Int']['output'];
 };
@@ -1428,6 +1250,7 @@ export type MarketCountOrderByAggregateInput = {
   question?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
   startingSqrtPriceX96?: InputMaybe<SortOrder>;
 };
@@ -1566,6 +1389,7 @@ export type MarketGroupBy = {
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
+  similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -2255,6 +2079,7 @@ export type MarketOrderByWithAggregationInput = {
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2287,6 +2112,7 @@ export type MarketOrderByWithRelationInput = {
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
+  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2479,6 +2305,7 @@ export type MarketScalarFieldEnum =
   | 'question'
   | 'settled'
   | 'settlementPriceD18'
+  | 'similarMarkets'
   | 'startTimestamp'
   | 'startingSqrtPriceX96';
 
@@ -2511,6 +2338,7 @@ export type MarketScalarWhereWithAggregatesInput = {
   question?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolNullableWithAggregatesFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableWithAggregatesFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableWithAggregatesFilter>;
 };
@@ -2579,6 +2407,7 @@ export type MarketWhereInput = {
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -2615,6 +2444,7 @@ export type MarketWhereUniqueInput = {
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -2798,22 +2628,6 @@ export type NestedFloatNullableFilter = {
   lt?: InputMaybe<Scalars['Float']['input']>;
   lte?: InputMaybe<Scalars['Float']['input']>;
   not?: InputMaybe<NestedFloatNullableFilter>;
-  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
-};
-
-export type NestedFloatWithAggregatesFilter = {
-  _avg?: InputMaybe<NestedFloatFilter>;
-  _count?: InputMaybe<NestedIntFilter>;
-  _max?: InputMaybe<NestedFloatFilter>;
-  _min?: InputMaybe<NestedFloatFilter>;
-  _sum?: InputMaybe<NestedFloatFilter>;
-  equals?: InputMaybe<Scalars['Float']['input']>;
-  gt?: InputMaybe<Scalars['Float']['input']>;
-  gte?: InputMaybe<Scalars['Float']['input']>;
-  in?: InputMaybe<Array<Scalars['Float']['input']>>;
-  lt?: InputMaybe<Scalars['Float']['input']>;
-  lte?: InputMaybe<Scalars['Float']['input']>;
-  not?: InputMaybe<NestedFloatWithAggregatesFilter>;
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
@@ -3335,7 +3149,6 @@ export type Query = {
   __typename?: 'Query';
   aggregateAttestation: AggregateAttestation;
   aggregateCategory: AggregateCategory;
-  aggregateCryptoPrices: AggregateCryptoPrices;
   aggregateMarket: AggregateMarket;
   aggregateMarketGroup: AggregateMarketGroup;
   aggregateMarketPrice: AggregateMarketPrice;
@@ -3351,8 +3164,6 @@ export type Query = {
   findFirstAttestationOrThrow?: Maybe<Attestation>;
   findFirstCategory?: Maybe<Category>;
   findFirstCategoryOrThrow?: Maybe<Category>;
-  findFirstCryptoPrices?: Maybe<CryptoPrices>;
-  findFirstCryptoPricesOrThrow?: Maybe<CryptoPrices>;
   findFirstMarket?: Maybe<Market>;
   findFirstMarketGroup?: Maybe<MarketGroup>;
   findFirstMarketGroupOrThrow?: Maybe<MarketGroup>;
@@ -3367,9 +3178,6 @@ export type Query = {
   findFirstResourcePriceOrThrow?: Maybe<ResourcePrice>;
   findFirstTransaction?: Maybe<Transaction>;
   findFirstTransactionOrThrow?: Maybe<Transaction>;
-  findManyCryptoPrices: Array<CryptoPrices>;
-  findUniqueCryptoPrices?: Maybe<CryptoPrices>;
-  findUniqueCryptoPricesOrThrow?: Maybe<CryptoPrices>;
   forecasterScore?: Maybe<ForecasterScoreType>;
   getAttestation?: Maybe<Attestation>;
   getCategory?: Maybe<Category>;
@@ -3383,7 +3191,6 @@ export type Query = {
   getTransaction?: Maybe<Transaction>;
   groupByAttestation: Array<AttestationGroupBy>;
   groupByCategory: Array<CategoryGroupBy>;
-  groupByCryptoPrices: Array<CryptoPricesGroupBy>;
   groupByMarket: Array<MarketGroupBy>;
   groupByMarketGroup: Array<MarketGroupGroupBy>;
   groupByMarketPrice: Array<MarketPriceGroupBy>;
@@ -3431,15 +3238,6 @@ export type QueryAggregateCategoryArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
-};
-
-
-export type QueryAggregateCryptoPricesArgs = {
-  cursor?: InputMaybe<CryptoPricesWhereUniqueInput>;
-  orderBy?: InputMaybe<Array<CryptoPricesOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<CryptoPricesWhereInput>;
 };
 
 
@@ -3573,26 +3371,6 @@ export type QueryFindFirstCategoryOrThrowArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
-};
-
-
-export type QueryFindFirstCryptoPricesArgs = {
-  cursor?: InputMaybe<CryptoPricesWhereUniqueInput>;
-  distinct?: InputMaybe<Array<CryptoPricesScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<CryptoPricesOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<CryptoPricesWhereInput>;
-};
-
-
-export type QueryFindFirstCryptoPricesOrThrowArgs = {
-  cursor?: InputMaybe<CryptoPricesWhereUniqueInput>;
-  distinct?: InputMaybe<Array<CryptoPricesScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<CryptoPricesOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<CryptoPricesWhereInput>;
 };
 
 
@@ -3736,26 +3514,6 @@ export type QueryFindFirstTransactionOrThrowArgs = {
 };
 
 
-export type QueryFindManyCryptoPricesArgs = {
-  cursor?: InputMaybe<CryptoPricesWhereUniqueInput>;
-  distinct?: InputMaybe<Array<CryptoPricesScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<CryptoPricesOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<CryptoPricesWhereInput>;
-};
-
-
-export type QueryFindUniqueCryptoPricesArgs = {
-  where: CryptoPricesWhereUniqueInput;
-};
-
-
-export type QueryFindUniqueCryptoPricesOrThrowArgs = {
-  where: CryptoPricesWhereUniqueInput;
-};
-
-
 export type QueryForecasterScoreArgs = {
   attester: Scalars['String']['input'];
 };
@@ -3830,16 +3588,6 @@ export type QueryGroupByCategoryArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
-};
-
-
-export type QueryGroupByCryptoPricesArgs = {
-  by: Array<CryptoPricesScalarFieldEnum>;
-  having?: InputMaybe<CryptoPricesScalarWhereWithAggregatesInput>;
-  orderBy?: InputMaybe<Array<CryptoPricesOrderByWithAggregationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<CryptoPricesWhereInput>;
 };
 
 
@@ -4585,6 +4333,14 @@ export type StringNullableFilter = {
   not?: InputMaybe<NestedStringNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['String']['input']>>;
   startsWith?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type StringNullableListFilter = {
+  equals?: InputMaybe<Array<Scalars['String']['input']>>;
+  has?: InputMaybe<Scalars['String']['input']>;
+  hasEvery?: InputMaybe<Array<Scalars['String']['input']>>;
+  hasSome?: InputMaybe<Array<Scalars['String']['input']>>;
+  isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type StringNullableWithAggregatesFilter = {

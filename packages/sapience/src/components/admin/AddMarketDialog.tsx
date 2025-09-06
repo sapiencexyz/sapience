@@ -66,6 +66,7 @@ const marketApiSchema = z
       .number()
       .int('Max Price Tick must be an integer'),
     public: z.boolean().optional(),
+    similarMarkets: z.array(z.string().url('Invalid URL format')).optional(),
   })
   .refine((data) => data.endTime > data.startTime, {
     message: 'End Time must be after Start Time',
@@ -104,6 +105,7 @@ const createEmptyMarket = (id: number): MarketInput => {
     claimStatementYesOrNumeric: '',
     claimStatementNo: '',
     public: true,
+    similarMarkets: [],
   };
 };
 
@@ -121,7 +123,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
 
   const handleMarketChange = (
     field: keyof MarketInput,
-    value: string | boolean
+    value: string | boolean | string[]
   ) => {
     setMarket((prevMarket) => ({ ...prevMarket, [field]: value as any }));
   };

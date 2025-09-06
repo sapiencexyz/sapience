@@ -17,6 +17,7 @@ interface MarketDataPayload {
   claimStatementYesOrNumeric: string;
   claimStatementNo: string | null;
   public?: boolean;
+  similarMarkets?: string[]; // Array de URLs de markets similares
 }
 
 // Helper function to create a single market
@@ -36,6 +37,7 @@ async function createSingleMarket(
     claimStatementYesOrNumeric,
     claimStatementNo,
     public: isPublic,
+    similarMarkets,
   } = marketData;
 
   // Validate required market fields
@@ -71,6 +73,7 @@ async function createSingleMarket(
       minPriceD18: null,
       maxPriceD18: null,
       marketGroupId: marketGroupId,
+      similarMarkets: similarMarkets || [],
     },
   });
 
