@@ -9,9 +9,7 @@ const router = Router();
 const adminRouter = Router();
 
 router.use('/quoter', quoterRoutes);
-// Legacy mounts removed; admin-only under /admin
 
-// Dual-mount admin routes under /admin while keeping legacy mounts
 adminRouter.use('/marketGroups', marketRoutes);
 adminRouter.use('/reindex', reindexRoutes);
 adminRouter.use('/cache', refreshCacheRoutes);

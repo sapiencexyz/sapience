@@ -205,6 +205,24 @@ export const SettingsProvider = ({
     []
   );
 
+  // Persist default admin base on first load if no override exists,
+  // so the field "sticks" across env changes. Reset will clear override
+  // and fall back to the latest defaults.
+  useEffect(() => {
+    if (!mounted) return;
+    try {
+      if (typeof window === 'undefined') return;
+      const current = window.localStorage.getItem(STORAGE_KEYS.admin);
+      if (!current) {
+        const v = normalizeBaseUrlPreservePath(defaults.adminBaseUrl);
+        window.localStorage.setItem(STORAGE_KEYS.admin, v);
+        setAdminBaseOverride(v);
+      }
+    } catch {
+      /* noop */
+    }
+  }, [mounted, defaults.adminBaseUrl]);
+
   const graphqlEndpoint = mounted
     ? graphqlOverride || defaults.graphqlEndpoint
     : null;

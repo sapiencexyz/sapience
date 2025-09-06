@@ -549,79 +549,6 @@ const Admin = () => {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
-          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                Admin Endpoint
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-sm">
-              <DialogHeader>
-                <DialogTitle>Admin Endpoint</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-3">
-                <label htmlFor="admin-endpoint" className="text-sm font-medium">
-                  Base URL
-                </label>
-                <Input
-                  id="admin-endpoint"
-                  value={adminDraft}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setAdminDraft(v);
-                    setAdminError(
-                      v && !isHttpUrl(v)
-                        ? 'Must be an absolute http(s) base URL'
-                        : null
-                    );
-                  }}
-                  onBlur={() => {
-                    if (!adminDraft) {
-                      setAdminBaseUrl(null);
-                      setAdminDraft(defaults.adminBaseUrl);
-                      setAdminError(null);
-                      return;
-                    }
-                    if (isHttpUrl(adminDraft)) {
-                      const normalized =
-                        adminDraft.endsWith('/') && adminDraft !== '/'
-                          ? adminDraft.slice(0, -1)
-                          : adminDraft;
-                      setAdminDraft(normalized);
-                      setAdminBaseUrl(normalized);
-                      setAdminError(null);
-                    } else {
-                      setAdminError('Must be an absolute http(s) base URL');
-                    }
-                  }}
-                />
-                {adminError ? (
-                  <p className="text-xs text-red-500">{adminError}</p>
-                ) : null}
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setAdminBaseUrl(null);
-                      setAdminDraft(defaults.adminBaseUrl);
-                      setAdminError(null);
-                    }}
-                  >
-                    Reset
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => setAdminDialogOpen(false)}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
           <Button asChild>
             <a href="/admin/create">
               <Plus className="mr-1 h-4 w-4" />
@@ -682,6 +609,81 @@ const Admin = () => {
                 <DialogTitle>Refresh Cache</DialogTitle>
               </DialogHeader>
               <RefreshCacheForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Endpoint Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Endpoint Settings</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <label htmlFor="admin-endpoint" className="text-sm font-medium">
+                  Base URL
+                </label>
+                <Input
+                  id="admin-endpoint"
+                  value={adminDraft}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAdminDraft(v);
+                    setAdminError(
+                      v && !isHttpUrl(v)
+                        ? 'Must be an absolute http(s) base URL'
+                        : null
+                    );
+                  }}
+                  onBlur={() => {
+                    if (!adminDraft) {
+                      setAdminBaseUrl(null);
+                      setAdminDraft(defaults.adminBaseUrl);
+                      setAdminError(null);
+                      return;
+                    }
+                    if (isHttpUrl(adminDraft)) {
+                      const normalized =
+                        adminDraft.endsWith('/') && adminDraft !== '/'
+                          ? adminDraft.slice(0, -1)
+                          : adminDraft;
+                      setAdminDraft(normalized);
+                      setAdminBaseUrl(normalized);
+                      setAdminError(null);
+                    } else {
+                      setAdminError('Must be an absolute http(s) base URL');
+                    }
+                  }}
+                />
+                {adminError ? (
+                  <p className="text-xs text-red-500">{adminError}</p>
+                ) : null}
+                <div className="flex gap-2 justify-end">
+                  {adminDraft !== defaults.adminBaseUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAdminBaseUrl(null);
+                        setAdminDraft(defaults.adminBaseUrl);
+                        setAdminError(null);
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setAdminDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

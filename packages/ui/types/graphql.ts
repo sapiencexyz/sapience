@@ -1128,7 +1128,6 @@ export type Market = {
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
-  similarMarkets: Array<Scalars['String']['output']>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -1219,7 +1218,6 @@ export type MarketCountAggregate = {
   question: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
   settlementPriceD18: Scalars['Int']['output'];
-  similarMarkets: Scalars['Int']['output'];
   startTimestamp: Scalars['Int']['output'];
   startingSqrtPriceX96: Scalars['Int']['output'];
 };
@@ -1250,7 +1248,6 @@ export type MarketCountOrderByAggregateInput = {
   question?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settlementPriceD18?: InputMaybe<SortOrder>;
-  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrder>;
   startingSqrtPriceX96?: InputMaybe<SortOrder>;
 };
@@ -1389,7 +1386,6 @@ export type MarketGroupBy = {
   question?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settlementPriceD18?: Maybe<Scalars['Decimal']['output']>;
-  similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
   startTimestamp?: Maybe<Scalars['Int']['output']>;
   startingSqrtPriceX96?: Maybe<Scalars['String']['output']>;
 };
@@ -2079,7 +2075,6 @@ export type MarketOrderByWithAggregationInput = {
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
-  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2112,7 +2107,6 @@ export type MarketOrderByWithRelationInput = {
   question?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrderInput>;
   settlementPriceD18?: InputMaybe<SortOrderInput>;
-  similarMarkets?: InputMaybe<SortOrder>;
   startTimestamp?: InputMaybe<SortOrderInput>;
   startingSqrtPriceX96?: InputMaybe<SortOrderInput>;
 };
@@ -2305,7 +2299,6 @@ export type MarketScalarFieldEnum =
   | 'question'
   | 'settled'
   | 'settlementPriceD18'
-  | 'similarMarkets'
   | 'startTimestamp'
   | 'startingSqrtPriceX96';
 
@@ -2338,7 +2331,6 @@ export type MarketScalarWhereWithAggregatesInput = {
   question?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolNullableWithAggregatesFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableWithAggregatesFilter>;
-  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableWithAggregatesFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableWithAggregatesFilter>;
 };
@@ -2407,7 +2399,6 @@ export type MarketWhereInput = {
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
-  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -2444,7 +2435,6 @@ export type MarketWhereUniqueInput = {
   question?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolNullableFilter>;
   settlementPriceD18?: InputMaybe<DecimalNullableFilter>;
-  similarMarkets?: InputMaybe<StringNullableListFilter>;
   startTimestamp?: InputMaybe<IntNullableFilter>;
   startingSqrtPriceX96?: InputMaybe<StringNullableFilter>;
 };
@@ -4333,14 +4323,6 @@ export type StringNullableFilter = {
   not?: InputMaybe<NestedStringNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['String']['input']>>;
   startsWith?: InputMaybe<Scalars['String']['input']>;
-};
-
-export type StringNullableListFilter = {
-  equals?: InputMaybe<Array<Scalars['String']['input']>>;
-  has?: InputMaybe<Scalars['String']['input']>;
-  hasEvery?: InputMaybe<Array<Scalars['String']['input']>>;
-  hasSome?: InputMaybe<Array<Scalars['String']['input']>>;
-  isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type StringNullableWithAggregatesFilter = {
