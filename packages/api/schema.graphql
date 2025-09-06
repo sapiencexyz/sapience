@@ -19,14 +19,6 @@ type AggregateCategory {
   _sum: CategorySumAggregate
 }
 
-type AggregateCryptoPrices {
-  _avg: CryptoPricesAvgAggregate
-  _count: CryptoPricesCountAggregate
-  _max: CryptoPricesMaxAggregate
-  _min: CryptoPricesMinAggregate
-  _sum: CryptoPricesSumAggregate
-}
-
 type AggregateMarket {
   _avg: MarketAvgAggregate
   _count: MarketCountAggregate
@@ -726,144 +718,6 @@ input CollateralTransferWhereInput {
   transactionHash: StringFilter
 }
 
-type CryptoPrices {
-  id: Int!
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO!
-}
-
-type CryptoPricesAvgAggregate {
-  id: Float
-  price: Float
-}
-
-input CryptoPricesAvgOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-}
-
-type CryptoPricesCountAggregate {
-  _all: Int!
-  id: Int!
-  price: Int!
-  ticker: Int!
-  timestamp: Int!
-}
-
-input CryptoPricesCountOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
-type CryptoPricesGroupBy {
-  _avg: CryptoPricesAvgAggregate
-  _count: CryptoPricesCountAggregate
-  _max: CryptoPricesMaxAggregate
-  _min: CryptoPricesMinAggregate
-  _sum: CryptoPricesSumAggregate
-  id: Int!
-  price: Float!
-  ticker: String
-  timestamp: DateTimeISO!
-}
-
-type CryptoPricesMaxAggregate {
-  id: Int
-  price: Float
-  ticker: String
-  timestamp: DateTimeISO
-}
-
-input CryptoPricesMaxOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
-type CryptoPricesMinAggregate {
-  id: Int
-  price: Float
-  ticker: String
-  timestamp: DateTimeISO
-}
-
-input CryptoPricesMinOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrder
-  timestamp: SortOrder
-}
-
-input CryptoPricesOrderByWithAggregationInput {
-  _avg: CryptoPricesAvgOrderByAggregateInput
-  _count: CryptoPricesCountOrderByAggregateInput
-  _max: CryptoPricesMaxOrderByAggregateInput
-  _min: CryptoPricesMinOrderByAggregateInput
-  _sum: CryptoPricesSumOrderByAggregateInput
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrderInput
-  timestamp: SortOrder
-}
-
-input CryptoPricesOrderByWithRelationInput {
-  id: SortOrder
-  price: SortOrder
-  ticker: SortOrderInput
-  timestamp: SortOrder
-}
-
-enum CryptoPricesScalarFieldEnum {
-  id
-  price
-  ticker
-  timestamp
-}
-
-input CryptoPricesScalarWhereWithAggregatesInput {
-  AND: [CryptoPricesScalarWhereWithAggregatesInput!]
-  NOT: [CryptoPricesScalarWhereWithAggregatesInput!]
-  OR: [CryptoPricesScalarWhereWithAggregatesInput!]
-  id: IntWithAggregatesFilter
-  price: FloatWithAggregatesFilter
-  ticker: StringNullableWithAggregatesFilter
-  timestamp: DateTimeWithAggregatesFilter
-}
-
-type CryptoPricesSumAggregate {
-  id: Int
-  price: Float
-}
-
-input CryptoPricesSumOrderByAggregateInput {
-  id: SortOrder
-  price: SortOrder
-}
-
-input CryptoPricesWhereInput {
-  AND: [CryptoPricesWhereInput!]
-  NOT: [CryptoPricesWhereInput!]
-  OR: [CryptoPricesWhereInput!]
-  id: IntFilter
-  price: FloatFilter
-  ticker: StringNullableFilter
-  timestamp: DateTimeFilter
-}
-
-input CryptoPricesWhereUniqueInput {
-  AND: [CryptoPricesWhereInput!]
-  NOT: [CryptoPricesWhereInput!]
-  OR: [CryptoPricesWhereInput!]
-  id: Int
-  price: FloatFilter
-  ticker: StringNullableFilter
-  timestamp: DateTimeFilter
-}
-
 input DateTimeFilter {
   equals: DateTimeISO
   gt: DateTimeISO
@@ -1073,17 +927,6 @@ input EventWhereUniqueInput {
   transactionHash_marketGroupId_blockNumber_logIndex: EventTransactionHashMarketGroupIdBlockNumberLogIndexCompoundUniqueInput
 }
 
-input FloatFilter {
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatFilter
-  notIn: [Float!]
-}
-
 input FloatNullableFilter {
   equals: Float
   gt: Float
@@ -1092,22 +935,6 @@ input FloatNullableFilter {
   lt: Float
   lte: Float
   not: NestedFloatNullableFilter
-  notIn: [Float!]
-}
-
-input FloatWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedFloatFilter
-  _min: NestedFloatFilter
-  _sum: NestedFloatFilter
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatWithAggregatesFilter
   notIn: [Float!]
 }
 
@@ -2633,22 +2460,6 @@ input NestedFloatNullableFilter {
   notIn: [Float!]
 }
 
-input NestedFloatWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedFloatFilter
-  _min: NestedFloatFilter
-  _sum: NestedFloatFilter
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatWithAggregatesFilter
-  notIn: [Float!]
-}
-
 input NestedIntFilter {
   equals: Int
   gt: Int
@@ -3139,7 +2950,6 @@ input PositionWhereUniqueInput {
 type Query {
   aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
   aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
-  aggregateCryptoPrices(cursor: CryptoPricesWhereUniqueInput, orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): AggregateCryptoPrices!
   aggregateMarket(cursor: MarketWhereUniqueInput, orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): AggregateMarket!
   aggregateMarketGroup(cursor: MarketGroupWhereUniqueInput, orderBy: [MarketGroupOrderByWithRelationInput!], skip: Int, take: Int, where: MarketGroupWhereInput): AggregateMarketGroup!
   aggregateMarketPrice(cursor: MarketPriceWhereUniqueInput, orderBy: [MarketPriceOrderByWithRelationInput!], skip: Int, take: Int, where: MarketPriceWhereInput): AggregateMarketPrice!
@@ -3155,8 +2965,6 @@ type Query {
   findFirstAttestationOrThrow(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
-  findFirstCryptoPrices(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): CryptoPrices
-  findFirstCryptoPricesOrThrow(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): CryptoPrices
   findFirstMarket(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): Market
   findFirstMarketGroup(cursor: MarketGroupWhereUniqueInput, distinct: [MarketGroupScalarFieldEnum!], orderBy: [MarketGroupOrderByWithRelationInput!], skip: Int, take: Int, where: MarketGroupWhereInput): MarketGroup
   findFirstMarketGroupOrThrow(cursor: MarketGroupWhereUniqueInput, distinct: [MarketGroupScalarFieldEnum!], orderBy: [MarketGroupOrderByWithRelationInput!], skip: Int, take: Int, where: MarketGroupWhereInput): MarketGroup
@@ -3171,9 +2979,6 @@ type Query {
   findFirstResourcePriceOrThrow(cursor: ResourcePriceWhereUniqueInput, distinct: [ResourcePriceScalarFieldEnum!], orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): ResourcePrice
   findFirstTransaction(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
   findFirstTransactionOrThrow(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
-  findManyCryptoPrices(cursor: CryptoPricesWhereUniqueInput, distinct: [CryptoPricesScalarFieldEnum!], orderBy: [CryptoPricesOrderByWithRelationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): [CryptoPrices!]!
-  findUniqueCryptoPrices(where: CryptoPricesWhereUniqueInput!): CryptoPrices
-  findUniqueCryptoPricesOrThrow(where: CryptoPricesWhereUniqueInput!): CryptoPrices
   forecasterScore(attester: String!): ForecasterScoreType
   getAttestation(where: AttestationWhereUniqueInput!): Attestation
   getCategory(where: CategoryWhereUniqueInput!): Category
@@ -3187,7 +2992,6 @@ type Query {
   getTransaction(where: TransactionWhereUniqueInput!): Transaction
   groupByAttestation(by: [AttestationScalarFieldEnum!]!, having: AttestationScalarWhereWithAggregatesInput, orderBy: [AttestationOrderByWithAggregationInput!], skip: Int, take: Int, where: AttestationWhereInput): [AttestationGroupBy!]!
   groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
-  groupByCryptoPrices(by: [CryptoPricesScalarFieldEnum!]!, having: CryptoPricesScalarWhereWithAggregatesInput, orderBy: [CryptoPricesOrderByWithAggregationInput!], skip: Int, take: Int, where: CryptoPricesWhereInput): [CryptoPricesGroupBy!]!
   groupByMarket(by: [MarketScalarFieldEnum!]!, having: MarketScalarWhereWithAggregatesInput, orderBy: [MarketOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketWhereInput): [MarketGroupBy!]!
   groupByMarketGroup(by: [MarketGroupScalarFieldEnum!]!, having: MarketGroupScalarWhereWithAggregatesInput, orderBy: [MarketGroupOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketGroupWhereInput): [MarketGroupGroupBy!]!
   groupByMarketPrice(by: [MarketPriceScalarFieldEnum!]!, having: MarketPriceScalarWhereWithAggregatesInput, orderBy: [MarketPriceOrderByWithAggregationInput!], skip: Int, take: Int, where: MarketPriceWhereInput): [MarketPriceGroupBy!]!

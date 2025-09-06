@@ -54,8 +54,11 @@ const MarketLeaderboard = ({
   console.log(
     '[MARKET LEADERBOARD DEBUG] Component rendering (this is inside a specific market page)...'
   );
-  const { leaderboardData, isLoading, error, wstEthPriceUsd } =
-    useMarketLeaderboard(marketAddress, chainId, marketId);
+  const { leaderboardData, isLoading, error } = useMarketLeaderboard(
+    marketAddress,
+    chainId,
+    marketId
+  );
   console.log('[MARKET LEADERBOARD DEBUG] Hook data:', {
     leaderboardData,
     isLoading,
@@ -92,7 +95,8 @@ const MarketLeaderboard = ({
     columns,
     getCoreRowModel: getCoreRowModel(),
     meta: {
-      wstEthPriceUsd,
+      // Assume all tokens are $1 and display unit as testUSDe
+      isAlreadyUsd: true,
       collateralAddress,
     },
   });

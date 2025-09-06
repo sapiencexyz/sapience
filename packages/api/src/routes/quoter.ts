@@ -29,11 +29,9 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
       query.maxIterations < 1 ||
       query.maxIterations > MAX_ITERATIONS
     ) {
-      return res
-        .status(400)
-        .json({
-          error: `maxIterations must be between 1 and ${MAX_ITERATIONS}`,
-        });
+      return res.status(400).json({
+        error: `maxIterations must be between 1 and ${MAX_ITERATIONS}`,
+      });
     }
 
     const market = await getMarket(chainId, marketAddress, marketId);
