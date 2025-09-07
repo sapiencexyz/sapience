@@ -21,15 +21,15 @@ import { useResources } from '@sapience/ui/hooks/useResources';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
 
 import CategoryFilter from './CategoryFilter';
 import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
+import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+//
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -40,12 +40,11 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
 
 const ReindexAccuracyForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [address, setAddress] = useState('');
   const [marketId, setMarketId] = useState('');
-  const { adminBaseUrl, defaults } = useSettings();
+  const { postJson } = useAdminApi();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,29 +52,10 @@ const ReindexAccuracyForm = () => {
     try {
       setIsLoading(true);
 
-      const timestamp = Math.floor(Date.now() / 1000);
-      let signature = '';
-      if (process.env.NODE_ENV === 'production') {
-        signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
-      }
-
-      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-      const apiUrl = `${base}/reindex/accuracy`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...(address && { address }),
-          ...(marketId && { marketId }),
-          ...(signature && { signature, timestamp }),
-        }),
+      await postJson(`/reindex/accuracy`, {
+        ...(address && { address }),
+        ...(marketId && { marketId }),
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start accuracy reindex');
-      }
 
       toast({
         title: 'Reindex started',
@@ -140,12 +120,11 @@ const ReindexAccuracyForm = () => {
 };
 
 const ReindexFactoryForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [factoryAddress, setFactoryAddress] = useState(DEFAULT_FACTORY_ADDRESS);
   const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
-  const { adminBaseUrl, defaults } = useSettings();
+  const { postJson: postJson2 } = useAdminApi();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,35 +142,11 @@ const ReindexFactoryForm = () => {
     try {
       setIsLoading(true);
 
-      // Generate timestamp and signature
-      const timestamp = Math.floor(Date.now() / 1000);
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG, // Use standard auth message
-      });
-
       // Construct the API URL from settings admin base
-      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-      const apiUrl = `${base}/reindex/market-group-factory`;
-
-      // Call the API endpoint
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chainId: Number(chainId),
-          factoryAddress,
-          signature,
-          timestamp, // Send the timestamp used for validation
-        }),
+      await postJson2(`/reindex/market-group-factory`, {
+        chainId: Number(chainId),
+        factoryAddress,
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reindex factory');
-      }
 
       toast({
         title: 'Reindex started',
@@ -264,47 +219,26 @@ const ReindexFactoryForm = () => {
 };
 
 const IndexResourceForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [selectedResource, setSelectedResource] = useState('');
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
-  const { adminBaseUrl, defaults } = useSettings();
+  const { postJson: postJson3 } = useAdminApi();
 
   const handleIndexResource = async () => {
     try {
       setIsLoading(true);
-      const timestamp = Math.floor(Date.now() / 1000);
-
-      let signature = '';
-      if (process.env.NODE_ENV === 'production') {
-        signature = await signMessageAsync({
-          message: ADMIN_AUTHENTICATE_MSG,
-        });
-      }
-
-      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-      const apiUrl = `${base}/reindex/resource`;
-      const res = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await postJson3<{ success: boolean; error?: string }>(
+        `/reindex/resource`,
+        {
           slug: selectedResource,
           startTimestamp,
           ...(endTimestamp && { endTimestamp }),
-          ...(signature && {
-            signature,
-            signatureTimestamp: timestamp,
-          }),
-        }),
-      });
-      const response = await res.json();
-
-      if (res.ok && response.success) {
+        }
+      );
+      if (response.success) {
         toast({
           title: 'Indexing complete',
           description: 'Resource has been reindexed successfully',
@@ -407,30 +341,21 @@ const IndexResourceForm = () => {
 };
 
 const RefreshCacheForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [refreshResourceSlug, setRefreshResourceSlug] = useState('all');
-  const { adminBaseUrl, defaults } = useSettings();
+  const { withSignatureQuery: withSig } = useAdminApi();
 
   const handleRefreshCache = async () => {
     try {
       setIsLoading(true);
-      const timestamp = Date.now();
-
-      // Always request signature, matching the pattern in other admin functions
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG,
-      });
-
-      // Build the endpoint URL based on whether a specific resource is selected
-      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
       const url =
         refreshResourceSlug && refreshResourceSlug !== 'all'
-          ? `${base}/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
-          : `${base}/cache/refresh-candle-cache?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
-
+          ? await withSig(
+              `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true`
+            )
+          : await withSig(`/cache/refresh-candle-cache?hardInitialize=true`);
       const res = await fetch(url, {
         headers: { 'Content-Type': 'application/json' },
       });

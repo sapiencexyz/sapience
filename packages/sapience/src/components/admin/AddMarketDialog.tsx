@@ -18,7 +18,7 @@ import { z } from 'zod';
 
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { useSettings } from '~/lib/context/SettingsContext';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
 const DEFAULT_MIN_PRICE_TICK = '-92200';
@@ -120,7 +120,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { signMessageAsync } = useSignMessage();
-  const { adminBaseUrl, defaults } = useSettings();
+  const { postJson } = useAdminApi();
 
   const handleMarketChange = (
     field: keyof MarketInput,
@@ -131,18 +131,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
 
   const addMarketApiCall = async (payload: AddMarketApiPayload) => {
     // marketGroupAddress is now part of the URL
-    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-    const apiUrl = `${base}/create-market-group/${marketGroupAddress}/markets`;
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload), // Send the payload directly
-    });
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to add market');
-    }
-    return response.json();
+    return postJson(`/marketGroups/${marketGroupAddress}/markets`, payload);
   };
 
   const { mutate: addMarket, isPending: isAddingMarket } = useMutation<

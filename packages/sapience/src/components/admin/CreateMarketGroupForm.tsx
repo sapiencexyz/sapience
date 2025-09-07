@@ -36,7 +36,7 @@ import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
 import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useResources } from '~/hooks/useResources';
-import { useSettings } from '~/lib/context/SettingsContext';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 // API base URL resolved at call time via foilApi
 
@@ -496,22 +496,9 @@ const CreateMarketGroupForm = () => {
     }
   };
 
-  const { adminBaseUrl, defaults } = useSettings();
-
   const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
-    const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-    const response = await fetch(`${base}/create-market-group`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(
-        data.message || 'Failed to create market group and markets'
-      );
-    }
-    return data;
+    const { postJson } = useAdminApi();
+    return postJson(`/marketGroups`, payload);
   };
 
   const { mutate: createMarketGroup, isPending } = useMutation<

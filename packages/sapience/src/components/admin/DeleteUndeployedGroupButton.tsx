@@ -13,38 +13,21 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
 
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { useSettings } from '~/lib/context/SettingsContext';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 type Props = { group: EnrichedMarketGroup };
 
 export default function DeleteUndeployedGroupButton({ group }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { signMessageAsync } = useSignMessage();
   const [open, setOpen] = useState(false);
-  const { adminBaseUrl, defaults } = useSettings();
+  const { deleteJson } = useAdminApi();
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const timestamp = Math.floor(Date.now() / 1000);
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG,
-      });
-      const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-      const res = await fetch(`${base}/marketGroups/${group.id}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signature, timestamp }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error((data && data.error) || 'Failed to delete');
-      }
-      return res.json();
+      return deleteJson(`/marketGroups/${group.id}`);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({

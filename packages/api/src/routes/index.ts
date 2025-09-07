@@ -13,7 +13,7 @@ router.use('/quoter', quoterRoutes);
 adminRouter.use('/marketGroups', marketRoutes);
 adminRouter.use('/reindex', reindexRoutes);
 adminRouter.use('/cache', refreshCacheRoutes);
-adminRouter.use('/create-market-group', createMarketRoutes);
+adminRouter.use('/marketGroups', createMarketRoutes);
 
 router.use('/admin', adminRouter);
 
