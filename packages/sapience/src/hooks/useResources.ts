@@ -48,6 +48,16 @@ const RESOURCES_QUERY = /* GraphQL */ `
 `;
 
 const getGraphQLEndpoint = () => {
+  try {
+    if (typeof window !== 'undefined') {
+      const override = window.localStorage.getItem(
+        'sapience.settings.graphqlEndpoint'
+      );
+      if (override) return override;
+    }
+  } catch {
+    /* noop */
+  }
   const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
   if (baseUrl) return `${baseUrl}/graphql`;
   if (typeof window !== 'undefined') return `${window.location.origin}/graphql`;

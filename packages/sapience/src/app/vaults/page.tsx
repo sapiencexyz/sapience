@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
@@ -10,74 +10,12 @@ import {
   TabsList,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@sapience/ui/components/ui/select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@sapience/ui/components/ui/table';
-
-// Mock data for vault tables
-const marketMakingVaults = [
-  {
-    account: '0x1234567890123456789012345678901234567890',
-    apr: 12.5,
-    tvl: 150000,
-    yourDeposit: 5000,
-    age: 45,
-  },
-  {
-    account: '0x2345678901234567890123456789012345678901',
-    apr: -3.2,
-    tvl: 85000,
-    yourDeposit: 0,
-    age: 32,
-  },
-  {
-    account: '0x3456789012345678901234567890123456789012',
-    apr: 8.7,
-    tvl: 220000,
-    yourDeposit: 12000,
-    age: 67,
-  },
-];
-
-const parlayVaults = [
-  {
-    account: '0x6789012345678901234567890123456789012345',
-    apr: 6.4,
-    tvl: 75000,
-    yourDeposit: 3000,
-    age: 28,
-  },
-  {
-    account: '0x7890123456789012345678901234567890123456',
-    apr: 11.2,
-    tvl: 120000,
-    yourDeposit: 0,
-    age: 51,
-  },
-  {
-    account: '0x8901234567890123456789012345678901234567',
-    apr: -2.5,
-    tvl: 200000,
-    yourDeposit: 15000,
-    age: 74,
-  },
-];
+import { useAccount, useChainId } from 'wagmi';
+import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 
 // Shared Coming Soon Overlay Component
 const ComingSoonOverlay = () => (
-  <div className="absolute inset-0 bg-background/30 backdrop-blur-sm flex items-center justify-center rounded-md z-50">
+  <div className="absolute inset-0 z-[60] bg-background/30 backdrop-blur-sm flex items-center justify-center rounded-md">
     <div className="text-center">
       <h3 className="text-lg font-semibold text-muted-foreground">
         Coming Soon
@@ -86,21 +24,55 @@ const ComingSoonOverlay = () => (
   </div>
 );
 
-// Learn More Link Component with Tooltip
-const LearnMoreLink = () => (
-  <span className="relative inline-block group">
-    <button className="text-primary hover:text-primary/80 font-medium cursor-pointer flex items-center gap-1">
-      Learn more
-    </button>
-    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-background border border-border rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap z-10">
-      Coming soon
-      <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-border"></div>
-    </div>
-  </span>
-);
-
 const VaultsPage = () => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const { isConnected } = useAccount();
+  const chainId = useChainId();
+
+  // OTC feature flag detection (same as in betslip)
+  const [parlayFeatureOverrideEnabled, setParlayFeatureOverrideEnabled] =
+    useState(false);
+
+  // Vault integration
+  const {
+    vaultData,
+    userData,
+    userAssetBalance,
+    isLoadingUserData,
+    isVaultPending,
+    deposit,
+    requestWithdrawal,
+    formatAssetAmount,
+    formatSharesAmount,
+    formatUtilizationRate,
+    formatWithdrawalDelay,
+  } = usePassiveLiquidityVault();
+
+  // Form state
+  const [depositAmount, setDepositAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+
+  useEffect(() => {
+    try {
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
+      const urlParlays = params?.get('otc');
+      if (urlParlays === 'true') {
+        window.localStorage.setItem('otc', 'true');
+      }
+      const stored =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('otc')
+          : null;
+      if (stored === 'true') {
+        setParlayFeatureOverrideEnabled(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, []);
 
   // Force light mode rendering for the iframe
   useEffect(() => {
@@ -131,29 +103,6 @@ const VaultsPage = () => {
     }
   }, []); // Empty dependency array ensures this runs once client-side
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
-  const formatAPR = (apr: number) => {
-    const isPositive = apr >= 0;
-    return (
-      <span className={isPositive ? 'text-green-600' : 'text-red-600'}>
-        {isPositive ? '+' : ''}
-        {apr.toFixed(1)}%
-      </span>
-    );
-  };
-
-  const truncateAddress = (address: string) => {
-    if (address.length <= 10) return address;
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
-  };
-
   return (
     <div className="relative min-h-screen">
       {/* Spline Background - Full Width */}
@@ -176,248 +125,542 @@ const VaultsPage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container max-w-[750px] mx-auto px-4 py-32 relative z-10">
+      <div className="container max-w-[750px] mx-auto px-4 pt-32 pb-12 relative z-10">
         <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
           Vaults
         </h1>
 
         <div className="grid grid-cols-1 gap-16">
-          {/* Pre-deposit Vaults */}
+          {/* Vault */}
           <div>
-            <h2 className="text-2xl font-heading font-normal mb-4">
-              Pre-deposit Vault
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Earn points by providing USDe to this vault, signaling your intent
-              to roll this liquidity into other vaults upon launch. Withdraw at
-              any time. <LearnMoreLink />
-            </p>
+            {/* TEMP: Gate Active UI behind env. Set NEXT_PUBLIC_ENABLE_VAULTS="1" to enable. */}
+            {parlayFeatureOverrideEnabled &&
+            process.env.NEXT_PUBLIC_ENABLE_VAULTS === '1' ? (
+              /* Active Vault Interface */
+              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+                <CardContent className="p-6">
+                  <div className="space-y-6">
+                    {/* Vault Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-2xl font-medium mb-1">
+                          Protocol Vault
+                        </h3>
+                        <p className="text-muted-foreground">
+                          This vault is used to bid on auction orders.
+                        </p>
+                        {vaultData && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Utilization:{' '}
+                            {formatUtilizationRate(
+                              vaultData?.utilizationRate ?? 0n
+                            )}
+                            % • Delay:{' '}
+                            {formatWithdrawalDelay(
+                              vaultData?.withdrawalDelay ?? 0n
+                            )}
+                            {vaultData?.emergencyMode &&
+                              ' • Emergency Mode Active'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          Your Balance
+                        </div>
+                        <div className="text-lg font-medium">
+                          {isLoadingUserData
+                            ? '...'
+                            : userData
+                              ? formatSharesAmount(userData?.balance ?? 0n)
+                              : '0.00'}{' '}
+                          testUSDe
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {isLoadingUserData
+                            ? '...'
+                            : userAssetBalance
+                              ? formatAssetAmount(userAssetBalance)
+                              : '0.00'}{' '}
+                          testUSDe available
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Conversion UI */}
-            <Card className="relative bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
-              <CardContent className="p-4">
-                <Tabs defaultValue="predeposit" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="predeposit">Predeposit</TabsTrigger>
-                    <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
-                  </TabsList>
+                    {/* Deposit/Withdraw Tabs */}
+                    <Tabs defaultValue="deposit" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="deposit">Deposit</TabsTrigger>
+                        <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+                      </TabsList>
 
-                  <TabsContent value="predeposit" className="space-y-4">
-                    {/* Amount Section */}
-                    <div className="space-y-2">
-                      <div className="border border-input bg-background rounded-md p-3">
-                        <label className="text-sm font-medium mb-2 block">
-                          Amount
-                        </label>
-                        <div className="flex items-center justify-between mb-1">
-                          <Input
-                            placeholder="0.0"
-                            className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                          <Select defaultValue="USDe">
-                            <SelectTrigger className="w-auto bg-transparent border-none h-auto p-0 gap-2">
+                      <TabsContent value="deposit" className="space-y-4 mt-6">
+                        {/* Amount Input */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Amount to Deposit
+                          </label>
+                          <div className="border border-input bg-background rounded-md p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Input
+                                placeholder="0.0"
+                                value={depositAmount}
+                                onChange={(e) =>
+                                  setDepositAmount(e.target.value)
+                                }
+                                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
                                   <span className="text-xs font-bold text-muted-foreground">
                                     $
                                   </span>
                                 </div>
-                                <SelectValue />
+                                <span className="text-sm font-medium">
+                                  testUSDe
+                                </span>
                               </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="USDe">USDe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">≈ $0</span>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                            >
-                              MAX
-                            </Button>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <span>0 USDe</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                ≈ ${depositAmount || '0'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() =>
+                                    setDepositAmount(
+                                      userAssetBalance
+                                        ? formatAssetAmount(userAssetBalance)
+                                        : '0'
+                                    )
+                                  }
+                                >
+                                  MAX
+                                </Button>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <span>
+                                    {userAssetBalance
+                                      ? formatAssetAmount(userAssetBalance)
+                                      : '0'}{' '}
+                                    testUSDe
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Connect Wallet Button */}
-                    <Button className="w-full py-3 px-4 rounded text-base font-normal">
-                      Connect Wallet →
-                    </Button>
-                  </TabsContent>
+                        {/* Deposit Button */}
+                        <Button
+                          className="w-full py-3 px-4 rounded text-base font-normal"
+                          disabled={
+                            !isConnected ||
+                            !depositAmount ||
+                            isVaultPending ||
+                            vaultData?.paused
+                          }
+                          onClick={() => deposit(depositAmount, chainId)}
+                        >
+                          {!isConnected
+                            ? 'Connect Wallet'
+                            : isVaultPending
+                              ? 'Processing...'
+                              : vaultData?.paused
+                                ? 'Vault Paused'
+                                : 'Deposit testUSDe'}
+                        </Button>
+                      </TabsContent>
 
-                  <TabsContent value="withdraw" className="space-y-4">
-                    {/* Withdraw Section - Similar structure but for withdrawing sapUSDe */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Amount</label>
-                      <div className="border border-input bg-background rounded-md p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <Input
-                            placeholder="0.0"
-                            className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
-                          />
-                          <Select defaultValue="sapUSDe">
-                            <SelectTrigger className="w-auto bg-transparent border-none h-auto p-0 gap-2">
+                      <TabsContent value="withdraw" className="space-y-4 mt-6">
+                        {/* Amount Input */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Amount to Withdraw
+                          </label>
+                          <div className="border border-input bg-background rounded-md p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Input
+                                placeholder="0.0"
+                                value={withdrawAmount}
+                                onChange={(e) =>
+                                  setWithdrawAmount(e.target.value)
+                                }
+                                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
                               <div className="flex items-center gap-2">
                                 <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
                                   <span className="text-xs font-bold text-muted-foreground">
                                     S
                                   </span>
                                 </div>
-                                <SelectValue />
+                                <span className="text-sm font-medium">
+                                  testUSDe
+                                </span>
                               </div>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="sapUSDe">sapUSDe</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">≈ $0</span>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-6 px-2 text-xs"
-                            >
-                              MAX
-                            </Button>
-                            <div className="flex items-center gap-1 text-muted-foreground">
-                              <span>0 sapUSDe</span>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                ≈ ${withdrawAmount || '0'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() =>
+                                    setWithdrawAmount(
+                                      userData
+                                        ? formatSharesAmount(
+                                            userData?.balance ?? 0n
+                                          )
+                                        : '0'
+                                    )
+                                  }
+                                >
+                                  MAX
+                                </Button>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <span>
+                                    {userData
+                                      ? formatSharesAmount(
+                                          userData?.balance ?? 0n
+                                        )
+                                      : '0'}{' '}
+                                    testUSDe
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                           </div>
+                        </div>
+
+                        {/* Pending Withdrawal Info */}
+                        {(userData?.pendingWithdrawal ?? 0n) > 0n && (
+                          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                            <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                              <p className="font-medium">Pending Withdrawal</p>
+                              <p className="text-xs">
+                                {formatAssetAmount(
+                                  userData?.pendingWithdrawal ?? 0n
+                                )}{' '}
+                                testUSDe queued for withdrawal
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Withdrawal Info */}
+                        <div className="p-3 bg-muted/50 rounded-md">
+                          <div className="text-sm text-muted-foreground">
+                            Withdrawals are queued with a{' '}
+                            {vaultData
+                              ? formatWithdrawalDelay(
+                                  vaultData?.withdrawalDelay ?? 0n
+                                )
+                              : '1 day'}{' '}
+                            delay to ensure vault stability and proper liquidity
+                            management.
+                          </div>
+                        </div>
+
+                        {/* Withdraw Button */}
+                        <Button
+                          className="w-full py-3 px-4 rounded text-base font-normal"
+                          disabled={
+                            !isConnected ||
+                            !withdrawAmount ||
+                            isVaultPending ||
+                            vaultData?.paused
+                          }
+                          onClick={() =>
+                            requestWithdrawal(withdrawAmount, chainId)
+                          }
+                        >
+                          {!isConnected
+                            ? 'Connect Wallet →'
+                            : isVaultPending
+                              ? 'Processing...'
+                              : vaultData?.paused
+                                ? 'Vault Paused'
+                                : 'Request Withdrawal'}
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Coming Soon State - Normal Interface with Overlay */
+              <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
+                <CardContent className="relative z-10 p-6 pointer-events-none select-none filter blur-sm">
+                  <div className="space-y-6">
+                    {/* Vault Header */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-medium">Protocol Vault</h3>
+                        <p className="text-sm text-muted-foreground">
+                          This vault is used to bid on auction orders.
+                        </p>
+                        {vaultData && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Utilization:{' '}
+                            {formatUtilizationRate(
+                              vaultData?.utilizationRate ?? 0n
+                            )}
+                            % • Delay:{' '}
+                            {formatWithdrawalDelay(
+                              vaultData?.withdrawalDelay ?? 0n
+                            )}
+                            {vaultData?.emergencyMode &&
+                              ' • Emergency Mode Active'}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          Your Balance
+                        </div>
+                        <div className="text-lg font-medium">
+                          {isLoadingUserData
+                            ? '...'
+                            : userData
+                              ? formatSharesAmount(userData.balance)
+                              : '0.00'}{' '}
+                          testUSDe
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {isLoadingUserData
+                            ? '...'
+                            : userAssetBalance
+                              ? formatAssetAmount(userAssetBalance)
+                              : '0.00'}{' '}
+                          testUSDe available
                         </div>
                       </div>
                     </div>
 
-                    <Button className="w-full py-3 px-4 rounded text-base font-normal">
-                      Connect Wallet →
-                    </Button>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
+                    {/* Deposit/Withdraw Tabs */}
+                    <Tabs defaultValue="deposit" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="deposit">Deposit</TabsTrigger>
+                        <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
+                      </TabsList>
 
-              {/* Coming Soon Overlay */}
-              <ComingSoonOverlay />
-            </Card>
+                      <TabsContent value="deposit" className="space-y-4 mt-6">
+                        {/* Amount Input */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Amount to Deposit
+                          </label>
+                          <div className="border border-input bg-background rounded-md p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Input
+                                placeholder="0.0"
+                                value={depositAmount}
+                                onChange={(e) =>
+                                  setDepositAmount(e.target.value)
+                                }
+                                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                                  <span className="text-xs font-bold text-muted-foreground">
+                                    $
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium">
+                                  testUSDe
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                ≈ ${depositAmount || '0'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() =>
+                                    setDepositAmount(
+                                      userAssetBalance
+                                        ? formatAssetAmount(userAssetBalance)
+                                        : '0'
+                                    )
+                                  }
+                                >
+                                  MAX
+                                </Button>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <span>
+                                    {userAssetBalance
+                                      ? formatAssetAmount(userAssetBalance)
+                                      : '0'}{' '}
+                                    testUSDe
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Deposit Button */}
+                        <Button
+                          className="w-full py-3 px-4 rounded text-base font-normal"
+                          disabled={
+                            !isConnected ||
+                            !depositAmount ||
+                            isVaultPending ||
+                            vaultData?.paused
+                          }
+                          onClick={() => deposit(depositAmount, chainId)}
+                        >
+                          {!isConnected
+                            ? 'Connect Wallet →'
+                            : isVaultPending
+                              ? 'Processing...'
+                              : vaultData?.paused
+                                ? 'Vault Paused'
+                                : 'Deposit testUSDe'}
+                        </Button>
+                      </TabsContent>
+
+                      <TabsContent value="withdraw" className="space-y-4 mt-6">
+                        {/* Amount Input */}
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Amount to Withdraw
+                          </label>
+                          <div className="border border-input bg-background rounded-md p-3">
+                            <div className="flex items-center justify-between mb-1">
+                              <Input
+                                placeholder="0.0"
+                                value={withdrawAmount}
+                                onChange={(e) =>
+                                  setWithdrawAmount(e.target.value)
+                                }
+                                className="text-2xl bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 bg-muted rounded-full flex items-center justify-center">
+                                  <span className="text-xs font-bold text-muted-foreground">
+                                    S
+                                  </span>
+                                </div>
+                                <span className="text-sm font-medium">
+                                  testUSDe
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                ≈ ${withdrawAmount || '0'}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() =>
+                                    setWithdrawAmount(
+                                      userData
+                                        ? formatSharesAmount(
+                                            userData?.balance ?? 0n
+                                          )
+                                        : '0'
+                                    )
+                                  }
+                                >
+                                  MAX
+                                </Button>
+                                <div className="flex items-center gap-1 text-muted-foreground">
+                                  <span>
+                                    {userData
+                                      ? formatSharesAmount(
+                                          userData?.balance ?? 0n
+                                        )
+                                      : '0'}{' '}
+                                    testUSDe
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pending Withdrawal Info */}
+                        {(userData?.pendingWithdrawal ?? 0n) > 0n && (
+                          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
+                            <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                              <p className="font-medium">Pending Withdrawal</p>
+                              <p className="text-xs">
+                                {formatAssetAmount(
+                                  userData?.pendingWithdrawal ?? 0n
+                                )}{' '}
+                                testUSDe queued for withdrawal
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Withdrawal Info */}
+                        <div className="p-3 bg-muted/50 rounded-md">
+                          <div className="text-sm text-muted-foreground">
+                            <p className="mb-1">Withdrawal Process:</p>
+                            <p className="text-xs">
+                              Withdrawals are queued with a{' '}
+                              {vaultData
+                                ? formatWithdrawalDelay(
+                                    vaultData?.withdrawalDelay ?? 0n
+                                  )
+                                : '1 day'}{' '}
+                              delay to ensure vault stability and proper
+                              liquidity management.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Withdraw Button */}
+                        <Button
+                          className="w-full py-3 px-4 rounded text-base font-normal"
+                          disabled={
+                            !isConnected ||
+                            !withdrawAmount ||
+                            isVaultPending ||
+                            vaultData?.paused
+                          }
+                          onClick={() =>
+                            requestWithdrawal(withdrawAmount, chainId)
+                          }
+                        >
+                          {!isConnected
+                            ? 'Connect Wallet'
+                            : isVaultPending
+                              ? 'Processing...'
+                              : vaultData?.paused
+                                ? 'Vault Paused'
+                                : 'Request Withdrawal'}
+                        </Button>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+                </CardContent>
+
+                <ComingSoonOverlay />
+              </Card>
+            )}
           </div>
 
-          {/* LP Vaults */}
+          {/* User Vaults */}
           <div>
             <h2 className="text-2xl font-heading font-normal mb-4">
-              LP Vaults
+              User Vaults
             </h2>
-            <p className="text-muted-foreground mb-4">
-              These vaults quote a spread around the predictions of forecasters.{' '}
-              <LearnMoreLink />
-            </p>
-
-            {/* Market-Making Vaults Table */}
-            <div className="relative rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Forecaster</TableHead>
-                    <TableHead>APR</TableHead>
-                    <TableHead>TVL</TableHead>
-                    <TableHead>Your Deposit</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {marketMakingVaults.map((vault, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {truncateAddress(vault.account)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatAPR(vault.apr)}</TableCell>
-                      <TableCell>{formatCurrency(vault.tvl)} USDe</TableCell>
-                      <TableCell>
-                        {formatCurrency(vault.yourDeposit)} USDe
-                      </TableCell>
-                      <TableCell>{vault.age} days</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs font-normal"
-                        >
-                          Deposit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Coming Soon Overlay */}
-              <ComingSoonOverlay />
-            </div>
-          </div>
-
-          {/* Parlay Vaults */}
-          <div>
-            <h2 className="text-2xl font-heading font-normal mb-4">
-              Parlay Vaults
-            </h2>
-            <p className="text-muted-foreground mb-4">
-              These vaults are used to fill orders for parlays.{' '}
-              <LearnMoreLink />
-            </p>
-
-            {/* Parlay Vaults Table */}
-            <div className="relative rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Operator</TableHead>
-                    <TableHead>APR</TableHead>
-                    <TableHead>TVL</TableHead>
-                    <TableHead>Your Deposit</TableHead>
-                    <TableHead>Age</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {parlayVaults.map((vault, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <span className="font-mono text-sm">
-                          {truncateAddress(vault.account)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatAPR(vault.apr)}</TableCell>
-                      <TableCell>{formatCurrency(vault.tvl)} USDe</TableCell>
-                      <TableCell>
-                        {formatCurrency(vault.yourDeposit)} USDe
-                      </TableCell>
-                      <TableCell>{vault.age} days</TableCell>
-                      <TableCell>
-                        <Button
-                          size="sm"
-                          className="h-7 px-3 text-xs font-normal"
-                        >
-                          Deposit
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              {/* Coming Soon Overlay */}
-              <ComingSoonOverlay />
-            </div>
+            <p className="text-muted-foreground mb-4">Coming soon.</p>
           </div>
         </div>
       </div>

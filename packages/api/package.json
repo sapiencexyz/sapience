@@ -26,7 +26,10 @@
     "start:reindex-resource": "tsx src/workers/worker.ts reindexResource $*",
     "start:reindex-market-group-factory": "tsx src/workers/worker.ts reindexMarketGroupFactory $*",
     "start:reindex-eas": "tsx src/workers/worker.ts reindexEAS $*",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:reindex-accuracy": "tsx src/workers/worker.ts reindexAccuracy $*",
+    "start:backfill-accuracy": "tsx src/workers/worker.ts backfillAccuracy $*",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src --max-warnings 0",
@@ -39,7 +42,8 @@
     "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "auction:bot": "tsx src/auction/botExample.ts"
   },
   "keywords": [],
   "dependencies": {
@@ -74,7 +78,7 @@
     "typegraphql-prisma": "^0.28.0",
     "typescript": "^5.7.2",
     "viem": "^2.21.49",
-    "ws": "8",
+    "ws": "^8.18.0",
     "zod": "3.23.6"
   },
   "devDependencies": {
@@ -92,7 +96,8 @@
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^9.15.0",
     "globals": "^15.14.0",
-    "typescript-eslint": "^8.21.0"
+    "typescript-eslint": "^8.21.0",
+    "vitest": "^2.0.5"
   },
   "engines": {
     "node": ">=20.14.x",

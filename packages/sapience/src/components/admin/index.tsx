@@ -21,14 +21,15 @@ import { useResources } from '@sapience/ui/hooks/useResources';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
 
 import CategoryFilter from './CategoryFilter';
 import columns from './columns';
+import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
+import { useAdminApi } from '~/hooks/useAdminApi';
+import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
-import { foilApi } from '~/lib/utils/util';
+//
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -38,14 +39,92 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 const DEFAULT_ERROR_MESSAGE = 'An error occurred. Please try again.';
 
-const ReindexFactoryForm = () => {
-  const { signMessageAsync } = useSignMessage();
+const ReindexAccuracyForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [factoryAddress, setFactoryAddress] = useState(
-    '0x8ba766895a6be31e92a0279c0a5c879b38f52904'
+  const [address, setAddress] = useState('');
+  const [marketId, setMarketId] = useState('');
+  const { postJson } = useAdminApi();
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      setIsLoading(true);
+
+      await postJson(`/reindex/accuracy`, {
+        ...(address && { address }),
+        ...(marketId && { marketId }),
+      });
+
+      toast({
+        title: 'Reindex started',
+        description: address
+          ? `Accuracy score reindex started for ${address}${marketId ? `, market ${marketId}` : ''}`
+          : 'Global accuracy score backfill started',
+      });
+
+      setAddress('');
+      setMarketId('');
+    } catch (error) {
+      console.error('Reindex accuracy error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description:
+          error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <label htmlFor="accuracyAddress" className="text-sm font-medium">
+          Market Group Address (optional)
+        </label>
+        <Input
+          id="accuracyAddress"
+          placeholder="0x... (leave blank for global backfill)"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="accuracyMarketId" className="text-sm font-medium">
+          Market ID (optional)
+        </label>
+        <Input
+          id="accuracyMarketId"
+          placeholder="e.g. 123 (scoped to address if provided)"
+          value={marketId}
+          onChange={(e) => setMarketId(e.target.value)}
+        />
+      </div>
+
+      <Button type="submit" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <LottieLoader width={16} height={16} />
+            <span className="ml-2">Processing...</span>
+          </>
+        ) : (
+          'Reindex Accuracy Scores'
+        )}
+      </Button>
+    </form>
   );
+};
+
+const ReindexFactoryForm = () => {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const [factoryAddress, setFactoryAddress] = useState(DEFAULT_FACTORY_ADDRESS);
   const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
+  const { postJson: postJson2 } = useAdminApi();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,34 +142,11 @@ const ReindexFactoryForm = () => {
     try {
       setIsLoading(true);
 
-      // Generate timestamp and signature
-      const timestamp = Date.now(); // Use Date.now() for consistency
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG, // Use standard auth message
+      // Construct the API URL from settings admin base
+      await postJson2(`/reindex/market-group-factory`, {
+        chainId: Number(chainId),
+        factoryAddress,
       });
-
-      // Construct the API URL from environment variable
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-group-factory`;
-
-      // Call the API endpoint
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chainId: Number(chainId),
-          factoryAddress,
-          signature,
-          timestamp, // Send the timestamp used for validation
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to reindex factory');
-      }
 
       toast({
         title: 'Reindex started',
@@ -163,36 +219,25 @@ const ReindexFactoryForm = () => {
 };
 
 const IndexResourceForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [selectedResource, setSelectedResource] = useState('');
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
+  const { postJson: postJson3 } = useAdminApi();
 
   const handleIndexResource = async () => {
     try {
       setIsLoading(true);
-      const timestamp = Date.now();
-
-      let signature = '';
-      if (process.env.NODE_ENV === 'production') {
-        signature = await signMessageAsync({
-          message: ADMIN_AUTHENTICATE_MSG,
-        });
-      }
-
-      const response = await foilApi.post('/reindex/resource', {
-        slug: selectedResource,
-        startTimestamp,
-        ...(endTimestamp && { endTimestamp }),
-        ...(signature && {
-          signature,
-          signatureTimestamp: timestamp,
-        }),
-      });
-
+      const response = await postJson3<{ success: boolean; error?: string }>(
+        `/reindex/resource`,
+        {
+          slug: selectedResource,
+          startTimestamp,
+          ...(endTimestamp && { endTimestamp }),
+        }
+      );
       if (response.success) {
         toast({
           title: 'Indexing complete',
@@ -296,31 +341,25 @@ const IndexResourceForm = () => {
 };
 
 const RefreshCacheForm = () => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [refreshResourceSlug, setRefreshResourceSlug] = useState('all');
+  const { getJson } = useAdminApi();
 
   const handleRefreshCache = async () => {
     try {
       setIsLoading(true);
-      const timestamp = Date.now();
+      const response = await (refreshResourceSlug &&
+      refreshResourceSlug !== 'all'
+        ? getJson<{ success: boolean; message?: string; error?: string }>(
+            `/cache/refresh-candle-cache/${refreshResourceSlug}`
+          )
+        : getJson<{ success: boolean; message?: string; error?: string }>(
+            `/cache/refresh-candle-cache`
+          ));
 
-      // Always request signature, matching the pattern in other admin functions
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG,
-      });
-
-      // Build the endpoint URL based on whether a specific resource is selected
-      const endpoint =
-        refreshResourceSlug && refreshResourceSlug !== 'all'
-          ? `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`
-          : `/cache/refresh-candle-cache?hardInitialize=true&signature=${signature}&signatureTimestamp=${timestamp}`;
-
-      const response = await foilApi.get(endpoint);
-
-      if (response.success) {
+      if (response && response.success) {
         toast({
           title: 'Cache refreshed',
           description:
@@ -402,7 +441,23 @@ const Admin = () => {
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
+  const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
+  const [adminDialogOpen, setAdminDialogOpen] = useState(false);
+  const [adminDraft, setAdminDraft] = useState(
+    adminBaseUrl ?? defaults.adminBaseUrl
+  );
+  const [adminError, setAdminError] = useState<string | null>(null);
+
+  const isHttpUrl = (value: string) => {
+    try {
+      const u = new URL(value);
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
 
   // Sort market groups with most recent (highest ID) first
   const sortedMarketGroups = marketGroups
@@ -450,6 +505,22 @@ const Admin = () => {
               <IndexResourceForm />
             </DialogContent>
           </Dialog>
+          <Dialog
+            open={accuracyReindexOpen}
+            onOpenChange={setAccuracyReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Accuracy Scores
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Accuracy Scores</DialogTitle>
+              </DialogHeader>
+              <ReindexAccuracyForm />
+            </DialogContent>
+          </Dialog>
           <Dialog open={refreshCacheOpen} onOpenChange={setRefreshCacheOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -461,6 +532,81 @@ const Admin = () => {
                 <DialogTitle>Refresh Cache</DialogTitle>
               </DialogHeader>
               <RefreshCacheForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Endpoint Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Endpoint Settings</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                <label htmlFor="admin-endpoint" className="text-sm font-medium">
+                  Base URL
+                </label>
+                <Input
+                  id="admin-endpoint"
+                  value={adminDraft}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setAdminDraft(v);
+                    setAdminError(
+                      v && !isHttpUrl(v)
+                        ? 'Must be an absolute http(s) base URL'
+                        : null
+                    );
+                  }}
+                  onBlur={() => {
+                    if (!adminDraft) {
+                      setAdminBaseUrl(null);
+                      setAdminDraft(defaults.adminBaseUrl);
+                      setAdminError(null);
+                      return;
+                    }
+                    if (isHttpUrl(adminDraft)) {
+                      const normalized =
+                        adminDraft.endsWith('/') && adminDraft !== '/'
+                          ? adminDraft.slice(0, -1)
+                          : adminDraft;
+                      setAdminDraft(normalized);
+                      setAdminBaseUrl(normalized);
+                      setAdminError(null);
+                    } else {
+                      setAdminError('Must be an absolute http(s) base URL');
+                    }
+                  }}
+                />
+                {adminError ? (
+                  <p className="text-xs text-red-500">{adminError}</p>
+                ) : null}
+                <div className="flex gap-2 justify-end">
+                  {adminDraft !== defaults.adminBaseUrl ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setAdminBaseUrl(null);
+                        setAdminDraft(defaults.adminBaseUrl);
+                        setAdminError(null);
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setAdminDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

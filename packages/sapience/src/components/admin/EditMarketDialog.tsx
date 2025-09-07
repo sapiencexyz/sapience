@@ -12,16 +12,13 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { useSignMessage } from 'wagmi';
 
 import type { MarketType } from '@sapience/ui/types';
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_FOIL_API_URL as string;
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 type Props = {
   group: EnrichedMarketGroup;
@@ -68,7 +65,7 @@ const EditMarketDialog = ({ group, market }: Props) => {
   );
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const { signMessageAsync } = useSignMessage();
+  const { putJson } = useAdminApi();
 
   const isDeployed = Boolean(market.poolAddress);
 
@@ -85,16 +82,14 @@ const EditMarketDialog = ({ group, market }: Props) => {
     } as const;
   }, [isDeployed]);
 
-  const handleChange = (field: keyof MarketInput, value: string | boolean) => {
-    setFormMarket((prev) => ({ ...prev, [field]: value }));
+  const handleChange = (
+    field: keyof MarketInput,
+    value: string | boolean | string[]
+  ) => {
+    setFormMarket((prev) => ({ ...prev, [field]: value as any }));
   };
 
   const updateCall = async () => {
-    const timestamp = Math.floor(Date.now() / 1000);
-    const signature = await signMessageAsync({
-      message: ADMIN_AUTHENTICATE_MSG,
-    });
-
     const payloadData: Record<string, unknown> = {};
     // Always mappable fields
     payloadData.question = formMarket.marketQuestion;
@@ -122,25 +117,10 @@ const EditMarketDialog = ({ group, market }: Props) => {
         );
     }
 
-    const url = `${API_BASE_URL}/marketGroups/${group.address}/markets/${
+    const path = `/marketGroups/${group.address}/markets/${
       market.marketId || market.id
     }`;
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chainId: group.chainId,
-        data: payloadData,
-        signature,
-        timestamp,
-      }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data?.error || 'Failed to update market');
-    }
-    return data;
+    return putJson(path, { chainId: group.chainId, data: payloadData });
   };
 
   const { mutate, isPending } = useMutation({

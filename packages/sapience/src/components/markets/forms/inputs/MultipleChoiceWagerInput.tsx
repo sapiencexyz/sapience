@@ -38,7 +38,7 @@ export default function MultipleChoiceWagerInput({
 
       <WagerInput
         name={wagerAmountFieldName}
-        collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+        collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
         collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
         chainId={marketGroupData.chainId}
       />

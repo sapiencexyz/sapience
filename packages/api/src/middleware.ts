@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
+import type { Request, Response, NextFunction } from 'express';
 import { recoverMessageAddress } from 'viem';
 
 // TODO: Update monorepo structure so that we can import this from packages/app/src/lib/constants/constants.ts
@@ -16,34 +17,24 @@ const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export async function isValidWalletSignature(
   signature: `0x${string}` | undefined,
-  timestamp: number | undefined
+  timestampSeconds: number | undefined
 ): Promise<boolean> {
-  console.log(
-    'Authenticating signature',
-    signature,
-    'timestamp for signature',
-    timestamp
-  );
-  if (!signature || !timestamp) {
+  if (!signature || !timestampSeconds) {
     return false;
   }
   // Check if signature is expired
-  const now = Date.now();
-  const timestampMs = timestamp * 1000; // Convert timestamp from seconds to milliseconds
-  console.log(
-    `Trying to auth: time right now ${now},` +
-      `timestamp for signature ${timestamp}, ` +
-      `time difference ${now - timestampMs}, ` +
-      `expected time diff ${MESSAGE_EXPIRY}`
-  );
-  if (now - timestampMs > MESSAGE_EXPIRY) {
+  const nowMs = Date.now();
+  const timestampMs = timestampSeconds * 1000; // Convert timestamp from seconds to milliseconds
+  // Reject far-future timestamps and expired ones
+  if (timestampMs > nowMs || nowMs - timestampMs > MESSAGE_EXPIRY) {
     return false;
   }
 
-  // Recover address from signature
   try {
+    // Bind the signature to the timestamp to prevent replay
+    const messageToVerify = `${ADMIN_AUTHENTICATE_MSG}:${timestampSeconds}`;
     const recoveredAddress = await recoverMessageAddress({
-      message: ADMIN_AUTHENTICATE_MSG,
+      message: messageToVerify,
       signature,
     });
 
@@ -51,15 +42,48 @@ export async function isValidWalletSignature(
     const isAllowed = ALLOWED_ADDRESSES.includes(
       recoveredAddress.toLowerCase()
     );
-    console.log(
-      `Recovered address: ${recoveredAddress}, ` +
-        `is allowed: ${isAllowed}, ` +
-        `allowed addresses ${ALLOWED_ADDRESSES}`
-    );
+    if (!isAllowed) {
+      console.warn(
+        `Admin auth failed: address ${recoveredAddress} not in allowlist`
+      );
+    }
 
     return isAllowed;
   } catch (error) {
-    console.error('Error recovering address', error);
+    console.error('Error recovering address for admin auth', error);
     return false;
   }
+}
+
+export async function adminAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  const isProductionOrStaging =
+    process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
+
+  // In local development, skip admin auth checks
+  if (!isProductionOrStaging) {
+    return next();
+  }
+
+  const signature = (req.headers['x-admin-signature'] || '') as `0x${string}`;
+  const timestampHeader = req.headers['x-admin-signature-timestamp'];
+  const timestampSeconds = Number(
+    Array.isArray(timestampHeader) ? timestampHeader[0] : timestampHeader
+  );
+
+  if (!signature || !timestampSeconds || !Number.isFinite(timestampSeconds)) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  const ok = await isValidWalletSignature(signature, timestampSeconds);
+  if (!ok) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+
+  return next();
 }

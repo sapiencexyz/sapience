@@ -9,11 +9,14 @@ import { http } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 
 import type React from 'react';
+import { useMemo } from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { BetSlipProvider } from '~/lib/context/BetSlipContext';
+import { SettingsProvider } from '~/lib/context/SettingsContext';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,41 +52,53 @@ const converge = {
   },
 } as const satisfies Chain;
 
-const transports: Record<number, HttpTransport> = {
-  [sepolia.id]: http(
-    process.env.NEXT_PUBLIC_INFURA_API_KEY
-      ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://ethereum-sepolia-rpc.publicnode.com'
-  ),
-  [base.id]: http(
-    process.env.NEXT_PUBLIC_INFURA_API_KEY
-      ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://base-rpc.publicnode.com'
-  ),
-  [arbitrum.id]: http(
-    process.env.NEXT_PUBLIC_INFURA_API_KEY
-      ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-      : 'https://arbitrum-rpc.publicnode.com'
-  ),
-  [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
+const useWagmiConfig = () => {
+  const { arbitrumRpcUrl } = useSettings();
+
+  const config = useMemo(() => {
+    const transports: Record<number, HttpTransport> = {
+      [sepolia.id]: http(
+        process.env.NEXT_PUBLIC_INFURA_API_KEY
+          ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+          : 'https://ethereum-sepolia-rpc.publicnode.com'
+      ),
+      [base.id]: http(
+        process.env.NEXT_PUBLIC_INFURA_API_KEY
+          ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+          : 'https://base-rpc.publicnode.com'
+      ),
+      [arbitrum.id]: http(
+        arbitrumRpcUrl ||
+          (process.env.NEXT_PUBLIC_INFURA_API_KEY
+            ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+            : 'https://arbitrum-rpc.publicnode.com')
+      ),
+      [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
+    };
+
+    const chains: Chain[] = [arbitrum, base, converge];
+
+    if (process.env.NODE_ENV !== 'production') {
+      transports[cannonAtLocalhost.id] = http('http://localhost:8545');
+      chains.push(cannonAtLocalhost);
+      chains.push(sepolia);
+    }
+
+    return createConfig({
+      ssr: true,
+      chains: chains as unknown as readonly [Chain, ...Chain[]],
+      connectors: [injected()],
+      transports,
+    });
+  }, [arbitrumRpcUrl]);
+
+  return config;
 };
 
-// Use mutable array type Chain[] initially
-const chains: Chain[] = [arbitrum, base, converge];
-
-if (process.env.NODE_ENV !== 'production') {
-  transports[cannonAtLocalhost.id] = http('http://localhost:8545');
-  chains.push(cannonAtLocalhost);
-  chains.push(sepolia);
-}
-
-// Create the configuration
-const config = createConfig({
-  ssr: true,
-  chains: chains as unknown as readonly [Chain, ...Chain[]],
-  connectors: [injected()],
-  transports,
-});
+const WagmiRoot = ({ children }: { children: React.ReactNode }) => {
+  const config = useWagmiConfig();
+  return <WagmiProvider config={config}>{children}</WagmiProvider>;
+};
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
@@ -99,18 +114,20 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
     >
       <ThemeProvider
         attribute="class"
-        defaultTheme="light"
-        enableSystem={false}
+        defaultTheme="system"
+        enableSystem={true}
         disableTransitionOnChange
       >
         <QueryClientProvider client={queryClient}>
           <ReactQueryDevtools initialIsOpen={false} />
 
-          <WagmiProvider config={config}>
-            <SapienceProvider>
-              <BetSlipProvider>{children}</BetSlipProvider>
-            </SapienceProvider>
-          </WagmiProvider>
+          <SettingsProvider>
+            <WagmiRoot>
+              <SapienceProvider>
+                <BetSlipProvider>{children}</BetSlipProvider>
+              </SapienceProvider>
+            </WagmiRoot>
+          </SettingsProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </PrivyProvider>

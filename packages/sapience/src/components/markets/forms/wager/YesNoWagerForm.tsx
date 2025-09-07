@@ -8,6 +8,7 @@ import { sapienceAbi } from '@sapience/ui/lib/abi';
 import { useEffect, useMemo, useRef } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useSearchParams } from 'next/navigation';
 
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
@@ -31,6 +32,7 @@ export default function YesNoWagerForm({
   onSuccess,
 }: YesNoWagerFormProps) {
   const successHandled = useRef(false);
+  const searchParams = useSearchParams();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -80,6 +82,22 @@ export default function YesNoWagerForm({
       onSuccess?.();
     },
   });
+
+  // Initialize prediction from URL query param when present
+  useEffect(() => {
+    const param = searchParams.get('prediction');
+    if (param === 'no') {
+      methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
+        shouldValidate: true,
+      });
+    } else if (param === 'yes') {
+      methods.setValue('predictionValue', YES_SQRT_PRICE_X96, {
+        shouldValidate: true,
+      });
+    }
+    // Only respond to param changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Handle form submission
   const handleSubmit = async () => {
@@ -160,7 +178,7 @@ export default function YesNoWagerForm({
         </div>
         <div>
           <WagerInput
-            collateralSymbol={marketGroupData.collateralSymbol || 'tokens'}
+            collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
             collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
             chainId={marketGroupData.chainId}
           />

@@ -1,10 +1,4 @@
-# 👽 Foil
-
-Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.
-
-See the [website](https://foil.xyz), [app](https://app.foil.xyz), and [docs](https://docs.foil.xyz).
-
-## Develop
+# 🌐 Sapience
 
 - Start the protocol on a local node
   - `pnpm run dev:protocol` and press `i` to interact with it

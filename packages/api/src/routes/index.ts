@@ -1,34 +1,24 @@
 import { router as marketRoutes } from './markets';
-import { router as estimateRoutes } from './estimate';
-import { router as getStEthPerTokenAtTimestampsRoutes } from './getStEthPerTokenAtTimestamp';
-import { router as missingBlocksRoutes } from './missing-blocks';
-import { router as positionRoutes } from './positions';
 import { router as reindexRoutes } from './reindex';
-import { router as volumeRoutes } from './volume';
-import { router as transactionRoutes } from './transactions';
-import { router as permitRoutes } from './permit';
-import { router as cryptoPricesRoutes } from './crypto-prices';
 import { router as refreshCacheRoutes } from './refreshCache';
 import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
-import chatAuthRoutes from './chat-auth';
 import { Router } from 'express';
+import { adminAuth } from '../middleware';
 
 const router = Router();
+const adminRouter = Router();
 
-router.use('/estimate', estimateRoutes);
-router.use('/getStEthPerTokenAtTimestamps', getStEthPerTokenAtTimestampsRoutes);
-router.use('/marketGroups', marketRoutes);
-router.use('/missing-blocks', missingBlocksRoutes);
-router.use('/positions', positionRoutes);
-router.use('/reindex', reindexRoutes);
-router.use('/transactions', transactionRoutes);
-router.use('/volume', volumeRoutes);
-router.use('/permit', permitRoutes);
-router.use('/crypto-prices', cryptoPricesRoutes);
-router.use('/cache', refreshCacheRoutes);
+// Apply admin authentication to all admin routes
+adminRouter.use(adminAuth);
+
 router.use('/quoter', quoterRoutes);
-router.use('/create-market-group', createMarketRoutes);
-router.use('/chat-auth', chatAuthRoutes);
+
+adminRouter.use('/marketGroups', marketRoutes);
+adminRouter.use('/reindex', reindexRoutes);
+adminRouter.use('/cache', refreshCacheRoutes);
+adminRouter.use('/marketGroups', createMarketRoutes);
+
+router.use('/admin', adminRouter);
 
 export { router };

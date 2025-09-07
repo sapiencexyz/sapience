@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { usePrivy } from '@privy-io/react-auth';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
+import Link from 'next/link';
 
 // Import popover components
 import {
@@ -20,6 +22,7 @@ import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import QuestionSuggestions from '~/components/markets/QuestionSuggestions';
 import WalletAddressPopover from '~/components/markets/DataDrawer/WalletAddressPopover';
 import QuestionSelect from '~/components/shared/QuestionSelect';
+import LottieLoader from '~/components/shared/LottieLoader';
 
 type TabsHeaderProps = {
   isAskTooltipOpen: boolean;
@@ -45,7 +48,7 @@ const TabsHeader = ({
   };
 
   return (
-    <div className="border-b border-border bg-background sticky top-0 z-20 border-t border-border">
+    <div className="border-b border-border bg-background border-t border-border">
       <div className="flex">
         <button
           type="button"
@@ -82,6 +85,7 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
+  const { authenticated } = usePrivy();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -108,14 +112,20 @@ const ForecastPageImp = () => {
   // Show loading state while data is being fetched
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background pt-32 xl:pt-0">
+      <div
+        className={`min-h-screen bg-background ${
+          authenticated ? 'pt-32' : 'pt-24 md:pt-0'
+        }`}
+      >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
           />
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <div className="mx-auto mb-4 flex items-center justify-center">
+              <LottieLoader width={32} height={32} />
+            </div>
             <p className="text-muted-foreground">Loading market data...</p>
           </div>
         </div>
@@ -126,7 +136,11 @@ const ForecastPageImp = () => {
   // Show error state if data fetching failed
   if (error) {
     return (
-      <div className="min-h-screen bg-background pt-24 xl:pt-0">
+      <div
+        className={`min-h-screen bg-background ${
+          authenticated ? 'pt-24' : 'pt-24 md:pt-0'
+        }`}
+      >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
@@ -163,6 +177,9 @@ const ForecastPageImp = () => {
       group,
     }))
   );
+
+  // All public markets (for suggestions we want any market that hasn't ended yet)
+  const publicMarkets = allMarkets.filter((market) => market.public);
 
   // Filter to only show active markets
   const activeMarkets = allMarkets.filter((market) => {
@@ -204,9 +221,15 @@ const ForecastPageImp = () => {
     'hover:bg-muted/50 text-muted-foreground hover:text-foreground';
 
   return (
-    <div className="min-h-screen bg-background pt-24 xl:pt-0">
+    <div
+      className={`min-h-screen bg-background ${
+        authenticated ? 'pt-20' : 'pt-20 md:pt-0'
+      }`}
+    >
       {/* Main content container with Twitter-like layout */}
-      <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
+      <div
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50 ${!authenticated ? 'mt-2 md:mt-0' : 'mt-2'}`}
+      >
         <>
           {/* Tabs */}
           <TabsHeader
@@ -214,8 +237,38 @@ const ForecastPageImp = () => {
             setIsAskTooltipOpen={setIsAskTooltipOpen}
           />
 
+          {/* Lead text */}
+          <div className="px-6 pt-6">
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Submit forecasts on{' '}
+              <a
+                href="https://attest.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+              >
+                Ethereum
+              </a>{' '}
+              or{' '}
+              <Link
+                href="/bots"
+                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+              >
+                deploy an agent
+              </Link>{' '}
+              that does. Forecasts can{' '}
+              <Link
+                href="/leaderboard#accuracy"
+                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+              >
+                provide signal
+              </Link>{' '}
+              for prediction market participants and trigger automation.
+            </p>
+          </div>
+
           {/* Market Selector (direct market search) - always visible */}
-          <div className="backdrop-blur-sm z-10 sticky top-2-">
+          <div className="backdrop-blur-sm relative z-50">
             <div className="p-6 pb-0">
               <QuestionSelect
                 key={selectedMarket?.id || 'no-selection'}
@@ -241,7 +294,7 @@ const ForecastPageImp = () => {
           <div className="border-b border-border relative pb-3">
             {!selectedMarket ? (
               <QuestionSuggestions
-                markets={activeMarkets}
+                markets={publicMarkets}
                 onMarketSelect={handleMarketSelect}
               />
             ) : (

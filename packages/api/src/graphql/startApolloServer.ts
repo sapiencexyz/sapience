@@ -19,14 +19,7 @@ import {
   FindUniqueCategoryOrThrowResolver,
   GroupByCategoryResolver,
 
-  // CryptoPrices queries
-  AggregateCryptoPricesResolver,
-  FindFirstCryptoPricesResolver,
-  FindFirstCryptoPricesOrThrowResolver,
-  FindManyCryptoPricesResolver,
-  FindUniqueCryptoPricesResolver,
-  FindUniqueCryptoPricesOrThrowResolver,
-  GroupByCryptoPricesResolver,
+  // (removed) CryptoPrices queries
 
   // Market queries
   AggregateMarketResolver,
@@ -102,7 +95,12 @@ import {
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
-import { CandleResolver, PnLResolver, VolumeResolver } from './resolvers';
+import {
+  CandleResolver,
+  PnLResolver,
+  VolumeResolver,
+  ScoreResolver,
+} from './resolvers';
 
 export interface ApolloContext {
   prisma: typeof prisma;
@@ -121,14 +119,7 @@ export const initializeApolloServer = async () => {
     FindUniqueCategoryOrThrowResolver,
     GroupByCategoryResolver,
 
-    // CryptoPrices queries
-    AggregateCryptoPricesResolver,
-    FindFirstCryptoPricesResolver,
-    FindFirstCryptoPricesOrThrowResolver,
-    FindManyCryptoPricesResolver,
-    FindUniqueCryptoPricesResolver,
-    FindUniqueCryptoPricesOrThrowResolver,
-    GroupByCryptoPricesResolver,
+    // (removed) CryptoPrices queries
 
     // Market queries
     AggregateMarketResolver,
@@ -206,7 +197,7 @@ export const initializeApolloServer = async () => {
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
   const allResolvers = queryResolvers
     .concat(relationResolvers)
-    .concat([CandleResolver, PnLResolver, VolumeResolver]);
+    .concat([CandleResolver, PnLResolver, VolumeResolver, ScoreResolver]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolvers: allResolvers as any,

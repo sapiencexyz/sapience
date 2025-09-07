@@ -29,9 +29,9 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
       query.maxIterations < 1 ||
       query.maxIterations > MAX_ITERATIONS
     ) {
-      return res
-        .status(400)
-        .json({ error: 'maxIterations must be between 1 and 5' });
+      return res.status(400).json({
+        error: `maxIterations must be between 1 and ${MAX_ITERATIONS}`,
+      });
     }
 
     const market = await getMarket(chainId, marketAddress, marketId);
@@ -86,6 +86,14 @@ router.get('/:chainId/:marketAddress/:marketId/', async (req, res) => {
       return res.status(400).json({
         error:
           'Could not find a valid position size that satisfies the price constraints',
+      });
+    }
+
+    const absBigint = (n: bigint) => (n < 0n ? -n : n);
+
+    if (collateralAvailable > absBigint(maxSize)) {
+      return res.status(400).json({
+        error: 'Insufficient liquidity. Try a smaller size.',
       });
     }
 

@@ -1,24 +1,26 @@
 import { GraphQLClient } from 'graphql-request';
 
-// Build the GraphQL endpoint URL
+// Build the GraphQL endpoint URL with optional client-side override via localStorage
 const getGraphQLEndpoint = () => {
-  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL;
-  if (baseUrl) {
-    return `${baseUrl}/graphql`;
+  try {
+    if (typeof window !== 'undefined') {
+      const override = window.localStorage.getItem('sapience.settings.graphqlEndpoint');
+      if (override) return override;
+    }
+  } catch {
+    /* noop */
   }
-  
-  // Fallback for development or when env var is not set
-  if (typeof window !== 'undefined') {
-    // Client-side: use current origin
-    return `${window.location.origin}/graphql`;
-  } else {
-    // Server-side: use localhost for development
-    return 'http://localhost:3001/graphql';
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  try {
+    const u = new URL(baseUrl);
+    return `${u.origin}/graphql`;
+  } catch {
+    return 'https://api.sapience.xyz/graphql';
   }
 };
 
-// Base client for legacy usage
-const client = new GraphQLClient(getGraphQLEndpoint());
+// Create client factory to ensure overrides apply without reload
+const createClient = () => new GraphQLClient(getGraphQLEndpoint());
 
 // Generic request function (current implementation)
 export async function graphqlRequest<T>(
@@ -26,6 +28,7 @@ export async function graphqlRequest<T>(
   variables?: Record<string, any>
 ): Promise<T> {
   try {
+    const client = createClient();
     return await client.request<T>(query, variables);
   } catch (error) {
     console.error('GraphQL request failed:', error);
@@ -42,6 +45,7 @@ export async function typedGraphqlRequest<
   variables?: TVariables
 ): Promise<TQuery> {
   try {
+    const client = createClient();
     return await client.request<TQuery>(query, variables);
   } catch (error) {
     console.error('GraphQL request failed:', error);

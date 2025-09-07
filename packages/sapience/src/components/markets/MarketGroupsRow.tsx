@@ -8,14 +8,13 @@ import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
+import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
-
-// Import the shared type
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -329,41 +328,23 @@ const MarketGroupsRow = ({
                       Predict
                     </Button>
                   ) : (
-                    // YES/NO markets: show Yes/No buttons
-                    <div className="flex items-center gap-2">
-                      {(() => {
-                        const yesMarket =
-                          market.find((m) => m.optionName === 'Yes') ||
-                          activeMarket;
-                        const noMarket =
-                          market.find((m) => m.optionName === 'No') ||
-                          activeMarket;
-                        return (
-                          <>
-                            <Button
-                              variant="default"
-                              size="lg"
-                              onClick={() =>
-                                handleAddToBetSlip(yesMarket, true)
-                              }
-                              className="w-20 text-base"
-                            >
-                              Yes
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="lg"
-                              onClick={() =>
-                                handleAddToBetSlip(noMarket, false)
-                              }
-                              className="w-20 text-base"
-                            >
-                              No
-                            </Button>
-                          </>
-                        );
-                      })()}
-                    </div>
+                    // YES/NO markets: combined split button
+                    (() => {
+                      const yesMarket =
+                        market.find((m) => m.optionName === 'Yes') ||
+                        activeMarket;
+                      const noMarket =
+                        market.find((m) => m.optionName === 'No') ||
+                        activeMarket;
+                      return (
+                        <YesNoSplitButton
+                          onYes={() => handleAddToBetSlip(yesMarket, true)}
+                          onNo={() => handleAddToBetSlip(noMarket, false)}
+                          className="min-w-[10rem]"
+                          size="lg"
+                        />
+                      );
+                    })()
                   )}
                 </>
               )
@@ -428,37 +409,25 @@ const MarketGroupsRow = ({
 
                           {/* Right Side: Actions */}
                           <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
-                            {/* For multichoice rows, show Yes/No buttons for each option as an individual YES/NO market */}
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="default"
-                                size="lg"
-                                onClick={() =>
-                                  handleAddToBetSlip(
-                                    marketItem,
-                                    true,
-                                    MarketGroupClassificationEnum.YES_NO
-                                  )
-                                }
-                                className="w-20 text-base"
-                              >
-                                Yes
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="lg"
-                                onClick={() =>
-                                  handleAddToBetSlip(
-                                    marketItem,
-                                    false,
-                                    MarketGroupClassificationEnum.YES_NO
-                                  )
-                                }
-                                className="w-20 text-base"
-                              >
-                                No
-                              </Button>
-                            </div>
+                            {/* For multichoice rows, use combined split button per option as a YES/NO market */}
+                            <YesNoSplitButton
+                              onYes={() =>
+                                handleAddToBetSlip(
+                                  marketItem,
+                                  true,
+                                  MarketGroupClassificationEnum.YES_NO
+                                )
+                              }
+                              onNo={() =>
+                                handleAddToBetSlip(
+                                  marketItem,
+                                  false,
+                                  MarketGroupClassificationEnum.YES_NO
+                                )
+                              }
+                              className="min-w-[10rem]"
+                              size="lg"
+                            />
                           </div>
                         </div>
                       ))}

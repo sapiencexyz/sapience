@@ -22,13 +22,13 @@ export default function BotsHero() {
   }, []);
 
   return (
-    <div className="relative overflow-hidden flex items-center justify-center w-full">
+    <div className="relative overflow-hidden flex items-center justify-center w-full pb-8 md:pb-16 lg:pb-24">
       {/* Outer container with padding and iframe background */}
-      <div className="relative z-10 w-full px-6 pt-36 max-w-[1020px] mx-auto">
-        <div className="relative overflow-hidden rounded-xl shadow-inner">
+      <div className="relative z-10 w-full px-0 md:px-6 pt-20 md:pt-24 max-w-[1020px] mx-auto">
+        <div className="relative overflow-hidden rounded-none md:rounded-xl shadow-inner mt-2">
           {/* Iframe as background within the outer box */}
           <div
-            className="absolute inset-0 z-0 overflow-hidden rounded-xl light"
+            className="absolute inset-0 z-0 overflow-hidden rounded-none md:rounded-xl light"
             style={{
               transformOrigin: 'center center',
               colorScheme: 'light',
@@ -52,7 +52,7 @@ export default function BotsHero() {
           </div>
 
           {/* Inner Content card overlaid on top */}
-          <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm p-8 lg:p-16">
+          <div className="relative z-10 w-100 text-center bg-background/[0.2] backdrop-blur-[2px] border-y md:border border-gray-500/20 rounded-none md:rounded-xl shadow-sm p-8 lg:p-16">
             <h1 className="font-sans text-2xl lg:text-4xl font-normal mb-2 lg:mb-4">
               Trade with Machine Intelligence
             </h1>

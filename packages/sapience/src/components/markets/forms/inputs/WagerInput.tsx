@@ -73,7 +73,7 @@ function SUsdsHelp() {
 
 export function WagerInput({
   name = 'wagerAmount',
-  collateralSymbol = 'sUSDe',
+  collateralSymbol = 'testUSDe',
   collateralAddress = '0x0000000000000000000000000000000000000000',
   chainId = 432,
   minAmount,
@@ -145,6 +145,10 @@ export function WagerInput({
           type="text"
           inputMode="decimal"
           placeholder="0.00"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          autoCapitalize="none"
           className={`pr-24 ${errors[name] ? 'border-destructive' : ''} ${inputClassName || ''}`}
           {...register(name, {
             validate: (val) => {

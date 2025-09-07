@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
+import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketWithContext } from './MarketGroupsList';
+import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { getChainShortName } from '~/lib/utils/util';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 export interface MarketGroupCardProps {
   chainId: number;
@@ -30,6 +34,9 @@ const MarketGroupCard = ({
   marketClassification,
   displayUnit,
 }: MarketGroupCardProps) => {
+  const { addPosition } = useBetSlipContext();
+  const router = useRouter();
+
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
     [chainId]
@@ -74,6 +81,59 @@ const MarketGroupCard = ({
     if (price <= 0) return 'Price N/A';
     const percentage = price * 100;
     return `${Math.round(percentage)}% chance`;
+  };
+
+  // Helper function to handle adding market to bet slip
+  const handleAddToBetSlip = (
+    marketItem: MarketWithContext,
+    prediction: boolean
+  ) => {
+    const position = {
+      prediction,
+      marketAddress,
+      marketId: marketItem.marketId,
+      question: marketItem.question || marketItem.optionName || displayQuestion,
+      chainId,
+      marketClassification,
+      wagerAmount: '10', // Default wager amount
+    };
+    addPosition(position);
+  };
+
+  // Handler for Yes button
+  const handleYesClick = () => {
+    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
+    handleAddToBetSlip(yesMarket, true);
+    router.push('/markets');
+  };
+
+  // Handler for No button
+  const handleNoClick = () => {
+    const noMarket = market.find((m) => m.optionName === 'No') || market[0];
+    handleAddToBetSlip(noMarket, false);
+    router.push('/markets');
+  };
+
+  // Handler for Multiple Choice predict button (selects first option)
+  const handlePredictClick = () => {
+    if (market.length === 0) return;
+
+    // Mirror the MarketPrediction logic: choose the highest priced option if available
+    const marketPriceData = market.map((marketItem) => ({
+      marketItem,
+      price: latestPrices[marketItem.marketId] || 0,
+    }));
+
+    const highestPricedMarket = marketPriceData.reduce((highest, current) =>
+      current.price > highest.price ? current : highest
+    );
+
+    const selectedMarket =
+      highestPricedMarket.price > 0
+        ? highestPricedMarket.marketItem
+        : sortedMarkets[0];
+
+    handleAddToBetSlip(selectedMarket, true);
   };
 
   const MarketPrediction = () => {
@@ -144,38 +204,74 @@ const MarketGroupCard = ({
 
   return (
     <div className="w-full h-full">
-      <Link
-        href={`/markets/${chainShortName}:${marketAddress}`}
-        className="block h-full group"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
+        className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row items-stretch h-full relative overflow-hidden shadow shadow-md transition-shadow duration-200"
       >
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[88px] md:min-h-[126px] h-full relative overflow-hidden"
-        >
-          <div
-            className="w-1 min-w-[4px] max-w-[4px]"
-            style={{ backgroundColor: color, margin: '-1px 0' }}
-          />
+        <div
+          className="w-1 min-w-[4px] max-w-[4px]"
+          style={{ backgroundColor: color, margin: '-1px 0' }}
+        />
 
-          <div className="flex-grow flex flex-col px-5 py-3 gap-3 h-full">
-            <div className="flex flex-col flex-grow justify-between h-full">
-              <h3 className="text-sm md:text-base leading-tight mb-2">
-                <span className="transition-colors">{displayQuestion}</span>
-              </h3>
-              {canShowPredictionElement && (
-                <div className="text-xs md:text-sm text-muted-foreground mt-0">
-                  <span className="text-muted-foreground">
-                    Market Prediction:{' '}
-                  </span>
-                  <MarketPrediction />
+        <div className="flex-1 flex flex-col h-full">
+          <div className="block group flex-1">
+            <div className="transition-colors h-full">
+              <div className="flex flex-col px-4 py-3 gap-3 h-full">
+                <div className="flex flex-col h-full">
+                  <h3 className="text-sm md:text-base leading-snug mb-1">
+                    <span
+                      className="transition-colors block overflow-hidden"
+                      style={{
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {displayQuestion}
+                    </span>
+                  </h3>
+                  {canShowPredictionElement && (
+                    <div className="text-xs md:text-sm text-muted-foreground mt-auto">
+                      <span className="text-muted-foreground">
+                        Market Prediction:{' '}
+                      </span>
+                      <MarketPrediction />
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
-        </motion.div>
-      </Link>
+
+          <div className="px-4 pb-4 pt-0">
+            {isActive &&
+              marketClassification ===
+                MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
+                <Link
+                  href="/markets"
+                  className="block"
+                  onClick={handlePredictClick}
+                >
+                  <Button className="w-full border border-border">
+                    Make a Prediction
+                  </Button>
+                </Link>
+              )}
+            {isActive &&
+              marketClassification === MarketGroupClassificationEnum.YES_NO && (
+                <YesNoSplitButton
+                  onYes={handleYesClick}
+                  onNo={handleNoClick}
+                  className="w-full"
+                  size="md"
+                />
+              )}
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 };

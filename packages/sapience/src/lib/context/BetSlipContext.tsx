@@ -16,6 +16,7 @@ import {
   marketGroupQueryConfig,
   getMarketGroupFromCache,
   prefetchMarketGroup,
+  normalizeMarketIdentifier,
 } from '~/hooks/graphql/useMarketGroup';
 import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
 
@@ -92,8 +93,11 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   const positionsWithMarketData = betSlipPositions.map((position) => {
     // Use same fallback logic for consistency
     const effectiveChainId = position.chainId || 8453;
+    const normalizedIdentifier = normalizeMarketIdentifier(
+      position.marketAddress
+    );
     const queryKey = marketGroupQueryConfig.queryKey(
-      position.marketAddress,
+      normalizedIdentifier,
       effectiveChainId
     );
 
@@ -105,7 +109,8 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     );
     const queryState = queryClient.getQueryState(queryKey);
     const isLoading =
-      !marketGroupData && queryState?.fetchStatus === 'fetching';
+      !marketGroupData &&
+      (queryState ? queryState?.fetchStatus === 'fetching' : true);
     const isError = !marketGroupData && !!queryState?.error;
 
     // Determine market classification, preferring any explicit classification on the position
@@ -155,6 +160,14 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
               : p
           )
         );
+
+        // Ensure market data is available (re)prefetch in case it was evicted or never fetched
+        const effectiveChainId = position.chainId || 8453;
+        await prefetchMarketGroup(
+          queryClient,
+          effectiveChainId,
+          position.marketAddress
+        );
       } else {
         // Generate a unique ID for the new position
         const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
@@ -184,6 +197,28 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     },
     [betSlipPositions, queryClient]
   );
+
+  // Background ensure: prefetch any missing market data for positions currently in the betslip
+  useEffect(() => {
+    (() => {
+      for (const position of betSlipPositions) {
+        const effectiveChainId = position.chainId || 8453;
+        const existing = getMarketGroupFromCache(
+          queryClient,
+          effectiveChainId,
+          position.marketAddress
+        );
+        if (!existing) {
+          // Fire and forget; internal prefetch handles dedupe and errors
+          prefetchMarketGroup(
+            queryClient,
+            effectiveChainId,
+            position.marketAddress
+          );
+        }
+      }
+    })();
+  }, [betSlipPositions, queryClient]);
 
   const removePosition = useCallback(
     (id: string) => {

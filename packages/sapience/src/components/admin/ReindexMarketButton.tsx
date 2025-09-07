@@ -4,9 +4,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import { useSignMessage } from 'wagmi';
-
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
+import { useAdminApi } from '~/hooks/useAdminApi';
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -23,39 +21,18 @@ const ReindexMarketButton: React.FC<ReindexMarketButtonProps> = ({
   marketGroupAddress,
   chainId,
 }) => {
-  const { signMessageAsync } = useSignMessage();
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { postJson } = useAdminApi();
 
   const handleReindex = async () => {
     setIsLoading(true);
     try {
-      const timestamp = Date.now();
-      const signature = await signMessageAsync({
-        message: ADMIN_AUTHENTICATE_MSG,
+      await postJson(`/reindex/market-events`, {
+        chainId: Number(chainId),
+        address: marketGroupAddress,
+        marketId: 0,
       });
-
-      const apiUrl = `${process.env.NEXT_PUBLIC_FOIL_API_URL as string}/reindex/market-events`;
-
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          chainId: Number(chainId),
-          address: marketGroupAddress, // API expects 'address'
-          signature,
-          timestamp,
-          marketId: 0,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to start reindex');
-      }
 
       toast({
         title: 'Reindex Requested',

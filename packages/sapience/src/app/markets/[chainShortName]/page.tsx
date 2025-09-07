@@ -7,7 +7,6 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
@@ -15,7 +14,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-import { formatDistanceToNow, fromUnixTime } from 'date-fns';
+
 import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
@@ -147,29 +146,9 @@ const WagerForm = ({
     );
   }
 
-  // Format end time for badge
-  const endTimeBadge = (() => {
-    const endTime = activeMarket?.endTimestamp;
-    if (typeof endTime !== 'number') {
-      return null;
-    }
-
-    try {
-      const date = fromUnixTime(endTime);
-      const displayTime = formatDistanceToNow(date, { addSuffix: true });
-      return <Badge>Ends {displayTime}</Badge>;
-    } catch (error) {
-      console.error('Error formatting relative time:', error);
-      return null;
-    }
-  })();
-
   return (
     <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
-      <div className="mb-4">
-        <h2 className="text-2xl font-medium mb-2">Place a Wager</h2>
-        {endTimeBadge && <div className="flex mt-3">{endTimeBadge}</div>}
-      </div>
+      <h2 className="text-2xl font-medium mb-2">Make a Prediction</h2>
       <div className="flex-1">
         <WagerFormFactory
           marketClassification={marketClassification}

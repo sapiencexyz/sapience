@@ -132,7 +132,7 @@ export const useLatestResourcePrice = (slug: string) => {
         value: latestCandle.close,
       };
     },
-    refetchInterval: 6000,
+    refetchInterval: 15000, // Match candle cache interval
   });
 };
 
@@ -190,7 +190,7 @@ export const useLatestIndexPrice = (market: {
         value: latestCandle.close,
       };
     },
-    refetchInterval: 12000, // Refetch every 12 seconds (approx ETH block time)
+    refetchInterval: 15000, 
     enabled: !!market.address && !!market.chainId && market.marketId !== 0,
   });
 };

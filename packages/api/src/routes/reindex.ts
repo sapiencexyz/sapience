@@ -1,11 +1,64 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { isValidWalletSignature } from '../middleware';
 import prisma from '../db';
 import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
 
 const router = Router();
+router.post(
+  '/accuracy',
+  handleAsyncErrors(async (req, res) => {
+    const { address, marketId } = req.body;
+
+    const startCommand =
+      `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
+
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    if (isProduction) {
+      const renderServices = await fetchRenderServices();
+      const worker = renderServices.find(
+        (item: {
+          service?: {
+            type?: string;
+            name?: string;
+            branch?: string;
+            id?: string;
+          };
+        }) =>
+          item?.service?.type === 'background_worker' &&
+          item?.service?.name?.startsWith('background-worker') &&
+          item?.service?.branch ===
+            (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
+      );
+
+      if (!worker?.service?.id) {
+        throw new Error('Background worker not found');
+      }
+
+      const job = await createRenderJob(worker.service.id, startCommand);
+      await prisma.renderJob.create({
+        data: { jobId: job.id, serviceId: job.serviceId },
+      });
+      res.json({ success: true, job });
+      return;
+    }
+
+    // local development
+    try {
+      const result = await executeLocalReindex(startCommand);
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
 
 const executeLocalReindex = async (
   startCommand: string
@@ -51,29 +104,13 @@ const executeLocalReindex = async (
 router.post(
   '/resource',
   handleAsyncErrors(async (req, res) => {
-    const {
-      signature,
-      signatureTimestamp,
-      startTimestamp,
-      endTimestamp,
-      slug,
-    } = req.body;
+    const { startTimestamp, endTimestamp, slug } = req.body;
     const isProduction =
       process.env.NODE_ENV === 'production' ||
       process.env.NODE_ENV === 'staging';
 
     // For production/staging environments
     if (isProduction) {
-      // Verify signature
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(signatureTimestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-
       // Get background worker service ID
       const renderServices = await fetchRenderServices();
       const worker = renderServices.find(
@@ -131,7 +168,7 @@ const handleReindexRequest = async (
   res: Response,
   isResourcePrice: boolean
 ) => {
-  const { chainId, address, marketId, signature, timestamp } = req.body;
+  const { chainId, address, marketId } = req.body;
 
   const startCommand = isResourcePrice
     ? `pnpm run start:reindex-missing ${chainId} ${address} ${marketId}`
@@ -141,16 +178,6 @@ const handleReindexRequest = async (
     process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 
   if (isProduction) {
-    // Authenticate the user
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
-
     let id: string = '';
     const renderServices = await fetchRenderServices();
     for (const item of renderServices) {
@@ -224,7 +251,7 @@ router.post(
 router.post(
   '/market-group-factory',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, factoryAddress, signature, timestamp } = req.body;
+    const { chainId, factoryAddress } = req.body;
 
     const startCommand = `pnpm run start:reindex-market-group-factory ${chainId} ${factoryAddress}`;
 
@@ -233,16 +260,6 @@ router.post(
       process.env.NODE_ENV === 'staging';
 
     if (isProduction) {
-      // Authenticate the user
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(timestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-
       let id: string = '';
       const renderServices = await fetchRenderServices();
       for (const item of renderServices) {
