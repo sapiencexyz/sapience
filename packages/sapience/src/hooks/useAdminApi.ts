@@ -12,12 +12,19 @@ export function useAdminApi() {
   const sign = async () => {
     const timestamp = Math.floor(Date.now() / 1000);
     const signature = await signMessageAsync({
-      message: ADMIN_AUTHENTICATE_MSG,
+      message: `${ADMIN_AUTHENTICATE_MSG}:${timestamp}`,
     });
     return { signature, timestamp, signatureTimestamp: timestamp } as const;
   };
 
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  const buildHeaders = async (): Promise<HeadersInit> => {
+    const { signature, timestamp } = await sign();
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-signature': signature,
+      'x-admin-signature-timestamp': String(timestamp),
+    } as const;
+  };
 
   const postJson = async <
     T = unknown,
@@ -26,16 +33,10 @@ export function useAdminApi() {
     path: string,
     body: B
   ): Promise<T> => {
-    const { signature, timestamp, signatureTimestamp } = await sign();
     const response = await fetch(`${base}${path}`, {
       method: 'POST',
-      headers,
-      body: JSON.stringify({
-        ...(body as Record<string, unknown>),
-        signature,
-        timestamp,
-        signatureTimestamp,
-      }),
+      headers: await buildHeaders(),
+      body: JSON.stringify(body as Record<string, unknown>),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok)
@@ -52,16 +53,10 @@ export function useAdminApi() {
     path: string,
     body: B
   ): Promise<T> => {
-    const { signature, timestamp, signatureTimestamp } = await sign();
     const response = await fetch(`${base}${path}`, {
       method: 'PUT',
-      headers,
-      body: JSON.stringify({
-        ...(body as Record<string, unknown>),
-        signature,
-        timestamp,
-        signatureTimestamp,
-      }),
+      headers: await buildHeaders(),
+      body: JSON.stringify(body as Record<string, unknown>),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok)
@@ -78,16 +73,10 @@ export function useAdminApi() {
     path: string,
     body?: B
   ): Promise<T> => {
-    const { signature, timestamp, signatureTimestamp } = await sign();
     const response = await fetch(`${base}${path}`, {
       method: 'DELETE',
-      headers,
-      body: JSON.stringify({
-        ...((body || {}) as Record<string, unknown>),
-        signature,
-        timestamp,
-        signatureTimestamp,
-      }),
+      headers: await buildHeaders(),
+      body: JSON.stringify((body || {}) as Record<string, unknown>),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok)
@@ -97,13 +86,18 @@ export function useAdminApi() {
     return data as T;
   };
 
-  const withSignatureQuery = async (path: string) => {
-    const { signature, signatureTimestamp } = await sign();
-    const u = new URL(`${base}${path}`);
-    u.searchParams.set('signature', signature);
-    u.searchParams.set('signatureTimestamp', String(signatureTimestamp));
-    return u.toString();
+  const getJson = async <T = unknown>(path: string): Promise<T> => {
+    const response = await fetch(`${base}${path}`, {
+      method: 'GET',
+      headers: await buildHeaders(),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok)
+      throw new Error(
+        (data && (data.error || data.message)) || 'Request failed'
+      );
+    return data as T;
   };
 
-  return { base, sign, postJson, putJson, deleteJson, withSignatureQuery };
+  return { base, sign, postJson, putJson, deleteJson, getJson };
 }

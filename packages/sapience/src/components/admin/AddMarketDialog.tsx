@@ -13,11 +13,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import type { Address } from 'viem';
-import { useSignMessage } from 'wagmi';
 import { z } from 'zod';
 
 import MarketFormFields, { type MarketInput } from './MarketFormFields';
-import { ADMIN_AUTHENTICATE_MSG } from '~/lib/constants';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
 const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
@@ -82,8 +80,6 @@ type MarketApiInput = z.infer<typeof marketApiSchema>;
 // Payload for the new endpoint
 interface AddMarketApiPayload {
   marketData: MarketApiInput;
-  signature: `0x${string}`;
-  signatureTimestamp: number;
   chainId: number;
   // marketGroupAddress is part of the URL now, not the payload body
 }
@@ -119,7 +115,6 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
   );
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { signMessageAsync } = useSignMessage();
   const { postJson } = useAdminApi();
 
   const handleMarketChange = (
@@ -167,7 +162,7 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
     },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Prepare data for validation (excluding client-side 'id')
@@ -184,27 +179,9 @@ const AddMarketDialog: React.FC<AddMarketDialogProps> = ({
       return;
     }
 
-    const timestamp = Math.floor(Date.now() / 1000);
-    let signature: `0x${string}` | undefined;
-    try {
-      signature = await signMessageAsync({ message: ADMIN_AUTHENTICATE_MSG });
-    } catch (signError) {
-      console.error('Signature failed:', signError);
-      toast({
-        title: 'Signature Required',
-        description: 'Failed to get user signature.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!signature) return; // Should not happen if signMessageAsync throws on failure
-
     // Construct the payload for the new API structure
     const apiPayload: AddMarketApiPayload = {
       marketData: validationResult.data, // Use Zod validated data
-      signature,
-      signatureTimestamp: timestamp,
       chainId,
       // marketGroupAddress is sent via URL, no longer in payload body
     };

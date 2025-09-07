@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { isValidWalletSignature } from '../middleware';
+// Admin authentication is enforced at the router level via middleware
 import prisma from '../db';
 import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
@@ -9,7 +9,7 @@ const router = Router();
 router.post(
   '/accuracy',
   handleAsyncErrors(async (req, res) => {
-    const { signature, timestamp, address, marketId } = req.body;
+    const { address, marketId } = req.body;
 
     const startCommand =
       `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
@@ -19,15 +19,6 @@ router.post(
       process.env.NODE_ENV === 'staging';
 
     if (isProduction) {
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(timestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-
       const renderServices = await fetchRenderServices();
       const worker = renderServices.find(
         (item: {
@@ -114,28 +105,14 @@ const executeLocalReindex = async (
 router.post(
   '/resource',
   handleAsyncErrors(async (req, res) => {
-    const {
-      signature,
-      signatureTimestamp,
-      startTimestamp,
-      endTimestamp,
-      slug,
-    } = req.body;
+    const { startTimestamp, endTimestamp, slug } = req.body;
     const isProduction =
       process.env.NODE_ENV === 'production' ||
       process.env.NODE_ENV === 'staging';
 
     // For production/staging environments
     if (isProduction) {
-      // Verify signature
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(signatureTimestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
+      // Auth handled by admin middleware
 
       // Get background worker service ID
       const renderServices = await fetchRenderServices();
@@ -194,7 +171,7 @@ const handleReindexRequest = async (
   res: Response,
   isResourcePrice: boolean
 ) => {
-  const { chainId, address, marketId, signature, timestamp } = req.body;
+  const { chainId, address, marketId } = req.body;
 
   const startCommand = isResourcePrice
     ? `pnpm run start:reindex-missing ${chainId} ${address} ${marketId}`
@@ -204,15 +181,7 @@ const handleReindexRequest = async (
     process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 
   if (isProduction) {
-    // Authenticate the user
-    const isAuthenticated = await isValidWalletSignature(
-      signature as `0x${string}`,
-      Number(timestamp)
-    );
-    if (!isAuthenticated) {
-      res.status(401).json({ error: 'Unauthorized' });
-      return;
-    }
+    // Auth handled by admin middleware
 
     let id: string = '';
     const renderServices = await fetchRenderServices();
@@ -287,7 +256,7 @@ router.post(
 router.post(
   '/market-group-factory',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, factoryAddress, signature, timestamp } = req.body;
+    const { chainId, factoryAddress } = req.body;
 
     const startCommand = `pnpm run start:reindex-market-group-factory ${chainId} ${factoryAddress}`;
 
@@ -296,15 +265,7 @@ router.post(
       process.env.NODE_ENV === 'staging';
 
     if (isProduction) {
-      // Authenticate the user
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(timestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
+      // Auth handled by admin middleware
 
       let id: string = '';
       const renderServices = await fetchRenderServices();

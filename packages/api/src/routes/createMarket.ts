@@ -1,6 +1,5 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../db';
-import { isValidWalletSignature } from '../middleware';
 import { watchFactoryAddress } from '../workers/jobs/indexMarkets';
 
 const router = Router();
@@ -99,35 +98,13 @@ router.post('/', async (req: Request, res: Response) => {
       resourceId,
       isCumulative,
       markets,
-      signature,
-      signatureTimestamp,
       isBridged,
     } = req.body as { markets: MarketDataPayload[] } & Omit<
       Request['body'],
       'markets'
     >;
 
-    const isProduction =
-      process.env.NODE_ENV === 'production' ||
-      process.env.NODE_ENV === 'staging';
-
-    // Verify signature in production/staging environments
-    if (isProduction) {
-      if (!signature || !signatureTimestamp) {
-        return res
-          .status(400)
-          .json({ message: 'Signature and timestamp required' });
-      }
-
-      // Authenticate the user
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(signatureTimestamp)
-      );
-      if (!isAuthenticated) {
-        return res.status(401).json({ error: 'Unauthorized' });
-      }
-    }
+    // Admin authentication is enforced at the router level via middleware
 
     // Validate required market group fields
     if (
@@ -296,35 +273,13 @@ router.post(
       const { marketGroupAddressParam } = req.params;
       const {
         marketData, // This will contain all individual market fields
-        signature,
-        signatureTimestamp,
         chainId: bodyChainId, // chainId from request body
       } = req.body as { marketData: MarketDataPayload } & Omit<
         Request['body'],
         'marketData'
       >;
 
-      const isProduction =
-        process.env.NODE_ENV === 'production' ||
-        process.env.NODE_ENV === 'staging';
-
-      // Verify signature in production/staging environments
-      if (isProduction) {
-        if (!signature || !signatureTimestamp) {
-          return res
-            .status(400)
-            .json({ message: 'Signature and timestamp required' });
-        }
-
-        // Authenticate the user
-        const isAuthenticated = await isValidWalletSignature(
-          signature as `0x${string}`,
-          Number(signatureTimestamp)
-        );
-        if (!isAuthenticated) {
-          return res.status(401).json({ error: 'Unauthorized' });
-        }
-      }
+      // Admin authentication is enforced at the router level via middleware
 
       // Validate required fields from body
       if (!marketData || typeof marketData !== 'object' || !bodyChainId) {

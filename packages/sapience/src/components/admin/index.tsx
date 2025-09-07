@@ -345,23 +345,21 @@ const RefreshCacheForm = () => {
   const { toast } = useToast();
   const { data: resourcesData } = useResources();
   const [refreshResourceSlug, setRefreshResourceSlug] = useState('all');
-  const { withSignatureQuery: withSig } = useAdminApi();
+  const { getJson } = useAdminApi();
 
   const handleRefreshCache = async () => {
     try {
       setIsLoading(true);
-      const url =
-        refreshResourceSlug && refreshResourceSlug !== 'all'
-          ? await withSig(
-              `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true`
-            )
-          : await withSig(`/cache/refresh-candle-cache?hardInitialize=true`);
-      const res = await fetch(url, {
-        headers: { 'Content-Type': 'application/json' },
-      });
-      const response = await res.json();
+      const response = await (refreshResourceSlug &&
+      refreshResourceSlug !== 'all'
+        ? getJson<{ success: boolean; message?: string; error?: string }>(
+            `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true`
+          )
+        : getJson<{ success: boolean; message?: string; error?: string }>(
+            `/cache/refresh-candle-cache?hardInitialize=true`
+          ));
 
-      if (res.ok && response.success) {
+      if (response && response.success) {
         toast({
           title: 'Cache refreshed',
           description:

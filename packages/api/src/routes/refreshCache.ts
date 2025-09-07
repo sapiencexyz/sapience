@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-import { isValidWalletSignature } from '../middleware';
 import { CandleCacheProcessManager } from 'src/candle-cache/candleCacheProcessManager';
 import { CandleCacheStatusManager } from 'src/candle-cache/candleCacheStatusManager';
 
@@ -8,28 +7,7 @@ const router = Router();
 
 router.get(
   '/refresh-candle-cache',
-  handleAsyncErrors(async (req: Request, res: Response) => {
-    const { signature, signatureTimestamp } = req.query as {
-      signature: string;
-      signatureTimestamp: string;
-    };
-    const isProduction =
-      process.env.NODE_ENV === 'production' ||
-      process.env.NODE_ENV === 'staging';
-
-    // For production/staging environments
-    if (isProduction) {
-      // Verify signature
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(signatureTimestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-    }
-
+  handleAsyncErrors(async (_req: Request, res: Response) => {
     try {
       console.log('Starting Candle Cache Refresh');
 
@@ -55,27 +33,7 @@ router.get(
 router.get(
   '/refresh-candle-cache/:resourceSlug',
   handleAsyncErrors(async (req: Request, res: Response) => {
-    const { signature, signatureTimestamp } = req.query as {
-      signature: string;
-      signatureTimestamp: string;
-    };
     const resourceSlug = req.params.resourceSlug.toLowerCase();
-    const isProduction =
-      process.env.NODE_ENV === 'production' ||
-      process.env.NODE_ENV === 'staging';
-
-    // For production/staging environments
-    if (isProduction) {
-      // Verify signature
-      const isAuthenticated = await isValidWalletSignature(
-        signature as `0x${string}`,
-        Number(signatureTimestamp)
-      );
-      if (!isAuthenticated) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-      }
-    }
 
     try {
       console.log(`Starting Candle Cache Refresh for ${resourceSlug}`);

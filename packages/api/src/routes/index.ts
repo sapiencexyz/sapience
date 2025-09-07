@@ -4,9 +4,13 @@ import { router as refreshCacheRoutes } from './refreshCache';
 import { router as quoterRoutes } from './quoter';
 import { router as createMarketRoutes } from './createMarket';
 import { Router } from 'express';
+import { adminAuth } from '../middleware';
 
 const router = Router();
 const adminRouter = Router();
+
+// Apply admin authentication to all admin routes
+adminRouter.use(adminAuth);
 
 router.use('/quoter', quoterRoutes);
 
