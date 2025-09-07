@@ -1,7 +1,6 @@
 import { Request, Response, Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
-// Admin authentication is enforced at the router level via middleware
 
 const router = Router();
 
@@ -10,7 +9,6 @@ router.delete(
   '/:id',
   handleAsyncErrors(async (req: Request, res: Response) => {
     const { id } = req.params;
-    // Authentication handled by admin middleware
 
     // Locate market group by numeric id
     const groupId = Number(id);
@@ -69,8 +67,6 @@ router.put(
       res.status(400).json({ error: 'Missing chainId or data' });
       return;
     }
-
-    // Authentication handled by admin middleware
 
     const group = await prisma.marketGroup.findFirst({
       where: {
@@ -218,8 +214,6 @@ router.put(
       res.status(400).json({ error: 'Missing chainId or data' });
       return;
     }
-
-    // Authentication handled by admin middleware
 
     const group = await prisma.marketGroup.findFirst({
       where: { address: address.toLowerCase(), chainId: Number(chainId) },

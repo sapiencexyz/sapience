@@ -25,7 +25,8 @@ export async function isValidWalletSignature(
   // Check if signature is expired
   const nowMs = Date.now();
   const timestampMs = timestampSeconds * 1000; // Convert timestamp from seconds to milliseconds
-  if (nowMs - timestampMs > MESSAGE_EXPIRY) {
+  // Reject far-future timestamps and expired ones
+  if (timestampMs > nowMs || nowMs - timestampMs > MESSAGE_EXPIRY) {
     return false;
   }
 

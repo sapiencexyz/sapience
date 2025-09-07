@@ -104,8 +104,6 @@ router.post('/', async (req: Request, res: Response) => {
       'markets'
     >;
 
-    // Admin authentication is enforced at the router level via middleware
-
     // Validate required market group fields
     if (
       !nonce ||
@@ -278,8 +276,6 @@ router.post(
         Request['body'],
         'marketData'
       >;
-
-      // Admin authentication is enforced at the router level via middleware
 
       // Validate required fields from body
       if (!marketData || typeof marketData !== 'object' || !bodyChainId) {

@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
-// Admin authentication is enforced at the router level via middleware
 import prisma from '../db';
 import { createRenderJob, fetchRenderServices } from 'src/utils/utils';
 import { Request, Response } from 'express';
@@ -112,8 +111,6 @@ router.post(
 
     // For production/staging environments
     if (isProduction) {
-      // Auth handled by admin middleware
-
       // Get background worker service ID
       const renderServices = await fetchRenderServices();
       const worker = renderServices.find(
@@ -181,8 +178,6 @@ const handleReindexRequest = async (
     process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging';
 
   if (isProduction) {
-    // Auth handled by admin middleware
-
     let id: string = '';
     const renderServices = await fetchRenderServices();
     for (const item of renderServices) {
@@ -265,8 +260,6 @@ router.post(
       process.env.NODE_ENV === 'staging';
 
     if (isProduction) {
-      // Auth handled by admin middleware
-
       let id: string = '';
       const renderServices = await fetchRenderServices();
       for (const item of renderServices) {

@@ -353,10 +353,10 @@ const RefreshCacheForm = () => {
       const response = await (refreshResourceSlug &&
       refreshResourceSlug !== 'all'
         ? getJson<{ success: boolean; message?: string; error?: string }>(
-            `/cache/refresh-candle-cache/${refreshResourceSlug}?hardInitialize=true`
+            `/cache/refresh-candle-cache/${refreshResourceSlug}`
           )
         : getJson<{ success: boolean; message?: string; error?: string }>(
-            `/cache/refresh-candle-cache?hardInitialize=true`
+            `/cache/refresh-candle-cache`
           ));
 
       if (response && response.success) {
