@@ -30,7 +30,7 @@ export function useMarketGroupOwnership(marketGroupAddress: Address) {
       onError: (error) => {
         setNominateError(error.message);
       },
-      successMessage: 'Ownership nomination sent successfully!',
+      successMessage: 'Ownership nomination submission was successful',
       fallbackErrorMessage: 'Failed to nominate new owner',
     });
 
@@ -43,7 +43,7 @@ export function useMarketGroupOwnership(marketGroupAddress: Address) {
       onError: (error) => {
         setAcceptError(error.message);
       },
-      successMessage: 'Ownership accepted successfully!',
+      successMessage: 'Ownership acceptance submission was successful',
       fallbackErrorMessage: 'Failed to accept ownership',
     });
 

@@ -196,8 +196,9 @@ export function CreateLiquidityForm({
       successHandled.current = true;
 
       toast({
-        title: 'Liquidity Position Created',
-        description: 'Your position has been successfully created.',
+        title: 'Transaction successfully submitted.',
+        description:
+          'Your position submission was successful. It may take a few moments for the transaction to be processed and reflected in the app.',
       });
       onSuccess(txHash);
 

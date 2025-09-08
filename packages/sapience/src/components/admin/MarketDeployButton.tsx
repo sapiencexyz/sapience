@@ -56,7 +56,7 @@ const MarketDeployButton: React.FC<MarketDeployButtonProps> = ({
     onTxHash: (hash) => {
       setTxHash(hash);
     },
-    successMessage: 'Market deployed successfully!',
+    successMessage: 'Market deployment submission was successful',
     fallbackErrorMessage: 'Failed to deploy market',
   });
 

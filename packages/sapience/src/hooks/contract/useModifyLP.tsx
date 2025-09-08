@@ -114,12 +114,12 @@ export function useModifyLP({
       },
       onTxHash: (_txHash: `0x${string}`) => {
         toast({
-          title: 'Transaction Submitted',
-          description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submitted.`,
+          title: 'Transaction submitted.',
+          description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submission was successful. It may take a few moments to process.`,
         });
       },
-      successMessage: `Your liquidity has been ${isAddMode ? 'increased' : 'decreased'} successfully`,
-      fallbackErrorMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} failed.`,
+      successMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submission was successful`,
+      fallbackErrorMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} failed`,
     });
 
   // Helper function to call increaseLiquidityPosition

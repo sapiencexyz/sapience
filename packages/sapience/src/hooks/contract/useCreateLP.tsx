@@ -95,8 +95,9 @@ export function useCreateLP({
         setProcessingTx(false);
         setError(null);
         toast({
-          title: 'Success',
-          description: 'Liquidity position created successfully!',
+          title: 'Transaction successfully submitted.',
+          description:
+            'Your liquidity position submission was successful. It may take a few moments for the transaction to be processed and reflected in the app.',
           duration: 5000,
         });
       },
@@ -108,8 +109,9 @@ export function useCreateLP({
       onTxHash: (hash: `0x${string}`) => {
         setTxHash(hash);
         toast({
-          title: 'Transaction Sent',
-          description: 'Creating liquidity position...',
+          title: 'Transaction submitted.',
+          description:
+            'Creating liquidity position. It may take a few moments to process.',
           duration: 5000,
         });
       },

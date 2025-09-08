@@ -36,7 +36,7 @@ export function useSettlePosition({
       onError?.(error); // Call the component's error handler
     },
     onTxHash,
-    successMessage: 'Position settled successfully',
+    successMessage: 'Position settlement submission was successful',
     fallbackErrorMessage: 'Failed to settle position',
   });
 

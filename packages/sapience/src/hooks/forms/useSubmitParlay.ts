@@ -69,9 +69,9 @@ export function useSubmitParlay({
       setSuccess('Parlay order submitted successfully');
       setError(null);
       toast({
-        title: 'Parlay Order Confirmed',
+        title: 'Transaction successfully submitted.',
         description:
-          'Your parlay order has been submitted and is available for other users to fill',
+          'Your parlay order submission was successful. It may take a few moments for the transaction to be processed and reflected in the app.',
         duration: 5000,
       });
       // Attempt to read latest maker order id and notify
