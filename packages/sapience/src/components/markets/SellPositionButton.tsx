@@ -70,14 +70,14 @@ const SellPositionButton = ({
 
   return (
     <Button
-      size="xs"
+      size="sm"
       variant="outline"
       onClick={handleSell}
       disabled={isClosingPosition || isLoading}
     >
       {isClosingPosition || isLoading ? (
         <>
-          <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Closing…
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" /> Closing…
         </>
       ) : (
         'Sell'

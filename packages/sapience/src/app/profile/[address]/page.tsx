@@ -20,6 +20,7 @@ import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import LottieLoader from '~/components/shared/LottieLoader';
+import EmptyProfileState from '~/components/profile/EmptyProfileState';
 
 const TAB_VALUES = ['trades', 'auction', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -45,6 +46,10 @@ export default function PortfolioPage() {
 
   const allLoaded =
     !positionsLoading && !forecastsLoading && !positionsFetching;
+
+  const hasTrades = traderPositions.length > 0;
+  const hasLp = lpPositions.length > 0;
+  const hasForecasts = (attestations?.length || 0) > 0;
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -108,10 +113,6 @@ export default function PortfolioPage() {
       return;
     }
 
-    const hasTrades = traderPositions.length > 0;
-    const hasLp = lpPositions.length > 0;
-    const hasForecasts = (attestations?.length || 0) > 0;
-
     const tabHasContent = (tab: TabValue): boolean => {
       if (tab === 'trades') return hasTrades;
       if (tab === 'auction') return false; // Parlays is coming soon
@@ -140,12 +141,7 @@ export default function PortfolioPage() {
     }
     // Mark as done to avoid overriding user interactions later
     didAutoRedirectRef.current = true;
-  }, [
-    hasLoadedOnce,
-    traderPositions.length,
-    lpPositions.length,
-    attestations?.length,
-  ]);
+  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
 
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
@@ -154,45 +150,49 @@ export default function PortfolioPage() {
       </div>
 
       {hasLoadedOnce ? (
-        <Tabs
-          value={tabValue}
-          onValueChange={handleTabChange}
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-4">
-            <TabsTrigger className="w-full" value="trades">
-              Prediction Market Trades
-            </TabsTrigger>
-            <TabsTrigger className="w-full" value="auction">
-              Parlays
-            </TabsTrigger>
-            <TabsTrigger className="w-full" value="lp">
-              Prediction Market Liquidity
-            </TabsTrigger>
-            <TabsTrigger className="w-full" value="forecasts">
-              Forecasts
-            </TabsTrigger>
-          </TabsList>
+        !(hasTrades || hasLp || hasForecasts) ? (
+          <EmptyProfileState />
+        ) : (
+          <Tabs
+            value={tabValue}
+            onValueChange={handleTabChange}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-8">
+              <TabsTrigger className="w-full" value="trades">
+                Prediction Market Trades
+              </TabsTrigger>
+              <TabsTrigger className="w-full" value="auction">
+                Parlays
+              </TabsTrigger>
+              <TabsTrigger className="w-full" value="lp">
+                Prediction Market Liquidity
+              </TabsTrigger>
+              <TabsTrigger className="w-full" value="forecasts">
+                Forecasts
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="trades">
-            <TraderPositionsTable
-              positions={traderPositions}
-              showHeader={false}
-            />
-          </TabsContent>
+            <TabsContent value="trades">
+              <TraderPositionsTable
+                positions={traderPositions}
+                showHeader={false}
+              />
+            </TabsContent>
 
-          <TabsContent value="auction">
-            <UserParlaysTable account={address} showHeaderText={false} />
-          </TabsContent>
+            <TabsContent value="auction">
+              <UserParlaysTable account={address} showHeaderText={false} />
+            </TabsContent>
 
-          <TabsContent value="lp">
-            <LpPositionsTable positions={lpPositions} showHeader={false} />
-          </TabsContent>
+            <TabsContent value="lp">
+              <LpPositionsTable positions={lpPositions} showHeader={false} />
+            </TabsContent>
 
-          <TabsContent value="forecasts">
-            <ForecastsTable attestations={attestations} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="forecasts">
+              <ForecastsTable attestations={attestations} />
+            </TabsContent>
+          </Tabs>
+        )
       ) : (
         <div className="flex justify-center py-24">
           <LottieLoader />
