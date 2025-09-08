@@ -6,8 +6,8 @@ import "../../market/interfaces/ISapience.sol";
 import "../../market/interfaces/ISapienceStructs.sol";
 
 /**
- * @title PredictionNFT
- * @notice NFT contract for Prediction Market system
+ * @title PredictionMarketSapienceResolver
+ * @notice SapienceResolver contract for Prediction Market system
  */
 contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     // ============ Custom Errors ============
@@ -51,7 +51,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             if (predictedOutcomes[i].market.marketGroup == address(0)) {
                 isValid = false;
-                error = Error.INVALID_MARKET_GROUP;
+                error = Error.INVALID_MARKET;
                 break;
             }
 
@@ -64,7 +64,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
             (, bool settled) = _getMarketOutcome(predictedOutcomes[i].market);
             if (settled) {
                 isValid = false;
-                error = Error.MARKET_SETTLED;
+                error = Error.MARKET_NOT_OPENED;
                 break;
             }
         }
