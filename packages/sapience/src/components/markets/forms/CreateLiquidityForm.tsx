@@ -194,12 +194,6 @@ export function CreateLiquidityForm({
   useEffect(() => {
     if (isLPCreated && txHash && onSuccess && !successHandled.current) {
       successHandled.current = true;
-
-      toast({
-        title: 'Transaction successfully submitted.',
-        description:
-          'Your position submission was successful. It may take a few moments for the transaction to be processed and reflected in the app.',
-      });
       onSuccess(txHash);
 
       // Reset the form after success

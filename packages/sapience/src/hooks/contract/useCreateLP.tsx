@@ -94,12 +94,6 @@ export function useCreateLP({
         setIsSuccess(true);
         setProcessingTx(false);
         setError(null);
-        toast({
-          title: 'Transaction successfully submitted.',
-          description:
-            'Your liquidity position submission was successful. It may take a few moments for the transaction to be processed and reflected in the app.',
-          duration: 5000,
-        });
       },
       onError: (error: Error) => {
         setError(error);
@@ -111,11 +105,11 @@ export function useCreateLP({
         toast({
           title: 'Transaction submitted.',
           description:
-            'Creating liquidity position. It may take a few moments to process.',
+            'Liquidity position submission was successful. Hash: ' + hash,
           duration: 5000,
         });
       },
-      successMessage: 'Liquidity position created successfully!',
+      successMessage: 'Liquidity position submission was successful',
       fallbackErrorMessage: 'Failed to create liquidity position',
     });
 
