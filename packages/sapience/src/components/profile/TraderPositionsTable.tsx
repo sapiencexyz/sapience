@@ -140,13 +140,10 @@ function PositionValueCell({ position }: { position: PositionType }) {
     return (
       <span className="text-muted-foreground text-xs">Loading price...</span>
     );
-    // Or return a spinner, skeleton loader, etc.
   }
 
-  // TODO: Add more robust error handling from useMarketPrice if needed
-
   return (
-    <>
+    <div className="relative top-2.5">
       <div>
         <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
         {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
@@ -154,11 +151,11 @@ function PositionValueCell({ position }: { position: PositionType }) {
           ({pnlPercentage.toFixed(2)}%)
         </small>
       </div>
-      <div className="text-sm text-muted-foreground mt-1 flex items-center gap-1 whitespace-nowrap">
+      <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
         Share Value: <NumberDisplay value={avgPricePerToken} /> →{' '}
         <NumberDisplay value={currentPricePerToken} /> {collateralSymbol}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -364,7 +361,6 @@ function TraderPositionRow({
                       {question}
                     </h2>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <span>ID #{position.positionId}</span>
                       <Badge
                         variant={isNumeric ? 'default' : 'outline'}
                         className={
@@ -379,6 +375,7 @@ function TraderPositionRow({
                           <NumberDisplay value={positionSize} /> {sharesLabel}
                         </span>
                       </Badge>
+                      <span> #{position.positionId}</span>
                     </div>
                   </div>
                 );
@@ -395,7 +392,6 @@ function TraderPositionRow({
                     </Link>
                   </h2>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <span>Position ID #{position.positionId}</span>
                     <Badge
                       variant={isNumeric ? 'default' : 'outline'}
                       className={
@@ -410,6 +406,7 @@ function TraderPositionRow({
                         <NumberDisplay value={positionSize} /> {sharesLabel}
                       </span>
                     </Badge>
+                    <span>Position ID #{position.positionId}</span>
                   </div>
                 </div>
               );
