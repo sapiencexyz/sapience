@@ -17,7 +17,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import Image from 'next/image';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { useState, useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -225,8 +225,8 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     }
   }, [betSlipPositions.length, isParlayMode, isParlayFeatureEnabled]);
 
-  // Create dynamic form schema based on positions
-  const formSchema = useMemo(() => {
+  // Create dynamic form schema based on positions and from type (individual or parlay)
+  const formSchema: z.ZodType<any> = useMemo(() => {
     const positionsSchema: Record<
       string,
       z.ZodObject<{ predictionValue: z.ZodString; wagerAmount: z.ZodTypeAny }>
@@ -239,10 +239,37 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       });
     });
 
-    return z.object({
-      positions: z.object(positionsSchema),
-    });
-  }, [betSlipPositions]);
+    return z
+      .object({
+        positions: z.object(positionsSchema),
+        wagerAmount: wagerAmountSchema.optional(),
+        limitAmount: z.number().min(0).optional(),
+      })
+      .refine(
+        (data) => {
+          if (isParlayMode) {
+            return data.wagerAmount && data.wagerAmount.trim() !== '';
+          }
+          return true;
+        },
+        {
+          message: 'Wager amount is required',
+          path: ['wagerAmount'],
+        }
+      )
+      .refine(
+        (data) => {
+          if (isParlayMode) {
+            return data.limitAmount !== undefined && data.limitAmount >= 0;
+          }
+          return true;
+        },
+        {
+          message: 'Limit amount is required',
+          path: ['limitAmount'],
+        }
+      );
+  }, [betSlipPositions, isParlayMode]);
 
   // Helper function to generate form values
   const generateFormValues = useMemo(() => {
@@ -302,21 +329,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     };
   }, [betSlipPositions, positionsWithMarketData]);
 
-  // Set up form for individual wagers
-  const individualMethods = useForm<{
+  // Single form for both individual and parlay modes
+  const formMethods = useForm<{
     positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+    wagerAmount?: string;
+    limitAmount?: string | number;
   }>({
     resolver: zodResolver(formSchema),
-    defaultValues: generateFormValues,
-    mode: 'onChange',
-  });
-
-  // Set up form for parlay mode
-  const parlayMethods = useForm<{
-    wagerAmount: string;
-    limitAmount: string | number;
-    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
-  }>({
     defaultValues: {
       ...generateFormValues,
       wagerAmount: '10',
@@ -334,25 +353,26 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
             )
           : 2,
     },
+    mode: 'onChange',
   });
 
   // Reactive form field values (avoid calling watch inside effects/memos)
   const parlayWagerAmount = useWatch({
-    control: parlayMethods.control,
+    control: formMethods.control,
     name: 'wagerAmount',
   });
   const parlayLimitAmount = useWatch({
-    control: parlayMethods.control,
+    control: formMethods.control,
     name: 'limitAmount',
   });
   const parlayPositionsForm = useWatch({
-    control: parlayMethods.control,
+    control: formMethods.control,
     name: 'positions',
   });
 
   // Sync form when betslip positions change without clobbering existing values
   useEffect(() => {
-    const current = individualMethods.getValues();
+    const current = formMethods.getValues();
     const defaults = generateFormValues.positions || {};
 
     // Merge defaults then existing inputs
@@ -388,68 +408,29 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
       }
     });
 
-    individualMethods.reset(
-      { positions: mergedPositions },
+    formMethods.reset(
+      {
+        positions: mergedPositions,
+        wagerAmount: current?.wagerAmount || '10',
+        limitAmount: current?.limitAmount || 2,
+      },
       {
         keepDirty: true,
         keepTouched: true,
       }
     );
-  }, [individualMethods, generateFormValues, positionsWithMarketData]);
-
-  // Keep parlay form positions in sync when betslip positions change, preserving user inputs
-  useEffect(() => {
-    const current = parlayMethods.getValues();
-    const mergedPositions = {
-      // Defaults first, then existing user inputs so inputs win
-      ...(generateFormValues.positions || {}),
-      ...(current?.positions || {}),
-    };
-
-    const existingWager = current?.wagerAmount;
-    const existingLimit = current?.limitAmount;
-
-    const defaultLimit =
-      positionsWithMarketData.filter(
-        (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-      ).length > 0
-        ? String(
-            10 *
-              Math.pow(
-                2,
-                positionsWithMarketData.filter(
-                  (p) =>
-                    p.marketClassification !== MarketGroupClassification.NUMERIC
-                ).length
-              )
-          )
-        : '10';
-
-    parlayMethods.reset(
-      {
-        positions: mergedPositions,
-        wagerAmount: existingWager || (minParlayWager ?? '10'),
-        limitAmount: existingLimit ?? defaultLimit,
-      },
-      { keepDirty: true, keepTouched: true }
-    );
-  }, [
-    parlayMethods,
-    generateFormValues,
-    minParlayWager,
-    positionsWithMarketData,
-  ]);
+  }, [formMethods, generateFormValues, positionsWithMarketData]);
 
   // Ensure wager is at least minParlayWager when config loads
   useEffect(() => {
     if (!minParlayWager) return;
-    const current = parlayMethods.getValues('wagerAmount');
+    const current = formMethods.getValues('wagerAmount');
     if (!current || Number(current) < Number(minParlayWager)) {
-      parlayMethods.setValue('wagerAmount', String(minParlayWager), {
+      formMethods.setValue('wagerAmount', String(minParlayWager), {
         shouldValidate: true,
       });
     }
-  }, [minParlayWager, parlayMethods]);
+  }, [minParlayWager, formMethods]);
 
   // Calculate and set minimum payout when list length or wager amount changes
   // Minimum payout = wagerAmount × 2^(number of positions), formatted to 2 decimals
@@ -461,13 +442,13 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
 
     if (listLength > 0) {
       const minimumPayout = parseFloat(wagerAmount) * Math.pow(2, listLength);
-      parlayMethods.setValue(
+      formMethods.setValue(
         'limitAmount',
         Number.isFinite(minimumPayout) ? Number(minimumPayout.toFixed(2)) : 0,
         { shouldValidate: true }
       );
     }
-  }, [parlayWagerAmount, positionsWithMarketData, parlayMethods]);
+  }, [parlayWagerAmount, positionsWithMarketData, formMethods]);
 
   // Prepare parlay positions for the hook
   const parlayPositions = useMemo(() => {
@@ -525,7 +506,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     collateralTokenDecimals: collateralDecimals ?? 18,
     positions: parlayPositions,
     wagerAmount:
-      parlayMethods.watch('wagerAmount') ||
+      formMethods.watch('wagerAmount') ||
       (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
     payoutAmount,
     enabled:
@@ -578,7 +559,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     const slippage = DEFAULT_SLIPPAGE;
 
     // Read form values once
-    const formValues = individualMethods.getValues();
+    const formValues = formMethods.getValues();
 
     // Aggregate approvals per marketAddress and collect trades per position
     const approveByMarket = new Map<
@@ -745,8 +726,20 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
   const contentProps = {
     isParlayMode,
     setIsParlayMode,
-    individualMethods,
-    parlayMethods,
+    individualMethods: formMethods as unknown as UseFormReturn<{
+      positions: Record<
+        string,
+        { predictionValue: string; wagerAmount: string }
+      >;
+    }>,
+    parlayMethods: formMethods as unknown as UseFormReturn<{
+      wagerAmount: string;
+      limitAmount: string | number;
+      positions: Record<
+        string,
+        { predictionValue: string; wagerAmount: string }
+      >;
+    }>,
     handleIndividualSubmit,
     handleParlaySubmit,
     isParlaySubmitting,
