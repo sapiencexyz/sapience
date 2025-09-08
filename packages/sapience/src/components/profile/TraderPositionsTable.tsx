@@ -406,7 +406,7 @@ function TraderPositionRow({
                         <NumberDisplay value={positionSize} /> {sharesLabel}
                       </span>
                     </Badge>
-                    <span>Position ID #{position.positionId}</span>
+                    <span>Position ID {position.positionId}</span>
                   </div>
                 </div>
               );
