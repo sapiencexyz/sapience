@@ -162,8 +162,6 @@ function PositionValueCell({ position }: { position: PositionType }) {
   );
 }
 
-// (Removed AvgCurrentPriceCell; per-share info now shown under Position Value)
-
 export default function TraderPositionsTable({
   positions,
   parentMarketAddress,
@@ -234,7 +232,7 @@ export default function TraderPositionsTable({
           <div className="md:col-span-2">Wager</div>
           <div className="md:col-span-2">Max Payout</div>
           <div className="md:col-span-2 flex items-center gap-1">
-            <span>Current Position Value (i)</span>
+            <span>Current Position Value</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
