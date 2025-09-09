@@ -143,6 +143,9 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     ) internal view returns (bool outcome, bool settled) {
         // Validate market address
         if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
+        
+        // Check if this is a Yes/No market first
+        if (!_isYesNoMarket(market)) revert MarketIsNotYesNoMarket();
 
         // Get the specific market data from the Sapience market group
         (ISapienceStructs.MarketData memory marketData, ) = ISapience(

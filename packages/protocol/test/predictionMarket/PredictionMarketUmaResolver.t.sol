@@ -51,6 +51,9 @@ contract PredictionMarketUmaResolverTest is Test {
     }
 
     function setUp() public {
+        // Reset block timestamp to ensure consistent test state
+        vm.warp(1000); // Set to a fixed timestamp well before TEST_END_TIME
+        
         // Deploy mock contracts
         bondCurrency = new MockERC20("Bond Token", "BOND", 18);
         mockOptimisticOracleV3 = new MockOptimisticOracleV3();

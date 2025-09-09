@@ -123,7 +123,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
                 break;
             }
 
-            if (block.timestamp > wrappedMarkets[currentMarketId].endTime) {
+            if (block.timestamp >= wrappedMarkets[currentMarketId].endTime) {
                 isValid = false;
                 error = Error.MARKET_NOT_OPENED;
                 break;
@@ -230,7 +230,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
             revert MarketAlreadySettled();
         }
 
-        if (block.timestamp <= market.endTime) {
+        if (block.timestamp < market.endTime) {
             revert MarketNotEnded();
         }
 
@@ -272,7 +272,6 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
             resolvedToYes: resolvedToYes,
             submissionTime: block.timestamp,
             settled: false
-
         });
 
         emit AssertionSubmitted(msg.sender, marketId, assertionId, resolvedToYes, block.timestamp);
