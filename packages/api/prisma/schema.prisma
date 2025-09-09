@@ -68,6 +68,8 @@ model Category {
   market_group MarketGroup[]
   /// @TypeGraphQL.field(name: "resources")
   resource     Resource[]
+  /// @TypeGraphQL.field(name: "conditions")
+  condition    Condition[]
 
   @@index([slug], map: "IDX_cb73208f151aa71cdd78f662d7")
   @@map("category")
@@ -391,4 +393,21 @@ model ChatMessage {
   @@index([timestamp], map: "IDX_chat_message_timestamp")
   @@index([address], map: "IDX_chat_message_address")
   @@map("chat_message")
+}
+
+model Condition {
+  id             String    @id @db.VarChar
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  question       String    @db.VarChar
+  categoryId     Int?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  endTime        Int
+  public         Boolean   @default(true)
+  claimStatement String    @db.VarChar
+  description    String    @db.Text
+  similarMarkets String[]  @default([])
+
+  @@index([categoryId])
+  @@index([endTime])
+  @@map("condition")
 }
