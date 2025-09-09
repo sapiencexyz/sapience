@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "forge-std/console.sol";
 import "../../src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol";
 import "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "./MockERC20.sol";
@@ -38,15 +37,7 @@ contract PredictionMarketUmaResolverTest is Test {
     // Helper function to demonstrate market ID generation
     function _logMarketIdGeneration(bytes memory claim, uint256 endTime) internal view returns (bytes32) {
         bytes memory encodedData = abi.encodePacked(claim, ":", endTime);
-        console.log("=== Market ID Generation ===");
-        console.log("Claim:", string(claim));
-        console.log("EndTime:", endTime);
-        console.log("Encoded data (claim + '::' + endTime):");
-        console.logBytes(encodedData);
         bytes32 marketId = keccak256(encodedData);
-        console.log("Generated Market ID:");
-        console.logBytes32(marketId);
-        console.log("=============================");
         return marketId;
     }
 
@@ -66,13 +57,7 @@ contract PredictionMarketUmaResolverTest is Test {
         
         // Generate market ID from claim and endTime with separator
         bytes memory encodedData = abi.encodePacked(TEST_CLAIM, ":", TEST_END_TIME);
-        console.log("Encoded data for market ID:");
-        console.logBytes(encodedData);
-        console.log("Claim:", string(TEST_CLAIM));
-        console.log("EndTime:", TEST_END_TIME);
         marketId = keccak256(encodedData);
-        console.log("Market ID:");
-        console.logBytes32(marketId);
         
         // Create resolver settings
         PredictionMarketUmaResolver.Settings memory settings = PredictionMarketUmaResolver.Settings({
