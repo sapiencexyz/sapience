@@ -40,7 +40,7 @@ highlight=true
 artifact="PredictionMarketUmaResolver"
 args=[
     { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
-    [ "<%= settings.ownapprovedAsserter %>" ],
+    [ "<%= settings.approvedAsserter %>" ],
     [ "<%= settings.approvedMarketWrapper %>" ]
 ]
 depends=["deploy.PredictionMarket"]
