@@ -5,12 +5,18 @@ import { Switch } from '@sapience/ui/components/ui/switch';
 import {} from '@sapience/ui/components/ui/sheet';
 import { Skeleton } from '@sapience/ui/components/ui/skeleton';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
+import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FrownIcon, LayoutGridIcon, TagIcon, SearchIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 
 import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupsRow from './MarketGroupsRow';
@@ -102,6 +108,7 @@ const FocusAreaFilter = ({
   categories,
   getCategoryStyle,
   containerClassName,
+  parlayFeatureEnabled,
 }: {
   selectedCategorySlug: string | null;
   handleCategoryClick: (categorySlug: string | null) => void;
@@ -113,6 +120,7 @@ const FocusAreaFilter = ({
   categories: Category[] | null | undefined; // Use defined Category type
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
   containerClassName?: string;
+  parlayFeatureEnabled: boolean;
 }) => (
   <div className={containerClassName || 'px-0 py-0 w-full'}>
     <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
@@ -231,7 +239,22 @@ const FocusAreaFilter = ({
 
           <div className="h-4 w-px bg-border mx-1" />
           <span className="text-xs font-medium text-muted-foreground">Parlay Mode</span>
-          <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
+          {parlayFeatureEnabled ? (
+            <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <Switch checked={false} disabled />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Coming Soon</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </div>
     </div>
@@ -274,6 +297,20 @@ const ForecastingTable = () => {
 
   // Parlay Mode toggle
   const [parlayMode, setParlayMode] = React.useState<boolean>(false);
+  // Feature flag for Parlay Mode via localStorage `sapience.parlays` or URL ?parlays=true
+  const [parlayFeatureEnabled, setParlayFeatureEnabled] = React.useState<boolean>(false);
+  React.useEffect(() => {
+    try {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      if (params?.get('parlays') === 'true') {
+        window.localStorage.setItem('sapience.parlays', 'true');
+      }
+      const stored = typeof window !== 'undefined' ? window.localStorage.getItem('sapience.parlays') : null;
+      setParlayFeatureEnabled(stored === 'true');
+    } catch {
+      setParlayFeatureEnabled(false);
+    }
+  }, []);
 
   // RFQ Conditions state
   interface RFQCondition {
@@ -678,7 +715,7 @@ const ForecastingTable = () => {
   const rfqDayEndTimes = React.useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(rfqConditionsByDay).forEach(([dayKey, list]) => {
-      const withEnds = list.filter((c) => typeof c.endTime === 'number' && (c.endTime as number) > 0) as Array<RFQCondition & { endTime: number }>;
+      const withEnds = list.filter((c) => typeof c.endTime === 'number' && (c.endTime) > 0) as Array<RFQCondition & { endTime: number }>;
       if (withEnds.length > 0) {
         const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0].endTime;
         result[dayKey] = earliest;
@@ -771,7 +808,7 @@ const ForecastingTable = () => {
       {/* Render only one betslip instance based on viewport */}
       {isMobile ? (
         <div className="block md:hidden">
-          <Betslip />
+          <Betslip isParlayMode={parlayMode} />
         </div>
       ) : null}
 
@@ -814,6 +851,7 @@ const ForecastingTable = () => {
                 categories={categories}
                 getCategoryStyle={getCategoryStyle}
                 containerClassName="px-0 md:px-0 py-0 w-full"
+                parlayFeatureEnabled={parlayFeatureEnabled}
               />
             </motion.div>
           </div>
@@ -967,7 +1005,7 @@ const ForecastingTable = () => {
         <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
           <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
-              <Betslip variant="panel" />
+              <Betslip variant="panel" isParlayMode={parlayMode} />
             </div>
           </div>
         </div>

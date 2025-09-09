@@ -88,19 +88,20 @@ router.post('/', async (req: Request, res: Response) => {
           public: Boolean(isPublic),
           claimStatement,
           description,
-          similarMarkets: Array.isArray(similarMarkets)
-            ? similarMarkets
-            : [],
+          similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
         },
         include: { category: true },
       });
       return res.status(201).json(condition);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
-      if (message.includes('Unique constraint failed') || message.includes('Unique constraint')) {
-        return res
-          .status(409)
-          .json({ message: 'Condition already exists for claimStatement:endTime' });
+      if (
+        message.includes('Unique constraint failed') ||
+        message.includes('Unique constraint')
+      ) {
+        return res.status(409).json({
+          message: 'Condition already exists for claimStatement:endTime',
+        });
       }
       console.error('Error creating condition:', e);
       return res.status(500).json({ message: 'Internal Server Error' });
@@ -138,5 +139,3 @@ router.delete('/:id', async (req: Request, res: Response) => {
 });
 
 export { router };
-
-

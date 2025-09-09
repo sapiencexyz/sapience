@@ -32,6 +32,14 @@ export interface BetSlipPosition {
   marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
+// Lightweight parlay selection for OTC conditions (no on-chain market data)
+export interface ParlaySelection {
+  id: string; // unique within betslip
+  conditionId: string;
+  question: string;
+  prediction: boolean; // true = yes, false = no
+}
+
 // Interface for market data with position
 export interface PositionWithMarketData {
   position: BetSlipPosition;
@@ -42,11 +50,22 @@ export interface PositionWithMarketData {
 }
 
 interface BetSlipContextType {
-  betSlipPositions: BetSlipPosition[];
+  // Separate lists: single positions (on-chain) and parlay selections (RFQ conditions)
+  betSlipPositions: BetSlipPosition[]; // legacy alias to singlePositions for backward compat
+  singlePositions: BetSlipPosition[];
+  parlaySelections: ParlaySelection[];
   addPosition: (position: Omit<BetSlipPosition, 'id'>) => void;
   removePosition: (id: string) => void;
   updatePosition: (id: string, updates: Partial<BetSlipPosition>) => void;
   clearBetSlip: () => void;
+  // Parlay selections API
+  addParlaySelection: (selection: Omit<ParlaySelection, 'id'>) => void;
+  updateParlaySelection: (
+    id: string,
+    updates: Partial<Omit<ParlaySelection, 'id' | 'conditionId'>>
+  ) => void;
+  removeParlaySelection: (id: string) => void;
+  clearParlaySelections: () => void;
   openPopover: () => void;
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
@@ -69,7 +88,8 @@ interface BetSlipProviderProps {
 }
 
 export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
-  const [betSlipPositions, setBetSlipPositions] = useState<BetSlipPosition[]>(
+  const [singlePositions, setSinglePositions] = useState<BetSlipPosition[]>([]);
+  const [parlaySelections, setParlaySelections] = useState<ParlaySelection[]>(
     []
   );
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -90,7 +110,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   }, [queryClient]);
 
   // Create positions with market data from cache
-  const positionsWithMarketData = betSlipPositions.map((position) => {
+  const positionsWithMarketData = singlePositions.map((position) => {
     // Use same fallback logic for consistency
     const effectiveChainId = position.chainId || 8453;
     const normalizedIdentifier = normalizeMarketIdentifier(
@@ -135,7 +155,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   const addPosition = useCallback(
     async (position: Omit<BetSlipPosition, 'id'>) => {
       // Check if a position with the same marketAddress and marketId already exists
-      const existingPositionIndex = betSlipPositions.findIndex(
+      const existingPositionIndex = singlePositions.findIndex(
         (p) =>
           p.marketAddress === position.marketAddress &&
           p.marketId === position.marketId
@@ -146,7 +166,7 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
 
       if (existingPositionIndex !== -1) {
         // Merge into existing position by updating it
-        setBetSlipPositions((prev) =>
+        setSinglePositions((prev) =>
           prev.map((p, index) =>
             index === existingPositionIndex
               ? {
@@ -181,8 +201,8 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
 
-        const newPositions = [...betSlipPositions, enhancedPosition];
-        setBetSlipPositions(newPositions);
+        const newPositions = [...singlePositions, enhancedPosition];
+        setSinglePositions(newPositions);
 
         // Fetch market data for new markets
         const effectiveChainId = position.chainId || 8453;
@@ -195,13 +215,13 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
 
       setIsPopoverOpen(true); // Open popover when position is added or updated
     },
-    [betSlipPositions, queryClient]
+    [singlePositions, queryClient]
   );
 
   // Background ensure: prefetch any missing market data for positions currently in the betslip
   useEffect(() => {
     (() => {
-      for (const position of betSlipPositions) {
+      for (const position of singlePositions) {
         const effectiveChainId = position.chainId || 8453;
         const existing = getMarketGroupFromCache(
           queryClient,
@@ -218,19 +238,19 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
         }
       }
     })();
-  }, [betSlipPositions, queryClient]);
+  }, [singlePositions, queryClient]);
 
   const removePosition = useCallback(
     (id: string) => {
-      const newPositions = betSlipPositions.filter((p) => p.id !== id);
-      setBetSlipPositions(newPositions);
+      const newPositions = singlePositions.filter((p) => p.id !== id);
+      setSinglePositions(newPositions);
     },
-    [betSlipPositions]
+    [singlePositions]
   );
 
   const updatePosition = useCallback(
     (id: string, updates: Partial<BetSlipPosition>) => {
-      setBetSlipPositions((prev) =>
+      setSinglePositions((prev) =>
         prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
       );
     },
@@ -238,19 +258,66 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
   );
 
   const clearBetSlip = useCallback(() => {
-    setBetSlipPositions([]);
+    setSinglePositions([]);
   }, []);
 
   const openPopover = useCallback(() => {
     setIsPopoverOpen(true);
   }, []);
 
+  const addParlaySelection = useCallback(
+    (selection: Omit<ParlaySelection, 'id'>) => {
+      const existingIndex = parlaySelections.findIndex(
+        (s) => s.conditionId === selection.conditionId
+      );
+      if (existingIndex !== -1) {
+        setParlaySelections((prev) =>
+          prev.map((s, i) =>
+            i === existingIndex ? { ...s, prediction: selection.prediction } : s
+          )
+        );
+      } else {
+        const id = `${selection.conditionId}-${selection.prediction}-${Date.now()}`;
+        setParlaySelections((prev) => [...prev, { ...selection, id }]);
+      }
+      setIsPopoverOpen(true);
+    },
+    [parlaySelections]
+  );
+
+  const updateParlaySelection = useCallback(
+    (
+      id: string,
+      updates: Partial<Omit<ParlaySelection, 'id' | 'conditionId'>>
+    ) => {
+      setParlaySelections((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+      );
+    },
+    []
+  );
+
+  const removeParlaySelection = useCallback((id: string) => {
+    setParlaySelections((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const clearParlaySelections = useCallback(() => {
+    setParlaySelections([]);
+  }, []);
+
   const value: BetSlipContextType = {
-    betSlipPositions,
+    // Keep legacy alias for compatibility
+    betSlipPositions: singlePositions,
+    singlePositions,
+    parlaySelections,
     addPosition,
     removePosition,
     updatePosition,
     clearBetSlip,
+    addParlaySelection,
+    updateParlaySelection,
+    removeParlaySelection,
+    clearParlaySelections,
     openPopover,
     isPopoverOpen,
     setIsPopoverOpen,

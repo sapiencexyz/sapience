@@ -10,6 +10,7 @@ import {
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 export interface ParlayModeRowProps {
   condition: {
@@ -26,6 +27,7 @@ export interface ParlayModeRowProps {
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   const { id, question, category, endTime, claimStatement, description, similarMarkets } = condition;
+  const { addParlaySelection } = useBetSlipContext();
 
   // Removed condition id display in dialog; keep id for keys only
 
@@ -43,8 +45,14 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
     };
   }, [endTime]);
 
-  const handleYes = React.useCallback(() => {}, []);
-  const handleNo = React.useCallback(() => {}, []);
+  const handleYes = React.useCallback(() => {
+    if (!id) return;
+    addParlaySelection({ conditionId: id, question, prediction: true });
+  }, [id, question, addParlaySelection]);
+  const handleNo = React.useCallback(() => {
+    if (!id) return;
+    addParlaySelection({ conditionId: id, question, prediction: false });
+  }, [id, question, addParlaySelection]);
 
   return (
     <div className="border-b last:border-b-0 border-border">
@@ -78,8 +86,8 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
                   ) : null}
                   {Array.isArray(similarMarkets) && similarMarkets.length > 0 ? (
                     <div className="pt-2">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">similar markets</div>
-                      <ul className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Similar Markets</div>
+                      <ul className="list-disc list-inside space-y-1">
                         {similarMarkets.map((url, i) => (
                           <li key={`${id}-sm-${i}`} className="text-sm">
                             <a

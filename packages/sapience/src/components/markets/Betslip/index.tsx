@@ -54,9 +54,10 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
+  isParlayMode?: boolean; // controlled by page-level switch
 }
 
-const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
+const Betslip = ({ variant = 'triggered', isParlayMode: externalParlayMode = false }: BetslipProps) => {
   const {
     betSlipPositions,
     isPopoverOpen,
@@ -65,7 +66,8 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     positionsWithMarketData,
   } = useBetSlipContext();
 
-  const [isParlayMode, setIsParlayMode] = useState(false);
+  // Use external parlay mode (from Markets page)
+  const isParlayMode = externalParlayMode;
   const [parlayFeatureOverrideEnabled] = useState(() => {
     if (typeof window === 'undefined') return false;
     try {
@@ -214,16 +216,7 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
     }
   }, [minCollateralRaw, collateralDecimals]);
 
-  // Disable parlay mode automatically when fewer than two positions, unless feature override is enabled
-  useEffect(() => {
-    if (
-      betSlipPositions.length < 2 &&
-      isParlayMode &&
-      !isParlayFeatureEnabled
-    ) {
-      setIsParlayMode(false);
-    }
-  }, [betSlipPositions.length, isParlayMode, isParlayFeatureEnabled]);
+  // Disable logic is handled by page-level UI; no internal toggling
 
   // Create dynamic form schema based on positions and from type (individual or parlay)
   const formSchema: z.ZodType<any> = useMemo(() => {
@@ -725,7 +718,6 @@ const Betslip = ({ variant = 'triggered' }: BetslipProps) => {
 
   const contentProps = {
     isParlayMode,
-    setIsParlayMode,
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,
