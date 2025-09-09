@@ -62,7 +62,7 @@ export function useModifyTradeQuoter({
       | QuoteModifyResult
       | undefined;
     if (!result || !Array.isArray(result) || result.length < 3) {
-      return [BigInt(0), BigInt(0), BigInt(0)];
+      return [BigInt(0), BigInt(0)];
     }
     return [result[0], result[2]];
   }, [quoteSimulationResult]);

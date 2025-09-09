@@ -31,6 +31,7 @@ import { useState } from 'react';
 import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
+import RFQTab from './RFQTab';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -656,7 +657,7 @@ const Admin = () => {
           </div>
         </TabsContent>
         <TabsContent value="rfq">
-          <div className="py-6 text-muted-foreground">Coming soon</div>
+          <RFQTab />
         </TabsContent>
       </Tabs>
     </div>

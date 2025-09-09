@@ -9,6 +9,7 @@ import { SCHEMA_UID } from '../../lib/constants/eas';
 // Type for the raw data fetched from the API
 interface RawAttestation {
   id: string;
+  uid: string;
   attester: string;
   time: number; // API returns time as a number (Unix timestamp)
   prediction: string;
@@ -22,6 +23,7 @@ const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
     attestations(where: $where, orderBy: { time: desc }, take: $take) {
       id
+      uid
       attester
       time
       prediction
@@ -49,6 +51,7 @@ const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
       skip: $skip
     ) {
       id
+      uid
       attester
       time
       prediction
@@ -67,6 +70,7 @@ type AttestationsQueryResponse = {
 // Define the data type for the formatted attestation record used in the table
 export type FormattedAttestation = {
   id: string;
+  uid: string;
   attester: string;
   shortAttester: string;
   value: string;
@@ -87,6 +91,7 @@ const formatAttestationData = (
 
   return {
     id: attestation.id.toString(),
+    uid: attestation.uid,
     attester: attestation.attester,
     shortAttester: `${attestation.attester.slice(
       0,

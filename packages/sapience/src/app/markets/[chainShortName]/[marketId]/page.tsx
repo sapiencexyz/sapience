@@ -208,16 +208,24 @@ const ForecastContent = () => {
     return marketStatusElement;
   }
 
+  const availableMarkets =
+    marketData?.marketGroup?.markets?.filter(
+      (
+        market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
+      ) => market.endTimestamp && market.endTimestamp * 1000 > Date.now()
+    ) ?? [];
+
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-16">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-20">
       <div className="container mx-auto max-w-6xl lg:max-w-none flex flex-col">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
             {marketClassification ===
               MarketGroupClassification.MULTIPLE_CHOICE &&
               marketData?.marketGroup?.markets &&
-              marketData.marketGroup.markets.length > 1 && (
-                <div className="mb-6">
+              marketData.marketGroup.markets.length > 1 &&
+              availableMarkets.length > 0 && (
+                <div className="mt-6 mb-2">
                   <Tabs
                     defaultValue={
                       numericMarketId !== null
@@ -229,29 +237,21 @@ const ForecastContent = () => {
                     }}
                   >
                     <TabsList className="gap-1 py-6">
-                      {marketData.marketGroup.markets
-                        .filter(
-                          (
-                            market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
-                          ) =>
-                            market.endTimestamp &&
-                            market.endTimestamp * 1000 > Date.now()
-                        )
-                        .map((market: GqlMarketType) => {
-                          const buttonText =
-                            market.optionName ||
-                            market.question ||
-                            `Market ${market.marketId}`;
-                          return (
-                            <TabsTrigger
-                              key={market.id}
-                              value={String(market.marketId)}
-                              className="py-2.5 px-4 whitespace-nowrap flex-shrink-0 data-[state=active]:shadow-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                            >
-                              {buttonText}
-                            </TabsTrigger>
-                          );
-                        })}
+                      {availableMarkets.map((market: GqlMarketType) => {
+                        const buttonText =
+                          market.optionName ||
+                          market.question ||
+                          `Market ${market.marketId}`;
+                        return (
+                          <TabsTrigger
+                            key={market.id}
+                            value={String(market.marketId)}
+                            className="py-2.5 px-4 whitespace-nowrap flex-shrink-0 data-[state=active]:shadow-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                          >
+                            {buttonText}
+                          </TabsTrigger>
+                        );
+                      })}
                     </TabsList>
                   </Tabs>
                 </div>
