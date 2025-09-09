@@ -278,7 +278,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         }
         
         bytes32 marketId = umaSettlements[assertionId].marketId;
-        WrappedMarket memory market = wrappedMarkets[marketId];
+        WrappedMarket storage market = wrappedMarkets[marketId];
         if (market.assertionId != assertionId) {
             revert InvalidAssertionId();
         }

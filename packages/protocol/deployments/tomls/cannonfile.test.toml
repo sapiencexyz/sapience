@@ -13,6 +13,10 @@ feeRate = "10000" # 1%
 assertionLiveness = "21600"
 bondAmount = "500000000"
 
+# Prediction Markets 
+minCollateral = "1000000"
+maxPredictionMarkets = "3"
+
 depends = []
 
 [clone.Uniswap]
@@ -115,3 +119,32 @@ args=[
   { feeRate = "<%= settings.feeRate %>", assertionLiveness= "<%= settings.assertionLiveness %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", uniswapPositionManager = "<%= Uniswap.NonfungiblePositionManager.address %>", uniswapSwapRouter = "<%= Uniswap.SwapRouter.address %>", uniswapQuoter = "<%= Uniswap.QuoterV2.address %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>" }
 ]
 depends=["router.SapienceClonable"]
+
+[deploy.PredictionMarket]
+artifact="PredictionMarket"
+args=[
+  "Prediction Market",
+  "SPM",
+  "<%= CollateralAsset.Token.address %>",
+  "<%= settings.minCollateral %>"
+]
+depends=[]
+highlight=true
+
+[deploy.SapienceResolver]
+artifact="PredictionMarketSapienceResolver"
+args=[
+  ["<%= settings.maxPredictionMarkets %>"]
+]
+depends=["deploy.PredictionMarket"]
+highlight=true
+
+[deploy.UMAResolver]
+artifact="PredictionMarketUmaResolver"
+args=[
+  { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
+  [ "<%= settings.owner2 %>" ],
+  [ "<%= settings.owner2 %>" ]
+]
+
+depends=["deploy.PredictionMarket"]
