@@ -158,7 +158,7 @@ export default function PortfolioPage() {
             onValueChange={handleTabChange}
             className="w-full"
           >
-            <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-8">
+            <TabsList className="grid w-full grid-cols-1 md:grid-cols-4 h-auto gap-2 mb-5">
               <TabsTrigger className="w-full" value="trades">
                 Prediction Market Trades
               </TabsTrigger>

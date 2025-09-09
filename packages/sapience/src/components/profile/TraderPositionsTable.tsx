@@ -143,7 +143,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
   }
 
   return (
-    <div className="relative top-2.5">
+    <div className="relative lg:top-2">
       <div>
         <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
         {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
@@ -220,9 +220,9 @@ export default function TraderPositionsTable({
   return (
     <div>
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
-      <div className="rounded border divide-y">
+      <div className="rounded border">
         {/* Table Header (desktop) */}
-        <div className="hidden md:grid md:grid-cols-12 items-center px-4 py-2 bg-muted/30 text-sm font-medium text-muted-foreground">
+        <div className="hidden md:grid md:grid-cols-12 items-center px-4 py-4 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {displayQuestionColumn && (
             <div className="md:col-span-3">Prediction Market</div>
           )}
@@ -312,7 +312,7 @@ function TraderPositionRow({
   displayQuestionColumn,
 }: TraderPositionRowProps) {
   return (
-    <div className="px-4 py-3">
+    <div className="px-4 py-4 md:py-4 border-b last:border-b-0">
       <div className="flex flex-col gap-3 md:grid md:grid-cols-12 md:items-center">
         {displayQuestionColumn && (
           <div className="md:col-span-3">
@@ -406,7 +406,7 @@ function TraderPositionRow({
                         <NumberDisplay value={positionSize} /> {sharesLabel}
                       </span>
                     </Badge>
-                    <span>Position ID {position.positionId}</span>
+                    <span>Position #{position.positionId}</span>
                   </div>
                 </div>
               );
@@ -448,7 +448,7 @@ function TraderPositionRow({
 
             {/* Removed Avg → Current column; info shown under Position Value */}
 
-            <div className="md:col-span-3 md:col-start-10 md:justify-self-end">
+            <div className="mt-3 md:mt-0 md:col-span-3 md:col-start-10 md:justify-self-end">
               <div className="flex gap-3 justify-start md:justify-end">
                 {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
                 {isExpired && !isPositionSettled ? (
