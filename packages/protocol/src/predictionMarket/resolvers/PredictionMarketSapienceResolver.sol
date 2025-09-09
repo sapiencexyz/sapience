@@ -157,22 +157,24 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         }
 
         // For Yes/No markets, the settlement price will be at the extreme bounds
-        // YES = maxPriceD18, NO = minPriceD18
+        // Due to price clamping in Sapience markets:
+        // - YES settlements (prices > max) get clamped to maxPriceD18
+        // - NO settlements (prices < min) get clamped to minPriceD18
         uint256 settlementPrice = marketData.settlementPriceD18;
         uint256 minPrice = marketData.minPriceD18;
         uint256 maxPrice = marketData.maxPriceD18;
 
         // Check if this is a Yes/No market by comparing settlement price to bounds
-        if (settlementPrice >= maxPrice) {
-            // Market settled as YES
+        // For Yes/No markets, the settlement price should be at one of the extreme bounds
+        // We use the midpoint between min and max to determine the outcome
+        uint256 midpoint = (minPrice + maxPrice) / 2;
+        
+        if (settlementPrice >= midpoint) {
+            // Market settled as YES (price is closer to max than min)
             outcome = true;
-        } else if (settlementPrice <= minPrice) {
-            // Market settled as NO
-            outcome = false;
         } else {
-            // This is a numeric market, not Yes/No
-            // For prediction purposes, we only support Yes/No markets
-            revert MarketIsNotYesNoMarket();
+            // Market settled as NO (price is closer to min than max)
+            outcome = false;
         }
     }
 }
