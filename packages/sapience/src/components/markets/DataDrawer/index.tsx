@@ -307,7 +307,7 @@ const MarketDataTables = () => {
           {tabTitles[selectedTab]}
         </h2>
         <TabsContent value="leaderboard">
-          <div className="max-h-96 overflow-y-auto">
+          <div>
             <MarketLeaderboard
               marketAddress={marketAddress}
               chainId={chainId}
@@ -316,19 +316,13 @@ const MarketDataTables = () => {
           </div>
         </TabsContent>
         <TabsContent value="transactions">
-          <div className="max-h-96 overflow-y-auto">
-            {renderTransactionTable()}
-          </div>
+          <div>{renderTransactionTable()}</div>
         </TabsContent>
         <TabsContent value="trader-positions">
-          <div className="max-h-96 overflow-y-auto">
-            {renderPositionsContent(traderPositions, 'trader')}
-          </div>
+          <div>{renderPositionsContent(traderPositions, 'trader')}</div>
         </TabsContent>
         <TabsContent value="lp-positions">
-          <div className="max-h-96 overflow-y-auto">
-            {renderPositionsContent(lpPositions, 'liquidity')}
-          </div>
+          <div>{renderPositionsContent(lpPositions, 'liquidity')}</div>
         </TabsContent>
       </Tabs>
     </div>
