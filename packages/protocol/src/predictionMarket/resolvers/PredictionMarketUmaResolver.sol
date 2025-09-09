@@ -29,11 +29,12 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
     error InvalidCaller();
     error MarketAlreadySettled();
     error MarketNotOpen();
+    error MarketNotEnded();
     error MarketNotDisputed();
     error NotEnoughBondAmount(address sender, address bondCurrency, uint256 bondAmount, uint256 finalBalance);
 
     // ============ Events ============
-    event MarketWrapped(address wrapper, bytes32 marketId, bytes claim, uint256 wrapTime);
+    event MarketWrapped(address wrapper, bytes32 marketId, bytes claim, uint256 endTime, uint256 wrapTime);
     event AssertionSubmitted(address asserter, bytes32 marketId, bytes32 assertionId, bool resolvedToYes, uint256 submissionTime);
     event AssertionDisputed(bytes32 marketId, bytes32 assertionId, uint256 disputeTime);
     event AssertionResolved(bytes32 marketId, bytes32 assertionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime);
@@ -67,12 +68,12 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         // Identification
         bytes32 marketId;
         bytes claim;
+        uint256 endTime;
         // State
-        bool open;
+        bool assertionSubmitted;
         bool settled;
         bool resolvedToYes;
         // UMA
-        uint256 endTime;
         bytes32 assertionId;
     }
 
@@ -122,7 +123,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
                 break;
             }
 
-            if (!wrappedMarkets[currentMarketId].open) {
+            if (block.timestamp > wrappedMarkets[currentMarketId].endTime) {
                 isValid = false;
                 error = Error.MARKET_NOT_OPENED;
                 break;
@@ -186,12 +187,13 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
 
     // ============ Markets Wrapper Functions ============
     function wrapMarket(
-        bytes calldata claim
+        bytes calldata claim,
+        uint256 endTime
     ) external {
         if (!approvedMarketWrappers[msg.sender]) {
             revert OnlyApprovedMarketWrappersCanCall();
         }
-        bytes32 marketId = keccak256(claim);
+        bytes32 marketId = keccak256(abi.encodePacked(claim, ":", endTime));
         if (wrappedMarkets[marketId].marketId != bytes32(0)) {
             revert MarketAlreadyWrapped();
         }
@@ -199,14 +201,14 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         wrappedMarkets[marketId] = WrappedMarket({
             marketId: marketId,
             claim: claim,
-            open: true,
+            assertionSubmitted: false,
             settled: false,
             resolvedToYes: false,
             assertionId: bytes32(0),
-            endTime: 0
+            endTime: endTime
         });
 
-        emit MarketWrapped(msg.sender, marketId, claim, block.timestamp);
+        emit MarketWrapped(msg.sender, marketId, claim, endTime, block.timestamp);
     }
 
     // ============ UMA Market Validation Functions ============
@@ -220,12 +222,16 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
             revert InvalidMarketId();
         }
 
-        if (market.assertionId != bytes32(0)) {
-            revert AssertionAlreadySubmitted();
+        if (market.assertionId != bytes32(0) || market.assertionSubmitted) {
+            revert AssertionAlreadySubmitted(); 
         }
 
         if (market.settled) {
             revert MarketAlreadySettled();
+        }
+
+        if (block.timestamp <= market.endTime) {
+            revert MarketNotEnded();
         }
 
         bytes memory claim = market.claim;
@@ -259,7 +265,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
 
         // Update the wrapped market
         market.assertionId = assertionId;
-        market.open = false;
+        market.assertionSubmitted = true;
 
         umaSettlements[assertionId] = UMASettlement({
             marketId: marketId,
@@ -292,6 +298,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         }
         // clear the assertionId to allow close the loop.
         market.assertionId = bytes32(0);
+        market.assertionSubmitted = false;
 
         emit AssertionResolved(marketId, assertionId, market.resolvedToYes, assertedTruthfully, block.timestamp);
     } 
