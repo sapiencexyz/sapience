@@ -238,7 +238,9 @@ const FocusAreaFilter = ({
           </button>
 
           <div className="h-4 w-px bg-border mx-1" />
-          <span className="text-xs font-medium text-muted-foreground">Parlay Mode</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            Parlay Mode
+          </span>
           {parlayFeatureEnabled ? (
             <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
           ) : (
@@ -298,14 +300,21 @@ const ForecastingTable = () => {
   // Parlay Mode toggle
   const [parlayMode, setParlayMode] = React.useState<boolean>(false);
   // Feature flag for Parlay Mode via localStorage `sapience.parlays` or URL ?parlays=true
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] = React.useState<boolean>(false);
+  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
+    React.useState<boolean>(false);
   React.useEffect(() => {
     try {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
       if (params?.get('parlays') === 'true') {
         window.localStorage.setItem('sapience.parlays', 'true');
       }
-      const stored = typeof window !== 'undefined' ? window.localStorage.getItem('sapience.parlays') : null;
+      const stored =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('sapience.parlays')
+          : null;
       setParlayFeatureEnabled(stored === 'true');
     } catch {
       setParlayFeatureEnabled(false);
@@ -324,7 +333,8 @@ const ForecastingTable = () => {
     similarMarkets?: string[] | null;
   }
   const [rfqConditions, setRfqConditions] = React.useState<RFQCondition[]>([]);
-  const [isLoadingConditions, setIsLoadingConditions] = React.useState<boolean>(false);
+  const [isLoadingConditions, setIsLoadingConditions] =
+    React.useState<boolean>(false);
 
   // State for text filter
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -348,7 +358,7 @@ const ForecastingTable = () => {
       setIsLoadingConditions(true);
       try {
         const res = await fetch(`${adminBase}/conditions`, { method: 'GET' });
-        const json = await res.json().catch(() => ({} as any));
+        const json = await res.json().catch(() => ({}) as any);
         const list: RFQCondition[] = Array.isArray(json?.conditions)
           ? json.conditions
           : [];
@@ -680,7 +690,8 @@ const ForecastingTable = () => {
 
   // ===== Parlay Mode: group RFQ conditions by end date =====
   const filteredRfqConditions = React.useMemo(() => {
-    if (!rfqConditions || rfqConditions.length === 0) return [] as RFQCondition[];
+    if (!rfqConditions || rfqConditions.length === 0)
+      return [] as RFQCondition[];
     const lower = debouncedSearchTerm.toLowerCase();
     return rfqConditions.filter((c) => {
       // filter by category
@@ -691,7 +702,8 @@ const ForecastingTable = () => {
       if (!lower) return true;
       const haystacks: string[] = [];
       if (typeof c.question === 'string') haystacks.push(c.question);
-      if (typeof c.claimStatement === 'string') haystacks.push(c.claimStatement);
+      if (typeof c.claimStatement === 'string')
+        haystacks.push(c.claimStatement);
       if (typeof c.description === 'string') haystacks.push(c.description);
       if (typeof c.category?.name === 'string') haystacks.push(c.category.name);
       if (typeof c.category?.slug === 'string') haystacks.push(c.category.slug);
@@ -701,8 +713,11 @@ const ForecastingTable = () => {
   }, [rfqConditions, selectedCategorySlug, debouncedSearchTerm]);
 
   const rfqConditionsByDay = React.useMemo(() => {
-    if (!filteredRfqConditions || filteredRfqConditions.length === 0) return {} as Record<string, RFQCondition[]>;
-    const grouped = filteredRfqConditions.reduce<Record<string, RFQCondition[]>>((acc, c) => {
+    if (!filteredRfqConditions || filteredRfqConditions.length === 0)
+      return {} as Record<string, RFQCondition[]>;
+    const grouped = filteredRfqConditions.reduce<
+      Record<string, RFQCondition[]>
+    >((acc, c) => {
       const end = typeof c.endTime === 'number' ? c.endTime : 0;
       const dayKey = end > 0 ? getDayKey(end) : 'No end time';
       if (!acc[dayKey]) acc[dayKey] = [];
@@ -715,9 +730,12 @@ const ForecastingTable = () => {
   const rfqDayEndTimes = React.useMemo(() => {
     const result: Record<string, number> = {};
     Object.entries(rfqConditionsByDay).forEach(([dayKey, list]) => {
-      const withEnds = list.filter((c) => typeof c.endTime === 'number' && (c.endTime) > 0) as Array<RFQCondition & { endTime: number }>;
+      const withEnds = list.filter(
+        (c) => typeof c.endTime === 'number' && c.endTime > 0
+      ) as Array<RFQCondition & { endTime: number }>;
       if (withEnds.length > 0) {
-        const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0].endTime;
+        const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0]
+          .endTime;
         result[dayKey] = earliest;
       } else {
         result[dayKey] = Math.floor(Date.now() / 1000);
@@ -983,10 +1001,17 @@ const ForecastingTable = () => {
                             .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
                             .map((c) => {
                               const categorySlug = c.category?.slug || '';
-                              const styleInfo = categorySlug ? getCategoryStyle(categorySlug) : undefined;
-                              const color = styleInfo?.color || DEFAULT_CATEGORY_COLOR;
+                              const styleInfo = categorySlug
+                                ? getCategoryStyle(categorySlug)
+                                : undefined;
+                              const color =
+                                styleInfo?.color || DEFAULT_CATEGORY_COLOR;
                               return (
-                                <ParlayModeRow key={c.id} condition={c} color={color} />
+                                <ParlayModeRow
+                                  key={c.id}
+                                  condition={c}
+                                  color={color}
+                                />
                               );
                             })}
                         </div>

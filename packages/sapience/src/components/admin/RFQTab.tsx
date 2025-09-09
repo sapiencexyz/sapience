@@ -81,7 +81,8 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
         cell: ({ getValue }) => {
           const id = getValue() as string | undefined;
           if (!id) return '';
-          const truncated = id.length > 10 ? `${id.slice(0, 6)}...${id.slice(-4)}` : id;
+          const truncated =
+            id.length > 10 ? `${id.slice(0, 6)}...${id.slice(-4)}` : id;
           return (
             <div className="flex items-center gap-2">
               <span className="font-mono">{truncated}</span>
@@ -91,7 +92,11 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
                 onClick={async (e) => {
                   e.stopPropagation();
                   await navigator.clipboard.writeText(id);
-                  toast({ title: 'Copied', description: 'ID copied to clipboard', duration: 1500 });
+                  toast({
+                    title: 'Copied',
+                    description: 'ID copied to clipboard',
+                    duration: 1500,
+                  });
                 }}
                 aria-label="Copy ID"
               >
@@ -116,7 +121,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
           if (!v) return '';
           let relative = '';
           try {
-            relative = formatDistanceToNow(fromUnixTime(v), { addSuffix: true });
+            relative = formatDistanceToNow(fromUnixTime(v), {
+              addSuffix: true,
+            });
           } catch {
             // ignore formatting errors
           }
@@ -124,7 +131,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
             <div className="flex items-baseline gap-2">
               <span className="font-mono">{v}</span>
               {relative ? (
-                <span className="text-xs text-muted-foreground">({relative})</span>
+                <span className="text-xs text-muted-foreground">
+                  ({relative})
+                </span>
               ) : null}
             </div>
           );
@@ -162,7 +171,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
                 setIsPublic(Boolean(original.public));
                 setClaimStatement(original.claimStatement || '');
                 setDescription(original.description || '');
-                setSimilarMarketsText((original.similarMarketUrls || []).join(', '));
+                setSimilarMarketsText(
+                  (original.similarMarketUrls || []).join(', ')
+                );
                 setCreateOpen(true);
               }}
             >
@@ -245,7 +256,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
     } catch (e) {
       toast({
         variant: 'destructive',
-        title: editingId ? 'Error updating condition' : 'Error creating condition',
+        title: editingId
+          ? 'Error updating condition'
+          : 'Error creating condition',
         description: (e as Error)?.message || 'Request failed',
       });
     }
@@ -264,12 +277,21 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Edit Condition' : 'Create Condition'}</DialogTitle>
+            <DialogTitle>
+              {editingId ? 'Edit Condition' : 'Create Condition'}
+            </DialogTitle>
           </DialogHeader>
-          <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <form
+            onSubmit={onSubmit}
+            className="grid grid-cols-1 gap-4 md:grid-cols-2"
+          >
             <div className="space-y-2">
               <label className="text-sm font-medium">Question</label>
-              <Input value={question} onChange={(e) => setQuestion(e.target.value)} required />
+              <Input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Category</label>
@@ -287,7 +309,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
               </Select>
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Time (Unix seconds)</label>
+              <label className="text-sm font-medium">
+                End Time (Unix seconds)
+              </label>
               <Input
                 type="number"
                 value={endTime}
@@ -320,7 +344,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
               />
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Similar Markets (comma-separated URLs)</label>
+              <label className="text-sm font-medium">
+                Similar Markets (comma-separated URLs)
+              </label>
               <Input
                 placeholder="https://..., https://..."
                 value={similarMarketsText}
@@ -328,7 +354,11 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
               />
             </div>
             <div className="md:col-span-2 flex justify-end gap-2 mt-2">
-              <Button type="button" variant="ghost" onClick={() => setCreateOpen(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setCreateOpen(false)}
+              >
                 Cancel
               </Button>
               <Button type="submit">Create</Button>
@@ -339,7 +369,9 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
 
       <div>
         <DataTable columns={columns} data={rows} />
-        {loading ? <p className="text-sm text-muted-foreground mt-2">Loading...</p> : null}
+        {loading ? (
+          <p className="text-sm text-muted-foreground mt-2">Loading...</p>
+        ) : null}
       </div>
     </div>
   );

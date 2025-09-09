@@ -32,10 +32,13 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   // Removed condition id display in dialog; keep id for keys only
 
   const endInfo = React.useMemo(() => {
-    if (typeof endTime !== 'number' || endTime <= 0) return { date: '', relative: '' };
+    if (typeof endTime !== 'number' || endTime <= 0)
+      return { date: '', relative: '' };
     let relative = '';
     try {
-      relative = formatDistanceToNow(fromUnixTime(endTime), { addSuffix: true });
+      relative = formatDistanceToNow(fromUnixTime(endTime), {
+        addSuffix: true,
+      });
     } catch {
       // ignore formatting errors
     }
@@ -57,7 +60,10 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
   return (
     <div className="border-b last:border-b-0 border-border">
       <div className="bg-background border-muted dark:bg-muted/50 flex flex-row transition-colors items-stretch relative">
-        <div className="w-1 min-w-[4px] max-w-[4px]" style={{ backgroundColor: color, margin: '-1px 0' }} />
+        <div
+          className="w-1 min-w-[4px] max-w-[4px]"
+          style={{ backgroundColor: color, margin: '-1px 0' }}
+        />
         <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-5 py-4 md:py-3 gap-3">
           <div className="flex-grow">
             <Dialog>
@@ -78,15 +84,22 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
                   {endInfo.date ? (
                     <div className="text-xs text-muted-foreground">
                       Ends {endInfo.date}
-                      {endInfo.relative ? <span> ({endInfo.relative})</span> : null}
+                      {endInfo.relative ? (
+                        <span> ({endInfo.relative})</span>
+                      ) : null}
                     </div>
                   ) : null}
                   {description ? (
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap">{description}</div>
+                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                      {description}
+                    </div>
                   ) : null}
-                  {Array.isArray(similarMarkets) && similarMarkets.length > 0 ? (
+                  {Array.isArray(similarMarkets) &&
+                  similarMarkets.length > 0 ? (
                     <div className="pt-2">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">Similar Markets</div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">
+                        Similar Markets
+                      </div>
                       <ul className="list-disc list-inside space-y-1">
                         {similarMarkets.map((url, i) => (
                           <li key={`${id}-sm-${i}`} className="text-sm">
@@ -108,7 +121,12 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
             </Dialog>
           </div>
           <div className="flex items-center justify-end shrink-0">
-            <YesNoSplitButton onYes={handleYes} onNo={handleNo} className="min-w-[10rem]" size="lg" />
+            <YesNoSplitButton
+              onYes={handleYes}
+              onNo={handleNo}
+              className="min-w-[10rem]"
+              size="lg"
+            />
           </div>
         </div>
       </div>
@@ -117,5 +135,3 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
 };
 
 export default ParlayModeRow;
-
-

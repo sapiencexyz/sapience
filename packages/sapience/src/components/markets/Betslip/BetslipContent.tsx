@@ -15,7 +15,7 @@ import {
 import { parseUnits, formatUnits } from 'viem';
 import { formatNumber } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
- 
+
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
@@ -213,7 +213,14 @@ export const BetslipContent = ({
     } catch {
       // ignore formatting errors
     }
-  }, [effectiveParlayMode, requestQuotes, parlaySelections, parlayWagerAmount, makerAddress, parlayCollateralDecimals]);
+  }, [
+    effectiveParlayMode,
+    requestQuotes,
+    parlaySelections,
+    parlayWagerAmount,
+    makerAddress,
+    parlayCollateralDecimals,
+  ]);
 
   return (
     <>
@@ -247,7 +254,11 @@ export const BetslipContent = ({
             betSlipPositions.length === 0 ? '' : 'overflow-y-auto'
           }`}
         >
-          {(effectiveParlayMode ? parlaySelections.length === 0 : betSlipPositions.length === 0) ? (
+          {(
+            effectiveParlayMode
+              ? parlaySelections.length === 0
+              : betSlipPositions.length === 0
+          ) ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-4">
                 <Image src="/usde.svg" alt="USDe" width={42} height={42} />
@@ -349,10 +360,16 @@ export const BetslipContent = ({
             </FormProvider>
           ) : (
             <FormProvider {...parlayMethods}>
-              <form onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)} className="space-y-4 p-4">
+              <form
+                onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)}
+                className="space-y-4 p-4"
+              >
                 <div className="space-y-4">
                   {parlaySelections.map((s) => (
-                    <div key={s.id} className="pb-4 mb-4 border-b border-border">
+                    <div
+                      key={s.id}
+                      className="pb-4 mb-4 border-b border-border"
+                    >
                       <div className="flex items-center gap-3">
                         <h3 className="font-medium text-foreground pr-2 text-sm whitespace-normal break-words flex-1">
                           {s.question}
@@ -361,7 +378,9 @@ export const BetslipContent = ({
                           <Button
                             size="sm"
                             type="button"
-                            onClick={() => updateParlaySelection(s.id, { prediction: true })}
+                            onClick={() =>
+                              updateParlaySelection(s.id, { prediction: true })
+                            }
                             className={`${
                               s.prediction
                                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -373,7 +392,9 @@ export const BetslipContent = ({
                           <Button
                             size="sm"
                             type="button"
-                            onClick={() => updateParlaySelection(s.id, { prediction: false })}
+                            onClick={() =>
+                              updateParlaySelection(s.id, { prediction: false })
+                            }
                             className={`${
                               !s.prediction
                                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -405,47 +426,61 @@ export const BetslipContent = ({
                   </div>
 
                   <div className="space-y-1">
-                  {/* RFQ auction status header row (main-style) */}
-                  {effectiveParlayMode ? (
-                    <div className="py-1 flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <LottieLoader width={16} height={16} />
-                        <span>Broadcasting a request for bids...</span>
-                      </span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button type="button" className="text-primary underline">
-                              Limit Order
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Coming Soon</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
-                  ) : null}
+                    {/* RFQ auction status header row (main-style) */}
+                    {effectiveParlayMode ? (
+                      <div className="py-1 flex items-center justify-between text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <LottieLoader width={16} height={16} />
+                          <span>Broadcasting a request for bids...</span>
+                        </span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                className="text-primary underline"
+                              >
+                                Limit Order
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Coming Soon</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    ) : null}
                     {effectiveParlayMode && bestBid ? (
                       <div className="text-center">
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                          disabled={isParlaySubmitting || bestBid.takerDeadline * 1000 - nowMs <= 0}
+                          disabled={
+                            isParlaySubmitting ||
+                            bestBid.takerDeadline * 1000 - nowMs <= 0
+                          }
                           type="submit"
                           size="lg"
                           variant="default"
                         >
-                          {isParlaySubmitting ? 'Submitting Wager...' : 'Submit Wager'}
+                          {isParlaySubmitting
+                            ? 'Submitting Wager...'
+                            : 'Submit Wager'}
                         </Button>
                         <div className="text-xs text-muted-foreground mt-2 space-y-1">
                           {(() => {
-                            const makerWagerStr = parlayMethods.getValues('wagerAmount') || '0';
-                            const decimals = Number.isFinite(parlayCollateralDecimals as number)
+                            const makerWagerStr =
+                              parlayMethods.getValues('wagerAmount') || '0';
+                            const decimals = Number.isFinite(
+                              parlayCollateralDecimals as number
+                            )
                               ? (parlayCollateralDecimals as number)
                               : 18;
                             let makerWagerWei: bigint = 0n;
                             try {
-                              makerWagerWei = parseUnits(makerWagerStr, decimals);
+                              makerWagerWei = parseUnits(
+                                makerWagerStr,
+                                decimals
+                              );
                             } catch {
                               makerWagerWei = 0n;
                             }
@@ -453,20 +488,32 @@ export const BetslipContent = ({
                             return unexpiredBids.map((bid, idx) => {
                               const payoutDisplay = (() => {
                                 try {
-                                  const wei = makerWagerWei + BigInt(bid.takerWager);
-                                  const human = Number(formatUnits(wei, decimals));
+                                  const wei =
+                                    makerWagerWei + BigInt(bid.takerWager);
+                                  const human = Number(
+                                    formatUnits(wei, decimals)
+                                  );
                                   return formatNumber(human, 2);
                                 } catch {
                                   return '0.00';
                                 }
                               })();
-                              const remainingMs = bid.takerDeadline * 1000 - nowMs;
-                              const secs = Math.max(0, Math.ceil(remainingMs / 1000));
+                              const remainingMs =
+                                bid.takerDeadline * 1000 - nowMs;
+                              const secs = Math.max(
+                                0,
+                                Math.ceil(remainingMs / 1000)
+                              );
                               const suffix = secs === 1 ? 'second' : 'seconds';
                               return (
-                                <div key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`} className="flex items-center justify-between">
+                                <div
+                                  key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
+                                  className="flex items-center justify-between"
+                                >
                                   <span>
-                                    <span className="font-medium">To Win: </span>
+                                    <span className="font-medium">
+                                      To Win:{' '}
+                                    </span>
                                     {`${payoutDisplay} ${symbol}`}
                                   </span>
                                   <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
@@ -493,7 +540,10 @@ export const BetslipContent = ({
                             <TooltipProvider>
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button type="button" className="text-primary underline">
+                                  <button
+                                    type="button"
+                                    className="text-primary underline"
+                                  >
                                     limit order
                                   </button>
                                 </TooltipTrigger>

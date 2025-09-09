@@ -605,7 +605,9 @@ const Admin = () => {
       >
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <TabsList>
-            <TabsTrigger value="liquid">Concentrated Liquidity Markets</TabsTrigger>
+            <TabsTrigger value="liquid">
+              Concentrated Liquidity Markets
+            </TabsTrigger>
             <TabsTrigger value="rfq">Batch Auction Settlement</TabsTrigger>
           </TabsList>
           {activeTab === 'liquid' ? (

@@ -30,14 +30,21 @@ export default function PortfolioPage() {
   const address = (params.address as string).toLowerCase() as Address;
 
   // Feature flag: enable Parlays only when explicitly turned on
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] = useState<boolean>(false);
+  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
+    useState<boolean>(false);
   useEffect(() => {
     try {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const params =
+        typeof window !== 'undefined'
+          ? new URLSearchParams(window.location.search)
+          : null;
       if (params?.get('parlays') === 'true') {
         window.localStorage.setItem('sapience.parlays', 'true');
       }
-      const stored = typeof window !== 'undefined' ? window.localStorage.getItem('sapience.parlays') : null;
+      const stored =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem('sapience.parlays')
+          : null;
       setParlayFeatureEnabled(stored === 'true');
     } catch {
       setParlayFeatureEnabled(false);
@@ -81,7 +88,8 @@ export default function PortfolioPage() {
       ? (rawHash as TabValue)
       : ('trades' as TabValue);
     // If Parlays is disabled, fall back to trades
-    if (desired === 'auction' && !parlayFeatureEnabled) return 'trades' as TabValue;
+    if (desired === 'auction' && !parlayFeatureEnabled)
+      return 'trades' as TabValue;
     return desired;
   };
 
@@ -197,7 +205,11 @@ export default function PortfolioPage() {
               <TabsTrigger className="w-full" value="trades">
                 Prediction Market Trades
               </TabsTrigger>
-              <TabsTrigger className="w-full" value="auction" disabled={!parlayFeatureEnabled}>
+              <TabsTrigger
+                className="w-full"
+                value="auction"
+                disabled={!parlayFeatureEnabled}
+              >
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">

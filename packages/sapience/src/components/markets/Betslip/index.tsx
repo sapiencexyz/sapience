@@ -57,7 +57,10 @@ interface BetslipProps {
   isParlayMode?: boolean; // controlled by page-level switch
 }
 
-const Betslip = ({ variant = 'triggered', isParlayMode: externalParlayMode = false }: BetslipProps) => {
+const Betslip = ({
+  variant = 'triggered',
+  isParlayMode: externalParlayMode = false,
+}: BetslipProps) => {
   const {
     betSlipPositions,
     isPopoverOpen,
