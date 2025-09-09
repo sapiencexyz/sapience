@@ -446,8 +446,6 @@ function TraderPositionRow({
               <PositionValueCell position={position} />
             </div>
 
-            {/* Removed Avg → Current column; info shown under Position Value */}
-
             <div className="mt-3 md:mt-0 md:col-span-3 md:col-start-10 md:justify-self-end">
               <div className="flex gap-3 justify-start md:justify-end">
                 {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
