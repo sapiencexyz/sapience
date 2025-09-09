@@ -6,9 +6,14 @@ import {
   ObjectType,
   Field,
   Float,
+  Directive,
 } from 'type-graphql';
 import prisma from '../../db';
-import { computeTimeWeightedForAttesterSummary } from '../../helpers/scoringService';
+import {
+  computeTimeWeightedForAttesterSummary,
+  computeTimeWeightedForAttestersSummary,
+} from '../../helpers/scoringService';
+import { TtlCache } from '../../utils/ttlCache';
 
 @ObjectType()
 class ForecasterScoreType {
@@ -50,7 +55,13 @@ class AccuracyRankType {
 
 @Resolver()
 export class ScoreResolver {
+  private static summaryCache = new TtlCache<
+    string,
+    { sumTimeWeightedError: number; numTimeWeighted: number }
+  >({ ttlMs: 60_000, maxSize: 5000 });
+
   @Query(() => ForecasterScoreType, { nullable: true })
+  @Directive('@cacheControl(maxAge: 60)')
   async forecasterScore(
     @Arg('attester', () => String) attester: string
   ): Promise<ForecasterScoreType | null> {
@@ -68,8 +79,12 @@ export class ScoreResolver {
     const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
 
     // Compute time-weighted across markets using batched summary
-    const { sumTimeWeightedError, numTimeWeighted } =
-      await computeTimeWeightedForAttesterSummary(a);
+    let cached = ScoreResolver.summaryCache.get(a);
+    if (!cached) {
+      cached = await computeTimeWeightedForAttesterSummary(a);
+      ScoreResolver.summaryCache.set(a, cached);
+    }
+    const { sumTimeWeightedError, numTimeWeighted } = cached;
     // Prefer horizon-weighted mean error when available
     const horizonWeightedMeanError =
       numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
@@ -90,6 +105,7 @@ export class ScoreResolver {
   }
 
   @Query(() => [ForecasterScoreType])
+  @Directive('@cacheControl(maxAge: 60)')
   async topForecasters(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number
   ): Promise<ForecasterScoreType[]> {
@@ -105,38 +121,47 @@ export class ScoreResolver {
 
     // Compute time-weighted across markets per attester with bounded concurrency
     const results: ForecasterScoreType[] = [];
-    const attesters = agg.map((row) => row.attester as string);
-    const concurrency = 10;
-    for (let i = 0; i < attesters.length; i += concurrency) {
-      const batch = attesters.slice(i, i + concurrency);
-      const batchAgg = agg.slice(i, i + concurrency);
-      const summaries = await Promise.all(
-        batch.map((a) => computeTimeWeightedForAttesterSummary(a))
-      );
-      for (let j = 0; j < batch.length; j++) {
-        const a = batch[j];
-        const row = batchAgg[j];
-        const numScored = row._count._all ?? 0;
-        const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-        const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
-        const { sumTimeWeightedError, numTimeWeighted } = summaries[j];
-        const horizonWeightedMeanError =
-          numTimeWeighted > 0
-            ? sumTimeWeightedError / numTimeWeighted
-            : meanError;
-        const accuracyScore =
-          horizonWeightedMeanError && horizonWeightedMeanError > 0
-            ? 1 / horizonWeightedMeanError
-            : 0;
-        results.push({
-          attester: a,
-          numScored,
-          sumErrorSquared,
-          numTimeWeighted,
-          sumTimeWeightedError,
-          accuracyScore,
-        });
+    const attesters = agg.map((row) => (row.attester as string).toLowerCase());
+    // Try cache first for each attester
+    const toFetch: string[] = [];
+    const precomputed = new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
+    for (const a of attesters) {
+      const c = ScoreResolver.summaryCache.get(a);
+      if (c) precomputed.set(a, c);
+      else toFetch.push(a);
+    }
+    if (toFetch.length > 0) {
+      const fetched = await computeTimeWeightedForAttestersSummary(toFetch);
+      for (const [k, v] of fetched.entries()) {
+        ScoreResolver.summaryCache.set(k, v);
+        precomputed.set(k, v);
       }
+    }
+
+    for (let i = 0; i < attesters.length; i++) {
+      const a = attesters[i];
+      const row = agg[i];
+      const numScored = row._count._all ?? 0;
+      const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
+      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
+      const { sumTimeWeightedError, numTimeWeighted } = precomputed.get(a) || {
+        sumTimeWeightedError: 0,
+        numTimeWeighted: 0,
+      };
+      const horizonWeightedMeanError =
+        numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
+      const accuracyScore =
+        horizonWeightedMeanError && horizonWeightedMeanError > 0
+          ? 1 / horizonWeightedMeanError
+          : 0;
+      results.push({
+        attester: a,
+        numScored,
+        sumErrorSquared,
+        numTimeWeighted,
+        sumTimeWeightedError,
+        accuracyScore,
+      });
     }
 
     // Order by accuracyScore desc (higher is better)
@@ -145,6 +170,7 @@ export class ScoreResolver {
   }
 
   @Query(() => AccuracyRankType)
+  @Directive('@cacheControl(maxAge: 60)')
   async accuracyRankByAddress(
     @Arg('attester', () => String) attester: string
   ): Promise<AccuracyRankType> {
@@ -162,30 +188,37 @@ export class ScoreResolver {
     type Scored = { attester: string; accuracyScore: number };
     const scores: Scored[] = [];
     const attesters = agg.map((row) => (row.attester as string).toLowerCase());
-    const concurrency = 10;
-    for (let i = 0; i < attesters.length; i += concurrency) {
-      const batch = attesters.slice(i, i + concurrency);
-      const batchAgg = agg.slice(i, i + concurrency);
-      const summaries = await Promise.all(
-        batch.map((a) => computeTimeWeightedForAttesterSummary(a))
-      );
-      for (let j = 0; j < batch.length; j++) {
-        const a = batch[j];
-        const row = batchAgg[j];
-        const numScored = row._count._all ?? 0;
-        const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-        const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
-        const { sumTimeWeightedError, numTimeWeighted } = summaries[j];
-        const horizonWeightedMeanError =
-          numTimeWeighted > 0
-            ? sumTimeWeightedError / numTimeWeighted
-            : meanError;
-        const accuracyScore =
-          horizonWeightedMeanError && horizonWeightedMeanError > 0
-            ? 1 / horizonWeightedMeanError
-            : 0;
-        scores.push({ attester: a, accuracyScore });
+    const toFetch: string[] = [];
+    const precomputed = new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
+    for (const a of attesters) {
+      const c = ScoreResolver.summaryCache.get(a);
+      if (c) precomputed.set(a, c);
+      else toFetch.push(a);
+    }
+    if (toFetch.length > 0) {
+      const fetched = await computeTimeWeightedForAttestersSummary(toFetch);
+      for (const [k, v] of fetched.entries()) {
+        ScoreResolver.summaryCache.set(k, v);
+        precomputed.set(k, v);
       }
+    }
+    for (let i = 0; i < attesters.length; i++) {
+      const a = attesters[i];
+      const row = agg[i];
+      const numScored = row._count._all ?? 0;
+      const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
+      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
+      const { sumTimeWeightedError, numTimeWeighted } = precomputed.get(a) || {
+        sumTimeWeightedError: 0,
+        numTimeWeighted: 0,
+      };
+      const horizonWeightedMeanError =
+        numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
+      const accuracyScore =
+        horizonWeightedMeanError && horizonWeightedMeanError > 0
+          ? 1 / horizonWeightedMeanError
+          : 0;
+      scores.push({ attester: a, accuracyScore });
     }
 
     // Sort desc and compute rank

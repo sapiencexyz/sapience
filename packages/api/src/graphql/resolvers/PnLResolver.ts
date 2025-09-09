@@ -1,4 +1,4 @@
-import { Resolver, Query, Arg, Int } from 'type-graphql';
+import { Resolver, Query, Arg, Int, Directive } from 'type-graphql';
 import { PnLType } from '../types/PnLType';
 import {
   AggregatedProfitEntryType,
@@ -6,10 +6,17 @@ import {
 } from '../types/AggregatedProfitTypes';
 import { MarketPnL } from '../../helpers/marketPnL';
 import prisma from '../../db';
+import { TtlCache } from '../../utils/ttlCache';
 
 @Resolver(() => PnLType)
 export class PnLResolver {
+  private static leaderboardCache = new TtlCache<string, AggregatedProfitEntryType[]>({
+    ttlMs: 60_000,
+    maxSize: 10,
+  });
+
   @Query(() => [PnLType])
+  @Directive('@cacheControl(maxAge: 60)')
   async getMarketLeaderboard(
     @Arg('chainId', () => Int) chainId: number,
     @Arg('address', () => String) address: string,
@@ -53,7 +60,12 @@ export class PnLResolver {
   }
 
   @Query(() => [AggregatedProfitEntryType])
+  @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
+    const cacheKey = 'allTimeProfitLeaderboard:v1';
+    const existing = PnLResolver.leaderboardCache.get(cacheKey);
+    if (existing) return existing;
+
     // Aggregate across all public markets and sum PnL per owner
     const marketGroups = await prisma.marketGroup.findMany({
       select: {
@@ -134,10 +146,12 @@ export class PnLResolver {
       .map(([owner, totalPnL]) => ({ owner, totalPnL }))
       .sort((a, b) => b.totalPnL - a.totalPnL);
 
+    PnLResolver.leaderboardCache.set(cacheKey, entries);
     return entries;
   }
 
   @Query(() => ProfitRankType)
+  @Directive('@cacheControl(maxAge: 60)')
   async profitRankByAddress(
     @Arg('owner', () => String) owner: string
   ): Promise<ProfitRankType> {

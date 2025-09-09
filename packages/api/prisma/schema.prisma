@@ -233,6 +233,7 @@ model Position {
 
   @@unique([positionId, marketId], map: "UQ_40d3e2f973bc69ff8e8d0f89dde")
   @@index([positionId], map: "IDX_927edd2b828777f0052366195e")
+  @@index([marketId], map: "IDX_position_market_id")
   @@map("position")
 }
 
@@ -343,6 +344,7 @@ model AttestationScore {
   @@index([marketAddress], map: "IDX_attestation_score_market_address")
   @@index([marketId], map: "IDX_attestation_score_market_id")
   @@index([attester, marketAddress, marketId], map: "IDX_attestation_score_attester_market")
+  @@index([attester, marketAddress, marketId, madeAt], map: "IDX_attestation_score_attester_market_madeat")
   @@map("attestation_score")
 }
 
@@ -370,6 +372,7 @@ model Transaction {
   position             Position?             @relation(fields: [positionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ffeefe4d2253a6af172da38fc49")
 
   @@map("transaction")
+  @@index([positionId], map: "IDX_transaction_position_id")
 }
 
 enum transaction_type_enum {

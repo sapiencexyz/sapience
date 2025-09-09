@@ -78,7 +78,7 @@ const ProfileStats = ({ address, className }: ProfileStatsProps) => {
 
   return (
     <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 my-4 md:my-6', className)}>
-      <StatTile label="Realized Profit" value={pnlValue} sublabel={pnlRank} Icon={BarChart2} />
+      <StatTile label="Realized Profit/Loss" value={pnlValue} sublabel={pnlRank} Icon={BarChart2} />
       <StatTile label="Accuracy Score" value={accValue} sublabel={accRank} Icon={Target} />
     </div>
   );
