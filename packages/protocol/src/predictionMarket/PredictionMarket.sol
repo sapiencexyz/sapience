@@ -75,8 +75,8 @@ contract PredictionMarket is
             minCollateral: _minCollateral
         });
 
-        _predictionIdCounter = 0;
-        _nftTokenIdCounter = 0;
+        _predictionIdCounter = 1;
+        _nftTokenIdCounter = 1;
     }
 
     function mint(
