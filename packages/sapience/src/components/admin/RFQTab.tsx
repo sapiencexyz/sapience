@@ -22,6 +22,7 @@ import { useMemo, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import DataTable from './data-table';
+import ResolveConditionCell from './ResolveConditionCell';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useMarketGroups';
 import { useConditions } from '~/hooks/graphql/useConditions';
@@ -156,25 +157,31 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
           const id = original.id;
           if (!id) return null;
           return (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                setEditingId(id);
-                setQuestion(original.question || '');
-                setCategorySlug(original.category?.slug || '');
-                setEndTime(String(original.endTime ?? ''));
-                setIsPublic(Boolean(original.public));
-                setClaimStatement(original.claimStatement || '');
-                setDescription(original.description || '');
-                setSimilarMarketsText(
-                  (original.similarMarketUrls || []).join(', ')
-                );
-                setCreateOpen(true);
-              }}
-            >
-              Edit
-            </Button>
+            <div className="flex items-center gap-2">
+              <ResolveConditionCell
+                marketId={id as `0x${string}`}
+                endTime={original.endTime}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setEditingId(id);
+                  setQuestion(original.question || '');
+                  setCategorySlug(original.category?.slug || '');
+                  setEndTime(String(original.endTime ?? ''));
+                  setIsPublic(Boolean(original.public));
+                  setClaimStatement(original.claimStatement || '');
+                  setDescription(original.description || '');
+                  setSimilarMarketsText(
+                    (original.similarMarketUrls || []).join(', ')
+                  );
+                  setCreateOpen(true);
+                }}
+              >
+                Edit
+              </Button>
+            </div>
           );
         },
       },
