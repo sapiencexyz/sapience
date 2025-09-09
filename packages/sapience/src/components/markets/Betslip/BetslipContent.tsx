@@ -1,18 +1,27 @@
 'use client';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useAccount } from 'wagmi';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { parseUnits, formatUnits } from 'viem';
+import { formatNumber } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import { MarketGroupClassification } from '~/lib/types';
+ 
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -34,6 +43,7 @@ interface BetslipContentProps {
   parlayCollateralSymbol?: string;
   parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
+  parlayCollateralDecimals?: number;
   // Auction integration (provided by parent to share a single WS connection)
   auctionId?: string | null;
   bids?: QuoteBid[];
@@ -53,56 +63,11 @@ export const BetslipContent = ({
   parlayCollateralSymbol,
   parlayCollateralAddress,
   parlayChainId,
-  auctionId: _auctionId,
+  parlayCollateralDecimals,
   bids = [],
   requestQuotes,
 }: BetslipContentProps) => {
-  // Temporary feature flag: disable parlay UI while keeping code paths intact for easy re-enable
-  const PARLAY_FEATURE_ENABLED = false;
-  // Allow enabling via localStorage("otc") === "true" or URL param ?otc=true
-  const [parlayFeatureOverrideEnabled, setParlayFeatureOverrideEnabled] =
-    useState(false);
-  useEffect(() => {
-    try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      const urlParlays = params?.get('otc');
-      if (urlParlays === 'true') {
-        window.localStorage.setItem('otc', 'true');
-      }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('otc')
-          : null;
-      if (stored === 'true') {
-        setParlayFeatureOverrideEnabled(true);
-      }
-    } catch {
-      // no-op
-    }
-  }, []);
   const isMobile = useIsMobile();
-  const [parlayTooltipOpen, setParlayTooltipOpen] = useState(false);
-  const closeTooltipTimeoutRef = useRef<number | null>(null);
-  const triggerParlayTooltip = () => {
-    if (!isMobile) return;
-    setParlayTooltipOpen(true);
-    if (closeTooltipTimeoutRef.current) {
-      window.clearTimeout(closeTooltipTimeoutRef.current);
-    }
-    closeTooltipTimeoutRef.current = window.setTimeout(() => {
-      setParlayTooltipOpen(false);
-    }, 1500);
-  };
-  useEffect(() => {
-    return () => {
-      if (closeTooltipTimeoutRef.current) {
-        window.clearTimeout(closeTooltipTimeoutRef.current);
-      }
-    };
-  }, []);
   const {
     betSlipPositions,
     removePosition,
@@ -117,20 +82,6 @@ export const BetslipContent = ({
     (p) =>
       !p.isLoading && !p.error && p.marketGroupData && p.marketClassification
   );
-  const hasNumericMarket = positionsWithMarketData.some(
-    (p) => p.marketClassification === MarketGroupClassification.NUMERIC
-  );
-  const parlayEligiblePositionsCount = useMemo(() => {
-    return positionsWithMarketData.filter(
-      (p) =>
-        p.marketClassification !== MarketGroupClassification.NUMERIC &&
-        !p.isLoading &&
-        !p.error &&
-        p.marketGroupData &&
-        p.marketClassification
-    ).length;
-  }, [positionsWithMarketData]);
-  const isParlayFeatureEnabled = PARLAY_FEATURE_ENABLED || parlayFeatureOverrideEnabled;
   const effectiveParlayMode = isParlayMode;
   const allPositionsLoading =
     positionsWithMarketData.length > 0 &&
@@ -140,10 +91,6 @@ export const BetslipContent = ({
     control: parlayMethods.control,
     name: 'wagerAmount',
   });
-  const parlayPositionsForm = useWatch({
-    control: parlayMethods.control,
-    name: 'positions',
-  }) as Record<string, { predictionValue?: string }> | undefined;
 
   // Ticking clock reference for expiry countdowns
   const [nowMs, setNowMs] = useState<number>(Date.now());
@@ -234,7 +181,40 @@ export const BetslipContent = ({
     return () => window.clearInterval(id);
   }, []);
 
-  // For condition-based parlay selections, OTC request flow will be implemented separately
+  // Trigger RFQ quote requests when selections or wager change
+  useEffect(() => {
+    if (!effectiveParlayMode) return;
+    if (!requestQuotes) return;
+    if (!makerAddress) return;
+    if (!parlaySelections || parlaySelections.length === 0) return;
+    const wagerStr = parlayWagerAmount || '0';
+    try {
+      const decimals = Number.isFinite(parlayCollateralDecimals as number)
+        ? (parlayCollateralDecimals as number)
+        : 18;
+      const wagerWei = parseUnits(wagerStr, decimals).toString();
+
+      const outcomes = parlaySelections.map((s) => ({
+        // For RFQ conditions, encode id as marketId and leave address zeroed
+        marketGroup: '0x0000000000000000000000000000000000000000',
+        marketId: Number.parseInt(s.conditionId || '0', 10) || 0,
+        prediction: !!s.prediction,
+      }));
+
+      const payload = buildAuctionStartPayload(outcomes);
+      const params: AuctionParams = {
+        wager: wagerWei,
+        resolver: payload.resolver,
+        predictedOutcomes: payload.predictedOutcomes,
+        maker: makerAddress,
+      };
+      requestQuotes(params);
+      setLastQuoteRequestMs(Date.now());
+    } catch {
+      // ignore formatting errors
+    }
+  }, [effectiveParlayMode, requestQuotes, parlaySelections, parlayWagerAmount, makerAddress, parlayCollateralDecimals]);
+
   return (
     <>
       <div className="w-full h-full flex flex-col">
@@ -369,7 +349,7 @@ export const BetslipContent = ({
             </FormProvider>
           ) : (
             <FormProvider {...parlayMethods}>
-              <form className="space-y-4 p-4">
+              <form onSubmit={parlayMethods.handleSubmit(handleParlaySubmit)} className="space-y-4 p-4">
                 <div className="space-y-4">
                   {parlaySelections.map((s) => (
                     <div key={s.id} className="pb-4 mb-4 border-b border-border">
@@ -418,23 +398,120 @@ export const BetslipContent = ({
                   <div className="pt-1">
                     <WagerInput
                       minAmount={minParlayWager}
-                      collateralSymbol={'testUSDe'}
+                      collateralSymbol={parlayCollateralSymbol}
                       collateralAddress={parlayCollateralAddress}
                       chainId={parlayChainId}
                     />
                   </div>
 
-                  <div className="pt-2 space-y-2">
-                    <Button
-                      className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                      disabled={parlaySelections.length === 0}
-                      type="button"
-                      size="lg"
-                      variant="default"
-                    >
-                      Submit Wager
-                    </Button>
+                  <div className="space-y-1">
+                  {/* RFQ auction status header row (main-style) */}
+                  {effectiveParlayMode ? (
+                    <div className="py-1 flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <LottieLoader width={16} height={16} />
+                        <span>Broadcasting a request for bids...</span>
+                      </span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type="button" className="text-primary underline">
+                              Limit Order
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Coming Soon</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  ) : null}
+                    {effectiveParlayMode && bestBid ? (
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={isParlaySubmitting || bestBid.takerDeadline * 1000 - nowMs <= 0}
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          {isParlaySubmitting ? 'Submitting Wager...' : 'Submit Wager'}
+                        </Button>
+                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                          {(() => {
+                            const makerWagerStr = parlayMethods.getValues('wagerAmount') || '0';
+                            const decimals = Number.isFinite(parlayCollateralDecimals as number)
+                              ? (parlayCollateralDecimals as number)
+                              : 18;
+                            let makerWagerWei: bigint = 0n;
+                            try {
+                              makerWagerWei = parseUnits(makerWagerStr, decimals);
+                            } catch {
+                              makerWagerWei = 0n;
+                            }
+                            const symbol = parlayCollateralSymbol || 'testUSDe';
+                            return unexpiredBids.map((bid, idx) => {
+                              const payoutDisplay = (() => {
+                                try {
+                                  const wei = makerWagerWei + BigInt(bid.takerWager);
+                                  const human = Number(formatUnits(wei, decimals));
+                                  return formatNumber(human, 2);
+                                } catch {
+                                  return '0.00';
+                                }
+                              })();
+                              const remainingMs = bid.takerDeadline * 1000 - nowMs;
+                              const secs = Math.max(0, Math.ceil(remainingMs / 1000));
+                              const suffix = secs === 1 ? 'second' : 'seconds';
+                              return (
+                                <div key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`} className="flex items-center justify-between">
+                                  <span>
+                                    <span className="font-medium">To Win: </span>
+                                    {`${payoutDisplay} ${symbol}`}
+                                  </span>
+                                  <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
+                                </div>
+                              );
+                            });
+                          })()}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Button
+                          className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                          disabled={true}
+                          type="submit"
+                          size="lg"
+                          variant="default"
+                        >
+                          Waiting for Bids...
+                        </Button>
+                        {effectiveParlayMode && showNoBidsHint ? (
+                          <div className="text-xs text-muted-foreground mt-2">
+                            <span>If no bids appear, you can place a </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="text-primary underline">
+                                    limit order
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>Coming Soon</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
+                  {parlayError && (
+                    <div className="text-sm text-destructive p-2 bg-destructive/10 rounded">
+                      {parlayError}
+                    </div>
+                  )}
                 </div>
               </form>
             </FormProvider>

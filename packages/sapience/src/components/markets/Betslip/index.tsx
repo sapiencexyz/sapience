@@ -18,7 +18,7 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import Image from 'next/image';
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useEffect } from 'react';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePrivy } from '@privy-io/react-auth';
@@ -66,21 +66,7 @@ const Betslip = ({ variant = 'triggered', isParlayMode: externalParlayMode = fal
     positionsWithMarketData,
   } = useBetSlipContext();
 
-  // Use external parlay mode (from Markets page)
   const isParlayMode = externalParlayMode;
-  const [parlayFeatureOverrideEnabled] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('otc') === 'true') {
-        window.localStorage.setItem('otc', 'true');
-        return true;
-      }
-      return window.localStorage.getItem('otc') === 'true';
-    } catch {
-      return false;
-    }
-  });
   const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
   const { address } = useAccount();
@@ -740,6 +726,7 @@ const Betslip = ({ variant = 'triggered', isParlayMode: externalParlayMode = fal
     parlayCollateralSymbol: collateralSymbol,
     parlayCollateralAddress: collateralToken,
     parlayChainId,
+    parlayCollateralDecimals: collateralDecimals,
     auctionId,
     bids,
     requestQuotes,

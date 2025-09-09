@@ -29,6 +29,21 @@ export default function PortfolioPage() {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
 
+  // Feature flag: enable Parlays only when explicitly turned on
+  const [parlayFeatureEnabled, setParlayFeatureEnabled] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      if (params?.get('parlays') === 'true') {
+        window.localStorage.setItem('sapience.parlays', 'true');
+      }
+      const stored = typeof window !== 'undefined' ? window.localStorage.getItem('sapience.parlays') : null;
+      setParlayFeatureEnabled(stored === 'true');
+    } catch {
+      setParlayFeatureEnabled(false);
+    }
+  }, []);
+
   const {
     data: positionsData,
     isLoading: positionsLoading,
@@ -62,16 +77,19 @@ export default function PortfolioPage() {
   const getHashValue = () => {
     if (typeof window === 'undefined') return 'trades' as TabValue;
     const rawHash = window.location.hash?.replace('#', '').toLowerCase();
-    return (TAB_VALUES as readonly string[]).includes(rawHash)
+    const desired = (TAB_VALUES as readonly string[]).includes(rawHash)
       ? (rawHash as TabValue)
       : ('trades' as TabValue);
+    // If Parlays is disabled, fall back to trades
+    if (desired === 'auction' && !parlayFeatureEnabled) return 'trades' as TabValue;
+    return desired;
   };
 
   const [tabValue, setTabValue] = useState<TabValue>('trades');
 
   useEffect(() => {
     setTabValue(getHashValue());
-  }, []);
+  }, [parlayFeatureEnabled]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -91,6 +109,10 @@ export default function PortfolioPage() {
     const nextValue = (TAB_VALUES as readonly string[]).includes(value)
       ? (value as TabValue)
       : ('trades' as TabValue);
+    // Prevent selecting Parlays when feature is disabled
+    if (nextValue === 'auction' && !parlayFeatureEnabled) {
+      return;
+    }
     setTabValue(nextValue);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
@@ -109,6 +131,12 @@ export default function PortfolioPage() {
         : '';
     const hasExplicitHash = (TAB_VALUES as readonly string[]).includes(rawHash);
     if (hasExplicitHash) {
+      // If user explicitly navigated to Parlays while disabled, redirect to trades
+      if (rawHash === 'auction' && !parlayFeatureEnabled) {
+        didAutoRedirectRef.current = true;
+        handleTabChange('trades');
+        return;
+      }
       didAutoRedirectRef.current = true;
       return;
     }
@@ -127,7 +155,7 @@ export default function PortfolioPage() {
       return;
     }
 
-    // Parlays is currently "coming soon"; skip it in auto-redirect logic
+    // Parlays is currently feature-flagged; skip it in auto-redirect logic unless enabled
     const firstWithContent: TabValue | null = hasTrades
       ? 'trades'
       : hasLp
@@ -141,7 +169,14 @@ export default function PortfolioPage() {
     }
     // Mark as done to avoid overriding user interactions later
     didAutoRedirectRef.current = true;
-  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
+  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts, parlayFeatureEnabled]);
+
+  // If the feature flag becomes disabled while on Parlays, snap back to trades
+  useEffect(() => {
+    if (!parlayFeatureEnabled && tabValue === 'auction') {
+      handleTabChange('trades');
+    }
+  }, [parlayFeatureEnabled, tabValue]);
 
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
@@ -162,7 +197,7 @@ export default function PortfolioPage() {
               <TabsTrigger className="w-full" value="trades">
                 Prediction Market Trades
               </TabsTrigger>
-              <TabsTrigger className="w-full" value="auction">
+              <TabsTrigger className="w-full" value="auction" disabled={!parlayFeatureEnabled}>
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">
