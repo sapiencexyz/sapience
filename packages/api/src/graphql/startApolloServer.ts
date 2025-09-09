@@ -19,8 +19,6 @@ import {
   FindUniqueCategoryOrThrowResolver,
   GroupByCategoryResolver,
 
-  // (removed) CryptoPrices queries
-
   // Market queries
   AggregateMarketResolver,
   FindFirstMarketResolver,
@@ -92,6 +90,14 @@ import {
   FindUniqueAttestationResolver,
   FindUniqueAttestationOrThrowResolver,
   GroupByAttestationResolver,
+  // Condition queries
+  AggregateConditionResolver,
+  FindFirstConditionResolver,
+  FindFirstConditionOrThrowResolver,
+  FindManyConditionResolver,
+  FindUniqueConditionResolver,
+  FindUniqueConditionOrThrowResolver,
+  GroupByConditionResolver,
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
@@ -192,6 +198,15 @@ export const initializeApolloServer = async () => {
     FindUniqueAttestationResolver,
     FindUniqueAttestationOrThrowResolver,
     GroupByAttestationResolver,
+
+    // Condition queries
+    AggregateConditionResolver,
+    FindFirstConditionResolver,
+    FindFirstConditionOrThrowResolver,
+    FindManyConditionResolver,
+    FindUniqueConditionResolver,
+    FindUniqueConditionOrThrowResolver,
+    GroupByConditionResolver,
   ];
 
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers

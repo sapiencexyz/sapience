@@ -448,6 +448,7 @@ const Admin = () => {
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
+  const [createConditionOpen, setCreateConditionOpen] = useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -604,8 +605,8 @@ const Admin = () => {
       >
         <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <TabsList>
-            <TabsTrigger value="liquid">Liquid Markets</TabsTrigger>
-            <TabsTrigger value="rfq">RFQ/Auction Settlement</TabsTrigger>
+            <TabsTrigger value="liquid">Concentrated Liquidity Markets</TabsTrigger>
+            <TabsTrigger value="rfq">Batch Auction Settlement</TabsTrigger>
           </TabsList>
           {activeTab === 'liquid' ? (
             <div className="md:ml-auto flex items-center gap-2">
@@ -633,6 +634,13 @@ const Admin = () => {
                 </DialogContent>
               </Dialog>
             </div>
+          ) : activeTab === 'rfq' ? (
+            <div className="md:ml-auto flex items-center gap-2">
+              <Button size="sm" onClick={() => setCreateConditionOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                New Condition
+              </Button>
+            </div>
           ) : null}
         </div>
         <TabsContent value="liquid">
@@ -657,7 +665,10 @@ const Admin = () => {
           </div>
         </TabsContent>
         <TabsContent value="rfq">
-          <RFQTab />
+          <RFQTab
+            createOpen={createConditionOpen}
+            setCreateOpen={setCreateConditionOpen}
+          />
         </TabsContent>
       </Tabs>
     </div>
