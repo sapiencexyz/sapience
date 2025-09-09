@@ -4,13 +4,15 @@ import {
   AggregatedProfitEntryType,
   ProfitRankType,
 } from '../types/AggregatedProfitTypes';
-import { MarketPnL } from '../../helpers/marketPnL';
 import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
 
 @Resolver(() => PnLType)
 export class PnLResolver {
-  private static leaderboardCache = new TtlCache<string, AggregatedProfitEntryType[]>({
+  private static leaderboardCache = new TtlCache<
+    string,
+    AggregatedProfitEntryType[]
+  >({
     ttlMs: 60_000,
     maxSize: 10,
   });
@@ -22,124 +24,63 @@ export class PnLResolver {
     @Arg('address', () => String) address: string,
     @Arg('marketId', () => String) marketId: string
   ): Promise<PnLType[]> {
-    try {
-      // First get market group info for collateral data
-      const marketGroup = await prisma.marketGroup.findFirst({
-        where: {
-          chainId,
-          address: address.toLowerCase(),
-        },
-      });
-
-      const pnlPerformance = MarketPnL.getInstance();
-      const pnlData = await pnlPerformance.getMarketPnLs(
+    // Use precomputed realized PnL
+    const mg = await prisma.marketGroup.findFirst({
+      where: { chainId, address: address.toLowerCase() },
+    });
+    const decimals = mg?.collateralDecimals ?? 18;
+    const rows = await prisma.ownerMarketRealizedPnl.findMany({
+      where: {
         chainId,
-        address,
-        parseInt(marketId)
-      );
-
-      const result = pnlData.map((pnl) => ({
-        marketId: parseInt(marketId),
-        owner: pnl.owner.toLowerCase(),
-        totalDeposits: pnl.totalDeposits,
-        totalWithdrawals: pnl.totalWithdrawals,
-        openPositionsPnL: pnl.openPositionsPnL,
-        totalPnL: pnl.totalPnL,
-        positions: Array.from(pnl.positionIds),
-        positionCount: pnl.positionCount,
-        collateralAddress: marketGroup?.collateralAsset || undefined,
-        collateralSymbol: marketGroup?.collateralSymbol || undefined,
-        collateralDecimals: marketGroup?.collateralDecimals || undefined,
-      }));
-
-      return result;
-    } catch (error) {
-      console.error('Error fetching markets:', error);
-      throw new Error('Failed to fetch markets');
-    }
+        address: address.toLowerCase(),
+        marketId: Number(parseInt(marketId, 16) || Number(marketId) || 0),
+      },
+    });
+    return rows.map((r) => ({
+      marketId: Number(parseInt(marketId, 16) || Number(marketId) || 0),
+      owner: r.owner.toLowerCase(),
+      totalDeposits: '0',
+      totalWithdrawals: '0',
+      openPositionsPnL: '0',
+      totalPnL: r.realizedPnl.toString(),
+      positions: [],
+      positionCount: 0,
+      collateralAddress: mg?.collateralAsset || undefined,
+      collateralSymbol: mg?.collateralSymbol || undefined,
+      collateralDecimals: decimals || undefined,
+    }));
   }
 
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    const cacheKey = 'allTimeProfitLeaderboard:v1';
+    const cacheKey = 'allTimeProfitLeaderboard:v2.1';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
-    // Aggregate across all public markets and sum PnL per owner
-    const marketGroups = await prisma.marketGroup.findMany({
-      select: {
-        chainId: true,
-        address: true,
-        collateralDecimals: true,
-        market: { select: { marketId: true, public: true } },
-      },
+    // Aggregate across precomputed table, normalizing by collateral decimals per market group
+    const all = await prisma.ownerMarketRealizedPnl.findMany();
+    const mgList = await prisma.marketGroup.findMany({
+      select: { chainId: true, address: true, collateralDecimals: true },
     });
-
-    type SelectedMarket = { marketId: number; public: boolean };
-    type SelectedMarketGroup = {
-      chainId: number;
-      address: string | null;
-      collateralDecimals: number | null;
-      market: SelectedMarket[];
-    };
-
-    const identifiers: Array<{
-      chainId: number;
-      address: string;
-      marketId: number;
-      decimals: number;
-    }> = [];
-    for (const mg of marketGroups as SelectedMarketGroup[]) {
-      const addr = (mg.address || '').toLowerCase();
-      if (!addr || typeof mg.chainId !== 'number') continue;
-      const decimals =
+    const key = (chainId: number, address: string) =>
+      `${chainId}:${address.toLowerCase()}`;
+    const decimalsByMg = new Map<string, number>();
+    for (const mg of mgList) {
+      const dec =
         typeof mg.collateralDecimals === 'number' ? mg.collateralDecimals : 18;
-      for (const m of mg.market || []) {
-        if (m.public) {
-          identifiers.push({
-            chainId: mg.chainId,
-            address: addr,
-            marketId: Number(m.marketId),
-            decimals,
-          });
-        }
-      }
+      if (mg.address) decimalsByMg.set(key(mg.chainId, mg.address), dec);
     }
 
     const aggregated = new Map<string, number>();
-    const pnl = MarketPnL.getInstance();
-
-    // Process in parallel with modest concurrency to avoid DB overload
-    const concurrency = 10;
-    for (let i = 0; i < identifiers.length; i += concurrency) {
-      const batch = identifiers.slice(i, i + concurrency);
-      const results = await Promise.all(
-        batch.map(async (id) => {
-          const rows = await pnl.getMarketPnLs(
-            id.chainId,
-            id.address,
-            id.marketId
-          );
-          const divisor = Math.pow(10, id.decimals || 18);
-          const contributions: Array<{ owner: string; value: number }> = [];
-          for (const r of rows) {
-            const owner = (r.owner || '').toLowerCase();
-            if (!owner) continue;
-            const raw = String(r.totalPnL ?? '0');
-            const tokenAmount = parseFloat(raw) / divisor;
-            if (!Number.isFinite(tokenAmount)) continue;
-            contributions.push({ owner, value: tokenAmount });
-          }
-          return contributions;
-        })
-      );
-
-      for (const list of results) {
-        for (const { owner, value } of list) {
-          aggregated.set(owner, (aggregated.get(owner) || 0) + value);
-        }
-      }
+    for (const r of all) {
+      const owner = (r.owner || '').toLowerCase();
+      if (!owner) continue;
+      const dec = decimalsByMg.get(key(r.chainId, r.address)) ?? 18;
+      const divisor = Math.pow(10, dec);
+      const val = parseFloat(r.realizedPnl.toString()) / divisor;
+      if (!Number.isFinite(val)) continue;
+      aggregated.set(owner, (aggregated.get(owner) || 0) + val);
     }
 
     const entries = Array.from(aggregated.entries())

@@ -14,6 +14,7 @@ import {
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useAccount } from 'wagmi';
+import { AlertTriangle } from 'lucide-react';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
 import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
@@ -477,18 +478,28 @@ export const BetslipContent = ({
                 })}
 
                 {hasAtLeastOneLoadedQuestion && !allPositionsLoading && (
-                  <Button
-                    type="submit"
-                    variant="default"
-                    size="lg"
-                    className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
-                    disabled={
-                      positionsWithMarketData.some((p) => p.isLoading) ||
-                      isSubmitting
-                    }
-                  >
-                    Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
-                  </Button>
+                  <>
+                    <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
+                      <span className="inline-flex items-center gap-1">
+                        <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
+                        <span className="font-medium">
+                          Do not wager more than you can afford to lose
+                        </span>
+                      </span>
+                    </div>
+                    <Button
+                      type="submit"
+                      variant="default"
+                      size="lg"
+                      className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
+                      disabled={
+                        positionsWithMarketData.some((p) => p.isLoading) ||
+                        isSubmitting
+                      }
+                    >
+                      Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
+                    </Button>
+                  </>
                 )}
               </form>
             </FormProvider>
@@ -578,6 +589,14 @@ export const BetslipContent = ({
 
                     {effectiveParlayMode && bestBid && (
                       <div className="text-center">
+                        <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
+                          <span className="inline-flex items-center gap-1">
+                            <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
+                            <span className="font-medium">
+                              Do not wager more than you can afford to lose
+                            </span>
+                          </span>
+                        </div>
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={
@@ -643,6 +662,14 @@ export const BetslipContent = ({
 
                     {effectiveParlayMode && !bestBid && (
                       <div className="text-center">
+                        <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
+                          <span className="inline-flex items-center gap-1">
+                            <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
+                            <span className="font-medium">
+                              Do not wager more than you can afford to lose
+                            </span>
+                          </span>
+                        </div>
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={true}

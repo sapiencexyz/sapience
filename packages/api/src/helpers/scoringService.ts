@@ -379,10 +379,15 @@ export async function computeTimeWeightedForAttesterSummary(
 // Returns a map of attester -> { sumTimeWeightedError, numTimeWeighted }
 export async function computeTimeWeightedForAttestersSummary(
   attesters: string[]
-): Promise<Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>> {
+): Promise<
+  Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>
+> {
   const normalized = attesters.map((x) => x.toLowerCase());
   if (normalized.length === 0)
-    return new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
+    return new Map<
+      string,
+      { sumTimeWeightedError: number; numTimeWeighted: number }
+    >();
 
   // 1) Distinct market combos across all attesters in one query
   const distinctMarkets = await prisma.attestationScore.findMany({
@@ -392,7 +397,10 @@ export async function computeTimeWeightedForAttestersSummary(
   });
 
   if (distinctMarkets.length === 0)
-    return new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
+    return new Map<
+      string,
+      { sumTimeWeightedError: number; numTimeWeighted: number }
+    >();
 
   const combos = distinctMarkets.map((m) => ({
     address: (m.marketAddress || '').toLowerCase(),
@@ -452,15 +460,26 @@ export async function computeTimeWeightedForAttestersSummary(
     where: {
       attester: { in: normalized },
       probabilityFloat: { not: null },
-      OR: combos.map((c) => ({ marketAddress: c.address, marketId: c.marketId })),
+      OR: combos.map((c) => ({
+        marketAddress: c.address,
+        marketId: c.marketId,
+      })),
     },
     orderBy: { madeAt: 'asc' },
-    select: { attester: true, marketAddress: true, marketId: true, madeAt: true, probabilityFloat: true },
+    select: {
+      attester: true,
+      marketAddress: true,
+      marketId: true,
+      madeAt: true,
+      probabilityFloat: true,
+    },
   });
 
   const alphaEnv = process.env.HWBS_ALPHA;
   const alpha =
-    Number.isFinite(Number(alphaEnv)) && Number(alphaEnv) > 0 ? Number(alphaEnv) : 2;
+    Number.isFinite(Number(alphaEnv)) && Number(alphaEnv) > 0
+      ? Number(alphaEnv)
+      : 2;
 
   const byAttester = new Map<string, { sum: number; n: number }>();
 
@@ -468,7 +487,15 @@ export async function computeTimeWeightedForAttestersSummary(
   type GroupKey = string;
   const gk = (att: string, addr: string, id: number | string): GroupKey =>
     `${att}::${addr}::${Number(id)}`;
-  const groups = new Map<GroupKey, { att: string; end: number; outcome: 0 | 1; seq: { t: number; p: number }[] }>();
+  const groups = new Map<
+    GroupKey,
+    {
+      att: string;
+      end: number;
+      outcome: 0 | 1;
+      seq: { t: number; p: number }[];
+    }
+  >();
 
   for (const r of rows) {
     const att = (r.attester || '').toLowerCase();
@@ -476,8 +503,18 @@ export async function computeTimeWeightedForAttestersSummary(
     const k = key(addr, parseInt(r.marketId, 16) || Number(r.marketId) || 0);
     const m = meta.get(k);
     if (!m || m.end == null || m.outcome == null) continue;
-    const gg = gk(att, addr, parseInt(r.marketId, 16) || Number(r.marketId) || 0);
-    if (!groups.has(gg)) groups.set(gg, { att, end: m.end as number, outcome: m.outcome as 0 | 1, seq: [] });
+    const gg = gk(
+      att,
+      addr,
+      parseInt(r.marketId, 16) || Number(r.marketId) || 0
+    );
+    if (!groups.has(gg))
+      groups.set(gg, {
+        att,
+        end: m.end as number,
+        outcome: m.outcome as 0 | 1,
+        seq: [],
+      });
     const p = r.probabilityFloat as number;
     if (!Number.isFinite(p)) continue;
     groups.get(gg)!.seq.push({ t: r.madeAt, p });
@@ -511,13 +548,17 @@ export async function computeTimeWeightedForAttestersSummary(
     }
   }
 
-  const result = new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
+  const result = new Map<
+    string,
+    { sumTimeWeightedError: number; numTimeWeighted: number }
+  >();
   for (const [att, agg] of byAttester.entries()) {
     result.set(att, { sumTimeWeightedError: agg.sum, numTimeWeighted: agg.n });
   }
   // Ensure every requested attester appears (even if zero)
   for (const att of normalized) {
-    if (!result.has(att)) result.set(att, { sumTimeWeightedError: 0, numTimeWeighted: 0 });
+    if (!result.has(att))
+      result.set(att, { sumTimeWeightedError: 0, numTimeWeighted: 0 });
   }
   return result;
 }

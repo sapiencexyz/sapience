@@ -28,10 +28,13 @@ export const useForecasterRank = (attester?: string) => {
     queryKey: ['forecasterRank', a],
     enabled,
     queryFn: async () => {
-      const data = await graphqlRequest<{ accuracyRankByAddress: { accuracyScore: number; rank: number | null; totalForecasters: number } }>(
-        GET_ACCURACY_RANK,
-        { attester: a }
-      );
+      const data = await graphqlRequest<{
+        accuracyRankByAddress: {
+          accuracyScore: number;
+          rank: number | null;
+          totalForecasters: number;
+        };
+      }>(GET_ACCURACY_RANK, { attester: a });
       const r = data?.accuracyRankByAddress;
       if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
       return {
@@ -44,5 +47,3 @@ export const useForecasterRank = (attester?: string) => {
     refetchInterval: 300_000,
   });
 };
-
-

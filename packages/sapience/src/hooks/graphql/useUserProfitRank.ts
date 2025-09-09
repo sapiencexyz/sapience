@@ -38,7 +38,10 @@ const GET_MARKET_LEADERBOARD = /* GraphQL */ `
 type MarketGroup = {
   address?: string | null;
   chainId?: number | null;
-  markets?: Array<{ marketId?: number | string | null; public?: boolean | null }>;
+  markets?: Array<{
+    marketId?: number | string | null;
+    public?: boolean | null;
+  }>;
 };
 
 type MarketGroupsQueryResponse = {
@@ -70,11 +73,14 @@ export const useUserProfitRank = (ownerAddress?: string) => {
     enabled,
     queryFn: async () => {
       // 1) Fetch all public markets
-      const marketGroupsData = await graphqlRequest<MarketGroupsQueryResponse>(
-        GET_MARKET_GROUPS
-      );
+      const marketGroupsData =
+        await graphqlRequest<MarketGroupsQueryResponse>(GET_MARKET_GROUPS);
 
-      const identifiers: Array<{ address: string; chainId: number; marketId: string }> = [];
+      const identifiers: Array<{
+        address: string;
+        chainId: number;
+        marketId: string;
+      }> = [];
       for (const mg of marketGroupsData.marketGroups || []) {
         if (!mg?.address || typeof mg.address !== 'string') continue;
         if (typeof mg?.chainId !== 'number') continue;
@@ -82,7 +88,11 @@ export const useUserProfitRank = (ownerAddress?: string) => {
           if (m?.public) {
             const marketId = String(m.marketId ?? '');
             if (!marketId) continue;
-            identifiers.push({ address: mg.address, chainId: mg.chainId, marketId });
+            identifiers.push({
+              address: mg.address,
+              chainId: mg.chainId,
+              marketId,
+            });
           }
         }
       }
@@ -94,7 +104,10 @@ export const useUserProfitRank = (ownerAddress?: string) => {
       // 2) Fetch all market leaderboards in parallel
       const responses = await Promise.all(
         identifiers.map((vars) =>
-          graphqlRequest<MarketLeaderboardQueryResponse>(GET_MARKET_LEADERBOARD, vars)
+          graphqlRequest<MarketLeaderboardQueryResponse>(
+            GET_MARKET_LEADERBOARD,
+            vars
+          )
         )
       );
 
@@ -130,5 +143,3 @@ export const useUserProfitRank = (ownerAddress?: string) => {
     refetchInterval: 300_000,
   });
 };
-
-

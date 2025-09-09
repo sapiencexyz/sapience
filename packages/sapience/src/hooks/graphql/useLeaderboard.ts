@@ -21,9 +21,9 @@ const useAllTimeLeaderboard = () => {
     queryKey: ['allTimeLeaderboard'], // server-aggregated now
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ allTimeProfitLeaderboard: AggregatedLeaderboardEntry[] }>(
-          GET_ALL_TIME_PROFIT_LEADERBOARD
-        );
+        const data = await graphqlRequest<{
+          allTimeProfitLeaderboard: AggregatedLeaderboardEntry[];
+        }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
         return (data?.allTimeProfitLeaderboard || []).slice(0, 10);
       } catch (error) {
         console.error('Error in useAllTimeLeaderboard:', error);

@@ -9,10 +9,6 @@ import {
   Directive,
 } from 'type-graphql';
 import prisma from '../../db';
-import {
-  computeTimeWeightedForAttesterSummary,
-  computeTimeWeightedForAttestersSummary,
-} from '../../helpers/scoringService';
 import { TtlCache } from '../../utils/ttlCache';
 
 @ObjectType()
@@ -32,8 +28,6 @@ class ForecasterScoreType {
   @Field(() => Float)
   sumTimeWeightedError!: number;
 
-  // Higher is better. Defined as 1 / (horizon-weighted mean error),
-  // falling back to 1 / (mean error) when horizon weighting is unavailable.
   @Field(() => Float)
   accuracyScore!: number;
 }
@@ -55,10 +49,11 @@ class AccuracyRankType {
 
 @Resolver()
 export class ScoreResolver {
-  private static summaryCache = new TtlCache<
-    string,
-    { sumTimeWeightedError: number; numTimeWeighted: number }
-  >({ ttlMs: 60_000, maxSize: 5000 });
+  // Keep a small TTL cache to protect DB on bursts
+  private static accuracyCache = new TtlCache<string, number>({
+    ttlMs: 60_000,
+    maxSize: 5000,
+  });
 
   @Query(() => ForecasterScoreType, { nullable: true })
   @Directive('@cacheControl(maxAge: 60)')
@@ -67,37 +62,26 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType | null> {
     const a = attester.toLowerCase();
 
-    const agg = await prisma.attestationScore.groupBy({
-      by: ['attester'],
-      where: { attester: a, errorSquared: { not: null } },
-      _count: { _all: true },
-      _sum: { errorSquared: true },
+    // Aggregate TW error across markets for this attester
+    const rows = await prisma.attesterMarketTwError.findMany({
+      where: { attester: a },
+      select: { twError: true },
     });
-    if (agg.length === 0) return null;
-    const numScored = agg[0]._count._all ?? 0;
-    const sumErrorSquared = (agg[0]._sum.errorSquared as number | null) ?? 0;
-    const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
+    if (rows.length === 0) return null;
 
-    // Compute time-weighted across markets using batched summary
-    let cached = ScoreResolver.summaryCache.get(a);
-    if (!cached) {
-      cached = await computeTimeWeightedForAttesterSummary(a);
-      ScoreResolver.summaryCache.set(a, cached);
-    }
-    const { sumTimeWeightedError, numTimeWeighted } = cached;
-    // Prefer horizon-weighted mean error when available
-    const horizonWeightedMeanError =
-      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
+    const numTimeWeighted = rows.length;
+    const sumTimeWeightedError = rows.reduce(
+      (acc, r) => acc + (r.twError || 0),
+      0
+    );
+    const mean = sumTimeWeightedError / numTimeWeighted;
+    const accuracyScore = mean > 0 ? 1 / mean : 0;
 
-    const accuracyScore =
-      horizonWeightedMeanError && horizonWeightedMeanError > 0
-        ? 1 / horizonWeightedMeanError
-        : 0;
-
+    // Legacy fields retained for schema compatibility
     return {
       attester: a,
-      numScored,
-      sumErrorSquared,
+      numScored: 0,
+      sumErrorSquared: 0,
       numTimeWeighted,
       sumTimeWeightedError,
       accuracyScore,
@@ -111,60 +95,25 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // Base aggregation to compute mean error as a fallback
-    const agg = await prisma.attestationScore.groupBy({
+    // Compute 1/avg(tw_error) using SQL aggregation
+    const agg = await prisma.attesterMarketTwError.groupBy({
       by: ['attester'],
-      where: { errorSquared: { not: null } },
-      _count: { _all: true },
-      _sum: { errorSquared: true },
+      _avg: { twError: true },
     });
 
-    // Compute time-weighted across markets per attester with bounded concurrency
-    const results: ForecasterScoreType[] = [];
-    const attesters = agg.map((row) => (row.attester as string).toLowerCase());
-    // Try cache first for each attester
-    const toFetch: string[] = [];
-    const precomputed = new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
-    for (const a of attesters) {
-      const c = ScoreResolver.summaryCache.get(a);
-      if (c) precomputed.set(a, c);
-      else toFetch.push(a);
-    }
-    if (toFetch.length > 0) {
-      const fetched = await computeTimeWeightedForAttestersSummary(toFetch);
-      for (const [k, v] of fetched.entries()) {
-        ScoreResolver.summaryCache.set(k, v);
-        precomputed.set(k, v);
-      }
-    }
-
-    for (let i = 0; i < attesters.length; i++) {
-      const a = attesters[i];
-      const row = agg[i];
-      const numScored = row._count._all ?? 0;
-      const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
-      const { sumTimeWeightedError, numTimeWeighted } = precomputed.get(a) || {
-        sumTimeWeightedError: 0,
+    const results = agg.map((row) => {
+      const mean = (row._avg.twError as number | null) ?? null;
+      const score = mean && mean > 0 ? 1 / mean : 0;
+      return {
+        attester: (row.attester as string).toLowerCase(),
+        numScored: 0,
+        sumErrorSquared: 0,
         numTimeWeighted: 0,
-      };
-      const horizonWeightedMeanError =
-        numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
-      const accuracyScore =
-        horizonWeightedMeanError && horizonWeightedMeanError > 0
-          ? 1 / horizonWeightedMeanError
-          : 0;
-      results.push({
-        attester: a,
-        numScored,
-        sumErrorSquared,
-        numTimeWeighted,
-        sumTimeWeightedError,
-        accuracyScore,
-      });
-    }
+        sumTimeWeightedError: 0,
+        accuracyScore: score,
+      } as ForecasterScoreType;
+    });
 
-    // Order by accuracyScore desc (higher is better)
     results.sort((a, b) => b.accuracyScore - a.accuracyScore);
     return results.slice(0, capped);
   }
@@ -176,52 +125,20 @@ export class ScoreResolver {
   ): Promise<AccuracyRankType> {
     const target = attester.toLowerCase();
 
-    // Base aggregation for all attesters with scored entries
-    const agg = await prisma.attestationScore.groupBy({
+    const agg = await prisma.attesterMarketTwError.groupBy({
       by: ['attester'],
-      where: { errorSquared: { not: null } },
-      _count: { _all: true },
-      _sum: { errorSquared: true },
+      _avg: { twError: true },
     });
 
-    // Compute horizon-weighted accuracy for each attester
-    type Scored = { attester: string; accuracyScore: number };
-    const scores: Scored[] = [];
-    const attesters = agg.map((row) => (row.attester as string).toLowerCase());
-    const toFetch: string[] = [];
-    const precomputed = new Map<string, { sumTimeWeightedError: number; numTimeWeighted: number }>();
-    for (const a of attesters) {
-      const c = ScoreResolver.summaryCache.get(a);
-      if (c) precomputed.set(a, c);
-      else toFetch.push(a);
-    }
-    if (toFetch.length > 0) {
-      const fetched = await computeTimeWeightedForAttestersSummary(toFetch);
-      for (const [k, v] of fetched.entries()) {
-        ScoreResolver.summaryCache.set(k, v);
-        precomputed.set(k, v);
-      }
-    }
-    for (let i = 0; i < attesters.length; i++) {
-      const a = attesters[i];
-      const row = agg[i];
-      const numScored = row._count._all ?? 0;
-      const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
-      const { sumTimeWeightedError, numTimeWeighted } = precomputed.get(a) || {
-        sumTimeWeightedError: 0,
-        numTimeWeighted: 0,
+    const scores = agg.map((row) => {
+      const mean = (row._avg.twError as number | null) ?? null;
+      const accuracyScore = mean && mean > 0 ? 1 / mean : 0;
+      return {
+        attester: (row.attester as string).toLowerCase(),
+        accuracyScore,
       };
-      const horizonWeightedMeanError =
-        numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
-      const accuracyScore =
-        horizonWeightedMeanError && horizonWeightedMeanError > 0
-          ? 1 / horizonWeightedMeanError
-          : 0;
-      scores.push({ attester: a, accuracyScore });
-    }
+    });
 
-    // Sort desc and compute rank
     scores.sort((x, y) => y.accuracyScore - x.accuracyScore);
     const totalForecasters = scores.length;
     const idx = scores.findIndex((s) => s.attester === target);

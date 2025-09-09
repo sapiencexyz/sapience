@@ -2,10 +2,10 @@
 
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { cn } from '@sapience/ui/lib/utils';
+import { BarChart2, Target } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
-import { BarChart2, Target } from 'lucide-react';
 
 interface ProfileStatsProps {
   address: string;
@@ -28,14 +28,23 @@ const StatTile = ({
       <CardContent className="px-3 py-2 md:px-4 md:py-3">
         <div className="flex items-center gap-3">
           {Icon ? (
-            <Icon className="w-14 h-14 text-muted-foreground/50 shrink-0" strokeWidth={1.25} />
+            <Icon
+              className="w-14 h-14 text-muted-foreground/50 shrink-0"
+              strokeWidth={1.25}
+            />
           ) : null}
           <div className="flex-1">
-            <div className="text-xs md:text-sm text-muted-foreground font-medium mb-0.5">{label}</div>
+            <div className="text-xs md:text-sm text-muted-foreground font-medium mb-0.5">
+              {label}
+            </div>
             <div className="flex items-baseline gap-2">
-              <div className="text-xl md:text-2xl font-heading font-normal">{value}</div>
+              <div className="text-xl md:text-2xl font-heading font-normal">
+                {value}
+              </div>
               {sublabel ? (
-                <div className="text-xs md:text-sm text-muted-foreground">{sublabel}</div>
+                <div className="text-xs md:text-sm text-muted-foreground">
+                  {sublabel}
+                </div>
               ) : null}
             </div>
           </div>
@@ -47,16 +56,17 @@ const StatTile = ({
 
 const ProfileStats = ({ address, className }: ProfileStatsProps) => {
   const { data: profit, isLoading: profitLoading } = useUserProfitRank(address);
-  const { data: accuracy, isLoading: accuracyLoading } = useForecasterRank(address);
+  const { data: accuracy, isLoading: accuracyLoading } =
+    useForecasterRank(address);
 
-  const pnlValue = profitLoading
-    ? '—'
-    : (
-        <NumberDisplay
-          value={Number(profit?.totalPnL || 0)}
-          appendedText=" testUSDe"
-        />
-      );
+  const pnlValue = profitLoading ? (
+    '—'
+  ) : (
+    <NumberDisplay
+      value={Number(profit?.totalPnL || 0)}
+      appendedText=" testUSDe"
+    />
+  );
 
   const pnlRank = profitLoading
     ? '—'
@@ -77,13 +87,26 @@ const ProfileStats = ({ address, className }: ProfileStatsProps) => {
       : 'Not ranked';
 
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 my-4 md:my-6', className)}>
-      <StatTile label="Realized Profit/Loss" value={pnlValue} sublabel={pnlRank} Icon={BarChart2} />
-      <StatTile label="Accuracy Score" value={accValue} sublabel={accRank} Icon={Target} />
+    <div
+      className={cn(
+        'grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 my-4 md:my-6',
+        className
+      )}
+    >
+      <StatTile
+        label="Realized Profit/Loss"
+        value={pnlValue}
+        sublabel={pnlRank}
+        Icon={BarChart2}
+      />
+      <StatTile
+        label="Accuracy Score"
+        value={accValue}
+        sublabel={accRank}
+        Icon={Target}
+      />
     </div>
   );
 };
 
 export default ProfileStats;
-
-

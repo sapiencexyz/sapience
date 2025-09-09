@@ -47,5 +47,3 @@ export class TtlCache<K, V> {
     this.store.clear();
   }
 }
-
-
