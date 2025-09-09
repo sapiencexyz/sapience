@@ -81,7 +81,6 @@ const Betslip = ({ variant = 'triggered', isParlayMode: externalParlayMode = fal
       return false;
     }
   });
-  const isParlayFeatureEnabled = parlayFeatureOverrideEnabled;
   const isCompact = useIsBelow(1024);
   const { login, authenticated } = usePrivy();
   const { address } = useAccount();

@@ -44,7 +44,7 @@ type RFQTabProps = {
 
 const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
   const { toast } = useToast();
-  const { postJson, deleteJson } = useAdminApi();
+  const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
   const { adminBaseUrl, defaults } = useSettings();
   const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
@@ -59,6 +59,18 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
   const [claimStatement, setClaimStatement] = useState('');
   const [description, setDescription] = useState('');
   const [similarMarketsText, setSimilarMarketsText] = useState('');
+  const [editingId, setEditingId] = useState<string | undefined>(undefined);
+
+  const resetForm = () => {
+    setQuestion('');
+    setCategorySlug('');
+    setEndTime('');
+    setIsPublic(true);
+    setClaimStatement('');
+    setDescription('');
+    setSimilarMarketsText('');
+    setEditingId(undefined);
+  };
 
   const columns: ColumnDef<RFQRow>[] = useMemo(
     () => [
@@ -135,34 +147,32 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
         header: 'Actions',
         enableSorting: false,
         cell: ({ row }) => {
-          const id = row.original.id;
+          const original = row.original;
+          const id = original.id;
           if (!id) return null;
           return (
             <Button
-              variant="destructive"
+              variant="secondary"
               size="sm"
-              onClick={async () => {
-                if (!confirm(`Delete condition ${id.slice(0, 10)}...?`)) return;
-                try {
-                  await deleteJson(`/conditions/${id}`);
-                  setRows((prev) => prev.filter((r) => r.id !== id));
-                  toast({ title: 'Deleted', description: 'Condition removed' });
-                } catch (e) {
-                  toast({
-                    variant: 'destructive',
-                    title: 'Error deleting',
-                    description: (e as Error)?.message || 'Request failed',
-                  });
-                }
+              onClick={() => {
+                setEditingId(id);
+                setQuestion(original.question || '');
+                setCategorySlug(original.category?.slug || '');
+                setEndTime(String(original.endTime ?? ''));
+                setIsPublic(Boolean(original.public));
+                setClaimStatement(original.claimStatement || '');
+                setDescription(original.description || '');
+                setSimilarMarketsText((original.similarMarketUrls || []).join(', '));
+                setCreateOpen(true);
               }}
             >
-              Delete
+              Edit
             </Button>
           );
         },
       },
     ],
-    [deleteJson, toast]
+    [toast]
   );
 
   const loadRows = async () => {
@@ -202,31 +212,40 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
         .split(',')
         .map((s) => s.trim())
         .filter(Boolean);
-      const body = {
-        question,
-        ...(categorySlug ? { categorySlug } : {}),
-        endTime: Number(endTime),
-        public: isPublic,
-        claimStatement,
-        description,
-        similarMarkets,
-      };
-      const created = await postJson<RFQRow>(`/conditions`, body);
-      // Refresh list to reflect server state and close the modal
-      await loadRows();
-      toast({ title: 'Created', description: 'Condition created' });
-      setCreateOpen(false);
-      setQuestion('');
-      setCategorySlug('');
-      setEndTime('');
-      setIsPublic(true);
-      setClaimStatement('');
-      setDescription('');
-      setSimilarMarketsText('');
+      if (editingId) {
+        const body = {
+          question,
+          ...(categorySlug ? { categorySlug } : {}),
+          public: isPublic,
+          description,
+          similarMarkets,
+        };
+        await putJson<RFQRow>(`/conditions/${editingId}`, body);
+        await loadRows();
+        toast({ title: 'Saved', description: 'Condition updated' });
+        setCreateOpen(false);
+        resetForm();
+      } else {
+        const body = {
+          question,
+          ...(categorySlug ? { categorySlug } : {}),
+          endTime: Number(endTime),
+          public: isPublic,
+          claimStatement,
+          description,
+          similarMarkets,
+        };
+        await postJson<RFQRow>(`/conditions`, body);
+        // Refresh list to reflect server state and close the modal
+        await loadRows();
+        toast({ title: 'Created', description: 'Condition created' });
+        setCreateOpen(false);
+        resetForm();
+      }
     } catch (e) {
       toast({
         variant: 'destructive',
-        title: 'Error creating condition',
+        title: editingId ? 'Error updating condition' : 'Error creating condition',
         description: (e as Error)?.message || 'Request failed',
       });
     }
@@ -234,10 +253,18 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
 
   return (
     <div className="py-6 space-y-6">
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) {
+            resetForm();
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create Condition</DialogTitle>
+            <DialogTitle>{editingId ? 'Edit Condition' : 'Create Condition'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={onSubmit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
@@ -266,6 +293,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
                 value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 required
+                disabled={Boolean(editingId)}
               />
             </div>
             <div className="space-y-2">
@@ -280,6 +308,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
                 value={claimStatement}
                 onChange={(e) => setClaimStatement(e.target.value)}
                 required
+                disabled={Boolean(editingId)}
               />
             </div>
             <div className="space-y-2 md:col-span-2">

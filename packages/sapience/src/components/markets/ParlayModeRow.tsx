@@ -26,7 +26,7 @@ export interface ParlayModeRowProps {
 }
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
-  const { id, question, category, endTime, claimStatement, description, similarMarkets } = condition;
+  const { id, question, endTime, description, similarMarkets } = condition;
   const { addParlaySelection } = useBetSlipContext();
 
   // Removed condition id display in dialog; keep id for keys only

@@ -1,30 +1,18 @@
 'use client';
-import { Switch } from '@sapience/ui/components/ui/switch';
-
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { useAccount } from 'wagmi';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { MarketGroupClassification } from '~/lib/types';
-import YesNoWagerInput from '~/components/markets/forms/inputs/YesNoWagerInput';
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
 import { getChainShortName } from '~/lib/utils/util';
 import { WagerInput } from '~/components/markets/forms';
 import LottieLoader from '~/components/shared/LottieLoader';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
-import { YES_SQRT_PRICE_X96 } from '~/lib/utils/betslipUtils';
-// Removed split button in favor of separate Yes/No buttons for parlay selections
 
 interface BetslipContentProps {
   isParlayMode: boolean;
