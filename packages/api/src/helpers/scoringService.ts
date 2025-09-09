@@ -232,3 +232,145 @@ export async function computeTimeWeightedForAttesterMarketValue(
   const twError = weightedSum / totalWeight;
   return twError;
 }
+
+// Batched horizon-weighted error across all markets for a single attester
+export async function computeTimeWeightedForAttesterSummary(
+  attester: string
+): Promise<{ sumTimeWeightedError: number; numTimeWeighted: number }> {
+  const a = attester.toLowerCase();
+
+  // 1) Distinct markets the attester forecasted on
+  const distinctMarkets = await prisma.attestationScore.findMany({
+    where: { attester: a },
+    distinct: ['marketAddress', 'marketId'],
+    select: { marketAddress: true, marketId: true },
+  });
+  if (distinctMarkets.length === 0)
+    return { sumTimeWeightedError: 0, numTimeWeighted: 0 };
+
+  const combos = distinctMarkets.map((m) => ({
+    address: (m.marketAddress || '').toLowerCase(),
+    marketId: m.marketId,
+  }));
+
+  // 2) Fetch market metadata needed for outcome and end time in ONE query
+  const markets = await prisma.market.findMany({
+    where: {
+      OR: combos.map((c) => ({
+        market_group: { address: c.address },
+        marketId: parseInt(c.marketId, 16) || Number(c.marketId) || 0,
+      })),
+    },
+    select: {
+      marketId: true,
+      endTimestamp: true,
+      settled: true,
+      settlementPriceD18: true,
+      minPriceD18: true,
+      maxPriceD18: true,
+      market_group: { select: { address: true, baseTokenName: true } },
+    },
+  });
+
+  type MarketKey = string;
+  const key = (addr: string, id: number | string): MarketKey =>
+    `${addr.toLowerCase()}::${Number(id)}`;
+
+  const meta = new Map<
+    MarketKey,
+    {
+      end: number | null;
+      outcome: 0 | 1 | null;
+    }
+  >();
+
+  for (const m of markets) {
+    const addr = (m.market_group?.address || '').toLowerCase();
+    if (!addr) continue;
+    if (m.market_group?.baseTokenName !== 'Yes') {
+      meta.set(key(addr, m.marketId), { end: null, outcome: null });
+      continue;
+    }
+    const out = outcomeFromSettlement({
+      settled: m.settled,
+      settlementPriceD18: m.settlementPriceD18,
+      minPriceD18: m.minPriceD18,
+      maxPriceD18: m.maxPriceD18,
+    });
+    const end = m.endTimestamp ?? null;
+    meta.set(key(addr, m.marketId), { end, outcome: out });
+  }
+
+  // 3) Fetch all forecasts by this attester across those markets in ONE query
+  const rows = await prisma.attestationScore.findMany({
+    where: {
+      attester: a,
+      probabilityFloat: { not: null },
+      OR: combos.map((c) => ({
+        marketAddress: c.address,
+        marketId: c.marketId,
+      })),
+    },
+    orderBy: { madeAt: 'asc' },
+    select: {
+      marketAddress: true,
+      marketId: true,
+      madeAt: true,
+      probabilityFloat: true,
+    },
+  });
+
+  // 4) Group rows by market and compute time-weighted error per market
+  const byMarket = new Map<MarketKey, { madeAt: number; p: number }[]>();
+  for (const r of rows) {
+    const addr = (r.marketAddress || '').toLowerCase();
+    const k = key(addr, parseInt(r.marketId, 16) || Number(r.marketId) || 0);
+    const m = meta.get(k);
+    if (!m || m.end == null || m.outcome == null) continue;
+    if (r.madeAt > m.end) continue;
+    const p = r.probabilityFloat as number;
+    if (!Number.isFinite(p)) continue;
+    if (!byMarket.has(k)) byMarket.set(k, []);
+    byMarket.get(k)!.push({ madeAt: r.madeAt, p });
+  }
+
+  const alphaEnv = process.env.HWBS_ALPHA;
+  const alpha =
+    Number.isFinite(Number(alphaEnv)) && Number(alphaEnv) > 0
+      ? Number(alphaEnv)
+      : 2;
+
+  let sumTimeWeightedError = 0;
+  let numTimeWeighted = 0;
+
+  for (const [k, seq] of byMarket.entries()) {
+    const m = meta.get(k)!;
+    if (seq.length === 0) continue;
+    const rowsAsc = seq.sort((a, b) => a.madeAt - b.madeAt);
+    const start = rowsAsc[0].madeAt;
+    const end = m.end as number;
+    if (end <= start) continue;
+    let weightedSum = 0;
+    let totalWeight = 0;
+    for (let i = 0; i < rowsAsc.length; i++) {
+      const p = rowsAsc[i].p;
+      const t0 = i === 0 ? start : Math.max(rowsAsc[i].madeAt, start);
+      const t1 =
+        i < rowsAsc.length - 1 ? Math.min(rowsAsc[i + 1].madeAt, end) : end;
+      const duration = Math.max(0, t1 - t0);
+      if (duration <= 0) continue;
+      const err = (p - (m.outcome as number)) * (p - (m.outcome as number));
+      const midpoint = (t0 + t1) / 2;
+      const tau = Math.max(0, end - midpoint);
+      const weight = duration * Math.pow(tau, alpha);
+      weightedSum += err * weight;
+      totalWeight += weight;
+    }
+    if (totalWeight > 0) {
+      sumTimeWeightedError += weightedSum / totalWeight;
+      numTimeWeighted += 1;
+    }
+  }
+
+  return { sumTimeWeightedError, numTimeWeighted };
+}

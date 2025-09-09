@@ -21,6 +21,7 @@ import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
+import ProfileStats from '~/components/profile/ProfileStats';
 
 const TAB_VALUES = ['trades', 'auction', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -145,8 +146,12 @@ export default function PortfolioPage() {
 
   return (
     <div className="container max-w-6xl mx-auto py-32 px-4">
-      <div className="mb-12">
+      <div className="mb-5 lg:mb-10">
         <ProfileHeader address={address} />
+      </div>
+
+      <div className="mb-5">
+        <ProfileStats address={address} />
       </div>
 
       {hasLoadedOnce ? (

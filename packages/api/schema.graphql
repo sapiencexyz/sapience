@@ -3,6 +3,13 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
+type AccuracyRankType {
+  accuracyScore: Float!
+  attester: String!
+  rank: Int
+  totalForecasters: Int!
+}
+
 type AggregateAttestation {
   _avg: AttestationAvgAggregate
   _count: AttestationCountAggregate
@@ -73,6 +80,11 @@ type AggregateTransaction {
   _max: TransactionMaxAggregate
   _min: TransactionMinAggregate
   _sum: TransactionSumAggregate
+}
+
+type AggregatedProfitEntryType {
+  owner: String!
+  totalPnL: Float!
 }
 
 type Attestation {
@@ -1051,6 +1063,7 @@ type Market {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]!
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -1118,6 +1131,7 @@ type MarketCountAggregate {
   question: Int!
   settled: Int!
   settlementPriceD18: Int!
+  similarMarkets: Int!
   startTimestamp: Int!
   startingSqrtPriceX96: Int!
 }
@@ -1148,6 +1162,7 @@ input MarketCountOrderByAggregateInput {
   question: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
+  similarMarkets: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
 }
@@ -1253,6 +1268,7 @@ type MarketGroupBy {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
+  similarMarkets: [String!]
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -1925,6 +1941,7 @@ input MarketOrderByWithAggregationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -1957,6 +1974,7 @@ input MarketOrderByWithRelationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
+  similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
 }
@@ -2138,6 +2156,7 @@ enum MarketScalarFieldEnum {
   question
   settled
   settlementPriceD18
+  similarMarkets
   startTimestamp
   startingSqrtPriceX96
 }
@@ -2171,6 +2190,7 @@ input MarketScalarWhereWithAggregatesInput {
   question: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableWithAggregatesFilter
   startingSqrtPriceX96: StringNullableWithAggregatesFilter
 }
@@ -2238,6 +2258,7 @@ input MarketWhereInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -2274,6 +2295,7 @@ input MarketWhereUniqueInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
+  similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
 }
@@ -2947,7 +2969,15 @@ input PositionWhereUniqueInput {
   transactions: TransactionListRelationFilter
 }
 
+type ProfitRankType {
+  owner: String!
+  rank: Int
+  totalParticipants: Int!
+  totalPnL: Float!
+}
+
 type Query {
+  accuracyRankByAddress(attester: String!): AccuracyRankType!
   aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
   aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
   aggregateMarket(cursor: MarketWhereUniqueInput, orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): AggregateMarket!
@@ -2957,6 +2987,7 @@ type Query {
   aggregateResource(cursor: ResourceWhereUniqueInput, orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): AggregateResource!
   aggregateResourcePrice(cursor: ResourcePriceWhereUniqueInput, orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): AggregateResourcePrice!
   aggregateTransaction(cursor: TransactionWhereUniqueInput, orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): AggregateTransaction!
+  allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
   attestation(where: AttestationWhereUniqueInput!): Attestation
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
@@ -3011,6 +3042,7 @@ type Query {
   markets(cursor: MarketWhereUniqueInput, distinct: [MarketScalarFieldEnum!], orderBy: [MarketOrderByWithRelationInput!], skip: Int, take: Int, where: MarketWhereInput): [Market!]!
   position(where: PositionWhereUniqueInput!): Position
   positions(cursor: PositionWhereUniqueInput, distinct: [PositionScalarFieldEnum!], orderBy: [PositionOrderByWithRelationInput!], skip: Int, take: Int, where: PositionWhereInput): [Position!]!
+  profitRankByAddress(owner: String!): ProfitRankType!
   resource(where: ResourceWhereUniqueInput!): Resource
   resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): CandleAndTimestampType!
   resourcePrice(where: ResourcePriceWhereUniqueInput!): ResourcePrice
@@ -3473,6 +3505,14 @@ input StringNullableFilter {
   not: NestedStringNullableFilter
   notIn: [String!]
   startsWith: String
+}
+
+input StringNullableListFilter {
+  equals: [String!]
+  has: String
+  hasEvery: [String!]
+  hasSome: [String!]
+  isEmpty: Boolean
 }
 
 input StringNullableWithAggregatesFilter {

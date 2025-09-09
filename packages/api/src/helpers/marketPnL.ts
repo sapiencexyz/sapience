@@ -76,16 +76,16 @@ export class MarketPnL {
     try {
       // 1. Fetch positions for the market
       const positions = await prisma.position.findMany({
-        where: {
-          marketId: marketData.id,
-        },
-        include: {
+        where: { marketId: marketData.id },
+        select: {
+          positionId: true,
+          owner: true,
+          collateral: true,
           transaction: {
-            include: {
-              collateral_transfer: true,
+            select: {
+              collateral_transfer: { select: { collateral: true } },
             },
           },
-          market: true,
         },
       });
 
