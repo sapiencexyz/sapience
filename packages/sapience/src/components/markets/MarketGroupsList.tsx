@@ -25,7 +25,10 @@ import {
   useEnrichedMarketGroups,
   useCategories,
 } from '~/hooks/graphql/useMarketGroups';
-import { useSettings } from '~/lib/context/SettingsContext';
+import {
+  useConditions,
+  type ConditionType,
+} from '~/hooks/graphql/useConditions';
 import { FOCUS_AREAS, type FocusArea } from '~/lib/constants/focusAreas';
 import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
@@ -65,7 +68,7 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
 
 // Constants for button classes
 const selectedStatusClass = 'bg-secondary';
-const hoverStatusClass = 'hover:bg-secondary/50';
+const hoverStatusClass = '';
 const DEFAULT_CATEGORY_COLOR = '#71717a';
 
 // Define local interfaces based on expected data shape
@@ -130,29 +133,43 @@ const FocusAreaFilter = ({
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <div className="w-max flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => handleCategoryClick(null)}
-            className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
-              selectedCategorySlug === null
-                ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
-                : `md:px-2 ${hoverStatusClass}`
-            } px-2.5`}
-          >
-            <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
-              <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
-            </div>
-            <div
-              className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
-                selectedCategorySlug === null
-                  ? 'md:ml-1 md:w-auto md:opacity-100'
-                  : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
-              }`}
-              aria-expanded={selectedCategorySlug === null}
+          {selectedCategorySlug === null ? (
+            <button
+              type="button"
+              onClick={() => handleCategoryClick(null)}
+              className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
             >
-              <span className="font-medium pr-1">All Focus Areas</span>
-            </div>
-          </button>
+              <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+                <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+              </div>
+              <div
+                className="ml-1 md:ml-1 md:w-auto md:opacity-100"
+                aria-expanded
+              >
+                <span className="font-medium pr-1">All Focus Areas</span>
+              </div>
+            </button>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => handleCategoryClick(null)}
+                    className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
+                  >
+                    <div className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-zinc-500/20">
+                      <LayoutGridIcon className="w-3 h-3 text-zinc-500" />
+                    </div>
+                    <span className="sr-only">All Focus Areas</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>All Focus Areas</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
           {isLoadingCategories &&
             [...Array(3)].map((_, i) => (
@@ -169,20 +186,20 @@ const FocusAreaFilter = ({
               const categoryColor = styleInfo?.color ?? DEFAULT_CATEGORY_COLOR;
               const displayName = styleInfo?.name || category.name;
 
-              return (
+              return selectedCategorySlug === category.slug ? (
                 <button
                   type="button"
                   key={category.id}
                   onClick={() => handleCategoryClick(category.slug)}
-                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 md:gap-0 md:group-hover:gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap ${
-                    selectedCategorySlug === category.slug
-                      ? `md:px-2.5 ${selectedStatusClass} md:gap-2`
-                      : `md:px-2 ${hoverStatusClass}`
-                  } px-2.5`}
+                  className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2.5 ${selectedStatusClass} px-2.5`}
                 >
                   <div
-                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center"
-                    style={{ backgroundColor: `${categoryColor}1A` }}
+                    className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
+                    style={
+                      {
+                        '--chip-bg': `${categoryColor}1A`,
+                      } as React.CSSProperties
+                    }
                   >
                     {styleInfo?.iconSvg ? (
                       <div style={{ transform: 'scale(0.65)' }}>
@@ -201,16 +218,53 @@ const FocusAreaFilter = ({
                     )}
                   </div>
                   <div
-                    className={`ml-1 overflow-hidden transition-[width,margin,opacity] duration-200 ${
-                      selectedCategorySlug === category.slug
-                        ? 'md:ml-1 md:w-auto md:opacity-100'
-                        : 'md:ml-0 md:w-0 md:opacity-0 md:group-hover:ml-1 md:group-hover:w-auto md:group-hover:opacity-100'
-                    }`}
-                    aria-expanded={selectedCategorySlug === category.slug}
+                    className="ml-1 md:ml-1 md:w-auto md:opacity-100"
+                    aria-expanded
                   >
                     <span className="font-medium pr-1">{displayName}</span>
                   </div>
                 </button>
+              ) : (
+                <TooltipProvider key={category.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={() => handleCategoryClick(category.slug)}
+                        className={`group shrink-0 inline-flex text-left py-1.5 rounded-full items-center gap-2 transition-all duration-200 ease-out text-xs whitespace-nowrap md:px-2 px-2.5`}
+                      >
+                        <div
+                          className="rounded-full p-1 w-7 h-7 flex items-center justify-center bg-[var(--chip-bg)]"
+                          style={
+                            {
+                              '--chip-bg': `${categoryColor}1A`,
+                            } as React.CSSProperties
+                          }
+                        >
+                          {styleInfo?.iconSvg ? (
+                            <div style={{ transform: 'scale(0.65)' }}>
+                              <div
+                                style={{ color: categoryColor }}
+                                dangerouslySetInnerHTML={{
+                                  __html: styleInfo.iconSvg,
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            <TagIcon
+                              className="w-3 h-3"
+                              style={{ color: categoryColor }}
+                            />
+                          )}
+                        </div>
+                        <span className="sr-only">{displayName}</span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>{displayName}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               );
             })}
         </div>
@@ -218,27 +272,27 @@ const FocusAreaFilter = ({
 
       {/* Status on the right (stacks below on small screens) */}
       <div className="w-full md:w-auto flex-shrink-0 mt-2 md:mt-0">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-medium text-muted-foreground mr-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-medium text-muted-foreground mr-1.5">
             Status
           </span>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('active')}
           >
             Active
           </button>
           <button
             type="button"
-            className={`px-3 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
+            className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
             onClick={() => handleStatusFilterClick('all')}
           >
             All
           </button>
 
           <div className="h-4 w-px bg-border mx-1" />
-          <span className="text-xs font-medium text-muted-foreground">
+          <span className="text-xs font-medium text-muted-foreground ml-2">
             Parlay Mode
           </span>
           {parlayFeatureEnabled ? (
@@ -280,8 +334,6 @@ const ForecastingTable = () => {
   const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
     useEnrichedMarketGroups();
   const { data: categories, isLoading: isLoadingCategories } = useCategories();
-  const { adminBaseUrl, defaults } = useSettings();
-  const adminBase = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -321,20 +373,9 @@ const ForecastingTable = () => {
     }
   }, []);
 
-  // RFQ Conditions state
-  interface RFQCondition {
-    id: string;
-    question: string;
-    category?: { id?: number; name?: string; slug?: string } | null;
-    endTime?: number | null;
-    public?: boolean | null;
-    claimStatement?: string | null;
-    description?: string | null;
-    similarMarkets?: string[] | null;
-  }
-  const [rfqConditions, setRfqConditions] = React.useState<RFQCondition[]>([]);
-  const [isLoadingConditions, setIsLoadingConditions] =
-    React.useState<boolean>(false);
+  // RFQ Conditions via GraphQL
+  const { data: allConditions = [], isLoading: isLoadingConditions } =
+    useConditions({ take: 200 });
 
   // State for text filter
   const [searchTerm, setSearchTerm] = React.useState('');
@@ -350,31 +391,7 @@ const ForecastingTable = () => {
     setSelectedCategorySlug(currentCategorySlug);
   }, [searchParams]);
 
-  // Load public RFQ conditions when Parlay Mode is enabled
-  React.useEffect(() => {
-    if (!parlayMode) return;
-    let cancelled = false;
-    const load = async () => {
-      setIsLoadingConditions(true);
-      try {
-        const res = await fetch(`${adminBase}/conditions`, { method: 'GET' });
-        const json = await res.json().catch(() => ({}) as any);
-        const list: RFQCondition[] = Array.isArray(json?.conditions)
-          ? json.conditions
-          : [];
-        const publicOnly = list.filter((c) => c?.public);
-        if (!cancelled) setRfqConditions(publicOnly);
-      } catch {
-        if (!cancelled) setRfqConditions([]);
-      } finally {
-        if (!cancelled) setIsLoadingConditions(false);
-      }
-    };
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [parlayMode, adminBase]);
+  // Conditions fetched via GraphQL; no REST fetch required
 
   // Handler for text filter changes
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -690,10 +707,12 @@ const ForecastingTable = () => {
 
   // ===== Parlay Mode: group RFQ conditions by end date =====
   const filteredRfqConditions = React.useMemo(() => {
-    if (!rfqConditions || rfqConditions.length === 0)
-      return [] as RFQCondition[];
+    const publicConditions: ConditionType[] = (allConditions || []).filter(
+      (c) => c.public
+    );
+    if (publicConditions.length === 0) return [] as ConditionType[];
     const lower = debouncedSearchTerm.toLowerCase();
-    return rfqConditions.filter((c) => {
+    return publicConditions.filter((c) => {
       // filter by category
       if (selectedCategorySlug && c.category?.slug !== selectedCategorySlug) {
         return false;
@@ -710,13 +729,13 @@ const ForecastingTable = () => {
       if (Array.isArray(c.similarMarkets)) haystacks.push(...c.similarMarkets);
       return haystacks.some((h) => h.toLowerCase().includes(lower));
     });
-  }, [rfqConditions, selectedCategorySlug, debouncedSearchTerm]);
+  }, [allConditions, selectedCategorySlug, debouncedSearchTerm]);
 
   const rfqConditionsByDay = React.useMemo(() => {
     if (!filteredRfqConditions || filteredRfqConditions.length === 0)
-      return {} as Record<string, RFQCondition[]>;
+      return {} as Record<string, ConditionType[]>;
     const grouped = filteredRfqConditions.reduce<
-      Record<string, RFQCondition[]>
+      Record<string, ConditionType[]>
     >((acc, c) => {
       const end = typeof c.endTime === 'number' ? c.endTime : 0;
       const dayKey = end > 0 ? getDayKey(end) : 'No end time';
@@ -732,7 +751,7 @@ const ForecastingTable = () => {
     Object.entries(rfqConditionsByDay).forEach(([dayKey, list]) => {
       const withEnds = list.filter(
         (c) => typeof c.endTime === 'number' && c.endTime > 0
-      ) as Array<RFQCondition & { endTime: number }>;
+      ) as Array<ConditionType & { endTime: number }>;
       if (withEnds.length > 0) {
         const earliest = [...withEnds].sort((a, b) => a.endTime - b.endTime)[0]
           .endTime;

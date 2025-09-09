@@ -64,6 +64,8 @@ export const useCategories = () => {
   });
 };
 
+// (Conditions hook moved to hooks/graphql/useConditions.ts)
+
 export interface EnrichedMarketGroup
   extends Omit<MarketGroupType, 'category' | 'markets'> {
   category: CategoryType & { iconSvg?: string; color?: string };
@@ -285,9 +287,10 @@ export const getEnrichedMarketGroups = async () => {
           createdAt: new Date().toISOString(),
           resources: [],
           marketGroups: [],
+          conditions: [],
           iconSvg: DEFAULT_FOCUS_AREA.iconSvg,
           color: '#9CA3AF', // Tailwind gray-400
-        };
+        } as unknown as CategoryType & { iconSvg?: string; color?: string };
       }
 
       const mappedMarkets = (marketGroup.markets || []).map(

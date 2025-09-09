@@ -18,13 +18,13 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Copy } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import DataTable from './data-table';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useMarketGroups';
-import { useSettings } from '~/lib/context/SettingsContext';
+import { useConditions } from '~/hooks/graphql/useConditions';
 
 type RFQRow = {
   id?: string;
@@ -46,11 +46,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
   const { toast } = useToast();
   const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
-  const { adminBaseUrl, defaults } = useSettings();
-  const base = adminBaseUrl ?? `${defaults.adminBaseUrl}`;
-
-  const [rows, setRows] = useState<RFQRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const { data: conditions, isLoading, refetch } = useConditions({ take: 200 });
 
   const [question, setQuestion] = useState('');
   const [categorySlug, setCategorySlug] = useState<string>('');
@@ -186,35 +182,18 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
     [toast]
   );
 
-  const loadRows = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`${base}/conditions`, { method: 'GET' });
-      const data = (await response.json().catch(() => ({}))) as
-        | { conditions: RFQRow[] }
-        | undefined;
-      const mapped = (data?.conditions || []).map((c: any) => ({
-        id: c.id,
-        question: c.question,
-        category: c.category,
-        endTime: c.endTime,
-        public: c.public,
-        claimStatement: c.claimStatement,
-        description: c.description,
-        similarMarketUrls: c.similarMarkets,
-      }));
-      setRows(mapped);
-    } catch (e) {
-      console.error('Failed to load conditions', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void loadRows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const rows: RFQRow[] = useMemo(() => {
+    return (conditions || []).map((c) => ({
+      id: c.id,
+      question: c.question,
+      category: c.category || undefined,
+      endTime: c.endTime,
+      public: c.public,
+      claimStatement: c.claimStatement,
+      description: c.description,
+      similarMarketUrls: c.similarMarkets,
+    }));
+  }, [conditions]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -232,7 +211,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
           similarMarkets,
         };
         await putJson<RFQRow>(`/conditions/${editingId}`, body);
-        await loadRows();
+        await refetch();
         toast({ title: 'Saved', description: 'Condition updated' });
         setCreateOpen(false);
         resetForm();
@@ -248,7 +227,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
         };
         await postJson<RFQRow>(`/conditions`, body);
         // Refresh list to reflect server state and close the modal
-        await loadRows();
+        await refetch();
         toast({ title: 'Created', description: 'Condition created' });
         setCreateOpen(false);
         resetForm();
@@ -369,7 +348,7 @@ const RFQTab = ({ createOpen, setCreateOpen }: RFQTabProps) => {
 
       <div>
         <DataTable columns={columns} data={rows} />
-        {loading ? (
+        {isLoading ? (
           <p className="text-sm text-muted-foreground mt-2">Loading...</p>
         ) : null}
       </div>

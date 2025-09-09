@@ -4,25 +4,17 @@ import { keccak256, toHex, concatHex } from 'viem';
 
 const router = Router();
 
-// GET /admin/conditions - list conditions (basic pagination)
-router.get('/', async (req: Request, res: Response) => {
+function isHttpUrl(value: unknown): boolean {
+  if (typeof value !== 'string') return false;
   try {
-    const take = Math.min(parseInt(String(req.query.take ?? '50'), 10), 200);
-    const skip = parseInt(String(req.query.skip ?? '0'), 10);
-
-    const conditions = await prisma.condition.findMany({
-      take: Number.isNaN(take) ? 50 : take,
-      skip: Number.isNaN(skip) ? 0 : skip,
-      orderBy: { createdAt: 'desc' },
-      include: { category: true },
-    });
-
-    return res.json({ conditions });
-  } catch (error: unknown) {
-    console.error('Error listing conditions:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
   }
-});
+}
+
+// GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
 
 // POST /admin/conditions - create a condition
 router.post('/', async (req: Request, res: Response) => {
@@ -69,6 +61,25 @@ router.post('/', async (req: Request, res: Response) => {
     const endTimeInt = parseInt(String(endTime), 10);
     if (Number.isNaN(endTimeInt)) {
       return res.status(400).json({ message: 'Invalid endTime' });
+    }
+
+    // Enforce endTime is in the future (Unix seconds)
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (endTimeInt <= nowSeconds) {
+      return res
+        .status(400)
+        .json({ message: 'endTime must be a future Unix timestamp (seconds)' });
+    }
+
+    // Validate similarMarkets URLs if provided
+    if (
+      typeof similarMarkets !== 'undefined' &&
+      (!Array.isArray(similarMarkets) ||
+        !similarMarkets.every((s) => typeof s === 'string' && isHttpUrl(s)))
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'similarMarkets must be HTTP(S) URLs' });
     }
 
     // Solidity equivalent: keccak256(abi.encodePacked(claimStatement, ":", uint256(endTime)))
@@ -182,6 +193,17 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 
     try {
+      // Validate similarMarkets URLs if provided
+      if (
+        typeof similarMarkets !== 'undefined' &&
+        (!Array.isArray(similarMarkets) ||
+          !similarMarkets.every((s) => typeof s === 'string' && isHttpUrl(s)))
+      ) {
+        return res
+          .status(400)
+          .json({ message: 'similarMarkets must be HTTP(S) URLs' });
+      }
+
       const condition = await prisma.condition.update({
         where: { id },
         data: {
@@ -214,30 +236,6 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 });
 
-// DELETE /admin/conditions/:id - delete by id
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-
-    // Validate 0x-prefixed 32-byte hex string
-    if (!/^0x[0-9a-fA-F]{64}$/.test(id)) {
-      return res.status(400).json({ message: 'Invalid id format' });
-    }
-
-    try {
-      await prisma.condition.delete({ where: { id } });
-      return res.status(204).send();
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      if (message.includes('Record to delete does not exist')) {
-        return res.status(404).json({ message: 'Condition not found' });
-      }
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-  } catch (error: unknown) {
-    console.error('Error deleting condition:', error);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
-});
+// DELETE route removed per product decision; conditions are not deletable via API
 
 export { router };
