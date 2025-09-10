@@ -208,12 +208,13 @@ const ForecastContent = () => {
     return marketStatusElement;
   }
 
-  const availableMarkets =
+  let availableMarkets =
     marketData?.marketGroup?.markets?.filter(
       (
         market: GqlMarketType // market.id is string, numericMarketId is number | null, market.marketId is number
       ) => market.endTimestamp && market.endTimestamp * 1000 > Date.now()
     ) ?? [];
+  availableMarkets = availableMarkets.sort((a, b) => a.marketId - b.marketId);
 
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-20">
