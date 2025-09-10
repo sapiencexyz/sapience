@@ -22,6 +22,14 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type AccuracyRankType = {
+  __typename?: 'AccuracyRankType';
+  accuracyScore: Scalars['Float']['output'];
+  attester: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalForecasters: Scalars['Int']['output'];
+};
+
 export type AggregateAttestation = {
   __typename?: 'AggregateAttestation';
   _avg?: Maybe<AttestationAvgAggregate>;
@@ -3161,6 +3169,7 @@ export type ProfitRankType = {
 
 export type Query = {
   __typename?: 'Query';
+  accuracyRankByAddress: AccuracyRankType;
   aggregateAttestation: AggregateAttestation;
   aggregateCategory: AggregateCategory;
   aggregateMarket: AggregateMarket;
@@ -3236,6 +3245,11 @@ export type Query = {
   totalVolumeByMarket: Scalars['Float']['output'];
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
+};
+
+
+export type QueryAccuracyRankByAddressArgs = {
+  attester: Scalars['String']['input'];
 };
 
 
