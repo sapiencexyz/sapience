@@ -25,7 +25,7 @@ const StatTile = ({
 }) => {
   return (
     <Card className="border-border/70">
-      <CardContent className="px-3 py-2 md:px-4 md:py-3">
+      <CardContent className="p-5">
         <div className="flex items-center gap-3">
           {Icon ? (
             <Icon
