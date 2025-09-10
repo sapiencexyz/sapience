@@ -22,6 +22,14 @@ export type Scalars = {
   JSON: { input: any; output: any; }
 };
 
+export type AccuracyRankType = {
+  __typename?: 'AccuracyRankType';
+  accuracyScore: Scalars['Float']['output'];
+  attester: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalForecasters: Scalars['Int']['output'];
+};
+
 export type AggregateAttestation = {
   __typename?: 'AggregateAttestation';
   _avg?: Maybe<AttestationAvgAggregate>;
@@ -110,6 +118,12 @@ export type AggregateTransaction = {
   _max?: Maybe<TransactionMaxAggregate>;
   _min?: Maybe<TransactionMinAggregate>;
   _sum?: Maybe<TransactionSumAggregate>;
+};
+
+export type AggregatedProfitEntryType = {
+  __typename?: 'AggregatedProfitEntryType';
+  owner: Scalars['String']['output'];
+  totalPnL: Scalars['Float']['output'];
 };
 
 export type Attestation = {
@@ -3403,8 +3417,17 @@ export type PositionWhereUniqueInput = {
   transactions?: InputMaybe<TransactionListRelationFilter>;
 };
 
+export type ProfitRankType = {
+  __typename?: 'ProfitRankType';
+  owner: Scalars['String']['output'];
+  rank?: Maybe<Scalars['Int']['output']>;
+  totalParticipants: Scalars['Int']['output'];
+  totalPnL: Scalars['Float']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
+  accuracyRankByAddress: AccuracyRankType;
   aggregateAttestation: AggregateAttestation;
   aggregateCategory: AggregateCategory;
   aggregateCondition: AggregateCondition;
@@ -3415,6 +3438,7 @@ export type Query = {
   aggregateResource: AggregateResource;
   aggregateResourcePrice: AggregateResourcePrice;
   aggregateTransaction: AggregateTransaction;
+  allTimeProfitLeaderboard: Array<AggregatedProfitEntryType>;
   attestation?: Maybe<Attestation>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
@@ -3475,6 +3499,7 @@ export type Query = {
   markets: Array<Market>;
   position?: Maybe<Position>;
   positions: Array<Position>;
+  profitRankByAddress: ProfitRankType;
   resource?: Maybe<Resource>;
   resourceCandles: CandleAndTimestampType;
   resourcePrice?: Maybe<ResourcePrice>;
@@ -3485,6 +3510,11 @@ export type Query = {
   totalVolumeByMarket: Scalars['Float']['output'];
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
+};
+
+
+export type QueryAccuracyRankByAddressArgs = {
+  attester: Scalars['String']['input'];
 };
 
 
@@ -4080,6 +4110,11 @@ export type QueryPositionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<PositionWhereInput>;
+};
+
+
+export type QueryProfitRankByAddressArgs = {
+  owner: Scalars['String']['input'];
 };
 
 

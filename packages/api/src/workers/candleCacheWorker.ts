@@ -3,17 +3,23 @@ import { initializeDataSource } from '../db';
 import { initializeFixtures } from '../fixtures';
 import { CandleCacheBuilder } from '../candle-cache/candleCacheBuilder';
 import { createResilientProcess } from '../utils/utils';
+import { PnlAccuracyReconciler } from '../precompute/reconciler';
 
 async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeDataSource();
   await initializeFixtures();
 
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
+  const reconciler = PnlAccuracyReconciler.getInstance();
 
   while (true) {
     try {
       console.log(`Running candle cache update at ${new Date().toISOString()}`);
       await candleCacheBuilder.buildCandles();
+      // After candle build, run synchronous precompute reconciliation
+      console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
+      await reconciler.runOnce();
+      console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
       console.log(
         `Candle cache update completed at ${new Date().toISOString()}`
       );
