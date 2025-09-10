@@ -143,8 +143,8 @@ function PositionValueCell({ position }: { position: PositionType }) {
   }
 
   return (
-    <div className="relative lg:top-2">
-      <div>
+    <div>
+      <div className="whitespace-nowrap">
         <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
         {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
         <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -222,13 +222,23 @@ export default function TraderPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border">
         {/* Table Header (desktop) */}
-        <div className="hidden md:grid md:grid-cols-12 items-center px-4 py-4 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+        <div className="hidden md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-1 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {displayQuestionColumn && (
-            <div className="md:col-span-3">Prediction Market</div>
+            <div className="md:col-span-5">Prediction Market</div>
           )}
-          <div className="md:col-span-2">Wager</div>
-          <div className="md:col-span-2">Max Payout</div>
-          <div className="md:col-span-2 flex items-center gap-1">
+          <div
+            className={
+              displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-5'
+            }
+          >
+            Wager
+          </div>
+          <div
+            className={
+              (displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-6') +
+              ' flex items-center gap-1'
+            }
+          >
             <span>Current Position Value</span>
             <TooltipProvider>
               <Tooltip>
@@ -242,6 +252,20 @@ export default function TraderPositionsTable({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+          </div>
+          {/* Header actions sizer to align auto-width column with row actions */}
+          <div className="md:col-start-12 md:col-span-1 md:justify-self-end">
+            <div className="invisible flex gap-3" aria-hidden>
+              <Button size="sm" variant="outline">
+                Settle
+              </Button>
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              >
+                Share
+              </button>
+            </div>
           </div>
         </div>
         {sortedPositions.map((position: PositionType) => {
@@ -313,9 +337,9 @@ function TraderPositionRow({
 }: TraderPositionRowProps) {
   return (
     <div className="px-4 py-4 md:py-4 border-b last:border-b-0">
-      <div className="flex flex-col gap-3 md:grid md:grid-cols-12 md:items-center">
+      <div className="flex flex-col gap-3 md:grid md:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] md:items-center">
         {displayQuestionColumn && (
-          <div className="md:col-span-3">
+          <div className="md:col-span-5">
             {(() => {
               const chainShortName = position.market?.marketGroup?.chainId
                 ? getChainShortName(position.market.marketGroup.chainId)
@@ -422,31 +446,41 @@ function TraderPositionRow({
           <>
             {/* Removed Position Size cell as it's displayed under the question */}
 
-            <div className="md:col-span-2">
+            <div
+              className={
+                displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-5'
+              }
+            >
               <div className="text-xs text-muted-foreground md:hidden">
                 Wager
               </div>
-              <NumberDisplay
-                value={Number(formatEther(BigInt(position.collateral || '0')))}
-              />{' '}
-              {position.market?.marketGroup?.collateralSymbol || 'Unknown'}
-            </div>
-
-            <div className="md:col-span-2">
-              <div className="text-xs text-muted-foreground md:hidden">
-                Max Payout
+              <div>
+                <div className="whitespace-nowrap">
+                  <NumberDisplay
+                    value={Number(
+                      formatEther(BigInt(position.collateral || '0'))
+                    )}
+                  />{' '}
+                  {position.market?.marketGroup?.collateralSymbol || 'Unknown'}
+                </div>
+                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                  To Win: <MaxPayoutCell position={position} />
+                </div>
               </div>
-              <MaxPayoutCell position={position} />
             </div>
 
-            <div className="md:col-span-2">
+            <div
+              className={
+                displayQuestionColumn ? 'md:col-span-3' : 'md:col-span-6'
+              }
+            >
               <div className="text-xs text-muted-foreground md:hidden">
                 Position Value
               </div>
               <PositionValueCell position={position} />
             </div>
 
-            <div className="mt-3 md:mt-0 md:col-span-3 md:col-start-10 md:justify-self-end">
+            <div className="mt-3 md:mt-0 md:col-span-1 md:col-start-12 md:justify-self-end">
               <div className="flex gap-3 justify-start md:justify-end">
                 {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
                 {isExpired && !isPositionSettled ? (
