@@ -200,7 +200,7 @@ export default function PortfolioPage() {
         )
       ) : (
         <div className="flex justify-center py-24">
-          <LottieLoader />
+          <LottieLoader width={32} height={32} />
         </div>
       )}
     </div>

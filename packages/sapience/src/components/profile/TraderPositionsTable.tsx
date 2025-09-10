@@ -144,7 +144,7 @@ function PositionValueCell({ position }: { position: PositionType }) {
 
   return (
     <div className="relative lg:top-2">
-      <div>
+      <div className="whitespace-nowrap">
         <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
         {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
         <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
