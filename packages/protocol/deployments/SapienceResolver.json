@@ -1,0 +1,210 @@
+{
+  "address": "0x36E6D01b78f2e83Ed96d7E523422Ddb5A8Dc783f",
+  "abi": [
+    {
+      "type": "constructor",
+      "inputs": [
+        {
+          "name": "_config",
+          "type": "tuple",
+          "internalType": "struct PredictionMarketSapienceResolver.Settings",
+          "components": [
+            {
+              "name": "maxPredictionMarkets",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
+      "name": "config",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "maxPredictionMarkets",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "decodePredictionOutcomes",
+      "inputs": [
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple[]",
+          "internalType": "struct PredictionMarketSapienceResolver.PredictedOutcome[]",
+          "components": [
+            {
+              "name": "market",
+              "type": "tuple",
+              "internalType": "struct PredictionMarketSapienceResolver.MarketIdentifier",
+              "components": [
+                {
+                  "name": "marketGroup",
+                  "type": "address",
+                  "internalType": "address"
+                },
+                {
+                  "name": "marketId",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                }
+              ]
+            },
+            {
+              "name": "prediction",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "encodePredictionOutcomes",
+      "inputs": [
+        {
+          "name": "predictedOutcomes",
+          "type": "tuple[]",
+          "internalType": "struct PredictionMarketSapienceResolver.PredictedOutcome[]",
+          "components": [
+            {
+              "name": "market",
+              "type": "tuple",
+              "internalType": "struct PredictionMarketSapienceResolver.MarketIdentifier",
+              "components": [
+                {
+                  "name": "marketGroup",
+                  "type": "address",
+                  "internalType": "address"
+                },
+                {
+                  "name": "marketId",
+                  "type": "uint256",
+                  "internalType": "uint256"
+                }
+              ]
+            },
+            {
+              "name": "prediction",
+              "type": "bool",
+              "internalType": "bool"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "stateMutability": "pure"
+    },
+    {
+      "type": "function",
+      "name": "resolvePrediction",
+      "inputs": [
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isValid",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "error",
+          "type": "uint8",
+          "internalType": "enum IPredictionMarketResolver.Error"
+        },
+        {
+          "name": "makerWon",
+          "type": "bool",
+          "internalType": "bool"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "validatePredictionMarkets",
+      "inputs": [
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "internalType": "bytes"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "isValid",
+          "type": "bool",
+          "internalType": "bool"
+        },
+        {
+          "name": "error",
+          "type": "uint8",
+          "internalType": "enum IPredictionMarketResolver.Error"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "error",
+      "name": "InvalidMarketGroupAddress",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MarketIsNotYesNoMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "MustHaveAtLeastOneMarket",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TooManyMarkets",
+      "inputs": []
+    }
+  ],
+  "constructorArgs": [
+    [
+      "5"
+    ]
+  ],
+  "linkedLibraries": {},
+  "deployTxnHash": "0x6ffd3a2d16a34d9c43d70e283f79db642ff2392de62965d7bd4c8077aa7ebe3d",
+  "deployTxnBlockNumber": "377707280",
+  "deployTimestamp": "1757514861",
+  "sourceName": "src/predictionMarket/resolvers/PredictionMarketSapienceResolver.sol",
+  "contractName": "PredictionMarketSapienceResolver",
+  "deployedOn": "deploy.SapienceResolver",
+  "highlight": true,
+  "gasUsed": 944292,
+  "gasCost": "13355000"
+}
