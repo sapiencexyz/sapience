@@ -80,6 +80,10 @@ export class PnlAccuracyReconciler {
         await updateTwErrorForMarket(address, marketId);
       }
     }
+    // Summary log for accuracy updates
+    console.log(
+      `[LEADERBOARDS] Accuracy: processed ${newSettlements.length} settlement events`
+    );
     if (newSettlements.length > 0) {
       const maxId = newSettlements[newSettlements.length - 1].id;
       await setParam(
@@ -128,6 +132,10 @@ export class PnlAccuracyReconciler {
     }
     const keys = Array.from(keysMap.values());
     if (keys.length > 0) await updateRealizedPnlForKeys(keys);
+    // Summary log for PnL updates
+    console.log(
+      `[LEADERBOARDS] PnL: processed ${keys.length} owner-market keys`
+    );
     if (transfers.length > 0) {
       const maxId = transfers[transfers.length - 1].id;
       await setParam(

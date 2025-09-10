@@ -17,7 +17,9 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
       console.log(`Running candle cache update at ${new Date().toISOString()}`);
       await candleCacheBuilder.buildCandles();
       // After candle build, run synchronous precompute reconciliation
+      console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
       await reconciler.runOnce();
+      console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
       console.log(
         `Candle cache update completed at ${new Date().toISOString()}`
       );
