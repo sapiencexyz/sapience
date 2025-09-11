@@ -16,20 +16,18 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
 
   while (true) {
     try {
-      console.log(`Running candle cache update at ${new Date().toISOString()}`);
+      console.log(`Running update at ${new Date().toISOString()}`);
       await candleCacheBuilder.buildCandles();
       // After candle build, run synchronous precompute reconciliation
-      console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
+      console.log('[WORKER] Starting PnL/accuracy reconciliation...');
       await pnlAccuracyReconciler.runOnce();
-      console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
-      console.log('[CANDLE_CACHE] Starting MarketEvent reconciliation...');
+      console.log('[WORKER] PnL/accuracy reconciliation completed');
+      console.log('[WORKER] Starting MarketEvent reconciliation...');
       await marketEventReconciler.runOnce();
-      console.log('[CANDLE_CACHE] MarketEvent reconciliation completed');
-      console.log(
-        `Candle cache update completed at ${new Date().toISOString()}`
-      );
+      console.log('[WORKER] MarketEvent reconciliation completed');
+      console.log(`Update completed at ${new Date().toISOString()}`);
     } catch (error) {
-      console.error('Error in candle cache update:', error);
+      console.error('Error in update:', error);
     }
 
     // Wait for the specified interval
