@@ -6,9 +6,10 @@ import {
   ObjectType,
   Field,
   Float,
+  Directive,
 } from 'type-graphql';
 import prisma from '../../db';
-import { computeTimeWeightedForAttesterMarketValue } from '../../helpers/scoringService';
+import { TtlCache } from '../../utils/ttlCache';
 
 @ObjectType()
 class ForecasterScoreType {
@@ -27,63 +28,60 @@ class ForecasterScoreType {
   @Field(() => Float)
   sumTimeWeightedError!: number;
 
-  // Higher is better. Defined as 1 / (horizon-weighted mean error),
-  // falling back to 1 / (mean error) when horizon weighting is unavailable.
   @Field(() => Float)
   accuracyScore!: number;
 }
 
+@ObjectType()
+class AccuracyRankType {
+  @Field(() => String)
+  attester!: string;
+
+  @Field(() => Float)
+  accuracyScore!: number;
+
+  @Field(() => Int, { nullable: true })
+  rank!: number | null;
+
+  @Field(() => Int)
+  totalForecasters!: number;
+}
+
 @Resolver()
 export class ScoreResolver {
+  // Keep a small TTL cache to protect DB on bursts
+  private static accuracyCache = new TtlCache<string, number>({
+    ttlMs: 60_000,
+    maxSize: 5000,
+  });
+
   @Query(() => ForecasterScoreType, { nullable: true })
+  @Directive('@cacheControl(maxAge: 60)')
   async forecasterScore(
     @Arg('attester', () => String) attester: string
   ): Promise<ForecasterScoreType | null> {
     const a = attester.toLowerCase();
 
-    const agg = await prisma.attestationScore.groupBy({
-      by: ['attester'],
-      where: { attester: a, errorSquared: { not: null } },
-      _count: { _all: true },
-      _sum: { errorSquared: true },
-    });
-    if (agg.length === 0) return null;
-    const numScored = agg[0]._count._all ?? 0;
-    const sumErrorSquared = (agg[0]._sum.errorSquared as number | null) ?? 0;
-    const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
-
-    // Compute time-weighted across markets on the fly
-    const markets = await prisma.attestationScore.findMany({
+    // Aggregate TW error across markets for this attester
+    const rows = await prisma.attesterMarketTwError.findMany({
       where: { attester: a },
-      distinct: ['marketAddress', 'marketId'],
-      select: { marketAddress: true, marketId: true },
+      select: { twError: true },
     });
-    let sumTimeWeightedError = 0;
-    let numTimeWeighted = 0;
-    for (const m of markets) {
-      const v = await computeTimeWeightedForAttesterMarketValue(
-        m.marketAddress,
-        m.marketId,
-        a
-      );
-      if (v != null) {
-        sumTimeWeightedError += v;
-        numTimeWeighted += 1;
-      }
-    }
-    // Prefer horizon-weighted mean error when available
-    const horizonWeightedMeanError =
-      numTimeWeighted > 0 ? sumTimeWeightedError / numTimeWeighted : meanError;
+    if (rows.length === 0) return null;
 
-    const accuracyScore =
-      horizonWeightedMeanError && horizonWeightedMeanError > 0
-        ? 1 / horizonWeightedMeanError
-        : 0;
+    const numTimeWeighted = rows.length;
+    const sumTimeWeightedError = rows.reduce(
+      (acc, r) => acc + (r.twError || 0),
+      0
+    );
+    const mean = sumTimeWeightedError / numTimeWeighted;
+    const accuracyScore = mean > 0 ? 1 / mean : 0;
 
+    // Legacy fields retained for schema compatibility
     return {
       attester: a,
-      numScored,
-      sumErrorSquared,
+      numScored: 0,
+      sumErrorSquared: 0,
       numTimeWeighted,
       sumTimeWeightedError,
       accuracyScore,
@@ -91,67 +89,67 @@ export class ScoreResolver {
   }
 
   @Query(() => [ForecasterScoreType])
+  @Directive('@cacheControl(maxAge: 60)')
   async topForecasters(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // Base aggregation to compute mean error as a fallback
-    const agg = await prisma.attestationScore.groupBy({
+    // Compute 1/avg(tw_error) using SQL aggregation
+    const agg = await prisma.attesterMarketTwError.groupBy({
       by: ['attester'],
-      where: { errorSquared: { not: null } },
-      _count: { _all: true },
-      _sum: { errorSquared: true },
+      _avg: { twError: true },
     });
 
-    // Compute time-weighted across markets per attester
-    const results: ForecasterScoreType[] = [];
-    for (const row of agg) {
-      const a = row.attester as string;
-      const numScored = row._count._all ?? 0;
-      const sumErrorSquared = (row._sum.errorSquared as number | null) ?? 0;
-      const meanError = numScored > 0 ? sumErrorSquared / numScored : null;
+    const results = agg.map((row) => {
+      const mean = (row._avg.twError as number | null) ?? null;
+      const score = mean && mean > 0 ? 1 / mean : 0;
+      return {
+        attester: (row.attester as string).toLowerCase(),
+        numScored: 0,
+        sumErrorSquared: 0,
+        numTimeWeighted: 0,
+        sumTimeWeightedError: 0,
+        accuracyScore: score,
+      } as ForecasterScoreType;
+    });
 
-      const markets = await prisma.attestationScore.findMany({
-        where: { attester: a },
-        distinct: ['marketAddress', 'marketId'],
-        select: { marketAddress: true, marketId: true },
-      });
-      let sumTimeWeightedError = 0;
-      let numTimeWeighted = 0;
-      for (const m of markets) {
-        const v = await computeTimeWeightedForAttesterMarketValue(
-          m.marketAddress,
-          m.marketId,
-          a
-        );
-        if (v != null) {
-          sumTimeWeightedError += v;
-          numTimeWeighted += 1;
-        }
-      }
-      const horizonWeightedMeanError =
-        numTimeWeighted > 0
-          ? sumTimeWeightedError / numTimeWeighted
-          : meanError;
-
-      const accuracyScore =
-        horizonWeightedMeanError && horizonWeightedMeanError > 0
-          ? 1 / horizonWeightedMeanError
-          : 0;
-
-      results.push({
-        attester: a,
-        numScored,
-        sumErrorSquared,
-        numTimeWeighted,
-        sumTimeWeightedError,
-        accuracyScore,
-      });
-    }
-
-    // Order by accuracyScore desc (higher is better)
     results.sort((a, b) => b.accuracyScore - a.accuracyScore);
     return results.slice(0, capped);
+  }
+
+  @Query(() => AccuracyRankType)
+  @Directive('@cacheControl(maxAge: 60)')
+  async accuracyRankByAddress(
+    @Arg('attester', () => String) attester: string
+  ): Promise<AccuracyRankType> {
+    const target = attester.toLowerCase();
+
+    const agg = await prisma.attesterMarketTwError.groupBy({
+      by: ['attester'],
+      _avg: { twError: true },
+    });
+
+    const scores = agg.map((row) => {
+      const mean = (row._avg.twError as number | null) ?? null;
+      const accuracyScore = mean && mean > 0 ? 1 / mean : 0;
+      return {
+        attester: (row.attester as string).toLowerCase(),
+        accuracyScore,
+      };
+    });
+
+    scores.sort((x, y) => y.accuracyScore - x.accuracyScore);
+    const totalForecasters = scores.length;
+    const idx = scores.findIndex((s) => s.attester === target);
+    const rank = idx >= 0 ? idx + 1 : null;
+    const accuracyScore = idx >= 0 ? scores[idx].accuracyScore : 0;
+
+    return {
+      attester: target,
+      accuracyScore,
+      rank,
+      totalForecasters,
+    } as AccuracyRankType;
   }
 }

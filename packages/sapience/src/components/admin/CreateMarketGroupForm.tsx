@@ -322,6 +322,8 @@ const CreateMarketGroupForm = () => {
     setOwner(defaultOwner);
   }, [currentChainId, connectedAddress]);
 
+  const { postJson } = useAdminApi();
+
   const handleMarketParamsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setMarketParams((prev) => ({ ...prev, [name]: value }));
@@ -493,7 +495,6 @@ const CreateMarketGroupForm = () => {
   };
 
   const createCombinedMarketGroup = async (payload: CreateCombinedPayload) => {
-    const { postJson } = useAdminApi();
     return postJson(`/marketGroups`, payload);
   };
 

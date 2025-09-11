@@ -16,16 +16,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@sapience/ui/components/ui/select';
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from '@sapience/ui/components/ui/tabs';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useResources } from '@sapience/ui/hooks/useResources';
 import { Plus, RefreshCw, Loader2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import CategoryFilter from './CategoryFilter';
 import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
+import RFQTab from './RFQTab';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -442,13 +448,13 @@ const Admin = () => {
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
     adminBaseUrl ?? defaults.adminBaseUrl
   );
   const [adminError, setAdminError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'liquid' | 'rfq'>('liquid');
 
   const isHttpUrl = (value: string) => {
     try {
@@ -472,26 +478,6 @@ const Admin = () => {
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
-          <Button asChild>
-            <a href="/admin/create">
-              <Plus className="mr-1 h-4 w-4" />
-              New Market Group
-            </a>
-          </Button>
-          <Dialog open={reindexDialogOpen} onOpenChange={setReindexDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline">
-                <RefreshCw className="mr-1 h-4 w-4" />
-                Reindex Factory
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="overflow-hidden max-w-md">
-              <DialogHeader>
-                <DialogTitle>Reindex Market Group Factory</DialogTitle>
-              </DialogHeader>
-              <ReindexFactoryForm />
-            </DialogContent>
-          </Dialog>
           <Dialog open={indexResourceOpen} onOpenChange={setIndexResourceOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -611,32 +597,69 @@ const Admin = () => {
           </Dialog>
         </div>
       </header>
-      <div>
-        {isLoading && (
-          <div className="flex justify-center items-center py-8">
-            <LottieLoader width={32} height={32} />
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as 'liquid' | 'rfq')}
+        className="w-full"
+      >
+        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <TabsList>
+            <TabsTrigger value="liquid">Liquid Markets</TabsTrigger>
+            <TabsTrigger value="rfq">RFQ/Auction Settlement</TabsTrigger>
+          </TabsList>
+          {activeTab === 'liquid' ? (
+            <div className="md:ml-auto flex items-center gap-2">
+              <Button size="sm" asChild>
+                <a href="/admin/create">
+                  <Plus className="mr-1 h-4 w-4" />
+                  New Market Group
+                </a>
+              </Button>
+              <Dialog
+                open={reindexDialogOpen}
+                onOpenChange={setReindexDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <RefreshCw className="mr-1 h-4 w-4" />
+                    Reindex Factory
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="overflow-hidden max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Reindex Market Group Factory</DialogTitle>
+                  </DialogHeader>
+                  <ReindexFactoryForm />
+                </DialogContent>
+              </Dialog>
+            </div>
+          ) : null}
+        </div>
+        <TabsContent value="liquid">
+          <div>
+            {isLoading && (
+              <div className="flex justify-center items-center py-8">
+                <LottieLoader width={32} height={32} />
+              </div>
+            )}
+            {error && (
+              <p className="text-red-500">
+                Error loading markets: {error.message}
+              </p>
+            )}
+            {sortedMarketGroups && sortedMarketGroups.length > 0 ? (
+              <>
+                <DataTable columns={columns} data={sortedMarketGroups} />
+              </>
+            ) : (
+              !isLoading && <p>No active market groups found.</p>
+            )}
           </div>
-        )}
-        {error && (
-          <p className="text-red-500">Error loading markets: {error.message}</p>
-        )}
-        {sortedMarketGroups && sortedMarketGroups.length > 0 ? (
-          <>
-            <CategoryFilter
-              marketGroups={sortedMarketGroups}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-            />
-            <DataTable
-              columns={columns}
-              data={sortedMarketGroups}
-              categoryFilter={selectedCategory}
-            />
-          </>
-        ) : (
-          !isLoading && <p>No active market groups found.</p>
-        )}
-      </div>
+        </TabsContent>
+        <TabsContent value="rfq">
+          <RFQTab />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

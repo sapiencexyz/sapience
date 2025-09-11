@@ -31,7 +31,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Info } from 'lucide-react';
+import { Info, BarChart2, Target } from 'lucide-react';
 import ProfitCell from './ProfitCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
@@ -89,18 +89,28 @@ const Leaderboard = () => {
 
   return (
     <div className="container max-w-[480px] mx-auto py-32">
-      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-5">
+      <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6">
         Leaderboard
       </h1>
       <Tabs value={tabValue} onValueChange={handleTabChange} className="w-full">
-        <div className="mb-6">
+        <div className="mb-3">
           <TabsList>
-            <TabsTrigger value="pnl">Profit</TabsTrigger>
-            <TabsTrigger value="accuracy">Accuracy</TabsTrigger>
+            <TabsTrigger value="pnl">
+              <span className="inline-flex items-center gap-1.5">
+                <BarChart2 className="w-4 h-4" />
+                Profit
+              </span>
+            </TabsTrigger>
+            <TabsTrigger value="accuracy">
+              <span className="inline-flex items-center gap-1.5">
+                <Target className="w-4 h-4" />
+                Accuracy
+              </span>
+            </TabsTrigger>
           </TabsList>
         </div>
         <TabsContent value="pnl">
-          <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
+          <p className="text-xl font-heading font-normal mb-6 text-muted-foreground leading-relaxed">
             Realized profit ranks{' '}
             <Link
               href="/markets"
@@ -113,7 +123,7 @@ const Leaderboard = () => {
           <PnLLeaderboard />
         </TabsContent>
         <TabsContent value="accuracy">
-          <p className="text-xl font-heading font-normal mb-8 text-muted-foreground leading-relaxed">
+          <p className="text-xl font-heading font-normal mb-6 text-muted-foreground leading-relaxed">
             The accuracy score ranks{' '}
             <Link
               href="/forecast"

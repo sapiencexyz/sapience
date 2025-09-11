@@ -2,6 +2,7 @@ import { Toaster } from '@sapience/ui/components/ui/toaster';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
+import { Suspense } from 'react';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -12,6 +13,7 @@ import PasswordScrim from '~/components/shared/PasswordScrim';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
 import { ChatProvider } from '~/lib/context/ChatContext';
 import ChatWidget from '~/components/shared/ChatWidget';
+import FloatingChatButton from '~/components/shared/FloatingChatButton';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -116,6 +118,11 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <GlobalLoader />
               <Layout>{children}</Layout>
               <Toaster />
+              <div className="fixed bottom-5 right-5 z-[55]">
+                <Suspense fallback={null}>
+                  <FloatingChatButton />
+                </Suspense>
+              </div>
               <ChatWidget />
             </ChatProvider>
           </LoadingProvider>

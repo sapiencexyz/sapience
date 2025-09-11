@@ -66,7 +66,7 @@ export const useLightweightChart = ({
   const indexPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const resourcePriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for resource price
   const trailingAvgPriceSeriesRef = useRef<ISeriesApi<'Line'> | null>(null); // Add ref for trailing avg price
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [isLogarithmic, setIsLogarithmic] = useState(false);
   const [hoverData, setHoverData] = useState<{
     price: number | null;
@@ -87,19 +87,19 @@ export const useLightweightChart = ({
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
       layout: {
-        background: { color: theme === 'dark' ? '#09090B' : '#ffffff' },
-        textColor: theme === 'dark' ? '#ffffff' : '#000000',
+        background: { color: resolvedTheme === 'dark' ? '#09090B' : '#ffffff' },
+        textColor: resolvedTheme === 'dark' ? '#ffffff' : '#000000',
       },
       grid: {
         vertLines: {
           color:
-            theme === 'dark'
+            resolvedTheme === 'dark'
               ? 'rgba(197, 203, 206, 0.2)'
               : 'rgba(197, 203, 206, 0.5)',
         },
         horzLines: {
           color:
-            theme === 'dark'
+            resolvedTheme === 'dark'
               ? 'rgba(197, 203, 206, 0.2)'
               : 'rgba(197, 203, 206, 0.5)',
         },
@@ -108,7 +108,7 @@ export const useLightweightChart = ({
         mode: CrosshairMode.Normal,
       },
       timeScale: {
-        borderColor: theme === 'dark' ? '#363537' : '#cccccc',
+        borderColor: resolvedTheme === 'dark' ? '#363537' : '#cccccc',
         timeVisible: true,
         secondsVisible: false,
         maxBarSpacing: 30,
@@ -116,7 +116,7 @@ export const useLightweightChart = ({
         // fixLeftEdge: true, // Avoid fixing left edge
       },
       rightPriceScale: {
-        borderColor: theme === 'dark' ? '#363537' : '#cccccc',
+        borderColor: resolvedTheme === 'dark' ? '#363537' : '#cccccc',
         visible: true,
         autoScale: true, // Enable auto-scaling
       },
@@ -248,7 +248,7 @@ export const useLightweightChart = ({
         chartRef.current = null;
       }
     };
-  }, [theme, containerRef, selectedPrices]);
+  }, [resolvedTheme, containerRef, selectedPrices]);
 
   // Effect to update series data when priceData changes OR selectedPrices changes
   useEffect(() => {

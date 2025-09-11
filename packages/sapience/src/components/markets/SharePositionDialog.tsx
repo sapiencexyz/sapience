@@ -134,7 +134,7 @@ export default function SharePositionDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         {trigger ?? (
-          <Button size="xs" variant="outline">
+          <Button size="sm" variant="outline">
             Share
           </Button>
         )}

@@ -233,6 +233,7 @@ model Position {
 
   @@unique([positionId, marketId], map: "UQ_40d3e2f973bc69ff8e8d0f89dde")
   @@index([positionId], map: "IDX_927edd2b828777f0052366195e")
+  @@index([marketId], map: "IDX_position_market_id")
   @@map("position")
 }
 
@@ -343,7 +344,41 @@ model AttestationScore {
   @@index([marketAddress], map: "IDX_attestation_score_market_address")
   @@index([marketId], map: "IDX_attestation_score_market_id")
   @@index([attester, marketAddress, marketId], map: "IDX_attestation_score_attester_market")
+  @@index([attester, marketAddress, marketId, madeAt], map: "IDX_attestation_score_attester_market_madeat")
   @@map("attestation_score")
+}
+
+/// Precomputed horizon-weighted error per (attester, market)
+model AttesterMarketTwError {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  attester      String   @db.VarChar
+  marketAddress String   @db.VarChar
+  marketId      Int
+  twError       Float
+  computedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  @@unique([attester, marketAddress, marketId], map: "UQ_attester_market_tw_error")
+  @@index([attester], map: "IDX_attester_market_tw_error_attester")
+  @@index([marketAddress, marketId], map: "IDX_attester_market_tw_error_market")
+  @@map("attester_market_tw_error")
+}
+
+/// Precomputed realized PnL per (chainId, marketGroupAddress, marketId, owner)
+model OwnerMarketRealizedPnl {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  chainId   Int
+  address   String   @db.VarChar
+  marketId  Int
+  owner     String   @db.VarChar
+  realizedPnl Decimal @db.Decimal(78, 0)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@unique([chainId, address, marketId, owner], map: "UQ_owner_market_realized_pnl")
+  @@index([owner], map: "IDX_owner_market_realized_pnl_owner")
+  @@index([chainId, address, marketId], map: "IDX_owner_market_realized_pnl_market")
+  @@map("owner_market_realized_pnl")
 }
 
 model Transaction {
@@ -370,6 +405,7 @@ model Transaction {
   position             Position?             @relation(fields: [positionId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "FK_ffeefe4d2253a6af172da38fc49")
 
   @@map("transaction")
+  @@index([positionId], map: "IDX_transaction_position_id")
 }
 
 enum transaction_type_enum {

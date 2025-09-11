@@ -13,14 +13,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Info } from 'lucide-react';
 import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { FrownIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { getChainShortName, tickToPrice } from '~/lib/utils/util';
 
@@ -30,27 +29,6 @@ interface LpPositionsTableProps {
   parentChainId?: number;
   parentMarketId?: number;
   showHeader?: boolean;
-}
-
-// Helper component for Market Cell (similar to app package but simpler for now)
-function MarketCell({ position }: { position: PositionType }) {
-  const chainShortName = position.market?.marketGroup?.chainId
-    ? getChainShortName(position.market.marketGroup.chainId)
-    : 'unknown';
-  const marketAddress = position.market?.marketGroup?.address || '';
-  const marketId = position.market?.marketId;
-  const question = position.market?.question || 'N/A';
-
-  if (!marketAddress || marketId === undefined) return question;
-
-  return (
-    <Link
-      href={`/markets/${chainShortName}:${marketAddress}/${marketId}`}
-      className="hover:underline"
-    >
-      {question}
-    </Link>
-  );
 }
 
 // Helper component for Collateral Cell
@@ -107,27 +85,7 @@ function PriceTickCell({
   );
 }
 
-// Helper component for PnL Header Cell
-function PnLHeaderCell() {
-  return (
-    <span className="flex items-center gap-1 ">
-      Unrealized Profit/Loss{' '}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger>
-            <Info className="h-4 w-4 text-muted-foreground" />
-          </TooltipTrigger>
-          <TooltipContent>
-            <p className="font-normal">
-              Estimate ignoring slippage and fees. May not be applicable if
-              market is closed.
-            </p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </span>
-  );
-}
+// removed Unrealized PnL column and related header
 
 export default function LpPositionsTable({
   positions,
@@ -142,12 +100,7 @@ export default function LpPositionsTable({
   const isProfilePageContext = !parentMarketAddress && !parentChainId; // True if on profile page context
 
   if (!positions || positions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No liquidity positions found
-      </div>
-    );
+    return <EmptyTabState message="No liquidity positions found" />;
   }
 
   const validPositions = positions.filter(
@@ -164,12 +117,7 @@ export default function LpPositionsTable({
   );
 
   if (validPositions.length === 0) {
-    return (
-      <div className="text-center text-muted-foreground py-16">
-        <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
-        No liquidity positions found
-      </div>
-    );
+    return <EmptyTabState message="No liquidity positions found" />;
   }
 
   let displayQuestionColumn;
@@ -211,19 +159,16 @@ export default function LpPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
       <div className="rounded border">
         <Table>
-          <TableHeader>
+          <TableHeader className="hidden md:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             <TableRow>
-              <TableHead>ID</TableHead> {/* Header for Position ID */}
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>
-              <TableHead>Base Tokens</TableHead> {/* Updated Header */}
-              <TableHead>Quote Tokens</TableHead> {/* Updated Header */}
+              <TableHead>Base Tokens</TableHead>
+              <TableHead>Quote Tokens</TableHead>
               <TableHead>Low Price</TableHead>
               <TableHead>High Price</TableHead>
-              <TableHead>
-                <PnLHeaderCell />
-              </TableHead>
-              <TableHead /> {/* Header for More Info */}
+              {/* Removed Unrealized PnL column */}
+              <TableHead className="text-right"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -231,7 +176,6 @@ export default function LpPositionsTable({
               const { marketGroup } = position.market || {};
               const baseUnit = `${marketGroup?.baseTokenName || 'Base'}`;
               const quoteUnit = `${marketGroup?.collateralSymbol || 'Quote'}`;
-              // Price units as Base/Quote; hide quote when it includes USD; omit for Yes/No
               const hideQuote = (quoteUnit || '').toUpperCase().includes('USD');
               const priceUnit =
                 baseUnit === 'Yes'
@@ -246,22 +190,14 @@ export default function LpPositionsTable({
               const chainShortName = marketGroup?.chainId
                 ? getChainShortName(marketGroup.chainId)
                 : 'unknown';
-              const positionUrl = `/positions/${chainShortName}:${marketGroup?.address}/${position.market?.marketId}?positionId=${position.positionId}`;
+              const positionUrl = `/markets/${chainShortName}:${marketGroup?.address}/${position.market?.marketId}?positionId=${position.positionId}`;
 
-              // For displaying PnL, we'll need to adapt since totalPnL might not exist
-              // We'll just show N/A in that case
-              const pnlContent = (
-                <span className="text-muted-foreground">N/A</span>
-              );
-
-              // Logic for Settle/View button
               const isOwner =
                 connectedAddress &&
                 position.owner &&
                 connectedAddress.toLowerCase() === position.owner.toLowerCase();
 
               const endTimestamp = position.market?.endTimestamp;
-              // Assuming PositionType might include isSettled for LPs, defaulting to false
               const isPositionSettled = position.isSettled || false;
               const now = Date.now();
               const isExpired = endTimestamp
@@ -271,93 +207,183 @@ export default function LpPositionsTable({
               const marketAddress = marketGroup?.address || '';
               const chainId = marketGroup?.chainId || 0;
 
+              const numColumns = displayQuestionColumn ? 7 : 6;
+
               return (
                 <TableRow
                   key={position.id}
-                  className={isClosed ? 'min-h-[69px]' : ''}
+                  className="md:table-row block border-b space-y-3 md:space-y-0 px-4 py-4 md:py-0"
                 >
-                  <TableCell className="text-muted-foreground">
-                    #{position.positionId}
-                  </TableCell>
                   {displayQuestionColumn && (
-                    <TableCell>
-                      <MarketCell position={position} />
+                    <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                      <div className="space-y-2">
+                        {(() => {
+                          const mGroup = position.market?.marketGroup;
+                          const mId = position.market?.marketId;
+                          const question = position.market?.question || 'N/A';
+                          if (!mGroup?.address || mId === undefined) {
+                            return (
+                              <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
+                                {question}
+                              </h2>
+                            );
+                          }
+                          return (
+                            <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
+                              <Link
+                                href={`/markets/${chainShortName}:${mGroup.address}/${mId}`}
+                                className="group"
+                              >
+                                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                                  {question}
+                                </span>
+                              </Link>
+                            </h2>
+                          );
+                        })()}
+                        <div className="text-sm text-muted-foreground">
+                          Position #{position.positionId}
+                        </div>
+                      </div>
                     </TableCell>
                   )}
+
                   {isClosed ? (
                     <TableCell
-                      colSpan={displayQuestionColumn ? 9 : 8} // Adjusted colSpan
-                      className="text-center font-medium text-muted-foreground align-middle tracking-wider"
+                      colSpan={numColumns}
+                      className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 text-center font-medium text-muted-foreground align-middle tracking-wider"
                     >
                       CLOSED
                     </TableCell>
                   ) : (
                     <>
-                      <TableCell>
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          Collateral
+                        </div>
                         <CollateralCell position={position} />
                       </TableCell>
-                      <TableCell>
+
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          Base Tokens
+                        </div>
                         <VirtualTokenCell
                           value={position.lpBaseToken}
                           unit={baseUnit}
                         />
                       </TableCell>
-                      <TableCell>
+
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          Quote Tokens
+                        </div>
                         <VirtualTokenCell
                           value={position.lpQuoteToken}
                           unit={quoteUnit}
                         />
                       </TableCell>
-                      <TableCell>
+
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          Low Price
+                        </div>
                         <PriceTickCell
                           tick={position.lowPriceTick}
                           unit={priceUnit}
                         />
                       </TableCell>
-                      <TableCell>
+
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3">
+                        <div className="text-xs text-muted-foreground md:hidden">
+                          High Price
+                        </div>
                         <PriceTickCell
                           tick={position.highPriceTick}
                           unit={priceUnit}
                         />
                       </TableCell>
-                      <TableCell>{pnlContent}</TableCell>
-                      <TableCell className="text-right">
-                        {(() => {
-                          if (!isClosed && isOwner) {
-                            if (isExpired && !isPositionSettled) {
-                              return (
-                                <SettlePositionButton
-                                  positionId={position.positionId.toString()}
-                                  marketAddress={marketAddress}
-                                  chainId={chainId}
-                                  isMarketSettled={
-                                    position.market?.settled || false
-                                  }
-                                  onSuccess={() => {
-                                    console.log(
-                                      `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
-                                    );
-                                  }}
-                                />
-                              );
-                            }
-                            // Render Sell button only if not on Market Page and other conditions met
-                            // On the profile page (isMarketPage === false), the sell button should be shown.
-                            // On a specific market page (isMarketPage === true), it should not be shown.
-                            if (!isMarketPage) {
-                              // !isMarketPage means it's a Profile page OR a Market Group page
-                              return (
-                                <Link href={positionUrl} passHref>
-                                  <Button size="xs" variant="outline">
-                                    Sell
-                                  </Button>
-                                </Link>
-                              );
-                            }
-                            return null;
-                          }
-                          return null;
-                        })()}
+
+                      {/* Removed Unrealized PnL value cell */}
+
+                      <TableCell className="block md:table-cell w-full px-0 py-0 md:px-4 md:py-3 text-left md:text-right whitespace-nowrap md:mt-0">
+                        {isExpired && !isPositionSettled ? (
+                          isOwner ? (
+                            <SettlePositionButton
+                              positionId={position.positionId.toString()}
+                              marketAddress={marketAddress}
+                              chainId={chainId}
+                              isMarketSettled={
+                                position.market?.settled || false
+                              }
+                              onSuccess={() => {
+                                console.log(
+                                  `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
+                                );
+                              }}
+                            />
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled
+                                    >
+                                      Settle
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[220px]">
+                                    {connectedAddress
+                                      ? 'You can only settle positions from the account that owns them.'
+                                      : 'Connect your account to settle this position.'}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )
+                        ) : (
+                          !isMarketPage &&
+                          (isOwner && !isClosed ? (
+                            <Link href={positionUrl} passHref>
+                              <button
+                                type="button"
+                                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                              >
+                                Modify
+                              </button>
+                            </Link>
+                          ) : (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      disabled
+                                    >
+                                      Modify
+                                    </Button>
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="max-w-[220px]">
+                                    {!connectedAddress
+                                      ? 'Connect your wallet to modify this position.'
+                                      : isClosed
+                                        ? 'This position is already closed.'
+                                        : 'You can only modify from the account that owns this position.'}
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ))
+                        )}
                       </TableCell>
                     </>
                   )}

@@ -8,6 +8,9 @@ vi.mock('../db', () => {
       groupBy: vi.fn(),
       findMany: vi.fn(),
     },
+    attesterMarketTwError: {
+      groupBy: vi.fn(),
+    },
     market: {
       findFirst: vi.fn(),
     },
@@ -31,21 +34,20 @@ describe('ScoreResolver.topForecasters', () => {
       groupBy: ReturnType<typeof vi.fn>;
       findMany: ReturnType<typeof vi.fn>;
     };
+    attesterMarketTwError: {
+      groupBy: ReturnType<typeof vi.fn>;
+    };
     market: {
       findFirst: ReturnType<typeof vi.fn>;
     };
   };
 
   it('returns top N by descending accuracyScore', async () => {
-    prisma.attestationScore.groupBy.mockResolvedValue([
-      { attester: 'B', _count: { _all: 10 }, _sum: { errorSquared: 3 } },
-      { attester: 'A', _count: { _all: 5 }, _sum: { errorSquared: 1 } },
+    // Provide averages so B has higher accuracy (1/mean)
+    prisma.attesterMarketTwError.groupBy.mockResolvedValue([
+      { attester: 'B', _avg: { twError: 0.3 } },
+      { attester: 'A', _avg: { twError: 0.5 } },
     ]);
-
-    // Distinct markets per attester (used by resolver before calling compute)
-    prisma.attestationScore.findMany
-      .mockResolvedValueOnce([{ marketAddress: '0xmg', marketId: '1' }])
-      .mockResolvedValueOnce([{ marketAddress: '0xmg', marketId: '1' }]);
 
     const resolver = new ScoreResolver();
     const result = await resolver.topForecasters(2);
@@ -53,5 +55,8 @@ describe('ScoreResolver.topForecasters', () => {
     expect(result[0].accuracyScore).toBeGreaterThanOrEqual(
       result[1].accuracyScore
     );
+    // ensure ordering by accuracy desc (B should be first)
+    expect(result[0].attester).toBe('b');
+    expect(result[1].attester).toBe('a');
   });
 });
