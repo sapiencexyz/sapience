@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Label } from '@sapience/ui/components/ui/label';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 
 import { useEffect, useMemo, useRef } from 'react';
@@ -13,9 +12,11 @@ import { useSearchParams } from 'next/navigation';
 import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
+import WagerDisclaimer from '../shared/WagerDisclaimer';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
+import { CHART_SERIES_COLORS, withAlpha } from '~/lib/theme/chartColors';
 import {
   YES_SQRT_PRICE_X96,
   NO_SQRT_PRICE_X96,
@@ -135,41 +136,126 @@ export default function YesNoWagerForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-2">
         <div className="space-y-4">
           <div>
-            <Label>Your Prediction</Label>
-            <div className="grid grid-cols-2 gap-4 mt-2">
-              <Button
-                type="button"
-                onClick={() =>
-                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, {
-                    shouldValidate: true,
-                  })
-                }
-                className={`py-6 text-lg font-normal ${
-                  predictionValue === YES_SQRT_PRICE_X96
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
-              >
-                Yes
-              </Button>
-              <Button
-                type="button"
-                onClick={() =>
-                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
-                    shouldValidate: true,
-                  })
-                }
-                className={`py-6 text-lg font-normal ${
-                  predictionValue === NO_SQRT_PRICE_X96
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
-              >
-                No
-              </Button>
+            <div className="grid grid-cols-1 gap-2 mt-2">
+              {(() => {
+                const yesColor = CHART_SERIES_COLORS[2]; // green used in multichoice
+                const noColor = CHART_SERIES_COLORS[1]; // red used in multichoice
+
+                const yesUnselectedBg = withAlpha(yesColor, 0.08);
+                const yesHoverBg = withAlpha(yesColor, 0.16);
+                const yesBorder = withAlpha(yesColor, 0.24);
+
+                const noUnselectedBg = withAlpha(noColor, 0.08);
+                const noHoverBg = withAlpha(noColor, 0.16);
+                const noBorder = withAlpha(noColor, 0.24);
+
+                return (
+                  <>
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        methods.setValue(
+                          'predictionValue',
+                          YES_SQRT_PRICE_X96,
+                          {
+                            shouldValidate: true,
+                          }
+                        )
+                      }
+                      role="radio"
+                      aria-checked={predictionValue === YES_SQRT_PRICE_X96}
+                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                      style={{
+                        backgroundColor: yesUnselectedBg,
+                        borderColor: yesBorder,
+                      }}
+                      onMouseEnter={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = yesHoverBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = yesUnselectedBg;
+                      }}
+                    >
+                      <span
+                        className="inline-flex items-center justify-center rounded-full"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: `2px solid ${yesColor}`,
+                        }}
+                        aria-hidden
+                      >
+                        {predictionValue === YES_SQRT_PRICE_X96 ? (
+                          <span
+                            className="block rounded-full"
+                            style={{
+                              width: 8,
+                              height: 8,
+                              backgroundColor: yesColor,
+                            }}
+                          />
+                        ) : null}
+                      </span>
+                      <span className="truncate">Yes</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      onClick={() =>
+                        methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
+                          shouldValidate: true,
+                        })
+                      }
+                      role="radio"
+                      aria-checked={predictionValue === NO_SQRT_PRICE_X96}
+                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                      style={{
+                        backgroundColor: noUnselectedBg,
+                        borderColor: noBorder,
+                      }}
+                      onMouseEnter={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = noHoverBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = noUnselectedBg;
+                      }}
+                    >
+                      <span
+                        className="inline-flex items-center justify-center rounded-full"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: `2px solid ${noColor}`,
+                        }}
+                        aria-hidden
+                      >
+                        {predictionValue === NO_SQRT_PRICE_X96 ? (
+                          <span
+                            className="block rounded-full"
+                            style={{
+                              width: 8,
+                              height: 8,
+                              backgroundColor: noColor,
+                            }}
+                          />
+                        ) : null}
+                      </span>
+                      <span className="truncate">No</span>
+                    </Button>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Hidden input for form submission */}
@@ -195,13 +281,16 @@ export default function YesNoWagerForm({
 
         {/* Permit gating removed */}
 
-        <Button
-          type="submit"
-          disabled={isButtonDisabled}
-          className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {getButtonText()}
-        </Button>
+        <div className="space-y-3">
+          <WagerDisclaimer />
+          <Button
+            type="submit"
+            disabled={isButtonDisabled}
+            className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {getButtonText()}
+          </Button>
+        </div>
       </form>
     </FormProvider>
   );

@@ -240,7 +240,7 @@ const SettingsPage = () => {
             </CardContent>
           </Card>
         ) : (
-          <Card>
+          <Card className="bg-background">
             <CardContent className="px-6 py-8">
               <div className="space-y-8">
                 <div className="grid gap-2">

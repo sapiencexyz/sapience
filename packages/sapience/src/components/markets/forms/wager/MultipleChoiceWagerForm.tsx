@@ -2,7 +2,6 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Label } from '@sapience/ui/components/ui/label';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 
 import { useEffect, useMemo, useRef } from 'react';
@@ -13,6 +12,7 @@ import type { MarketGroupType } from '@sapience/ui/types';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
 import MultipleChoiceWagerChoiceSelect from '../inputs/MultipleChoiceWager';
+import WagerDisclaimer from '../shared/WagerDisclaimer';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
@@ -115,10 +115,9 @@ export default function MultipleChoiceWagerForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         <div className="space-y-4">
           <div>
-            <Label>Your Prediction</Label>
             <MultipleChoiceWagerChoiceSelect
               options={(marketGroupData.markets || [])
                 .slice()
@@ -149,13 +148,16 @@ export default function MultipleChoiceWagerForm({
 
         {/* Permit gating removed */}
 
-        <Button
-          type="submit"
-          disabled={isButtonDisabled}
-          className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {getButtonText()}
-        </Button>
+        <div className="space-y-3">
+          <WagerDisclaimer />
+          <Button
+            type="submit"
+            disabled={isButtonDisabled}
+            className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {getButtonText()}
+          </Button>
+        </div>
       </form>
     </FormProvider>
   );

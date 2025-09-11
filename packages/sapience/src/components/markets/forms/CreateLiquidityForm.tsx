@@ -194,11 +194,6 @@ export function CreateLiquidityForm({
   useEffect(() => {
     if (isLPCreated && txHash && onSuccess && !successHandled.current) {
       successHandled.current = true;
-
-      toast({
-        title: 'Liquidity Position Created',
-        description: 'Your position has been successfully created.',
-      });
       onSuccess(txHash);
 
       // Reset the form after success

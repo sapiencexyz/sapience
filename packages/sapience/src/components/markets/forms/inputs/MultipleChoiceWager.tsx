@@ -7,7 +7,8 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { useFormContext } from 'react-hook-form';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 
 interface MultipleChoicePredictProps {
   name?: string;
@@ -134,6 +135,11 @@ export default function MultipleChoiceWagerChoiceSelect({
     );
   }
 
+  const sortedOptions = useMemo(
+    () => options.slice().sort((a, b) => a.marketId - b.marketId),
+    [options]
+  );
+
   return (
     <div className="space-y-4">
       <div
@@ -143,25 +149,61 @@ export default function MultipleChoiceWagerChoiceSelect({
         } ${listOverflowing && !listAtBottom ? 'border-b' : ''}`}
       >
         <div className="grid grid-cols-1 gap-2 mt-2">
-          {options
-            .slice()
-            .sort((a, b) => a.marketId - b.marketId)
-            .map(({ name: optionName, marketId }) => (
+          {sortedOptions.map(({ name: optionName, marketId }, idx) => {
+            const isSelected = value === marketId.toString();
+            const seriesColor = getSeriesColorByIndex(idx);
+            const unselectedBg = withAlpha(seriesColor, 0.08);
+            const hoverBg = withAlpha(seriesColor, 0.16);
+            const borderColor = withAlpha(seriesColor, 0.24);
+
+            return (
               <Button
                 key={marketId}
                 type="button"
                 onClick={() => {
                   setValue(name, marketId.toString(), { shouldValidate: true });
                 }}
-                className={`text-center justify-start font-normal ${
-                  value === marketId.toString()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
+                role="radio"
+                aria-checked={isSelected}
+                className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                style={{
+                  backgroundColor: unselectedBg,
+                  borderColor,
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    hoverBg;
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    unselectedBg;
+                }}
               >
-                {optionName}
+                {/* Radio indicator */}
+                <span
+                  className="inline-flex items-center justify-center rounded-full"
+                  style={{
+                    width: 16,
+                    height: 16,
+                    border: `2px solid ${seriesColor}`,
+                  }}
+                  aria-hidden
+                >
+                  {isSelected ? (
+                    <span
+                      className="block rounded-full"
+                      style={{
+                        width: 8,
+                        height: 8,
+                        backgroundColor: seriesColor,
+                      }}
+                    />
+                  ) : null}
+                </span>
+                <span className="truncate">{optionName}</span>
               </Button>
-            ))}
+            );
+          })}
         </div>
 
         {/* Hidden input for form submission */}

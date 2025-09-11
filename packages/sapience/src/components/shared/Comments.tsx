@@ -15,6 +15,7 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
 import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
+import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 
 // Helper function to check if a market is active
 function isMarketActive(market: any): boolean {
@@ -431,6 +432,31 @@ const Comments = ({
                               {/* Prediction badge/text based on market type */}
                               {comment.prediction &&
                                 (() => {
+                                  // Multiple-choice: color by option index using series colors
+                                  if (
+                                    comment.marketClassification === '1' &&
+                                    typeof comment.optionIndex === 'number'
+                                  ) {
+                                    const color = getSeriesColorByIndex(
+                                      comment.optionIndex
+                                    );
+                                    const bg = withAlpha(color, 0.08);
+                                    const border = withAlpha(color, 0.24);
+                                    return (
+                                      <Badge
+                                        variant={'outline' as any}
+                                        style={{
+                                          backgroundColor: bg,
+                                          borderColor: border,
+                                          color,
+                                        }}
+                                      >
+                                        {comment.prediction}
+                                      </Badge>
+                                    );
+                                  }
+
+                                  // Yes/No: retain red/green based on >/< 50%
                                   const isNumericMarket =
                                     comment.marketClassification === '3';
                                   const percent = comment.predictionPercent;

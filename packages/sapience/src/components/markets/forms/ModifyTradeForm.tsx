@@ -304,15 +304,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       // Determine if this was a close operation (either via form or close button)
       const wasClosingOperation = isClosing || isClosingPosition;
 
-      toast({
-        title: wasClosingOperation
-          ? 'Position Closed'
-          : 'Trade Position Updated',
-        description: wasClosingOperation
-          ? 'Your trade position has been successfully closed!'
-          : 'Your trade position has been successfully updated!',
-      });
-
       // Reset form with new position size
       const newSize = wasClosingOperation
         ? '0'
@@ -339,7 +330,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     isClosing,
     isClosingPosition,
     onSuccess,
-    toast,
     sizeInputBigInt,
     direction,
     form,

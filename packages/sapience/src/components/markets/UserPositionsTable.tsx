@@ -25,6 +25,7 @@ interface UserPositionsTableProps {
   refetchUserPositions?: () => void;
   showProfileButton?: boolean;
   showHeaderText?: boolean;
+  showParlaysTab?: boolean;
 }
 
 const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
@@ -35,6 +36,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
   marketIds,
   refetchUserPositions,
   showHeaderText = true,
+  showParlaysTab = true,
 }) => {
   const positionVars: { address: Address; marketAddress?: string } = {
     address: account,
@@ -111,10 +113,14 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
       )}
       <Tabs defaultValue="trades">
         <div className="mb-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList
+            className={`grid w-full ${showParlaysTab ? 'grid-cols-4' : 'grid-cols-3'}`}
+          >
             <TabsTrigger value="trades">Prediction Market Trades</TabsTrigger>
             <TabsTrigger value="lp">Prediction Market Liquidity</TabsTrigger>
-            <TabsTrigger value="parlays">Parlays</TabsTrigger>
+            {showParlaysTab && (
+              <TabsTrigger value="parlays">Parlays</TabsTrigger>
+            )}
             <TabsTrigger value="forecasts">Forecasts</TabsTrigger>
           </TabsList>
         </div>
@@ -139,14 +145,16 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
           />
         </TabsContent>
 
-        <TabsContent value="parlays">
-          <UserParlaysTable
-            account={account}
-            chainId={chainId}
-            showHeaderText={false}
-            marketAddressFilter={marketAddress}
-          />
-        </TabsContent>
+        {showParlaysTab && (
+          <TabsContent value="parlays">
+            <UserParlaysTable
+              account={account}
+              chainId={chainId}
+              showHeaderText={false}
+              marketAddressFilter={marketAddress}
+            />
+          </TabsContent>
+        )}
 
         <TabsContent value="forecasts">
           <ForecastsTable

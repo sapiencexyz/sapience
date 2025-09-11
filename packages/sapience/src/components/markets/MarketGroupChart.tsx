@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from 'react'; // <-- Import useMemo and useState
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -16,11 +17,14 @@ import LottieLoader from '../shared/LottieLoader';
 import ChartLegend from './ChartLegend';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils'; // Added for type safety
-import { formatTimestamp, getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
+import { getYAxisConfig } from '~/lib/utils/util'; // Import moved functions
+import {
+  CHART_INDEX_COLOR,
+  CHART_SERIES_COLORS,
+  getSeriesColorByIndex,
+} from '~/lib/theme/chartColors';
 
-// Define a simple color palette for the lines
-const lineColors = ['#3B82F6', '#F87171', '#4ADE80'];
-const indexLineColor = '#3B82F6';
+// Colors come from centralized theme
 
 interface MarketGroupChartProps {
   chainShortName: string;
@@ -139,6 +143,30 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
     return null; // Return null if no valid indexClose found
   }, [scaledAndFilteredChartData]);
 
+  // Compute ticks for X-axis: only the first timestamp per calendar day
+  const dailyTicks = useMemo(() => {
+    const seenDays = new Set<string>();
+    const ticks: number[] = [];
+    for (const point of scaledAndFilteredChartData) {
+      // Use local date parts to match formatTimestamp
+      const date = new Date(point.timestamp * 1000);
+      const key = `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+      if (!seenDays.has(key)) {
+        seenDays.add(key);
+        ticks.push(point.timestamp);
+      }
+    }
+    return ticks;
+  }, [scaledAndFilteredChartData]);
+
+  // Local formatter for non-padded dates like 9/10
+  const formatTimestampCompact = (timestamp: number): string => {
+    const date = new Date(timestamp * 1000);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}/${day}`;
+  };
+
   if (isLoading) {
     return (
       <div className="w-full md:flex-1 h-full flex items-center justify-center">
@@ -195,8 +223,8 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
         marketIds={marketIds}
         hasIndexData={hasIndexData}
         showIndexLine
-        lineColors={lineColors}
-        indexLineColor={indexLineColor}
+        lineColors={CHART_SERIES_COLORS}
+        indexLineColor={CHART_INDEX_COLOR}
         yAxisConfig={yAxisConfig}
         optionNames={optionNames}
         hoveredDataPoint={hoveredChartData} // Pass hovered data to legend
@@ -205,7 +233,7 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
       <div className="flex-1 w-full">
         {/* Let ResponsiveContainer determine height based on parent */}
         <ResponsiveContainer>
-          <LineChart
+          <ComposedChart
             data={scaledAndFilteredChartData}
             margin={{ top: 5, right: 0, left: 0, bottom: 5 }}
             onMouseMove={(state) => {
@@ -227,12 +255,32 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
               setHoveredChartData(null);
             }}
           >
+            <defs>
+              {marketIds.map((marketId, index) => {
+                const color = getSeriesColorByIndex(index);
+                const gradientId = `marketGradient-${marketId}`;
+                return (
+                  <linearGradient
+                    key={gradientId}
+                    id={gradientId}
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop offset="0%" stopColor={color} stopOpacity={0.2} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
             <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
             <XAxis
               dataKey="timestamp"
+              ticks={dailyTicks}
               axisLine
               tickLine={false}
-              tickFormatter={formatTimestamp}
+              tickFormatter={formatTimestampCompact}
               fontSize={12}
               dy={10} // Adjust vertical position of ticks
               domain={minTimestamp ? [minTimestamp, 'auto'] : ['auto', 'auto']}
@@ -256,16 +304,28 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
             />
 
             {/* Dynamically render a Line for each marketId */}
+            {marketIds.map((marketId) => (
+              <Area
+                key={`area-${marketId}`}
+                type="monotone"
+                dataKey={`markets.${marketId}`}
+                fill={`url(#marketGradient-${marketId})`}
+                stroke="none"
+                connectNulls
+                isAnimationActive={false}
+              />
+            ))}
             {marketIds.map((marketId, index) => (
               <Line
                 key={marketId} // Use marketId as key
                 type="monotone"
                 dataKey={`markets.${marketId}`} // Dynamic dataKey
                 name="Prediction Market" // Updated general name
-                stroke={lineColors[index % lineColors.length]} // Cycle through colors
+                stroke={getSeriesColorByIndex(index)} // Cycle through colors
                 strokeWidth={2}
                 dot={false}
                 connectNulls // Connect lines across null data points
+                isAnimationActive={false}
               />
             ))}
 
@@ -276,15 +336,16 @@ const MarketGroupChart: React.FC<MarketGroupChartProps> = ({
                 type="monotone"
                 dataKey="indexClose"
                 name="Index"
-                stroke={indexLineColor}
+                stroke={CHART_INDEX_COLOR}
                 strokeWidth={2}
                 strokeDasharray="5 5"
                 strokeOpacity={0.5}
                 dot={false}
                 connectNulls
+                isAnimationActive={false}
               />
             )}
-          </LineChart>
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
     </div>

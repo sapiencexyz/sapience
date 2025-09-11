@@ -68,7 +68,7 @@ const EnableBridgedMarketGroupButton: React.FC<
       setEnabledTxHash(hash);
       setEnableError(null);
     },
-    successMessage: 'Market group enabled successfully',
+    successMessage: 'Market group enable submission was successful',
     fallbackErrorMessage: 'Failed to enable market group',
   });
 

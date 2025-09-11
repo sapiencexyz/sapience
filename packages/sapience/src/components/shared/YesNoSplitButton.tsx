@@ -34,14 +34,7 @@ export default function YesNoSplitButton({
   );
 
   return (
-    <div
-      className={cn(
-        'inline-flex items-stretch rounded-md overflow-hidden p-px shadow-sm bg-background/70 backdrop-blur-sm',
-        className
-      )}
-      role="group"
-      aria-label="Choose Yes or No"
-    >
+    <div className={cn('inline-flex items-center gap-3', className)}>
       <button
         type="button"
         onClick={onYes}
@@ -49,15 +42,11 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20',
-          'border-y border-l border-emerald-400/50 hover:border-emerald-500/60 rounded-l-md'
+          'border border-emerald-400/50 hover:border-emerald-500/60 rounded-md'
         )}
       >
         Yes
       </button>
-      <div
-        className="w-0 self-stretch border-l border-border"
-        aria-hidden="true"
-      />
       <button
         type="button"
         onClick={onNo}
@@ -65,7 +54,7 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           'text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20',
-          'border-y border-r border-rose-400/50 hover:border-rose-500/60 rounded-r-md'
+          'border border-rose-400/50 hover:border-rose-500/50 rounded-md'
         )}
       >
         No

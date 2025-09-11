@@ -7,15 +7,12 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
-import { Button } from '@sapience/ui/components/ui/button';
 import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useMemo, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
-
-import { ChartLineIcon } from 'lucide-react';
 
 import { useSapience } from '../../../lib/context/SapienceProvider';
 import { CommentFilters } from '../../../components/shared/Comments';
@@ -147,7 +144,7 @@ const WagerForm = ({
   }
 
   return (
-    <div className="bg-card p-6 rounded shadow-sm border flex flex-col flex-1">
+    <div className="bg-card p-5 rounded shadow-sm border flex flex-col flex-1">
       <h2 className="text-2xl font-medium mb-2">Make a Prediction</h2>
       <div className="flex-1">
         <WagerFormFactory
@@ -299,21 +296,22 @@ const MarketGroupPageContent = () => {
   // Otherwise show the main content
   return (
     <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden py-24">
-      <div className="container mx-auto max-w-4xl flex flex-col">
+      <div className="container max-w-6xl mx-auto flex flex-col">
         <MarketGroupHeader
           marketGroupData={marketGroupData}
           activeMarket={activeMarket}
           chainId={chainId}
           marketClassification={marketClassification}
           chainShortName={chainShortName}
+          onOrderbookClick={handleAdvancedViewClick}
         />
 
-        {/* Main content layout: Apply gap-12 and px-3 for consistent spacing */}
-        <div className="flex flex-col gap-12 px-3">
+        {/* Main content layout: Apply gap-6 and px-3 for tighter spacing */}
+        <div className="flex flex-col gap-6 px-4 md:px-3 lg:px-6">
           {/* Row 1: Chart/List + Form */}
-          <div className="flex flex-col lg:flex-row gap-12 lg:items-stretch">
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
             {/* Left Column (Chart/List) */}
-            <div className="flex flex-col w-full md:flex-1">
+            <div className="flex flex-col w-full md:flex-1 min-w-0">
               <div className="border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
                 <div className="flex-1">
                   {isDeployed ? (
@@ -350,7 +348,7 @@ const MarketGroupPageContent = () => {
             </div>
 
             {/* Wager Form (Right Column) */}
-            <div className="w-full lg:w-[340px]">
+            <div className="w-full lg:w-[340px] lg:shrink-0">
               <WagerForm
                 marketGroupData={marketGroupData}
                 marketClassification={marketClassification!}
@@ -361,95 +359,100 @@ const MarketGroupPageContent = () => {
             </div>
           </div>
 
-          {/* Comments and Positions Tabs */}
-          <div className="border border-border rounded shadow-sm dark:bg-muted/50">
-            <Tabs value={activeContentTab} onValueChange={setActiveContentTab}>
-              <div className="p-4 border-b border-border">
-                <div className="flex items-center">
-                  <TabsList className="h-auto p-0 bg-transparent">
-                    <TabsTrigger
-                      value="forecasts"
-                      className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
-                    >
-                      Forecasts
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="rules"
-                      className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
-                    >
-                      Rules
-                    </TabsTrigger>
-                    {address && (
-                      <TabsTrigger
-                        value="positions"
-                        className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
-                      >
-                        Your Positions
-                      </TabsTrigger>
-                    )}
-                  </TabsList>
+          {/* Row 2: Tabs (Forecasts/Positions) + Rules */}
+          <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
+            {/* Left Column: Tabs for Forecasts and Positions */}
+            <div className="flex flex-col w-full md:flex-1 min-w-0">
+              <div>
+                <Tabs
+                  value={activeContentTab}
+                  onValueChange={setActiveContentTab}
+                >
+                  <div className="px-3 py-1 border-b border-border">
+                    <div className="flex items-center">
+                      <TabsList className="h-auto p-0 bg-transparent">
+                        <TabsTrigger
+                          value="forecasts"
+                          className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                        >
+                          Forecasts
+                        </TabsTrigger>
+                        {address && (
+                          <TabsTrigger
+                            value="positions"
+                            className="text-lg font-medium data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground px-0 mr-6"
+                          >
+                            Your Positions
+                          </TabsTrigger>
+                        )}
+                      </TabsList>
 
-                  {/* Advanced View tab-like link (After tabs) */}
-                  <Button
-                    onClick={handleAdvancedViewClick}
-                    className="ml-auto text-base"
-                  >
-                    <ChartLineIcon className="h-8 w-8" />
-                    Advanced View
-                  </Button>
-                </div>
-              </div>
-              <TabsContent value="forecasts" className="mt-0">
-                <div className="p-4">
-                  <ForecastInfoNotice className="mb-4" />
-                  {/* Prediction Form */}
-                  <div className="mb-6">
-                    <PredictForm
-                      marketGroupData={marketGroupData}
-                      marketClassification={marketClassification!}
-                      onSuccess={handleUserPositionsRefetch}
-                    />
+                      {/* Advanced view button moved to header */}
+                    </div>
                   </div>
+                  <TabsContent value="forecasts" className="mt-0">
+                    <div className="px-3 py-4">
+                      <ForecastInfoNotice className="mb-4" />
+                      {/* Prediction Form */}
+                      <div className="mb-6">
+                        <PredictForm
+                          marketGroupData={marketGroupData}
+                          marketClassification={marketClassification!}
+                          onSuccess={handleUserPositionsRefetch}
+                        />
+                      </div>
 
-                  {/* Comments */}
-                  <Comments
-                    selectedCategory={
-                      marketClassification ===
-                      MarketGroupClassification.MULTIPLE_CHOICE
-                        ? CommentFilters.AllMultichoiceQuestions
-                        : CommentFilters.SelectedQuestion
-                    }
-                    question={activeMarket?.question?.toString()}
-                    address={address}
-                    refetchTrigger={userPositionsTrigger}
-                    marketGroupAddress={marketGroupData?.address || null}
-                    fullBleed
-                  />
+                      {/* Comments */}
+                      <Comments
+                        selectedCategory={
+                          marketClassification ===
+                          MarketGroupClassification.MULTIPLE_CHOICE
+                            ? CommentFilters.AllMultichoiceQuestions
+                            : CommentFilters.SelectedQuestion
+                        }
+                        question={activeMarket?.question?.toString()}
+                        address={address}
+                        refetchTrigger={userPositionsTrigger}
+                        marketGroupAddress={marketGroupData?.address || null}
+                        fullBleed
+                      />
+                    </div>
+                  </TabsContent>
+                  {address && (
+                    <TabsContent value="positions" className="mt-0">
+                      <div className="px-3 py-4">
+                        <UserPositionsTable
+                          showHeaderText={false}
+                          showParlaysTab={false}
+                          account={address}
+                          marketAddress={marketAddress}
+                          chainId={chainId}
+                          marketIds={activeMarkets.map((m) =>
+                            Number(m.marketId)
+                          )}
+                          refetchUserPositions={refetchUserPositions}
+                        />
+                      </div>
+                    </TabsContent>
+                  )}
+                </Tabs>
+              </div>
+            </div>
+
+            {/* Right Column: Rules */}
+            <div className="w-full lg:w-[340px] lg:shrink-0 h-full">
+              <div className="flex flex-col h-full">
+                <div className="px-3 py-1 border-b border-border">
+                  <h2 className="text-lg font-medium py-1.5">Rules</h2>
                 </div>
-              </TabsContent>
-              <TabsContent value="rules" className="mt-0">
-                <div className="p-4 space-y-4">
+                <div className="flex-1 px-3 py-4">
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap">
                     {marketGroupData?.rules ||
                       'No additional rules clarification provided.'}
                   </div>
                 </div>
-              </TabsContent>
-              {address && (
-                <TabsContent value="positions" className="mt-0">
-                  <div className="p-4">
-                    <UserPositionsTable
-                      showHeaderText={false}
-                      account={address}
-                      marketAddress={marketAddress}
-                      chainId={chainId}
-                      marketIds={activeMarkets.map((m) => Number(m.marketId))}
-                      refetchUserPositions={refetchUserPositions}
-                    />
-                  </div>
-                </TabsContent>
-              )}
-            </Tabs>
+              </div>
+            </div>
           </div>
         </div>
       </div>

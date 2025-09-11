@@ -1,11 +1,10 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
+import { format } from 'date-fns';
 import {
   MoveHorizontal,
   ArrowRight,
@@ -25,6 +24,7 @@ import {
 } from '~/hooks/graphql/useMarketGroups';
 import type { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 
 interface MarketDataContract {
   marketId: bigint;
@@ -81,23 +81,6 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
     chainId,
     marketId: marketData?.marketId || 0,
   });
-
-  // Format end time for badge
-  const endTimeBadge = (() => {
-    const endTime = marketData?.endTimestamp;
-    if (typeof endTime !== 'number') {
-      return null;
-    }
-
-    try {
-      const date = fromUnixTime(endTime);
-      const displayTime = formatDistanceToNow(date, { addSuffix: true });
-      return <Badge>Ends {displayTime}</Badge>;
-    } catch (error) {
-      console.error('Error formatting relative time:', error);
-      return null;
-    }
-  })();
 
   // Format start and end times for period display
   let endTimeString = '';
@@ -230,7 +213,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
             {displayQuestion}
           </h1>
           <div className="flex flex-wrap gap-y-3 gap-x-3 lg:gap-x-6 text-xs sm:text-sm items-center">
-            {endTimeBadge}
+            <EndTimeDisplay endTime={marketData?.endTimestamp} />
             {links}
           </div>
         </div>

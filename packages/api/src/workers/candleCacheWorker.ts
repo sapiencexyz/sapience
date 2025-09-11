@@ -4,27 +4,30 @@ import { initializeFixtures } from '../fixtures';
 import { CandleCacheBuilder } from '../candle-cache/candleCacheBuilder';
 import { createResilientProcess } from '../utils/utils';
 import { PnlAccuracyReconciler } from '../precompute/reconciler';
+import { MarketEventReconciler } from '../market-events/reconciler';
 
 async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeDataSource();
   await initializeFixtures();
 
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
-  const reconciler = PnlAccuracyReconciler.getInstance();
+  const pnlAccuracyReconciler = PnlAccuracyReconciler.getInstance();
+  const marketEventReconciler = MarketEventReconciler.getInstance();
 
   while (true) {
     try {
-      console.log(`Running candle cache update at ${new Date().toISOString()}`);
+      console.log(`Running update at ${new Date().toISOString()}`);
       await candleCacheBuilder.buildCandles();
       // After candle build, run synchronous precompute reconciliation
-      console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
-      await reconciler.runOnce();
-      console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
-      console.log(
-        `Candle cache update completed at ${new Date().toISOString()}`
-      );
+      console.log('[WORKER] Starting PnL/accuracy reconciliation...');
+      await pnlAccuracyReconciler.runOnce();
+      console.log('[WORKER] PnL/accuracy reconciliation completed');
+      console.log('[WORKER] Starting MarketEvent reconciliation...');
+      await marketEventReconciler.runOnce();
+      console.log('[WORKER] MarketEvent reconciliation completed');
+      console.log(`Update completed at ${new Date().toISOString()}`);
     } catch (error) {
-      console.error('Error in candle cache update:', error);
+      console.error('Error in update:', error);
     }
 
     // Wait for the specified interval

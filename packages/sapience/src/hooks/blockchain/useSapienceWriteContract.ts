@@ -42,6 +42,15 @@ export function useSapienceWriteContract({
   }, [wallets]);
   const isEmbeddedWallet = Boolean(embeddedWallet);
 
+  // Unified success toast formatting
+  const successTitle = 'Transaction successfully submitted.';
+  const successSuffixNote =
+    'It may take a few moments for the transaction to be processed and reflected in the app.';
+  const formatSuccessDescription = (message?: string) =>
+    message && message.length > 0
+      ? `${message}\n\n${successSuffixNote}`
+      : successSuffixNote;
+
   // Chain validation
   const { validateAndSwitchChain } = useChainValidation({
     onError: (errorMessage) => {
@@ -147,8 +156,8 @@ export function useSapienceWriteContract({
             setTxHash(maybeHash as Hash);
           } else {
             toast({
-              title: 'Success',
-              description: successMessage,
+              title: successTitle,
+              description: formatSuccessDescription(successMessage),
               duration: 5000,
             });
             onSuccess?.(undefined as any);
@@ -267,8 +276,8 @@ export function useSapienceWriteContract({
             } else {
               // No tx hash available from aggregator; consider operation successful.
               toast({
-                title: 'Success',
-                description: successMessage,
+                title: successTitle,
+                description: formatSuccessDescription(successMessage),
                 duration: 5000,
               });
               onSuccess?.(undefined as any);
@@ -286,8 +295,8 @@ export function useSapienceWriteContract({
             }
             // Fallback path without aggregator id.
             toast({
-              title: 'Success',
-              description: successMessage,
+              title: successTitle,
+              description: formatSuccessDescription(successMessage),
               duration: 5000,
             });
             onSuccess?.(undefined as any);
@@ -295,8 +304,8 @@ export function useSapienceWriteContract({
         } catch {
           // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
           toast({
-            title: 'Success',
-            description: successMessage,
+            title: successTitle,
+            description: formatSuccessDescription(successMessage),
             duration: 5000,
           });
           onSuccess?.(undefined as any);
@@ -331,8 +340,8 @@ export function useSapienceWriteContract({
       if (!txHash) return;
 
       toast({
-        title: 'Success',
-        description: successMessage,
+        title: successTitle,
+        description: formatSuccessDescription(successMessage),
         duration: 5000,
       });
       onSuccess?.(receipt);

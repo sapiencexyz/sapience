@@ -39,7 +39,14 @@ const LottieLoader = ({
         // Instead, we'll create a wrapper component
         const LottieComponent = () => {
           const { View } = useLottie(options);
-          return <span className="dark:invert">{View}</span>;
+          return (
+            <span
+              className={`inline-flex items-center align-middle whitespace-nowrap dark:invert ${className}`}
+              style={{ width, height }}
+            >
+              {View}
+            </span>
+          );
         };
 
         setLottieView(<LottieComponent />);

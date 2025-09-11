@@ -257,11 +257,11 @@ const SettleMarketDialog = ({
       },
       onTxHash: (hash) => {
         toast({
-          title: 'Approval submitted',
-          description: `Transaction Hash: ${hash}`,
+          title: 'Transaction submitted.',
+          description: `Bond approval submission was successful. Hash: ${hash}`,
         });
       },
-      successMessage: 'Bond approval successful',
+      successMessage: 'Bond approval submission was successful',
       fallbackErrorMessage: 'Failed to approve bond',
     });
 
@@ -301,11 +301,11 @@ const SettleMarketDialog = ({
       },
       onTxHash: (hash) => {
         toast({
-          title: 'Settlement submitted',
-          description: `Transaction Hash: ${hash}`,
+          title: 'Transaction submitted.',
+          description: `Market settlement submission was successful. Hash: ${hash}`,
         });
       },
-      successMessage: 'Market settlement successful',
+      successMessage: 'Market settlement submission was successful',
       fallbackErrorMessage: 'Failed to settle market',
     });
 

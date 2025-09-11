@@ -14,7 +14,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { parseUnits, formatUnits } from 'viem';
 import { formatNumber } from '~/lib/utils/util';
-import { AlertTriangle } from 'lucide-react';
+import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import WagerInputWithQuote from '~/components/markets/forms/shared/WagerInputWithQuote';
@@ -295,7 +295,6 @@ export const BetslipContent = ({
 
                       {positionData.error && (
                         <>
-                          w{' '}
                           <div className="mb-2">
                             <h3 className="font-medium text-foreground pr-2">
                               {positionData.position.question}
@@ -345,14 +344,7 @@ export const BetslipContent = ({
 
                 {hasAtLeastOneLoadedQuestion && !allPositionsLoading && (
                   <>
-                    <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
-                      <span className="inline-flex items-center gap-1">
-                        <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
-                        <span className="font-medium">
-                          Do not wager more than you can afford to lose
-                        </span>
-                      </span>
-                    </div>
+                    <WagerDisclaimer className="mt-2 mb-1" />
                     <Button
                       type="submit"
                       variant="default"
@@ -463,14 +455,7 @@ export const BetslipContent = ({
                     ) : null}
                     {effectiveParlayMode && bestBid ? (
                       <div className="text-center">
-                        <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
-                          <span className="inline-flex items-center gap-1">
-                            <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
-                            <span className="font-medium">
-                              Do not wager more than you can afford to lose
-                            </span>
-                          </span>
-                        </div>
+                        <WagerDisclaimer className="mt-2 mb-1" />
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={
@@ -544,14 +529,7 @@ export const BetslipContent = ({
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="mt-2 mb-1 text-xs text-muted-foreground text-center">
-                          <span className="inline-flex items-center gap-1">
-                            <AlertTriangle className="inline-block align-top w-3.5 h-3.5" />
-                            <span className="font-medium">
-                              Do not wager more than you can afford to lose
-                            </span>
-                          </span>
-                        </div>
+                        <WagerDisclaimer className="mt-2 mb-1" />
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={true}

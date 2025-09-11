@@ -682,6 +682,235 @@ const upsertEvent = async (
   }
 };
 
+// Processes logs for a market group over a specific block range, reusing the same decode + upsert path.
+// Returns counts for scanned, inserted, and updated events, and logs when a new event is recovered.
+export const processMarketGroupLogsForRange = async (
+  marketGroup: any,
+  client: PublicClient,
+  fromBlock: bigint,
+  toBlock: bigint | 'latest'
+): Promise<{
+  scanned: number;
+  inserted: number;
+  updated: number;
+  maxBlockSeen: bigint;
+}> => {
+  const chainId = marketGroup.chainId || (await client.getChainId());
+  const address = (marketGroup.address || '').toLowerCase();
+
+  if (!address) {
+    return { scanned: 0, inserted: 0, updated: 0, maxBlockSeen: 0n };
+  }
+
+  let scanned = 0;
+  let inserted = 0;
+  let updated = 0;
+  let maxBlockSeen = 0n;
+
+  const logs = await client.getLogs({
+    address: address as `0x${string}`,
+    fromBlock,
+    toBlock,
+  });
+
+  // Cache blocks by number to avoid repeated RPCs for timestamps
+  const blockCache = new Map<bigint, any>();
+  for (const log of logs) {
+    try {
+      const decodedLog = decodeEventLog({
+        abi: Sapience.abi,
+        data: log.data,
+        topics: log.topics,
+      });
+      const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
+      const logBlockNumber = log.blockNumber || 0n;
+      let block = blockCache.get(logBlockNumber);
+      if (!block) {
+        block = await client.getBlock({ blockNumber: logBlockNumber });
+        blockCache.set(logBlockNumber, block);
+      }
+      const logIndex = log.logIndex || 0;
+      const logData = {
+        ...JSON.parse(serializedLog),
+        transactionHash: log.transactionHash || '',
+        blockHash: log.blockHash || '',
+        blockNumber: logBlockNumber.toString(),
+        logIndex,
+        transactionIndex: log.transactionIndex || 0,
+        removed: log.removed || false,
+        topics: log.topics || [],
+        data: log.data || '',
+      } as any;
+
+      if (logBlockNumber > maxBlockSeen) maxBlockSeen = logBlockNumber;
+
+      const eventMarketId = logData.args?.marketId || 0;
+
+      // Pre-check existence for logging
+      const existingEvent = await prisma.event.findFirst({
+        where: {
+          transactionHash: logData.transactionHash,
+          market_group: { address, chainId },
+          blockNumber: Number(logBlockNumber),
+          logIndex,
+        },
+      });
+
+      await upsertEvent(
+        chainId,
+        address,
+        eventMarketId,
+        logBlockNumber,
+        block.timestamp,
+        logIndex,
+        logData
+      );
+
+      if (existingEvent) {
+        updated += 1;
+      } else {
+        inserted += 1;
+        console.log(
+          `[RECONCILER] New event recovered: chain=${chainId} mg=${address} event=${logData.eventName} tx=${logData.transactionHash} block=${logBlockNumber} idx=${logIndex}`
+        );
+      }
+      scanned += 1;
+    } catch (error) {
+      console.error(
+        `[RECONCILER] Error processing log for mg=${address} chain=${chainId}:`,
+        error
+      );
+    }
+  }
+
+  return { scanned, inserted, updated, maxBlockSeen };
+};
+
+// Processes logs for multiple market groups over a specific block range in a single RPC call.
+// Groups logs by address and reuses the same decode + upsert path. Returns aggregate counts.
+export const processMarketGroupLogsForAddressesRange = async (
+  marketGroups: Array<{ id: number; address: string; chainId: number }>,
+  client: PublicClient,
+  fromBlock: bigint,
+  toBlock: bigint | 'latest'
+): Promise<{
+  scanned: number;
+  inserted: number;
+  updated: number;
+  maxBlockSeen: bigint;
+}> => {
+  if (!marketGroups || marketGroups.length === 0) {
+    return { scanned: 0, inserted: 0, updated: 0, maxBlockSeen: 0n };
+  }
+
+  const chainId = marketGroups[0].chainId || (await client.getChainId());
+
+  const addressToGroup = new Map<
+    string,
+    { id: number; address: string; chainId: number }
+  >();
+  const addresses: `0x${string}`[] = [];
+  for (const mg of marketGroups) {
+    const addr = (mg.address || '').toLowerCase();
+    if (!addr || addr === '0x0000000000000000000000000000000000000000')
+      continue;
+    if (!addressToGroup.has(addr)) {
+      addressToGroup.set(addr, { ...mg, address: addr });
+      addresses.push(addr as `0x${string}`);
+    }
+  }
+
+  if (addresses.length === 0) {
+    return { scanned: 0, inserted: 0, updated: 0, maxBlockSeen: 0n };
+  }
+
+  let scanned = 0;
+  let inserted = 0;
+  let updated = 0;
+  let maxBlockSeen = 0n;
+
+  const logs = await client.getLogs({
+    address: addresses,
+    fromBlock,
+    toBlock,
+  });
+
+  // Cache blocks by number to avoid repeated RPCs for timestamps
+  const blockCache = new Map<bigint, any>();
+  for (const log of logs) {
+    try {
+      const mg = addressToGroup.get((log.address || '').toLowerCase());
+      if (!mg) continue;
+
+      const decodedLog = decodeEventLog({
+        abi: Sapience.abi,
+        data: log.data,
+        topics: log.topics,
+      });
+      const serializedLog = JSON.stringify(decodedLog, bigintReplacer);
+      const logBlockNumber = log.blockNumber || 0n;
+      let block = blockCache.get(logBlockNumber);
+      if (!block) {
+        block = await client.getBlock({ blockNumber: logBlockNumber });
+        blockCache.set(logBlockNumber, block);
+      }
+      const logIndex = log.logIndex || 0;
+      const logData = {
+        ...JSON.parse(serializedLog),
+        transactionHash: log.transactionHash || '',
+        blockHash: log.blockHash || '',
+        blockNumber: logBlockNumber.toString(),
+        logIndex,
+        transactionIndex: log.transactionIndex || 0,
+        removed: log.removed || false,
+        topics: log.topics || [],
+        data: log.data || '',
+      } as any;
+
+      if (logBlockNumber > maxBlockSeen) maxBlockSeen = logBlockNumber;
+
+      const eventMarketId = logData.args?.marketId || 0;
+
+      // Pre-check existence for logging
+      const existingEvent = await prisma.event.findFirst({
+        where: {
+          transactionHash: logData.transactionHash,
+          market_group: { address: mg.address, chainId },
+          blockNumber: Number(logBlockNumber),
+          logIndex,
+        },
+      });
+
+      await upsertEvent(
+        chainId,
+        mg.address,
+        eventMarketId,
+        logBlockNumber,
+        block.timestamp,
+        logIndex,
+        logData
+      );
+
+      if (existingEvent) {
+        updated += 1;
+      } else {
+        inserted += 1;
+        console.log(
+          `[RECONCILER] New event recovered: chain=${chainId} mg=${mg.address} event=${logData.eventName} tx=${logData.transactionHash} block=${logBlockNumber} idx=${logIndex}`
+        );
+      }
+      scanned += 1;
+    } catch (error) {
+      console.error(
+        `[RECONCILER] Error processing batched log (chain=${chainId}):`,
+        error
+      );
+    }
+  }
+
+  return { scanned, inserted, updated, maxBlockSeen };
+};
+
 // Triggered by the callback in the Event model, this upserts related entities (Transaction, Position, MarketPrice).
 export const upsertEntitiesFromEvent = async (
   event: any, // Using any for now since this depends on helper functions that need migration

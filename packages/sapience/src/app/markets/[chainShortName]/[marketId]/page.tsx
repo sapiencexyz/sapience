@@ -217,8 +217,8 @@ const ForecastContent = () => {
   availableMarkets = availableMarkets.sort((a, b) => a.marketId - b.marketId);
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-20">
-      <div className="container mx-auto max-w-6xl lg:max-w-none flex flex-col">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-24">
+      <div className="container max-w-6xl mx-auto flex flex-col">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div>
             {marketClassification ===
@@ -276,7 +276,7 @@ const ForecastContent = () => {
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}
               <div className="flex flex-col w-full relative xl:col-span-6 h-[460px]">
-                <div className="w-full flex-1 relative mb-4">
+                <div className="w-full flex-1 relative mb-4 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden">
                   <PriceChart
                     market={{
                       marketId: numericMarketId!,
@@ -399,7 +399,7 @@ const ForecastContent = () => {
             </div>
 
             {/* Full Width Data Tables Below */}
-            <div className="w-full mt-4">
+            <div className="w-full my-5">
               <MarketDataTables />
             </div>
           </div>

@@ -94,12 +94,13 @@ export function useModifyTrade({
       },
       onTxHash: (_txHash: `0x${string}`) => {
         toast({
-          title: 'Transaction Submitted',
-          description: 'Position modification submitted.',
+          title: 'Transaction submitted.',
+          description:
+            'Position modification submission was successful. It may take a few moments to process.',
         });
       },
-      successMessage: 'Position modified successfully.',
-      fallbackErrorMessage: 'Failed to modify position.',
+      successMessage: 'Position modification submission was successful',
+      fallbackErrorMessage: 'Failed to modify position',
     });
 
   // Set error if approval error occurs

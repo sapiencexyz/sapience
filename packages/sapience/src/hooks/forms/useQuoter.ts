@@ -83,6 +83,7 @@ export function useQuoter({
   const {
     data: quoteData,
     isLoading: isQuoteLoading,
+    isFetching: isQuoteFetching,
     error,
   } = useQuery<QuoteData>({
     queryKey,
@@ -173,5 +174,8 @@ export function useQuoter({
 
   const quoteError = getQuoteErrorMessage(error);
 
-  return { quoteData, isQuoteLoading, quoteError };
+  // Expose loading as true both for initial load and refetches
+  const combinedLoading = Boolean(isQuoteLoading || isQuoteFetching);
+
+  return { quoteData, isQuoteLoading: combinedLoading, quoteError };
 }

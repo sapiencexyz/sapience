@@ -41,8 +41,8 @@ const SellPositionButton = ({
     if (isSuccess && !successHandled.current) {
       successHandled.current = true;
       toast({
-        title: 'Success!',
-        description: 'Position closed successfully',
+        title: 'Success.',
+        description: 'Position closed successfully.',
       });
       if (onSuccess) onSuccess();
     }

@@ -178,7 +178,7 @@ export function usePassiveLiquidityVault() {
           variant: 'destructive',
         });
       },
-      successMessage: 'Vault transaction completed successfully!',
+      successMessage: 'Vault transaction submission was successful',
       fallbackErrorMessage: 'Vault transaction failed',
     });
 

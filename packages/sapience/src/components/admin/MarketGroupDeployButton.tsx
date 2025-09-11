@@ -104,7 +104,7 @@ const MarketGroupDeployButton: React.FC<MarketGroupDeployButtonProps> = ({
     onTxHash: (hash) => {
       setTxHash(hash);
     },
-    successMessage: 'Market group deployed successfully!',
+    successMessage: 'Market group deployment submission was successful',
     fallbackErrorMessage: 'Failed to deploy market group',
   });
 

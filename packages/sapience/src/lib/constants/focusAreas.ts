@@ -19,7 +19,7 @@ export const FOCUS_AREAS: FocusArea[] = [
   },
   {
     id: 'decentralized-compute',
-    name: 'Blockchains',
+    name: 'Crypto',
     resources: [
       'ethereum-gas',
       'base-gas',
@@ -46,17 +46,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#C084FC', // purple-400
   },
   {
-    id: 'energy-depin',
-    name: 'Energy + DePIN',
-    resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#3B82F6', // blue-500
-  },
-  {
     id: 'climate-change',
-    name: 'Climate Change',
+    name: 'Weather',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -100,30 +91,8 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#FBBF24', // amber-400
   },
   {
-    id: 'space-exploration',
-    name: 'Space Exploration',
-    resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2L15 9L22 12L15 15L12 22L9 15L2 12L9 9L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#22D3EE', // cyan-400
-  },
-  {
-    id: 'emerging-technologies',
-    name: 'Emerging Technologies',
-    resources: [],
-    iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M9.5 2C9.5 2 9 6 9 9C9 12 12 12 12 12C12 12 15 12 15 9C15 6 14.5 2 14.5 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M12 12V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M5 12C5 12 3 14 3 16C3 18.5 5 20 8 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M19 12C19 12 21 14 21 16C21 18.5 19 20 16 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>`,
-    color: '#FB923C', // orange-400
-  },
-  {
     id: 'athletics',
-    name: 'Athletics',
+    name: 'Sports',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="3" y="9" width="2" height="6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>

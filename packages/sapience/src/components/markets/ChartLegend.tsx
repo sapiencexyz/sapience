@@ -73,8 +73,8 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
     <div
       className={
         isMultipleChoice
-          ? 'flex flex-wrap items-center gap-x-3 gap-y-1 pb-4 text-sm'
-          : 'flex flex-col items-start gap-y-1 pb-4 text-sm'
+          ? 'flex flex-wrap items-center gap-x-3 gap-y-1 pb-4 text-sm lg:text-base lg:gap-x-4 lg:gap-y-1.5'
+          : 'flex flex-col items-start gap-y-1 pb-4 text-sm lg:text-base lg:gap-y-1.5'
       }
     >
       {items.map(({ marketIdNum, index, value }) => {
@@ -97,14 +97,14 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         }
 
         const isPercentageMarket = yAxisConfig.unit === '%';
-        const itemClassName = `flex items-center gap-1.5 ${
-          isMultipleChoice ? '' : 'mb-0.5 text-lg'
+        const itemClassName = `flex items-center gap-1.5 lg:gap-2 ${
+          isMultipleChoice ? '' : 'mb-0.5 text-lg lg:text-xl'
         }`;
 
         return (
           <div key={marketIdStr} className={itemClassName}>
             <span
-              className="h-2.5 w-2.5 rounded-full"
+              className="h-2.5 w-2.5 rounded-full lg:h-3 lg:w-3"
               style={{ backgroundColor: color }}
             />
             <span className="font-medium text-foreground">
@@ -120,9 +120,9 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         );
       })}
       {hasIndexData && showIndexLine && (
-        <div key="index" className="flex items-center gap-1.5">
+        <div key="index" className="flex items-center gap-1.5 lg:gap-2">
           <span
-            className="h-2.5 w-2.5 rounded-full"
+            className="h-2.5 w-2.5 rounded-full lg:h-3 lg:w-3"
             style={{ backgroundColor: indexLineColor, opacity: 0.7 }} // Match line style
           />
           <span className="font-medium text-foreground">
@@ -137,7 +137,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <InfoIcon className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
+                <InfoIcon className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-muted-foreground cursor-pointer" />
               </TooltipTrigger>
               <TooltipContent>
                 <p>The index is the answer to the question so far</p>

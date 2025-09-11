@@ -104,7 +104,7 @@ export function useCreateTrade({
         onTxHash?.(hash);
       },
       onSuccess,
-      successMessage: 'Trade position created successfully',
+      successMessage: 'Trade position submission was successful',
       fallbackErrorMessage: 'Failed to create trade position',
     });
 

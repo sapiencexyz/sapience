@@ -317,7 +317,7 @@ const Header = () => {
         </SidebarContent>
         <SidebarFooter>
           <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg">
-            <div className="flex flex-col items-start gap-2 mb-2">
+            <div className="flex flex-col items-start gap-2 mb-3">
               <span>Powered by</span>
               <a
                 href="https://ethena.fi"
@@ -401,6 +401,24 @@ const Header = () => {
                 <BookOpen className="h-3 w-3 scale-[85%]" />
               </a>
             </Button>
+          </div>
+          <div className="flex items-center gap-3 pl-4 pb-4 -mt-3.5">
+            <a
+              href="https://docs.sapience.xyz/terms-of-service"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Terms
+            </a>
+            <a
+              href="https://docs.sapience.xyz/privacy-policy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center text-xs font-normal text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Privacy Policy
+            </a>
           </div>
         </SidebarFooter>
       </Sidebar>

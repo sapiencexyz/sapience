@@ -4,6 +4,7 @@ import Slider from '@sapience/ui/components/ui/slider';
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
 import { priceToSqrtPriceX96 } from '~/lib/utils/util';
+import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
 
 interface MultipleChoicePredictProps {
   name?: string;
@@ -59,23 +60,63 @@ export default function MultipleChoicePredict({
               {options
                 .slice()
                 .sort((a, b) => a.marketId - b.marketId)
-                .map(({ name: optionName, marketId }) => (
-                  <Button
-                    key={marketId}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMarketId(marketId);
-                      setSliderValue([50]); // Reset to 50% when selecting new option
-                    }}
-                    className={`text-center justify-start font-normal ${
-                      selectedMarketId === marketId
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                        : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {optionName}
-                  </Button>
-                ))}
+                .map(({ name: optionName, marketId }, idx) => {
+                  const isSelected = selectedMarketId === marketId;
+                  const seriesColor = getSeriesColorByIndex(idx);
+                  const unselectedBg = withAlpha(seriesColor, 0.08);
+                  const hoverBg = withAlpha(seriesColor, 0.16);
+                  const borderColor = withAlpha(seriesColor, 0.24);
+
+                  return (
+                    <Button
+                      key={marketId}
+                      type="button"
+                      onClick={() => {
+                        setSelectedMarketId(marketId);
+                        setSliderValue([50]); // Reset to 50% when selecting new option
+                      }}
+                      role="radio"
+                      aria-checked={isSelected}
+                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
+                      style={{
+                        backgroundColor: unselectedBg,
+                        borderColor,
+                      }}
+                      onMouseEnter={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = hoverBg;
+                      }}
+                      onMouseLeave={(e) => {
+                        (
+                          e.currentTarget as HTMLButtonElement
+                        ).style.backgroundColor = unselectedBg;
+                      }}
+                    >
+                      <span
+                        className="inline-flex items-center justify-center rounded-full"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: `2px solid ${seriesColor}`,
+                        }}
+                        aria-hidden
+                      >
+                        {isSelected ? (
+                          <span
+                            className="block rounded-full"
+                            style={{
+                              width: 8,
+                              height: 8,
+                              backgroundColor: seriesColor,
+                            }}
+                          />
+                        ) : null}
+                      </span>
+                      <span className="truncate">{optionName}</span>
+                    </Button>
+                  );
+                })}
             </div>
           </>
         ) : (

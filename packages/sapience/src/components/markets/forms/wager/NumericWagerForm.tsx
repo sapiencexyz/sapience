@@ -11,6 +11,7 @@ import type { MarketGroupType } from '@sapience/ui/types';
 import NumericPredict from '../inputs/NumericPredict';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
+import WagerDisclaimer from '../shared/WagerDisclaimer';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
@@ -129,7 +130,7 @@ export default function NumericWagerForm({
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-6">
+      <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         <NumericPredict
           bounds={{
             lowerBound,
@@ -159,13 +160,16 @@ export default function NumericWagerForm({
 
         {/* Permit gating removed */}
 
-        <Button
-          type="submit"
-          disabled={isButtonDisabled}
-          className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {getButtonText()}
-        </Button>
+        <div className="space-y-3">
+          <WagerDisclaimer />
+          <Button
+            type="submit"
+            disabled={isButtonDisabled}
+            className="w-full bg-primary text-primary-foreground py-6 px-5 rounded text-lg font-normal hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {getButtonText()}
+          </Button>
+        </div>
       </form>
     </FormProvider>
   );

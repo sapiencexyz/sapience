@@ -130,7 +130,7 @@ export default function CollateralBalance({
           <Button
             variant="outline"
             size="xs"
-            className="text-xs"
+            className="h-6 px-1.5 text-xs leading-none"
             onClick={() => handleSetWager(0.5)}
             type="button"
           >
@@ -139,7 +139,7 @@ export default function CollateralBalance({
           <Button
             variant="outline"
             size="xs"
-            className="text-xs"
+            className="h-6 px-1.5 text-xs leading-none"
             onClick={() => handleSetWager(1)}
             type="button"
           >

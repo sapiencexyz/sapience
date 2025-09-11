@@ -98,6 +98,7 @@ export default function WagerInputWithQuote({
           marketClassification={marketClassification}
           predictionValue={predictionValue}
           displayUnit={displayUnit}
+          variant="betslip"
         />
       )}
     </div>

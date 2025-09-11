@@ -1,4 +1,3 @@
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useCallback, useState, useMemo } from 'react';
 import {
   encodeFunctionData,
@@ -53,7 +52,6 @@ export function useSubmitParlay({
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
   const publicClient = usePublicClient({ chainId });
-  const { toast } = useToast();
   const router = useRouter();
 
   const [error, setError] = useState<string | null>(null);
@@ -61,19 +59,9 @@ export function useSubmitParlay({
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
-    onTxHash: (hash) => {
-      // no-op; we'll re-read order ids on success
-      void hash;
-    },
     onSuccess: () => {
       setSuccess('Parlay order submitted successfully');
       setError(null);
-      toast({
-        title: 'Parlay Order Confirmed',
-        description:
-          'Your parlay order has been submitted and is available for other users to fill',
-        duration: 5000,
-      });
       // Attempt to read latest maker order id and notify
       (async () => {
         try {
@@ -103,7 +91,7 @@ export function useSubmitParlay({
       const message = err?.message || 'Transaction failed';
       setError(message);
     },
-    successMessage: 'Parlay submitted',
+    successMessage: 'Parlay submission was successful',
     fallbackErrorMessage: 'Failed to submit parlay',
   });
 
@@ -235,12 +223,6 @@ export function useSubmitParlay({
         throw new Error('No valid calls to execute');
       }
 
-      toast({
-        title: 'Submitting Parlay Order',
-        description:
-          'Please confirm the transaction batch in your wallet. This will approve collateral and submit your parlay order.',
-      });
-
       // Submit the batch of calls using the unified wrapper
       await sendCalls({
         calls,
@@ -250,14 +232,8 @@ export function useSubmitParlay({
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to submit parlay';
       setError(errorMessage);
-
-      toast({
-        title: 'Parlay Failed',
-        description: errorMessage,
-        variant: 'destructive',
-      });
     }
-  }, [enabled, address, positions.length, chainId, calls, sendCalls, toast]);
+  }, [enabled, address, positions.length, chainId, calls, sendCalls]);
 
   const reset = useCallback(() => {
     setError(null);
