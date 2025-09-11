@@ -4,13 +4,15 @@ import { initializeFixtures } from '../fixtures';
 import { CandleCacheBuilder } from '../candle-cache/candleCacheBuilder';
 import { createResilientProcess } from '../utils/utils';
 import { PnlAccuracyReconciler } from '../precompute/reconciler';
+import { MarketEventReconciler } from '../market-events/reconciler';
 
 async function runCandleCacheBuilder(intervalSeconds: number) {
   await initializeDataSource();
   await initializeFixtures();
 
   const candleCacheBuilder = CandleCacheBuilder.getInstance();
-  const reconciler = PnlAccuracyReconciler.getInstance();
+  const pnlAccuracyReconciler = PnlAccuracyReconciler.getInstance();
+  const marketEventReconciler = MarketEventReconciler.getInstance();
 
   while (true) {
     try {
@@ -18,8 +20,11 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
       await candleCacheBuilder.buildCandles();
       // After candle build, run synchronous precompute reconciliation
       console.log('[CANDLE_CACHE] Starting PnL/accuracy reconciliation...');
-      await reconciler.runOnce();
+      await pnlAccuracyReconciler.runOnce();
       console.log('[CANDLE_CACHE] PnL/accuracy reconciliation completed');
+      console.log('[CANDLE_CACHE] Starting MarketEvent reconciliation...');
+      await marketEventReconciler.runOnce();
+      console.log('[CANDLE_CACHE] MarketEvent reconciliation completed');
       console.log(
         `Candle cache update completed at ${new Date().toISOString()}`
       );
