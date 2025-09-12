@@ -92,11 +92,6 @@ export default function WagerInputWithQuote({
           marketGroupData={marketGroupData}
           positionId={positionId}
           defaultSelectedMarketId={selectedMarketId}
-          isFlipped={
-            typeof positionIsFlipped === 'boolean'
-              ? positionIsFlipped
-              : undefined
-          }
         />
       )}
 
