@@ -93,6 +93,7 @@ export function useQuoter({
         !marketData?.address ||
         !marketId ||
         expectedPrice === undefined ||
+        !Number.isFinite(expectedPrice) ||
         !parsedWagerAmount ||
         parsedWagerAmount <= BigInt(0)
       ) {
@@ -145,6 +146,7 @@ export function useQuoter({
       !!marketData?.address &&
       !!marketId &&
       expectedPrice !== undefined &&
+      Number.isFinite(expectedPrice) &&
       !!parsedWagerAmount &&
       parsedWagerAmount > BigInt(0),
     // Add reasonable refetch settings

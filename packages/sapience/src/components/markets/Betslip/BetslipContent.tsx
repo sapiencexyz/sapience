@@ -815,6 +815,15 @@ function ReadOnlyPredictionBadge({
           : !(typeof isFlipped === 'boolean' ? isFlipped : false);
       return { isYes: longSelected, label: longSelected ? 'Yes' : 'No' };
     }
+    if (marketClassification === MarketGroupClassificationEnum.NUMERIC) {
+      const formatted = (() => {
+        if (!predictionValue) return '—';
+        const num = Number(predictionValue);
+        if (!Number.isFinite(num)) return String(predictionValue);
+        return Math.abs(num) < 1 ? num.toFixed(6) : num.toString();
+      })();
+      return { isYes: true, label: formatted };
+    }
     // YES/NO: compare sqrt price flag
     const yesSelected = predictionValue === YES_SQRT_PRICE_X96;
     return { isYes: yesSelected, label: yesSelected ? 'Yes' : 'No' };
@@ -822,7 +831,13 @@ function ReadOnlyPredictionBadge({
 
   return (
     <Badge
-      className={isYes ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
+      className={
+        marketClassification === MarketGroupClassificationEnum.NUMERIC
+          ? 'bg-secondary text-secondary-foreground'
+          : isYes
+            ? 'bg-green-600 text-white'
+            : 'bg-red-600 text-white'
+      }
     >
       {label}
     </Badge>
