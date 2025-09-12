@@ -140,7 +140,7 @@ export default function YesNoWagerForm({
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         <div className="space-y-4">
           <div>
-            <div className="grid grid-cols-1 gap-2 mt-2">
+            <div className="grid grid-cols-2 gap-2 mt-2">
               <ColoredRadioOption
                 label="Yes"
                 color={CHART_SERIES_COLORS[2]}

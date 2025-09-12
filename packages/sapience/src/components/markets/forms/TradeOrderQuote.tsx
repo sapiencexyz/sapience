@@ -209,7 +209,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
           <div
             className={`transition-opacity duration-150 ${isLoading ? 'opacity-30 pointer-events-none' : 'opacity-100'}`}
           >
-            <h4 className="text-sm font-medium mb-2.5 flex items-center">
+            <h4 className="text-sm font-medium mb-2 flex items-center">
               Order Quote
             </h4>
             <div className="flex flex-col gap-2.5 text-sm">
