@@ -151,39 +151,6 @@ export const BetslipContent = ({
     });
   }, [bids, parlayWagerAmount, nowMs]);
 
-  // All unexpired bids sorted by payout (desc)
-  const unexpiredBids = useMemo(() => {
-    if (!bids || bids.length === 0) return [] as QuoteBid[];
-
-    const makerWagerStr = parlayWagerAmount || '0';
-    let makerWager: bigint;
-    try {
-      makerWager = BigInt(makerWagerStr);
-    } catch {
-      makerWager = 0n;
-    }
-
-    const active = bids.filter((b) => b.takerDeadline * 1000 > nowMs);
-    return active.slice().sort((a, b) => {
-      const aPayout = (() => {
-        try {
-          return makerWager + BigInt(a.takerWager);
-        } catch {
-          return 0n;
-        }
-      })();
-      const bPayout = (() => {
-        try {
-          return makerWager + BigInt(b.takerWager);
-        } catch {
-          return 0n;
-        }
-      })();
-      if (aPayout === bPayout) return 0;
-      return bPayout > aPayout ? 1 : -1;
-    });
-  }, [bids, parlayWagerAmount, nowMs]);
-
   const showNoBidsHint =
     effectiveParlayMode &&
     !bestBid &&
@@ -463,9 +430,16 @@ export const BetslipContent = ({
                               return '0.00';
                             }
                           })();
+                          const remainingMs =
+                            bestBid.takerDeadline * 1000 - nowMs;
+                          const secs = Math.max(
+                            0,
+                            Math.ceil(remainingMs / 1000)
+                          );
+                          const suffix = secs === 1 ? 'second' : 'seconds';
                           return (
                             <div className="mt-3">
-                              <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full whitespace-nowrap h-12">
+                              <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full min-h-[48px]">
                                 <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
                                   <Image
                                     src="/usde.svg"
@@ -477,15 +451,20 @@ export const BetslipContent = ({
                                   <span className="font-medium text-foreground">
                                     To Win:
                                   </span>
+                                  <span className="text-foreground inline-flex items-center whitespace-nowrap">
+                                    {humanTotal} {symbol}
+                                  </span>
                                 </span>
-                                <span className="text-foreground inline-flex items-center whitespace-nowrap">
-                                  {humanTotal} {symbol}
+                                <span className="ml-auto text-xs font-normal text-foreground text-right">
+                                  Expires in
+                                  <br />
+                                  {`${secs} ${suffix}`}
                                 </span>
                               </div>
                             </div>
                           );
                         })()}
-                        <WagerDisclaimer className="mt-2 mb-3" />
+                        <WagerDisclaimer className="mt-4 mb-4" />
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={
@@ -522,66 +501,11 @@ export const BetslipContent = ({
                             </Tooltip>
                           </TooltipProvider>
                         </div>
-                        <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                          {(() => {
-                            const makerWagerStr =
-                              parlayMethods.getValues('wagerAmount') || '0';
-                            const decimals = Number.isFinite(
-                              parlayCollateralDecimals as number
-                            )
-                              ? (parlayCollateralDecimals as number)
-                              : 18;
-                            let makerWagerWei: bigint = 0n;
-                            try {
-                              makerWagerWei = parseUnits(
-                                makerWagerStr,
-                                decimals
-                              );
-                            } catch {
-                              makerWagerWei = 0n;
-                            }
-                            const symbol = parlayCollateralSymbol || 'testUSDe';
-                            return unexpiredBids.map((bid, idx) => {
-                              const payoutDisplay = (() => {
-                                try {
-                                  const wei =
-                                    makerWagerWei + BigInt(bid.takerWager);
-                                  const human = Number(
-                                    formatUnits(wei, decimals)
-                                  );
-                                  return formatNumber(human, 2);
-                                } catch {
-                                  return '0.00';
-                                }
-                              })();
-                              const remainingMs =
-                                bid.takerDeadline * 1000 - nowMs;
-                              const secs = Math.max(
-                                0,
-                                Math.ceil(remainingMs / 1000)
-                              );
-                              const suffix = secs === 1 ? 'second' : 'seconds';
-                              return (
-                                <div
-                                  key={`${bid.takerWager}-${bid.takerDeadline}-${idx}`}
-                                  className="flex items-center justify-between"
-                                >
-                                  <span>
-                                    <span className="font-medium">
-                                      To Win:{' '}
-                                    </span>
-                                    {`${payoutDisplay} ${symbol}`}
-                                  </span>
-                                  <span className="font-medium text-right">{`Expires in ${secs} ${suffix}`}</span>
-                                </div>
-                              );
-                            });
-                          })()}
-                        </div>
+                        {/* Removed per design: list of alternate bids with To Win and Expires */}
                       </div>
                     ) : (
                       <div className="text-center">
-                        <WagerDisclaimer className="mt-2 mb-3" />
+                        <WagerDisclaimer className="mt-4 mb-4" />
                         <Button
                           className="w-full py-6 text-lg font-normal bg-primary text-primary-foreground hover:bg-primary/90"
                           disabled={true}
