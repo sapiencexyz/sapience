@@ -401,6 +401,22 @@ const Betslip = ({
           };
         }
       }
+      if (
+        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+      ) {
+        const id = p.position.id;
+        const existing = mergedPositions[id];
+        if (existing) {
+          mergedPositions[id] = {
+            ...existing,
+            // Force isFlipped based on latest position.prediction from market components
+            isFlipped:
+              typeof p.position.prediction === 'boolean'
+                ? !p.position.prediction
+                : existing.isFlipped,
+          };
+        }
+      }
     });
 
     formMethods.reset(
@@ -735,7 +751,7 @@ const Betslip = ({
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
     parlayMethods: formMethods as unknown as UseFormReturn<{
@@ -743,7 +759,7 @@ const Betslip = ({
       limitAmount: string | number;
       positions: Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
     handleIndividualSubmit,

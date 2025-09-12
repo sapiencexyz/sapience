@@ -44,12 +44,18 @@ import {
 interface BetslipContentProps {
   isParlayMode: boolean;
   individualMethods: UseFormReturn<{
-    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+    positions: Record<
+      string,
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+    >;
   }>;
   parlayMethods: UseFormReturn<{
     wagerAmount: string;
     limitAmount: string | number;
-    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+    positions: Record<
+      string,
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+    >;
   }>;
   handleIndividualSubmit: () => void;
   handleParlaySubmit: () => void;
@@ -695,6 +701,8 @@ function IndividualPositionRow({
           chainId={marketGroupData.chainId}
         />
       </div>
+
+      {/* Flip is controlled in market components; no per-position control here */}
 
       {wagerAmount && Number(wagerAmount) > 0 ? (
         <QuoteDisplay

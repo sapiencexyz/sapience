@@ -90,9 +90,8 @@ const SettlePositionButton = ({
             </TooltipTrigger>
             <TooltipContent>
               <p className="max-w-[260px]">
-                Gathering resolution criteria and processing decentralized
-                verification generally takes hours after the end time of the
-                market
+                Decentralized settlement typically takes hours, though it may
+                take longer in certain cases.
               </p>
             </TooltipContent>
           </Tooltip>
