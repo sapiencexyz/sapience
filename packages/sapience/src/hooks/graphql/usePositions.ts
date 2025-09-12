@@ -63,6 +63,66 @@ export const POSITIONS_QUERY = /* GraphQL */ `
   }
 `;
 
+// GraphQL query to fetch all positions by market group (no owner filter)
+export const ALL_POSITIONS_QUERY = /* GraphQL */ `
+  query AllPositions($marketAddress: String) {
+    positions(
+      where: {
+        market: {
+          is: { marketGroup: { is: { address: { equals: $marketAddress } } } }
+        }
+      }
+    ) {
+      id
+      positionId
+      owner
+      baseToken
+      quoteToken
+      collateral
+      borrowedBaseToken
+      borrowedQuoteToken
+      isLP
+      isSettled
+      createdAt
+      highPriceTick
+      lowPriceTick
+      lpBaseToken
+      lpQuoteToken
+      market {
+        id
+        marketId
+        startTimestamp
+        endTimestamp
+        settled
+        settlementPriceD18
+        question
+        optionName
+        marketGroup {
+          id
+          chainId
+          address
+          question
+          collateralSymbol
+          collateralDecimals
+          markets {
+            id
+          }
+          baseTokenName
+          resource {
+            name
+            slug
+          }
+        }
+      }
+      transactions {
+        id
+        type
+        createdAt
+      }
+    }
+  }
+`;
+
 interface UsePositionsProps {
   address?: string; // Made optional
   marketAddress?: string;
@@ -104,5 +164,30 @@ export function usePositions({ address, marketAddress }: UsePositionsProps) {
     enabled: Boolean(address) || Boolean(marketAddress),
     staleTime: 30000, // 30 seconds
     refetchInterval: 10000, // Refetch every 10 seconds
+  });
+}
+
+export function useAllPositions({ marketAddress }: { marketAddress?: string }) {
+  return useQuery<PositionType[]>({
+    queryKey: ['positions-all', marketAddress],
+    queryFn: async () => {
+      const variables: { marketAddress?: string } = {};
+      if (marketAddress && marketAddress.trim() !== '') {
+        variables.marketAddress = marketAddress;
+      }
+
+      type PositionsQueryResult = {
+        positions: PositionType[];
+      };
+
+      const data = await graphqlRequest<PositionsQueryResult>(
+        ALL_POSITIONS_QUERY,
+        variables
+      );
+      return data.positions || [];
+    },
+    enabled: Boolean(marketAddress),
+    staleTime: 30000,
+    refetchInterval: 10000,
   });
 }

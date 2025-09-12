@@ -250,6 +250,7 @@ const MarketDataTables = () => {
           parentChainId={chainId || undefined}
           parentMarketId={numericMarketId || undefined}
           showHeader={false}
+          showActions={false}
         />
       );
     }
@@ -260,6 +261,7 @@ const MarketDataTables = () => {
         parentChainId={chainId || undefined}
         parentMarketId={numericMarketId || undefined}
         showHeader={false}
+        showActions={false}
       />
     );
   };

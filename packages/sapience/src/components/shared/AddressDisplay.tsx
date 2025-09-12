@@ -92,14 +92,17 @@ const AddressDisplay = ({
 
   const containerGapClass = isCompact ? 'gap-1' : 'gap-3';
   const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-1.5';
+  const nameTextClass = isLarge
+    ? 'text-2xl'
+    : isCompact
+      ? 'text-xs text-muted-foreground/80'
+      : '';
 
   return (
     <div
       className={`flex items-center ${containerGapClass} ${className || ''}`}
     >
-      <span className={`font-mono ${isLarge ? 'text-2xl' : ''}`}>
-        {displayName}
-      </span>
+      <span className={`font-mono ${nameTextClass}`}>{displayName}</span>
       <div className={`flex items-center ${iconsGapClass}`}>
         <Button
           variant="ghost"

@@ -5,7 +5,6 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -17,13 +16,12 @@ import SellPositionDialog from '../markets/SellPositionDialog';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import PositionSharesBadge from '~/components/shared/PositionSharesBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import {
   calculateEffectiveEntryPrice,
   getChainShortName,
 } from '~/lib/utils/util';
-import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
-import { MarketGroupClassification } from '~/lib/types';
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
@@ -31,6 +29,7 @@ interface TraderPositionsTableProps {
   parentChainId?: number;
   parentMarketId?: number;
   showHeader?: boolean;
+  showActions?: boolean;
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -165,6 +164,7 @@ export default function TraderPositionsTable({
   parentChainId,
   parentMarketId,
   showHeader = true,
+  showActions = true,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -183,21 +183,16 @@ export default function TraderPositionsTable({
     return <EmptyTabState message="No trades found" />;
   }
 
-  let displayQuestionColumn;
-  if (isProfilePageContext) {
-    displayQuestionColumn = true; // Always show on profile page
-  } else if (isMarketPage) {
-    // Specific market page
-    displayQuestionColumn = false; // Never show on specific market page
-  } else {
-    // Market group page (parentMarketAddress & parentChainId are present, but parentMarketId is not)
-    displayQuestionColumn = validPositions.some(
-      (p) =>
-        p.market?.marketGroup &&
-        p.market?.marketGroup?.markets &&
-        p.market?.marketGroup?.markets.length > 1
-    );
-  }
+  const displayQuestionColumn = isProfilePageContext
+    ? true
+    : isMarketPage
+      ? false
+      : validPositions.some(
+          (p) =>
+            p.market?.marketGroup &&
+            p.market?.marketGroup?.markets &&
+            p.market?.marketGroup?.markets.length > 1
+        );
 
   // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
   const getPositionCreatedMs = (p: PositionType) => {
@@ -222,9 +217,15 @@ export default function TraderPositionsTable({
       {showHeader && <h3 className="font-medium mb-4">Trader Positions</h3>}
       <div className="rounded border bg-background dark:bg-muted/50">
         {/* Table Header (desktop) */}
-        <div className="hidden xl:grid xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] items-center px-4 py-1 bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+        <div
+          className={`hidden xl:grid ${
+            showActions
+              ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+          } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
+        >
           {displayQuestionColumn && (
-            <div className="xl:col-span-5">Prediction Market</div>
+            <div className={'xl:col-span-5'}>Prediction Market</div>
           )}
           <div
             className={
@@ -254,19 +255,21 @@ export default function TraderPositionsTable({
             </TooltipProvider>
           </div>
           {/* Header actions sizer to align auto-width column with row actions */}
-          <div className="xl:col-start-12 xl:col-span-1 xl:justify-self-end">
-            <div className="invisible flex gap-3" aria-hidden>
-              <Button size="sm" variant="outline">
-                Settle
-              </Button>
-              <button
-                type="button"
-                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-              >
-                Share
-              </button>
+          {showActions && (
+            <div className="xl:col-start-12 xl:col-span-1 xl:justify-self-end">
+              <div className="invisible flex gap-3" aria-hidden>
+                <Button size="sm" variant="outline">
+                  Settle
+                </Button>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                >
+                  Share
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
         {sortedPositions.map((position: PositionType) => {
           const isOwner =
@@ -304,6 +307,7 @@ export default function TraderPositionsTable({
               isPositionSettled={isPositionSettled}
               marketAddress={marketAddress}
               displayQuestionColumn={Boolean(displayQuestionColumn)}
+              showActions={showActions}
             />
           );
         })}
@@ -322,6 +326,7 @@ type TraderPositionRowProps = {
   isPositionSettled: boolean;
   marketAddress: string;
   displayQuestionColumn: boolean;
+  showActions: boolean;
 };
 
 function TraderPositionRow({
@@ -334,12 +339,19 @@ function TraderPositionRow({
   isPositionSettled,
   marketAddress,
   displayQuestionColumn,
+  showActions,
 }: TraderPositionRowProps) {
   return (
     <div className="px-4 py-4 xl:py-4 border-b last:border-b-0">
-      <div className="flex flex-col gap-3 xl:grid xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto] xl:items-center">
+      <div
+        className={`flex flex-col gap-3 xl:grid ${
+          showActions
+            ? 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
+            : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
+        } xl:items-center`}
+      >
         {displayQuestionColumn && (
-          <div className="xl:col-span-5">
+          <div className={'xl:col-span-5'}>
             {(() => {
               const chainShortName = position.market?.marketGroup?.chainId
                 ? getChainShortName(position.market.marketGroup.chainId)
@@ -347,65 +359,22 @@ function TraderPositionRow({
               const marketAddr = position.market?.marketGroup?.address || '';
               const marketId = position.market?.marketId;
               const question = position.market?.question || 'N/A';
-              const baseTokenName = position.market?.marketGroup?.baseTokenName;
-              const baseTokenAmount = Number(
-                formatEther(BigInt(position.baseToken || '0'))
-              );
-              const borrowedBaseTokenAmount = Number(
-                formatEther(BigInt(position.borrowedBaseToken || '0'))
-              );
-              const netPosition = baseTokenAmount - borrowedBaseTokenAmount;
-              const isLong = netPosition >= 0;
-              let positionSize = 0;
-              if (baseTokenName === 'Yes') {
-                positionSize = isLong
-                  ? baseTokenAmount
-                  : borrowedBaseTokenAmount;
-              } else {
-                positionSize = isLong
-                  ? baseTokenAmount
-                  : borrowedBaseTokenAmount;
-              }
-              const marketGroup = position.market?.marketGroup;
-              const marketClassification = marketGroup
-                ? getMarketGroupClassification(marketGroup)
-                : MarketGroupClassification.NUMERIC;
-              const isYesNo =
-                marketClassification === MarketGroupClassification.YES_NO;
-              const isNumeric =
-                marketClassification === MarketGroupClassification.NUMERIC;
-              const sharesLabel = isYesNo
-                ? `${isLong ? 'Yes' : 'No'} Shares`
-                : 'Shares';
 
               if (!marketAddr || marketId === undefined)
                 return (
                   <div className="space-y-2">
-                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
+                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
                       {question}
                     </h2>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <Badge
-                        variant={isNumeric ? 'default' : 'outline'}
-                        className={
-                          isYesNo
-                            ? isLong
-                              ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                              : 'border-red-500/40 bg-red-500/10 text-red-600'
-                            : ''
-                        }
-                      >
-                        <span className="flex items-center gap-1">
-                          <NumberDisplay value={positionSize} /> {sharesLabel}
-                        </span>
-                      </Badge>
+                      <PositionSharesBadge position={position} />
                       <span> #{position.positionId}</span>
                     </div>
                   </div>
                 );
               return (
                 <div className="space-y-2">
-                  <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
+                  <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
                     <Link
                       href={`/markets/${chainShortName}:${marketAddr}/${marketId}`}
                       className="group"
@@ -416,20 +385,7 @@ function TraderPositionRow({
                     </Link>
                   </h2>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <Badge
-                      variant={isNumeric ? 'default' : 'outline'}
-                      className={
-                        isYesNo
-                          ? isLong
-                            ? 'border-green-500/40 bg-green-500/10 text-green-600'
-                            : 'border-red-500/40 bg-red-500/10 text-red-600'
-                          : ''
-                      }
-                    >
-                      <span className="flex items-center gap-1">
-                        <NumberDisplay value={positionSize} /> {sharesLabel}
-                      </span>
-                    </Badge>
+                    <PositionSharesBadge position={position} />
                     <span>Position #{position.positionId}</span>
                   </div>
                 </div>
@@ -480,92 +436,94 @@ function TraderPositionRow({
               <PositionValueCell position={position} />
             </div>
 
-            <div className="mt-3 xl:mt-0 xl:col-span-1 xl:col-start-12 xl:justify-self-end">
-              <div className="flex gap-3 justify-start xl:justify-end">
-                {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
-                {isExpired && !isPositionSettled ? (
-                  isOwner ? (
-                    <SettlePositionButton
-                      positionId={position.positionId.toString()}
-                      marketAddress={marketAddress}
-                      chainId={position.market?.marketGroup?.chainId || 0}
-                      isMarketSettled={position.market?.settled || false}
-                      onSuccess={() => {
-                        console.log(
-                          `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
-                        );
-                      }}
-                    />
+            {showActions && (
+              <div className="mt-3 xl:mt-0 xl:col-span-1 xl:col-start-12 xl:justify-self-end">
+                <div className="flex gap-3 justify-start xl:justify-end">
+                  {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
+                  {isExpired && !isPositionSettled ? (
+                    isOwner ? (
+                      <SettlePositionButton
+                        positionId={position.positionId.toString()}
+                        marketAddress={marketAddress}
+                        chainId={position.market?.marketGroup?.chainId || 0}
+                        isMarketSettled={position.market?.settled || false}
+                        onSuccess={() => {
+                          console.log(
+                            `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
+                          );
+                        }}
+                      />
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button size="sm" variant="outline" disabled>
+                                Settle
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-[220px]">
+                              {hasWallet
+                                ? 'You can only settle positions from the account that owns them.'
+                                : 'Connect your account to settle this position.'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )
                   ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button size="sm" variant="outline" disabled>
-                              Settle
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-[220px]">
-                            {hasWallet
-                              ? 'You can only settle positions from the account that owns them.'
-                              : 'Connect your account to settle this position.'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )
-                ) : (
-                  !isMarketPage &&
-                  (isOwner && !isClosed ? (
-                    <SellPositionDialog
-                      position={position}
-                      marketAddress={marketAddress}
-                      chainId={position.market?.marketGroup?.chainId || 0}
-                      onSuccess={() => {
-                        console.log(
-                          `Close action for position ${position.positionId} sent.`
-                        );
-                      }}
-                    />
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button size="sm" variant="outline" disabled>
-                              Sell
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-[220px]">
-                            {!hasWallet
-                              ? 'Connect your wallet to sell this position.'
-                              : isClosed
-                                ? 'This position is already closed.'
-                                : 'You can only sell from the account that owns this position.'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ))
-                )}
+                    !isMarketPage &&
+                    (isOwner && !isClosed ? (
+                      <SellPositionDialog
+                        position={position}
+                        marketAddress={marketAddress}
+                        chainId={position.market?.marketGroup?.chainId || 0}
+                        onSuccess={() => {
+                          console.log(
+                            `Close action for position ${position.positionId} sent.`
+                          );
+                        }}
+                      />
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span>
+                              <Button size="sm" variant="outline" disabled>
+                                Sell
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-[220px]">
+                              {!hasWallet
+                                ? 'Connect your wallet to sell this position.'
+                                : isClosed
+                                  ? 'This position is already closed.'
+                                  : 'You can only sell from the account that owns this position.'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ))
+                  )}
 
-                <SharePositionDialog
-                  position={position}
-                  trigger={
-                    <button
-                      type="button"
-                      className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                    >
-                      Share
-                    </button>
-                  }
-                />
+                  <SharePositionDialog
+                    position={position}
+                    trigger={
+                      <button
+                        type="button"
+                        className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                      >
+                        Share
+                      </button>
+                    }
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </>
         )}
       </div>

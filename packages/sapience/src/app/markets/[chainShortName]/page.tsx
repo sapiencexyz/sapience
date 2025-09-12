@@ -11,8 +11,9 @@ import type { MarketGroupType, MarketType } from '@sapience/ui/types';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
-import { useMemo, useState, useCallback } from 'react';
-import { useAccount } from 'wagmi';
+import { useMemo, useState, useCallback, useEffect } from 'react';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
+import type { Address } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw, CandlestickChart } from 'lucide-react';
 
@@ -24,6 +25,7 @@ import MarketGroupChart from '~/components/markets/MarketGroupChart';
 import MarketGroupHeader from '~/components/markets/MarketGroupHeader';
 import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
 import UserPositionsTable from '~/components/markets/UserPositionsTable';
+import WagersTable from '~/components/markets/WagersTable';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import WagerFormFactory from '~/components/markets/forms/WagerFormFactory';
 import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
@@ -171,7 +173,11 @@ const WagerForm = ({
 };
 
 const MarketGroupPageContent = () => {
-  const { address } = useAccount();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const connectedPrivyWallet = wallets[0];
+  const authenticatedAddress =
+    ready && authenticated ? connectedPrivyWallet?.address : undefined;
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -180,7 +186,15 @@ const MarketGroupPageContent = () => {
 
   // Local trigger that will be bumped whenever the user submits a new wager
   const [userPositionsTrigger, setUserPositionsTrigger] = useState(0);
-  const [activeContentTab, setActiveContentTab] = useState<string>('forecasts');
+  const [activeContentTab, setActiveContentTab] =
+    useState<string>('all-positions');
+
+  // Ensure we don't show the positions tab as active when logged out
+  useEffect(() => {
+    if (activeContentTab === 'positions' && !(ready && authenticated)) {
+      setActiveContentTab('all-positions');
+    }
+  }, [activeContentTab, ready, authenticated]);
 
   const handleUserPositionsRefetch = useCallback(() => {
     setUserPositionsTrigger((prev) => prev + 1);
@@ -203,7 +217,7 @@ const MarketGroupPageContent = () => {
   } = useMarketGroupPage();
 
   const { isLoading: _isUserPositionsLoading } = usePositions({
-    address: address || '',
+    address: authenticatedAddress || '',
     marketAddress,
   });
 
@@ -433,19 +447,27 @@ const MarketGroupPageContent = () => {
                       <div className="order-2 sm:order-1">
                         <TabsList className="h-auto p-0 bg-transparent">
                           <TabsTrigger
+                            value="all-positions"
+                            className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Wagers
+                          </TabsTrigger>
+                          {ready &&
+                            authenticated &&
+                            connectedPrivyWallet?.address && (
+                              <TabsTrigger
+                                value="positions"
+                                className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Your Positions
+                              </TabsTrigger>
+                            )}
+                          <TabsTrigger
                             value="forecasts"
                             className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                           >
                             Forecasts
                           </TabsTrigger>
-                          {address && (
-                            <TabsTrigger
-                              value="positions"
-                              className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                            >
-                              Your Positions
-                            </TabsTrigger>
-                          )}
                         </TabsList>
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
@@ -465,6 +487,16 @@ const MarketGroupPageContent = () => {
                       </div>
                     </div>
                   </div>
+                  <TabsContent value="all-positions" className="mt-0">
+                    <div className="px-3 py-4">
+                      <WagersTable
+                        showHeaderText={false}
+                        marketAddress={marketAddress}
+                        chainId={chainId}
+                        marketIds={activeMarkets.map((m) => Number(m.marketId))}
+                      />
+                    </div>
+                  </TabsContent>
                   <TabsContent value="forecasts" className="mt-0">
                     <div className="px-3 py-4">
                       <ForecastInfoNotice className="mb-4" />
@@ -486,20 +518,20 @@ const MarketGroupPageContent = () => {
                             : CommentFilters.SelectedQuestion
                         }
                         question={activeMarket?.question?.toString()}
-                        address={address}
+                        address={authenticatedAddress}
                         refetchTrigger={userPositionsTrigger}
                         marketGroupAddress={marketGroupData?.address || null}
                         fullBleed
                       />
                     </div>
                   </TabsContent>
-                  {address && (
+                  {ready && authenticated && connectedPrivyWallet?.address && (
                     <TabsContent value="positions" className="mt-0">
                       <div className="px-3 py-4">
                         <UserPositionsTable
                           showHeaderText={false}
                           showParlaysTab={false}
-                          account={address}
+                          account={authenticatedAddress as Address}
                           marketAddress={marketAddress}
                           chainId={chainId}
                           marketIds={activeMarkets.map((m) =>

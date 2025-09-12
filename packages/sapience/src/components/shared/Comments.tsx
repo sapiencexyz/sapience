@@ -489,7 +489,7 @@ const Comments = ({
                               <AddressDisplay
                                 address={comment.address}
                                 disableProfileLink={false}
-                                className="text-xs"
+                                compact
                               />
                             </div>
                           </div>
