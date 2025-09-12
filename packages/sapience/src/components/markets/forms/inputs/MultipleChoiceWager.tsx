@@ -18,6 +18,7 @@ interface MultipleChoicePredictProps {
   options: Array<{ name: string; marketId: number }>;
   variant?: 'buttons' | 'dropdown';
   defaultValue?: string;
+  isFlipped?: boolean;
 }
 
 export default function MultipleChoiceWagerChoiceSelect({
@@ -25,10 +26,13 @@ export default function MultipleChoiceWagerChoiceSelect({
   options,
   variant = 'buttons',
   defaultValue,
+  isFlipped,
 }: MultipleChoicePredictProps) {
   const { register, setValue, watch } = useFormContext();
   const value = watch(name) ?? defaultValue;
-  const { isFlipped } = useWagerFlip();
+  const { isFlipped: contextFlipped } = useWagerFlip();
+  const effectiveFlipped =
+    typeof isFlipped === 'boolean' ? isFlipped : contextFlipped;
 
   // Overflow indicators
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -129,7 +133,7 @@ export default function MultipleChoiceWagerChoiceSelect({
                     style={{ perspective: 800 }}
                   >
                     <motion.div
-                      animate={{ rotateX: isFlipped ? 180 : 0 }}
+                      animate={{ rotateX: effectiveFlipped ? 180 : 0 }}
                       transition={{ duration: 0.3, ease: [0.65, 0, 0.35, 1] }}
                       style={{
                         transformStyle: 'preserve-3d',
@@ -198,7 +202,7 @@ export default function MultipleChoiceWagerChoiceSelect({
                 style={{ perspective: 1000 }}
               >
                 <motion.div
-                  animate={{ rotateX: isFlipped ? 180 : 0 }}
+                  animate={{ rotateX: effectiveFlipped ? 180 : 0 }}
                   transition={{ duration: 0.3, ease: [0.65, 0, 0.35, 1] }}
                   style={{
                     transformStyle: 'preserve-3d',
@@ -271,7 +275,7 @@ export default function MultipleChoiceWagerChoiceSelect({
                       borderColor,
                       transform: 'rotateX(180deg)',
                       backfaceVisibility: 'hidden',
-                      pointerEvents: isFlipped ? 'auto' : 'none',
+                      pointerEvents: effectiveFlipped ? 'auto' : 'none',
                     }}
                     onMouseEnter={(e) => {
                       (

@@ -101,12 +101,13 @@ const MarketGroupsRow = ({
     classificationOverride?: MarketGroupClassification
   ) => {
     const position = {
+      // Treat prediction as long/short; for multichoice it's used for flip
       prediction: typeof prediction === 'boolean' ? prediction : true,
       marketAddress: marketAddress,
       marketId: marketItem.marketId,
       question: marketItem.question || marketItem.optionName || displayQuestion,
-      chainId: chainId, // Include chainId so betslip knows which chain this market is on
-      marketClassification: classificationOverride || marketClassification, // Pass classification for intelligent defaults
+      chainId: chainId,
+      marketClassification: classificationOverride || marketClassification,
       wagerAmount: DEFAULT_WAGER_AMOUNT,
     };
     addPosition(position);
@@ -411,20 +412,20 @@ const MarketGroupsRow = ({
 
                           {/* Right Side: Actions */}
                           <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
-                            {/* For multichoice rows, use combined split button per option as a YES/NO market */}
+                            {/* For multichoice rows, add as MULTIPLE_CHOICE and set long/short via prediction */}
                             <YesNoSplitButton
                               onYes={() =>
                                 handleAddToBetSlip(
                                   marketItem,
                                   true,
-                                  MarketGroupClassificationEnum.YES_NO
+                                  MarketGroupClassificationEnum.MULTIPLE_CHOICE
                                 )
                               }
                               onNo={() =>
                                 handleAddToBetSlip(
                                   marketItem,
                                   false,
-                                  MarketGroupClassificationEnum.YES_NO
+                                  MarketGroupClassificationEnum.MULTIPLE_CHOICE
                                 )
                               }
                               className="min-w-[10rem]"

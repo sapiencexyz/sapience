@@ -49,6 +49,7 @@ export default function MultipleChoiceWagerForm({
           .sort((a, b) => a.marketId - b.marketId)[0]?.marketId ?? 0
       ).toString(), // first market by ascending id
       wagerAmount: '1',
+      isFlipped: false,
     },
     mode: 'onChange',
   });
@@ -56,6 +57,7 @@ export default function MultipleChoiceWagerForm({
   // Get form values
   const predictionValue = methods.watch('predictionValue');
   const wagerAmount = methods.watch('wagerAmount');
+  const localIsFlipped = methods.watch('isFlipped');
 
   // Get quote parameters that respect the flip state
   const quoteParams = useMemo(() => {
@@ -65,9 +67,15 @@ export default function MultipleChoiceWagerForm({
       marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
       predictionValue,
       wagerAmount,
-      isFlipped,
+      isFlipped: localIsFlipped ?? isFlipped,
     });
-  }, [marketGroupData, predictionValue, wagerAmount, isFlipped]);
+  }, [
+    marketGroupData,
+    predictionValue,
+    wagerAmount,
+    isFlipped,
+    localIsFlipped,
+  ]);
 
   // Use the quoter hook with flip-aware expectedPrice
   const { quoteData, isQuoteLoading, quoteError } = useQuoter({

@@ -26,11 +26,12 @@ export default function WagerInputWithQuote({
   selectedMarketId,
 }: WagerInputWithQuoteProps) {
   const { watch } = useFormContext();
-  const { isFlipped } = useWagerFlip();
+  const { isFlipped: contextFlipped } = useWagerFlip();
 
   const predictionValue =
     watch(`positions.${positionId}.predictionValue`) || '';
   const wagerAmount = watch(`positions.${positionId}.wagerAmount`) || '';
+  const positionIsFlipped = watch(`positions.${positionId}.isFlipped`);
 
   // Create quote params for this position
   const quoteParams = getQuoteParamsFromPosition({
@@ -40,7 +41,10 @@ export default function WagerInputWithQuote({
     predictionValue,
     wagerAmount,
     selectedMarketId,
-    isFlipped,
+    isFlipped:
+      typeof positionIsFlipped === 'boolean'
+        ? positionIsFlipped
+        : contextFlipped,
   });
 
   // Use quoter hook for this position
@@ -69,7 +73,7 @@ export default function WagerInputWithQuote({
         <h3 className="font-medium text-foreground pr-2 text-sm">{question}</h3>
         <button
           onClick={onRemove}
-          className="text-[18px] leading-none text-muted-foreground hover:text-foreground"
+          className="text-[22px] leading-none text-muted-foreground hover:text-foreground"
           type="button"
           aria-label="Remove"
         >
@@ -88,6 +92,11 @@ export default function WagerInputWithQuote({
           marketGroupData={marketGroupData}
           positionId={positionId}
           defaultSelectedMarketId={selectedMarketId}
+          isFlipped={
+            typeof positionIsFlipped === 'boolean'
+              ? positionIsFlipped
+              : undefined
+          }
         />
       )}
 

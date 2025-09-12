@@ -402,7 +402,7 @@ const Header = () => {
               </a>
             </Button>
           </div>
-          <div className="flex items-center gap-3 pl-4 pb-4 -mt-3.5">
+          <div className="flex items-center gap-3 pl-4 pb-3 -mt-3.5">
             <a
               href="https://docs.sapience.xyz/terms-of-service"
               target="_blank"

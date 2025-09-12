@@ -15,6 +15,7 @@ export default function MultipleChoiceWagerInput({
 }: MultipleChoiceWagerInputProps) {
   const predictionFieldName = `positions.${positionId}.predictionValue`;
   const wagerAmountFieldName = `positions.${positionId}.wagerAmount`;
+  const isFlippedFieldName = `positions.${positionId}.isFlipped`;
 
   return (
     <div className="space-y-4">
@@ -33,6 +34,8 @@ export default function MultipleChoiceWagerInput({
               ? String(defaultSelectedMarketId)
               : undefined
           }
+          // The flip state is managed via a form field for per-input behavior
+          isFlipped={undefined}
         />
       </div>
 
@@ -42,6 +45,8 @@ export default function MultipleChoiceWagerInput({
         collateralAddress={marketGroupData.collateralAsset as `0x${string}`}
         chainId={marketGroupData.chainId}
       />
+      {/* Hidden field to carry per-input flip state */}
+      <input type="hidden" name={isFlippedFieldName} />
     </div>
   );
 }

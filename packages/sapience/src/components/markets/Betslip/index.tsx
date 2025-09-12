@@ -210,15 +210,13 @@ const Betslip = ({
 
   // Create dynamic form schema based on positions and from type (individual or parlay)
   const formSchema: z.ZodType<any> = useMemo(() => {
-    const positionsSchema: Record<
-      string,
-      z.ZodObject<{ predictionValue: z.ZodString; wagerAmount: z.ZodTypeAny }>
-    > = {};
+    const positionsSchema: Record<string, z.ZodTypeAny> = {};
 
     betSlipPositions.forEach((position) => {
       positionsSchema[position.id] = z.object({
         predictionValue: z.string().min(1, 'Please make a prediction'),
         wagerAmount: wagerAmountSchema,
+        isFlipped: z.boolean().optional(),
       });
     });
 
@@ -300,11 +298,17 @@ const Betslip = ({
 
           const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
 
+          const isFlipped =
+            classification === MarketGroupClassification.MULTIPLE_CHOICE
+              ? !position.prediction
+              : undefined;
+
           return [
             position.id,
             {
               predictionValue,
               wagerAmount,
+              isFlipped,
             },
           ];
         })
@@ -606,7 +610,10 @@ const Betslip = ({
         marketClassification: pos.marketClassification,
         predictionValue,
         wagerAmount: wagerAmountStr,
-        isFlipped,
+        isFlipped:
+          typeof formValues?.positions?.[positionId]?.isFlipped === 'boolean'
+            ? formValues.positions[positionId].isFlipped
+            : isFlipped,
       });
 
       const quoteKey = generateQuoteQueryKey(
