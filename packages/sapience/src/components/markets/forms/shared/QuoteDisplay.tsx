@@ -80,11 +80,12 @@ export default function QuoteDisplay({
         <span className="text-foreground inline-flex items-center whitespace-nowrap">
           {(() => {
             try {
-              const asBigInt = BigInt(quoteData.maxSize);
-              return <NumberDisplay value={asBigInt} precision={4} />;
+              const raw = BigInt(quoteData.maxSize);
+              const abs = raw < 0n ? -raw : raw;
+              return <NumberDisplay value={abs} precision={4} />;
             } catch {
               // Fallback: try to coerce to number (less precise)
-              const numeric = Number(quoteData.maxSize);
+              const numeric = Math.abs(Number(quoteData.maxSize));
               return (
                 <NumberDisplay
                   value={BigInt(Math.max(0, Math.floor(numeric)))}

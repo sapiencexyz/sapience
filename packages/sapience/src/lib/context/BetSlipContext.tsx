@@ -61,10 +61,6 @@ interface BetSlipContextType {
   clearBetSlip: () => void;
   // Parlay selections API
   addParlaySelection: (selection: Omit<ParlaySelection, 'id'>) => void;
-  updateParlaySelection: (
-    id: string,
-    updates: Partial<Omit<ParlaySelection, 'id' | 'conditionId'>>
-  ) => void;
   removeParlaySelection: (id: string) => void;
   clearParlaySelections: () => void;
   openPopover: () => void;
@@ -326,18 +322,6 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     [parlaySelections]
   );
 
-  const updateParlaySelection = useCallback(
-    (
-      id: string,
-      updates: Partial<Omit<ParlaySelection, 'id' | 'conditionId'>>
-    ) => {
-      setParlaySelections((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
-      );
-    },
-    []
-  );
-
   const removeParlaySelection = useCallback((id: string) => {
     setParlaySelections((prev) => prev.filter((s) => s.id !== id));
   }, []);
@@ -356,7 +340,6 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
     updatePosition,
     clearBetSlip,
     addParlaySelection,
-    updateParlaySelection,
     removeParlaySelection,
     clearParlaySelections,
     openPopover,
