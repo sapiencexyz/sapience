@@ -160,7 +160,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
       return (
         estimatedCollateralBI &&
         estimatedCollateralBI > BigInt(0) && (
-          <div className="flex justify-between">
+          <div className="flex flex-col gap-1">
             <span className="text-muted-foreground">Position Collateral</span>
             <span>
               0 → <NumberDisplay value={estimatedCollateral || '0'} />{' '}
@@ -172,7 +172,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
     }
     // Modify form
     return (
-      <div className="flex justify-between">
+      <div className="flex flex-col gap-1">
         <span className="text-muted-foreground">Position Collateral</span>
         <span>
           <NumberDisplay value={currentPositionCollateral || '0'} /> →{' '}
@@ -214,7 +214,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
             </h4>
             <div className="flex flex-col gap-2.5 text-sm">
               {/* Size Change */}
-              <div className="flex justify-between">
+              <div className="flex flex-col gap-1">
                 <span className="text-muted-foreground">Size</span>
                 <span className="flex items-center space-x-1">
                   {renderSizeDisplay()}
@@ -226,7 +226,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
 
               {/* Estimated Fill Price */}
               {shouldShowFillPrice && (
-                <div className="flex justify-between items-baseline">
+                <div className="flex flex-col gap-1">
                   <span className="text-muted-foreground">
                     Estimated Fill Price
                   </span>
@@ -265,7 +265,7 @@ const TradeOrderQuote: React.FC<TradeOrderQuoteProps> = ({
               {/* Wallet Balance Change */}
               {walletBalance !== undefined &&
                 estimatedResultingBalance !== undefined && ( // Ensure both are defined
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground">
                       Wallet Balance
                     </span>

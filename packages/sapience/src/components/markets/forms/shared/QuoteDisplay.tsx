@@ -77,7 +77,7 @@ export default function QuoteDisplay({
             try {
               const raw = BigInt(quoteData.maxSize);
               const abs = raw < 0n ? -raw : raw;
-              return <NumberDisplay value={abs} precision={2} />;
+              return <NumberDisplay value={abs} precision={2} padZeros />;
             } catch {
               // Fallback: try to coerce to number (less precise)
               const numeric = Math.abs(Number(quoteData.maxSize));
@@ -85,6 +85,7 @@ export default function QuoteDisplay({
                 <NumberDisplay
                   value={BigInt(Math.max(0, Math.floor(numeric)))}
                   precision={2}
+                  padZeros
                 />
               );
             }

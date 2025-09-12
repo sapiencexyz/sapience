@@ -31,6 +31,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits, parseUnits } from 'viem';
 import { useAccount, useChainId, useReadContract, useSwitchChain } from 'wagmi';
 
+import { ColoredRadioOption } from '@sapience/ui';
 import type { TradeFormMarketDetails } from './CreateTradeForm';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useModifyTrade } from '~/hooks/contract/useModifyTrade';
@@ -45,6 +46,7 @@ import {
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
 import { bigIntAbs } from '~/lib/utils/util';
+import { CHART_SERIES_COLORS } from '~/lib/theme/chartColors';
 
 // Define Props including marketDetails
 interface ModifyTradeFormProps {
@@ -436,34 +438,51 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         {/* Direction Selection Buttons */}
         <div className="mb-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              type="button"
-              onClick={() => handleDirectionChange('Long')}
-              className={`py-6 text-lg font-normal ${
-                direction === 'Long'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+          {marketClassification === MarketGroupClassification.NUMERIC ? (
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                type="button"
+                onClick={() => handleDirectionChange('Long')}
+                className={`py-6 text-lg font-normal ${
+                  direction === 'Long'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Long
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleDirectionChange('Short')}
+                className={`py-6 text-lg font-normal ${
+                  direction === 'Short'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Short
+              </Button>
+            </div>
+          ) : (
+            <div
+              role="radiogroup"
+              aria-label="Prediction"
+              className="grid grid-cols-1 gap-2 mt-2"
             >
-              {marketClassification === MarketGroupClassification.NUMERIC
-                ? 'Long'
-                : 'Yes'}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => handleDirectionChange('Short')}
-              className={`py-6 text-lg font-normal ${
-                direction === 'Short'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {marketClassification === MarketGroupClassification.NUMERIC
-                ? 'Short'
-                : 'No'}
-            </Button>
-          </div>
+              <ColoredRadioOption
+                label="Yes"
+                color={CHART_SERIES_COLORS[2]}
+                checked={direction === 'Long'}
+                onClick={() => handleDirectionChange('Long')}
+              />
+              <ColoredRadioOption
+                label="No"
+                color={CHART_SERIES_COLORS[1]}
+                checked={direction === 'Short'}
+                onClick={() => handleDirectionChange('Short')}
+              />
+            </div>
+          )}
         </div>
 
         {/* Size Input - Target Size */}

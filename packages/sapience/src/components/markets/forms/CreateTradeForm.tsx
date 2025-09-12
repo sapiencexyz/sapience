@@ -27,6 +27,7 @@ import {
   useSwitchChain,
 } from 'wagmi';
 
+import { ColoredRadioOption } from '@sapience/ui';
 import TradeOrderQuote from './TradeOrderQuote';
 import LottieLoader from '~/components/shared/LottieLoader';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -36,6 +37,7 @@ import { useTradeForm } from '~/hooks/forms/useTradeForm';
 import { HIGH_PRICE_IMPACT, TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import { MarketGroupClassification } from '~/lib/types';
+import { CHART_SERIES_COLORS } from '~/lib/theme/chartColors';
 
 const COLLATERAL_DECIMALS = TOKEN_DECIMALS;
 
@@ -303,34 +305,51 @@ export function CreateTradeForm({
     <Form {...form}>
       <form onSubmit={handleSubmit(submitForm)} className="space-y-4">
         <div className="mb-4">
-          <div className="grid grid-cols-2 gap-4">
-            <Button
-              type="button"
-              onClick={() => handleDirectionChange('Long')}
-              className={`py-6 text-lg font-normal ${
-                direction === 'Long'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
+          {marketClassification === MarketGroupClassification.NUMERIC ? (
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                type="button"
+                onClick={() => handleDirectionChange('Long')}
+                className={`py-6 text-lg font-normal ${
+                  direction === 'Long'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Long
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleDirectionChange('Short')}
+                className={`py-6 text-lg font-normal ${
+                  direction === 'Short'
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Short
+              </Button>
+            </div>
+          ) : (
+            <div
+              role="radiogroup"
+              aria-label="Prediction"
+              className="grid grid-cols-1 gap-2 mt-2"
             >
-              {marketClassification === MarketGroupClassification.NUMERIC
-                ? 'Long'
-                : 'Yes'}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => handleDirectionChange('Short')}
-              className={`py-6 text-lg font-normal ${
-                direction === 'Short'
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {marketClassification === MarketGroupClassification.NUMERIC
-                ? 'Short'
-                : 'No'}
-            </Button>
-          </div>
+              <ColoredRadioOption
+                label="Yes"
+                color={CHART_SERIES_COLORS[2]}
+                checked={direction === 'Long'}
+                onClick={() => handleDirectionChange('Long')}
+              />
+              <ColoredRadioOption
+                label="No"
+                color={CHART_SERIES_COLORS[1]}
+                checked={direction === 'Short'}
+                onClick={() => handleDirectionChange('Short')}
+              />
+            </div>
+          )}
         </div>
 
         <div className="mb-8">

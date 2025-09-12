@@ -157,9 +157,9 @@ export default function LpPositionsTable({
   return (
     <div>
       {showHeader && <h3 className="font-medium mb-4">Liquidity Positions</h3>}
-      <div className="rounded border">
+      <div className="rounded border bg-background dark:bg-muted/50">
         <Table>
-          <TableHeader className="hidden md:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+          <TableHeader className="hidden md:table-header-group text-sm font-medium text-muted-foreground border-b">
             <TableRow>
               {displayQuestionColumn && <TableHead>Question</TableHead>}
               <TableHead>Collateral</TableHead>

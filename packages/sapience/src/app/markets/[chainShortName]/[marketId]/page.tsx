@@ -13,7 +13,8 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Market as GqlMarketType } from '@sapience/ui/types/graphql';
 import { LineType, TimeInterval } from '@sapience/ui/types/charts';
-import { getSeriesColorByIndex, withAlpha } from '~/lib/theme/chartColors';
+import { ColoredRadioOption } from '@sapience/ui';
+import { getSeriesColorByIndex } from '~/lib/theme/chartColors';
 
 import OrderBookChart from '~/components/markets/charts/OrderBookChart';
 import PriceChart from '~/components/markets/charts/PriceChart';
@@ -218,8 +219,14 @@ const ForecastContent = () => {
     ) ?? [];
   availableMarkets = availableMarkets.sort((a, b) => a.marketId - b.marketId);
 
+  const hasRadioGroupItems =
+    marketClassification === MarketGroupClassification.MULTIPLE_CHOICE &&
+    marketData?.marketGroup?.markets &&
+    marketData.marketGroup.markets.length > 1 &&
+    availableMarkets.length > 0;
+
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-24">
+    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-16">
       <div className="flex flex-col w-full">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div className="mt-2 mb-6">
@@ -229,6 +236,7 @@ const ForecastContent = () => {
                   asChild
                   variant="outline"
                   className="flex items-center gap-1"
+                  size={hasRadioGroupItems ? undefined : 'xs'}
                 >
                   <Link href={`/markets/${chainShortName}`}>
                     <ChevronLeft className="h-3.5 w-3.5" />
@@ -256,61 +264,24 @@ const ForecastContent = () => {
                           `Market ${market.marketId}`;
 
                         const seriesColor = getSeriesColorByIndex(idx);
-                        const unselectedBg = withAlpha(seriesColor, 0.08);
-                        const hoverBg = withAlpha(seriesColor, 0.16);
-                        const borderColor = withAlpha(seriesColor, 0.24);
 
                         return (
-                          <button
+                          <ColoredRadioOption
                             key={market.id}
-                            type="button"
-                            role="radio"
-                            aria-checked={isSelected}
+                            label={
+                              <span className="truncate max-w-[220px]">
+                                {buttonText}
+                              </span>
+                            }
+                            color={seriesColor}
+                            checked={isSelected}
                             onClick={() =>
                               router.push(
                                 `/markets/${chainShortName}/${market.marketId}`
                               )
                             }
-                            className={`inline-flex items-center gap-2 rounded border px-3 py-2 text-sm whitespace-nowrap flex-shrink-0 transition-colors text-foreground`}
-                            style={{
-                              backgroundColor: unselectedBg,
-                              borderColor,
-                            }}
-                            onMouseEnter={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.backgroundColor = hoverBg;
-                            }}
-                            onMouseLeave={(e) => {
-                              (
-                                e.currentTarget as HTMLButtonElement
-                              ).style.backgroundColor = unselectedBg;
-                            }}
-                          >
-                            <span
-                              className="inline-flex items-center justify-center rounded-full"
-                              style={{
-                                width: 16,
-                                height: 16,
-                                border: `2px solid ${seriesColor}`,
-                              }}
-                              aria-hidden
-                            >
-                              {isSelected ? (
-                                <span
-                                  className="block rounded-full"
-                                  style={{
-                                    width: 8,
-                                    height: 8,
-                                    backgroundColor: seriesColor,
-                                  }}
-                                />
-                              ) : null}
-                            </span>
-                            <span className="truncate max-w-[220px]">
-                              {buttonText}
-                            </span>
-                          </button>
+                            className="px-3 py-2 text-sm flex-shrink-0"
+                          />
                         );
                       })}
                     </div>

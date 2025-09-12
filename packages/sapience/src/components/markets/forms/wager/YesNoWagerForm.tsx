@@ -10,13 +10,14 @@ import { z } from 'zod';
 import { useSearchParams } from 'next/navigation';
 
 import type { MarketGroupType } from '@sapience/ui/types';
+import { ColoredRadioOption } from '@sapience/ui';
 import { WagerInput, wagerAmountSchema } from '../inputs/WagerInput';
 import QuoteDisplay from '../shared/QuoteDisplay';
 import WagerDisclaimer from '../shared/WagerDisclaimer';
 import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { MarketGroupClassification } from '~/lib/types';
-import { CHART_SERIES_COLORS, withAlpha } from '~/lib/theme/chartColors';
+import { CHART_SERIES_COLORS } from '~/lib/theme/chartColors';
 import {
   YES_SQRT_PRICE_X96,
   NO_SQRT_PRICE_X96,
@@ -140,122 +141,26 @@ export default function YesNoWagerForm({
         <div className="space-y-4">
           <div>
             <div className="grid grid-cols-1 gap-2 mt-2">
-              {(() => {
-                const yesColor = CHART_SERIES_COLORS[2]; // green used in multichoice
-                const noColor = CHART_SERIES_COLORS[1]; // red used in multichoice
-
-                const yesUnselectedBg = withAlpha(yesColor, 0.08);
-                const yesHoverBg = withAlpha(yesColor, 0.16);
-                const yesBorder = withAlpha(yesColor, 0.24);
-
-                const noUnselectedBg = withAlpha(noColor, 0.08);
-                const noHoverBg = withAlpha(noColor, 0.16);
-                const noBorder = withAlpha(noColor, 0.24);
-
-                return (
-                  <>
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        methods.setValue(
-                          'predictionValue',
-                          YES_SQRT_PRICE_X96,
-                          {
-                            shouldValidate: true,
-                          }
-                        )
-                      }
-                      role="radio"
-                      aria-checked={predictionValue === YES_SQRT_PRICE_X96}
-                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
-                      style={{
-                        backgroundColor: yesUnselectedBg,
-                        borderColor: yesBorder,
-                      }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = yesHoverBg;
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = yesUnselectedBg;
-                      }}
-                    >
-                      <span
-                        className="inline-flex items-center justify-center rounded-full"
-                        style={{
-                          width: 16,
-                          height: 16,
-                          border: `2px solid ${yesColor}`,
-                        }}
-                        aria-hidden
-                      >
-                        {predictionValue === YES_SQRT_PRICE_X96 ? (
-                          <span
-                            className="block rounded-full"
-                            style={{
-                              width: 8,
-                              height: 8,
-                              backgroundColor: yesColor,
-                            }}
-                          />
-                        ) : null}
-                      </span>
-                      <span className="truncate">Yes</span>
-                    </Button>
-
-                    <Button
-                      type="button"
-                      onClick={() =>
-                        methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
-                          shouldValidate: true,
-                        })
-                      }
-                      role="radio"
-                      aria-checked={predictionValue === NO_SQRT_PRICE_X96}
-                      className={`text-center justify-start font-normal border flex items-center gap-3 text-foreground`}
-                      style={{
-                        backgroundColor: noUnselectedBg,
-                        borderColor: noBorder,
-                      }}
-                      onMouseEnter={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = noHoverBg;
-                      }}
-                      onMouseLeave={(e) => {
-                        (
-                          e.currentTarget as HTMLButtonElement
-                        ).style.backgroundColor = noUnselectedBg;
-                      }}
-                    >
-                      <span
-                        className="inline-flex items-center justify-center rounded-full"
-                        style={{
-                          width: 16,
-                          height: 16,
-                          border: `2px solid ${noColor}`,
-                        }}
-                        aria-hidden
-                      >
-                        {predictionValue === NO_SQRT_PRICE_X96 ? (
-                          <span
-                            className="block rounded-full"
-                            style={{
-                              width: 8,
-                              height: 8,
-                              backgroundColor: noColor,
-                            }}
-                          />
-                        ) : null}
-                      </span>
-                      <span className="truncate">No</span>
-                    </Button>
-                  </>
-                );
-              })()}
+              <ColoredRadioOption
+                label="Yes"
+                color={CHART_SERIES_COLORS[2]}
+                checked={predictionValue === YES_SQRT_PRICE_X96}
+                onClick={() =>
+                  methods.setValue('predictionValue', YES_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
+                }
+              />
+              <ColoredRadioOption
+                label="No"
+                color={CHART_SERIES_COLORS[1]}
+                checked={predictionValue === NO_SQRT_PRICE_X96}
+                onClick={() =>
+                  methods.setValue('predictionValue', NO_SQRT_PRICE_X96, {
+                    shouldValidate: true,
+                  })
+                }
+              />
             </div>
 
             {/* Hidden input for form submission */}

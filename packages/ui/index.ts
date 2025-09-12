@@ -12,6 +12,7 @@ export * from './components/TradeForm';
 export * from './components/LiquidityForm';
 export * from './components/NumberDisplay';
 export * from './components/SlippageTolerance';
+export * from './components/ColoredRadioOption';
 
 // Re-export UI components that may be needed by forms
 export * from './components/ui/button';

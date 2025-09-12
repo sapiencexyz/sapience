@@ -20,9 +20,8 @@ import {
   ArrowLeftRightIcon,
   DropletsIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { formatEther } from 'viem';
-import { useAccount } from 'wagmi';
 
 import DataDrawerFilter from './DataDrawerFilter';
 import MarketLeaderboard from './MarketLeaderboard';
@@ -82,10 +81,7 @@ const getTransactionTypeDisplay = (type: string): TransactionTypeDisplay => {
 };
 
 const MarketDataTables = () => {
-  const { address } = useAccount();
-  const [walletAddress, setWalletAddress] = useState<string | null>(
-    address || null
-  );
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [selectedTab, setSelectedTab] = useState('transactions');
 
   // Get market context data
@@ -96,10 +92,6 @@ const MarketDataTables = () => {
     collateralAssetTicker,
     marketData,
   } = useMarketPage();
-
-  useEffect(() => {
-    setWalletAddress(address || null);
-  }, [address]);
 
   // Fetch GraphQL-based positions (includes transaction data)
   // Only use walletAddress if it's explicitly set (not null)
@@ -167,7 +159,7 @@ const MarketDataTables = () => {
 
     return (
       <div>
-        <div className="rounded border">
+        <div className="rounded border bg-background dark:bg-muted/50">
           <Table>
             <TableHeader>
               <TableRow>

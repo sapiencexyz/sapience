@@ -47,7 +47,7 @@ export const SlippageTolerance: React.FC = () => {
           type="button"
           onClick={(e) => handleSlippageChange(0.1, e)}
           variant={Number(currentSlippage) === 0.1 ? 'default' : 'outline'}
-          size="sm"
+          size="xs"
         >
           0.1%
         </Button>
@@ -55,7 +55,7 @@ export const SlippageTolerance: React.FC = () => {
           type="button"
           onClick={(e) => handleSlippageChange(0.5, e)}
           variant={Number(currentSlippage) === 0.5 ? 'default' : 'outline'}
-          size="sm"
+          size="xs"
         >
           0.5%
         </Button>
@@ -63,11 +63,11 @@ export const SlippageTolerance: React.FC = () => {
           type="button"
           onClick={(e) => handleSlippageChange(1.0, e)}
           variant={Number(currentSlippage) === 1.0 ? 'default' : 'outline'}
-          size="sm"
+          size="xs"
         >
           1.0%
         </Button>
-        <div className="relative w-[100px]">
+        <div className="flex-1">
           <Input
             value={currentSlippage}
             onChange={(e) => handleSlippageChange(Number(e.target.value), e)}
@@ -75,11 +75,10 @@ export const SlippageTolerance: React.FC = () => {
             max={100}
             step={0.1}
             type="number"
-            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            inputSize="xs"
+            endAdornment={<span className="pr-2 text-xs text-gray-500">%</span>}
+            className="pr-6 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-gray-500">
-            %
-          </span>
         </div>
       </div>
     </div>

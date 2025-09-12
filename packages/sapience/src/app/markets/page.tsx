@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 const ForecastingPage = () => {
   return (
-    <div className="container mx-auto px-4 md:p-8 max-w-8xl mt-16">
+    <div className="container mx-auto px-4 md:pt-8 md:pb-8 md:pl-8 md:pr-1 max-w-8xl mt-16">
       <MarketGroupsList />
     </div>
   );
