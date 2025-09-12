@@ -371,7 +371,7 @@ export const BetslipContent = ({
                         isSubmitting
                       }
                     >
-                      Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
+                      Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
                     </Button>
                   </>
                 )}
@@ -746,7 +746,10 @@ function IndividualPositionRow({
           <h3 className="font-medium text-foreground pr-2 text-base md:text-lg whitespace-normal break-words">
             {question}&nbsp;&nbsp;
             <span className="relative -top-1">
-              <ReadOnlyPredictionBadge positionId={positionId} />
+              <ReadOnlyPredictionBadge
+                positionId={positionId}
+                marketClassification={marketClassification}
+              />
             </span>
           </h3>
         </div>
@@ -783,25 +786,45 @@ function IndividualPositionRow({
   );
 }
 
-function ReadOnlyPredictionBadge({ positionId }: { positionId: string }) {
+function ReadOnlyPredictionBadge({
+  positionId,
+  marketClassification,
+}: {
+  positionId: string;
+  marketClassification: MarketGroupClassification;
+}) {
   const { watch } = useFormContext();
-  // We rely on form default sync logic to mirror latest selection for YES/NO
+  const { betSlipPositions } = useBetSlipContext();
   const predictionValue: string | undefined = watch(
     `positions.${positionId}.predictionValue`
   );
-  // YES/NO default YES_SQRT_PRICE_X96 indicates Yes; otherwise for multichoice we show Yes by default (long)
-  const isYes = (() => {
-    try {
-      return predictionValue === YES_SQRT_PRICE_X96;
-    } catch {
-      return true;
+  const isFlipped: boolean | undefined = watch(
+    `positions.${positionId}.isFlipped`
+  );
+
+  // Determine label based on market type
+  const { isYes, label } = (() => {
+    if (
+      marketClassification === MarketGroupClassificationEnum.MULTIPLE_CHOICE
+    ) {
+      // Prefer underlying position.prediction if available; fallback to flip state
+      const pos = betSlipPositions.find((p) => p.id === positionId);
+      const longSelected =
+        typeof pos?.prediction === 'boolean'
+          ? pos.prediction
+          : !(typeof isFlipped === 'boolean' ? isFlipped : false);
+      return { isYes: longSelected, label: longSelected ? 'Yes' : 'No' };
     }
+    // YES/NO: compare sqrt price flag
+    const yesSelected = predictionValue === YES_SQRT_PRICE_X96;
+    return { isYes: yesSelected, label: yesSelected ? 'Yes' : 'No' };
   })();
+
   return (
     <Badge
       className={isYes ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
     >
-      {isYes ? 'Yes' : 'No'}
+      {label}
     </Badge>
   );
 }

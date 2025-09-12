@@ -318,7 +318,10 @@ const Betslip = ({
 
   // Single form for both individual and parlay modes
   const formMethods = useForm<{
-    positions: Record<string, { predictionValue: string; wagerAmount: string }>;
+    positions: Record<
+      string,
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+    >;
     wagerAmount?: string;
     limitAmount?: string | number;
   }>({
@@ -365,15 +368,15 @@ const Betslip = ({
     // Merge defaults then existing inputs
     const mergedPositions: Record<
       string,
-      { predictionValue: string; wagerAmount: string }
+      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
     > = {
       ...(defaults as Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >),
       ...((current?.positions as Record<
         string,
-        { predictionValue: string; wagerAmount: string }
+        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >) || {}),
     };
 
@@ -383,14 +386,19 @@ const Betslip = ({
         const id = p.position.id;
         if (defaults?.[id]?.predictionValue) {
           mergedPositions[id] = {
-            // Override predictionValue to default derived from position.prediction
             predictionValue: defaults[id].predictionValue,
-            // Preserve existing wager if present, else use default
             wagerAmount:
               current?.positions?.[id]?.wagerAmount ||
               defaults?.[id]?.wagerAmount ||
               DEFAULT_WAGER_AMOUNT,
-          } as { predictionValue: string; wagerAmount: string };
+            // Preserve isFlipped if it exists (not used for YES/NO but safe to keep)
+            isFlipped: (current?.positions?.[id] as { isFlipped?: boolean })
+              ?.isFlipped,
+          } as {
+            predictionValue: string;
+            wagerAmount: string;
+            isFlipped?: boolean;
+          };
         }
       }
     });

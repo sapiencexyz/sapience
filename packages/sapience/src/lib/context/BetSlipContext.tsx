@@ -11,6 +11,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
+import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/betslipUtils';
 import {
   marketGroupQueryConfig,
@@ -154,15 +155,55 @@ export const BetSlipProvider = ({ children }: BetSlipProviderProps) => {
 
   const addPosition = useCallback(
     async (position: Omit<BetSlipPosition, 'id'>) => {
+      // Create intelligent defaults based on market classification
+      const defaults = createPositionDefaults(position.marketClassification);
+
+      // Special handling for YES/NO: treat the question as a single logical position
+      // and update existing entry for the same market address regardless of marketId
+      if (
+        position.marketClassification === MarketGroupClassificationEnum.YES_NO
+      ) {
+        const existingYesNoIndex = singlePositions.findIndex(
+          (p) =>
+            p.marketAddress === position.marketAddress &&
+            p.marketClassification === MarketGroupClassificationEnum.YES_NO
+        );
+
+        if (existingYesNoIndex !== -1) {
+          setSinglePositions((prev) =>
+            prev.map((p, index) =>
+              index === existingYesNoIndex
+                ? {
+                    ...p,
+                    // Switch to the newly selected side and marketId
+                    prediction: position.prediction,
+                    marketId: position.marketId,
+                    question: position.question,
+                    marketClassification: position.marketClassification,
+                    wagerAmount: p.wagerAmount || defaults.wagerAmount,
+                  }
+                : p
+            )
+          );
+
+          const effectiveChainId = position.chainId || 8453;
+          await prefetchMarketGroup(
+            queryClient,
+            effectiveChainId,
+            position.marketAddress
+          );
+
+          setIsPopoverOpen(true);
+          return;
+        }
+      }
+
       // Check if a position with the same marketAddress and marketId already exists
       const existingPositionIndex = singlePositions.findIndex(
         (p) =>
           p.marketAddress === position.marketAddress &&
           p.marketId === position.marketId
       );
-
-      // Create intelligent defaults based on market classification
-      const defaults = createPositionDefaults(position.marketClassification);
 
       if (existingPositionIndex !== -1) {
         // Merge into existing position by updating it

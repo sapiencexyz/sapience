@@ -18,6 +18,7 @@ export default function QuoteDisplay({
   quoteData,
   quoteError,
   isLoading,
+  marketGroupData,
   marketClassification,
 }: QuoteDisplayProps) {
   // Always use the single SVG-styled "To Win" display for all states
@@ -77,11 +78,24 @@ export default function QuoteDisplay({
           <span className="font-medium text-foreground">To Win:</span>
         </span>
         <span className="text-foreground inline-flex items-center whitespace-nowrap">
-          <NumberDisplay
-            value={BigInt(Math.abs(Number(quoteData.maxSize)))}
-            precision={4}
-          />
-          <span className="ml-1">testUSDe</span>
+          {(() => {
+            try {
+              const asBigInt = BigInt(quoteData.maxSize);
+              return <NumberDisplay value={asBigInt} precision={4} />;
+            } catch {
+              // Fallback: try to coerce to number (less precise)
+              const numeric = Number(quoteData.maxSize);
+              return (
+                <NumberDisplay
+                  value={BigInt(Math.max(0, Math.floor(numeric)))}
+                  precision={4}
+                />
+              );
+            }
+          })()}
+          <span className="ml-1">
+            {(marketGroupData as any)?.collateralSymbol || 'tokens'}
+          </span>
           {marketClassification !== MarketGroupClassification.YES_NO &&
           marketClassification !== MarketGroupClassification.MULTIPLE_CHOICE
             ? ' (Max)'
