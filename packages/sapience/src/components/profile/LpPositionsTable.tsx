@@ -196,7 +196,9 @@ export default function LpPositionsTable({
       ? {
           id: 'position',
           accessorFn: (row: PositionType) =>
-            Number((row as any).positionId || 0),
+            context === 'profile'
+              ? new Date(row.createdAt).getTime()
+              : Number((row as any).positionId || 0),
           header: ({ column }: { column: any }) => (
             <Button
               type="button"
@@ -248,7 +250,20 @@ export default function LpPositionsTable({
                     {question}
                   </h2>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <span>Position #{position.positionId}</span>
+                    <span>
+                      {context === 'profile'
+                        ? `#${position.positionId} created ${new Date(
+                            position.createdAt
+                          ).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            timeZoneName: 'short',
+                          })}`
+                        : `Position #${position.positionId}`}
+                    </span>
                   </div>
                 </div>
               );
@@ -266,7 +281,20 @@ export default function LpPositionsTable({
                   </Link>
                 </h2>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
-                  <span>Position #{position.positionId}</span>
+                  <span>
+                    {context === 'profile'
+                      ? `Position #${position.positionId} created ${new Date(
+                          position.createdAt
+                        ).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZoneName: 'short',
+                        })}`
+                      : `Position #${position.positionId}`}
+                  </span>
                 </div>
               </div>
             );

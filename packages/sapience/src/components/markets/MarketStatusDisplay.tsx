@@ -65,8 +65,12 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
       settlementResult = settledMarket?.optionName || 'Unknown option';
     } else if (marketClassification === MarketGroupClassification.YES_NO) {
       // For Yes/No markets, check if settlement price is 1 or 0
-      const price = Number(firstMarket.settlementPriceD18) / 10 ** 18;
-      settlementResult = price === 1 ? 'Yes' : 'No';
+      if (firstMarket.settlementPriceD18) {
+        const price = Number(firstMarket.settlementPriceD18) / 10 ** 18;
+        settlementResult = price === 1 ? 'Yes' : 'No';
+      } else {
+        settlementResult = 'Unknown';
+      }
     } else {
       // For numeric markets, display the settlement price
       settlementResult = firstMarket.settlementPriceD18

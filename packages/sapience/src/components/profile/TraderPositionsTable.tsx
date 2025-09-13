@@ -278,10 +278,12 @@ export default function TraderPositionsTable({
       ({
         id: 'position',
         accessorFn: (row: PositionType) =>
-          Number(
-            (row as PositionType & { positionId?: number | string })
-              .positionId || 0
-          ),
+          context === 'profile'
+            ? new Date(row.createdAt).getTime()
+            : Number(
+                (row as PositionType & { positionId?: number | string })
+                  .positionId || 0
+              ),
         header: ({ column }: any) => (
           <Button
             type="button"
@@ -334,7 +336,20 @@ export default function TraderPositionsTable({
                           {question}
                         </h2>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <span> #{position.positionId}</span>
+                          <span>
+                            {context === 'profile'
+                              ? `#${position.positionId} created ${new Date(
+                                  position.createdAt
+                                ).toLocaleDateString('en-US', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZoneName: 'short',
+                                })}`
+                              : `#${position.positionId}`}
+                          </span>
                         </div>
                       </div>
                     );
@@ -351,7 +366,20 @@ export default function TraderPositionsTable({
                         </Link>
                       </h2>
                       <div className="text-sm text-muted-foreground flex items-center gap-2">
-                        <span>Position #{position.positionId}</span>
+                        <span>
+                          {context === 'profile'
+                            ? `Position #${position.positionId} created ${new Date(
+                                position.createdAt
+                              ).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                timeZoneName: 'short',
+                              })}`
+                            : `Position #${position.positionId}`}
+                        </span>
                       </div>
                     </div>
                   );
