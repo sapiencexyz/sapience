@@ -231,61 +231,63 @@ const ForecastContent = () => {
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div className="mt-2 mb-6">
             <div className="flex items-center gap-4">
-              <div>
-                <Button
-                  asChild
-                  variant="outline"
-                  className="flex items-center gap-1"
-                  size={hasRadioGroupItems ? undefined : 'xs'}
-                >
-                  <Link href={`/markets/${chainShortName}`}>
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Overview
-                  </Link>
-                </Button>
-              </div>
               <div className="flex-1 min-w-0">
-                {marketClassification ===
-                  MarketGroupClassification.MULTIPLE_CHOICE &&
-                  marketData?.marketGroup?.markets &&
-                  marketData.marketGroup.markets.length > 1 &&
-                  availableMarkets.length > 0 && (
-                    <div
-                      role="radiogroup"
-                      aria-label="Market options"
-                      className="flex gap-3 overflow-x-auto py-0 pr-2"
+                <div className="flex items-center gap-3 overflow-x-auto py-0 pr-2">
+                  <div className="flex-shrink-0">
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="flex items-center gap-1"
+                      size={hasRadioGroupItems ? undefined : 'xs'}
                     >
-                      {availableMarkets.map((market: GqlMarketType, idx) => {
-                        const isSelected =
-                          String(market.marketId) === String(numericMarketId);
-                        const buttonText =
-                          market.optionName ||
-                          market.question ||
-                          `Market ${market.marketId}`;
+                      <Link href={`/markets/${chainShortName}`}>
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                        Overview
+                      </Link>
+                    </Button>
+                  </div>
+                  {marketClassification ===
+                    MarketGroupClassification.MULTIPLE_CHOICE &&
+                    marketData?.marketGroup?.markets &&
+                    marketData.marketGroup.markets.length > 1 &&
+                    availableMarkets.length > 0 && (
+                      <div
+                        role="radiogroup"
+                        aria-label="Market options"
+                        className="flex items-center gap-3"
+                      >
+                        {availableMarkets.map((market: GqlMarketType, idx) => {
+                          const isSelected =
+                            String(market.marketId) === String(numericMarketId);
+                          const buttonText =
+                            market.optionName ||
+                            market.question ||
+                            `Market ${market.marketId}`;
 
-                        const seriesColor = getSeriesColorByIndex(idx);
+                          const seriesColor = getSeriesColorByIndex(idx);
 
-                        return (
-                          <ColoredRadioOption
-                            key={market.id}
-                            label={
-                              <span className="truncate max-w-[220px]">
-                                {buttonText}
-                              </span>
-                            }
-                            color={seriesColor}
-                            checked={isSelected}
-                            onClick={() =>
-                              router.push(
-                                `/markets/${chainShortName}/${market.marketId}`
-                              )
-                            }
-                            className="px-3 py-2 text-sm flex-shrink-0"
-                          />
-                        );
-                      })}
-                    </div>
-                  )}
+                          return (
+                            <ColoredRadioOption
+                              key={market.id}
+                              label={
+                                <span className="truncate max-w-[220px]">
+                                  {buttonText}
+                                </span>
+                              }
+                              color={seriesColor}
+                              checked={isSelected}
+                              onClick={() =>
+                                router.push(
+                                  `/markets/${chainShortName}/${market.marketId}`
+                                )
+                              }
+                              className="px-3 py-2 text-sm flex-shrink-0"
+                            />
+                          );
+                        })}
+                      </div>
+                    )}
+                </div>
               </div>
             </div>
           </div>
@@ -306,7 +308,7 @@ const ForecastContent = () => {
             {/* Top Row: Chart, OrderBook, and Forms */}
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}
-              <div className="flex flex-col w-full relative xl:col-span-6 h-[460px]">
+              <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
                 <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
                   <div className="flex-1 relative">
                     <div className="absolute top-0 left-0 z-10">

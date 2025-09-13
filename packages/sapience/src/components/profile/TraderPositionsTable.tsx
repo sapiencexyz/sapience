@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   Tooltip,
   TooltipContent,
@@ -5,6 +6,15 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Button } from '@sapience/ui/components/ui/button';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@sapience/ui/components/ui/table';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
 import Image from 'next/image';
@@ -13,13 +23,21 @@ import { blo } from 'blo';
 import type { PositionType } from '@sapience/ui/types';
 import { InfoIcon } from 'lucide-react';
 import Link from 'next/link';
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionDialog from '../markets/SellPositionDialog';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import PositionSharesBadge from '~/components/shared/PositionSharesBadge';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
 import {
   calculateEffectiveEntryPrice,
@@ -31,6 +49,9 @@ import {
   type MarketContext,
   type ColumnOverrides,
 } from '~/components/shared/tableVisibility';
+import PositionSummaryCell from '~/components/shared/PositionSummaryCell';
+import { getMarketGroupClassification } from '~/lib/utils/marketUtils';
+import { MarketGroupClassification } from '~/lib/types';
 
 interface TraderPositionsTableProps {
   positions: PositionType[];
@@ -43,6 +64,7 @@ interface TraderPositionsTableProps {
   context?: TableViewContext;
   marketContext?: MarketContext;
   columns?: ColumnOverrides;
+  summaryMarketsForColors?: Array<any>;
 }
 
 function MaxPayoutCell({ position }: { position: PositionType }) {
@@ -182,6 +204,7 @@ export default function TraderPositionsTable({
   context,
   marketContext,
   columns,
+  summaryMarketsForColors,
 }: TraderPositionsTableProps) {
   const { address: connectedAddress } = useAccount();
 
@@ -223,7 +246,11 @@ export default function TraderPositionsTable({
 
   const overrides: ColumnOverrides = {
     position:
-      showPositionColumn !== undefined ? Boolean(showPositionColumn) : 'auto',
+      context === 'profile'
+        ? true
+        : showPositionColumn !== undefined
+          ? Boolean(showPositionColumn)
+          : 'auto',
     owner: showOwnerColumn,
     actions: showActions,
     ...columns,
@@ -237,385 +264,439 @@ export default function TraderPositionsTable({
   });
   const displayQuestionColumn = visibility.showPosition;
 
-  // Sort newest to oldest by createdAt; fallback to latest transaction.createdAt
-  const getPositionCreatedMs = (p: PositionType) => {
-    const direct = (p as PositionType & { createdAt?: string }).createdAt;
-    if (direct) {
-      const ms = new Date(direct).getTime();
-      if (Number.isFinite(ms)) return ms;
-    }
-    const latestTxn = (p.transactions || [])
-      .map((t) => new Date(t.createdAt as unknown as string).getTime())
-      .filter((t) => Number.isFinite(t))
-      .sort((a, b) => b - a)[0];
-    return latestTxn || 0;
-  };
+  // React Table columns
+  const tableColumns = [
+    displayQuestionColumn &&
+      ({
+        id: 'position',
+        accessorFn: (row: PositionType) =>
+          Number(
+            (row as PositionType & { positionId?: number | string })
+              .positionId || 0
+          ),
+        header: ({ column }: any) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Position
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => {
+          const position: PositionType = row.original;
+          return (
+            <div>
+              {context === 'user_positions' || context === 'data_drawer' ? (
+                <PositionSummaryCell
+                  position={position}
+                  sortedMarketsForColors={summaryMarketsForColors}
+                  showOptionBadge={context !== 'data_drawer'}
+                />
+              ) : (
+                (() => {
+                  const chainShortName = position.market?.marketGroup?.chainId
+                    ? getChainShortName(position.market.marketGroup.chainId)
+                    : 'unknown';
+                  const marketAddr =
+                    position.market?.marketGroup?.address || '';
+                  const marketId = position.market?.marketId;
+                  const question = position.market?.question || 'N/A';
 
-  const sortedPositions = [...validPositions].sort(
-    (a, b) => getPositionCreatedMs(b) - getPositionCreatedMs(a)
-  );
-
-  return (
-    <div>
-      <div className="rounded border bg-background dark:bg-muted/50">
-        {/* Table Header (desktop) */}
-        <div
-          className={`hidden xl:grid ${
-            visibility.showActions
-              ? visibility.showOwner
-                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
-                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-              : visibility.showOwner
-                ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
-                : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
-          } items-center h-12 px-4 text-sm font-medium text-muted-foreground border-b`}
+                  if (!marketAddr || marketId === undefined)
+                    return (
+                      <div className="space-y-2">
+                        <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
+                          {question}
+                        </h2>
+                        <div className="text-sm text-muted-foreground flex items-center gap-2">
+                          <span> #{position.positionId}</span>
+                        </div>
+                      </div>
+                    );
+                  return (
+                    <div className="space-y-2">
+                      <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
+                        <Link
+                          href={`/markets/${chainShortName}:${marketAddr}/${marketId}`}
+                          className="group"
+                        >
+                          <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                            {question}
+                          </span>
+                        </Link>
+                      </h2>
+                      <div className="text-sm text-muted-foreground flex items-center gap-2">
+                        <span>Position #{position.positionId}</span>
+                      </div>
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          );
+        },
+      } as ColumnDef<PositionType>),
+    {
+      id: 'wager',
+      accessorFn: (row: PositionType) =>
+        Number(formatEther(BigInt(row.collateral || '0'))),
+      header: ({ column }: any) => (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+          className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+          aria-sort={
+            column.getIsSorted() === false
+              ? 'none'
+              : column.getIsSorted() === 'asc'
+                ? 'ascending'
+                : 'descending'
+          }
         >
-          {displayQuestionColumn && (
-            <div className={'xl:col-span-5'}>Position</div>
+          Wager
+          {column.getIsSorted() === 'asc' ? (
+            <ArrowUp className="ml-1 h-4 w-4" />
+          ) : column.getIsSorted() === 'desc' ? (
+            <ArrowDown className="ml-1 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
           )}
-          <div
-            className={
-              displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-5'
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const position: PositionType = row.original;
+        const collateralAmount = Number(
+          formatEther(BigInt(position.collateral || '0'))
+        );
+        const collateralSymbol =
+          position.market?.marketGroup?.collateralSymbol || 'Unknown';
+
+        const baseTokenAmount = Number(
+          formatEther(BigInt(position.baseToken || '0'))
+        );
+        const borrowedBaseTokenAmount = Number(
+          formatEther(BigInt(position.borrowedBaseToken || '0'))
+        );
+        const netPosition = baseTokenAmount - borrowedBaseTokenAmount;
+        const isLong = netPosition >= 0;
+        const marketGroup = position.market?.marketGroup as any;
+        const classification = marketGroup
+          ? getMarketGroupClassification(marketGroup)
+          : MarketGroupClassification.NUMERIC;
+        const isYesNo = classification === MarketGroupClassification.YES_NO;
+        const isClosed = Number(position.collateral) === 0;
+
+        return (
+          <div>
+            <div className="flex flex-wrap items-center gap-1">
+              <span className="whitespace-nowrap">
+                <NumberDisplay value={collateralAmount} /> {collateralSymbol}
+              </span>
+              {isYesNo ? (
+                <>
+                  <span>on</span>
+                  <Badge
+                    variant="outline"
+                    className={
+                      isLong
+                        ? 'border-green-500/40 bg-green-500/10 text-green-600'
+                        : 'border-red-500/40 bg-red-500/10 text-red-600'
+                    }
+                  >
+                    {isLong ? 'Yes' : 'No'}
+                  </Badge>
+                </>
+              ) : null}
+            </div>
+            {!isClosed && (
+              <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+                To Win: <MaxPayoutCell position={position} />
+              </div>
+            )}
+          </div>
+        );
+      },
+    } as ColumnDef<PositionType>,
+    {
+      id: 'value',
+      header: () => (
+        <div className="flex items-center gap-1">
+          <span>Current Position Value</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-normal">
+                  The position value is approximate due to slippage.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      ),
+      enableSorting: false,
+      cell: ({ row }: any) => <PositionValueCell position={row.original} />,
+    } as ColumnDef<PositionType>,
+    visibility.showOwner &&
+      ({
+        id: 'owner',
+        accessorFn: (row: PositionType) =>
+          row.owner ? String(row.owner).toLowerCase() : '',
+        header: ({ column }: any) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
             }
           >
-            Wager
-          </div>
-          <div
-            className={
-              (displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-6') +
-              ' flex items-center gap-1'
-            }
-          >
-            <span>Current Position Value</span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-normal">
-                    The position value is approximate due to slippage.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          {visibility.showOwner && <div className="xl:col-span-1">Owner</div>}
-          {/* Header actions sizer to align auto-width column with row actions */}
-          {visibility.showActions && (
-            <div
-              className={`${visibility.showOwner ? 'xl:col-start-13' : 'xl:col-start-12'} xl:col-span-1 xl:justify-self-end`}
-            >
-              <div className="invisible flex gap-3" aria-hidden>
-                <Button size="sm" variant="outline">
-                  Settle
-                </Button>
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                >
-                  Share
-                </button>
+            Owner
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => {
+          const position: PositionType = row.original;
+          return (
+            <div className="flex items-center gap-2">
+              {position.owner ? (
+                <Image
+                  alt={position.owner}
+                  src={blo(position.owner as `0x${string}`)}
+                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
+                  width={20}
+                  height={20}
+                />
+              ) : null}
+              <div className="[&_span.font-mono]:text-foreground">
+                <AddressDisplay address={position.owner || ''} />
               </div>
             </div>
-          )}
-        </div>
-        {sortedPositions.map((position: PositionType) => {
+          );
+        },
+      } as ColumnDef<PositionType>),
+    visibility.showActions &&
+      ({
+        id: 'actions',
+        enableSorting: false,
+        cell: ({ row }: any) => {
+          const position: PositionType = row.original;
           const isOwner =
             connectedAddress &&
             position.owner &&
             connectedAddress.toLowerCase() === position.owner.toLowerCase();
-
-          if (!position.market) {
-            console.warn(
-              'Skipping position render due to missing market data:',
-              position.positionId
-            );
-            return null;
-          }
-
           const isClosed = Number(position.collateral) === 0;
-          const marketAddress = position.market.marketGroup?.address || '';
-
+          const marketAddress = position.market?.marketGroup?.address || '';
           const endTimestamp = position.market?.endTimestamp;
           const isPositionSettled = position.isSettled || false;
           const now = Date.now();
           const isExpired = endTimestamp
             ? Number(endTimestamp) * 1000 < now
             : false;
+          const hasWallet = Boolean(connectedAddress);
+          const isMarketPage = Boolean(isSpecificMarketPage);
 
           return (
-            <TraderPositionRow
-              key={position.id}
-              position={position}
-              isOwner={Boolean(isOwner)}
-              hasWallet={Boolean(connectedAddress)}
-              isClosed={isClosed}
-              isExpired={isExpired}
-              isMarketPage={Boolean(isSpecificMarketPage)}
-              isPositionSettled={isPositionSettled}
-              marketAddress={marketAddress}
-              displayQuestionColumn={Boolean(displayQuestionColumn)}
-              showActions={visibility.showActions}
-              showOwnerColumn={Boolean(visibility.showOwner)}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-type TraderPositionRowProps = {
-  position: PositionType;
-  isOwner: boolean;
-  hasWallet: boolean;
-  isClosed: boolean;
-  isExpired: boolean;
-  isMarketPage: boolean;
-  isPositionSettled: boolean;
-  marketAddress: string;
-  displayQuestionColumn: boolean;
-  showActions: boolean;
-  showOwnerColumn: boolean;
-};
-
-function TraderPositionRow({
-  position,
-  isOwner,
-  hasWallet,
-  isClosed,
-  isExpired,
-  isMarketPage,
-  isPositionSettled,
-  marketAddress,
-  displayQuestionColumn,
-  showActions,
-  showOwnerColumn,
-}: TraderPositionRowProps) {
-  return (
-    <div className="px-4 py-4 xl:py-4 border-b last:border-b-0">
-      <div
-        className={`flex flex-col gap-3 xl:grid ${
-          showActions
-            ? showOwnerColumn
-              ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))_auto]'
-              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))_auto]'
-            : showOwnerColumn
-              ? 'xl:[grid-template-columns:repeat(12,minmax(0,1fr))]'
-              : 'xl:[grid-template-columns:repeat(11,minmax(0,1fr))]'
-        } xl:items-center`}
-      >
-        {displayQuestionColumn && (
-          <div className={'xl:col-span-5'}>
-            {(() => {
-              const chainShortName = position.market?.marketGroup?.chainId
-                ? getChainShortName(position.market.marketGroup.chainId)
-                : 'unknown';
-              const marketAddr = position.market?.marketGroup?.address || '';
-              const marketId = position.market?.marketId;
-              const question = position.market?.question || 'N/A';
-
-              if (!marketAddr || marketId === undefined)
-                return (
-                  <div className="space-y-2">
-                    <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
-                      {question}
-                    </h2>
-                    <div className="text-sm text-muted-foreground flex items-center gap-2">
-                      <PositionSharesBadge position={position} />
-                      <span> #{position.positionId}</span>
-                    </div>
-                  </div>
-                );
-              return (
-                <div className="space-y-2">
-                  <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em]">
-                    <Link
-                      href={`/markets/${chainShortName}:${marketAddr}/${marketId}`}
-                      className="group"
-                    >
-                      <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
-                        {question}
-                      </span>
-                    </Link>
-                  </h2>
-                  <div className="text-sm text-muted-foreground flex items-center gap-2">
-                    <PositionSharesBadge position={position} />
-                    <span>Position #{position.positionId}</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
-
-        {isClosed ? (
-          <div
-            className={`${
-              displayQuestionColumn
-                ? showOwnerColumn
-                  ? 'xl:col-span-7'
-                  : 'xl:col-span-6'
-                : showOwnerColumn
-                  ? 'xl:col-span-12'
-                  : 'xl:col-span-11'
-            } text-center font-medium text-muted-foreground tracking-wider`}
-          >
-            CLOSED
-          </div>
-        ) : (
-          <>
-            {/* Removed Position Size cell as it's displayed under the question */}
-
-            <div
-              className={
-                displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-5'
-              }
-            >
-              <div className="text-xs text-muted-foreground xl:hidden">
-                Wager
-              </div>
-              <div>
-                <div className="whitespace-nowrap">
-                  <NumberDisplay
-                    value={Number(
-                      formatEther(BigInt(position.collateral || '0'))
-                    )}
-                  />{' '}
-                  {position.market?.marketGroup?.collateralSymbol || 'Unknown'}
-                </div>
-                <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
-                  To Win: <MaxPayoutCell position={position} />
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={
-                displayQuestionColumn ? 'xl:col-span-3' : 'xl:col-span-6'
-              }
-            >
-              <div className="text-xs text-muted-foreground xl:hidden">
-                Position Value
-              </div>
-              <PositionValueCell position={position} />
-            </div>
-
-            {showOwnerColumn && (
-              <div className="xl:col-span-1">
-                <div className="text-xs text-muted-foreground xl:hidden">
-                  Owner
-                </div>
-                <div className="flex items-center gap-2">
-                  {position.owner ? (
-                    <Image
-                      alt={position.owner}
-                      src={blo(position.owner as `0x${string}`)}
-                      className="w-5 h-5 rounded-sm ring-1 ring-border/50"
-                      width={20}
-                      height={20}
+            <div className="mt-3 xl:mt-0 xl:justify-self-end">
+              <div className="flex gap-3 justify-start xl:justify-end">
+                {isExpired && !isPositionSettled ? (
+                  isOwner ? (
+                    <SettlePositionButton
+                      positionId={position.positionId.toString()}
+                      marketAddress={marketAddress}
+                      chainId={position.market?.marketGroup?.chainId || 0}
+                      isMarketSettled={position.market?.settled || false}
+                      onSuccess={() => {
+                        console.log(
+                          `Settle action for position ${position.positionId} initiated.`
+                        );
+                      }}
                     />
-                  ) : null}
-                  <div className="[&_span.font-mono]:text-foreground">
-                    <AddressDisplay address={position.owner || ''} />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {showActions && (
-              <div
-                className={`mt-3 xl:mt-0 xl:col-span-1 ${showOwnerColumn ? 'xl:col-start-13' : 'xl:col-start-12'} xl:justify-self-end`}
-              >
-                <div className="flex gap-3 justify-start xl:justify-end">
-                  {/* Exclusively show Settle when expired and not settled; otherwise show Sell (not on market page) */}
-                  {isExpired && !isPositionSettled ? (
-                    isOwner ? (
-                      <SettlePositionButton
-                        positionId={position.positionId.toString()}
-                        marketAddress={marketAddress}
-                        chainId={position.market?.marketGroup?.chainId || 0}
-                        isMarketSettled={position.market?.settled || false}
-                        onSuccess={() => {
-                          console.log(
-                            `Settle action for position ${position.positionId} initiated. Consider implementing a data refetch mechanism.`
-                          );
-                        }}
-                      />
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button size="sm" variant="outline" disabled>
-                                Settle
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-[220px]">
-                              {hasWallet
-                                ? 'You can only settle positions from the account that owns them.'
-                                : 'Connect your account to settle this position.'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    )
                   ) : (
-                    !isMarketPage &&
-                    (isOwner && !isClosed ? (
-                      <SellPositionDialog
-                        position={position}
-                        marketAddress={marketAddress}
-                        chainId={position.market?.marketGroup?.chainId || 0}
-                        onSuccess={() => {
-                          console.log(
-                            `Close action for position ${position.positionId} sent.`
-                          );
-                        }}
-                      />
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button size="sm" variant="outline" disabled>
-                                Sell
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-[220px]">
-                              {!hasWallet
-                                ? 'Connect your wallet to sell this position.'
-                                : isClosed
-                                  ? 'This position is already closed.'
-                                  : 'You can only sell from the account that owns this position.'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))
-                  )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button size="sm" variant="outline" disabled>
+                              Settle
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-[220px]">
+                            {hasWallet
+                              ? 'You can only settle positions from the account that owns them.'
+                              : 'Connect your account to settle this position.'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )
+                ) : (
+                  !isMarketPage &&
+                  (isOwner && !isClosed ? (
+                    <SellPositionDialog
+                      position={position}
+                      marketAddress={marketAddress}
+                      chainId={position.market?.marketGroup?.chainId || 0}
+                      onSuccess={() => {
+                        console.log(
+                          `Close action for position ${position.positionId} sent.`
+                        );
+                      }}
+                    />
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span>
+                            <Button size="sm" variant="outline" disabled>
+                              Sell
+                            </Button>
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-[220px]">
+                            {!hasWallet
+                              ? 'Connect your wallet to sell this position.'
+                              : isClosed
+                                ? 'This position is already closed.'
+                                : 'You can only sell from the account that owns this position.'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ))
+                )}
 
-                  <SharePositionDialog
-                    position={position}
-                    trigger={
-                      <button
-                        type="button"
-                        className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                      >
-                        Share
-                      </button>
-                    }
-                  />
-                </div>
+                <SharePositionDialog
+                  position={position}
+                  trigger={
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                    >
+                      Share
+                    </button>
+                  }
+                />
               </div>
-            )}
-          </>
-        )}
+            </div>
+          );
+        },
+      } as ColumnDef<PositionType>),
+  ].filter(Boolean) as ColumnDef<PositionType>[];
+
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: displayQuestionColumn ? 'position' : 'wager', desc: true },
+  ]);
+
+  const table = useReactTable({
+    data: validPositions,
+    columns: tableColumns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
+  return (
+    <div>
+      <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+        <Table className="table-auto">
+          <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={
+                      header.id === 'actions' ? 'text-right' : undefined
+                    }
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {table.getRowModel().rows.map((row) => (
+              <TableRow
+                key={row.id}
+                className="xl:table-row block border-b last:border-b-0 space-y-3 xl:space-y-0 px-4 py-4 xl:px-0 xl:py-0"
+              >
+                {row.getVisibleCells().map((cell) => {
+                  const colId = cell.column.id;
+                  const mobileLabel =
+                    colId === 'wager'
+                      ? 'Wager'
+                      : colId === 'value'
+                        ? 'Position Value'
+                        : colId === 'owner'
+                          ? 'Owner'
+                          : undefined;
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      className={
+                        'block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3'
+                      }
+                    >
+                      {mobileLabel ? (
+                        <div className="text-xs text-muted-foreground xl:hidden mb-1.5">
+                          {mobileLabel}
+                        </div>
+                      ) : null}
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

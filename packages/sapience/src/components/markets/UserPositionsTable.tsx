@@ -15,6 +15,7 @@ import UserParlaysTable from '../parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
+import { useMarketGroupPage } from '~/lib/context/MarketGroupPageProvider';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -104,6 +105,17 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     return atts;
   }, [attestationsData, marketId, marketIds]);
 
+  // Provide a stable, globally consistent order for option color mapping
+  const { marketGroupData } = useMarketGroupPage?.() || ({} as any);
+  const summaryMarketsForColors = useMemo(() => {
+    const list = marketGroupData?.markets || [];
+    return list
+      .slice()
+      .sort(
+        (a: any, b: any) => Number(a?.marketId ?? 0) - Number(b?.marketId ?? 0)
+      );
+  }, [marketGroupData]);
+
   return (
     <div className="space-y-6">
       {showHeaderText && (
@@ -138,6 +150,9 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentChainId={chainId}
             parentMarketId={marketId}
             context="user_positions"
+            showPositionColumn
+            columns={{ actions: false }}
+            summaryMarketsForColors={summaryMarketsForColors}
           />
         </TabsContent>
 
@@ -148,7 +163,9 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
             parentChainId={chainId}
             parentMarketId={marketId}
             context="user_positions"
+            showPositionColumn
             columns={{ actions: false }}
+            summaryMarketsForColors={summaryMarketsForColors}
           />
         </TabsContent>
 

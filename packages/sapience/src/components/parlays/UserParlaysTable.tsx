@@ -10,6 +10,16 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from '@tanstack/react-table';
+import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import * as React from 'react';
 
 export default function UserParlaysTable({
   showHeaderText = true,
@@ -62,6 +72,184 @@ export default function UserParlaysTable({
     },
   ];
 
+  const columns = React.useMemo<ColumnDef<MockParlay>[]>(
+    () => [
+      {
+        id: 'positionId',
+        accessorFn: (row) => row.positionId,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Position ID
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap">#{row.original.positionId}</div>
+        ),
+      },
+      {
+        id: 'conditions',
+        accessorFn: (row) => row.legs.length,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Conditions
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="space-y-1">
+            {row.original.legs.map((leg, idx) => (
+              <div key={idx} className="text-sm">
+                <span className="font-medium">{leg.question}</span>{' '}
+                <span
+                  className={
+                    leg.choice === 'Yes' ? 'text-green-600' : 'text-red-600'
+                  }
+                >
+                  ({leg.choice})
+                </span>
+              </div>
+            ))}
+          </div>
+        ),
+      },
+      {
+        id: 'side',
+        accessorFn: (row) => row.direction,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Side
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap">
+            {row.original.direction === 'Long'
+              ? 'Conditions will be met'
+              : 'Not all conditions will be met'}
+          </div>
+        ),
+      },
+      {
+        id: 'endsAt',
+        accessorFn: (row) => row.endsAt,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Status
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap text-left xl:text-right xl:mt-0">
+            {row.original.status === 'active' && (
+              <Button size="sm" variant="outline" disabled>
+                {`Ends In ${Math.max(1, Math.ceil((row.original.endsAt - Date.now()) / (1000 * 60 * 60 * 24)))} Days`}
+              </Button>
+            )}
+            {row.original.status === 'won' && (
+              <Button size="sm">Claim Winnings</Button>
+            )}
+            {row.original.status === 'lost' && (
+              <Button size="sm" variant="outline" disabled>
+                Parlay Lost
+              </Button>
+            )}
+          </div>
+        ),
+      },
+    ],
+    []
+  );
+
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'positionId', desc: true },
+  ]);
+
+  const table = useReactTable({
+    data: mockParlays,
+    columns,
+    state: { sorting },
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
+
   return (
     <div>
       {showHeaderText && (
@@ -70,69 +258,40 @@ export default function UserParlaysTable({
       <div className="rounded border">
         <Table>
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
-            <TableRow>
-              <TableHead>Position ID</TableHead>
-              <TableHead>Conditions</TableHead>
-              <TableHead>Side</TableHead>
-              <TableHead className="text-right"></TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={
+                      header.id === 'endsAt' ? 'text-right' : undefined
+                    }
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
-            {mockParlays.map((parlay) => (
+            {table.getRowModel().rows.map((row) => (
               <TableRow
-                key={parlay.positionId}
+                key={row.id}
                 className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top"
               >
-                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap">
-                  <div className="text-xs text-muted-foreground xl:hidden">
-                    Position ID
-                  </div>
-                  #{parlay.positionId}
-                </TableCell>
-                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3">
-                  <div className="text-xs text-muted-foreground xl:hidden">
-                    Conditions
-                  </div>
-                  <div className="space-y-1">
-                    {parlay.legs.map((leg, idx) => (
-                      <div key={idx} className="text-sm">
-                        <span className="font-medium">{leg.question}</span>{' '}
-                        <span
-                          className={
-                            leg.choice === 'Yes'
-                              ? 'text-green-600'
-                              : 'text-red-600'
-                          }
-                        >
-                          ({leg.choice})
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap">
-                  <div className="text-xs text-muted-foreground xl:hidden">
-                    Side
-                  </div>
-                  {parlay.direction === 'Long'
-                    ? 'Conditions will be met'
-                    : 'Not all conditions will be met'}
-                </TableCell>
-                <TableCell className="block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 whitespace-nowrap text-left xl:text-right xl:mt-0">
-                  {parlay.status === 'active' && (
-                    <Button size="sm" variant="outline" disabled>
-                      {`Ends In ${Math.max(1, Math.ceil((parlay.endsAt - Date.now()) / (1000 * 60 * 60 * 24)))} Days`}
-                    </Button>
-                  )}
-                  {parlay.status === 'won' && (
-                    <Button size="sm">Claim Winnings</Button>
-                  )}
-                  {parlay.status === 'lost' && (
-                    <Button size="sm" variant="outline" disabled>
-                      Parlay Lost
-                    </Button>
-                  )}
-                </TableCell>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell
+                    key={cell.id}
+                    className={`block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'endsAt' ? 'text-left xl:text-right xl:mt-0' : ''}`}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </TableCell>
+                ))}
               </TableRow>
             ))}
           </TableBody>

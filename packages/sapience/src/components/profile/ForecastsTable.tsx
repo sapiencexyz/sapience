@@ -1,4 +1,5 @@
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
   TableBody,
@@ -7,16 +8,22 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import React from 'react';
-import { ExternalLinkIcon } from 'lucide-react';
+import {
+  ExternalLinkIcon,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
@@ -327,8 +334,37 @@ const ForecastsTable = ({
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
-        accessorKey: 'question',
-        header: 'Question',
+        id: 'question',
+        accessorFn: (row) => {
+          // Use comment + resolved question text for a stable string to sort on
+          const comment = (row.comment || '').trim();
+          return comment.length > 0 ? comment : extractMarketIdHex(row) || '';
+        },
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Question
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
         cell: (info) =>
           renderQuestionCell({
             row: info.row,
@@ -338,8 +374,33 @@ const ForecastsTable = ({
           }),
       },
       {
-        accessorKey: 'value',
-        header: 'Prediction',
+        id: 'value',
+        accessorFn: (row) => row.value,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Prediction
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
         cell: (info) =>
           renderPredictionCell({
             row: info.row,
@@ -350,12 +411,38 @@ const ForecastsTable = ({
       },
       // Comment is now rendered under Question, so we omit a separate Comment column
       {
-        accessorKey: 'rawTime',
-        header: 'Submitted',
+        id: 'rawTime',
+        accessorFn: (row) => Number(row.rawTime),
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Submitted
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
         cell: (info) => renderSubmittedCell({ row: info.row }),
       },
       {
         id: 'actions',
+        enableSorting: false,
         cell: (info) =>
           renderActionsCell({ row: info.row, chainId: parentChainId }),
       },
@@ -364,16 +451,17 @@ const ForecastsTable = ({
     [marketGroups, isMarketsLoading, isMarketPage, shouldDisplayQuestionColumn]
   );
 
-  // Sort newest to oldest by attestation timestamp (rawTime is seconds)
-  const sortedAttestations = React.useMemo(() => {
-    const list = attestations ? [...attestations] : [];
-    return list.sort((a, b) => Number(b.rawTime) - Number(a.rawTime));
-  }, [attestations]);
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'rawTime', desc: true },
+  ]);
 
   const table = useReactTable({
-    data: sortedAttestations,
+    data: attestations || [],
     columns,
+    state: { sorting },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   // Empty state

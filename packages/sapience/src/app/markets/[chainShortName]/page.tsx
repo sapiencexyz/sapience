@@ -352,7 +352,7 @@ const MarketGroupPageContent = () => {
   if (isLoading || isPermitLoadingPermit) {
     return (
       <div className="flex flex-col w-full min-h-[100dvh] items-center justify-center">
-        <LottieLoader />
+        <LottieLoader width={32} height={32} />
       </div>
     );
   }

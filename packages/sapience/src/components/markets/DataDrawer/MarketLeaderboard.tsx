@@ -68,18 +68,21 @@ const MarketLeaderboard = ({
         id: 'rank',
         header: () => 'Rank',
         cell: RankCell,
+        enableSorting: false,
       },
       {
         id: 'owner',
         header: () => 'Address',
         accessorKey: 'owner',
         cell: OwnerCell,
+        enableSorting: false,
       },
       {
         id: 'totalPnL',
         header: () => 'Realized Profit',
         accessorKey: 'totalPnL',
         cell: ProfitCell,
+        enableSorting: false,
       },
     ],
     []
@@ -124,27 +127,19 @@ const MarketLeaderboard = ({
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden bg-background dark:bg-muted/50">
-      <Table>
-        <TableHeader>
+    <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+      <Table className="table-auto">
+        <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow
-              key={headerGroup.id}
-              className="hover:bg-transparent border-b"
-            >
+            <TableRow key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className={cn(
-                    'p-3 text-left text-muted-foreground font-medium'
-                  )}
-                >
-                  <>
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </>
+                <TableHead key={header.id}>
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
                 </TableHead>
               ))}
             </TableRow>
@@ -155,18 +150,37 @@ const MarketLeaderboard = ({
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                className="hover:bg-muted/50 border-b last:border-b-0"
+                className="xl:table-row block border-b last:border-b-0 space-y-3 xl:space-y-0 px-4 py-4 xl:px-0 xl:py-0"
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className={cn('p-3 text-sm')}>
-                    <>
+                {row.getVisibleCells().map((cell) => {
+                  const colId = cell.column.id;
+                  const mobileLabel =
+                    colId === 'rank'
+                      ? 'Rank'
+                      : colId === 'owner'
+                        ? 'Address'
+                        : colId === 'totalPnL'
+                          ? 'Realized Profit'
+                          : undefined;
+                  return (
+                    <TableCell
+                      key={cell.id}
+                      className={cn(
+                        'block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3'
+                      )}
+                    >
+                      {mobileLabel ? (
+                        <div className="text-xs text-muted-foreground xl:hidden mb-1.5">
+                          {mobileLabel}
+                        </div>
+                      ) : null}
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
                       )}
-                    </>
-                  </TableCell>
-                ))}
+                    </TableCell>
+                  );
+                })}
               </TableRow>
             ))
           ) : (
