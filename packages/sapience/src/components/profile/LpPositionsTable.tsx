@@ -349,7 +349,8 @@ export default function LpPositionsTable({
                 sideOffset={6}
               >
                 <p className="font-normal">
-                  The position value is approximate due to slippage. The estimate of fees earned is included.
+                  The position value is approximate due to slippage. The
+                  estimate of fees earned is included.
                 </p>
               </TooltipContent>
             </Tooltip>

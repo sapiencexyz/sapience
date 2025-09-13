@@ -218,7 +218,10 @@ const MarketDataTables = () => {
           });
           return (
             <div className="flex flex-col min-w-0">
-              <span className="whitespace-nowrap font-medium" title={exactLocalDisplay}>
+              <span
+                className="whitespace-nowrap font-medium"
+                title={exactLocalDisplay}
+              >
                 {createdDisplay}
               </span>
               <span className="text-xs text-muted-foreground">
