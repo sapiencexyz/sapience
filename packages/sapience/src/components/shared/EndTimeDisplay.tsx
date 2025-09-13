@@ -23,6 +23,14 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
   try {
     const date = fromUnixTime(endTime);
     const displayTime = formatDistanceToNow(date, { addSuffix: true });
+    const isPast = date.getTime() <= Date.now();
+    const label = isPast ? 'Ended' : 'Ends';
+    const baseBadgeClasses = 'h-8 items-center px-3 text-xs leading-none';
+    const outlineExtras = 'bg-background dark:bg-muted/50 border-border';
+    const smallBadgeClassName =
+      `${baseBadgeClasses} ${isPast ? '' : outlineExtras}`.trim();
+    const largeBadgeClassName =
+      `${baseBadgeClasses} inline-flex ${isPast ? '' : outlineExtras}`.trim();
     const fullLabel = new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
       month: 'long',
@@ -40,11 +48,11 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
             <TooltipTrigger asChild>
               <span className="inline-flex cursor-default md:hidden">
                 <Badge
-                  variant="outline"
-                  className="bg-background dark:bg-muted/50 border-border h-8 items-center px-3 text-xs leading-none"
+                  variant={isPast ? 'secondary' : 'outline'}
+                  className={smallBadgeClassName}
                 >
                   <Timer className="h-4 w-4 mr-1" />
-                  Ends {displayTime}
+                  {label} {displayTime}
                 </Badge>
               </span>
             </TooltipTrigger>
@@ -57,11 +65,11 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
         {/* md+ screens: always show expanded inline content (no tooltip, no hover) */}
         <span className="hidden md:inline-flex cursor-default">
           <Badge
-            variant="outline"
-            className="bg-background dark:bg-muted/50 border-border h-8 items-center px-3 text-xs leading-none inline-flex"
+            variant={isPast ? 'secondary' : 'outline'}
+            className={largeBadgeClassName}
           >
             <Timer className="h-3.5 w-3.5 mr-1 -mt-0.5 opacity-70" />
-            Ends {displayTime}
+            {label} {displayTime}
             <span
               aria-hidden="true"
               className="hidden md:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"

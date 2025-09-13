@@ -42,6 +42,7 @@ interface AddressDisplayProps {
   disableProfileLink?: boolean;
   className?: string;
   compact?: boolean;
+  showFullAddress?: boolean;
 }
 
 // Constants for the button and icon sizes
@@ -57,6 +58,7 @@ const AddressDisplay = ({
   disableProfileLink,
   className,
   compact,
+  showFullAddress,
 }: AddressDisplayProps) => {
   const { toast } = useToast();
   const { data: ensName } = useEnsName(address);
@@ -65,7 +67,7 @@ const AddressDisplay = ({
       ? `${address.slice(0, 6)}...${address.slice(-4)}`
       : address;
 
-  const displayName = ensName || truncatedAddress;
+  const displayName = ensName || (showFullAddress ? address : truncatedAddress);
   const isLarge = className?.includes('text-2xl');
   const isCompact = !!compact;
   const buttonSizeClass = isLarge

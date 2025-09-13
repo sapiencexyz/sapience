@@ -63,7 +63,13 @@ interface LpPositionsTableProps {
 }
 
 // Helper component for Collateral Cell
-function CollateralCell({ position }: { position: PositionType }) {
+function CollateralCell({
+  position,
+  inlineShares,
+}: {
+  position: PositionType;
+  inlineShares?: boolean;
+}) {
   const decimals = position.market?.marketGroup?.collateralDecimals || 18; // Default to 18 if not provided
   const symbol = position.market?.marketGroup?.collateralSymbol || 'Tokens';
 
@@ -87,14 +93,22 @@ function CollateralCell({ position }: { position: PositionType }) {
         <NumberDisplay value={displayValue} />
         <span>{symbol}</span>
       </div>
-      <div className="text-xs text-muted-foreground mt-0.5">
-        <div>
+      {inlineShares ? (
+        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
           <NumberDisplay value={baseTokenAmount} /> {baseSymbol} Shares
-        </div>
-        <div>
+          <span aria-hidden="true">·</span>
           <NumberDisplay value={quoteTokenAmount} /> {quoteSymbol} Shares
         </div>
-      </div>
+      ) : (
+        <div className="text-xs text-muted-foreground mt-0.5">
+          <div>
+            <NumberDisplay value={baseTokenAmount} /> {baseSymbol} Shares
+          </div>
+          <div>
+            <NumberDisplay value={quoteTokenAmount} /> {quoteSymbol} Shares
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -294,7 +308,10 @@ export default function LpPositionsTable({
         </Button>
       ),
       cell: ({ row }: { row: { original: PositionType } }) => (
-        <CollateralCell position={row.original} />
+        <CollateralCell
+          position={row.original}
+          inlineShares={context === 'data_drawer'}
+        />
       ),
     },
     {

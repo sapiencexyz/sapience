@@ -695,6 +695,7 @@ const MarketDataTables = () => {
               marketAddress={marketAddress}
               chainId={chainId}
               marketId={numericMarketId?.toString() || null}
+              showFullAddress
             />
           </div>
         </TabsContent>

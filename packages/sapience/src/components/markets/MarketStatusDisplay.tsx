@@ -75,8 +75,8 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     }
 
     return (
-      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center">
-        <div className="flex flex-col items-center justify-center space-y-4">
+      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center h-full">
+        <div className="flex flex-col items-center justify-center space-y-4 h-full">
           <div className="rounded-full bg-green-100 dark:bg-green-800 p-2">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -96,8 +96,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
           <h3 className="text-xl font-medium">Market Settled</h3>
           <p className="text-muted-foreground">
             This market has been settled with a result of{' '}
-            <span className="font-semibold">{settlementResult}</span>. Check
-            below for your positions.
+            <span className="font-semibold">{settlementResult}</span>.
           </p>
         </div>
       </div>

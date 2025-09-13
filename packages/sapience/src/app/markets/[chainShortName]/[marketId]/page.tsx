@@ -21,6 +21,7 @@ import PriceChart from '~/components/markets/charts/PriceChart';
 import MarketDataTables from '~/components/markets/DataDrawer';
 import MarketHeader from '~/components/markets/MarketHeader';
 import PositionSelector from '~/components/markets/PositionSelector';
+import MarketStatusDisplay from '~/components/markets/MarketStatusDisplay';
 
 import { useOrderBookData } from '~/hooks/charts/useOrderBookData';
 import { useUniswapPool } from '~/hooks/charts/useUniswapPool';
@@ -64,7 +65,7 @@ const SimpleLiquidityWrapper = dynamic(
 );
 
 // Helper component for displaying market loading/error states
-const MarketStatusDisplay = ({
+const MarketLoadingGuard = ({
   isLoadingMarket,
   isLoadingMarketContract,
   marketData,
@@ -198,7 +199,7 @@ const ForecastContent = () => {
   }, [selectedPosition]);
 
   // Use the new MarketStatusDisplay component
-  const marketStatusElement = MarketStatusDisplay({
+  const loadingGuardElement = MarketLoadingGuard({
     isLoadingMarket,
     isLoadingMarketContract,
     marketData,
@@ -207,9 +208,45 @@ const ForecastContent = () => {
     numericMarketId,
   });
 
-  if (marketStatusElement) {
-    return marketStatusElement;
+  if (loadingGuardElement) {
+    return loadingGuardElement;
   }
+
+  // Determine if current market is expired (past end time)
+  const endTimeSec = marketData?.endTimestamp;
+  const isExpired =
+    typeof endTimeSec === 'number' &&
+    !Number.isNaN(endTimeSec) &&
+    Date.now() / 1000 >= endTimeSec;
+
+  // Ensure the shared status component uses the current market as first in list
+  const statusGroup = marketData?.marketGroup
+    ? {
+        ...marketData.marketGroup,
+        markets: (() => {
+          const markets = marketData.marketGroup.markets || [];
+          const selectedId = String(numericMarketId ?? marketData.marketId);
+          const selected = markets
+            .filter((m: any) => String(m.marketId) === selectedId)
+            .map((m: any) => ({
+              ...m,
+              // Trust on-chain settlement status/price for the selected market
+              settled:
+                typeof marketContractData?.settled === 'boolean'
+                  ? marketContractData.settled
+                  : m.settled,
+              settlementPriceD18:
+                marketContractData?.settlementPriceD18 != null
+                  ? marketContractData.settlementPriceD18.toString()
+                  : m.settlementPriceD18,
+            }));
+          const rest = markets.filter(
+            (m: any) => String(m.marketId) !== selectedId
+          );
+          return [...selected, ...rest];
+        })(),
+      }
+    : undefined;
 
   let availableMarkets =
     marketData?.marketGroup?.markets?.filter(
@@ -305,127 +342,182 @@ const ForecastContent = () => {
             maxTick={maxTick}
           />
           <div className="flex flex-col gap-2">
-            {/* Top Row: Chart, OrderBook, and Forms */}
-            <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
-              {/* Chart Column */}
-              <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
-                <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
-                  <div className="flex-1 relative">
-                    <div className="absolute top-0 left-0 z-10">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-md shadow-sm">
-                          <IntervalSelector
-                            selectedInterval={selectedInterval}
-                            setSelectedInterval={setSelectedInterval}
-                          />
+            {/* Top Row: Chart, and either OrderBook+Forms or MarketStatusDisplay */}
+            {isExpired ? (
+              <div className="flex flex-col lg:flex-row lg:gap-8 xl:gap-6">
+                {/* Chart Column */}
+                <div className="flex flex-col w-full relative flex-1 min-w-0 h-[320px] md:h-[460px]">
+                  <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                    <div className="flex-1 relative">
+                      <div className="absolute top-0 left-0 z-10">
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-md shadow-sm">
+                            <IntervalSelector
+                              selectedInterval={selectedInterval}
+                              setSelectedInterval={setSelectedInterval}
+                            />
+                          </div>
+                          {marketData?.marketGroup?.resource?.slug && (
+                            <PriceSelector
+                              selectedPrices={selectedPrices}
+                              setSelectedPrices={handlePriceSelection}
+                            />
+                          )}
                         </div>
-                        {marketData?.marketGroup?.resource?.slug && (
-                          <PriceSelector
-                            selectedPrices={selectedPrices}
-                            setSelectedPrices={handlePriceSelection}
-                          />
-                        )}
                       </div>
+                      <PriceChart
+                        market={{
+                          marketId: numericMarketId!,
+                          chainId: chainId!,
+                          address: marketAddress!,
+                          quoteTokenName:
+                            marketData?.marketGroup?.quoteTokenName ||
+                            undefined,
+                          startTimestamp: marketData?.startTimestamp,
+                          endTimestamp: marketData?.endTimestamp,
+                        }}
+                        selectedInterval={selectedInterval}
+                        selectedPrices={selectedPrices}
+                        resourceSlug={resourceSlug}
+                      />
                     </div>
-                    <PriceChart
-                      market={{
-                        marketId: numericMarketId!,
-                        chainId: chainId!,
-                        address: marketAddress!,
-                        quoteTokenName:
-                          marketData?.marketGroup?.quoteTokenName || undefined,
-                        startTimestamp: marketData?.startTimestamp,
-                        endTimestamp: marketData?.endTimestamp,
-                      }}
-                      selectedInterval={selectedInterval}
-                      selectedPrices={selectedPrices}
-                      resourceSlug={resourceSlug}
+                  </div>
+                </div>
+                {/* Status Column (replaces OrderBook + Forms) */}
+                <div className="w-full lg:w-[340px] lg:shrink-0 order-2">
+                  <div className="h-[460px]">
+                    <MarketStatusDisplay
+                      marketGroupData={statusGroup as any}
+                      marketClassification={marketClassification!}
                     />
                   </div>
-                  {/* Footer removed: PriceSelector moved next to IntervalSelector at top-left */}
                 </div>
               </div>
-
-              {/* OrderBook Column - Shows to the right of chart on xl+ */}
-              <div className="xl:col-span-3 xl:order-2 order-3">
-                <div className="h-[460px]">
-                  <OrderBookChart
-                    quoteTokenName={quoteTokenName}
-                    baseTokenName={baseTokenName}
-                    className="h-full"
-                    asks={asks}
-                    bids={bids}
-                    lastPrice={lastPrice}
-                    isLoadingPool={isLoadingPool}
-                    isErrorPool={isErrorPool}
-                    isLoadingBook={isLoadingBook}
-                    isErrorBook={isErrorBook}
-                  />
-                </div>
-              </div>
-
-              {/* Forms Column */}
-              <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0 mb-5">
-                <div className="bg-background dark:bg-muted/50 rounded border border-border shadow-sm overflow-auto h-[460px]">
-                  <div className="w-full">
-                    <div className="px-3 py-1 border-b border-border">
-                      {!positionId && (
-                        <Tabs
-                          value={activeFormTab}
-                          onValueChange={(value) => setActiveFormTab(value)}
-                          className="w-full"
-                        >
-                          <TabsList className="grid w-full grid-cols-2 h-auto p-0 bg-transparent">
-                            <TabsTrigger
-                              value="trade"
-                              className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                            >
-                              Trade
-                            </TabsTrigger>
-                            <TabsTrigger
-                              value="liquidity"
-                              className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                            >
-                              Liquidity
-                            </TabsTrigger>
-                          </TabsList>
-                        </Tabs>
-                      )}
+            ) : (
+              <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
+                {/* Chart Column */}
+                <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
+                  <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                    <div className="flex-1 relative">
+                      <div className="absolute top-0 left-0 z-10">
+                        <div className="flex items-center gap-2">
+                          <div className="rounded-md shadow-sm">
+                            <IntervalSelector
+                              selectedInterval={selectedInterval}
+                              setSelectedInterval={setSelectedInterval}
+                            />
+                          </div>
+                          {marketData?.marketGroup?.resource?.slug && (
+                            <PriceSelector
+                              selectedPrices={selectedPrices}
+                              setSelectedPrices={handlePriceSelection}
+                            />
+                          )}
+                        </div>
+                      </div>
+                      <PriceChart
+                        market={{
+                          marketId: numericMarketId!,
+                          chainId: chainId!,
+                          address: marketAddress!,
+                          quoteTokenName:
+                            marketData?.marketGroup?.quoteTokenName ||
+                            undefined,
+                          startTimestamp: marketData?.startTimestamp,
+                          endTimestamp: marketData?.endTimestamp,
+                        }}
+                        selectedInterval={selectedInterval}
+                        selectedPrices={selectedPrices}
+                        resourceSlug={resourceSlug}
+                      />
                     </div>
-                    <div className="p-4">
-                      <PositionSelector />
-                      <div className="mt-3 relative">
-                        {selectedPosition &&
-                          selectedPosition.kind === PositionKind.Trade && (
+                    {/* Footer removed: PriceSelector moved next to IntervalSelector at top-left */}
+                  </div>
+                </div>
+
+                {/* OrderBook Column - Shows to the right of chart on xl+ */}
+                <div className="xl:col-span-3 xl:order-2 order-3">
+                  <div className="h-[460px]">
+                    <OrderBookChart
+                      quoteTokenName={quoteTokenName}
+                      baseTokenName={baseTokenName}
+                      className="h-full"
+                      asks={asks}
+                      bids={bids}
+                      lastPrice={lastPrice}
+                      isLoadingPool={isLoadingPool}
+                      isErrorPool={isErrorPool}
+                      isLoadingBook={isLoadingBook}
+                      isErrorBook={isErrorBook}
+                    />
+                  </div>
+                </div>
+
+                {/* Forms Column */}
+                <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0 mb-5">
+                  <div className="bg-background dark:bg-muted/50 rounded border border-border shadow-sm overflow-auto h-[460px]">
+                    <div className="w-full">
+                      <div className="px-3 py-1 border-b border-border">
+                        {!positionId && (
+                          <Tabs
+                            value={activeFormTab}
+                            onValueChange={(value) => setActiveFormTab(value)}
+                            className="w-full"
+                          >
+                            <TabsList className="grid w-full grid-cols-2 h-auto p-0 bg-transparent">
+                              <TabsTrigger
+                                value="trade"
+                                className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Trade
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="liquidity"
+                                className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Liquidity
+                              </TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <PositionSelector />
+                        <div className="mt-3 relative">
+                          {selectedPosition &&
+                            selectedPosition.kind === PositionKind.Trade && (
+                              <SimpleTradeWrapper
+                                positionId={positionId || undefined}
+                              />
+                            )}
+                          {selectedPosition &&
+                            selectedPosition.kind ===
+                              PositionKind.Liquidity && (
+                              <SimpleLiquidityWrapper
+                                positionId={positionId || undefined}
+                              />
+                            )}
+                          {!selectedPosition && activeFormTab === 'trade' && (
                             <SimpleTradeWrapper
                               positionId={positionId || undefined}
                             />
                           )}
-                        {selectedPosition &&
-                          selectedPosition.kind === PositionKind.Liquidity && (
-                            <SimpleLiquidityWrapper
-                              positionId={positionId || undefined}
-                            />
-                          )}
-                        {!selectedPosition && activeFormTab === 'trade' && (
-                          <SimpleTradeWrapper
-                            positionId={positionId || undefined}
-                          />
-                        )}
-                        {!selectedPosition && activeFormTab === 'liquidity' && (
-                          <SimpleLiquidityWrapper
-                            positionId={positionId || undefined}
-                          />
-                        )}
+                          {!selectedPosition &&
+                            activeFormTab === 'liquidity' && (
+                              <SimpleLiquidityWrapper
+                                positionId={positionId || undefined}
+                              />
+                            )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Full Width Data Tables Below */}
-            <div className="w-full mb-4">
+            <div className="w-full mt-6 mb-4">
               <MarketDataTables />
             </div>
           </div>

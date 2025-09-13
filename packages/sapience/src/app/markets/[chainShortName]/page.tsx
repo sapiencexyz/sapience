@@ -37,6 +37,7 @@ import {
 import { findActiveMarkets } from '~/lib/utils/util';
 import { formatQuestion, parseUrlParameter } from '~/lib/utils/util';
 import { MarketGroupClassification } from '~/lib/types';
+import RulesBox from '~/components/markets/RulesBox';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('../../../components/shared/Comments'), {
@@ -644,12 +645,7 @@ const MarketGroupPageContent = () => {
                   <h2 className="text-lg font-medium py-1.5">Rules</h2>
                 </div>
                 <div className="pt-1">
-                  <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-4">
-                    <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {marketGroupData?.rules ||
-                        'No additional rules clarification provided.'}
-                    </div>
-                  </div>
+                  <RulesBox text={marketGroupData?.rules} />
                 </div>
               </div>
             </div>

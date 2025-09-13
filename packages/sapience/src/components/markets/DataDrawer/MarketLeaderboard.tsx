@@ -34,20 +34,20 @@ const RankCell = ({ row }: { row: { index: number } }) => (
   <span className="text-sm font-medium">{row.index + 1}</span>
 );
 
-const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
-  <AddressDisplay address={cell.getValue() as string} />
-);
+// Owner cell is inlined in columns to allow prop-driven display behavior
 
 interface MarketLeaderboardProps {
   marketAddress: string | null;
   chainId: number | null;
   marketId: string | null;
+  showFullAddress?: boolean;
 }
 
 const MarketLeaderboard = ({
   marketAddress,
   chainId,
   marketId,
+  showFullAddress = false,
 }: MarketLeaderboardProps) => {
   console.log(
     '[MARKET LEADERBOARD DEBUG] Component rendering (this is inside a specific market page)...'
@@ -74,7 +74,12 @@ const MarketLeaderboard = ({
         id: 'owner',
         header: () => 'Address',
         accessorKey: 'owner',
-        cell: OwnerCell,
+        cell: ({ cell }: any) => (
+          <AddressDisplay
+            address={cell.getValue() as string}
+            showFullAddress={showFullAddress}
+          />
+        ),
         enableSorting: false,
       },
       {
@@ -85,7 +90,7 @@ const MarketLeaderboard = ({
         enableSorting: false,
       },
     ],
-    []
+    [showFullAddress]
   );
 
   // Get collateral info from first entry (all entries have same market/collateral)
