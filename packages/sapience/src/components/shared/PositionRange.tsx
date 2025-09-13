@@ -3,7 +3,7 @@ import clsx from 'clsx';
 
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useMarketPrice } from '~/hooks/graphql/useMarketPrice';
-import { tickToPrice } from '~/lib/utils/util';
+import { tickToPrice, sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
 
 type PositionRangeProps = {
   lowPriceTick: number | string;
@@ -12,6 +12,9 @@ type PositionRangeProps = {
   marketGroupAddress?: string;
   chainId?: number;
   marketId?: number;
+  endTimestamp?: number;
+  settled?: boolean;
+  startingSqrtPriceX96?: string | number | bigint;
   showBadge?: boolean;
   badgePlacement?: 'inline' | 'top' | 'under';
   className?: string;
@@ -24,6 +27,9 @@ export function PositionRange({
   marketGroupAddress,
   chainId,
   marketId,
+  endTimestamp,
+  settled,
+  startingSqrtPriceX96,
   showBadge = true,
   badgePlacement = 'inline',
   className,
@@ -40,13 +46,36 @@ export function PositionRange({
     marketId
   );
   const currentMarketPriceNumber = Number(currentMarketPriceRaw);
-  const hasMarketPrice = Number.isFinite(currentMarketPriceNumber);
-  const currentMarketPrice = hasMarketPrice
-    ? currentMarketPriceNumber
-    : undefined;
 
-  const inRange = hasMarketPrice
-    ? currentMarketPrice! >= lowPrice && currentMarketPrice! <= highPrice
+  // Determine if market has ended
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const hasEnded =
+    (typeof endTimestamp === 'number' &&
+      endTimestamp > 0 &&
+      nowSeconds >= endTimestamp) ||
+    settled === true;
+
+  // Determine effective price: prefer live price if > 0; otherwise fall back to starting price
+  let effectivePrice: number | undefined;
+  if (
+    Number.isFinite(currentMarketPriceNumber) &&
+    currentMarketPriceNumber > 0
+  ) {
+    effectivePrice = currentMarketPriceNumber;
+  } else if (startingSqrtPriceX96 != null) {
+    try {
+      const sqrt = BigInt(startingSqrtPriceX96 as any);
+      const priceD18 = sqrtPriceX96ToPriceD18(sqrt);
+      effectivePrice = Number(priceD18) / 1e18;
+    } catch {
+      // ignore invalid starting price
+    }
+  }
+
+  const hasPrice =
+    typeof effectivePrice === 'number' && Number.isFinite(effectivePrice);
+  const inRange = hasPrice
+    ? effectivePrice! >= lowPrice && effectivePrice! <= highPrice
     : null;
 
   const containerClass = clsx(
@@ -58,7 +87,7 @@ export function PositionRange({
   );
 
   const badgeEl =
-    showBadge && hasMarketPrice ? (
+    showBadge && !hasEnded && hasPrice ? (
       <Badge
         variant="outline"
         className={

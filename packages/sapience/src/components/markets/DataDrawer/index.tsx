@@ -218,8 +218,11 @@ const MarketDataTables = () => {
           });
           return (
             <div className="flex flex-col min-w-0">
-              <span className="whitespace-nowrap" title={exactLocalDisplay}>
+              <span className="whitespace-nowrap font-medium" title={exactLocalDisplay}>
                 {createdDisplay}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {exactLocalDisplay}
               </span>
             </div>
           );
@@ -264,6 +267,57 @@ const MarketDataTables = () => {
             </Badge>
           );
         },
+      },
+      {
+        id: 'owner',
+        accessorFn: (row: any) =>
+          row.position.owner ? String(row.position.owner).toLowerCase() : '',
+        header: ({ column }: any) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Address
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => (
+          <div>
+            <div className="flex items-center gap-2 min-w-0">
+              {row.original.position.owner ? (
+                <Image
+                  alt={row.original.position.owner}
+                  src={blo(row.original.position.owner as `0x${string}`)}
+                  className="w-5 h-5 rounded-sm ring-1 ring-border/50 shrink-0"
+                  width={20}
+                  height={20}
+                />
+              ) : null}
+              <div className="[&_span.font-mono]:text-foreground min-w-0">
+                <AddressDisplay
+                  address={row.original.position.owner || ''}
+                  compact
+                />
+              </div>
+            </div>
+          </div>
+        ),
       },
       {
         id: 'amount',
@@ -395,54 +449,6 @@ const MarketDataTables = () => {
         },
       },
       {
-        id: 'owner',
-        accessorFn: (row: any) =>
-          row.position.owner ? String(row.position.owner).toLowerCase() : '',
-        header: ({ column }: any) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Owner
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
-        cell: ({ row }: any) => (
-          <div>
-            <div className="flex items-center gap-2">
-              {row.original.position.owner ? (
-                <Image
-                  alt={row.original.position.owner}
-                  src={blo(row.original.position.owner as `0x${string}`)}
-                  className="w-5 h-5 rounded-sm ring-1 ring-border/50"
-                  width={20}
-                  height={20}
-                />
-              ) : null}
-              <div className="[&_span.font-mono]:text-foreground">
-                <AddressDisplay address={row.original.position.owner || ''} />
-              </div>
-            </div>
-          </div>
-        ),
-      },
-      {
         id: 'actions',
         enableSorting: false,
         header: () => <span className="sr-only">Actions</span>,
@@ -452,7 +458,7 @@ const MarketDataTables = () => {
             | undefined;
           const txUrl = getExplorerTxUrl(chainId || undefined, txHash);
           return (
-            <div className="text-left xl:text-right xl:mt-0 whitespace-nowrap">
+            <div className="text-left xl:text-right xl:mt-0">
               {txUrl ? (
                 <a
                   href={txUrl}
@@ -462,7 +468,7 @@ const MarketDataTables = () => {
                 >
                   <button
                     type="button"
-                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border whitespace-nowrap"
+                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
                   >
                     <Image
                       src="/etherscan.svg"
@@ -538,7 +544,7 @@ const MarketDataTables = () => {
     return (
       <div>
         <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
-          <Table className="w-full xl:table-fixed">
+          <Table className="w-full">
             <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -573,12 +579,12 @@ const MarketDataTables = () => {
                             : colId === 'position'
                               ? 'Position'
                               : colId === 'owner'
-                                ? 'Owner'
+                                ? 'Address'
                                 : undefined;
                     return (
                       <TableCell
                         key={cell.id}
-                        className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${colId === 'actions' ? 'text-left xl:text-right xl:mt-0' : ''} ${colId === 'time' ? 'xl:w-[150px] xl:max-w-[150px]' : ''}`}
+                        className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${colId === 'actions' ? 'text-left xl:text-right xl:mt-0' : ''}`}
                       >
                         {mobileLabel ? (
                           <div className="text-xs text-muted-foreground xl:hidden mb-1.5">
@@ -659,19 +665,19 @@ const MarketDataTables = () => {
         <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
           <TabsList>
             <TabsTrigger value="leaderboard">
-              <TrophyIcon className="h-4 w-4 md:hidden" />
+              <TrophyIcon className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Leaderboard</span>
             </TabsTrigger>
             <TabsTrigger value="transactions">
-              <ListIcon className="h-4 w-4 md:hidden" />
+              <ListIcon className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Transactions</span>
             </TabsTrigger>
             <TabsTrigger value="trader-positions">
-              <ArrowLeftRightIcon className="h-4 w-4 md:hidden" />
+              <ArrowLeftRightIcon className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Trades</span>
             </TabsTrigger>
             <TabsTrigger value="lp-positions">
-              <DropletsIcon className="h-4 w-4 md:hidden" />
+              <DropletsIcon className="h-4 w-4 md:mr-2" />
               <span className="hidden md:inline">Liquidity</span>
             </TabsTrigger>
           </TabsList>

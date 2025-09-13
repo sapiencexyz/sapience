@@ -436,29 +436,28 @@ export default function TraderPositionsTable({
         );
       },
     } as ColumnDef<PositionType>,
-    context !== 'data_drawer' &&
-      ({
-        id: 'value',
-        header: () => (
-          <div className="flex items-center gap-1">
-            <span>Current Position Value</span>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p className="font-normal">
-                    The position value is approximate due to slippage.
-                  </p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        ),
-        enableSorting: false,
-        cell: ({ row }: any) => <PositionValueCell position={row.original} />,
-      } as ColumnDef<PositionType>),
+    {
+      id: 'value',
+      header: () => (
+        <div className="flex items-center gap-1">
+          <span>Current Position Value</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-normal">
+                  The position value is approximate due to slippage.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      ),
+      enableSorting: false,
+      cell: ({ row }: any) => <PositionValueCell position={row.original} />,
+    } as ColumnDef<PositionType>,
     visibility.showOwner &&
       ({
         id: 'owner',
@@ -632,6 +631,7 @@ export default function TraderPositionsTable({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    autoResetAll: false,
   });
 
   return (

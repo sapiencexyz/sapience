@@ -48,6 +48,8 @@ export function usePositionValueAndFees(
   const { enabled = true } = options;
   const { abi } = useSapienceAbi();
   const sapienceAbi = abi as Abi;
+  const SLOW_REFETCH_MS = 120_000; // 2 minutes
+  // no-op
 
   const valid = useMemo(() => {
     return (positions || []).filter(
@@ -58,6 +60,7 @@ export function usePositionValueAndFees(
         p.market?.marketGroup?.chainId
     );
   }, [positions]);
+  // no-op
 
   // Build maps and unique market keys
   const marketKeyFor = (p: PositionType) =>
@@ -78,19 +81,35 @@ export function usePositionValueAndFees(
         });
       }
     }
-    return Array.from(map.values());
+    const arr = Array.from(map.values());
+    return arr;
   }, [valid]);
 
   // 1) Read current reference price per market
+  const refPriceContracts = useMemo(
+    () =>
+      uniqueMarkets.map((m) => ({
+        abi: sapienceAbi,
+        address: m.address,
+        functionName: 'getReferencePrice',
+        args: [m.marketId],
+        chainId: m.chainId,
+      })),
+    [uniqueMarkets, sapienceAbi]
+  );
+  const refPriceQueryOptions = useMemo(
+    () => ({
+      enabled: enabled && uniqueMarkets.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: SLOW_REFETCH_MS,
+      staleTime: SLOW_REFETCH_MS,
+    }),
+    [enabled, uniqueMarkets.length]
+  );
   const refPriceQuery = useReadContracts({
-    contracts: uniqueMarkets.map((m) => ({
-      abi: sapienceAbi,
-      address: m.address,
-      functionName: 'getReferencePrice',
-      args: [m.marketId],
-      chainId: m.chainId,
-    })),
-    query: { enabled: enabled && uniqueMarkets.length > 0 },
+    contracts: refPriceContracts,
+    query: refPriceQueryOptions,
   });
 
   const referencePriceByMarket = useMemo(() => {
@@ -104,6 +123,69 @@ export function usePositionValueAndFees(
     }
     return result;
   }, [refPriceQuery.data, uniqueMarkets]);
+
+  // 1b) Read market group params (to get Uniswap position manager) per unique group
+  const uniqueGroups = useMemo(() => {
+    const map = new Map<string, { chainId: number; address: Address }>();
+    for (const p of valid) {
+      const key = `${p.market!.marketGroup!.chainId}:${(p.market!.marketGroup!.address || '').toLowerCase()}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          chainId: p.market!.marketGroup!.chainId,
+          address: p.market!.marketGroup!.address!.toLowerCase() as Address,
+        });
+      }
+    }
+    const arr = Array.from(map.values());
+    return arr;
+  }, [valid]);
+
+  const groupParamsContracts = useMemo(
+    () =>
+      uniqueGroups.map((g) => ({
+        abi: sapienceAbi,
+        address: g.address,
+        functionName: 'getMarketGroup',
+        args: [],
+        chainId: g.chainId,
+      })),
+    [uniqueGroups, sapienceAbi]
+  );
+  const groupParamsQueryOptions = useMemo(
+    () => ({
+      enabled: enabled && uniqueGroups.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: SLOW_REFETCH_MS,
+      staleTime: SLOW_REFETCH_MS,
+    }),
+    [enabled, uniqueGroups.length]
+  );
+  const groupParamsQuery = useReadContracts({
+    contracts: groupParamsContracts,
+    query: groupParamsQueryOptions,
+  });
+
+  const uniswapManagerByGroup = useMemo(() => {
+    const result = new Map<string, Address>();
+    if (!groupParamsQuery.data) return result;
+    for (let i = 0; i < uniqueGroups.length; i++) {
+      const grp = uniqueGroups[i];
+      const key = `${grp.chainId}:${grp.address}`;
+      const resp = groupParamsQuery.data[i]?.result as any;
+      // Support multiple ABI decoder shapes: tuple with named props or plain arrays
+      const marketParams = resp?.marketParams ?? resp?.[2] ?? resp?.['2'];
+      const candidateManager: string | undefined =
+        marketParams?.uniswapPositionManager ?? marketParams?.[4];
+      const manager = candidateManager
+        ? (candidateManager.toLowerCase() as Address)
+        : null;
+      if (manager && manager !== ('0x' as Address)) {
+        result.set(key, manager);
+      }
+    }
+    return result;
+  }, [groupParamsQuery.data, uniqueGroups]);
 
   // 2) Read current value and position struct per position
   const positionCalls = useMemo(() => {
@@ -136,76 +218,83 @@ export function usePositionValueAndFees(
     return calls;
   }, [valid, sapienceAbi]);
 
+  const positionsQueryOptions = useMemo(
+    () => ({
+      enabled: enabled && positionCalls.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: SLOW_REFETCH_MS,
+      staleTime: SLOW_REFETCH_MS,
+    }),
+    [enabled, positionCalls.length]
+  );
   const positionsQuery = useReadContracts({
     contracts: positionCalls,
-    query: { enabled: enabled && positionCalls.length > 0 },
+    query: positionsQueryOptions,
   });
 
-  // 3) After we have uniswapPositionIds, compute Uniswap positions() inputs for tokensOwed
-  const uniswapQueriesInput = useMemo(() => {
-    if (!positionsQuery.data || positionsQuery.data.length === 0)
-      return [] as Array<{
-        manager: Address;
-        tokenId: bigint;
-        chainId: number;
-      }>;
-    const inputs: Array<{
-      manager: Address;
-      tokenId: bigint;
+  // 3) Build Uniswap positions() queries only for LP positions with valid manager + tokenId
+  const uniswapPlan = useMemo(() => {
+    const empty = { contracts: [] as any[], indexMap: [] as number[] };
+    if (!positionsQuery.data || positionsQuery.data.length === 0) return empty;
+
+    const contracts: Array<{
+      abi: Abi;
+      address: Address;
+      functionName: string;
+      args: any[];
       chainId: number;
     }> = [];
+    const indexMap: number[] = new Array(valid.length).fill(-1);
+
     for (let i = 0, pIdx = 0; i < valid.length; i++) {
-      // Each position contributes two calls in order: value, position
       const posStructResp = positionsQuery.data[pIdx * 2 + 1];
       pIdx++;
       const res = posStructResp?.result as
         | {
-            id: bigint;
-            kind: number;
-            marketId: bigint;
-            depositedCollateralAmount: bigint;
-            borrowedVQuote: bigint;
-            borrowedVBase: bigint;
-            vQuoteAmount: bigint;
-            vBaseAmount: bigint;
             uniswapPositionId: bigint;
-            isSettled: boolean;
           }
         | undefined;
-      const manager = (valid[i].market?.marketGroup
-        ?.marketParamsUniswappositionmanager ||
-        valid[i].market?.marketParamsUniswappositionmanager ||
-        '') as Address;
-      if (res && res.uniswapPositionId && manager && manager !== '0x') {
-        inputs.push({
-          manager: manager,
-          tokenId: res.uniswapPositionId,
-          chainId: valid[i].market!.marketGroup!.chainId,
-        });
-      } else {
-        inputs.push({
-          manager: '0x0000000000000000000000000000000000000000' as Address,
-          tokenId: 0n,
-          chainId: valid[i].market!.marketGroup!.chainId,
+      const groupKey = `${valid[i].market!.marketGroup!.chainId}:${(valid[i].market!.marketGroup!.address || '').toLowerCase()}`;
+      const manager = uniswapManagerByGroup.get(groupKey);
+      const chainIdForPosition = valid[i].market!.marketGroup!.chainId;
+
+      if (
+        res &&
+        res.uniswapPositionId &&
+        manager &&
+        manager !== ('0x' as Address)
+      ) {
+        indexMap[i] = contracts.length;
+        contracts.push({
+          abi: UNISWAP_POSITION_MANAGER_ABI as unknown as Abi,
+          address: manager,
+          functionName: 'positions',
+          args: [res.uniswapPositionId],
+          chainId: chainIdForPosition,
         });
       }
     }
-    return inputs;
-  }, [positionsQuery.data, valid]);
+    return { contracts, indexMap };
+  }, [positionsQuery.data, valid, uniswapManagerByGroup]);
 
+  const uniswapContracts = uniswapPlan.contracts;
+  const uniswapQueryOptions = useMemo(
+    () => ({
+      enabled: enabled && uniswapContracts.length > 0,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchInterval: SLOW_REFETCH_MS,
+      staleTime: SLOW_REFETCH_MS,
+    }),
+    [enabled, uniswapContracts.length]
+  );
   const uniswapQuery = useReadContracts({
-    contracts: (uniswapQueriesInput || []).map((q) => ({
-      abi: UNISWAP_POSITION_MANAGER_ABI as unknown as Abi,
-      address: q.manager,
-      functionName: 'positions',
-      args: [q.tokenId],
-      chainId: q.chainId,
-    })),
-    query: {
-      enabled:
-        enabled && !!uniswapQueriesInput && uniswapQueriesInput.length > 0,
-    },
+    contracts: uniswapContracts,
+    query: uniswapQueryOptions,
   });
+
+  // no-op
 
   // Build result map per position
   const dataByPositionId = useMemo(() => {
@@ -231,12 +320,14 @@ export function usePositionValueAndFees(
 
       let feesBase: bigint | null = null;
       let feesQuote: bigint | null = null;
+      const uniIdx = uniswapPlan.indexMap[i];
       if (
+        uniIdx >= 0 &&
         uniswapQuery.data &&
-        uniswapQuery.data[i] &&
-        uniswapQuery.data[i].result
+        uniswapQuery.data[uniIdx] &&
+        uniswapQuery.data[uniIdx].result
       ) {
-        const uniRes = uniswapQuery.data[i].result as [
+        const uniRes = uniswapQuery.data[uniIdx].result as [
           bigint,
           string,
           string,
@@ -253,6 +344,7 @@ export function usePositionValueAndFees(
         // tokensOwed0 at index 10, tokensOwed1 at index 11
         feesBase = (uniRes[10] as unknown as bigint) || 0n;
         feesQuote = (uniRes[11] as unknown as bigint) || 0n;
+        // no-op
       }
 
       // Estimate value of base fees using current price (priceD18)
@@ -263,6 +355,7 @@ export function usePositionValueAndFees(
           feesBase != null ? (feesBase * priceD18) / 10n ** 18n : 0n;
         const quoteValue = feesQuote != null ? feesQuote : 0n;
         feesValueInCollateral = baseValue + quoteValue;
+        // no-op
       }
 
       map.set(key, {
@@ -273,18 +366,19 @@ export function usePositionValueAndFees(
       });
     }
 
+    // no-op
     return map;
   }, [positionsQuery.data, uniswapQuery.data, referencePriceByMarket, valid]);
 
   const isLoading =
     refPriceQuery.isLoading ||
     positionsQuery.isLoading ||
-    (uniswapQueriesInput != null && uniswapQuery.isLoading);
+    (uniswapContracts.length > 0 && uniswapQuery.isLoading);
 
   const isRefetching =
     refPriceQuery.isRefetching ||
     positionsQuery.isRefetching ||
-    (uniswapQueriesInput != null && uniswapQuery.isRefetching);
+    (uniswapContracts.length > 0 && uniswapQuery.isRefetching);
 
   const refetch = async () => {
     await Promise.all([

@@ -304,7 +304,7 @@ const ForecastContent = () => {
             minTick={minTick}
             maxTick={maxTick}
           />
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
             {/* Top Row: Chart, OrderBook, and Forms */}
             <div className="flex flex-col lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
               {/* Chart Column */}

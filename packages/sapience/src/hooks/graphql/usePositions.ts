@@ -37,6 +37,7 @@ export const POSITIONS_QUERY = /* GraphQL */ `
         settlementPriceD18
         question
         optionName
+        marketParamsUniswappositionmanager
         marketGroup {
           id
           chainId
@@ -44,6 +45,7 @@ export const POSITIONS_QUERY = /* GraphQL */ `
           question
           collateralSymbol
           collateralDecimals
+          marketParamsUniswappositionmanager
           markets {
             id
           }
@@ -100,6 +102,7 @@ export const ALL_POSITIONS_QUERY = /* GraphQL */ `
         settlementPriceD18
         question
         optionName
+        marketParamsUniswappositionmanager
         marketGroup {
           id
           chainId
@@ -107,6 +110,7 @@ export const ALL_POSITIONS_QUERY = /* GraphQL */ `
           question
           collateralSymbol
           collateralDecimals
+          marketParamsUniswappositionmanager
           markets {
             id
           }

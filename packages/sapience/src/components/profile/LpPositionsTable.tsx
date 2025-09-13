@@ -306,24 +306,58 @@ export default function LpPositionsTable({
         const val = entry?.currentValue ?? null;
         return val != null ? Number(formatUnits(val, decimals)) : 0;
       },
-      header: () => (
+      header: ({ column }: { column: any }) => (
         <div className="flex items-center gap-1">
-          <span>Current Position Value</span>
-          <TooltipProvider>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={column.getToggleSortingHandler()}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Current Position Value
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+          <TooltipProvider delayDuration={0}>
             <Tooltip>
-              <TooltipTrigger>
-                <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="About Current Position Value"
+                  className="inline-flex items-center justify-center p-0.5 text-muted-foreground hover:text-foreground"
+                >
+                  <InfoIcon className="h-3.5 w-3.5" />
+                </button>
               </TooltipTrigger>
-              <TooltipContent>
+              <TooltipContent
+                className="z-50"
+                side="bottom"
+                align="start"
+                sideOffset={6}
+              >
                 <p className="font-normal">
-                  The position value is approximate due to slippage.
+                  The position value is approximate due to slippage. The estimate of fees earned is included.
                 </p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       ),
-      enableSorting: false,
+      enableSorting: true,
+      sortingFn: 'basic',
       cell: ({ row }: { row: { original: PositionType } }) => {
         const position = row.original;
         const key = getKey(position);
@@ -334,19 +368,31 @@ export default function LpPositionsTable({
         const valueNumber = entry?.currentValue
           ? Number(formatUnits(entry.currentValue, decimals))
           : undefined;
-        const totalFeesNumber = entry?.feesValueInCollateral
+        const feesValueNumber = entry?.feesValueInCollateral
           ? Number(formatUnits(entry.feesValueInCollateral, decimals))
           : undefined;
+        const collateralNumber = Number(
+          formatUnits(BigInt(position.collateral || '0'), decimals)
+        );
+        const pnl = (valueNumber ?? 0) - collateralNumber;
+        const pnlPercentage = collateralNumber
+          ? (pnl / collateralNumber) * 100
+          : 0;
         return (
           <div className="flex flex-col">
             <div className="flex items-center gap-1">
               <NumberDisplay value={valueNumber ?? 0} />
               <span>{symbol}</span>
+              <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+                ({pnlPercentage.toFixed(2)}%)
+              </small>
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">
-              Fees Collected: <NumberDisplay value={totalFeesNumber ?? 0} />{' '}
-              {symbol}
-            </div>
+            {(feesValueNumber ?? 0) > 0 ? (
+              <div className="text-xs text-muted-foreground mt-0.5">
+                <span className="font-medium">Fees Earned:</span>{' '}
+                <NumberDisplay value={feesValueNumber ?? 0} /> {symbol}
+              </div>
+            ) : null}
           </div>
         );
       },
@@ -368,6 +414,15 @@ export default function LpPositionsTable({
             row.original.market?.marketId != null
               ? Number(row.original.market?.marketId)
               : undefined
+          }
+          endTimestamp={
+            row.original.market?.endTimestamp != null
+              ? Number(row.original.market?.endTimestamp)
+              : undefined
+          }
+          settled={row.original.market?.settled ?? undefined}
+          startingSqrtPriceX96={
+            (row.original.market as any)?.startingSqrtPriceX96 ?? undefined
           }
           showBadge
           badgePlacement="under"
@@ -554,6 +609,9 @@ export default function LpPositionsTable({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    autoResetAll: false,
+    getRowId: (row) =>
+      `${row.market?.marketGroup?.chainId}:${(row.market?.marketGroup?.address || '').toLowerCase()}:${row.positionId}`,
   });
 
   return (

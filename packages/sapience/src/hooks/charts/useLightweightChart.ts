@@ -19,8 +19,8 @@ import { LineType } from '@sapience/ui/types/charts'; // Import LineType
 import type { PriceChartDataPoint } from './usePriceChartData'; // Import the shared type
 
 // Reusable colors (consider moving to a shared constants file)
-export const GREEN = '#41A53E';
-export const RED = '#C44444';
+export const GREEN = '#22c55e'; // Tailwind green-500 to match orderbook
+export const RED = '#ef4444'; // Tailwind red-500 to match orderbook
 export const BLUE = '#3F59DA';
 
 interface UseLightweightChartProps {
