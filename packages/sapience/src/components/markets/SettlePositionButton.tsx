@@ -40,7 +40,7 @@ const SettlePositionButton = ({
     positionId,
     marketAddress,
     chainId,
-    enabled: true,
+    enabled: false, // Don't auto-run simulation on mount
     onSuccess,
     onError: (error) => {
       // Error handling is now done automatically by useSapienceWriteContract

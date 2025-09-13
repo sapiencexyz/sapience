@@ -217,16 +217,16 @@ const MarketDataTables = () => {
             timeZoneName: 'short',
           });
           return (
-            <div className="flex flex-col min-w-0">
-              <span
+            <div>
+              <div
                 className="whitespace-nowrap font-medium"
                 title={exactLocalDisplay}
               >
                 {createdDisplay}
-              </span>
-              <span className="text-xs text-muted-foreground">
+              </div>
+              <div className="text-sm text-muted-foreground mt-0.5">
                 {exactLocalDisplay}
-              </span>
+              </div>
             </div>
           );
         },
@@ -313,10 +313,7 @@ const MarketDataTables = () => {
                 />
               ) : null}
               <div className="[&_span.font-mono]:text-foreground min-w-0">
-                <AddressDisplay
-                  address={row.original.position.owner || ''}
-                  compact
-                />
+                <AddressDisplay address={row.original.position.owner || ''} />
               </div>
             </div>
           </div>

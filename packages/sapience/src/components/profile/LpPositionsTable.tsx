@@ -349,8 +349,8 @@ export default function LpPositionsTable({
                 sideOffset={6}
               >
                 <p className="font-normal">
-                  The position value is approximate due to slippage. The
-                  estimate of fees earned is included.
+                  The position value is approximate due to slippage. An estimate
+                  of earned fees is included.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -384,9 +384,11 @@ export default function LpPositionsTable({
             <div className="flex items-center gap-1">
               <NumberDisplay value={valueNumber ?? 0} />
               <span>{symbol}</span>
-              <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+            </div>
+            <div className="text-xs mt-0.5">
+              <span className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
                 ({pnlPercentage.toFixed(2)}%)
-              </small>
+              </span>
             </div>
             {(feesValueNumber ?? 0) > 0 ? (
               <div className="text-xs text-muted-foreground mt-0.5">
@@ -549,19 +551,16 @@ export default function LpPositionsTable({
                     ) &&
                     (isOwner && !isClosed ? (
                       <Link href={positionUrl} passHref>
-                        <button
-                          type="button"
-                          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                        >
+                        <Button size="sm" variant="secondary">
                           Modify
-                        </button>
+                        </Button>
                       </Link>
                     ) : (
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span>
-                              <Button size="sm" variant="outline" disabled>
+                              <Button size="sm" variant="secondary" disabled>
                                 Modify
                               </Button>
                             </span>

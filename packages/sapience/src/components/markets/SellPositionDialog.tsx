@@ -104,7 +104,7 @@ export default function SellPositionDialog({
         Sell
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[520px]">
+        <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
             <DialogTitle>Confirm Sale</DialogTitle>
           </DialogHeader>

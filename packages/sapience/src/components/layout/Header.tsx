@@ -96,7 +96,7 @@ const NavLinks = ({
               >
                 <LineChart className="h-4 w-4" />
                 <span className="relative top-[1px] md:top-0 text-sm mr-1">
-                  Your Predictions
+                  Your Profile
                 </span>
               </Link>
             </Button>
@@ -277,7 +277,7 @@ const Header = () => {
                         className="flex items-center"
                       >
                         <LineChart className="mr-0.5 opacity-75 h-4 w-4" />
-                        <span>Your Predictions</span>
+                        <span>Your Profile</span>
                       </Link>
                     </DropdownMenuItem>
                   )}

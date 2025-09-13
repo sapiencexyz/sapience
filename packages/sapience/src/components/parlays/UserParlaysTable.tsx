@@ -77,6 +77,9 @@ export default function UserParlaysTable({
       {
         id: 'positionId',
         accessorFn: (row) => row.positionId,
+        size: 120,
+        minSize: 100,
+        maxSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -109,6 +112,8 @@ export default function UserParlaysTable({
       {
         id: 'conditions',
         accessorFn: (row) => row.legs.length,
+        size: 400,
+        minSize: 300,
         header: ({ column }) => (
           <Button
             type="button"
@@ -154,6 +159,8 @@ export default function UserParlaysTable({
       {
         id: 'side',
         accessorFn: (row) => row.direction,
+        size: 200,
+        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -190,6 +197,8 @@ export default function UserParlaysTable({
       {
         id: 'endsAt',
         accessorFn: (row) => row.endsAt,
+        size: 180,
+        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -248,6 +257,8 @@ export default function UserParlaysTable({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    columnResizeMode: 'onChange',
+    enableColumnResizing: false,
   });
 
   return (
@@ -256,7 +267,7 @@ export default function UserParlaysTable({
         <h2 className="text-lg font-medium mb-2">Your Parlays</h2>
       )}
       <div className="rounded border">
-        <Table>
+        <Table className="table-fixed">
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -266,6 +277,7 @@ export default function UserParlaysTable({
                     className={
                       header.id === 'endsAt' ? 'text-right' : undefined
                     }
+                    style={{ width: header.getSize() }}
                   >
                     {header.isPlaceholder
                       ? null
@@ -288,6 +300,7 @@ export default function UserParlaysTable({
                   <TableCell
                     key={cell.id}
                     className={`block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'endsAt' ? 'text-left xl:text-right xl:mt-0' : ''}`}
+                    style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>

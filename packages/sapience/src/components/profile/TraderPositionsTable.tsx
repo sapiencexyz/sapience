@@ -169,6 +169,10 @@ function PositionValueCell({ position }: { position: PositionType }) {
   const currentPricePerToken =
     positionSize !== 0 ? currentPositionValue / positionSize : 0;
 
+  // Check if both share values are 0 to hide the share value line and percentage
+  const shouldHideShareValue =
+    avgPricePerToken === 0 && currentPricePerToken === 0;
+
   // Display loading state or handle potential errors
   if (priceLoading) {
     return (
@@ -181,14 +185,18 @@ function PositionValueCell({ position }: { position: PositionType }) {
       <div className="whitespace-nowrap">
         <NumberDisplay value={currentPositionValue} /> {collateralSymbol}{' '}
         {/* A positive pnl means a gain (value > wager), so green. A negative pnl means a loss. */}
-        <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-          ({pnlPercentage.toFixed(2)}%)
-        </small>
+        {!shouldHideShareValue && (
+          <small className={pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
+            ({pnlPercentage.toFixed(2)}%)
+          </small>
+        )}
       </div>
-      <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
-        Share Value: <NumberDisplay value={avgPricePerToken} /> →{' '}
-        <NumberDisplay value={currentPricePerToken} /> {collateralSymbol}
-      </div>
+      {!shouldHideShareValue && (
+        <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 whitespace-nowrap">
+          Share Value: <NumberDisplay value={avgPricePerToken} /> →{' '}
+          <NumberDisplay value={currentPricePerToken} /> {collateralSymbol}
+        </div>
+      )}
     </div>
   );
 }
@@ -578,6 +586,34 @@ export default function TraderPositionsTable({
                         );
                       }}
                     />
+                  ) : isClosed ? (
+                    (() => {
+                      const chainShortName = position.market?.marketGroup
+                        ?.chainId
+                        ? getChainShortName(position.market.marketGroup.chainId)
+                        : 'unknown';
+                      const marketAddr =
+                        position.market?.marketGroup?.address || '';
+                      const marketId = position.market?.marketId;
+
+                      if (!marketAddr || marketId === undefined) {
+                        return (
+                          <Button size="sm" variant="outline" disabled>
+                            Closed
+                          </Button>
+                        );
+                      }
+
+                      const positionUrl = `/markets/${chainShortName}:${marketAddr}/${marketId}?positionId=${position.positionId}`;
+
+                      return (
+                        <Link href={positionUrl} passHref>
+                          <Button size="sm" variant="secondary">
+                            Reopen
+                          </Button>
+                        </Link>
+                      );
+                    })()
                   ) : (
                     <TooltipProvider>
                       <Tooltip>
@@ -592,9 +628,7 @@ export default function TraderPositionsTable({
                           <p className="max-w-[220px]">
                             {!hasWallet
                               ? 'Connect your wallet to sell this position.'
-                              : isClosed
-                                ? 'This position is already closed.'
-                                : 'You can only sell from the account that owns this position.'}
+                              : 'You can only sell from the account that owns this position.'}
                           </p>
                         </TooltipContent>
                       </Tooltip>
