@@ -378,6 +378,22 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
     });
   };
 
+  // Check if current form state matches original state
+  const isFormInOriginalState = useMemo(() => {
+    const currentSizeFormatted = sizeInput || '0';
+    const originalSizeFormatted = formatUnits(
+      originalPositionSize > BigInt(0)
+        ? originalPositionSize
+        : -originalPositionSize,
+      TOKEN_DECIMALS
+    );
+
+    return (
+      currentSizeFormatted === originalSizeFormatted &&
+      direction === originalPositionDirection
+    );
+  }, [sizeInput, direction, originalPositionSize, originalPositionDirection]);
+
   // Get button state
   const buttonState = getButtonState({
     isConnected,
@@ -513,18 +529,37 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                       onFocus={() => setIsSizeInputFocused(true)}
                       onBlur={() => setIsSizeInputFocused(false)}
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-l-none border-l-0 ml-[-1px] px-2 h-10"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        field.onChange(originalSizeFormatted);
-                      }}
-                      title="Revert to original size"
-                    >
-                      <RotateCcw />
-                    </Button>
+                    {!isFormInOriginalState && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="rounded-l-none border-l-0 ml-[-1px] px-4 h-10"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                field.onChange(originalSizeFormatted);
+                                setValue(
+                                  'direction',
+                                  originalPositionDirection,
+                                  {
+                                    shouldValidate: true,
+                                    shouldDirty: true,
+                                    shouldTouch: true,
+                                  }
+                                );
+                              }}
+                            >
+                              <RotateCcw />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Revert to original position</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                     {marketClassification ===
                       MarketGroupClassification.NUMERIC && (
                       <div className="px-4 flex items-center border border-input bg-muted rounded-r-md ml-[-1px]">
@@ -573,23 +608,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             {buttonState.text}
           </Button>
 
-          {/* Close Position Button */}
-          {!isClosing && originalPositionSize !== BigInt(0) && (
-            <Button
-              size="lg"
-              variant="destructive"
-              disabled={buttonState.disabled || isQuoting || isClosingPosition}
-              className="w-full"
-              onClick={async (e) => {
-                e.preventDefault();
-                await closePosition();
-              }}
-            >
-              {isClosingPosition && LOADING_SPINNER}
-              Close Position
-            </Button>
-          )}
-
           {/* Error Display */}
           {quoteError && (
             <p className="text-red-500 text-sm text-center mt-2 font-medium">
@@ -598,6 +616,23 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
             </p>
           )}
         </div>
+
+        {/* Close Position Button */}
+        {!isClosing && originalPositionSize !== BigInt(0) && (
+          <Button
+            size="lg"
+            variant="secondary"
+            disabled={buttonState.disabled || isQuoting || isClosingPosition}
+            className="w-full mt-8"
+            onClick={async (e) => {
+              e.preventDefault();
+              await closePosition();
+            }}
+          >
+            {isClosingPosition && LOADING_SPINNER}
+            Close Position
+          </Button>
+        )}
 
         {/* Preview Section */}
         <AnimatePresence mode="wait">
@@ -619,7 +654,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                 </h4>
                 <div className="flex flex-col gap-2.5 text-sm">
                   {/* Size Change */}
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground">Size</span>
                     <span className="flex items-center space-x-1">
                       {/* Original Size and Direction */}
@@ -675,7 +710,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
                   </div>
 
                   {/* Collateral Change */}
-                  <div className="flex justify-between">
+                  <div className="flex flex-col gap-1">
                     <span className="text-muted-foreground">
                       Position Collateral
                     </span>
@@ -691,7 +726,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
                   {/* Estimated Fill Price */}
                   {quotedFillPrice && !isClosing && (
-                    <div className="flex justify-between items-baseline">
+                    <div className="flex flex-col gap-1">
                       <span className="text-muted-foreground">
                         Estimated Fill Price
                       </span>
@@ -731,7 +766,7 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
 
                   {/* Wallet Balance */}
                   {walletBalance && (
-                    <div className="flex justify-between">
+                    <div className="flex flex-col gap-1">
                       <span className="text-muted-foreground">
                         Wallet Balance
                       </span>

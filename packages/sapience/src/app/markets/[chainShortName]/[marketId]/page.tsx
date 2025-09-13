@@ -457,8 +457,8 @@ const ForecastContent = () => {
                 <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2 pb-4 xl:pb-0 mb-5">
                   <div className="bg-background dark:bg-muted/50 rounded border border-border shadow-sm overflow-auto h-[460px]">
                     <div className="w-full">
-                      <div className="px-3 py-1 border-b border-border">
-                        {!positionId && (
+                      {!positionId && (
+                        <div className="px-3 py-1 border-b border-border">
                           <Tabs
                             value={activeFormTab}
                             onValueChange={(value) => setActiveFormTab(value)}
@@ -479,8 +479,8 @@ const ForecastContent = () => {
                               </TabsTrigger>
                             </TabsList>
                           </Tabs>
-                        )}
-                      </div>
+                        </div>
+                      )}
                       <div className="p-4">
                         <PositionSelector />
                         <div className="mt-3 relative">
