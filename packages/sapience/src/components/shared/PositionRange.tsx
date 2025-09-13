@@ -39,11 +39,10 @@ export function PositionRange({
     safeChainId,
     marketId
   );
-
-  const hasMarketPrice =
-    currentMarketPriceRaw !== undefined && currentMarketPriceRaw !== null;
+  const currentMarketPriceNumber = Number(currentMarketPriceRaw);
+  const hasMarketPrice = Number.isFinite(currentMarketPriceNumber);
   const currentMarketPrice = hasMarketPrice
-    ? Number(currentMarketPriceRaw)
+    ? currentMarketPriceNumber
     : undefined;
 
   const inRange = hasMarketPrice

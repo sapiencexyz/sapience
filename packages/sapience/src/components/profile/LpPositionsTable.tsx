@@ -31,7 +31,7 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import React from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ArrowUpDown, ArrowUp, ArrowDown, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SharePositionDialog from '../markets/SharePositionDialog';
 import EmptyTabState from '~/components/shared/EmptyTabState';
@@ -46,6 +46,7 @@ import {
   type ColumnOverrides,
 } from '~/components/shared/tableVisibility';
 import PositionSummaryCell from '~/components/shared/PositionSummaryCell';
+import { usePositionValueAndFees } from '~/hooks/contract/usePositionValueAndFees';
 
 interface LpPositionsTableProps {
   positions: PositionType[];
@@ -171,6 +172,10 @@ export default function LpPositionsTable({
   });
   const displayQuestionColumn = visibility.showPosition;
 
+  const { dataByPositionId } = usePositionValueAndFees(validPositions);
+  const getKey = (p: PositionType) =>
+    `${p.market?.marketGroup?.chainId}:${(p.market?.marketGroup?.address || '').toLowerCase()}:${p.positionId}`;
+
   // React Table columns
   const tableColumns: ColumnDef<PositionType>[] = [
     displayQuestionColumn
@@ -291,6 +296,60 @@ export default function LpPositionsTable({
       cell: ({ row }: { row: { original: PositionType } }) => (
         <CollateralCell position={row.original} />
       ),
+    },
+    {
+      id: 'value',
+      accessorFn: (row: PositionType) => {
+        const key = getKey(row);
+        const entry = dataByPositionId.get(key);
+        const decimals = row.market?.marketGroup?.collateralDecimals || 18;
+        const val = entry?.currentValue ?? null;
+        return val != null ? Number(formatUnits(val, decimals)) : 0;
+      },
+      header: () => (
+        <div className="flex items-center gap-1">
+          <span>Current Position Value</span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="font-normal">
+                  The position value is approximate due to slippage.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      ),
+      enableSorting: false,
+      cell: ({ row }: { row: { original: PositionType } }) => {
+        const position = row.original;
+        const key = getKey(position);
+        const entry = dataByPositionId.get(key);
+        const decimals = position.market?.marketGroup?.collateralDecimals || 18;
+        const symbol =
+          position.market?.marketGroup?.collateralSymbol || 'Tokens';
+        const valueNumber = entry?.currentValue
+          ? Number(formatUnits(entry.currentValue, decimals))
+          : undefined;
+        const totalFeesNumber = entry?.feesValueInCollateral
+          ? Number(formatUnits(entry.feesValueInCollateral, decimals))
+          : undefined;
+        return (
+          <div className="flex flex-col">
+            <div className="flex items-center gap-1">
+              <NumberDisplay value={valueNumber ?? 0} />
+              <span>{symbol}</span>
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Fees Collected: <NumberDisplay value={totalFeesNumber ?? 0} />{' '}
+              {symbol}
+            </div>
+          </div>
+        );
+      },
     },
     {
       id: 'range',
@@ -531,7 +590,7 @@ export default function LpPositionsTable({
                 {row.getVisibleCells().map((cell) => (
                   <TableCell
                     key={cell.id}
-                    className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'actions' ? 'text-left xl:text-right xl:mt-0' : ''}`}
+                    className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${cell.column.id === 'actions' ? 'text-left xl:text-right xl:mt-0' : ''} ${cell.column.id === 'position' ? 'max-w-[360px]' : ''}`}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>

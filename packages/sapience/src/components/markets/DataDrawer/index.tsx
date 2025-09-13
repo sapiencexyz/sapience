@@ -155,12 +155,13 @@ const MarketDataTables = () => {
 
   // Flatten all transactions from positions for the transactions tab (memoized)
   const allTransactions = useMemo(() => {
-    const flattened = allPositions.flatMap((position) =>
-      position.transactions?.map((tx) => ({
-        ...tx,
-        position,
-        positionType: position.isLP ? 'LP' : 'Trader',
-      })) || []
+    const flattened = allPositions.flatMap(
+      (position) =>
+        position.transactions?.map((tx) => ({
+          ...tx,
+          position,
+          positionType: position.isLP ? 'LP' : 'Trader',
+        })) || []
     );
     flattened.sort(
       (a, b) =>
