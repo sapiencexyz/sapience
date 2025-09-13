@@ -143,25 +143,32 @@ const MarketDataTables = () => {
     marketAddress: marketData?.marketGroup?.address || undefined,
   });
 
-  // Filter positions by type
-  const lpPositions = allPositions.filter((pos) => pos.isLP);
-  const traderPositions = allPositions.filter((pos) => !pos.isLP);
+  // Filter positions by type (memoized)
+  const lpPositions = useMemo(
+    () => allPositions.filter((pos) => pos.isLP),
+    [allPositions]
+  );
+  const traderPositions = useMemo(
+    () => allPositions.filter((pos) => !pos.isLP),
+    [allPositions]
+  );
 
-  // Flatten all transactions from positions for the transactions tab
-  const allTransactions = allPositions
-    .flatMap(
-      (position) =>
-        position.transactions?.map((tx) => ({
-          ...tx,
-          position,
-          positionType: position.isLP ? 'LP' : 'Trader',
-        })) || []
-    )
-    .sort(
+  // Flatten all transactions from positions for the transactions tab (memoized)
+  const allTransactions = useMemo(() => {
+    const flattened = allPositions.flatMap((position) =>
+      position.transactions?.map((tx) => ({
+        ...tx,
+        position,
+        positionType: position.isLP ? 'LP' : 'Trader',
+      })) || []
+    );
+    flattened.sort(
       (a, b) =>
         (new Date(b.createdAt).getTime() || 0) -
         (new Date(a.createdAt).getTime() || 0)
     );
+    return flattened;
+  }, [allPositions]);
 
   // Transactions table configuration (always define hooks at top level)
   const columns = useMemo<ColumnDef<any>[]>(
