@@ -123,6 +123,15 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
   };
 
   const validateAndGroup = () => {
+    // Block validation if CSV parse errors are present
+    if (csvErrors.length > 0) {
+      toast({
+        variant: 'destructive',
+        title: 'CSV errors detected',
+        description: 'Please fix CSV parsing errors before validating.',
+      });
+      return;
+    }
     const groupsMap = new Map<GroupKey, Grouped>();
     const globalErrors: string[] = [];
     rows.forEach((row, idx) => {
@@ -203,9 +212,9 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
 
           // Defaults injection
           const owner =
-            currentChainId === DEFAULT_CHAIN_ID
+            !connectedAddress || currentChainId === DEFAULT_CHAIN_ID
               ? DEFAULT_OWNER
-              : connectedAddress || '';
+              : connectedAddress;
           const chainId = String(DEFAULT_CHAIN_ID);
           const factoryAddress = DEFAULT_FACTORY_ADDRESS;
           const collateralAsset = DEFAULT_COLLATERAL_ASSET;
@@ -356,13 +365,20 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
             <Button
               variant="outline"
               onClick={validateAndGroup}
-              disabled={rows.length === 0 || isImporting}
+              disabled={
+                rows.length === 0 || isImporting || csvErrors.length > 0
+              }
             >
               Validate
             </Button>
             <Button
               onClick={importGroups}
-              disabled={!validated || grouped.length === 0 || isImporting}
+              disabled={
+                !validated ||
+                grouped.length === 0 ||
+                isImporting ||
+                csvErrors.length > 0
+              }
             >
               {isImporting ? (
                 <span className="flex items-center gap-2">
