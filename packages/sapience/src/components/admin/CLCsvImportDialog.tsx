@@ -133,7 +133,6 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
       return;
     }
     const groupsMap = new Map<GroupKey, Grouped>();
-    const globalErrors: string[] = [];
     rows.forEach((row, idx) => {
       const rowErrors: string[] = [];
       const groupKey = requiredString(row, 'groupKey', rowErrors);
@@ -146,11 +145,8 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
       requiredString(row, 'marketQuestion', rowErrors);
       requiredString(row, 'claimStatementYesOrNumeric', rowErrors);
       const claimNoCsv = (row['claimStatementNo'] ?? '').trim();
-      const negativeClaimCsv = (row['negativeClaimStatement'] ?? '').trim();
-      if (!claimNoCsv && !negativeClaimCsv) {
-        rowErrors.push(
-          'Missing required column: claimStatementNo (or negativeClaimStatement)'
-        );
+      if (!claimNoCsv) {
+        rowErrors.push('Missing required column: claimStatementNo');
       }
       const endTime = requiredString(row, 'endTime', rowErrors);
       if (endTime) {
@@ -193,7 +189,6 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
 
     setGrouped(groups);
     setValidated(true);
-    setCsvErrors(globalErrors);
   };
 
   const importGroups = async () => {
@@ -247,8 +242,6 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
                   .filter(Boolean)
               : undefined;
             const claimNoCsv = (r['claimStatementNo'] ?? '').trim();
-            const negativeClaimCsv = (r['negativeClaimStatement'] ?? '').trim();
-            const claimNo = claimNoCsv || negativeClaimCsv;
 
             return {
               marketQuestion: (r['marketQuestion'] ?? '').trim(),
@@ -256,7 +249,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
               claimStatementYesOrNumeric: (
                 r['claimStatementYesOrNumeric'] ?? ''
               ).trim(),
-              claimStatementNo: claimNo || undefined,
+              claimStatementNo: claimNoCsv || undefined,
               startTime: String(nowSec),
               endTime: (r['endTime'] ?? '').trim(),
               // Pricing defaults

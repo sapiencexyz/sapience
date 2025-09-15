@@ -65,7 +65,7 @@ export const DEFAULT_MAX_PRICE_TICK = '0';
 export const DEFAULT_FACTORY_ADDRESS =
   '0xc85375AdC34e5358371f48Cd74BAb24f74Af28A9';
 export const DEFAULT_BASE_TOKEN_NAME = 'Yes';
-export const DEFAULT_QUOTE_TOKEN_NAME = 'testUSDe';
+export const DEFAULT_QUOTE_TOKEN_NAME = 'sUSDS';
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
@@ -377,7 +377,7 @@ const CreateMarketGroupForm = () => {
           setSelectedResourceId(null);
           // Update token names for Yes/No markets
           setBaseTokenName('Yes');
-          setQuoteTokenName('sUSDS');
+          setQuoteTokenName(DEFAULT_QUOTE_TOKEN_NAME);
         } else {
           setSelectedResourceId(Number(value));
           // Clear token names for indexed markets
@@ -643,7 +643,7 @@ const CreateMarketGroupForm = () => {
                       // Update token names based on resource selection
                       if (newResourceId === null) {
                         setBaseTokenName('Yes');
-                        setQuoteTokenName('sUSDS');
+                        setQuoteTokenName(DEFAULT_QUOTE_TOKEN_NAME);
                       } else {
                         setBaseTokenName('');
                         setQuoteTokenName('');
