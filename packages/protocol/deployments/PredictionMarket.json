@@ -1,5 +1,5 @@
 {
-  "address": "0xBD52Df51e140DfC73E378F448fa62bd2525dd1f7",
+  "address": "0x9D18f97c191D397338709CDCe8F0915F8fF9BD82",
   "abi": [
     {
       "type": "constructor",
@@ -1100,17 +1100,17 @@
   "constructorArgs": [
     "Prediction Market",
     "SPM",
-    "0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3",
+    "0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02",
     "1000000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x6ad72d95268e8409cd10045910e5557cfee24415fac0003e075c4a03eb7fd43f",
-  "deployTxnBlockNumber": "377707276",
-  "deployTimestamp": "1757514860",
+  "deployTxnHash": "0x87fe3eecf4045bf0b145db24b449188f5a3aeaa70ea1c1a9c48528c56c0a7d3d",
+  "deployTxnBlockNumber": "379504813",
+  "deployTimestamp": "1757964300",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3593795,
-  "gasCost": "13309000"
+  "gasUsed": 3126722,
+  "gasCost": "10000000"
 }
