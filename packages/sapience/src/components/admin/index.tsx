@@ -32,6 +32,7 @@ import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
 import DataTable from './data-table';
 import RFQTab from './RFQTab';
+import CLCsvImportDialog from './CLCsvImportDialog';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
@@ -450,6 +451,7 @@ const Admin = () => {
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [createConditionOpen, setCreateConditionOpen] = useState(false);
   const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
+  const [clCsvImportOpen, setClCsvImportOpen] = useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -619,6 +621,14 @@ const Admin = () => {
                   New Market Group
                 </a>
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setClCsvImportOpen(true)}
+              >
+                <Upload className="mr-1 h-4 w-4" />
+                Import CSV
+              </Button>
               <Dialog
                 open={reindexDialogOpen}
                 onOpenChange={setReindexDialogOpen}
@@ -636,6 +646,10 @@ const Admin = () => {
                   <ReindexFactoryForm />
                 </DialogContent>
               </Dialog>
+              <CLCsvImportDialog
+                open={clCsvImportOpen}
+                onOpenChange={setClCsvImportOpen}
+              />
             </div>
           ) : activeTab === 'rfq' ? (
             <div className="md:ml-auto flex items-center gap-2">
