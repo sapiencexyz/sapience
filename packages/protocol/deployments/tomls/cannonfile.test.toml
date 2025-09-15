@@ -143,7 +143,6 @@ highlight=true
 artifact="PredictionMarketUmaResolver"
 args=[
   { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= UMA.OptimisticOracleV3.address %>", bondCurrency = "<%= BondCurrency.Token.address %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
-  [ "<%= settings.owner2 %>" ],
   [ "<%= settings.owner2 %>" ]
 ]
 

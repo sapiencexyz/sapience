@@ -24,7 +24,6 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
     error AssertionAlreadySubmitted();
     error InvalidAssertionId();
     error OnlyApprovedAssertersCanCall();
-    error OnlyApprovedMarketWrappersCanCall();
     error OnlyOptimisticOracleV3CanCall();
     error InvalidCaller();
     error MarketAlreadySettled();
@@ -51,15 +50,11 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
     Settings public config;
 
     mapping(address => bool) public approvedAsserters;
-    mapping(address => bool) public approvedMarketWrappers;
 
-    constructor(Settings memory _config, address[] memory _approvedAsserters, address[] memory _approvedMarketWrappers) {
+    constructor(Settings memory _config, address[] memory _approvedAsserters) {
         config = _config;
         for (uint256 i = 0; i < _approvedAsserters.length; i++) {
             approvedAsserters[_approvedAsserters[i]] = true;
-        }
-        for (uint256 i = 0; i < _approvedMarketWrappers.length; i++) {
-            approvedMarketWrappers[_approvedMarketWrappers[i]] = true;
         }
     }
 
@@ -67,8 +62,8 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
     struct WrappedMarket{
         // Identification
         bytes32 marketId;
-        bytes claim;
-        uint256 endTime;
+        // bytes claim; // implicitly encoded in the marketId
+        // uint256 endTime; // implicitly encoded in the marketId
         // State
         bool assertionSubmitted;
         bool settled;
@@ -116,18 +111,6 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
                 error = Error.INVALID_MARKET;
                 break;
             }
-
-            if (wrappedMarkets[currentMarketId].marketId != currentMarketId) {
-                isValid = false;
-                error = Error.INVALID_MARKET;
-                break;
-            }
-
-            if (block.timestamp >= wrappedMarkets[currentMarketId].endTime) {
-                isValid = false;
-                error = Error.MARKET_NOT_OPENED;
-                break;
-            }
         }
         return (isValid, error);
     }
@@ -172,7 +155,7 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         return (isValid, error, makerWon);
     }
 
-    // ============ UMA Encoding and Decoding Functions ============
+    // ============ Prediction Outcomes Encoding and Decoding Functions ============
     function encodePredictionOutcomes(
         PredictedOutcome[] calldata predictedOutcomes
     ) external pure returns (bytes memory) {
@@ -185,41 +168,37 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         return abi.decode(encodedPredictedOutcomes, (PredictedOutcome[]));
     }
 
-    // ============ Markets Wrapper Functions ============
-    function wrapMarket(
-        bytes calldata claim,
-        uint256 endTime
-    ) external {
-        if (!approvedMarketWrappers[msg.sender]) {
-            revert OnlyApprovedMarketWrappersCanCall();
-        }
-        bytes32 marketId = keccak256(abi.encodePacked(claim, ":", endTime));
-        if (wrappedMarkets[marketId].marketId != bytes32(0)) {
-            revert MarketAlreadyWrapped();
-        }
-
-        wrappedMarkets[marketId] = WrappedMarket({
-            marketId: marketId,
-            claim: claim,
-            assertionSubmitted: false,
-            settled: false,
-            resolvedToYes: false,
-            assertionId: bytes32(0),
-            endTime: endTime
-        });
-
-        emit MarketWrapped(msg.sender, marketId, claim, endTime, block.timestamp);
-    }
 
     // ============ UMA Market Validation Functions ============
-    function submitAssertion(bytes32 marketId, bool resolvedToYes) external nonReentrant {
+    function submitAssertion(bytes calldata claim,uint256 endTime,bool resolvedToYes) external nonReentrant {
         if (!approvedAsserters[msg.sender]) {
             revert OnlyApprovedAssertersCanCall();
         }
 
+        if (block.timestamp < endTime) {
+            revert MarketNotEnded();
+        }
+
+        bytes32 marketId = keccak256(abi.encodePacked(claim, ":", endTime));
+
+        if (wrappedMarkets[marketId].marketId == bytes32(0)) {
+            // Market not wrapped yet. Wrap it.
+            wrappedMarkets[marketId] = WrappedMarket({
+                marketId: marketId,
+                assertionSubmitted: false,
+                settled: false,
+                resolvedToYes: false,
+                assertionId: bytes32(0)
+            });
+            emit MarketWrapped(msg.sender, marketId, claim, endTime, block.timestamp);
+            
+            // If not bytes32(0), Market already wrapped. Might be a re-submit of the same assertion in case it was disputed, or the weird InvalidMarketId.
+        }
+        
         WrappedMarket storage market = wrappedMarkets[marketId];
+
         if (market.marketId != marketId) {
-            revert InvalidMarketId();
+            revert InvalidMarketId(); // Weird error, but just in case
         }
 
         if (market.assertionId != bytes32(0) || market.assertionSubmitted) {
@@ -230,11 +209,6 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
             revert MarketAlreadySettled();
         }
 
-        if (block.timestamp < market.endTime) {
-            revert MarketNotEnded();
-        }
-
-        bytes memory claim = market.claim;
         IERC20 bondCurrency = IERC20(config.bondCurrency);
 
         // Get the bond currency (with protection against tokens with fees on transfer)
@@ -248,11 +222,14 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         // Approve the bond currency to the Optimistic Oracle V3
         bondCurrency.forceApprove(address(config.optimisticOracleV3), config.bondAmount);
 
+        // Get the "false" claim
+        bytes memory falseClaim = abi.encodePacked("False: ", claim);
+
         // Submit the assertion to UMA
         OptimisticOracleV3Interface optimisticOracleV3 =
             OptimisticOracleV3Interface(address(config.optimisticOracleV3));
         bytes32 assertionId = optimisticOracleV3.assertTruth(
-                claim,
+                resolvedToYes ? claim : falseClaim,
                 msg.sender,
                 address(this),
                 address(0),
@@ -293,8 +270,9 @@ contract PredictionMarketUmaResolver is IPredictionMarketResolver, OptimisticOra
         if (assertedTruthfully) {
             market.settled = true;
             market.resolvedToYes = umaSettlements[assertionId].resolvedToYes;
-            market.assertionId = bytes32(0);
+            // if asserted truthfully, is false, it means it was disputed. We just clean the assertion to enable a new assertion.
         }
+
         // clear the assertionId to allow close the loop.
         market.assertionId = bytes32(0);
         market.assertionSubmitted = false;
