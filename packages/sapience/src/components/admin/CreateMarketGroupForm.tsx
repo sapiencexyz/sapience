@@ -41,25 +41,31 @@ import { useAdminApi } from '~/hooks/useAdminApi';
 
 // Default values for form fields
 
-const DEFAULT_CHAIN_ID = 42161;
-const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
-const DEFAULT_BOND_CURRENCY = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-const DEFAULT_COLLATERAL_ASSET = '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3';
-const DEFAULT_OPTIMISTIC_ORACLE = '0xa6147867264374F324524E30C02C331cF28aa879';
-const DEFAULT_UNISWAP_POS_MANAGER =
+export const DEFAULT_CHAIN_ID = 42161;
+export const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
+export const DEFAULT_BOND_CURRENCY =
+  '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+export const DEFAULT_COLLATERAL_ASSET =
+  '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3';
+export const DEFAULT_OPTIMISTIC_ORACLE =
+  '0xa6147867264374F324524E30C02C331cF28aa879';
+export const DEFAULT_UNISWAP_POS_MANAGER =
   '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
-const DEFAULT_UNISWAP_SWAP_ROUTER =
+export const DEFAULT_UNISWAP_SWAP_ROUTER =
   '0xE592427A0AEce92De3Edee1F18E0157C05861564';
-const DEFAULT_UNISWAP_QUOTER = '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
-const DEFAULT_FEE_RATE = '10000'; // 1%
-const DEFAULT_ASSERTION_LIVENESS = '7200';
-const DEFAULT_BOND_AMOUNT = '500000000';
-const DEFAULT_MIN_TRADE_SIZE = '10000';
-const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
-const DEFAULT_MIN_PRICE_TICK = '-92200';
-const DEFAULT_MAX_PRICE_TICK = '0';
+export const DEFAULT_UNISWAP_QUOTER =
+  '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
+export const DEFAULT_FEE_RATE = '10000'; // 1%
+export const DEFAULT_ASSERTION_LIVENESS = '7200';
+export const DEFAULT_BOND_AMOUNT = '500000000';
+export const DEFAULT_MIN_TRADE_SIZE = '10000';
+export const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
+export const DEFAULT_MIN_PRICE_TICK = '-92200';
+export const DEFAULT_MAX_PRICE_TICK = '0';
 export const DEFAULT_FACTORY_ADDRESS =
   '0xc85375AdC34e5358371f48Cd74BAb24f74Af28A9';
+export const DEFAULT_BASE_TOKEN_NAME = 'Yes';
+export const DEFAULT_QUOTE_TOKEN_NAME = 'testUSDe';
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
@@ -294,8 +300,12 @@ const CreateMarketGroupForm = () => {
   const [rules, setRules] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [isBridged, setIsBridged] = useState<boolean>(false);
-  const [baseTokenName, setBaseTokenName] = useState<string>('Yes');
-  const [quoteTokenName, setQuoteTokenName] = useState<string>('testUSDe');
+  const [baseTokenName, setBaseTokenName] = useState<string>(
+    DEFAULT_BASE_TOKEN_NAME
+  );
+  const [quoteTokenName, setQuoteTokenName] = useState<string>(
+    DEFAULT_QUOTE_TOKEN_NAME
+  );
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
   );
