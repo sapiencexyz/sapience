@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Input, Label } from '@sapience/ui';
+import { Textarea } from '@sapience/ui/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -197,9 +198,8 @@ const EditMarketGroupDialog = ({ group }: Props) => {
           </div>
           <div className="space-y-2">
             <Label htmlFor="rules">Rules</Label>
-            <textarea
+            <Textarea
               id="rules"
-              className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               value={rules}
               onChange={(e) => setRules(e.target.value)}
               placeholder="This will be settled based on reporting from ...."
