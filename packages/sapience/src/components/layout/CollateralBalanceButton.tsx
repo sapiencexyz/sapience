@@ -32,7 +32,7 @@ export default function CollateralBalanceButton({
   const accountAddress = connectedWallet?.address as `0x${string}` | undefined;
 
   const SUSDE_ADDRESS_ARBITRUM =
-    '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3' as `0x${string}`; // '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2'
+    '0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02' as `0x${string}`; // '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2'
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
