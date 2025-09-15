@@ -28,15 +28,12 @@ import { Plus, RefreshCw, Loader2, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import columns from './columns';
 import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
-import DataTable from './data-table';
 import RFQTab from './RFQTab';
 import CLCsvImportDialog from './CLCsvImportDialog';
+import LiquidTab from './LiquidTab';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
-import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
-//
 
 // Dynamically import LottieLoader
 const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
@@ -444,7 +441,6 @@ const RefreshCacheForm = () => {
 };
 
 const Admin = () => {
-  const { data: marketGroups, isLoading, error } = useEnrichedMarketGroups();
   const [reindexDialogOpen, setReindexDialogOpen] = useState(false);
   const [indexResourceOpen, setIndexResourceOpen] = useState(false);
   const [refreshCacheOpen, setRefreshCacheOpen] = useState(false);
@@ -469,13 +465,7 @@ const Admin = () => {
     }
   };
 
-  // Sort market groups with most recent (highest ID) first
-  const sortedMarketGroups = marketGroups
-    ? [...marketGroups].sort((a, b) => {
-        // Sort by id descending (most recent first)
-        return Number(b.id) - Number(a.id);
-      })
-    : [];
+  // Note: Market groups are fetched here for potential future use
 
   return (
     <div className="container pt-24 mx-auto px-6 pb-6">
@@ -669,25 +659,7 @@ const Admin = () => {
           ) : null}
         </div>
         <TabsContent value="liquid">
-          <div>
-            {isLoading && (
-              <div className="flex justify-center items-center py-8">
-                <LottieLoader width={32} height={32} />
-              </div>
-            )}
-            {error && (
-              <p className="text-red-500">
-                Error loading markets: {error.message}
-              </p>
-            )}
-            {sortedMarketGroups && sortedMarketGroups.length > 0 ? (
-              <>
-                <DataTable columns={columns} data={sortedMarketGroups} />
-              </>
-            ) : (
-              !isLoading && <p>No active market groups found.</p>
-            )}
-          </div>
+          <LiquidTab />
         </TabsContent>
         <TabsContent value="rfq">
           <RFQTab

@@ -1,6 +1,7 @@
 'use client';
 
 import { Input, Label } from '@sapience/ui';
+import { Textarea } from '@sapience/ui/components/ui/textarea';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useEffect, useState } from 'react';
 import {
@@ -496,9 +497,8 @@ const MarketFormFields = ({
           <Label htmlFor={fieldId('claimStatementYesOrNumeric')}>
             Affirmative Claim Statement
           </Label>
-          <Input
+          <Textarea
             id={fieldId('claimStatementYesOrNumeric')}
-            type="text"
             value={displayClaimYesOrNumeric}
             onChange={(e) =>
               onMarketChange('claimStatementYesOrNumeric', e.target.value)
@@ -517,9 +517,8 @@ const MarketFormFields = ({
           <Label htmlFor={fieldId('claimStatementNo')}>
             Negative Claim Statement
           </Label>
-          <Input
+          <Textarea
             id={fieldId('claimStatementNo')}
-            type="text"
             value={displayClaimNo}
             onChange={(e) => onMarketChange('claimStatementNo', e.target.value)}
             placeholder="Mamdani didn't become the mayor."

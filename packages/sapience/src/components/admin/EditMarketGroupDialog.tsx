@@ -21,6 +21,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
+import EditMarketDialog from './EditMarketDialog';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useResources } from '~/hooks/useResources';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -80,8 +81,13 @@ const EditMarketGroupDialog = ({ group }: Props) => {
       data.quoteTokenName = quoteTokenName;
     }
 
-    return putJson(`/marketGroups/${group.address}`, {
-      chainId: group.chainId,
+    if (isDeployed) {
+      return putJson(`/marketGroups/${group.address}`, {
+        chainId: group.chainId,
+        data,
+      });
+    }
+    return putJson(`/marketGroups/by-id/${group.id}`, {
       data,
     });
   };
@@ -95,8 +101,13 @@ const EditMarketGroupDialog = ({ group }: Props) => {
       });
       await queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
       await queryClient.invalidateQueries({
-        queryKey: ['marketGroup', group.address, group.chainId],
+        queryKey: ['enrichedMarketGroups'],
       });
+      if (isDeployed) {
+        await queryClient.invalidateQueries({
+          queryKey: ['marketGroup', group.address, group.chainId],
+        });
+      }
       setOpen(false);
     },
     onError: (e: any) => {
@@ -112,7 +123,7 @@ const EditMarketGroupDialog = ({ group }: Props) => {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          Edit Group
+          Edit
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[700px]">
@@ -219,6 +230,29 @@ const EditMarketGroupDialog = ({ group }: Props) => {
               'Save Changes'
             )}
           </Button>
+          {group.markets && group.markets.length > 0 ? (
+            <div className="mt-6 space-y-2">
+              <h3 className="text-sm font-semibold">Markets</h3>
+              <div className="space-y-2">
+                {group.markets.map((m) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 rounded-md border p-2"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
+                        {m.question || `Market ${m.marketId || m.id}`}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        Option: {m.optionName || '-'}
+                      </div>
+                    </div>
+                    <EditMarketDialog group={group} market={m as any} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
