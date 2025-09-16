@@ -8,7 +8,6 @@ maxPredictionMarkets = "5"
 minCollateral = "1000000000000000000" # 1 sUSDe (18 decimals)
 
 # UMA Resolver
-approvedMarketWrapper = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
 approvedAsserter = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
 optimisticOracleV3 = "0xa6147867264374F324524E30C02C331cF28aa879" # https://github.com/UMAprotocol/protocol/blob/master/packages/core/networks/42161.json
 bondCurrency = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" # https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831
@@ -40,8 +39,7 @@ highlight=true
 artifact="PredictionMarketUmaResolver"
 args=[
     { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
-    [ "<%= settings.approvedAsserter %>" ],
-    [ "<%= settings.approvedMarketWrapper %>" ]
+    [ "<%= settings.approvedAsserter %>" ]
 ]
 depends=["deploy.PredictionMarket"]
 highlight=true

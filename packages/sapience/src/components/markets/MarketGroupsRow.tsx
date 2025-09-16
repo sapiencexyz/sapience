@@ -15,6 +15,7 @@ import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -73,6 +74,13 @@ const MarketGroupsRow = ({
     marketAddress,
     activeMarketIds: marketIds,
   });
+
+  // Determine if there is any sparkline data to render
+  const hasSparklineData = React.useMemo(() => {
+    return chartData.some((d: MultiMarketChartDataPoint) => {
+      return !!d?.markets && Object.values(d.markets).some((v) => v != null);
+    });
+  }, [chartData]);
 
   // Get the latest price data from chart data
   const latestPrices = React.useMemo(() => {
@@ -263,20 +271,23 @@ const MarketGroupsRow = ({
               </Link>
             </h3>
             {/* Mobile-only: Sparkline above Market Prediction */}
-            <div className="block md:hidden w-[80px] h-[40px] my-2">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-full h-full"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
+            {hasSparklineData && (
+              <div className="block md:hidden w-full h-[40px] my-2">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
+                >
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                    width="100%"
+                  />
+                </Link>
+              </div>
+            )}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
               <div className="text-sm text-muted-foreground">
@@ -291,7 +302,7 @@ const MarketGroupsRow = ({
                       variant="link"
                       size="xs"
                       asChild
-                      className="h-6 px-0 ml-6 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                      className="h-6 px-0 ml-5 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
                     >
                       <Link
                         href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
@@ -308,29 +319,31 @@ const MarketGroupsRow = ({
           </div>
 
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6">
-            <div className="hidden md:block w-[80px] h-[40px]">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-full h-full"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
-            <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
+          <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+            {hasSparklineData && (
+              <div className="hidden md:block w-[80px] h-[40px]">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
+                >
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                  />
+                </Link>
+              </div>
+            )}
+            <div className="flex flex-row-reverse items-center gap-3 md:flex-row w-full md:w-auto">
               {marketClassification ===
               MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (
                 // For multichoice markets, show only the dropdown toggle
                 <>
                   <Button
                     variant="outline"
-                    className="w-28 min-w-[160px] text-base"
+                    className="w-full md:w-28 md:min-w-[160px] text-base"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsExpanded(!isExpanded);
@@ -375,7 +388,7 @@ const MarketGroupsRow = ({
                           <YesNoSplitButton
                             onYes={() => handleAddToBetSlip(yesMarket, true)}
                             onNo={() => handleAddToBetSlip(noMarket, false)}
-                            className="min-w-[10rem]"
+                            className="w-full md:min-w-[10rem]"
                             size="lg"
                           />
                         );
@@ -431,7 +444,7 @@ const MarketGroupsRow = ({
                                 variant="link"
                                 size="xs"
                                 asChild
-                                className="h-6 px-0 ml-3 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
+                                className="h-6 px-0 ml-2 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
                               >
                                 <Link
                                   href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
@@ -446,7 +459,7 @@ const MarketGroupsRow = ({
                           </div>
 
                           {/* Right Side: Actions */}
-                          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto">
+                          <div className="flex flex-row-reverse items-center md:gap-3 self-start md:flex-row md:self-auto w-full md:w-auto">
                             {/* For multichoice rows, add as MULTIPLE_CHOICE and set long/short via prediction */}
                             <YesNoSplitButton
                               onYes={() =>
@@ -463,7 +476,7 @@ const MarketGroupsRow = ({
                                   MarketGroupClassificationEnum.MULTIPLE_CHOICE
                                 )
                               }
-                              className="min-w-[10rem]"
+                              className="w-full md:min-w-[10rem]"
                               size="lg"
                             />
                           </div>

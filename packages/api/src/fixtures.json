@@ -3,37 +3,37 @@
     {
       "name": "Ethereum Gas",
       "slug": "ethereum-gas",
-      "category": "decentralized-compute"
+      "category": "crypto"
     },
     {
       "name": "Celestia Blobspace",
       "slug": "celestia-blobspace",
-      "category": "decentralized-compute"
+      "category": "crypto"
     },
     {
       "name": "San Francisco Precipitation",
       "slug": "sf-precipitation",
-      "category": "climate-change"
+      "category": "weather"
     },
     {
       "name": "New York City Air Temperature",
       "slug": "nyc-air-temperature",
-      "category": "climate-change"
+      "category": "weather"
     },
     {
       "name": "Bitcoin Hashrate",
       "slug": "bitcoin-hashrate",
-      "category": "decentralized-compute"
+      "category": "crypto"
     }
   ],
   "CATEGORIES": [
     {
       "name": "Crypto",
-      "slug": "decentralized-compute"
+      "slug": "crypto"
     },
     {
       "name": "Weather",
-      "slug": "climate-change"
+      "slug": "weather"
     },
     {
       "name": "Tech & Science",
@@ -49,7 +49,7 @@
     },
     {
       "name": "Sports",
-      "slug": "athletics"
+      "slug": "sports"
     },
     {
       "name": "Culture",

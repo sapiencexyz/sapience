@@ -18,7 +18,6 @@ contract PredictionMarketUmaResolverTest is Test {
     
     address public owner;
     address public asserter;
-    address public marketWrapper;
     address public unauthorizedUser;
     
     uint256 public constant BOND_AMOUNT = 1 ether;
@@ -35,10 +34,10 @@ contract PredictionMarketUmaResolverTest is Test {
     event AssertionResolved(bytes32 indexed marketId, bytes32 indexed assertionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime);
 
     // Helper function to demonstrate market ID generation
-    function _logMarketIdGeneration(bytes memory claim, uint256 endTime) internal view returns (bytes32) {
+    function _logMarketIdGeneration(bytes memory claim, uint256 endTime) internal pure returns (bytes32) {
         bytes memory encodedData = abi.encodePacked(claim, ":", endTime);
-        bytes32 marketId = keccak256(encodedData);
-        return marketId;
+        bytes32 generatedMarketId = keccak256(encodedData);
+        return generatedMarketId;
     }
 
     function setUp() public {
@@ -52,7 +51,6 @@ contract PredictionMarketUmaResolverTest is Test {
         // Create test accounts
         owner = makeAddr("owner");
         asserter = makeAddr("asserter");
-        marketWrapper = makeAddr("marketWrapper");
         unauthorizedUser = makeAddr("unauthorizedUser");
         
         // Generate market ID from claim and endTime with separator
@@ -72,11 +70,8 @@ contract PredictionMarketUmaResolverTest is Test {
         address[] memory approvedAsserters = new address[](1);
         approvedAsserters[0] = asserter;
         
-        address[] memory approvedMarketWrappers = new address[](1);
-        approvedMarketWrappers[0] = marketWrapper;
-        
         // Deploy resolver
-        resolver = new PredictionMarketUmaResolver(settings, approvedAsserters, approvedMarketWrappers);
+        resolver = new PredictionMarketUmaResolver(settings, approvedAsserters);
         
         // Mint bond currency to asserter
         bondCurrency.mint(asserter, BOND_AMOUNT * 10);
@@ -101,13 +96,9 @@ contract PredictionMarketUmaResolverTest is Test {
         approvedAsserters[0] = makeAddr("asserter1");
         approvedAsserters[1] = makeAddr("asserter2");
         
-        address[] memory approvedMarketWrappers = new address[](1);
-        approvedMarketWrappers[0] = makeAddr("wrapper1");
-        
         PredictionMarketUmaResolver newResolver = new PredictionMarketUmaResolver(
             settings, 
-            approvedAsserters, 
-            approvedMarketWrappers
+            approvedAsserters
         );
         
         // Verify settings
@@ -121,71 +112,51 @@ contract PredictionMarketUmaResolverTest is Test {
         // Verify approved addresses
         assertTrue(newResolver.approvedAsserters(makeAddr("asserter1")));
         assertTrue(newResolver.approvedAsserters(makeAddr("asserter2")));
-        assertTrue(newResolver.approvedMarketWrappers(makeAddr("wrapper1")));
         assertFalse(newResolver.approvedAsserters(makeAddr("unauthorized")));
-        assertFalse(newResolver.approvedMarketWrappers(makeAddr("unauthorized")));
     }
 
     // ============ Market Wrapping Tests ============
+    // Note: wrapMarket function has been removed. Markets are now automatically wrapped when submitAssertion is called.
     
-    function test_wrapMarket_success() public {
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+    function test_automaticMarketWrapping_success() public {
+        // Advance time past end time to allow assertion submission
+        vm.warp(TEST_END_TIME + 1);
         
-        // Verify market was wrapped
-        (bytes32 returnedMarketId, bytes memory claim, uint256 endTime, bool assertionSubmitted, bool settled, bool resolvedToYes, bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        // Submit assertion - this should automatically wrap the market
+        vm.prank(asserter);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
+        
+        // Verify market was automatically wrapped
+        (bytes32 returnedMarketId, bool assertionSubmitted, bool settled, bool resolvedToYes, bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         assertEq(returnedMarketId, marketId);
-        assertEq(string(claim), string(TEST_CLAIM));
-        assertFalse(assertionSubmitted);
+        assertTrue(assertionSubmitted);
         assertFalse(settled);
         assertFalse(resolvedToYes);
-        assertEq(assertionId, bytes32(0));
-        assertEq(endTime, TEST_END_TIME);
+        assertTrue(assertionId != bytes32(0));
     }
     
-    function test_wrapMarket_emitsEvent() public {
-        // Event emission test - just verify the function works
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        assertTrue(true); // Event emission is tested implicitly
-    }
-    
-    function test_wrapMarket_onlyApprovedWrapper() public {
-        vm.prank(unauthorizedUser);
-        vm.expectRevert(PredictionMarketUmaResolver.OnlyApprovedMarketWrappersCanCall.selector);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-    }
-    
-    function test_wrapMarket_alreadyWrapped() public {
-        // First wrap
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+    function test_automaticMarketWrapping_emitsEvent() public {
+        // Advance time past end time to allow assertion submission
+        vm.warp(TEST_END_TIME + 1);
         
-        // Try to wrap again
-        vm.prank(marketWrapper);
-        vm.expectRevert(PredictionMarketUmaResolver.MarketAlreadyWrapped.selector);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+        // Event emission test - just verify the function works
+        vm.prank(asserter);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
+        assertTrue(true); // Event emission is tested implicitly
     }
 
     // ============ Assertion Submission Tests ============
     
     function test_submitAssertion_success() public {
-        // First wrap the market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
-        // Submit assertion
-        // Advance time past end time to allow assertion submission
-        vm.warp(TEST_END_TIME + 1);
-        
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
         // Verify assertion was submitted
-        (bytes32 returnedMarketId, , , bool assertionSubmitted, , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (bytes32 returnedMarketId, bool assertionSubmitted, , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         assertTrue(assertionId != bytes32(0));
         assertTrue(assertionSubmitted);
         
@@ -198,74 +169,54 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_submitAssertion_emitsEvent() public {
-        // First wrap the market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
         // Event emission test - just verify the function works
-        // Advance time past end time to allow assertion submission
-        vm.warp(TEST_END_TIME + 1);
-        
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         assertTrue(true); // Event emission is tested implicitly
     }
     
     function test_submitAssertion_onlyApprovedAsserter() public {
-        // First wrap the market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
         vm.prank(unauthorizedUser);
         vm.expectRevert(PredictionMarketUmaResolver.OnlyApprovedAssertersCanCall.selector);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
     }
     
-    function test_submitAssertion_invalidMarketId() public {
-        bytes32 invalidMarketId = keccak256("Invalid claim");
-        
+    function test_submitAssertion_marketNotEnded() public {
+        // Try to submit assertion before market ends - should fail
         vm.prank(asserter);
-        vm.expectRevert(PredictionMarketUmaResolver.InvalidMarketId.selector);
-        resolver.submitAssertion(invalidMarketId, true);
+        vm.expectRevert(PredictionMarketUmaResolver.MarketNotEnded.selector);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
     }
     
     function test_submitAssertion_alreadySubmitted() public {
-        // First wrap the market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
-        // Submit first assertion
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit first assertion
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
         // Try to submit again
         vm.prank(asserter);
         vm.expectRevert(PredictionMarketUmaResolver.AssertionAlreadySubmitted.selector);
-        resolver.submitAssertion(marketId, false);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, false);
     }
     
     function test_submitAssertion_marketAlreadySettled() public {
-        // First wrap the market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
-        // Submit and resolve assertion to settle the market
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit and resolve assertion to settle the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId, true);
@@ -273,18 +224,7 @@ contract PredictionMarketUmaResolverTest is Test {
         // Now try to submit another assertion - should fail
         vm.prank(asserter);
         vm.expectRevert(PredictionMarketUmaResolver.MarketAlreadySettled.selector);
-        resolver.submitAssertion(marketId, false);
-    }
-    
-    function test_submitAssertion_marketNotEnded() public {
-        // Setup: wrap market but don't advance time past end time
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
-        // Try to submit assertion before market ends - should fail
-        vm.prank(asserter);
-        vm.expectRevert(PredictionMarketUmaResolver.MarketNotEnded.selector);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, false);
     }
     
     function test_submitAssertion_insufficientBond() public {
@@ -303,14 +243,7 @@ contract PredictionMarketUmaResolverTest is Test {
         address[] memory approvedAsserters = new address[](1);
         approvedAsserters[0] = poorAsserter;
         
-        address[] memory approvedMarketWrappers = new address[](1);
-        approvedMarketWrappers[0] = marketWrapper;
-        
-        PredictionMarketUmaResolver newResolver = new PredictionMarketUmaResolver(settings, approvedAsserters, approvedMarketWrappers);
-        
-        // First wrap the market
-        vm.prank(marketWrapper);
-        newResolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+        PredictionMarketUmaResolver newResolver = new PredictionMarketUmaResolver(settings, approvedAsserters);
         
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
@@ -320,30 +253,28 @@ contract PredictionMarketUmaResolverTest is Test {
         
         vm.prank(poorAsserter);
         vm.expectRevert(); // ERC20InsufficientBalance error from the token transfer
-        newResolver.submitAssertion(marketId, true);
+        newResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
     }
+    
 
     // ============ UMA Callback Tests ============
     
     function test_assertionResolvedCallback_success() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Resolve assertion
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId, true);
         
         // Verify market was settled correctly
-        (, , , bool assertionSubmitted, bool settled, bool resolvedToYes, bytes32 clearedAssertionId) = resolver.wrappedMarkets(marketId);
+        (, bool assertionSubmitted, bool settled, bool resolvedToYes, bytes32 clearedAssertionId) = resolver.wrappedMarkets(marketId);
         assertTrue(settled); // Market should be settled
         assertTrue(resolvedToYes); // Should be resolved to yes
         assertFalse(assertionSubmitted); // AssertionSubmitted should be cleared
@@ -351,17 +282,14 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_assertionResolvedCallback_emitsEvent() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Event emission test - just verify the function works
         vm.prank(address(mockOptimisticOracleV3));
@@ -370,17 +298,14 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_assertionResolvedCallback_onlyOptimisticOracleV3() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         vm.prank(unauthorizedUser);
         vm.expectRevert(PredictionMarketUmaResolver.OnlyOptimisticOracleV3CanCall.selector);
@@ -396,17 +321,14 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_assertionResolvedCallback_marketAlreadySettled() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Resolve the assertion to settle the market
         vm.prank(address(mockOptimisticOracleV3));
@@ -420,63 +342,54 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_assertionResolvedCallback_assertedUntruthfully() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Resolve as untruthful
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId, false);
         
         // Verify market was not settled (asserted untruthfully)
-        (, , , , bool settled, , bytes32 clearedAssertionId) = resolver.wrappedMarkets(marketId);
+        (, , bool settled, , bytes32 clearedAssertionId) = resolver.wrappedMarkets(marketId);
         assertFalse(settled); // Market should not be settled when asserted untruthfully
         assertEq(clearedAssertionId, bytes32(0)); // AssertionId should still be cleared
     }
     
     function test_assertionDisputedCallback_success() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Dispute assertion
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionDisputedCallback(assertionId);
         
         // Verify market state remains unchanged (disputes don't change settlement)
-        (, , , , bool settled, , bytes32 unchangedAssertionId) = resolver.wrappedMarkets(marketId);
+        (, , bool settled, , bytes32 unchangedAssertionId) = resolver.wrappedMarkets(marketId);
         assertFalse(settled);
         assertEq(unchangedAssertionId, assertionId); // Should remain unchanged
     }
     
     function test_assertionDisputedCallback_emitsEvent() public {
-        // Setup: wrap market and submit assertion
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         // Event emission test - just verify the function works
         vm.prank(address(mockOptimisticOracleV3));
@@ -487,9 +400,12 @@ contract PredictionMarketUmaResolverTest is Test {
     // ============ Validation Tests ============
     
     function test_validatePredictionMarkets_success() public {
-        // Setup: wrap market
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+        // Advance time past end time to allow assertion submission
+        vm.warp(TEST_END_TIME + 1);
+        
+        // Submit assertion - this will automatically wrap the market
+        vm.prank(asserter);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
         // Create prediction outcomes
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](1);
@@ -531,7 +447,8 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_validatePredictionMarkets_invalidMarket() public {
-        bytes32 invalidMarketId = keccak256("Invalid market");
+        // With the simplified validation logic, only zero marketId is considered invalid
+        bytes32 invalidMarketId = bytes32(0);
         
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
@@ -547,14 +464,9 @@ contract PredictionMarketUmaResolverTest is Test {
         assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.INVALID_MARKET));
     }
     
-    function test_validatePredictionMarkets_marketNotOpen() public {
-        // Setup: wrap market and advance time past end time to close it
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
-        // Advance time past the end time to make market "closed"
-        vm.warp(TEST_END_TIME + 1);
-        
+    function test_validatePredictionMarkets_marketNotWrapped() public {
+        // Create prediction outcomes for a market that hasn't been wrapped yet
+        // With the simplified validation logic, this should now pass since we only check for zero marketId
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
             marketId: marketId,
@@ -565,24 +477,21 @@ contract PredictionMarketUmaResolverTest is Test {
         
         (bool isValid, IPredictionMarketResolver.Error error) = resolver.validatePredictionMarkets(encodedOutcomes);
         
-        assertFalse(isValid);
-        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.MARKET_NOT_OPENED));
+        assertTrue(isValid);
+        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR));
     }
 
     // ============ Resolution Tests ============
     
     function test_resolvePrediction_success() public {
-        // Setup: wrap market, submit assertion, and resolve
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId, true);
@@ -605,17 +514,14 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_resolvePrediction_makerLoses() public {
-        // Setup: wrap market, submit assertion, and resolve
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
-        
         // Advance time past end time to allow assertion submission
         vm.warp(TEST_END_TIME + 1);
         
+        // Submit assertion - this will automatically wrap the market
         vm.prank(asserter);
-        resolver.submitAssertion(marketId, true);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
-        (, , , , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
+        (, , , , bytes32 assertionId) = resolver.wrappedMarkets(marketId);
         
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId, true);
@@ -638,9 +544,12 @@ contract PredictionMarketUmaResolverTest is Test {
     }
     
     function test_resolvePrediction_marketNotSettled() public {
-        // Setup: wrap market but don't settle
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(TEST_CLAIM, TEST_END_TIME);
+        // Advance time past end time to allow assertion submission
+        vm.warp(TEST_END_TIME + 1);
+        
+        // Submit assertion - this will automatically wrap the market but not settle it
+        vm.prank(asserter);
+        resolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
         
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
@@ -700,7 +609,7 @@ contract PredictionMarketUmaResolverTest is Test {
     // ============ Multiple Markets Tests ============
     
     function test_multipleMarkets_validation() public {
-        // Wrap multiple markets
+        // Submit assertions for multiple markets - this will automatically wrap them
         bytes memory claim1 = "Will ETH reach $5000?";
         bytes memory claim2 = "Will BTC reach $100000?";
         uint256 endTime1 = 1735689600; // Dec 31, 2025
@@ -708,11 +617,14 @@ contract PredictionMarketUmaResolverTest is Test {
         bytes32 marketId1 = _logMarketIdGeneration(claim1, endTime1);
         bytes32 marketId2 = _logMarketIdGeneration(claim2, endTime2);
         
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(claim1, endTime1);
+        // Advance time past both end times to allow assertion submission
+        vm.warp(endTime2 + 1);
         
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(claim2, endTime2);
+        vm.prank(asserter);
+        resolver.submitAssertion(claim1, endTime1, true);
+        
+        vm.prank(asserter);
+        resolver.submitAssertion(claim2, endTime2, false);
         
         // Create prediction outcomes for both markets
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](2);
@@ -742,24 +654,18 @@ contract PredictionMarketUmaResolverTest is Test {
         bytes32 marketId1 = _logMarketIdGeneration(claim1, endTime1);
         bytes32 marketId2 = _logMarketIdGeneration(claim2, endTime2);
         
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(claim1, endTime1);
-        
-        vm.prank(marketWrapper);
-        resolver.wrapMarket(claim2, endTime2);
-        
         // Advance time past both end times to allow assertion submission
         vm.warp(endTime2 + 1);
         
         // Submit and resolve assertions for both markets
         vm.prank(asserter);
-        resolver.submitAssertion(marketId1, true);
+        resolver.submitAssertion(claim1, endTime1, true);
         
         vm.prank(asserter);
-        resolver.submitAssertion(marketId2, false);
+        resolver.submitAssertion(claim2, endTime2, false);
         
-        (, , , , , , bytes32 assertionId1) = resolver.wrappedMarkets(marketId1);
-        (, , , , , , bytes32 assertionId2) = resolver.wrappedMarkets(marketId2);
+        (, , , , bytes32 assertionId1) = resolver.wrappedMarkets(marketId1);
+        (, , , , bytes32 assertionId2) = resolver.wrappedMarkets(marketId2);
         
         vm.prank(address(mockOptimisticOracleV3));
         resolver.assertionResolvedCallback(assertionId1, true);
@@ -846,12 +752,12 @@ contract MockOptimisticOracleV3 {
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address escalationManager,
-        uint64 liveness,
+        address /* escalationManager */,
+        uint64 /* liveness */,
         IERC20 currency,
         uint256 bond,
-        bytes32 identifier,
-        bytes32 domainId
+        bytes32 /* identifier */,
+        bytes32 /* domainId */
     ) external returns (bytes32 assertionId) {
         assertionId = keccak256(abi.encodePacked(claim, asserter, callbackRecipient, block.timestamp));
         

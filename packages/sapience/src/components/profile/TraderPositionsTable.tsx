@@ -728,6 +728,7 @@ export default function TraderPositionsTable({
                 className="xl:table-row block border-b last:border-b-0 space-y-3 xl:space-y-0 px-4 py-4 xl:px-0 xl:py-0"
               >
                 {row.getVisibleCells().map((cell) => {
+                  const isRowClosed = Number(row.original.collateral) === 0;
                   const colId = cell.column.id;
                   const mobileLabel =
                     colId === 'wager'
@@ -737,12 +738,35 @@ export default function TraderPositionsTable({
                         : colId === 'owner'
                           ? 'Owner'
                           : undefined;
+                  // If closed and this is the value column, skip rendering since wager will span both
+                  if (isRowClosed && colId === 'value') {
+                    return null;
+                  }
+                  // If closed and this is the wager column, render a single spanned cell with "Closed"
+                  if (isRowClosed && colId === 'wager') {
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        colSpan={2}
+                        className={
+                          'block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-center'
+                        }
+                      >
+                        {mobileLabel ? (
+                          <div className="text-xs text-muted-foreground xl:hidden mb-1.5 text-left">
+                            {mobileLabel}
+                          </div>
+                        ) : null}
+                        <span className="text-muted-foreground">Closed</span>
+                      </TableCell>
+                    );
+                  }
                   return (
                     <TableCell
                       key={cell.id}
-                      className={
-                        'block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3'
-                      }
+                      className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${
+                        colId === 'position' ? 'max-w-[360px]' : ''
+                      }`}
                     >
                       {mobileLabel ? (
                         <div className="text-xs text-muted-foreground xl:hidden mb-1.5">
