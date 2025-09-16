@@ -15,6 +15,7 @@ import { getChainShortName } from '~/lib/utils/util';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -73,6 +74,13 @@ const MarketGroupsRow = ({
     marketAddress,
     activeMarketIds: marketIds,
   });
+
+  // Determine if there is any sparkline data to render
+  const hasSparklineData = React.useMemo(() => {
+    return chartData.some((d: MultiMarketChartDataPoint) => {
+      return !!d?.markets && Object.values(d.markets).some((v) => v != null);
+    });
+  }, [chartData]);
 
   // Get the latest price data from chart data
   const latestPrices = React.useMemo(() => {
@@ -263,20 +271,23 @@ const MarketGroupsRow = ({
               </Link>
             </h3>
             {/* Mobile-only: Sparkline above Market Prediction */}
-            <div className="block md:hidden w-[80px] h-[40px] my-2">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-full h-full"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
+            {hasSparklineData && (
+              <div className="block md:hidden w-full h-[40px] my-2">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
+                >
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                    width="100%"
+                  />
+                </Link>
+              </div>
+            )}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
               <div className="text-sm text-muted-foreground">
@@ -309,20 +320,22 @@ const MarketGroupsRow = ({
 
           {/* Right Side: Sparkline + Action Buttons */}
           <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-6 md:ml-6">
-            <div className="hidden md:block w-[80px] h-[40px]">
-              <Link
-                href={`/markets/${chainShortName}:${marketAddress}`}
-                className="block w-full h-full"
-                aria-label="View market group"
-              >
-                <MarketGroupSparkline
-                  marketIds={marketIds}
-                  rawChartData={chartData}
-                  marketClassification={marketClassification}
-                  minTimestamp={minSparklineTimestamp}
-                />
-              </Link>
-            </div>
+            {hasSparklineData && (
+              <div className="hidden md:block w-[80px] h-[40px]">
+                <Link
+                  href={`/markets/${chainShortName}:${marketAddress}`}
+                  className="block w-full h-full"
+                  aria-label="View market group"
+                >
+                  <MarketGroupSparkline
+                    marketIds={marketIds}
+                    rawChartData={chartData}
+                    marketClassification={marketClassification}
+                    minTimestamp={minSparklineTimestamp}
+                  />
+                </Link>
+              </div>
+            )}
             <div className="flex flex-row-reverse items-center gap-3 md:flex-row">
               {marketClassification ===
               MarketGroupClassificationEnum.MULTIPLE_CHOICE ? (

@@ -1,4 +1,6 @@
-import type * as React from 'react';
+'use client';
+
+import * as React from 'react';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import {
   Tooltip,
@@ -45,6 +47,20 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   containerClassName,
   parlayFeatureEnabled,
 }) => {
+  const [isParlayTooltipOpen, setIsParlayTooltipOpen] = React.useState(false);
+  const closeTimeoutRef = React.useRef<number | null>(null);
+
+  const handleParlayTapOpen = () => {
+    if (closeTimeoutRef.current) {
+      window.clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setIsParlayTooltipOpen(true);
+    closeTimeoutRef.current = window.setTimeout(() => {
+      setIsParlayTooltipOpen(false);
+      closeTimeoutRef.current = null;
+    }, 1500);
+  };
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
       <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
@@ -90,9 +106,15 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
                 />
               ) : (
                 <TooltipProvider>
-                  <Tooltip>
+                  <Tooltip
+                    open={isParlayTooltipOpen}
+                    onOpenChange={setIsParlayTooltipOpen}
+                  >
                     <TooltipTrigger asChild>
-                      <div>
+                      <div
+                        onClick={handleParlayTapOpen}
+                        onTouchStart={handleParlayTapOpen}
+                      >
                         <Switch checked={false} disabled />
                       </div>
                     </TooltipTrigger>

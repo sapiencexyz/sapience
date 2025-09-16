@@ -514,6 +514,13 @@ const MarketGroupPageContent = () => {
                           >
                             Forecasts
                           </TabsTrigger>
+                          {/* Mobile-only Rules tab trigger */}
+                          <TabsTrigger
+                            value="rules"
+                            className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Rules
+                          </TabsTrigger>
                         </TabsList>
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
@@ -671,12 +678,18 @@ const MarketGroupPageContent = () => {
                       </div>
                     </TabsContent>
                   )}
+                  {/* Mobile-only Rules tab content */}
+                  <TabsContent value="rules" className="mt-0 lg:hidden">
+                    <div className="pt-1">
+                      <RulesBox text={marketGroupData?.rules} forceExpanded />
+                    </div>
+                  </TabsContent>
                 </Tabs>
               </div>
             </div>
 
             {/* Right Column: Rules */}
-            <div className="w-full lg:w-[340px] lg:shrink-0 h-full">
+            <div className="hidden lg:block w-full lg:w-[340px] lg:shrink-0 h-full">
               <div className="flex flex-col h-full">
                 <div className="py-0">
                   <h2 className="text-lg font-medium py-1.5">Rules</h2>

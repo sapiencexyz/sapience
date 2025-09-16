@@ -47,7 +47,7 @@ export function ChatMessages({ messages, showLoader }: Props) {
         </div>
       ))}
       {messages.length === 0 && showLoader && (
-        <div className="flex items-center justify-center py-8 my-8">
+        <div className="w-full flex items-center justify-center py-6 min-h-80">
           <LottieLoader width={32} height={32} />
         </div>
       )}

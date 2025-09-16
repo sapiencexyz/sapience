@@ -5,8 +5,8 @@ import type { ReactElement } from 'react';
 
 interface LottieLoaderProps {
   className?: string;
-  width?: number;
-  height?: number;
+  width?: number | string;
+  height?: number | string;
 }
 
 const LottieLoader = ({
