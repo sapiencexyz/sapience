@@ -50,6 +50,8 @@ router.delete(
   })
 );
 
+ 
+
 // PUT /marketGroups/:address
 router.put(
   '/:address',
@@ -237,6 +239,273 @@ router.put(
 
     const alwaysAllowed = new Set<string>(['question', 'optionName', 'public']);
 
+    const preDeployAllowed = new Set<string>([
+      ...Array.from(alwaysAllowed),
+      'claimStatementYesOrNumeric',
+      'claimStatementNo',
+      'startTime',
+      'endTime',
+      'startingSqrtPriceX96',
+      'baseAssetMinPriceTick',
+      'baseAssetMaxPriceTick',
+    ]);
+
+    const allowed = isDeployed ? alwaysAllowed : preDeployAllowed;
+    const incomingKeys = Object.keys(data || {});
+    const forbidden = incomingKeys.filter((k) => !allowed.has(k));
+    if (forbidden.length > 0) {
+      res.status(400).json({
+        error: 'Attempted to update forbidden fields',
+        forbidden,
+      });
+      return;
+    }
+
+    type MarketUpdateShape = {
+      question?: string;
+      optionName?: string;
+      public?: boolean;
+      claimStatementYesOrNumeric?: string;
+      claimStatementNo?: string | null;
+      startTimestamp?: number;
+      endTimestamp?: number;
+      startingSqrtPriceX96?: string;
+      baseAssetMinPriceTick?: number;
+      baseAssetMaxPriceTick?: number;
+    };
+    const updateData: MarketUpdateShape = {};
+
+    if ('question' in data)
+      updateData.question = String(
+        (data as Record<string, unknown>)['question']
+      );
+    if ('optionName' in data)
+      updateData.optionName = String(
+        (data as Record<string, unknown>)['optionName']
+      );
+    if ('public' in data)
+      updateData.public = Boolean((data as Record<string, unknown>)['public']);
+
+    if (!isDeployed) {
+      if ('claimStatementYesOrNumeric' in data)
+        updateData.claimStatementYesOrNumeric = String(
+          (data as Record<string, unknown>)['claimStatementYesOrNumeric']
+        );
+      if ('claimStatementNo' in data) {
+        const v = (data as Record<string, unknown>)['claimStatementNo'];
+        updateData.claimStatementNo = v == null ? null : String(v);
+      }
+      if ('startTime' in data)
+        updateData.startTimestamp = parseInt(
+          String((data as Record<string, unknown>)['startTime']),
+          10
+        );
+      if ('endTime' in data)
+        updateData.endTimestamp = parseInt(
+          String((data as Record<string, unknown>)['endTime']),
+          10
+        );
+      if ('startingSqrtPriceX96' in data)
+        updateData.startingSqrtPriceX96 = String(
+          (data as Record<string, unknown>)['startingSqrtPriceX96']
+        );
+      if ('baseAssetMinPriceTick' in data)
+        updateData.baseAssetMinPriceTick = parseInt(
+          String((data as Record<string, unknown>)['baseAssetMinPriceTick']),
+          10
+        );
+      if ('baseAssetMaxPriceTick' in data)
+        updateData.baseAssetMaxPriceTick = parseInt(
+          String((data as Record<string, unknown>)['baseAssetMaxPriceTick']),
+          10
+        );
+    }
+
+    const updated = await prisma.market.update({
+      where: { id: market.id },
+      data: updateData,
+    });
+
+    res.json(updated);
+  })
+);
+
+// PUT /marketGroups/by-id/:id
+router.put(
+  '/by-id/:id',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const {
+      data,
+    }: {
+      data: Record<string, unknown>;
+    } = req.body;
+
+    const groupId = Number(id);
+    if (!Number.isFinite(groupId)) {
+      res.status(400).json({ error: 'Invalid market group id' });
+      return;
+    }
+
+    const group = await prisma.marketGroup.findUnique({
+      where: { id: groupId },
+      include: { market: true },
+    });
+
+    if (!group) {
+      res.status(404).json({ error: 'MarketGroup not found' });
+      return;
+    }
+
+    const isDeployed = !!group.address;
+
+    const alwaysAllowed = new Set<string>([
+      'question',
+      'rules',
+      'category', // slug
+      'categorySlug', // alternative key
+      'resourceId',
+      'isCumulative',
+    ]);
+
+    const preDeployAllowed = new Set<string>([
+      ...Array.from(alwaysAllowed),
+      'baseTokenName',
+      'quoteTokenName',
+    ]);
+
+    const allowed = isDeployed ? alwaysAllowed : preDeployAllowed;
+    const incomingKeys = Object.keys(data || {});
+    const forbidden = incomingKeys.filter((k) => !allowed.has(k));
+    if (forbidden.length > 0) {
+      res.status(400).json({
+        error: 'Attempted to update forbidden fields',
+        forbidden,
+      });
+      return;
+    }
+
+    type MarketGroupUpdateShape = {
+      question?: string;
+      rules?: string | null;
+      baseTokenName?: string;
+      quoteTokenName?: string;
+      isCumulative?: boolean;
+      categoryId?: number;
+      resourceId?: number | null;
+    };
+    const updateData: MarketGroupUpdateShape = {};
+
+    if ('question' in data)
+      updateData.question = String(
+        (data as Record<string, unknown>)['question']
+      );
+    if ('rules' in data) {
+      const v = (data as Record<string, unknown>)['rules'];
+      updateData.rules = v == null ? null : String(v);
+    }
+    if ('baseTokenName' in data && !isDeployed)
+      updateData.baseTokenName = String(
+        (data as Record<string, unknown>)['baseTokenName']
+      );
+    if ('quoteTokenName' in data && !isDeployed)
+      updateData.quoteTokenName = String(
+        (data as Record<string, unknown>)['quoteTokenName']
+      );
+
+    if ('isCumulative' in data)
+      updateData.isCumulative = Boolean(
+        (data as Record<string, unknown>)['isCumulative']
+      );
+
+    const categorySlug =
+      (data as Record<string, unknown>)['categorySlug'] ??
+      (data as Record<string, unknown>)['category'];
+    if (categorySlug !== undefined) {
+      const category = await prisma.category.findFirst({
+        where: { slug: String(categorySlug) },
+      });
+      if (!category) {
+        res.status(404).json({ error: `Category '${categorySlug}' not found` });
+        return;
+      }
+      updateData.categoryId = category.id;
+    }
+
+    if ('resourceId' in data) {
+      if ((data as Record<string, unknown>)['resourceId'] === null) {
+        updateData.resourceId = null;
+      } else {
+        const resource = await prisma.resource.findFirst({
+          where: {
+            id:
+              typeof (data as Record<string, unknown>)['resourceId'] ===
+                'number' ||
+              typeof (data as Record<string, unknown>)['resourceId'] ===
+                'string'
+                ? Number((data as Record<string, unknown>)['resourceId'])
+                : NaN,
+          },
+        });
+        if (!resource) {
+          res.status(404).json({
+            error: `Resource '${String(
+              (data as Record<string, unknown>)['resourceId']
+            )}' not found`,
+          });
+          return;
+        }
+        updateData.resourceId = resource.id;
+      }
+    }
+
+    const updated = await prisma.marketGroup.update({
+      where: { id: group.id },
+      data: updateData,
+      include: { market: true, category: true, resource: true },
+    });
+
+    res.json(updated);
+  })
+);
+
+// PUT /marketGroups/by-id/:id/markets/:marketId
+router.put(
+  '/by-id/:id/markets/:marketId',
+  handleAsyncErrors(async (req: Request, res: Response) => {
+    const { id, marketId } = req.params;
+    const {
+      data,
+    }: {
+      data: Record<string, unknown>;
+    } = req.body;
+
+    const groupId = Number(id);
+    const dbMarketId = Number(marketId);
+    if (!Number.isFinite(groupId) || !Number.isFinite(dbMarketId)) {
+      res.status(400).json({ error: 'Invalid id(s)' });
+      return;
+    }
+
+    const group = await prisma.marketGroup.findUnique({
+      where: { id: groupId },
+    });
+    if (!group) {
+      res.status(404).json({ error: 'MarketGroup not found' });
+      return;
+    }
+
+    const market = await prisma.market.findUnique({
+      where: { id: dbMarketId },
+    });
+    if (!market || market.marketGroupId !== group.id) {
+      res.status(404).json({ error: 'Market not found' });
+      return;
+    }
+
+    const isDeployed = !!market.poolAddress;
+
+    const alwaysAllowed = new Set<string>(['question', 'optionName', 'public']);
     const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
       'claimStatementYesOrNumeric',

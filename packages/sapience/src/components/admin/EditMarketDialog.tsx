@@ -117,10 +117,13 @@ const EditMarketDialog = ({ group, market }: Props) => {
         );
     }
 
-    const path = `/marketGroups/${group.address}/markets/${
-      market.marketId || market.id
-    }`;
-    return putJson(path, { chainId: group.chainId, data: payloadData });
+    const path = group.address
+      ? `/marketGroups/${group.address}/markets/${market.marketId || market.id}`
+      : `/marketGroups/by-id/${group.id}/markets/${market.id}`;
+    const body = group.address
+      ? { chainId: group.chainId, data: payloadData }
+      : { data: payloadData };
+    return putJson(path, body as any);
   };
 
   const { mutate, isPending } = useMutation({
@@ -132,8 +135,13 @@ const EditMarketDialog = ({ group, market }: Props) => {
       });
       await queryClient.invalidateQueries({ queryKey: ['marketGroups'] });
       await queryClient.invalidateQueries({
-        queryKey: ['marketGroup', group.address, group.chainId],
+        queryKey: ['enrichedMarketGroups'],
       });
+      if (group.address) {
+        await queryClient.invalidateQueries({
+          queryKey: ['marketGroup', group.address, group.chainId],
+        });
+      }
       setOpen(false);
     },
     onError: (e: any) => {

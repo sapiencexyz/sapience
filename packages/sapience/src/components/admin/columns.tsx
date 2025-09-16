@@ -10,10 +10,12 @@ import { formatEther } from 'viem';
 
 import EnableBridgedMarketGroupButton from './EnableBridgedMarketGroupButton';
 import MarketGroupDeployButton from './MarketGroupDeployButton';
+import EditMarketGroupDialog from './EditMarketGroupDialog';
 import { shortenAddress, getChainShortName } from '~/lib/utils/util';
 import type { EnrichedMarketGroup } from '~/hooks/graphql/useMarketGroups';
 import { useMarketGroupBridgeStatus } from '~/hooks/contract/useMarketGroupBridgeStatus';
 import DeleteUndeployedGroupButton from '~/components/admin/DeleteUndeployedGroupButton';
+// Markets are edited within EditMarketGroupDialog; remove separate Markets dialog
 
 // GraphQL query for index price at time
 const INDEX_PRICE_AT_TIME_QUERY = /* GraphQL */ `
@@ -264,6 +266,7 @@ const ActionsCell = ({ group }: { group: EnrichedMarketGroup }) => {
           Preview
         </a>
       </Button>
+      <EditMarketGroupDialog group={group} />
       <MarketGroupDeployButton group={group} />
       <DeleteUndeployedGroupButton group={group} />
     </div>
