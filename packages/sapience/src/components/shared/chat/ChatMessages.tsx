@@ -8,9 +8,16 @@ import LottieLoader from '~/components/shared/LottieLoader';
 type Props = {
   messages: ChatMessage[];
   showLoader: boolean;
+  showTyping?: boolean;
+  className?: string;
 };
 
-export function ChatMessages({ messages, showLoader }: Props) {
+export function ChatMessages({
+  messages,
+  showLoader,
+  showTyping = false,
+  className = '',
+}: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -19,7 +26,10 @@ export function ChatMessages({ messages, showLoader }: Props) {
   }, [messages]);
 
   return (
-    <div ref={scrollRef} className="max-h-80 overflow-y-auto p-3 space-y-2">
+    <div
+      ref={scrollRef}
+      className={`overflow-y-auto p-3 space-y-2 ${className}`}
+    >
       {messages.map((m) => (
         <div
           key={m.id}
@@ -46,8 +56,21 @@ export function ChatMessages({ messages, showLoader }: Props) {
           )}
         </div>
       ))}
+      {showTyping && (
+        <div className="text-sm text-left">
+          <div
+            className={`inline-block px-2 py-1 rounded bg-muted whitespace-pre-line max-w-[80%] text-left`}
+          >
+            <span className="inline-flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60 animate-pulse [animation-delay:0ms]" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60 animate-pulse [animation-delay:200ms]" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-foreground/60 animate-pulse [animation-delay:400ms]" />
+            </span>
+          </div>
+        </div>
+      )}
       {messages.length === 0 && showLoader && (
-        <div className="w-full flex items-center justify-center py-6 min-h-80">
+        <div className="w-full h-full flex items-center justify-center">
           <LottieLoader width={32} height={32} />
         </div>
       )}

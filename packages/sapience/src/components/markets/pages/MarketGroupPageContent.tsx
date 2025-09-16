@@ -37,6 +37,8 @@ import { MarketGroupClassification } from '~/lib/types';
 import RulesBox from '~/components/markets/RulesBox';
 import { useAllPositions } from '~/hooks/graphql/usePositions';
 import SubmitForecastsBlurb from '~/components/shared/SubmitForecastsBlurb';
+import ResearchAgent from '~/components/markets/ResearchAgent';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 // Dynamically import Comments component
 const Comments = dynamic(() => import('~/components/shared/Comments'), {
@@ -212,6 +214,8 @@ const MarketGroupPageContent = () => {
     chainId,
     activeMarkets,
   } = useMarketGroupPage();
+  const { openrouterApiKey } = useSettings();
+  const hasOpenRouterKey = Boolean(openrouterApiKey);
 
   const { isLoading: _isUserPositionsLoading } = usePositions({
     address: authenticatedAddress || '',
@@ -489,14 +493,14 @@ const MarketGroupPageContent = () => {
                 >
                   <div className="py-0">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <div className="order-2 sm:order-1">
-                        <TabsList className="h-auto p-0 bg-transparent">
+                      <div className="order-2 sm:order-1 max-w-full">
+                        <TabsList className="h-auto p-0 bg-transparent max-w-full overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal">
                           {ready &&
                             authenticated &&
                             connectedPrivyWallet?.address && (
                               <TabsTrigger
                                 value="positions"
-                                className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                                className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                               >
                                 Your Positions
                               </TabsTrigger>
@@ -504,24 +508,49 @@ const MarketGroupPageContent = () => {
                           {hasWagers && (
                             <TabsTrigger
                               value="all-positions"
-                              className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                             >
                               Wagers
                             </TabsTrigger>
                           )}
                           <TabsTrigger
                             value="forecasts"
-                            className="text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                            className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                           >
                             Forecasts
                           </TabsTrigger>
-                          {/* Mobile-only Rules tab trigger */}
-                          <TabsTrigger
-                            value="rules"
-                            className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
-                          >
-                            Rules
-                          </TabsTrigger>
+                          {/* Mobile-only Rules / Research Agent tab triggers (order flips if API key present) */}
+                          {hasOpenRouterKey ? (
+                            <>
+                              <TabsTrigger
+                                value="research-agent"
+                                className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Agent
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="rules"
+                                className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Rules
+                              </TabsTrigger>
+                            </>
+                          ) : (
+                            <>
+                              <TabsTrigger
+                                value="rules"
+                                className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Rules
+                              </TabsTrigger>
+                              <TabsTrigger
+                                value="research-agent"
+                                className="lg:hidden text-lg font-medium px-0 mr-6 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                              >
+                                Agent
+                              </TabsTrigger>
+                            </>
+                          )}
                         </TabsList>
                       </div>
                       <div className="order-1 sm:order-2 sm:ml-auto">
@@ -653,25 +682,120 @@ const MarketGroupPageContent = () => {
                       </div>
                     </TabsContent>
                   )}
-                  {/* Mobile-only Rules tab content */}
-                  <TabsContent value="rules" className="mt-0 lg:hidden">
-                    <div className="pt-1">
-                      <RulesBox text={marketGroupData?.rules} forceExpanded />
-                    </div>
-                  </TabsContent>
+                  {/* Mobile-only Rules / Research Agent tab contents (order flips if API key present) */}
+                  {hasOpenRouterKey ? (
+                    <>
+                      <TabsContent
+                        value="research-agent"
+                        className="mt-0 lg:hidden"
+                      >
+                        <div className="pt-1">
+                          <ResearchAgent />
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="rules" className="mt-0 lg:hidden">
+                        <div className="pt-1">
+                          <RulesBox
+                            text={marketGroupData?.rules}
+                            forceExpanded
+                          />
+                        </div>
+                      </TabsContent>
+                    </>
+                  ) : (
+                    <>
+                      <TabsContent value="rules" className="mt-0 lg:hidden">
+                        <div className="pt-1">
+                          <RulesBox
+                            text={marketGroupData?.rules}
+                            forceExpanded
+                          />
+                        </div>
+                      </TabsContent>
+                      <TabsContent
+                        value="research-agent"
+                        className="mt-0 lg:hidden"
+                      >
+                        <div className="pt-1">
+                          <ResearchAgent />
+                        </div>
+                      </TabsContent>
+                    </>
+                  )}
                 </Tabs>
               </div>
             </div>
 
-            {/* Right Column: Rules */}
+            {/* Right Column: Rules / Research Agent (Desktop tabs) */}
             <div className="hidden lg:block w-full lg:w-[340px] lg:shrink-0 h-full">
               <div className="flex flex-col h-full">
-                <div className="py-0">
-                  <h2 className="text-lg font-medium py-1.5">Rules</h2>
-                </div>
-                <div className="pt-1">
-                  <RulesBox text={marketGroupData?.rules} />
-                </div>
+                <Tabs
+                  defaultValue={hasOpenRouterKey ? 'research-agent' : 'rules'}
+                  className="h-full"
+                >
+                  <div className="py-0">
+                    <TabsList className="h-auto p-0 bg-transparent">
+                      {hasOpenRouterKey ? (
+                        <>
+                          <TabsTrigger
+                            value="research-agent"
+                            className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Agent
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="rules"
+                            className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Rules
+                          </TabsTrigger>
+                        </>
+                      ) : (
+                        <>
+                          <TabsTrigger
+                            value="rules"
+                            className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Rules
+                          </TabsTrigger>
+                          <TabsTrigger
+                            value="research-agent"
+                            className="text-lg font-medium px-0 mr-5 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                          >
+                            Agent
+                          </TabsTrigger>
+                        </>
+                      )}
+                    </TabsList>
+                  </div>
+                  {hasOpenRouterKey ? (
+                    <>
+                      <TabsContent value="research-agent" className="mt-0">
+                        <div className="pt-1">
+                          <ResearchAgent />
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="rules" className="mt-0">
+                        <div className="pt-1">
+                          <RulesBox text={marketGroupData?.rules} />
+                        </div>
+                      </TabsContent>
+                    </>
+                  ) : (
+                    <>
+                      <TabsContent value="rules" className="mt-0">
+                        <div className="pt-1">
+                          <RulesBox text={marketGroupData?.rules} />
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="research-agent" className="mt-0">
+                        <div className="pt-1">
+                          <ResearchAgent />
+                        </div>
+                      </TabsContent>
+                    </>
+                  )}
+                </Tabs>
               </div>
             </div>
           </div>

@@ -100,6 +100,7 @@ const ChatWidget = () => {
               <ChatMessages
                 messages={messages}
                 showLoader={messages.length === 0}
+                className="h-64"
               />
               <ChatInput
                 value={pendingText}

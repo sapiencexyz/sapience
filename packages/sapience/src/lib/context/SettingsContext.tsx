@@ -17,12 +17,19 @@ type SettingsContextValue = {
   chatBaseUrl: string | null;
   adminBaseUrl: string | null;
   arbitrumRpcUrl: string | null;
+  // Research Agent settings
+  openrouterApiKey: string | null;
+  researchAgentSystemMessage: string | null;
+  researchAgentModel: string | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setQuoterBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
   setAdminBaseUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
+  setOpenrouterApiKey: (value: string | null) => void;
+  setResearchAgentSystemMessage: (value: string | null) => void;
+  setResearchAgentModel: (value: string | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -30,6 +37,8 @@ type SettingsContextValue = {
     chatBaseUrl: string;
     adminBaseUrl: string;
     arbitrumRpcUrl: string;
+    researchAgentSystemMessage: string;
+    researchAgentModel: string;
   };
 };
 
@@ -40,6 +49,9 @@ const STORAGE_KEYS = {
   chat: 'sapience.settings.chatBaseUrl',
   admin: 'sapience.settings.adminBaseUrl',
   arbitrum: 'sapience.settings.arbitrumRpcUrl',
+  openrouterApiKey: 'sapience.settings.openrouterApiKey',
+  researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
+  researchAgentModel: 'sapience.settings.researchAgentModel',
 } as const;
 
 function isHttpUrl(value: string): boolean {
@@ -149,6 +161,16 @@ export const SettingsProvider = ({
   const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
     null
   );
+  const [openrouterApiKeyOverride, setOpenrouterApiKeyOverride] = useState<
+    string | null
+  >(null);
+  const [
+    researchAgentSystemMessageOverride,
+    setResearchAgentSystemMessageOverride,
+  ] = useState<string | null>(null);
+  const [researchAgentModelOverride, setResearchAgentModelOverride] = useState<
+    string | null
+  >(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -178,6 +200,18 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.arbitrum)
           : null;
+      const ork =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.openrouterApiKey)
+          : null;
+      const rsm =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentSystemMessage)
+          : null;
+      const rmodel =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentModel)
+          : null;
       if (g && isHttpUrl(g)) setGraphqlOverride(g);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
@@ -188,6 +222,9 @@ export const SettingsProvider = ({
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
       if (r && isHttpUrl(r)) setArbitrumRpcOverride(r);
+      if (ork) setOpenrouterApiKeyOverride(ork);
+      if (rsm) setResearchAgentSystemMessageOverride(rsm);
+      if (rmodel) setResearchAgentModelOverride(rmodel);
     } catch {
       /* noop */
     }
@@ -201,6 +238,9 @@ export const SettingsProvider = ({
       chatBaseUrl: getDefaultChatBase(),
       adminBaseUrl: getDefaultAdminBase(),
       arbitrumRpcUrl: getDefaultArbitrumRpcUrl(),
+      researchAgentSystemMessage:
+        'You are an expert research agent assisting a prediction market participant via chat. You proactively search the web for the most recent information relevant to the question being assessed.',
+      researchAgentModel: 'anthropic/claude-sonnet-4:online',
     }),
     []
   );
@@ -236,6 +276,13 @@ export const SettingsProvider = ({
     : null;
   const arbitrumRpcUrl = mounted
     ? arbitrumRpcOverride || defaults.arbitrumRpcUrl
+    : null;
+  const openrouterApiKey = mounted ? openrouterApiKeyOverride || '' : null;
+  const researchAgentSystemMessage = mounted
+    ? researchAgentSystemMessageOverride || defaults.researchAgentSystemMessage
+    : null;
+  const researchAgentModel = mounted
+    ? researchAgentModelOverride || defaults.researchAgentModel
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -340,6 +387,55 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setOpenrouterApiKey = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.openrouterApiKey);
+        setOpenrouterApiKeyOverride(null);
+        return;
+      }
+      const v = value.trim();
+      if (!v) return;
+      window.localStorage.setItem(STORAGE_KEYS.openrouterApiKey, v);
+      setOpenrouterApiKeyOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setResearchAgentSystemMessage = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.researchAgentSystemMessage);
+        setResearchAgentSystemMessageOverride(null);
+        return;
+      }
+      const v = value.trim();
+      window.localStorage.setItem(STORAGE_KEYS.researchAgentSystemMessage, v);
+      setResearchAgentSystemMessageOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setResearchAgentModel = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.researchAgentModel);
+        setResearchAgentModelOverride(null);
+        return;
+      }
+      const v = value.trim();
+      window.localStorage.setItem(STORAGE_KEYS.researchAgentModel, v);
+      setResearchAgentModelOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -347,12 +443,18 @@ export const SettingsProvider = ({
     chatBaseUrl,
     adminBaseUrl,
     arbitrumRpcUrl,
+    openrouterApiKey,
+    researchAgentSystemMessage,
+    researchAgentModel,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
     setChatBaseUrl,
     setAdminBaseUrl,
     setArbitrumRpcUrl,
+    setOpenrouterApiKey,
+    setResearchAgentSystemMessage,
+    setResearchAgentModel,
     defaults,
   };
 
