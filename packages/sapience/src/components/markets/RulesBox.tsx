@@ -9,6 +9,7 @@ import {
   useLayoutEffect,
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import SafeMarkdown from '~/components/shared/SafeMarkdown';
 
 interface RulesBoxProps {
   text?: string | null;
@@ -30,6 +31,7 @@ const RulesBox: React.FC<RulesBoxProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState<number>(0);
   const [needsCollapse, setNeedsCollapse] = useState<boolean>(false);
+  const [hasMeasured, setHasMeasured] = useState<boolean>(false);
 
   const resolvedText = (text || '').trim();
   const isEmpty = resolvedText.length === 0;
@@ -40,6 +42,7 @@ const RulesBox: React.FC<RulesBoxProps> = ({
     const measured = el.scrollHeight;
     setContentHeight(measured);
     setNeedsCollapse(measured > collapsedMaxHeight + 2); // small buffer
+    setHasMeasured(true);
   }, [collapsedMaxHeight]);
 
   useLayoutEffect(() => {
@@ -67,9 +70,20 @@ const RulesBox: React.FC<RulesBoxProps> = ({
   const effectiveExpanded = forceExpanded || isExpanded;
 
   const targetHeight = useMemo(() => {
+    // Before measuring, avoid open-then-close flicker on desktop.
+    if (!hasMeasured) {
+      return forceExpanded ? 'auto' : collapsedMaxHeight;
+    }
     if (!needsCollapse) return 'auto';
     return effectiveExpanded ? contentHeight : collapsedMaxHeight;
-  }, [needsCollapse, effectiveExpanded, contentHeight, collapsedMaxHeight]);
+  }, [
+    hasMeasured,
+    needsCollapse,
+    effectiveExpanded,
+    contentHeight,
+    collapsedMaxHeight,
+    forceExpanded,
+  ]);
 
   return (
     <div className={className}>
@@ -82,10 +96,12 @@ const RulesBox: React.FC<RulesBoxProps> = ({
           className="relative overflow-hidden"
         >
           <div ref={contentRef} className="p-4">
-            <div className="text-sm text-muted-foreground whitespace-pre-wrap">
-              {isEmpty
-                ? 'No additional rules clarification provided.'
-                : resolvedText}
+            <div className="text-sm text-muted-foreground">
+              {isEmpty ? (
+                'No additional rules clarification provided.'
+              ) : (
+                <SafeMarkdown content={resolvedText} />
+              )}
             </div>
           </div>
 

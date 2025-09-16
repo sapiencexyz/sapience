@@ -159,9 +159,9 @@ const SettingsPageContent = () => {
   const [systemMessageInput, setSystemMessageInput] = useState('');
   const [modelInput, setModelInput] = useState('');
   const [isModelFocused, setIsModelFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    'configuration' | 'research-agent'
-  >('configuration');
+  const [activeTab, setActiveTab] = useState<'configuration' | 'agent'>(
+    'configuration'
+  );
   const { ready, authenticated, exportWallet } = usePrivy();
   const { wallets } = useWallets();
   const activeWallet = (
@@ -178,14 +178,12 @@ const SettingsPageContent = () => {
     setMounted(true);
   }, []);
 
-  // Sync active tab with URL hash (#configuration | #research-agent)
+  // Sync active tab with URL hash (#configuration | #agent)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncFromHash = () => {
       const hash = window.location.hash;
-      setActiveTab(
-        hash === '#research-agent' ? 'research-agent' : 'configuration'
-      );
+      setActiveTab(hash === '#agent' ? 'agent' : 'configuration');
     };
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
@@ -306,12 +304,12 @@ const SettingsPageContent = () => {
           <Tabs
             value={activeTab}
             onValueChange={(val) => {
-              setActiveTab(val as 'configuration' | 'research-agent');
+              setActiveTab(val as 'configuration' | 'agent');
               try {
                 if (typeof window === 'undefined') return;
                 const url = new URL(window.location.href);
-                if (val === 'research-agent') {
-                  url.hash = '#research-agent';
+                if (val === 'agent') {
+                  url.hash = '#agent';
                 } else {
                   url.hash = '#configuration';
                 }
@@ -335,11 +333,11 @@ const SettingsPageContent = () => {
                 </TabsTrigger>
                 <TabsTrigger
                   className="w-full md:w-auto justify-center md:justify-start"
-                  value="research-agent"
+                  value="agent"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     <Bot className="w-4 h-4" />
-                    Research Agent
+                    Agent
                   </span>
                 </TabsTrigger>
               </TabsList>
@@ -532,7 +530,7 @@ const SettingsPageContent = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="research-agent">
+            <TabsContent value="agent">
               <Card className="bg-background">
                 <CardContent className="px-6 py-8">
                   <div className="space-y-6">
@@ -559,10 +557,9 @@ const SettingsPageContent = () => {
                           className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
                         >
                           OpenRouter
-                        </a>
-                        , stored in your browser for use in the app. Traditional
-                        and crypto payment options are available for flexible
-                        LLM credits.
+                        </a>{' '}
+                        to store in your browser. Traditional and crypto payment
+                        options are available for flexible LLM credits.
                       </p>
                     </div>
 
@@ -647,9 +644,9 @@ const SettingsPageContent = () => {
                         rows={4}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Write instructions for your research agent automatically
+                        Write instructions for your agent. This is automatically
                         included before every chat with information about the
-                        market you're assessing.
+                        market you're viewing.
                       </p>
                     </div>
                   </div>

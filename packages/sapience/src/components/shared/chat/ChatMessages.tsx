@@ -4,12 +4,19 @@ import { useEffect, useRef } from 'react';
 import type { ChatMessage } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import LottieLoader from '~/components/shared/LottieLoader';
+import SafeMarkdown from '~/components/shared/SafeMarkdown';
 
 type Props = {
   messages: ChatMessage[];
   showLoader: boolean;
   showTyping?: boolean;
   className?: string;
+  labels?: {
+    me?: string;
+    server?: string;
+    system?: string;
+  };
+  smoothScroll?: boolean;
 };
 
 export function ChatMessages({
@@ -17,37 +24,62 @@ export function ChatMessages({
   showLoader,
   showTyping = false,
   className = '',
+  labels,
+  smoothScroll = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages]);
+    const container = scrollRef.current;
+    if (!container) return;
+    if (smoothScroll) {
+      try {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      } catch {
+        try {
+          container.scrollTop = container.scrollHeight;
+        } catch {
+          /* noop */
+        }
+      }
+    } else {
+      try {
+        container.scrollTop = container.scrollHeight;
+      } catch {
+        /* noop */
+      }
+    }
+  }, [messages, showTyping, smoothScroll]);
 
   return (
     <div
       ref={scrollRef}
-      className={`overflow-y-auto p-3 space-y-2 ${className}`}
+      className={`overflow-y-auto overscroll-contain p-3 space-y-2 ${className}`}
     >
       {messages.map((m) => (
         <div
           key={m.id}
           className={`text-sm ${m.author === 'me' ? 'text-right' : 'text-left'}`}
         >
-          {m.address && m.author === 'server' && (
-            <div className="mb-0.5 opacity-80">
-              <AddressDisplay
-                address={m.address}
-                className="text-[10px]"
-                compact
-              />
-            </div>
+          {labels?.[m.author] ? (
+            <div className="mb-1 opacity-80 text-xs">{labels[m.author]}</div>
+          ) : (
+            m.address &&
+            m.author === 'server' && (
+              <div className="mb-0.5 opacity-80">
+                <AddressDisplay
+                  address={m.address}
+                  className="text-[10px]"
+                  compact
+                />
+              </div>
+            )
           )}
           <div
-            className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} whitespace-pre-line max-w-[80%] text-left break-words`}
+            className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} max-w-[80%] text-left break-words`}
           >
-            {m.text}
+            <SafeMarkdown content={m.text} variant="compact" />
           </div>
           {m.error && (
             <div className="text-[10px] text-destructive mt-0.5 opacity-80">
@@ -74,6 +106,7 @@ export function ChatMessages({
           <LottieLoader width={32} height={32} />
         </div>
       )}
+      <div ref={endRef} />
     </div>
   );
 }

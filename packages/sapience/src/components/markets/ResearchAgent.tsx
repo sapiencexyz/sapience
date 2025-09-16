@@ -4,7 +4,7 @@ import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Card } from '@sapience/ui/components/ui/card';
 import Link from 'next/link';
-import { FrownIcon } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { ChatMessages } from '~/components/shared/chat/ChatMessages';
 import { ChatInput } from '~/components/shared/chat/ChatInput';
@@ -29,50 +29,6 @@ function formatSeconds(ts?: number) {
   }
 }
 
-function buildMarketSummary(mg: any): string | null {
-  if (!mg) return null;
-  const markets = Array.isArray(mg.markets) ? mg.markets : [];
-
-  // Prefer group question; fall back to an active market's question/option
-  const questionCandidate =
-    mg.question ||
-    markets.find((m: any) => m?.question)?.question ||
-    markets.find((m: any) => m?.optionName)?.optionName ||
-    null;
-
-  // Collect unique, non-empty option names
-  const optionNames = Array.from(
-    new Set(
-      markets
-        .map((m: any) => (m?.optionName ?? '').toString().trim())
-        .filter((s: string) => s.length > 0)
-    )
-  );
-
-  const hasMultipleOptions = optionNames.length >= 2;
-
-  const parts: string[] = [];
-  if (questionCandidate) {
-    parts.push(
-      `The prediction market participant is assessing ${questionCandidate}.`
-    );
-  }
-
-  if (hasMultipleOptions) {
-    const optionsSentence =
-      optionNames.length === 2
-        ? `The options are ${optionNames[0]} and ${optionNames[1]}.`
-        : `The options are ${optionNames.slice(0, -1).join(', ')}, and ${optionNames[optionNames.length - 1]}.`;
-    parts.push(optionsSentence);
-  }
-
-  // Future: append price/probability once reliably available here
-  // e.g., "The current market prediction is 64% (price 0.64 per Yes share)."
-
-  const summary = parts.join(' ').trim();
-  return summary || null;
-}
-
 function buildSystemContext({
   baseSystem,
   marketGroup,
@@ -85,38 +41,39 @@ function buildSystemContext({
   const mg = marketGroup || {};
   const markets = Array.isArray(mg.markets) ? mg.markets : [];
   const nowSec = Date.now() / 1000;
-  const future = markets
-    .filter(
-      (m: any) => typeof m.endTimestamp === 'number' && m.endTimestamp > nowSec
-    )
-    .sort((a: any, b: any) => a.endTimestamp - b.endTimestamp);
-  const active = future[0] || markets[0] || null;
+
+  // Group markets by end time to mirror chart legend grouping
+  const byEnd: Record<number, any[]> = {};
+  for (const m of markets) {
+    const end = Number(m?.endTimestamp);
+    if (Number.isFinite(end)) {
+      if (!byEnd[end]) byEnd[end] = [];
+      byEnd[end].push(m);
+    }
+  }
+  const times = Object.keys(byEnd)
+    .map(Number)
+    .sort((a, b) => a - b);
+  const futureTimes = times.filter((t) => t > nowSec);
+  const selectedEnd =
+    futureTimes.length > 0 ? futureTimes[0] : times[times.length - 1];
+  const groupMarkets = selectedEnd != null ? byEnd[selectedEnd] || [] : [];
+
+  // Prefer active group question, then group question fallback
+  const activeQuestion =
+    groupMarkets.find((m: any) => m?.question)?.question || mg.question || null;
 
   const lines: string[] = [];
-  const summary = buildMarketSummary(mg);
-  if (summary) lines.push(summary);
-  if (summaryExtraLine) lines.push(summaryExtraLine);
-  if (summary || summaryExtraLine) lines.push('');
-  lines.push('Context:');
-  if (mg.address) lines.push(`- Group address: ${mg.address}`);
-  if (mg.chainId != null) lines.push(`- Chain ID: ${mg.chainId}`);
-  if (mg.question) lines.push(`- Group question: ${String(mg.question)}`);
-  if (mg.category?.name || mg.category?.slug)
-    lines.push(`- Category: ${mg.category?.name || mg.category?.slug}`);
-  lines.push(`- Markets count: ${markets.length}`);
-  if (active) {
-    lines.push('- Active market:');
-    if (active.marketId != null)
-      lines.push(`  - marketId: ${Number(active.marketId)}`);
-    if (active.question) lines.push(`  - question: ${String(active.question)}`);
-    if (active.optionName)
-      lines.push(`  - option: ${String(active.optionName)}`);
-    if (active.startTimestamp)
-      lines.push(`  - start: ${formatSeconds(Number(active.startTimestamp))}`);
-    if (active.endTimestamp)
-      lines.push(`  - end: ${formatSeconds(Number(active.endTimestamp))}`);
-    if (active.poolAddress)
-      lines.push(`  - poolAddress: ${String(active.poolAddress)}`);
+  if (activeQuestion) {
+    lines.push(
+      `The prediction market participant is currently viewing: ${String(activeQuestion)}`
+    );
+  }
+  if (Number.isFinite(selectedEnd)) {
+    lines.push(`Ends: ${formatSeconds(Number(selectedEnd))}`);
+  }
+  if (summaryExtraLine) {
+    lines.push(summaryExtraLine);
   }
 
   const sys = [baseSystem?.trim() || '', lines.join('\n')]
@@ -139,12 +96,11 @@ const ResearchAgent: React.FC = () => {
     {
       id: `${Date.now()}-asst-welcome`,
       author: 'server',
-      text: "Hi! Let's chat about this question.",
+      text: 'Hi!',
     },
   ]);
   const [pendingText, setPendingText] = useState<string>('');
   const [isRequestInFlight, setIsRequestInFlight] = useState<boolean>(false);
-  const scrollAnchorRef = useRef<HTMLDivElement | null>(null);
 
   const modelToUse = useMemo(
     () => researchAgentModel || defaults.researchAgentModel,
@@ -285,7 +241,6 @@ const ResearchAgent: React.FC = () => {
       val == null ? '--' : yAxisConfig.tooltipValueFormatter(val);
 
     const lines: string[] = [];
-    lines.push('Current values:');
     chartMarketIds.forEach((marketId, index) => {
       const value = overallLatestDataPoint.markets?.[
         String(marketId) as keyof typeof overallLatestDataPoint.markets
@@ -301,11 +256,16 @@ const ResearchAgent: React.FC = () => {
         yAxisConfig.unit === '%'
           ? ' Chance'
           : '';
-      lines.push(`- ${label}: ${formatValue(value)}${suffix}`);
+      // For multiple choice: "[option]: X% Chance"
+      // For single choice: "Current Market Prediction: X% Chance"
+      if (isMultipleChoice) {
+        const optSuffix = yAxisConfig.unit === '%' ? ' Chance' : '';
+        lines.push(`${label}: ${formatValue(value)}${optSuffix}`);
+      } else {
+        lines.push(`${label}: ${formatValue(value)}${suffix}`);
+      }
     });
-    if (hasIndexData) {
-      lines.push(`- Index: ${formatValue(latestIndexValue)}`);
-    }
+    // Omit index line for simplified context
 
     return lines.join('\n');
   }, [
@@ -321,7 +281,7 @@ const ResearchAgent: React.FC = () => {
     return (
       <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-8">
         <div className="text-center text-muted-foreground py-8">
-          <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
+          <Bot className="h-9 w-9 mx-auto mb-2 opacity-20" />
           <div className="mb-0">
             Add an{' '}
             <a
@@ -334,12 +294,12 @@ const ResearchAgent: React.FC = () => {
             </a>{' '}
             API key in your{' '}
             <Link
-              href="/settings#research-agent"
+              href="/settings#agent"
               className="transition-colors underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
             >
               settings
             </Link>{' '}
-            to enable the research agent.
+            to enable the agent.
           </div>
         </div>
       </div>
@@ -363,6 +323,17 @@ const ResearchAgent: React.FC = () => {
       marketGroup: marketGroupData,
       summaryExtraLine: currentValuesLine,
     });
+    try {
+      if (typeof console !== 'undefined') {
+        // Log the system message used to initialize the agent turn
+        console.log('[ResearchAgent] system message:', systemText);
+      }
+    } catch {
+      console.error(
+        '[ResearchAgent] error logging system message:',
+        systemText
+      );
+    }
 
     const pastMessages: { role: 'user' | 'assistant'; content: string }[] =
       messages
@@ -435,7 +406,6 @@ const ResearchAgent: React.FC = () => {
       setMessages((prev) => [...prev, err]);
     } finally {
       setIsRequestInFlight(false);
-      scrollAnchorRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -446,6 +416,8 @@ const ResearchAgent: React.FC = () => {
         showLoader={messages.length === 0}
         showTyping={isRequestInFlight}
         className="h-64"
+        labels={{ me: 'You', server: 'Agent' }}
+        smoothScroll
       />
       <ChatInput
         value={pendingText}
@@ -456,9 +428,8 @@ const ResearchAgent: React.FC = () => {
         onLogin={() => {}}
       />
       <div className="px-3 pb-3">
-        <WagerDisclaimer message="Agents can make mistakes. Check important info." />
+        <WagerDisclaimer message="Agents make mistakes. Always check important info." />
       </div>
-      <div ref={scrollAnchorRef} />
     </Card>
   );
 };
