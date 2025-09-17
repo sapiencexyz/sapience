@@ -562,7 +562,9 @@ export default function LpPositionsTable({
                         marketAddress={marketAddress}
                         chainId={chainId}
                         isMarketSettled={position.market?.settled || false}
-                        collateralSymbol={marketGroup?.collateralSymbol}
+                        collateralSymbol={
+                          marketGroup?.collateralSymbol ?? undefined
+                        }
                         collateralDecimals={
                           marketGroup?.collateralDecimals || 18
                         }
