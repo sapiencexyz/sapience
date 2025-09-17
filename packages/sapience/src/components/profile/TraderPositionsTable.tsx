@@ -633,12 +633,14 @@ export default function TraderPositionsTable({
                         );
                       }
 
+                      const isMarketClosedOrExpired =
+                        Boolean(position.market?.settled) || isExpired;
                       const positionUrl = `/markets/${chainShortName}:${marketAddr}/${marketId}?positionId=${position.positionId}`;
 
                       return (
                         <Link href={positionUrl} passHref>
                           <Button size="sm" variant="secondary">
-                            Reopen
+                            {isMarketClosedOrExpired ? 'View' : 'Reopen'}
                           </Button>
                         </Link>
                       );

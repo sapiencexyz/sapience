@@ -60,6 +60,10 @@ export const POSITIONS_QUERY = /* GraphQL */ `
         id
         type
         createdAt
+        collateral
+        collateralTransfer {
+          collateral
+        }
         event {
           transactionHash
         }
@@ -125,6 +129,10 @@ export const ALL_POSITIONS_QUERY = /* GraphQL */ `
         id
         type
         createdAt
+        collateral
+        collateralTransfer {
+          collateral
+        }
         event {
           transactionHash
         }

@@ -11,11 +11,13 @@ import type { Address } from 'viem';
 import LpPositionsTable from '../profile/LpPositionsTable';
 import ForecastsTable from '../profile/ForecastsTable';
 import TraderPositionsTable from '../profile/TraderPositionsTable';
+import ClosedTraderPositionsTable from '../profile/ClosedTraderPositionsTable';
 import UserParlaysTable from '../parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import { useMarketGroupPage } from '~/lib/context/MarketGroupPageProvider';
+import EmptyTabState from '~/components/shared/EmptyTabState';
 
 interface UserPositionsTableProps {
   account: Address;
@@ -88,6 +90,28 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
     () => filteredPositions.filter((p) => !p.isLP),
     [filteredPositions]
   );
+  const traderPositionsOpen = useMemo(() => {
+    return traderPositions.filter((p) => {
+      try {
+        const collateralStr = p.collateral ?? '0';
+        const hasCollateral = BigInt(collateralStr) > 0n;
+        return hasCollateral && !p.isSettled;
+      } catch {
+        return !p.isSettled;
+      }
+    });
+  }, [traderPositions]);
+  const traderPositionsClosed = useMemo(() => {
+    return traderPositions.filter((p) => {
+      try {
+        const collateralStr = p.collateral ?? '0';
+        const hasCollateral = BigInt(collateralStr) > 0n;
+        return !hasCollateral || !!p.isSettled;
+      } catch {
+        return !!p.isSettled;
+      }
+    });
+  }, [traderPositions]);
   const lpPositions = useMemo(
     () => filteredPositions.filter((p) => p.isLP),
     [filteredPositions]
@@ -144,16 +168,35 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
         </div>
 
         <TabsContent value="trades">
-          <TraderPositionsTable
-            positions={traderPositions}
-            parentMarketAddress={marketAddress}
-            parentChainId={chainId}
-            parentMarketId={marketId}
-            context="user_positions"
-            showPositionColumn
-            columns={{ actions: false }}
-            summaryMarketsForColors={summaryMarketsForColors}
-          />
+          {traderPositionsOpen.length > 0 ? (
+            <div>
+              <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                Active
+              </h3>
+              <TraderPositionsTable
+                positions={traderPositionsOpen}
+                parentMarketAddress={marketAddress}
+                parentChainId={chainId}
+                parentMarketId={marketId}
+                context="user_positions"
+                showPositionColumn
+                columns={{ actions: false }}
+                summaryMarketsForColors={summaryMarketsForColors}
+              />
+            </div>
+          ) : null}
+          {traderPositionsClosed.length > 0 ? (
+            <div className="mt-6">
+              <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                Closed
+              </h3>
+              <ClosedTraderPositionsTable positions={traderPositionsClosed} />
+            </div>
+          ) : null}
+          {traderPositionsOpen.length === 0 &&
+          traderPositionsClosed.length === 0 ? (
+            <EmptyTabState message="No trades found" />
+          ) : null}
         </TabsContent>
 
         <TabsContent value="lp">
