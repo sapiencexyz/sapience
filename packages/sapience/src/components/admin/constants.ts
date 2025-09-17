@@ -24,4 +24,4 @@ export const DEFAULT_MAX_PRICE_TICK = '0';
 export const DEFAULT_FACTORY_ADDRESS =
   '0xc85375AdC34e5358371f48Cd74BAb24f74Af28A9';
 export const DEFAULT_BASE_TOKEN_NAME = 'Yes';
-export const DEFAULT_QUOTE_TOKEN_NAME = 'sUSDS';
+export const DEFAULT_QUOTE_TOKEN_NAME = 'testUSDe';
