@@ -37,6 +37,7 @@ export default function IndividualPositionRow({
   const { watch, getValues, setValue } = useFormContext();
   const { isFlipped } = useWagerFlip();
   const { betSlipPositions } = useBetSlipContext();
+  const hasMultiple = (betSlipPositions?.length || 0) > 1;
 
   // Lookup base position for fallback chainId/address
   const basePos = betSlipPositions.find((p) => p.id === positionId);
@@ -122,7 +123,7 @@ export default function IndividualPositionRow({
         <div className="flex-1">
           <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
             {question}&nbsp;&nbsp;
-            <span className="relative -top-0.5">
+            <span className="relative -top-[0.75px]">
               <ReadOnlyPredictionBadge
                 positionId={positionId}
                 marketClassification={marketClassification}
@@ -162,6 +163,7 @@ export default function IndividualPositionRow({
           marketGroupData={marketDataForQuote}
           marketClassification={marketClassification}
           predictionValue={predictionValue}
+          variant={hasMultiple ? 'betslip' : undefined}
         />
       ) : null}
     </div>
