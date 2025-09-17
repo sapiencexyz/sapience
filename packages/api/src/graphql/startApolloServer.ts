@@ -7,6 +7,7 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
+import costAnalysis from 'graphql-cost-analysis';
 
 // Import only the query (read-only) resolvers from generated TypeGraphQL
 import {
@@ -235,7 +236,12 @@ export const initializeApolloServer = async () => {
       }),
       responseCachePlugin(),
     ],
-    validationRules: [depthLimit(5)],
+    validationRules: [
+      depthLimit(5),
+      costAnalysis({
+        maximumCost: 1000,
+      }),
+    ],
   });
 
   await apolloServer.start();
