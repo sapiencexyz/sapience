@@ -9,9 +9,8 @@ import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
 import costAnalysisModule from 'graphql-cost-analysis';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const createCostAnalysis: any =
-  (costAnalysisModule as any)?.default ?? costAnalysisModule;
+const createCostAnalysis: any = // eslint-disable-line @typescript-eslint/no-explicit-any
+  (costAnalysisModule as any)?.default ?? costAnalysisModule; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // Import only the query (read-only) resolvers from generated TypeGraphQL
 import {
