@@ -1,5 +1,5 @@
 {
-  "address": "0x3897F74924C150427B67F58c043f34106A6d283c",
+  "address": "0x7B83c7294692bbB08e54bF6650c8cB5Cbf721910",
   "abi": [
     {
       "type": "constructor",
@@ -40,11 +40,6 @@
           "name": "_approvedAsserters",
           "type": "address[]",
           "internalType": "address[]"
-        },
-        {
-          "name": "_approvedMarketWrappers",
-          "type": "address[]",
-          "internalType": "address[]"
         }
       ],
       "stateMutability": "nonpayable"
@@ -52,25 +47,6 @@
     {
       "type": "function",
       "name": "approvedAsserters",
-      "inputs": [
-        {
-          "name": "",
-          "type": "address",
-          "internalType": "address"
-        }
-      ],
-      "outputs": [
-        {
-          "name": "",
-          "type": "bool",
-          "internalType": "bool"
-        }
-      ],
-      "stateMutability": "view"
-    },
-    {
-      "type": "function",
-      "name": "approvedMarketWrappers",
       "inputs": [
         {
           "name": "",
@@ -247,9 +223,14 @@
       "name": "submitAssertion",
       "inputs": [
         {
-          "name": "marketId",
-          "type": "bytes32",
-          "internalType": "bytes32"
+          "name": "claim",
+          "type": "bytes",
+          "internalType": "bytes"
+        },
+        {
+          "name": "endTime",
+          "type": "uint256",
+          "internalType": "uint256"
         },
         {
           "name": "resolvedToYes",
@@ -320,24 +301,6 @@
     },
     {
       "type": "function",
-      "name": "wrapMarket",
-      "inputs": [
-        {
-          "name": "claim",
-          "type": "bytes",
-          "internalType": "bytes"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
-        }
-      ],
-      "outputs": [],
-      "stateMutability": "nonpayable"
-    },
-    {
-      "type": "function",
       "name": "wrappedMarkets",
       "inputs": [
         {
@@ -351,16 +314,6 @@
           "name": "marketId",
           "type": "bytes32",
           "internalType": "bytes32"
-        },
-        {
-          "name": "claim",
-          "type": "bytes",
-          "internalType": "bytes"
-        },
-        {
-          "name": "endTime",
-          "type": "uint256",
-          "internalType": "uint256"
         },
         {
           "name": "assertionSubmitted",
@@ -636,11 +589,6 @@
     },
     {
       "type": "error",
-      "name": "OnlyApprovedMarketWrappersCanCall",
-      "inputs": []
-    },
-    {
-      "type": "error",
       "name": "OnlyOptimisticOracleV3CanCall",
       "inputs": []
     },
@@ -676,19 +624,16 @@
     },
     [
       "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
-    ],
-    [
-      "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
     ]
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x17b6b4fb9f1e8cc0bc074c7f2374c74e7abfe64fbec93b09601681b8cdf6a519",
-  "deployTxnBlockNumber": "377707284",
-  "deployTimestamp": "1757514862",
+  "deployTxnHash": "0x7d0dc57e97b721b6661ad29e3935b47a8e383ba32a23dc88c2684432ca07ed7b",
+  "deployTxnBlockNumber": "379504821",
+  "deployTimestamp": "1757964302",
   "sourceName": "src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol",
   "contractName": "PredictionMarketUmaResolver",
   "deployedOn": "deploy.UMAResolver",
   "highlight": true,
-  "gasUsed": 2076500,
-  "gasCost": "13302000"
+  "gasUsed": 1528677,
+  "gasCost": "10000000"
 }
