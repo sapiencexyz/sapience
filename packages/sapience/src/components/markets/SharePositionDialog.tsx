@@ -82,13 +82,6 @@ export default function SharePositionDialog({
   const maxPayout = useMemo(() => {
     if (!isYesNo) return '';
     try {
-      if (typeof payoutOverride !== 'undefined') {
-        const numeric =
-          typeof payoutOverride === 'string'
-            ? Number(payoutOverride)
-            : payoutOverride;
-        return formatAmount(Number(numeric));
-      }
       const base = BigInt(position.baseToken || '0');
       const borrowed = BigInt(position.borrowedBaseToken || '0');
       const net = base - borrowed;
@@ -98,7 +91,17 @@ export default function SharePositionDialog({
     } catch {
       return '0';
     }
-  }, [isYesNo, position.baseToken, position.borrowedBaseToken, payoutOverride]);
+  }, [isYesNo, position.baseToken, position.borrowedBaseToken]);
+
+  // Exit value should reflect payoutOverride when provided, regardless of market type
+  const exitValue = useMemo(() => {
+    if (typeof payoutOverride === 'undefined') return '';
+    const numeric =
+      typeof payoutOverride === 'string'
+        ? Number(payoutOverride)
+        : payoutOverride;
+    return formatAmount(Number(numeric));
+  }, [payoutOverride]);
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
     // Prefer identifier-based params
@@ -118,7 +121,7 @@ export default function SharePositionDialog({
     }
     // Also include explicit entry/exit for richer previews when available
     if (typeof wagerOverride !== 'undefined') sp.set('entry', wager);
-    if (typeof payoutOverride !== 'undefined') sp.set('exit', maxPayout || '0');
+    if (exitValue) sp.set('exit', exitValue);
     // Append any caller-provided extra params
     if (extraParams) {
       Object.entries(extraParams).forEach(([k, v]) => {
@@ -138,6 +141,8 @@ export default function SharePositionDialog({
     position.owner,
     isYesNo,
     maxPayout,
+    exitValue,
+    extraParams,
   ]);
 
   // Use relative URL for next/image to avoid remote host config
