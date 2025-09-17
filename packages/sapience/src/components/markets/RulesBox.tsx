@@ -9,6 +9,7 @@ import {
   useLayoutEffect,
 } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 
 interface RulesBoxProps {
@@ -27,6 +28,7 @@ const RulesBox: React.FC<RulesBoxProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const isMobile = useIsMobile();
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [contentHeight, setContentHeight] = useState<number>(0);
@@ -84,6 +86,27 @@ const RulesBox: React.FC<RulesBoxProps> = ({
     collapsedMaxHeight,
     forceExpanded,
   ]);
+
+  // On mobile, render full content without collapse/expand controls
+  if (isMobile) {
+    return (
+      <div className={className}>
+        <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-0">
+          <div className="relative">
+            <div className="p-4">
+              <div className="text-sm text-muted-foreground">
+                {isEmpty ? (
+                  'No additional rules clarification provided.'
+                ) : (
+                  <SafeMarkdown content={resolvedText} />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

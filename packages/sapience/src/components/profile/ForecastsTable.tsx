@@ -99,11 +99,28 @@ const renderSubmittedCell = ({
 }: {
   row: { original: FormattedAttestation };
 }) => {
-  const date = new Date(Number(row.original.rawTime) * 1000);
+  const createdDate = new Date(Number(row.original.rawTime) * 1000);
+  const createdDisplay = formatDistanceToNow(createdDate, {
+    addSuffix: true,
+  });
+  const exactLocalDisplay = createdDate.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short',
+  });
   return (
-    <span className="whitespace-nowrap">
-      {formatDistanceToNow(date, { addSuffix: true })}
-    </span>
+    <div>
+      <div className="whitespace-nowrap font-medium" title={exactLocalDisplay}>
+        {createdDisplay}
+      </div>
+      <div className="text-sm text-muted-foreground mt-0.5 whitespace-nowrap">
+        {exactLocalDisplay}
+      </div>
+    </div>
   );
 };
 
@@ -334,6 +351,40 @@ const ForecastsTable = ({
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
+        id: 'rawTime',
+        accessorFn: (row) => Number(row.rawTime),
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Time
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: (info) => (
+          <div className="whitespace-nowrap">
+            {renderSubmittedCell({ row: info.row })}
+          </div>
+        ),
+      },
+      {
         id: 'question',
         accessorFn: (row) => {
           // Use comment + resolved question text for a stable string to sort on
@@ -411,36 +462,6 @@ const ForecastsTable = ({
       },
       // Comment is now rendered under Question, so we omit a separate Comment column
       {
-        id: 'rawTime',
-        accessorFn: (row) => Number(row.rawTime),
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Submitted
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
-        cell: (info) => renderSubmittedCell({ row: info.row }),
-      },
-      {
         id: 'actions',
         enableSorting: false,
         cell: (info) =>
@@ -508,7 +529,11 @@ const ForecastsTable = ({
                     key={header.id}
                     colSpan={header.colSpan}
                     className={
-                      header.column.id === 'actions' ? 'text-right' : undefined
+                      header.column.id === 'actions'
+                        ? 'text-right'
+                        : header.column.id === 'question'
+                          ? 'w-full'
+                          : undefined
                     }
                   >
                     {renderContent(content)}
@@ -536,16 +561,16 @@ const ForecastsTable = ({
                     colId === 'value'
                       ? 'Prediction'
                       : colId === 'rawTime'
-                        ? 'Submitted'
+                        ? 'Time'
                         : undefined;
                   return (
                     <TableCell
                       key={cell.id}
-                      className={`block xl:table-cell w-full px-0 py-0 xl:px-4 xl:py-3 ${
+                      className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 ${
                         colId === 'actions'
                           ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
                           : ''
-                      }`}
+                      } ${colId === 'question' ? 'xl:w-full' : ''}`}
                     >
                       {mobileLabel ? (
                         <div

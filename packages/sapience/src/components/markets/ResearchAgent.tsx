@@ -417,7 +417,6 @@ const ResearchAgent: React.FC = () => {
         showTyping={isRequestInFlight}
         className="h-64"
         labels={{ me: 'You', server: 'Agent' }}
-        smoothScroll
       />
       <ChatInput
         value={pendingText}

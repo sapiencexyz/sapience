@@ -16,7 +16,6 @@ type Props = {
     server?: string;
     system?: string;
   };
-  smoothScroll?: boolean;
 };
 
 export function ChatMessages({
@@ -25,7 +24,6 @@ export function ChatMessages({
   showTyping = false,
   className = '',
   labels,
-  smoothScroll = false,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -33,24 +31,16 @@ export function ChatMessages({
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    if (smoothScroll) {
-      try {
-        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-      } catch {
-        try {
-          container.scrollTop = container.scrollHeight;
-        } catch {
-          /* noop */
-        }
-      }
-    } else {
+    try {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    } catch {
       try {
         container.scrollTop = container.scrollHeight;
       } catch {
         /* noop */
       }
     }
-  }, [messages, showTyping, smoothScroll]);
+  }, [messages, showTyping]);
 
   return (
     <div
