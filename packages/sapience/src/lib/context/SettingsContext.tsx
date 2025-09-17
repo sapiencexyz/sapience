@@ -256,7 +256,7 @@ export const SettingsProvider = ({
       adminBaseUrl: getDefaultAdminBase(),
       arbitrumRpcUrl: getDefaultArbitrumRpcUrl(),
       researchAgentSystemMessage:
-        'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, and curious. You proactively search the web for the most recent information relevant to the questions being discussed.',
+        'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, curious, succinct, and analytical. You proactively search the web for the most recent information relevant to the questions being discussed.',
       researchAgentModel: 'anthropic/claude-sonnet-4:online',
       researchAgentTemperature: 0.7,
     }),

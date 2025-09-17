@@ -41,6 +41,11 @@ type SettingFieldProps = {
   validate: (v: string) => boolean;
   normalizeOnChange?: (v: string) => string;
   invalidMessage: string;
+  type?: 'text' | 'password';
+  placeholder?: string;
+  clearOnEmpty?: boolean;
+  maskAfterPersist?: boolean;
+  disabled?: boolean;
 };
 
 const SettingField = ({
@@ -52,9 +57,23 @@ const SettingField = ({
   validate,
   normalizeOnChange,
   invalidMessage,
+  type = 'text',
+  placeholder,
+  clearOnEmpty = true,
+  maskAfterPersist = false,
+  disabled = false,
 }: SettingFieldProps) => {
   const [draft, setDraft] = useState<string>(value);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Sync external value when not actively focused to avoid breaking edits
+  useEffect(() => {
+    if (!isFocused) {
+      setDraft(value);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
@@ -72,9 +91,12 @@ const SettingField = ({
   };
 
   const handleBlur = () => {
+    setIsFocused(false);
     if (!draft) {
-      onPersist(null);
-      setValue('');
+      if (clearOnEmpty) {
+        onPersist(null);
+        setValue('');
+      }
       return;
     }
     const normalized = normalizeOnChange ? normalizeOnChange(draft) : draft;
@@ -83,6 +105,11 @@ const SettingField = ({
     if (validate(normalized)) {
       setErrorMsg(null);
       onPersist(normalized);
+      if (maskAfterPersist) {
+        // Clear visible value after persisting so secret remains hidden
+        setDraft('');
+        setValue('');
+      }
     } else {
       setErrorMsg(invalidMessage);
     }
@@ -99,6 +126,10 @@ const SettingField = ({
             value={draft}
             onChange={handleChange}
             onBlur={handleBlur}
+            onFocus={() => setIsFocused(true)}
+            type={type}
+            placeholder={placeholder}
+            disabled={disabled}
           />
         </div>
         {showReset ? (
@@ -226,7 +257,12 @@ const SettingsPageContent = () => {
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
     setAdminInput(adminBaseUrl ?? defaults.adminBaseUrl);
     setRpcInput(arbitrumRpcUrl ?? defaults.arbitrumRpcUrl);
-    setOpenrouterKeyInput(openrouterApiKey ?? '');
+    // If a key exists, show masked dots and disable input
+    setOpenrouterKeyInput(
+      openrouterApiKey
+        ? '••-••-••-••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'
+        : ''
+    );
     setSystemMessageInput(researchAgentSystemMessage ?? '');
     setModelInput(researchAgentModel ?? defaults.researchAgentModel);
     setTemperatureInput(
@@ -235,6 +271,16 @@ const SettingsPageContent = () => {
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
+
+  // Keep the displayed OpenRouter key masked when a key exists
+  useEffect(() => {
+    if (!hydrated) return;
+    setOpenrouterKeyInput(
+      openrouterApiKey
+        ? '••-••-••-••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'
+        : ''
+    );
+  }, [openrouterApiKey, hydrated]);
 
   const suggestedModels = [
     'anthropic/claude-sonnet-4:online',
@@ -553,9 +599,12 @@ const SettingsPageContent = () => {
                         validate={(v) => v.trim().length > 0}
                         normalizeOnChange={(s) => s.trim()}
                         invalidMessage="API key cannot be empty"
+                        type="password"
+                        clearOnEmpty={false}
+                        disabled={Boolean(openrouterApiKey)}
                       />
                       <p className="text-xs text-muted-foreground">
-                        Add an API key from{' '}
+                        Use{' '}
                         <a
                           href="https://openrouter.ai"
                           target="_blank"
@@ -564,8 +613,13 @@ const SettingsPageContent = () => {
                         >
                           OpenRouter
                         </a>{' '}
-                        to store in your browser. Traditional and crypto payment
-                        options are available for flexible LLM credits.
+                        for flexible LLM credits via traditional and crypto
+                        payments. It is{' '}
+                        <span className="font-medium">
+                          strongly recommended
+                        </span>{' '}
+                        to add a credit limit to this key, as it's stored in
+                        your browser.
                       </p>
                     </div>
 

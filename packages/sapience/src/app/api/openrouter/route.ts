@@ -7,18 +7,27 @@ const DEV_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000'];
 const PROD_ORIGINS = ['https://sapience.xyz', 'https://www.sapience.xyz'];
 const ALLOWED_ORIGINS = isDev ? DEV_ORIGINS : PROD_ORIGINS;
 
+function parseOrigin(value: string | null): string | null {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return null;
+  }
+}
+
 function isAllowedOrigin(origin: string | null): boolean {
   if (!origin) return false;
   return ALLOWED_ORIGINS.includes(origin);
 }
 
 function getAllowedOriginFromRequest(req: Request): string | null {
-  const origin = req.headers.get('origin');
-  if (isAllowedOrigin(origin)) return origin as string;
-  const referer = req.headers.get('referer') || '';
-  for (const allowed of ALLOWED_ORIGINS) {
-    if (referer.startsWith(allowed)) return allowed;
-  }
+  const originHeader = parseOrigin(req.headers.get('origin'));
+  if (isAllowedOrigin(originHeader)) return originHeader as string;
+
+  const refererOrigin = parseOrigin(req.headers.get('referer'));
+  if (isAllowedOrigin(refererOrigin)) return refererOrigin as string;
+
   return null;
 }
 
