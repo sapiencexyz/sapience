@@ -12,6 +12,7 @@ import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/li
 import QuoteDisplay from '~/components/markets/forms/shared/QuoteDisplay';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
+import { fetchQuoteByUrl, toQuoteUrl } from '~/hooks/forms/quoteApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
 interface BetslipSinglesFormProps {
@@ -102,39 +103,15 @@ export default function BetslipSinglesForm({
             relayerBaseUrl ||
             process.env.NEXT_PUBLIC_FOIL_API_URL ||
             '';
-          const base = (() => {
-            if (!baseCandidate) return null;
-            try {
-              const u = new URL(baseCandidate);
-              return u.origin;
-            } catch {
-              return baseCandidate.endsWith('/')
-                ? baseCandidate.slice(0, -1)
-                : baseCandidate;
-            }
-          })();
-          if (!base) throw new Error('Quoter URL not configured.');
-
-          const hasQuoter = (() => {
-            try {
-              const u = new URL(base);
-              return (
-                u.pathname === '/quoter' || u.pathname.startsWith('/quoter/')
-              );
-            } catch {
-              return base.endsWith('/quoter') || base.includes('/quoter/');
-            }
-          })();
-          const prefix = hasQuoter ? base : `${base}/quoter`;
-          const apiUrl = `${prefix}/${marketData.chainId}/${marketData.address}/${params.marketId}/?expectedPrice=${params.expectedPrice}&collateralAvailable=${parsed?.toString()}&maxIterations=${10}`;
-          const response = await fetch(apiUrl);
-          const data = await response.json();
-          if (!response.ok) {
-            throw new Error(
-              data.error || `HTTP error! status: ${response.status}`
-            );
-          }
-          return { maxSize: (data?.maxSize as string) ?? '0' };
+          const apiUrl = toQuoteUrl({
+            baseCandidate,
+            marketData: marketData,
+            marketId: params.marketId,
+            expectedPrice: params.expectedPrice,
+            collateralAvailable: parsed as bigint,
+          });
+          const data = await fetchQuoteByUrl(apiUrl);
+          return { maxSize: data?.maxSize ?? '0' };
         },
         staleTime: 30000,
         refetchOnWindowFocus: false,
