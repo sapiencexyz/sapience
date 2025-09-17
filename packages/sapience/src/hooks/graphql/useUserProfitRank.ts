@@ -143,3 +143,4 @@ export const useUserProfitRank = (ownerAddress?: string) => {
     refetchInterval: 300_000,
   });
 };
+
