@@ -12,9 +12,13 @@ import { Timer } from 'lucide-react';
 
 interface EndTimeDisplayProps {
   endTime?: number | null;
+  size?: 'normal' | 'large';
 }
 
-const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
+const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
+  endTime,
+  size = 'normal',
+}) => {
   if (typeof endTime !== 'number') {
     // If endTime is not a number (e.g., null, undefined, or wrong type), show nothing.
     return null;
@@ -24,13 +28,18 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
     const date = fromUnixTime(endTime);
     const displayTime = formatDistanceToNow(date, { addSuffix: true });
     const isPast = date.getTime() <= Date.now();
-    const label = isPast ? 'Ended' : 'Ends';
+    const label = isPast ? 'Closed' : 'Closes';
     const baseBadgeClasses = 'h-8 items-center px-3 text-xs leading-none';
     const outlineExtras = 'bg-background dark:bg-muted/50 border-border';
     const smallBadgeClassName =
       `${baseBadgeClasses} ${isPast ? '' : outlineExtras}`.trim();
+    // Desktop (md+) sizing, adjustable via size prop
+    const isLargeDesktop = size === 'large';
+    const desktopBaseBadgeClasses = isLargeDesktop
+      ? 'h-9 items-center px-3.5 text-sm leading-none'
+      : baseBadgeClasses;
     const largeBadgeClassName =
-      `${baseBadgeClasses} inline-flex ${isPast ? '' : outlineExtras}`.trim();
+      `${desktopBaseBadgeClasses} inline-flex ${isPast ? '' : outlineExtras}`.trim();
     const fullLabel = new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
       month: 'long',
@@ -68,7 +77,9 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({ endTime }) => {
             variant={isPast ? 'secondary' : 'outline'}
             className={largeBadgeClassName}
           >
-            <Timer className="h-3.5 w-3.5 mr-1 -mt-0.5 opacity-70" />
+            <Timer
+              className={`${isLargeDesktop ? 'h-4 w-4' : 'h-3.5 w-3.5'} mr-1 -mt-0.5 opacity-70`}
+            />
             {label} {displayTime}
             <span
               aria-hidden="true"

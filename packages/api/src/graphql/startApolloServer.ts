@@ -7,10 +7,6 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
-import costAnalysisModule from 'graphql-cost-analysis';
-
-const createCostAnalysis: any = // eslint-disable-line @typescript-eslint/no-explicit-any
-  (costAnalysisModule as any)?.default ?? costAnalysisModule; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // Import only the query (read-only) resolvers from generated TypeGraphQL
 import {
@@ -232,18 +228,13 @@ export const initializeApolloServer = async () => {
       return error;
     },
     introspection: true,
+    validationRules: [depthLimit(5)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
         includeCookies: true,
       }),
       responseCachePlugin(),
-    ],
-    validationRules: [
-      depthLimit(5),
-      createCostAnalysis({
-        maximumCost: 1000,
-      }),
     ],
   });
 

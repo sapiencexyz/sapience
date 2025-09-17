@@ -29,7 +29,7 @@ const MarketGroupHeader: React.FC<MarketGroupHeaderProps> = ({
           {displayQuestion}
         </h1>
         <div className="flex items-center gap-3 md:gap-6">
-          <EndTimeDisplay endTime={activeMarket?.endTimestamp} />
+          <EndTimeDisplay endTime={activeMarket?.endTimestamp} size="large" />
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import * as React from 'react';
@@ -199,17 +200,22 @@ const MarketCard = ({
               <div className="flex flex-col px-4 py-3 gap-3 h-full">
                 <div className="flex flex-col h-full min-w-0">
                   <h3 className="text-sm md:text-base leading-snug mb-1">
-                    <span
-                      className="transition-colors block overflow-hidden"
-                      style={{
-                        display: '-webkit-box',
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                      }}
+                    <Link
+                      href={`/markets/${chainShortName}:${marketAddress}`}
+                      className="group"
                     >
-                      {displayQuestion}
-                    </span>
+                      <span
+                        className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors block overflow-hidden group-hover:decoration-foreground/60"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {displayQuestion}
+                      </span>
+                    </Link>
                   </h3>
                   {canShowPredictionElement && (
                     <div className="text-xs md:text-sm text-muted-foreground mt-auto w-full">

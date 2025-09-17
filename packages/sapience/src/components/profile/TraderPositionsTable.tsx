@@ -233,17 +233,11 @@ export default function TraderPositionsTable({
         inferredMarketContext?.marketId)
   );
 
-  if (!positions || positions.length === 0) {
-    return <EmptyTabState message="No trades found" />;
-  }
-
-  const validPositions = positions.filter(
+  const allPositions = Array.isArray(positions) ? positions : [];
+  const validPositions = allPositions.filter(
     (p) => p && p.market && p.id && !p.isLP
   );
-
-  if (validPositions.length === 0) {
-    return <EmptyTabState message="No trades found" />;
-  }
+  const isEmpty = validPositions.length === 0;
 
   const hasMultipleMarkets = validPositions.some(
     (p) =>
@@ -695,6 +689,10 @@ export default function TraderPositionsTable({
     getSortedRowModel: getSortedRowModel(),
     autoResetAll: false,
   });
+
+  if (isEmpty) {
+    return <EmptyTabState message="No trades found" />;
+  }
 
   return (
     <div>
