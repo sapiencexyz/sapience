@@ -232,23 +232,22 @@ const SettingsPageContent = () => {
   const suggestedModels = [
     'anthropic/claude-sonnet-4:online',
     'anthropic/claude-opus-4.1:online',
-    'openai/gpt-4.1-mini:online',
     'openai/gpt-5:online',
     'perplexity/sonar:online',
     'perplexity/sonar-deep-research:online',
     'perplexity/sonar-pro:online',
   ];
   const trimmedModelInput = (modelInput || '').toLowerCase().trim();
-  const filteredModelSuggestions =
+  const displayModelSuggestions =
     trimmedModelInput.length === 0
-      ? []
+      ? suggestedModels
       : suggestedModels.filter((m) =>
           m.toLowerCase().includes(trimmedModelInput)
         );
   const isModelSuggestOpen =
     isModelFocused &&
-    trimmedModelInput.length >= 2 &&
-    filteredModelSuggestions.length > 0;
+    displayModelSuggestions.length > 0 &&
+    (trimmedModelInput.length === 0 || trimmedModelInput.length >= 2);
 
   const isHttpUrl = (value: string) => {
     try {
@@ -589,11 +588,11 @@ const SettingsPageContent = () => {
                           <div className="absolute z-50 mt-1 w-full bg-popover border border-border rounded-md shadow-md p-0">
                             <Command shouldFilter={false}>
                               <CommandList>
-                                {filteredModelSuggestions.length === 0 ? (
+                                {displayModelSuggestions.length === 0 ? (
                                   <CommandEmpty>No suggestions</CommandEmpty>
                                 ) : (
                                   <CommandGroup heading="Suggestions">
-                                    {filteredModelSuggestions.map((m) => (
+                                    {displayModelSuggestions.map((m) => (
                                       <CommandItem
                                         key={m}
                                         value={m}
