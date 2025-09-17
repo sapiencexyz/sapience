@@ -52,6 +52,7 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
     if (!id) return;
     addParlaySelection({ conditionId: id, question, prediction: true });
   }, [id, question, addParlaySelection]);
+  
   const handleNo = React.useCallback(() => {
     if (!id) return;
     addParlaySelection({ conditionId: id, question, prediction: false });

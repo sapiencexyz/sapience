@@ -1,18 +1,14 @@
 'use client';
-import { type UseFormReturn, useWatch } from 'react-hook-form';
-import { useEffect } from 'react';
+import { type UseFormReturn } from 'react-hook-form';
 import { Button } from '@/sapience/ui/index';
 import Image from 'next/image';
 
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { useAccount } from 'wagmi';
-import { parseUnits } from 'viem';
 import BetslipSinglesForm from './BetslipSinglesForm';
 import BetslipParlayForm from './BetslipParlayForm';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 
 interface BetslipContentProps {
   isParlayMode: boolean;
@@ -35,16 +31,16 @@ interface BetslipContentProps {
   isParlaySubmitting: boolean;
   parlayError?: string | null;
   isSubmitting: boolean;
-  // Optional minimum parlay wager (human units) to show and validate in the input
-  minParlayWager?: string;
-  parlayCollateralSymbol?: string;
-  parlayCollateralAddress?: `0x${string}`;
   parlayChainId?: number;
-  parlayCollateralDecimals?: number;
   // Auction integration (provided by parent to share a single WS connection)
   auctionId?: string | null;
   bids?: QuoteBid[];
   requestQuotes?: (params: AuctionParams | null) => void;
+  // Collateral configuration from useSubmitParlay hook
+  collateralToken?: `0x${string}`;
+  collateralSymbol?: string;
+  collateralDecimals?: number;
+  minWager?: string;
 }
 
 export const BetslipContent = ({
@@ -56,13 +52,13 @@ export const BetslipContent = ({
   isParlaySubmitting,
   parlayError,
   isSubmitting,
-  minParlayWager,
-  parlayCollateralSymbol,
-  parlayCollateralAddress,
   parlayChainId,
-  parlayCollateralDecimals,
   bids = [],
   requestQuotes,
+  collateralToken,
+  collateralSymbol,
+  collateralDecimals,
+  minWager,
 }: BetslipContentProps) => {
   const isMobile = useIsMobile();
   const {
@@ -73,53 +69,8 @@ export const BetslipContent = ({
   } = useBetSlipContext();
   const effectiveParlayMode = isParlayMode;
 
-  // Watch parlay form values to react to changes
-  const parlayWagerAmount = useWatch({
-    control: parlayMethods.control,
-    name: 'wagerAmount',
-  });
-
-  const { address: makerAddress } = useAccount();
-
-  // Trigger RFQ quote requests when selections or wager change
-  useEffect(() => {
-    if (!effectiveParlayMode) return;
-    if (!requestQuotes) return;
-    if (!makerAddress) return;
-    if (!parlaySelections || parlaySelections.length === 0) return;
-    const wagerStr = parlayWagerAmount || '0';
-    try {
-      const decimals = Number.isFinite(parlayCollateralDecimals as number)
-        ? (parlayCollateralDecimals as number)
-        : 18;
-      const wagerWei = parseUnits(wagerStr, decimals).toString();
-
-      const outcomes = parlaySelections.map((s) => ({
-        // For RFQ conditions, encode id as marketId and leave address zeroed
-        marketGroup: '0x0000000000000000000000000000000000000000',
-        marketId: Number.parseInt(s.conditionId || '0', 10) || 0,
-        prediction: !!s.prediction,
-      }));
-
-      const payload = buildAuctionStartPayload(outcomes);
-      const params: AuctionParams = {
-        wager: wagerWei,
-        resolver: payload.resolver,
-        predictedOutcomes: payload.predictedOutcomes,
-        maker: makerAddress,
-      };
-      requestQuotes(params);
-    } catch {
-      // ignore formatting errors
-    }
-  }, [
-    effectiveParlayMode,
-    requestQuotes,
-    parlaySelections,
-    parlayWagerAmount,
-    makerAddress,
-    parlayCollateralDecimals,
-  ]);
+  // Note: RFQ quote request logic is now handled inside BetslipParlayForm
+  // This was moved to reduce prop drilling and keep related logic together
 
   return (
     <>
@@ -178,12 +129,13 @@ export const BetslipContent = ({
               onSubmit={handleParlaySubmit}
               isSubmitting={isParlaySubmitting}
               error={parlayError}
-              minWager={minParlayWager}
-              collateralSymbol={parlayCollateralSymbol}
-              collateralAddress={parlayCollateralAddress}
               chainId={parlayChainId}
-              collateralDecimals={parlayCollateralDecimals}
               bids={bids}
+              requestQuotes={requestQuotes}
+              collateralToken={collateralToken}
+              collateralSymbol={collateralSymbol}
+              collateralDecimals={collateralDecimals}
+              minWager={minWager}
             />
           )}
         </div>
