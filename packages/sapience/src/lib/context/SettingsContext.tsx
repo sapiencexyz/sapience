@@ -21,6 +21,7 @@ type SettingsContextValue = {
   openrouterApiKey: string | null;
   researchAgentSystemMessage: string | null;
   researchAgentModel: string | null;
+  researchAgentTemperature: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setQuoterBaseUrl: (value: string | null) => void;
@@ -30,6 +31,7 @@ type SettingsContextValue = {
   setOpenrouterApiKey: (value: string | null) => void;
   setResearchAgentSystemMessage: (value: string | null) => void;
   setResearchAgentModel: (value: string | null) => void;
+  setResearchAgentTemperature: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -39,6 +41,7 @@ type SettingsContextValue = {
     arbitrumRpcUrl: string;
     researchAgentSystemMessage: string;
     researchAgentModel: string;
+    researchAgentTemperature: number;
   };
 };
 
@@ -52,6 +55,7 @@ const STORAGE_KEYS = {
   openrouterApiKey: 'sapience.settings.openrouterApiKey',
   researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
   researchAgentModel: 'sapience.settings.researchAgentModel',
+  researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
 } as const;
 
 function isHttpUrl(value: string): boolean {
@@ -171,6 +175,10 @@ export const SettingsProvider = ({
   const [researchAgentModelOverride, setResearchAgentModelOverride] = useState<
     string | null
   >(null);
+  const [
+    researchAgentTemperatureOverride,
+    setResearchAgentTemperatureOverride,
+  ] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -212,6 +220,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.researchAgentModel)
           : null;
+      const rtemp =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentTemperature)
+          : null;
       if (g && isHttpUrl(g)) setGraphqlOverride(g);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
@@ -225,6 +237,11 @@ export const SettingsProvider = ({
       if (ork) setOpenrouterApiKeyOverride(ork);
       if (rsm) setResearchAgentSystemMessageOverride(rsm);
       if (rmodel) setResearchAgentModelOverride(rmodel);
+      if (rtemp) {
+        const parsed = parseFloat(rtemp);
+        if (Number.isFinite(parsed))
+          setResearchAgentTemperatureOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -241,6 +258,7 @@ export const SettingsProvider = ({
       researchAgentSystemMessage:
         'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, and curious. You proactively search the web for the most recent information relevant to the questions being discussed.',
       researchAgentModel: 'anthropic/claude-sonnet-4:online',
+      researchAgentTemperature: 0.7,
     }),
     []
   );
@@ -283,6 +301,9 @@ export const SettingsProvider = ({
     : null;
   const researchAgentModel = mounted
     ? researchAgentModelOverride || defaults.researchAgentModel
+    : null;
+  const researchAgentTemperature = mounted
+    ? (researchAgentTemperatureOverride ?? defaults.researchAgentTemperature)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -436,6 +457,26 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setResearchAgentTemperature = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.researchAgentTemperature);
+        setResearchAgentTemperatureOverride(null);
+        return;
+      }
+      const clamped = Math.max(0, Math.min(2, Number(value)));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(
+        STORAGE_KEYS.researchAgentTemperature,
+        String(clamped)
+      );
+      setResearchAgentTemperatureOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -446,6 +487,7 @@ export const SettingsProvider = ({
     openrouterApiKey,
     researchAgentSystemMessage,
     researchAgentModel,
+    researchAgentTemperature,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
@@ -455,6 +497,7 @@ export const SettingsProvider = ({
     setOpenrouterApiKey,
     setResearchAgentSystemMessage,
     setResearchAgentModel,
+    setResearchAgentTemperature,
     defaults,
   };
 

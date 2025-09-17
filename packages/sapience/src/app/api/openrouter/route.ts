@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       apiKey?: string;
       headers?: { referer?: string; title?: string };
       stream?: boolean;
+      temperature?: number;
     };
 
     const allowedOrigin = getAllowedOriginFromRequest(req);
@@ -100,6 +101,8 @@ export async function POST(req: Request) {
       model: body.model || 'openai/gpt-4o',
       messages: body.messages,
       stream: Boolean(body.stream) && false, // disable streaming in v1
+      temperature:
+        typeof body.temperature === 'number' ? body.temperature : undefined,
     };
 
     const headers: Record<string, string> = {

@@ -6,6 +6,7 @@ import {
 } from '@sapience/ui/components/ui/toggle-group';
 import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
+import Slider from '@sapience/ui/components/ui/slider';
 
 import {
   Command,
@@ -137,6 +138,7 @@ const SettingsPageContent = () => {
     openrouterApiKey,
     researchAgentSystemMessage,
     researchAgentModel,
+    researchAgentTemperature,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
@@ -146,6 +148,7 @@ const SettingsPageContent = () => {
     setOpenrouterApiKey,
     setResearchAgentSystemMessage,
     setResearchAgentModel,
+    setResearchAgentTemperature,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -158,6 +161,7 @@ const SettingsPageContent = () => {
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState('');
   const [systemMessageInput, setSystemMessageInput] = useState('');
   const [modelInput, setModelInput] = useState('');
+  const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
   const [isModelFocused, setIsModelFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'configuration' | 'agent'>(
     'configuration'
@@ -225,6 +229,9 @@ const SettingsPageContent = () => {
     setOpenrouterKeyInput(openrouterApiKey ?? '');
     setSystemMessageInput(researchAgentSystemMessage ?? '');
     setModelInput(researchAgentModel ?? defaults.researchAgentModel);
+    setTemperatureInput(
+      researchAgentTemperature ?? defaults.researchAgentTemperature
+    );
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
@@ -646,6 +653,31 @@ const SettingsPageContent = () => {
                         Write instructions for your agent. This is automatically
                         included before every chat with information about the
                         market you're viewing.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="research-temperature">Temperature</Label>
+                      <div className="space-y-2.5">
+                        <Slider
+                          value={[temperatureInput]}
+                          onValueChange={(vals) => {
+                            const v = Array.isArray(vals) ? vals[0] : 0.7;
+                            setTemperatureInput(v);
+                          }}
+                          onValueCommit={(vals) => {
+                            const v = Array.isArray(vals) ? vals[0] : 0.7;
+                            setResearchAgentTemperature(v);
+                          }}
+                          min={0}
+                          max={2}
+                          step={0.01}
+                          className="w-full"
+                          id="research-temperature"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Lower is focused. Higher is creative.
                       </p>
                     </div>
                   </div>

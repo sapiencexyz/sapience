@@ -89,6 +89,7 @@ const ResearchAgent: React.FC = () => {
     researchAgentModel,
     researchAgentSystemMessage,
     defaults,
+    researchAgentTemperature,
   } = useSettings();
   const params = useParams();
 
@@ -363,6 +364,10 @@ const ResearchAgent: React.FC = () => {
           messages: turnMessages,
           model: modelToUse,
           apiKey: openrouterApiKey,
+          temperature:
+            typeof researchAgentTemperature === 'number'
+              ? researchAgentTemperature
+              : undefined,
           headers: {
             referer:
               typeof window !== 'undefined' ? window.location.href : undefined,
