@@ -60,7 +60,7 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
 
   return (
     <div className="border-b last:border-b-0 border-border">
-      <div className="bg-background border-muted dark:bg-muted/50 flex flex-row transition-colors items-stretch relative">
+      <div className="bg-card border-muted flex flex-row transition-colors items-stretch relative">
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
           style={{ backgroundColor: color, margin: '-1px 0' }}

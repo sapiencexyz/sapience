@@ -168,7 +168,7 @@ export default function YesNoWagerForm({
           </div>
         </div>
         <div>
-          <div className="my-4">
+          <div className="mt-2 mb-3">
             <WagerInput
               collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
               collateralAddress={

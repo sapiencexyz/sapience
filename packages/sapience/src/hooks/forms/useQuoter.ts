@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { parseUnits } from 'viem';
 import type { MarketGroup as MarketGroupType } from '@sapience/ui/types/graphql';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { fetchQuoteByUrl, toQuoteUrl } from '~/hooks/forms/quoteApi';
 
 // Define type for quoter response data
 export interface QuoteData {
@@ -99,45 +100,16 @@ export function useQuoter({
       ) {
         throw new Error('Missing required parameters for quote');
       }
-
-      // Prefer explicit Quoter base URL; fall back to relayer base; finally env base
       const baseCandidate =
         quoterBaseUrl || relayerBaseUrl || process.env.NEXT_PUBLIC_FOIL_API_URL;
-      const base = (() => {
-        if (!baseCandidate) return null;
-        try {
-          const u = new URL(baseCandidate);
-          return u.origin; // ensure origin-only to avoid double paths
-        } catch {
-          // best-effort trim trailing slash
-          return baseCandidate.endsWith('/')
-            ? baseCandidate.slice(0, -1)
-            : baseCandidate;
-        }
-      })();
-      if (!base) {
-        throw new Error('Quoter URL not configured.');
-      }
-
-      // If base already includes '/quoter', avoid duplicating the path
-      const hasQuoter = (() => {
-        try {
-          const u = new URL(base);
-          return u.pathname === '/quoter' || u.pathname.startsWith('/quoter/');
-        } catch {
-          return base.endsWith('/quoter') || base.includes('/quoter/');
-        }
-      })();
-      const prefix = hasQuoter ? base : `${base}/quoter`;
-      const apiUrl = `${prefix}/${marketData.chainId}/${marketData.address}/${marketId}/?expectedPrice=${expectedPrice}&collateralAvailable=${parsedWagerAmount.toString()}&maxIterations=${10}`;
-
-      const response = await fetch(apiUrl);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-      }
-
+      const apiUrl = toQuoteUrl({
+        baseCandidate,
+        marketData,
+        marketId,
+        expectedPrice,
+        collateralAvailable: parsedWagerAmount,
+      });
+      const data = await fetchQuoteByUrl(apiUrl);
       return data as QuoteData;
     },
     // Only enable the query if all required parameters are present and wager amount is valid

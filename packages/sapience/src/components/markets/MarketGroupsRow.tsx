@@ -249,7 +249,7 @@ const MarketGroupsRow = ({
   return (
     <div className="w-full">
       {/* Main Row Container for Color Bar + Content */}
-      <div className="bg-background border-muted dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[88px] md:min-h-[72px] relative">
+      <div className="bg-card border-muted flex flex-row transition-colors items-stretch min-h-[88px] md:min-h-[72px] relative">
         {/* Colored Bar (Full Height) */}
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
@@ -257,10 +257,10 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container */}
-        <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-5 py-4 md:py-3 gap-3">
+        <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
           <div className="flex-grow">
-            <h3 className="text-lg mb-1">
+            <h3 className="text-md mb-1">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
@@ -290,30 +290,11 @@ const MarketGroupsRow = ({
             )}
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 <span className="text-muted-foreground">
                   Market Prediction:{' '}
                 </span>
                 <MarketPrediction />
-                {marketClassification !==
-                  MarketGroupClassificationEnum.MULTIPLE_CHOICE &&
-                  activeMarket && (
-                    <Button
-                      variant="link"
-                      size="xs"
-                      asChild
-                      className="h-6 px-0 ml-5 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
-                    >
-                      <Link
-                        href={`/markets/${chainShortName}:${marketAddress}/${activeMarket.marketId}`}
-                        className="group inline-flex items-center"
-                      >
-                        <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
-                          Details
-                        </span>
-                      </Link>
-                    </Button>
-                  )}
               </div>
             )}
           </div>
@@ -444,7 +425,7 @@ const MarketGroupsRow = ({
               className="overflow-hidden bg-background/95 border-l-4 border-muted"
               style={{ borderLeftColor: color }}
             >
-              <div className="px-6  dark:bg-muted/50">
+              <div className="px-4  bg-card">
                 {/* Panel Content */}
                 <div className="overflow-visible">
                   {sortedMarkets.length > 0 ? (
@@ -456,34 +437,24 @@ const MarketGroupsRow = ({
                         >
                           {/* Left Side: Option Name + Prediction */}
                           <div className="flex-grow">
-                            <div className="font-medium text-foreground inline-flex items-center gap-2">
-                              <span>
-                                {marketItem.optionName ||
-                                  `Market ${marketItem.marketId}`}
-                              </span>
+                            <div className="text-foreground inline-flex items-center gap-2 mb-1">
+                              <Link
+                                href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
+                                className="group inline-flex items-center"
+                              >
+                                <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
+                                  {marketItem.optionName ||
+                                    `Market ${marketItem.marketId}`}
+                                </span>
+                              </Link>
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               <span className="text-muted-foreground">
                                 Market Prediction:{' '}
                               </span>
                               <IndividualMarketPrediction
                                 marketItem={marketItem}
                               />
-                              <Button
-                                variant="link"
-                                size="xs"
-                                asChild
-                                className="h-6 px-0 ml-2 inline-flex items-center text-sm font-normal text-muted-foreground hover:text-foreground"
-                              >
-                                <Link
-                                  href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
-                                  className="group inline-flex items-center"
-                                >
-                                  <span className="underline decoration-1 decoration-foreground/10 underline-offset-4 transition-colors group-hover:decoration-foreground/60">
-                                    Details
-                                  </span>
-                                </Link>
-                              </Button>
                             </div>
                           </div>
 

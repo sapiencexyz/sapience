@@ -39,7 +39,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
 
   if (isExpired && !isSettled) {
     return (
-      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center h-full">
+      <div className="bg-card border border-border rounded shadow-sm p-5 text-center h-full">
         <div className="flex flex-col items-center justify-center space-y-2 h-full">
           <LottieLoader width={40} height={40} />
           <h3 className="text-xl font-medium">Awaiting Settlement</h3>
@@ -79,7 +79,7 @@ const MarketStatusDisplay: React.FC<MarketStatusDisplayProps> = ({
     }
 
     return (
-      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-5 text-center h-full">
+      <div className="bg-card border border-border rounded shadow-sm p-5 text-center h-full">
         <div className="flex flex-col items-center justify-center space-y-4 h-full">
           <div className="rounded-full bg-green-100 dark:bg-green-800 p-2">
             <svg

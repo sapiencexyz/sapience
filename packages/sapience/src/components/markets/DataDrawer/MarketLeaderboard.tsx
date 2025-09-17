@@ -132,7 +132,7 @@ const MarketLeaderboard = ({
   }
 
   return (
-    <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+    <div className="rounded border bg-card overflow-hidden">
       <Table className="table-auto">
         <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
           {table.getHeaderGroups().map((headerGroup) => (

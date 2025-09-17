@@ -51,7 +51,7 @@ const QuestionItem = ({
     <div className={`w-full ${borderClass}`}>
       <button
         type="button"
-        className={`w-full bg-background border-muted dark:bg-muted/50 flex flex-row transition-colors items-stretch min-h-[48px] relative hover:bg-muted/50 ${selectedClass} ${className}`}
+        className={`w-full bg-card border-muted flex flex-row transition-colors items-stretch min-h-[48px] relative hover:bg-muted/50 ${selectedClass} ${className}`}
         onClick={() => onClick(item)}
       >
         {/* Colored Bar (Full Height) */}

@@ -154,11 +154,12 @@ export default function BetslipParlayForm({
             <div key={s.id} className="pb-4 mb-4 border-b border-border">
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <h3 className="font-medium text-foreground pr-2 text-sm md:text-base whitespace-normal break-words">
+                  <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
                     {s.question}{' '}
                     <span className="relative -top-0.5">
                       <Badge
-                        className={`${s.prediction ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+                        variant="outline"
+                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
                       >
                         {s.prediction ? 'Yes' : 'No'}
                       </Badge>
@@ -177,7 +178,7 @@ export default function BetslipParlayForm({
             </div>
           ))}
 
-          <div className="pt-1">
+          <div className="pt-0">
             <WagerInput
               minAmount={minWager}
               collateralSymbol={collateralSymbol}

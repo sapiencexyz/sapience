@@ -13,6 +13,7 @@ import {
 
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
+import ClosedTraderPositionsTable from '~/components/profile/ClosedTraderPositionsTable';
 import LpPositionsTable from '~/components/profile/LpPositionsTable';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
@@ -60,6 +61,24 @@ const ProfilePageContent = () => {
     address,
   });
   const traderPositions = (positionsData || []).filter((p) => !p.isLP);
+  const traderPositionsOpen = traderPositions.filter((p) => {
+    try {
+      const collateralStr = p.collateral ?? '0';
+      const hasCollateral = BigInt(collateralStr) > 0n;
+      return hasCollateral && !p.isSettled;
+    } catch {
+      return !p.isSettled;
+    }
+  });
+  const traderPositionsClosed = traderPositions.filter((p) => {
+    try {
+      const collateralStr = p.collateral ?? '0';
+      const hasCollateral = BigInt(collateralStr) > 0n;
+      return !hasCollateral || !!p.isSettled;
+    } catch {
+      return !!p.isSettled;
+    }
+  });
   const lpPositions = (positionsData || []).filter((p) => p.isLP);
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
@@ -226,10 +245,31 @@ const ProfilePageContent = () => {
             </TabsList>
 
             <TabsContent value="trades">
-              <TraderPositionsTable
-                positions={traderPositions}
-                context="profile"
-              />
+              {traderPositionsOpen.length > 0 ? (
+                <div>
+                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                    Active
+                  </h3>
+                  <TraderPositionsTable
+                    positions={traderPositionsOpen}
+                    context="profile"
+                  />
+                </div>
+              ) : null}
+              {traderPositionsClosed.length > 0 ? (
+                <div className="mt-6">
+                  <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                    Closed
+                  </h3>
+                  <ClosedTraderPositionsTable
+                    positions={traderPositionsClosed}
+                  />
+                </div>
+              ) : null}
+              {traderPositionsOpen.length === 0 &&
+              traderPositionsClosed.length === 0 ? (
+                <EmptyProfileState />
+              ) : null}
             </TabsContent>
 
             <TabsContent value="auction">

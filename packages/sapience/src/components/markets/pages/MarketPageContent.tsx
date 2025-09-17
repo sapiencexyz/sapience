@@ -343,7 +343,7 @@ const MarketPageContent = () => {
               <div className="flex flex-col gap-6 lg:flex-row lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative flex-1 min-w-0 h-[320px] md:h-[460px]">
-                  <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                  <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
                     <div className="flex-1 relative">
                       <div className="absolute top-0 left-0 z-10">
                         <div className="flex items-center gap-2">
@@ -393,7 +393,7 @@ const MarketPageContent = () => {
               <div className="flex flex-col gap-6 lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
-                  <div className="w-full flex-1 relative bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
+                  <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
                     <div className="flex-1 relative">
                       <div className="absolute top-0 left-0 z-10">
                         <div className="flex items-center gap-2">
@@ -451,7 +451,7 @@ const MarketPageContent = () => {
 
                 {/* Forms Column */}
                 <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2">
-                  <div className="bg-background dark:bg-muted/50 rounded border border-border shadow-sm overflow-auto lg:h-[460px]">
+                  <div className="bg-card rounded border border-border shadow-sm overflow-auto lg:h-[460px]">
                     <div className="w-full">
                       {!positionId && (
                         <div className="px-3 py-1 border-b border-border">

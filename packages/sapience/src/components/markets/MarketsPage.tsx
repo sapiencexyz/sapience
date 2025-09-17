@@ -686,7 +686,7 @@ const MarketsPage = () => {
                         <h3 className="font-medium text-sm text-muted-foreground mb-2">
                           {formatEndDate(dayEndTimes[dayKey])}
                         </h3>
-                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {marketGroupsByDay[dayKey].map((marketGroup) => (
                             <motion.div
                               layout
@@ -767,7 +767,7 @@ const MarketsPage = () => {
                             ? 'No end time'
                             : formatEndDate(rfqDayEndTimes[dayKey])}
                         </h3>
-                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {[...(rfqConditionsByDay[dayKey] || [])]
                             .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
                             .map((c) => {
@@ -799,7 +799,7 @@ const MarketsPage = () => {
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
         <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
-          <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
+          <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip variant="panel" isParlayMode={parlayMode} />
             </div>

@@ -118,7 +118,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (isLoading) {
     return (
       <div
-        className={`w-full border border-border rounded bg-background dark:bg-muted/50 shadow-sm text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border border-border rounded bg-card shadow-sm text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
         <LottieLoader width={32} height={32} />
       </div>
@@ -143,7 +143,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
   if (hasNoLiquidity) {
     return (
       <div
-        className={`w-full border border-border rounded bg-background dark:bg-muted/50 shadow-sm text-foreground flex items-center justify-center min-h-[200px] ${className}`}
+        className={`w-full border border-border rounded bg-card shadow-sm text-foreground flex items-center justify-center min-h-[200px] ${className}`}
       >
         <p className="text-sm text-muted-foreground">
           No liquidity data available for this range.
@@ -183,7 +183,7 @@ const OrderBookChart: React.FC<OrderBookChartProps> = ({
 
   return (
     <div
-      className={`w-full border border-border rounded shadow-sm bg-background dark:bg-muted/50 text-foreground ${className} h-full flex flex-col`}
+      className={`w-full border border-border rounded shadow-sm bg-card text-foreground ${className} h-full flex flex-col`}
     >
       {/* Header */}
       <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground/70 tracking-widest transition-all duration-300 font-semibold flex-shrink-0 py-1.5 px-2 border-b">

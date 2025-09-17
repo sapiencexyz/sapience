@@ -562,6 +562,12 @@ export default function LpPositionsTable({
                         marketAddress={marketAddress}
                         chainId={chainId}
                         isMarketSettled={position.market?.settled || false}
+                        collateralSymbol={
+                          marketGroup?.collateralSymbol ?? undefined
+                        }
+                        collateralDecimals={
+                          marketGroup?.collateralDecimals || 18
+                        }
                         onSuccess={() => {
                           console.log(
                             `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
@@ -574,7 +580,7 @@ export default function LpPositionsTable({
                           <TooltipTrigger asChild>
                             <span>
                               <Button size="sm" variant="outline" disabled>
-                                Settle
+                                Claim
                               </Button>
                             </span>
                           </TooltipTrigger>
@@ -661,7 +667,7 @@ export default function LpPositionsTable({
 
   return (
     <div>
-      <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+      <div className="rounded border bg-card overflow-hidden">
         <Table className="table-auto">
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             {table.getHeaderGroups().map((headerGroup) => (

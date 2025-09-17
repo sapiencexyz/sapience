@@ -50,7 +50,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ isMobile, value, onChange }) => {
           placeholder={isMobile ? 'Search' : 'Search questions...'}
           value={value}
           onChange={onChange}
-          className="w-full text-lg md:text-3xl font-heading font-normal bg-transparent rounded-none border-0 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-1.5 md:py-3 pl-8 md:pl-14 pr-8 md:pr-14"
+          className="w-full text-lg md:text-3xl font-heading font-normal bg-transparent rounded-none border-0 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-1.5 md:py-3 pl-8 md:pl-16 pr-8 md:pr-14"
         />
         <button
           type="button"

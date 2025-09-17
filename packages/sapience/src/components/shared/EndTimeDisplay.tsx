@@ -30,7 +30,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
     const isPast = date.getTime() <= Date.now();
     const label = isPast ? 'Closed' : 'Closes';
     const baseBadgeClasses = 'h-8 items-center px-3 text-xs leading-none';
-    const outlineExtras = 'bg-background dark:bg-muted/50 border-border';
+    const outlineExtras = 'bg-card border-border';
     const smallBadgeClassName =
       `${baseBadgeClasses} ${isPast ? '' : outlineExtras}`.trim();
     // Desktop (md+) sizing, adjustable via size prop

@@ -149,7 +149,7 @@ const WagerForm = ({
   }
 
   return (
-    <div className="bg-background dark:bg-muted/50 p-5 rounded shadow-sm border flex flex-col flex-1">
+    <div className="bg-card p-5 rounded shadow-sm border flex flex-col flex-1">
       <div className="flex items-center justify-between mb-1">
         <h2 className="text-2xl font-medium">Make a Prediction</h2>
         {marketClassification === MarketGroupClassification.MULTIPLE_CHOICE && (
@@ -439,7 +439,7 @@ const MarketGroupPageContent = () => {
           <div className="flex flex-col lg:flex-row gap-6 lg:items-stretch">
             {/* Left Column (Chart/List) */}
             <div className="flex flex-col w-full md:flex-1 min-w-0">
-              <div className="bg-background dark:bg-muted/50 border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
+              <div className="bg-card border border-border rounded flex flex-col shadow-sm flex-1 min-h-[300px]">
                 <div className="flex-1">
                   {isDeployed ? (
                     <MarketGroupChart
@@ -593,7 +593,7 @@ const MarketGroupPageContent = () => {
                   )}
                   <TabsContent value="forecasts" className="mt-0">
                     <div className="pt-1">
-                      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-6">
+                      <div className="bg-card border border-border rounded shadow-sm p-6">
                         <div className="space-y-4">
                           {isPastEnd ? (
                             <Comments
@@ -798,7 +798,7 @@ const MarketGroupPageContent = () => {
                               key={market.id}
                               href={`${pathname}/${market.marketId}`}
                               onClick={() => setShowMarketSelector(false)}
-                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
+                              className="border-muted bg-card flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
                               style={{
                                 backgroundColor: unselectedBg,
                                 borderColor,
@@ -847,7 +847,7 @@ const MarketGroupPageContent = () => {
                               key={market.id}
                               href={`${pathname}/${market.marketId}`}
                               onClick={() => setShowMarketSelector(false)}
-                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
+                              className="border-muted bg-card flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2"
                               style={{
                                 backgroundColor: unselectedBg,
                                 borderColor,
@@ -896,7 +896,7 @@ const MarketGroupPageContent = () => {
                               key={market.id}
                               href={`${pathname}/${market.marketId}`}
                               onClick={() => setShowMarketSelector(false)}
-                              className="border-muted dark:bg-muted/50 flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2 opacity-75"
+                              className="border-muted bg-card flex flex-row items-center transition-colors border border-border rounded-md shadow-sm px-3 py-2 opacity-75"
                               style={{
                                 backgroundColor: unselectedBg,
                                 borderColor,

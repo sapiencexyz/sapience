@@ -379,7 +379,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
     return (
       <div className="space-y-6">
         {showHeaderText && <h3 className="text-2xl font-medium">Wagers</h3>}
-        <div className="rounded border bg-background dark:bg-muted/50 p-6 text-center text-muted-foreground">
+        <div className="rounded border bg-card p-6 text-center text-muted-foreground">
           No wagers yet...
         </div>
       </div>
@@ -389,7 +389,7 @@ const WagersTable: React.FC<WagersTableProps> = ({
   return (
     <div className="space-y-6">
       {showHeaderText && <h3 className="text-2xl font-medium">Wagers</h3>}
-      <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+      <div className="rounded border bg-card overflow-hidden">
         <Table className="table-auto">
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             {table.getHeaderGroups().map((headerGroup) => (

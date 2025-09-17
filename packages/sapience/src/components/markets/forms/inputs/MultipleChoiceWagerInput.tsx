@@ -18,7 +18,7 @@ export default function MultipleChoiceWagerInput({
   const isFlippedFieldName = `positions.${positionId}.isFlipped`;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div>
         <MultipleChoiceWagerChoiceSelect
           name={predictionFieldName}
