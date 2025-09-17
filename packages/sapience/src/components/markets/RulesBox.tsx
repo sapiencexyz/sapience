@@ -1,12 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useLayoutEffect,
+} from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface RulesBoxProps {
   text?: string | null;
   collapsedMaxHeight?: number; // in px
   className?: string;
+  forceExpanded?: boolean;
 }
 
 // Collapsible text container with gradient fade and animated expand/collapse
@@ -14,6 +22,7 @@ const RulesBox: React.FC<RulesBoxProps> = ({
   text,
   collapsedMaxHeight = 160,
   className,
+  forceExpanded = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
@@ -33,7 +42,7 @@ const RulesBox: React.FC<RulesBoxProps> = ({
     setNeedsCollapse(measured > collapsedMaxHeight + 2); // small buffer
   }, [collapsedMaxHeight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     recomputeHeights();
   }, [recomputeHeights, resolvedText]);
 
@@ -55,10 +64,12 @@ const RulesBox: React.FC<RulesBoxProps> = ({
     return () => win?.removeEventListener?.('resize', listener);
   }, [recomputeHeights]);
 
+  const effectiveExpanded = forceExpanded || isExpanded;
+
   const targetHeight = useMemo(() => {
     if (!needsCollapse) return 'auto';
-    return isExpanded ? contentHeight : collapsedMaxHeight;
-  }, [needsCollapse, isExpanded, contentHeight, collapsedMaxHeight]);
+    return effectiveExpanded ? contentHeight : collapsedMaxHeight;
+  }, [needsCollapse, effectiveExpanded, contentHeight, collapsedMaxHeight]);
 
   return (
     <div className={className}>
@@ -78,16 +89,16 @@ const RulesBox: React.FC<RulesBoxProps> = ({
             </div>
           </div>
 
-          {needsCollapse && !isExpanded && (
+          {needsCollapse && !effectiveExpanded && (
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16">
               <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent dark:from-muted/80" />
             </div>
           )}
         </motion.div>
 
-        {needsCollapse && (
+        {needsCollapse && !forceExpanded && (
           <AnimatePresence initial={false}>
-            {!isExpanded && (
+            {!effectiveExpanded && (
               <motion.button
                 type="button"
                 onClick={() => setIsExpanded(true)}

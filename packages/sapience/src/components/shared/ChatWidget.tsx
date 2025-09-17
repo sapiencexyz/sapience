@@ -97,7 +97,10 @@ const ChatWidget = () => {
                 closeBtnRef={closeBtnRef as React.RefObject<HTMLButtonElement>}
                 onHeaderPointerDown={onHeaderPointerDown}
               />
-              <ChatMessages messages={messages} showLoader={canChat} />
+              <ChatMessages
+                messages={messages}
+                showLoader={messages.length === 0}
+              />
               <ChatInput
                 value={pendingText}
                 onChange={setPendingText}

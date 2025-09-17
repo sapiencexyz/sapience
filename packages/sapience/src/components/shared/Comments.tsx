@@ -43,14 +43,14 @@ export enum CommentFilters {
   AllMultichoiceQuestions = 'all-multichoice-questions',
   FilterByAccount = 'my-predictions',
   EconomyFinanceCategory = 'economy-finance',
-  DecentralizedComputeCategory = 'decentralized-compute',
+  DecentralizedComputeCategory = 'crypto',
   EnergyDePINCategory = 'energy-depin',
-  ClimateChangeCategory = 'climate-change',
+  ClimateChangeCategory = 'weather',
   GeopoliticsCategory = 'geopolitics',
   BiosecurityCategory = 'tech-science',
   SpaceExplorationCategory = 'space-exploration',
   EmergingTechnologiesCategory = 'emerging-technologies',
-  AthleticsCategory = 'athletics',
+  AthleticsCategory = 'sports',
 }
 
 interface Comment {

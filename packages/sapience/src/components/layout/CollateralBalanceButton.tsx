@@ -14,6 +14,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { formatFiveSigFigs } from '~/lib/utils/util';
+import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/CreateMarketGroupForm';
 
 interface CollateralBalanceButtonProps {
   onClick?: () => void;
@@ -31,12 +32,11 @@ export default function CollateralBalanceButton({
 
   const accountAddress = connectedWallet?.address as `0x${string}` | undefined;
 
-  const SUSDE_ADDRESS_ARBITRUM =
-    '0xEedD0eD0E6cC8aDC290189236D9645393AE54BC3' as `0x${string}`; // '0x211Cc4DD073734dA055fbF44a2b4667d5E5fE5d2'
+  const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET as `0x${string}`;
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
-    address: SUSDE_ADDRESS_ARBITRUM,
+    address: collateralAssetAddress,
     functionName: 'decimals',
     chainId: 42161,
     query: { enabled: Boolean(accountAddress) },
@@ -44,7 +44,7 @@ export default function CollateralBalanceButton({
 
   const { data: balance } = useReadContract({
     abi: erc20Abi,
-    address: SUSDE_ADDRESS_ARBITRUM,
+    address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: accountAddress ? [accountAddress] : undefined,
     chainId: 42161,

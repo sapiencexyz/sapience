@@ -4,9 +4,7 @@ import { useState, useCallback, useRef } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
-import Link from 'next/link';
 
-// Import popover components
 import {
   Tooltip,
   TooltipContent,
@@ -16,13 +14,13 @@ import {
 import Comments, { CommentFilters } from '../../components/shared/Comments';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
-// import AskForm from '~/components/shared/AskForm';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useEnrichedMarketGroups } from '~/hooks/graphql/useMarketGroups';
 import QuestionSuggestions from '~/components/markets/QuestionSuggestions';
 import WalletAddressPopover from '~/components/markets/DataDrawer/WalletAddressPopover';
 import QuestionSelect from '~/components/shared/QuestionSelect';
 import LottieLoader from '~/components/shared/LottieLoader';
+import SubmitForecastsBlurb from '~/components/shared/SubmitForecastsBlurb';
 
 type TabsHeaderProps = {
   isAskTooltipOpen: boolean;
@@ -232,32 +230,7 @@ const ForecastPageImp = () => {
 
           {/* Lead text */}
           <div className="px-6 pt-6">
-            <p className="text-lg leading-relaxed text-muted-foreground">
-              Submit forecasts on{' '}
-              <a
-                href="https://attest.org"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-              >
-                Ethereum
-              </a>{' '}
-              or{' '}
-              <Link
-                href="/bots"
-                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-              >
-                deploy an agent
-              </Link>{' '}
-              that does. Forecasts can{' '}
-              <Link
-                href="/leaderboard#accuracy"
-                className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-              >
-                provide signal
-              </Link>{' '}
-              for prediction market participants and trigger automation.
-            </p>
+            <SubmitForecastsBlurb />
           </div>
 
           {/* Market Selector (direct market search) - always visible */}

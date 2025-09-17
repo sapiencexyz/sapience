@@ -107,7 +107,7 @@ const getTransactionTypeDisplay = (type: string): TransactionTypeDisplay => {
 
 const MarketDataTables = () => {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [selectedTab, setSelectedTab] = useState('transactions');
+  const [, setSelectedTab] = useState('transactions');
 
   // Get market context data
   const {
@@ -504,13 +504,6 @@ const MarketDataTables = () => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  const tabTitles: { [key: string]: string } = {
-    leaderboard: 'Leaderboard',
-    transactions: 'Transactions',
-    'trader-positions': 'Trades',
-    'lp-positions': 'Liquidity',
-  };
-
   const getExplorerTxUrl = (id: number | undefined, txHash?: string | null) => {
     if (!id || !txHash) return null;
     const chainObj = Object.values(chains).find((c: any) => c?.id === id);
@@ -662,33 +655,45 @@ const MarketDataTables = () => {
         className="w-full"
         onValueChange={setSelectedTab}
       >
-        <div className="flex flex-col md:flex-row justify-between w-full items-start md:items-center mb-3 flex-shrink-0 gap-3">
-          <TabsList>
-            <TabsTrigger value="leaderboard">
-              <TrophyIcon className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Leaderboard</span>
+        <div className="flex flex-col md:flex-row justify-between w-full items-center md:items-center mb-3 flex-shrink-0 gap-3">
+          <TabsList className="order-2 md:order-1 grid w-full md:w-auto grid-cols-1 md:grid-cols-none md:grid-flow-col md:auto-cols-auto h-auto gap-2">
+            <TabsTrigger
+              className="w-full md:w-auto justify-center md:justify-start"
+              value="leaderboard"
+            >
+              <TrophyIcon className="h-4 w-4 mr-2" />
+              <span>Leaderboard</span>
             </TabsTrigger>
-            <TabsTrigger value="transactions">
-              <ListIcon className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Transactions</span>
+            <TabsTrigger
+              className="w-full md:w-auto justify-center md:justify-start"
+              value="transactions"
+            >
+              <ListIcon className="h-4 w-4 mr-2" />
+              <span>Transactions</span>
             </TabsTrigger>
-            <TabsTrigger value="trader-positions">
-              <ArrowLeftRightIcon className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Trades</span>
+            <TabsTrigger
+              className="w-full md:w-auto justify-center md:justify-start"
+              value="trader-positions"
+            >
+              <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
+              <span>Trades</span>
             </TabsTrigger>
-            <TabsTrigger value="lp-positions">
-              <DropletsIcon className="h-4 w-4 md:mr-2" />
-              <span className="hidden md:inline">Liquidity</span>
+            <TabsTrigger
+              className="w-full md:w-auto justify-center md:justify-start"
+              value="lp-positions"
+            >
+              <DropletsIcon className="h-4 w-4 mr-2" />
+              <span>Liquidity</span>
             </TabsTrigger>
           </TabsList>
-          <DataDrawerFilter
-            address={walletAddress}
-            onAddressChange={setWalletAddress}
-          />
+          <div className="order-1 md:order-2 w-full md:w-auto md:ml-auto">
+            <DataDrawerFilter
+              address={walletAddress}
+              onAddressChange={setWalletAddress}
+            />
+          </div>
         </div>
-        <h2 className="text-2xl font-semibold mt-6 md:hidden">
-          {tabTitles[selectedTab]}
-        </h2>
+        {/* Removed mobile-only heading under tabs */}
         <TabsContent value="leaderboard">
           <div>
             <MarketLeaderboard

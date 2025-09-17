@@ -18,7 +18,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#4ADE80', // green-400
   },
   {
-    id: 'decentralized-compute',
+    id: 'crypto',
     name: 'Crypto',
     resources: [
       'ethereum-gas',
@@ -46,7 +46,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#C084FC', // purple-400
   },
   {
-    id: 'climate-change',
+    id: 'weather',
     name: 'Weather',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -91,7 +91,7 @@ export const FOCUS_AREAS: FocusArea[] = [
     color: '#FBBF24', // amber-400
   },
   {
-    id: 'athletics',
+    id: 'sports',
     name: 'Sports',
     resources: [],
     iconSvg: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

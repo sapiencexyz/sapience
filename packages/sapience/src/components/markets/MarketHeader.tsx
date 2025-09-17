@@ -155,7 +155,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   return (
     <div className="w-full pb-8">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-col gap-6 lg:gap-3">
+        <div className="flex flex-col gap-2 lg:gap-3">
           <h1 className="text-2xl md:text-4xl font-normal mb-0 leading-tight flex items-center gap-2.5">
             {displayQuestion}
           </h1>

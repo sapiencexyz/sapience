@@ -29,4 +29,3 @@ export class ProfitRankType {
   @Field(() => Int)
   totalParticipants!: number;
 }
-

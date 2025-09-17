@@ -18,7 +18,7 @@ const DataDrawerFilter = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 w-full justify-start md:w-auto">
       <Button
         variant="outline"
         onClick={() => onAddressChange(null)}
