@@ -19,6 +19,14 @@ import {
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { FileText, Upload } from 'lucide-react';
 import { useAccount, useChainId } from 'wagmi';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@sapience/ui/components/ui/table';
 
 import {
   DEFAULT_FACTORY_ADDRESS,
@@ -39,7 +47,7 @@ import {
   DEFAULT_MAX_PRICE_TICK,
   DEFAULT_BASE_TOKEN_NAME,
   DEFAULT_QUOTE_TOKEN_NAME,
-} from './CreateMarketGroupForm';
+} from './constants';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -58,6 +66,7 @@ type Grouped = {
   key: GroupKey;
   rows: CsvRow[];
   errors: string[];
+  rowIndices: number[];
 };
 
 type ImportResult = {
@@ -85,6 +94,9 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
   const [isImporting, setIsImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ImportResult[] | null>(null);
+  const [rowErrorsMap, setRowErrorsMap] = useState<Record<number, string[]>>(
+    {}
+  );
 
   const categoryIds = useMemo(() => new Set(FOCUS_AREAS.map((a) => a.id)), []);
 
@@ -133,6 +145,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
       return;
     }
     const groupsMap = new Map<GroupKey, Grouped>();
+    const perRowErrors: Record<number, string[]> = {};
     rows.forEach((row, idx) => {
       const rowErrors: string[] = [];
       const groupKey = requiredString(row, 'groupKey', rowErrors);
@@ -163,10 +176,13 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
         key: groupKey,
         rows: [],
         errors: [],
+        rowIndices: [],
       };
       groupedEntry.rows.push(row);
+      groupedEntry.rowIndices.push(idx);
       groupedEntry.errors.push(...rowErrors.map((e) => `Row ${idx + 2}: ${e}`));
       groupsMap.set(groupKey, groupedEntry);
+      perRowErrors[idx] = rowErrors;
     });
 
     const groups = Array.from(groupsMap.values());
@@ -188,6 +204,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
     });
 
     setGrouped(groups);
+    setRowErrorsMap(perRowErrors);
     setValidated(true);
   };
 
@@ -390,25 +407,70 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
           {validated ? (
             <div className="space-y-4">
               <div className="text-sm text-muted-foreground">
-                {grouped.length} groups detected
+                {grouped.length} groups detected • {rows.length} total rows
               </div>
-              <div className="space-y-3">
-                {grouped.map((g) => (
-                  <div key={g.key} className="border rounded p-3">
-                    <div className="font-medium mb-1">Group: {g.key}</div>
-                    {g.errors.length > 0 ? (
-                      <div className="text-xs text-red-500">
-                        {g.errors.join('; ')}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-green-600">OK</div>
-                    )}
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      {g.rows.length} markets
-                    </div>
+              {(() => {
+                const columns = [
+                  'groupKey',
+                  'groupQuestion',
+                  'categorySlug',
+                  'marketQuestion',
+                  'rules',
+                  'claimStatementYesOrNumeric',
+                  'claimStatementNo',
+                  'endTime',
+                  'optionName',
+                  'similarMarkets',
+                ];
+                const flat = grouped.flatMap((g) =>
+                  g.rows.map((r, i) => ({
+                    r,
+                    idx: g.rowIndices[i] ?? -1,
+                    gErrors: g.errors,
+                  }))
+                );
+                return (
+                  <div className="border rounded p-3">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          {columns.map((c) => (
+                            <TableHead key={c}>{c}</TableHead>
+                          ))}
+                          <TableHead>Errors</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {flat.map(({ r, idx, gErrors }) => {
+                          const rowErrs = rowErrorsMap[idx] || [];
+                          const errs = [...rowErrs, ...(gErrors || [])];
+                          return (
+                            <TableRow
+                              key={idx === -1 ? Math.random() : idx}
+                              className={errs.length ? 'bg-red-50/50' : ''}
+                            >
+                              {columns.map((c) => (
+                                <TableCell key={c}>
+                                  {(r[c] ?? '').trim()}
+                                </TableCell>
+                              ))}
+                              <TableCell
+                                className={
+                                  errs.length
+                                    ? 'text-red-600'
+                                    : 'text-green-600'
+                                }
+                              >
+                                {errs.length ? errs.join('; ') : 'OK'}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
           ) : null}
 

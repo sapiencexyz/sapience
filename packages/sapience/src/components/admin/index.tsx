@@ -28,7 +28,7 @@ import { Plus, RefreshCw, Loader2, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
-import { DEFAULT_FACTORY_ADDRESS } from './CreateMarketGroupForm';
+import { DEFAULT_FACTORY_ADDRESS } from './constants';
 import RFQTab from './RFQTab';
 import CLCsvImportDialog from './CLCsvImportDialog';
 import LiquidTab from './LiquidTab';

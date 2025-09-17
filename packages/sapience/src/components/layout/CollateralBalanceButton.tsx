@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { formatFiveSigFigs } from '~/lib/utils/util';
-import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/CreateMarketGroupForm';
+import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 
 interface CollateralBalanceButtonProps {
   onClick?: () => void;

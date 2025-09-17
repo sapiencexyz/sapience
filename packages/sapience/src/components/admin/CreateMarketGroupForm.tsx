@@ -34,38 +34,32 @@ import { z } from 'zod';
 import { FOCUS_AREAS } from '../../lib/constants/focusAreas';
 import CopyMarketParametersDialog from './CopyMarketParametersDialog';
 import MarketFormFields, { type MarketInput } from './MarketFormFields'; // Import shared form and type
+import {
+  DEFAULT_CHAIN_ID,
+  DEFAULT_OWNER,
+  DEFAULT_BOND_CURRENCY,
+  DEFAULT_COLLATERAL_ASSET,
+  DEFAULT_OPTIMISTIC_ORACLE,
+  DEFAULT_UNISWAP_POS_MANAGER,
+  DEFAULT_UNISWAP_SWAP_ROUTER,
+  DEFAULT_UNISWAP_QUOTER,
+  DEFAULT_FEE_RATE,
+  DEFAULT_ASSERTION_LIVENESS,
+  DEFAULT_BOND_AMOUNT,
+  DEFAULT_MIN_TRADE_SIZE,
+  DEFAULT_SQRT_PRICE,
+  DEFAULT_MIN_PRICE_TICK,
+  DEFAULT_MAX_PRICE_TICK,
+  DEFAULT_FACTORY_ADDRESS,
+  DEFAULT_BASE_TOKEN_NAME,
+  DEFAULT_QUOTE_TOKEN_NAME,
+} from './constants';
 import { useResources } from '~/hooks/useResources';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
 // API base URL resolved at call time via foilApi
 
-// Default values for form fields
-
-export const DEFAULT_CHAIN_ID = 42161;
-export const DEFAULT_OWNER = '0xdb5Af497A73620d881561eDb508012A5f84e9BA2';
-export const DEFAULT_BOND_CURRENCY =
-  '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-export const DEFAULT_COLLATERAL_ASSET =
-  '0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02';
-export const DEFAULT_OPTIMISTIC_ORACLE =
-  '0xa6147867264374F324524E30C02C331cF28aa879';
-export const DEFAULT_UNISWAP_POS_MANAGER =
-  '0xC36442b4a4522E871399CD717aBDD847Ab11FE88';
-export const DEFAULT_UNISWAP_SWAP_ROUTER =
-  '0xE592427A0AEce92De3Edee1F18E0157C05861564';
-export const DEFAULT_UNISWAP_QUOTER =
-  '0x61fFE014bA17989E743c5F6cB21bF9697530B21e';
-export const DEFAULT_FEE_RATE = '10000'; // 1%
-export const DEFAULT_ASSERTION_LIVENESS = '3600';
-export const DEFAULT_BOND_AMOUNT = '500000000';
-export const DEFAULT_MIN_TRADE_SIZE = '10000';
-export const DEFAULT_SQRT_PRICE = '56022770974786143748341366784';
-export const DEFAULT_MIN_PRICE_TICK = '-92200';
-export const DEFAULT_MAX_PRICE_TICK = '0';
-export const DEFAULT_FACTORY_ADDRESS =
-  '0xc85375AdC34e5358371f48Cd74BAb24f74Af28A9';
-export const DEFAULT_BASE_TOKEN_NAME = 'Yes';
-export const DEFAULT_QUOTE_TOKEN_NAME = 'sUSDS';
+// Default values for form fields moved to shared constants
 
 // Type definitions (MarketInput is now imported)
 interface MarketParamsInput {
