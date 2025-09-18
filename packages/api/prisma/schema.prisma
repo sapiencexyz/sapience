@@ -133,6 +133,7 @@ model Market {
   marketParamsOptimisticoraclev3     String?       @db.VarChar
   public                             Boolean       @default(true)
   question                           String?
+  shortName                          String?       @db.VarChar
   poolAddress                        String?
   optionName                         String?
   similarMarkets                     String[]      @default([])
@@ -435,6 +436,7 @@ model Condition {
   id             String    @id @db.VarChar
   createdAt      DateTime  @default(now()) @db.Timestamp(6)
   question       String    @db.VarChar
+  shortName      String?   @db.VarChar
   categoryId     Int?
   category       Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime        Int

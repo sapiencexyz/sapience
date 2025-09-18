@@ -16,6 +16,7 @@ export interface ParlayModeRowProps {
   condition: {
     id?: string;
     question: string;
+    shortName?: string | null;
     category?: { id?: number; name?: string; slug?: string } | null;
     endTime?: number | null;
     claimStatement?: string | null;
@@ -26,7 +27,8 @@ export interface ParlayModeRowProps {
 }
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
-  const { id, question, endTime, description, similarMarkets } = condition;
+  const { id, question, shortName, endTime, description, similarMarkets } =
+    condition;
   const { addParlaySelection } = useBetSlipContext();
 
   // Removed condition id display in dialog; keep id for keys only
@@ -48,15 +50,25 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
     };
   }, [endTime]);
 
+  const displayQ = shortName || question;
+
   const handleYes = React.useCallback(() => {
     if (!id) return;
-    addParlaySelection({ conditionId: id, question, prediction: true });
-  }, [id, question, addParlaySelection]);
+    addParlaySelection({
+      conditionId: id,
+      question: displayQ,
+      prediction: true,
+    });
+  }, [id, displayQ, addParlaySelection]);
 
   const handleNo = React.useCallback(() => {
     if (!id) return;
-    addParlaySelection({ conditionId: id, question, prediction: false });
-  }, [id, question, addParlaySelection]);
+    addParlaySelection({
+      conditionId: id,
+      question: displayQ,
+      prediction: false,
+    });
+  }, [id, displayQ, addParlaySelection]);
 
   return (
     <div className="border-b last:border-b-0 border-border">
@@ -79,7 +91,7 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
               </DialogTrigger>
               <DialogContent className="max-w-sm">
                 <DialogHeader>
-                  <DialogTitle>{question}</DialogTitle>
+                  <DialogTitle>{displayQ}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-3">
                   {endInfo.date ? (

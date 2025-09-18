@@ -123,7 +123,11 @@ const MarketGroupsRow = ({
       prediction: typeof prediction === 'boolean' ? prediction : true,
       marketAddress: marketAddress,
       marketId: marketItem.marketId,
-      question: marketItem.question || marketItem.optionName || displayQuestion,
+      question:
+        (marketItem as any).shortName ||
+        marketItem.question ||
+        marketItem.optionName ||
+        displayQuestion,
       chainId: chainId,
       marketClassification: classificationOverride || marketClassification,
       wagerAmount: DEFAULT_WAGER_AMOUNT,

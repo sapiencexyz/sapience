@@ -56,6 +56,7 @@ import { useConditions } from '~/hooks/graphql/useConditions';
 type RFQRow = {
   id?: string;
   question: string;
+  shortName?: string | null;
   category?: { id?: number; name?: string; slug?: string };
   endTime?: number;
   public?: boolean;
@@ -71,6 +72,7 @@ type CSVRow = {
   public?: string;
   claimStatement: string;
   description: string;
+  shortName?: string;
   similarMarkets?: string;
 };
 
@@ -103,6 +105,7 @@ const RFQTab = ({
   const { data: conditions, isLoading, refetch } = useConditions({ take: 200 });
 
   const [question, setQuestion] = useState('');
+  const [shortName, setShortName] = useState('');
   const [categorySlug, setCategorySlug] = useState<string>('');
   const [endTime, setEndTime] = useState<number>(0);
   const [isPublic, setIsPublic] = useState<boolean>(true);
@@ -127,6 +130,7 @@ const RFQTab = ({
 
   const resetForm = () => {
     setQuestion('');
+    setShortName('');
     setCategorySlug('');
     setEndTime(0);
     setIsPublic(true);
@@ -531,6 +535,7 @@ const RFQTab = ({
                 onClick={() => {
                   setEditingId(id);
                   setQuestion(original.question || '');
+                  setShortName(original.shortName || '');
                   setCategorySlug(original.category?.slug || '');
                   setEndTime(original.endTime ?? 0);
                   setIsPublic(Boolean(original.public));
@@ -556,6 +561,7 @@ const RFQTab = ({
     return (conditions || []).map((c) => ({
       id: c.id,
       question: c.question,
+      shortName: c.shortName,
       category: c.category || undefined,
       endTime: c.endTime,
       public: c.public,
@@ -575,6 +581,7 @@ const RFQTab = ({
       if (editingId) {
         const body = {
           question,
+          ...(shortName ? { shortName } : {}),
           ...(categorySlug ? { categorySlug } : {}),
           public: isPublic,
           description,
@@ -588,6 +595,7 @@ const RFQTab = ({
       } else {
         const body = {
           question,
+          ...(shortName ? { shortName } : {}),
           ...(categorySlug ? { categorySlug } : {}),
           endTime: endTime,
           public: isPublic,
@@ -641,7 +649,7 @@ const RFQTab = ({
               Upload a CSV file to bulk import conditions. The file should have
               the following columns:
               <code className="block mt-2 p-2 bg-muted rounded text-sm">
-                question,categorySlug,endTimeUTC,public,claimStatement,description,similarMarkets
+                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets
               </code>
             </DialogDescription>
           </DialogHeader>
@@ -815,6 +823,15 @@ const RFQTab = ({
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Short Name (optional)
+              </label>
+              <Input
+                value={shortName}
+                onChange={(e) => setShortName(e.target.value)}
               />
             </div>
             <div className="space-y-2">

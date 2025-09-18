@@ -235,7 +235,12 @@ router.put(
 
     const isDeployed = !!market.poolAddress;
 
-    const alwaysAllowed = new Set<string>(['question', 'optionName', 'public']);
+    const alwaysAllowed = new Set<string>([
+      'question',
+      'shortName',
+      'optionName',
+      'public',
+    ]);
 
     const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
@@ -261,6 +266,7 @@ router.put(
 
     type MarketUpdateShape = {
       question?: string;
+      shortName?: string | null;
       optionName?: string;
       public?: boolean;
       claimStatementYesOrNumeric?: string;
@@ -277,6 +283,11 @@ router.put(
       updateData.question = String(
         (data as Record<string, unknown>)['question']
       );
+    if ('shortName' in data) {
+      const v = (data as Record<string, unknown>)['shortName'];
+      const s = v == null ? null : String(v).trim();
+      updateData.shortName = s && s.length > 0 ? s : null;
+    }
     if ('optionName' in data)
       updateData.optionName = String(
         (data as Record<string, unknown>)['optionName']
@@ -503,7 +514,12 @@ router.put(
 
     const isDeployed = !!market.poolAddress;
 
-    const alwaysAllowed = new Set<string>(['question', 'optionName', 'public']);
+    const alwaysAllowed = new Set<string>([
+      'question',
+      'shortName',
+      'optionName',
+      'public',
+    ]);
     const preDeployAllowed = new Set<string>([
       ...Array.from(alwaysAllowed),
       'claimStatementYesOrNumeric',
@@ -528,6 +544,7 @@ router.put(
 
     type MarketUpdateShape = {
       question?: string;
+      shortName?: string | null;
       optionName?: string;
       public?: boolean;
       claimStatementYesOrNumeric?: string;
@@ -544,6 +561,11 @@ router.put(
       updateData.question = String(
         (data as Record<string, unknown>)['question']
       );
+    if ('shortName' in data) {
+      const v = (data as Record<string, unknown>)['shortName'];
+      const s = v == null ? null : String(v).trim();
+      updateData.shortName = s && s.length > 0 ? s : null;
+    }
     if ('optionName' in data)
       updateData.optionName = String(
         (data as Record<string, unknown>)['optionName']

@@ -21,6 +21,7 @@ router.post('/', async (req: Request, res: Response) => {
   try {
     const {
       question,
+      shortName,
       categoryId,
       categorySlug,
       endTime,
@@ -30,6 +31,7 @@ router.post('/', async (req: Request, res: Response) => {
       similarMarkets,
     } = req.body as {
       question?: string;
+      shortName?: string;
       categoryId?: number;
       categorySlug?: string;
       endTime?: number | string;
@@ -94,6 +96,10 @@ router.post('/', async (req: Request, res: Response) => {
         data: {
           id,
           question,
+          shortName:
+            shortName && shortName.trim().length > 0
+              ? shortName.trim()
+              : undefined,
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
           public: Boolean(isPublic),
@@ -135,6 +141,7 @@ router.put('/:id', async (req: Request, res: Response) => {
 
     const {
       question,
+      shortName,
       categoryId,
       categorySlug,
       public: isPublic,
@@ -144,6 +151,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       endTime,
     } = req.body as {
       question?: string;
+      shortName?: string;
       categoryId?: number;
       categorySlug?: string;
       public?: boolean;
@@ -208,6 +216,14 @@ router.put('/:id', async (req: Request, res: Response) => {
         where: { id },
         data: {
           ...(typeof question !== 'undefined' ? { question } : {}),
+          ...(typeof shortName !== 'undefined'
+            ? {
+                shortName:
+                  shortName && shortName.trim().length > 0
+                    ? shortName.trim()
+                    : null,
+              }
+            : {}),
           ...(resolvedCategoryId !== null
             ? { categoryId: resolvedCategoryId }
             : {}),

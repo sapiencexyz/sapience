@@ -25,6 +25,7 @@ import DateTimePicker from '../shared/DateTimePicker';
 export interface MarketInput {
   id: number;
   marketQuestion: string;
+  shortName?: string;
   optionName?: string;
   startTime: string;
   endTime: string;
@@ -475,6 +476,21 @@ const MarketFormFields = ({
             disabled={disabledFields?.marketQuestion}
           />
         </div>
+        <div>
+          <Label htmlFor={fieldId('shortName')}>Short Name (optional)</Label>
+          <Input
+            id={fieldId('shortName')}
+            type="text"
+            value={market.shortName || ''}
+            onChange={(e) => onMarketChange('shortName', e.target.value)}
+            placeholder="Zohran for NYC Mayor"
+            disabled={false}
+          />
+        </div>
+      </div>
+
+      {/* Option Name */}
+      <div className={'grid grid-cols-1 md:grid-cols-2 gap-4'}>
         <div>
           <Label htmlFor={fieldId('optionName')}>
             Option Name (Multi-choice only)

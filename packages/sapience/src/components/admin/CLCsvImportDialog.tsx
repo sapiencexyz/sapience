@@ -262,6 +262,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
 
             return {
               marketQuestion: (r['marketQuestion'] ?? '').trim(),
+              shortName: (r['shortName'] ?? '').trim() || undefined,
               optionName: (r['optionName'] ?? '').trim() || undefined,
               claimStatementYesOrNumeric: (
                 r['claimStatementYesOrNumeric'] ?? ''
@@ -367,7 +368,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
           <div className="text-sm">
             <div className="font-medium mb-1">Optional columns</div>
             <code className="block p-2 bg-muted rounded">
-              optionName, similarMarkets
+              shortName, optionName, similarMarkets
             </code>
           </div>
 
