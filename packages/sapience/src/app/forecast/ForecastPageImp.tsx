@@ -115,7 +115,7 @@ const ForecastPageImp = () => {
           authenticated ? 'pt-32' : 'pt-24 md:pt-0'
         }`}
       >
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -124,7 +124,6 @@ const ForecastPageImp = () => {
             <div className="mx-auto mb-4 flex items-center justify-center">
               <LottieLoader width={32} height={32} />
             </div>
-            <p className="text-muted-foreground">Loading market data...</p>
           </div>
         </div>
       </div>
@@ -139,7 +138,7 @@ const ForecastPageImp = () => {
           authenticated ? 'pt-24' : 'pt-24 md:pt-0'
         }`}
       >
-        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50">
+        <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
           <TabsHeader
             isAskTooltipOpen={isAskTooltipOpen}
             setIsAskTooltipOpen={setIsAskTooltipOpen}
@@ -219,7 +218,7 @@ const ForecastPageImp = () => {
     >
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen dark:bg-muted/50 ${!authenticated ? 'mt-2 md:mt-0' : 'mt-2'}`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${!authenticated ? 'mt-2 md:mt-0' : 'mt-2'}`}
       >
         <>
           {/* Tabs */}

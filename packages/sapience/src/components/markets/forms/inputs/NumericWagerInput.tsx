@@ -20,7 +20,7 @@ export default function NumericWagerInput({
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <NumericPredict
         name={predictionFieldName}
         bounds={{

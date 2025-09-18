@@ -34,9 +34,7 @@ export default function YesNoSplitButton({
   );
 
   return (
-    <div
-      className={cn('flex w-full gap-3 md:inline-flex md:w-auto', className)}
-    >
+    <div className={cn('flex w-full gap-3', className)}>
       <button
         type="button"
         onClick={onYes}

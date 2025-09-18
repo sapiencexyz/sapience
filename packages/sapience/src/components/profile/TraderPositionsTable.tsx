@@ -569,6 +569,13 @@ export default function TraderPositionsTable({
                       marketAddress={marketAddress}
                       chainId={position.market?.marketGroup?.chainId || 0}
                       isMarketSettled={position.market?.settled || false}
+                      collateralSymbol={
+                        position.market?.marketGroup?.collateralSymbol ??
+                        undefined
+                      }
+                      collateralDecimals={
+                        position.market?.marketGroup?.collateralDecimals || 18
+                      }
                       onSuccess={() => {
                         console.log(
                           `Settle action for position ${position.positionId} initiated.`
@@ -581,7 +588,7 @@ export default function TraderPositionsTable({
                         <TooltipTrigger asChild>
                           <span>
                             <Button size="sm" variant="outline" disabled>
-                              Settle
+                              Claim
                             </Button>
                           </span>
                         </TooltipTrigger>
@@ -626,12 +633,14 @@ export default function TraderPositionsTable({
                         );
                       }
 
+                      const isMarketClosedOrExpired =
+                        Boolean(position.market?.settled) || isExpired;
                       const positionUrl = `/markets/${chainShortName}:${marketAddr}/${marketId}?positionId=${position.positionId}`;
 
                       return (
                         <Link href={positionUrl} passHref>
                           <Button size="sm" variant="secondary">
-                            Reopen
+                            {isMarketClosedOrExpired ? 'View' : 'Reopen'}
                           </Button>
                         </Link>
                       );
@@ -696,7 +705,7 @@ export default function TraderPositionsTable({
 
   return (
     <div>
-      <div className="rounded border bg-background dark:bg-muted/50 overflow-hidden">
+      <div className="rounded border bg-card overflow-hidden">
         <Table className="table-auto">
           <TableHeader className="hidden xl:table-header-group bg-muted/30 text-sm font-medium text-muted-foreground border-b">
             {table.getHeaderGroups().map((headerGroup) => (

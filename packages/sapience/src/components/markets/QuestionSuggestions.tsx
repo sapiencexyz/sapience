@@ -154,7 +154,7 @@ const QuestionSuggestions = ({
           </Tooltip>
         </TooltipProvider>
       </div>
-      <div className="bg-background border border-border rounded-lg shadow-sm overflow-hidden">
+      <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
         <div>
           {suggestedMarkets.map((market, index) => (
             <QuestionItem

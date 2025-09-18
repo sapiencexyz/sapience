@@ -37,14 +37,10 @@ export function basicValidateBid(
 
   try {
     const takerWagerBigInt = BigInt(bid.takerWager);
-    const wager = BigInt(auction.wager);
 
-    // Basic validation: taker wager should be positive and not exceed maker wager
+    // Basic validation: taker wager should be positive
     if (takerWagerBigInt <= 0n) {
       return { ok: false, reason: 'invalid_taker_wager' };
-    }
-    if (takerWagerBigInt > wager) {
-      return { ok: false, reason: 'taker_wager_too_high' };
     }
   } catch {
     return { ok: false, reason: 'invalid_wager_values' };

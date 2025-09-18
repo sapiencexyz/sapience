@@ -187,7 +187,7 @@ const MarketCard = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="bg-background border rounded-md border-border/70 dark:bg-muted/50 flex flex-row items-stretch h-full relative overflow-hidden shadow shadow-md transition-shadow duration-200"
+        className="bg-card border rounded-md border-border/70 flex flex-row items-stretch h-full md:min-h-[160px] relative overflow-hidden shadow shadow-md transition-shadow duration-200"
       >
         <div
           className="w-1 min-w-[4px] max-w-[4px]"
@@ -195,10 +195,10 @@ const MarketCard = ({
         />
 
         <div className="flex-1 flex flex-col h-full">
-          <div className="block group flex-1">
-            <div className="transition-colors h-full">
-              <div className="flex flex-col px-4 py-3 gap-3 h-full">
-                <div className="flex flex-col h-full min-w-0">
+          <div className="block group">
+            <div className="transition-colors">
+              <div className="flex flex-col px-4 py-3 gap-3">
+                <div className="flex flex-col min-w-0 flex-1">
                   <h3 className="text-sm md:text-base leading-snug mb-1">
                     <Link
                       href={`/markets/${chainShortName}:${marketAddress}`}
@@ -217,22 +217,23 @@ const MarketCard = ({
                       </span>
                     </Link>
                   </h3>
-                  {canShowPredictionElement && (
-                    <div className="text-xs md:text-sm text-muted-foreground mt-auto w-full">
-                      <div className="truncate whitespace-nowrap min-w-0">
-                        <span className="text-muted-foreground">
-                          Market Prediction{' '}
-                        </span>
-                        <MarketPrediction />
-                      </div>
-                    </div>
-                  )}
+                  {/* Market Prediction moved to bottom action section */}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="px-4 pb-4 pt-0">
+          <div className="mt-auto px-4 pb-4 pt-0">
+            {canShowPredictionElement && (
+              <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
+                <div className="truncate whitespace-nowrap min-w-0">
+                  <span className="text-muted-foreground">
+                    Market Prediction{' '}
+                  </span>
+                  <MarketPrediction />
+                </div>
+              </div>
+            )}
             {isActive &&
               marketClassification ===
                 MarketGroupClassificationEnum.MULTIPLE_CHOICE && (

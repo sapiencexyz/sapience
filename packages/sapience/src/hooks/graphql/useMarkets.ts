@@ -15,6 +15,7 @@ type MarketsBatchArgs = {
 type MarketsBatchResultItem = {
   marketId: number;
   question: string | null;
+  shortName?: string | null;
   marketGroup: { address: string; chainId: number };
 };
 
@@ -23,6 +24,7 @@ const MARKETS_BATCH_QUERY = /* GraphQL */ `
     markets(where: $where) {
       marketId
       question
+      shortName
       marketGroup {
         address
         chainId
@@ -96,7 +98,8 @@ export function useMarkets({ chainId, markets }: MarketsBatchArgs) {
       const map = new Map<string, string>();
       for (const it of items) {
         const key = `${it.marketGroup.chainId}:${it.marketGroup.address.toLowerCase()}:${it.marketId}`;
-        if (it.question) map.set(key, it.question);
+        const q = it.shortName || it.question;
+        if (q) map.set(key, q);
       }
       return map;
     },

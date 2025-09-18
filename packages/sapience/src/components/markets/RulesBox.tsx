@@ -16,14 +16,14 @@ const RulesBox = ({ text, className }: RulesBoxProps) => {
 
   return (
     <div className={className}>
-      <div className="bg-background dark:bg-muted/50 border border-border rounded shadow-sm p-0">
+      <div className="bg-card border border-border rounded shadow-sm p-0">
         <div className="relative">
           <div className="p-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground break-words">
               {isEmpty ? (
                 'No additional rules clarification provided.'
               ) : (
-                <SafeMarkdown content={resolvedText} />
+                <SafeMarkdown content={resolvedText} className="break-words" />
               )}
             </div>
           </div>

@@ -1,25 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { Button } from '@/sapience/ui/index';
-import Image from 'next/image';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { useAccount } from 'wagmi';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { parseUnits, formatUnits } from 'viem';
-import { formatNumber } from '~/lib/utils/util';
-import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
+import Image from 'next/image';
+import { useEffect, useMemo, useState } from 'react';
+import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
+import { formatUnits, parseUnits } from 'viem';
+import { useAccount } from 'wagmi';
 import { WagerInput } from '~/components/markets/forms';
+import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import LottieLoader from '~/components/shared/LottieLoader';
-import { useBetSlipContext } from '~/lib/context/BetSlipContext';
-import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import { formatNumber } from '~/lib/utils/util';
 
 interface BetslipParlayFormProps {
   methods: UseFormReturn<{
@@ -33,13 +33,14 @@ interface BetslipParlayFormProps {
   onSubmit: () => void;
   isSubmitting: boolean;
   error?: string | null;
-  minWager?: string;
-  collateralSymbol?: string;
-  collateralAddress?: `0x${string}`;
   chainId?: number;
-  collateralDecimals?: number;
   bids?: QuoteBid[];
   requestQuotes?: (params: AuctionParams | null) => void;
+  // Collateral token configuration from useSubmitParlay hook
+  collateralToken?: `0x${string}`;
+  collateralSymbol?: string;
+  collateralDecimals?: number;
+  minWager?: string;
 }
 
 export default function BetslipParlayForm({
@@ -47,13 +48,13 @@ export default function BetslipParlayForm({
   onSubmit,
   isSubmitting,
   error,
-  minWager,
-  collateralSymbol,
-  collateralAddress,
-  chainId,
-  collateralDecimals,
+  chainId = 42161,
   bids = [],
   requestQuotes,
+  collateralToken,
+  collateralSymbol,
+  collateralDecimals,
+  minWager,
 }: BetslipParlayFormProps) {
   const { parlaySelections, removeParlaySelection } = useBetSlipContext();
   const { address: makerAddress } = useAccount();
@@ -61,6 +62,7 @@ export default function BetslipParlayForm({
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
+
   const parlayWagerAmount = useWatch({
     control: methods.control,
     name: 'wagerAmount',
@@ -92,6 +94,7 @@ export default function BetslipParlayForm({
           return 0n;
         }
       })();
+
       return currentPayout > bestPayout ? current : best;
     });
   }, [bids, parlayWagerAmount, nowMs]);
@@ -106,6 +109,7 @@ export default function BetslipParlayForm({
     return () => window.clearInterval(id);
   }, []);
 
+  // Trigger RFQ quote requests when selections or wager change
   useEffect(() => {
     if (!requestQuotes) return;
     if (!makerAddress) return;
@@ -117,8 +121,8 @@ export default function BetslipParlayForm({
         : 18;
       const wagerWei = parseUnits(wagerStr, decimals).toString();
       const outcomes = parlaySelections.map((s) => ({
-        marketGroup: '0x0000000000000000000000000000000000000000',
-        marketId: Number.parseInt(s.conditionId || '0', 10) || 0,
+        // Use the conditionId directly as marketId (already encoded claim:endTime)
+        marketId: s.conditionId || '0',
         prediction: !!s.prediction,
       }));
       const payload = buildAuctionStartPayload(outcomes);
@@ -149,11 +153,12 @@ export default function BetslipParlayForm({
             <div key={s.id} className="pb-4 mb-4 border-b border-border">
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <h3 className="font-medium text-foreground pr-2 text-sm md:text-base whitespace-normal break-words">
+                  <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
                     {s.question}{' '}
                     <span className="relative -top-0.5">
                       <Badge
-                        className={`${s.prediction ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+                        variant="outline"
+                        className={`${s.prediction ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0' : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'}`}
                       >
                         {s.prediction ? 'Yes' : 'No'}
                       </Badge>
@@ -172,11 +177,11 @@ export default function BetslipParlayForm({
             </div>
           ))}
 
-          <div className="pt-1">
+          <div className="pt-0">
             <WagerInput
               minAmount={minWager}
               collateralSymbol={collateralSymbol}
-              collateralAddress={collateralAddress}
+              collateralAddress={collateralToken}
               chainId={chainId}
             />
           </div>
@@ -214,6 +219,7 @@ export default function BetslipParlayForm({
                   const remainingMs = bestBid.takerDeadline * 1000 - nowMs;
                   const secs = Math.max(0, Math.ceil(remainingMs / 1000));
                   const suffix = secs === 1 ? 'second' : 'seconds';
+
                   return (
                     <div className="mt-3">
                       <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-[#91B3F0]/80 bg-[#91B3F0]/20 px-3 py-2.5 w-full min-h-[48px]">

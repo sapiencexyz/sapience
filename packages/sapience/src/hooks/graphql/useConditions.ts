@@ -5,6 +5,7 @@ export interface ConditionType {
   id: string;
   createdAt: string;
   question: string;
+  shortName?: string | null;
   endTime: number;
   public: boolean;
   claimStatement: string;
@@ -19,6 +20,7 @@ const GET_CONDITIONS = /* GraphQL */ `
       id
       createdAt
       question
+      shortName
       endTime
       public
       claimStatement

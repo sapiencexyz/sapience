@@ -32,7 +32,7 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
   getCategoryStyle,
 }) => {
   return (
-    <div className="order-2 md:order-1 flex-1 min-w-0 -mx-4 md:mx-0 pb-2 md:pb-0 border-b border-border md:border-b-0">
+    <div className="order-2 md:order-1 flex-1 min-w-0 -mx-4 md:mx-0 pb-3 md:pb-0 border-b border-border md:border-b-0">
       <div
         className="overflow-x-auto overflow-y-visible md:overflow-visible touch-pan-x overscroll-x-contain max-w-[100dvw] md:max-w-[calc(100dvw-4rem)] py-0.5 px-4 md:px-0"
         style={{ WebkitOverflowScrolling: 'touch' }}

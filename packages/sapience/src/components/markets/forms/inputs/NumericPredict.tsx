@@ -13,6 +13,7 @@ interface NumericPredictProps {
   decimalPlaces?: number;
   baseTokenName?: string;
   quoteTokenName?: string;
+  disabled?: boolean;
 }
 
 export default function NumericPredict({
@@ -21,6 +22,7 @@ export default function NumericPredict({
   decimalPlaces = 4,
   baseTokenName,
   quoteTokenName,
+  disabled = false,
 }: NumericPredictProps) {
   const {
     register,
@@ -106,6 +108,7 @@ export default function NumericPredict({
             max={bounds.upperBound}
             step={stepSize}
             onValueChange={handleSliderChange}
+            disabled={disabled}
           />
         </div>
 
@@ -116,6 +119,7 @@ export default function NumericPredict({
             inputMode="decimal"
             placeholder="Enter prediction"
             className={`${errors[name] ? 'border-destructive' : ''}`}
+            disabled={disabled}
             {...register(name, {
               validate: (inputValue) => {
                 // Parse the string to a number for validation
@@ -211,6 +215,7 @@ export default function NumericPredict({
               onClick={() => incrementValue(true)}
               tabIndex={-1}
               aria-label="Increase value"
+              disabled={disabled}
             >
               <ChevronUp size={16} />
             </button>
@@ -220,6 +225,7 @@ export default function NumericPredict({
               onClick={() => incrementValue(false)}
               tabIndex={-1}
               aria-label="Decrease value"
+              disabled={disabled}
             >
               <ChevronDown size={16} />
             </button>

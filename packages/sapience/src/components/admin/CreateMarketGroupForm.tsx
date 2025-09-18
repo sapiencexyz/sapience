@@ -128,6 +128,7 @@ const marketSchema = z
   .object({
     // id is client-side, not validated here for API payload
     marketQuestion: z.string().trim().min(1, 'Market Question is required'),
+    shortName: z.string().trim().optional(),
     optionName: z.string().trim().optional(), // Align with MarketInput type
     claimStatementYesOrNumeric: z
       .string()
@@ -216,6 +217,7 @@ const createEmptyMarket = (id: number): MarketInput => {
   return {
     id, // For client-side list key and management
     marketQuestion: '',
+    shortName: '',
     optionName: '',
     startTime: now.toString(),
     endTime: '', // Empty string - user must set this
@@ -239,6 +241,7 @@ const createMarketFromPrevious = (
   return {
     id,
     marketQuestion: previousMarket.marketQuestion, // Copy market question
+    shortName: previousMarket.shortName || '',
     optionName: previousMarket.optionName || '', // Copy option name if it exists
     startTime: previousMarket.startTime, // Copy start time from previous market
     endTime: '', // Keep empty - user must set this

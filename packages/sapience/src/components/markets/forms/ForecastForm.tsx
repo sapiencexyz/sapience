@@ -19,12 +19,14 @@ interface ForecastFormProps {
   marketGroupData: MarketGroupType;
   marketClassification: MarketGroupClassification;
   onSuccess?: () => void;
+  disabled?: boolean;
 }
 
 export default function ForecastForm({
   marketGroupData,
   marketClassification,
   onSuccess,
+  disabled = false,
 }: ForecastFormProps) {
   const { isConnected } = useAccount();
   const { login, authenticated } = usePrivy();
@@ -180,7 +182,7 @@ export default function ForecastForm({
   const renderCategoryInput = () => {
     switch (marketClassification) {
       case MarketGroupClassification.YES_NO:
-        return <YesNoPredict />;
+        return <YesNoPredict disabled={disabled || isAttesting} />;
       case MarketGroupClassification.MULTIPLE_CHOICE:
         return (
           <MultipleChoicePredict
@@ -190,6 +192,7 @@ export default function ForecastForm({
             }))}
             selectedMarketId={selectedMarketIdMultipleChoice}
             setSelectedMarketId={setSelectedMarketIdMultipleChoice}
+            disabled={disabled || isAttesting}
           />
         );
       case MarketGroupClassification.NUMERIC:
@@ -202,6 +205,7 @@ export default function ForecastForm({
             baseTokenName={marketGroupData.baseTokenName || ''}
             quoteTokenName={marketGroupData.quoteTokenName || ''}
             decimalPlaces={6}
+            disabled={disabled || isAttesting}
           />
         );
       default:
@@ -221,16 +225,17 @@ export default function ForecastForm({
             className="w-full min-h-[80px] rounded-md border border-input bg-background px-4 py-3 text-lg ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             placeholder="Why are these your odds?"
             {...methods.register('comment')}
+            disabled={disabled || isAttesting}
           />
         </div>
 
         <div>
           <Button
             type="submit"
-            disabled={!methods.formState.isValid || isAttesting}
+            disabled={!methods.formState.isValid || disabled || isAttesting}
             className="w-full py-6 px-5 rounded text-lg font-normal"
           >
-            {isAttesting ? 'Submitting Forecast...' : 'Submit Forecast'}
+            {isAttesting ? 'Forecasting...' : 'Submit Forecast'}
           </Button>
         </div>
       </form>

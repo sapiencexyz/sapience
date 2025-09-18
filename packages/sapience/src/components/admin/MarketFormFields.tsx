@@ -25,6 +25,7 @@ import DateTimePicker from '../shared/DateTimePicker';
 export interface MarketInput {
   id: number;
   marketQuestion: string;
+  shortName?: string;
   optionName?: string;
   startTime: string;
   endTime: string;
@@ -461,18 +462,31 @@ const MarketFormFields = ({
 
   return (
     <div className="space-y-4 py-4">
-      {/* Market Question & Option Name */}
+      {/* Market Question */}
+      <div>
+        <Label htmlFor={fieldId('marketQuestion')}>Market Question</Label>
+        <Input
+          id={fieldId('marketQuestion')}
+          type="text"
+          value={market.marketQuestion}
+          onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
+          placeholder="Will Zohran become the Mayor of NYC?"
+          required
+          disabled={disabledFields?.marketQuestion}
+        />
+      </div>
+
+      {/* Short Name and Option Name */}
       <div className={'grid grid-cols-1 md:grid-cols-2 gap-4'}>
         <div>
-          <Label htmlFor={fieldId('marketQuestion')}>Market Question</Label>
+          <Label htmlFor={fieldId('shortName')}>Short Name (optional)</Label>
           <Input
-            id={fieldId('marketQuestion')}
+            id={fieldId('shortName')}
             type="text"
-            value={market.marketQuestion}
-            onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
-            placeholder="Will Zohran become the Mayor of NYC?"
-            required
-            disabled={disabledFields?.marketQuestion}
+            value={market.shortName || ''}
+            onChange={(e) => onMarketChange('shortName', e.target.value)}
+            placeholder="Zohran for NYC Mayor"
+            disabled={false}
           />
         </div>
         <div>

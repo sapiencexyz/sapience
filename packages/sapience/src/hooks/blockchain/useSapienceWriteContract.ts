@@ -32,6 +32,7 @@ export function useSapienceWriteContract({
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const { wallets } = useWallets();
   const { user } = usePrivy();
   const embeddedWallet = useMemo(() => {
@@ -96,6 +97,7 @@ export function useSapienceWriteContract({
 
         // If using an embedded wallet, route via backend sponsorship endpoint as a single-call batch
         if (isEmbeddedWallet) {
+          setIsSubmitting(true);
           const params = args[0];
           const {
             address,
@@ -154,6 +156,7 @@ export function useSapienceWriteContract({
           if (maybeHash) {
             onTxHash?.(maybeHash as Hash);
             setTxHash(maybeHash as Hash);
+            setIsSubmitting(false);
           } else {
             toast({
               title: successTitle,
@@ -161,6 +164,7 @@ export function useSapienceWriteContract({
               duration: 5000,
             });
             onSuccess?.(undefined as any);
+            setIsSubmitting(false);
           }
         } else {
           // Execute the transaction and set hash when resolved
@@ -169,6 +173,7 @@ export function useSapienceWriteContract({
           setTxHash(hash);
         }
       } catch (error) {
+        setIsSubmitting(false);
         toast({
           title: 'Transaction Failed',
           description: handleViemError(error, fallbackErrorMessage),
@@ -212,6 +217,7 @@ export function useSapienceWriteContract({
         const data = isEmbeddedWallet
           ? // Route via backend sponsorship endpoint for embedded wallets
             await (async () => {
+              setIsSubmitting(true);
               const body = (args[0] as any) ?? {};
               const calls = Array.isArray(body?.calls) ? body.calls : [];
               let lastResult: any = undefined;
@@ -257,6 +263,7 @@ export function useSapienceWriteContract({
                 }
                 lastResult = await response.json();
               }
+              setIsSubmitting(false);
               return lastResult;
             })()
           : // Use wallet_sendCalls with fallback for non-embedded wallets
@@ -291,6 +298,7 @@ export function useSapienceWriteContract({
             if (transactionHash) {
               onTxHash?.(transactionHash);
               setTxHash(transactionHash);
+              setIsSubmitting(false);
               return;
             }
             // Fallback path without aggregator id.
@@ -300,6 +308,7 @@ export function useSapienceWriteContract({
               duration: 5000,
             });
             onSuccess?.(undefined as any);
+            setIsSubmitting(false);
           }
         } catch {
           // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
@@ -309,8 +318,10 @@ export function useSapienceWriteContract({
             duration: 5000,
           });
           onSuccess?.(undefined as any);
+          setIsSubmitting(false);
         }
       } catch (error) {
+        setIsSubmitting(false);
         toast({
           title: 'Transaction Failed',
           description: handleViemError(error, fallbackErrorMessage),
@@ -346,6 +357,7 @@ export function useSapienceWriteContract({
       });
       onSuccess?.(receipt);
       setTxHash(undefined);
+      setIsSubmitting(false);
     },
     [txHash, toast, successMessage, onSuccess]
   );
@@ -363,6 +375,7 @@ export function useSapienceWriteContract({
 
       onError?.(error);
       setTxHash(undefined);
+      setIsSubmitting(false);
     },
     [txHash, toast, fallbackErrorMessage, onError]
   );
@@ -381,7 +394,8 @@ export function useSapienceWriteContract({
     () => ({
       writeContract: sapienceWriteContract,
       sendCalls: sapienceSendCalls,
-      isPending: isWritingContract || isSendingCalls || isMining,
+      isPending:
+        isWritingContract || isSendingCalls || isMining || isSubmitting,
       reset: resetWrite,
       resetCalls,
     }),
@@ -391,6 +405,7 @@ export function useSapienceWriteContract({
       isWritingContract,
       isSendingCalls,
       isMining,
+      isSubmitting,
       resetWrite,
       resetCalls,
     ]

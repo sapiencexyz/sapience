@@ -1,10 +1,9 @@
 'use client';
 
-import { Input } from '@sapience/ui/components/ui/input';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FrownIcon, SearchIcon } from 'lucide-react';
+import { FrownIcon } from 'lucide-react';
 import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -13,6 +12,7 @@ import { type Market as GraphQLMarketType } from '@sapience/ui/types/graphql';
 import MarketGroupsRow from './MarketGroupsRow';
 import ParlayModeRow from './ParlayModeRow';
 import FocusAreaFilter from './FocusAreaFilter';
+import SearchBar from './SearchBar';
 import {
   useEnrichedMarketGroups,
   useCategories,
@@ -618,25 +618,12 @@ const MarketsPage = () => {
       <div className="flex-1 flex flex-col gap-6 pr-0 md:pr-12">
         {/* Add Text Filter Input with inline filter button for mobile */}
         <div className="bg-background/90 pt-2">
-          {/* Wrap Input and Icon */}
-          <div className="relative flex items-center">
-            <SearchIcon
-              className="absolute left-0 h-full w-auto p-3 pl-2 text-muted-foreground opacity-40"
-              strokeWidth={1}
-            />
-            <div className="flex-1 relative border-b border-muted-foreground/40">
-              <Input
-                type="text"
-                placeholder={isMobile ? 'Search' : 'Search questions...'}
-                value={searchTerm}
-                onChange={handleSearchChange}
-                className="w-full text-3xl font-heading font-normal bg-transparent rounded-none border-0 placeholder:text-foreground placeholder:opacity-20 focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-3 pl-14"
-              />
-            </div>
-
-            {/* Filters moved to top (visible on all screen sizes) */}
-          </div>
-          <div className="pt-5">
+          <SearchBar
+            isMobile={isMobile}
+            value={searchTerm}
+            onChange={handleSearchChange}
+          />
+          <div className="pt-4 md:pt-5">
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -699,7 +686,7 @@ const MarketsPage = () => {
                         <h3 className="font-medium text-sm text-muted-foreground mb-2">
                           {formatEndDate(dayEndTimes[dayKey])}
                         </h3>
-                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {marketGroupsByDay[dayKey].map((marketGroup) => (
                             <motion.div
                               layout
@@ -780,7 +767,7 @@ const MarketsPage = () => {
                             ? 'No end time'
                             : formatEndDate(rfqDayEndTimes[dayKey])}
                         </h3>
-                        <div className="border border-muted rounded shadow-sm bg-background/50 overflow-hidden">
+                        <div className="border border-muted rounded shadow-sm bg-card overflow-hidden">
                           {[...(rfqConditionsByDay[dayKey] || [])]
                             .sort((a, b) => (a.endTime ?? 0) - (b.endTime ?? 0))
                             .map((c) => {
@@ -812,7 +799,7 @@ const MarketsPage = () => {
       {/* Desktop/Tablet sticky betslip sidebar */}
       {!isMobile ? (
         <div className="hidden md:block w-[24rem] shrink-0 self-start sticky top-24">
-          <div className="border border-muted-foreground/40 rounded shadow-lg bg-background/50 dark:bg-muted/50 overflow-hidden h-[calc(100dvh-120px)]">
+          <div className="border border-muted-foreground/30 rounded shadow-lg bg-card overflow-hidden h-[calc(100dvh-120px)]">
             <div className="h-full overflow-y-auto">
               <Betslip variant="panel" isParlayMode={parlayMode} />
             </div>

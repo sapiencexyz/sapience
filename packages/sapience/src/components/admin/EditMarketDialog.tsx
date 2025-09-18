@@ -43,6 +43,7 @@ const toMarketInput = (m: MarketType): MarketInput => {
   return {
     id: Date.now(),
     marketQuestion: m.question || '',
+    shortName: (m as any).shortName || '',
     optionName: m.optionName || '',
     startTime: startTs ? String(startTs) : '',
     endTime: endTs ? String(endTs) : '',
@@ -93,6 +94,8 @@ const EditMarketDialog = ({ group, market }: Props) => {
     const payloadData: Record<string, unknown> = {};
     // Always mappable fields
     payloadData.question = formMarket.marketQuestion;
+    if (typeof formMarket.shortName !== 'undefined')
+      payloadData.shortName = formMarket.shortName;
     payloadData.optionName = formMarket.optionName;
     payloadData.public = formMarket.public;
 

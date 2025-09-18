@@ -1,8 +1,8 @@
 {
     "name": "Sapience",
     "short_name": "Sapience",
-    "description": "Sapience Prediction Markets",
-    "start_url": "/",
+    "description": "Forecasting + Prediction Markets",
+    "start_url": "/markets",
     "scope": "/",
     "display": "standalone",
     "background_color": "#FFFFFF",

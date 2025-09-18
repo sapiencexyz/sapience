@@ -430,7 +430,7 @@ const Comments = ({
                         </div>
                         {/* Comment content */}
                         {(comment.content || '').trim().length > 0 && (
-                          <div className="border border-muted-foreground/40 rounded shadow-md bg-background/50 dark:bg-muted/50 overflow-hidden p-4">
+                          <div className="border border-muted-foreground/30 rounded shadow-md bg-card overflow-hidden p-4">
                             <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
                               {comment.content}
                             </div>

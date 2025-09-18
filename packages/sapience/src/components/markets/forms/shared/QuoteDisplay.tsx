@@ -13,6 +13,7 @@ interface QuoteDisplayProps {
   predictionValue: string;
   displayUnit?: string;
   variant?: 'form' | 'betslip';
+  label?: string;
 }
 
 export default function QuoteDisplay({
@@ -21,8 +22,64 @@ export default function QuoteDisplay({
   isLoading,
   marketGroupData,
   marketClassification,
+  variant,
+  label,
 }: QuoteDisplayProps) {
-  // Always use the single SVG-styled "To Win" display for all states
+  const labelText = label ?? 'To Win:';
+  const isCompact = variant === 'betslip';
+
+  // Compact right-aligned variant for betslip rows (used when multiple items)
+  if (isCompact) {
+    if (isLoading) {
+      return (
+        <div className="mt-1.5 text-right text-xs">
+          <span className="font-medium text-foreground">{labelText}</span>{' '}
+          <span className="text-muted-foreground">Loading...</span>
+        </div>
+      );
+    }
+    if (quoteError) {
+      return (
+        <div className="mt-1.5 text-right text-xs text-destructive">
+          {quoteError}
+        </div>
+      );
+    }
+    if (!quoteData) return null;
+
+    return (
+      <div className="mt-1.5 text-right text-xs">
+        <span className="font-medium text-foreground">{labelText}</span>{' '}
+        <span className="text-foreground inline-flex items-center gap-1">
+          {(() => {
+            try {
+              const raw = BigInt(quoteData.maxSize);
+              const abs = raw < 0n ? -raw : raw;
+              return <NumberDisplay value={abs} precision={2} padZeros />;
+            } catch {
+              const numeric = Math.abs(Number(quoteData.maxSize));
+              return (
+                <NumberDisplay
+                  value={BigInt(Math.max(0, Math.floor(numeric)))}
+                  precision={2}
+                  padZeros
+                />
+              );
+            }
+          })()}
+          <span className="ml-0.5">
+            {(marketGroupData as any)?.collateralSymbol || 'tokens'}
+          </span>
+          {marketClassification !== MarketGroupClassification.YES_NO &&
+          marketClassification !== MarketGroupClassification.MULTIPLE_CHOICE
+            ? ' (Max)'
+            : ''}
+        </span>
+      </div>
+    );
+  }
+
+  // Default large banner display
   if (isLoading) {
     return (
       <div className="mt-3">
@@ -35,7 +92,7 @@ export default function QuoteDisplay({
               height={20}
               className="opacity-90 w-5 h-5"
             />
-            <span className="font-medium text-foreground">To Win:</span>
+            <span className="font-medium text-foreground">{labelText}</span>
           </span>
           <span className="text-muted-foreground">Loading...</span>
         </div>
@@ -46,7 +103,7 @@ export default function QuoteDisplay({
   if (quoteError) {
     return (
       <div className="mt-3">
-        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12 text-xs">
+        <div className="flex items-center rounded-md border border-destructive/80 bg-destructive/10 px-3 py-2.5 w-full h-12">
           <AlertTriangle
             className="w-8 h-8 mr-2.5 text-destructive"
             strokeWidth={1.5}
@@ -70,7 +127,7 @@ export default function QuoteDisplay({
             height={20}
             className="opacity-90 w-5 h-5"
           />
-          <span className="font-medium text-foreground">To Win:</span>
+          <span className="font-medium text-foreground">{labelText}</span>
         </span>
         <span className="text-foreground inline-flex items-center whitespace-nowrap">
           {(() => {

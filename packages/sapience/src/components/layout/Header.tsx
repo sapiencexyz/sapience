@@ -200,12 +200,12 @@ const Header = () => {
   return (
     <>
       {/* Top Header Bar */}
-      <header className="w-full py-5 md:py-6 z-[50] fixed top-0 left-0 pointer-events-none">
+      <header className="w-full pt-3 pb-2 md:py-6 z-[50] fixed top-0 left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip md:bg-transparent md:backdrop-blur-0 md:border-b-0 md:overflow-visible">
         <div className="mx-auto px-4 md:px-6 flex items-center justify-between">
           <div className="flex flex-col pointer-events-auto">
             <div className="flex items-center">
               <div className="flex flex-col order-2 md:order-1">
-                <div className="flex items-center bg-background/30 p-2 pr-4 md:pr-1 backdrop-blur-sm rounded-full">
+                <div className="flex items-center p-2 pr-4 md:pr-1 md:bg-background/30 md:backdrop-blur-sm md:rounded-full">
                   <Link href="/" className="inline-block">
                     <div className="flex items-center gap-2">
                       <LottieIcon
@@ -230,7 +230,7 @@ const Header = () => {
               {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
               <SidebarTrigger
                 id="nav-sidebar"
-                className="md:hidden mr-1 order-1 md:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                className="md:hidden mr-0.5 order-1 md:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
               >
                 <Menu className="h-5 w-5" />
               </SidebarTrigger>

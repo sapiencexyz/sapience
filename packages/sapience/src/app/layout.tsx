@@ -15,6 +15,7 @@ import { ChatProvider } from '~/lib/context/ChatContext';
 import ChatWidget from '~/components/shared/ChatWidget';
 import FloatingChatButton from '~/components/shared/FloatingChatButton';
 import ConsoleMessage from '~/components/shared/ConsoleMessage';
+import InstallDialog from '~/components/shared/InstallDialog';
 import '~/styles/globals.css';
 
 type RootLayoutProps = {
@@ -119,6 +120,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <GlobalLoader />
               <Layout>{children}</Layout>
               <Toaster />
+              <InstallDialog />
               <div className="fixed bottom-5 right-5 z-[55]">
                 <Suspense fallback={null}>
                   <FloatingChatButton />

@@ -164,7 +164,6 @@ const SettingsPageContent = () => {
     apiBaseUrl,
     quoterBaseUrl,
     chatBaseUrl,
-    adminBaseUrl,
     arbitrumRpcUrl,
     openrouterApiKey,
     researchAgentSystemMessage,
@@ -174,7 +173,6 @@ const SettingsPageContent = () => {
     setApiBaseUrl,
     setQuoterBaseUrl,
     setChatBaseUrl,
-    setAdminBaseUrl,
     setArbitrumRpcUrl,
     setOpenrouterApiKey,
     setResearchAgentSystemMessage,
@@ -187,7 +185,6 @@ const SettingsPageContent = () => {
   const [apiInput, setApiInput] = useState('');
   const [quoterInput, setQuoterInput] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [adminInput, setAdminInput] = useState('');
   const [rpcInput, setRpcInput] = useState('');
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState('');
   const [systemMessageInput, setSystemMessageInput] = useState('');
@@ -255,7 +252,6 @@ const SettingsPageContent = () => {
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
     setQuoterInput(quoterBaseUrl ?? defaults.quoterBaseUrl);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
-    setAdminInput(adminBaseUrl ?? defaults.adminBaseUrl);
     setRpcInput(arbitrumRpcUrl ?? defaults.arbitrumRpcUrl);
     // If a key exists, show masked dots and disable input
     setOpenrouterKeyInput(
@@ -503,22 +499,7 @@ const SettingsPageContent = () => {
                       </p>
                     </div>
 
-                    <div className="grid gap-2">
-                      <Label htmlFor="admin-endpoint">Admin Endpoint</Label>
-                      <SettingField
-                        id="admin-endpoint"
-                        value={adminInput}
-                        setValue={setAdminInput}
-                        defaultValue={defaults.adminBaseUrl}
-                        onPersist={setAdminBaseUrl}
-                        validate={isHttpUrl}
-                        normalizeOnChange={normalizeBase}
-                        invalidMessage="Must be an absolute http(s) base URL"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Base URL for admin-only REST endpoints
-                      </p>
-                    </div>
+                    {/* Admin Endpoint intentionally managed only via Admin page dialog */}
 
                     <div className="grid gap-2">
                       <Label htmlFor="relayer-endpoint">Relayer Endpoint</Label>

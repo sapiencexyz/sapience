@@ -155,6 +155,7 @@ const MARKETS_QUERY = /* GraphQL */ `
         settled
         public
         question
+        shortName
         poolAddress
         settlementPriceD18
         optionName

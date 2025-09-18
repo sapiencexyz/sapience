@@ -9,9 +9,15 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
 import { InfoIcon } from 'lucide-react';
+import { formatUnits } from 'viem';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 
 import { useSettlePosition } from '~/hooks/contract/useSettlePosition';
 import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
+
+// Cache settlement check results across remounts to prevent repeated re-checks
+// Keyed by chainId:marketAddress:positionId
+const settlementStatusCache = new Map<string, 'already_settled' | 'lost'>();
 
 interface SettlePositionButtonProps {
   positionId: string;
@@ -19,6 +25,8 @@ interface SettlePositionButtonProps {
   chainId: number;
   isMarketSettled: boolean;
   onSuccess?: () => void;
+  collateralSymbol?: string;
+  collateralDecimals?: number;
 }
 
 const SettlePositionButton = ({
@@ -27,6 +35,8 @@ const SettlePositionButton = ({
   chainId,
   isMarketSettled,
   onSuccess,
+  collateralSymbol,
+  collateralDecimals,
 }: SettlePositionButtonProps) => {
   const { toast } = useToast();
 
@@ -53,6 +63,12 @@ const SettlePositionButton = ({
   // Track if we've already triggered simulation to avoid infinite loops
   const simulationTriggeredRef = useRef(false);
 
+  // Build a stable cache key for this position
+  const cacheKey = `${chainId}:${marketAddress}:${positionId}`;
+  const cachedStatus = settlementStatusCache.get(cacheKey);
+  const cachedAlreadySettled = cachedStatus === 'already_settled';
+  const cachedLost = cachedStatus === 'lost';
+
   // Trigger simulation when market is settled (one-time)
   useEffect(() => {
     if (
@@ -60,12 +76,20 @@ const SettlePositionButton = ({
       !simulationTriggeredRef.current &&
       positionId &&
       marketAddress &&
-      chainId
+      chainId &&
+      !cachedStatus // Do not re-simulate if we already know the result
     ) {
       simulationTriggeredRef.current = true;
       simulateSettlement();
     }
-  }, [isMarketSettled, positionId, marketAddress, chainId, simulateSettlement]);
+  }, [
+    isMarketSettled,
+    positionId,
+    marketAddress,
+    chainId,
+    simulateSettlement,
+    cachedStatus,
+  ]);
 
   // Reset simulation trigger when position changes
   useEffect(() => {
@@ -90,6 +114,13 @@ const SettlePositionButton = ({
     return false;
   }, [error]);
 
+  // Persist known results into cache to survive remounts
+  useEffect(() => {
+    if (isMarketSettled && isAlreadySettled) {
+      settlementStatusCache.set(cacheKey, 'already_settled');
+    }
+  }, [isMarketSettled, isAlreadySettled, cacheKey]);
+
   // Only determine if position is lost when we have actual simulation data
   const isLost = useMemo(() => {
     if (!hasSimulationData || expectedCollateral == null) {
@@ -97,6 +128,12 @@ const SettlePositionButton = ({
     }
     return expectedCollateral < MINIMUM_POSITION_WIN;
   }, [hasSimulationData, expectedCollateral]);
+
+  useEffect(() => {
+    if (isMarketSettled && hasSimulationData && isLost) {
+      settlementStatusCache.set(cacheKey, 'lost');
+    }
+  }, [isMarketSettled, hasSimulationData, isLost, cacheKey]);
 
   // Handle simulation errors (separate from transaction errors)
   // Only show toast for unexpected errors, not expected ones like "already settled"
@@ -157,7 +194,7 @@ const SettlePositionButton = ({
   }
 
   // If position is already settled, show settled state
-  if (isMarketSettled && isAlreadySettled) {
+  if (isMarketSettled && (isAlreadySettled || cachedAlreadySettled)) {
     return (
       <Button
         variant="outline"
@@ -171,7 +208,7 @@ const SettlePositionButton = ({
   }
 
   // Show loading state while checking settlement value
-  if (isMarketSettled && loadingSimulation) {
+  if (isMarketSettled && loadingSimulation && !cachedStatus) {
     return (
       <Button
         variant="outline"
@@ -186,7 +223,11 @@ const SettlePositionButton = ({
   }
 
   // If the position is lost (confirmed via simulation), show a "Wager Lost" badge
-  if (isMarketSettled && isLost && hasSimulationData) {
+  if (
+    isMarketSettled &&
+    (isLost || cachedLost) &&
+    (hasSimulationData || cachedLost)
+  ) {
     return (
       <Button
         variant="outline"
@@ -211,10 +252,29 @@ const SettlePositionButton = ({
       {isSettling ? (
         <>
           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-          Settling...
+          Claiming...
         </>
       ) : (
-        'Settle'
+        <>
+          Claim
+          {hasSimulationData && expectedCollateral != null ? (
+            <>
+              {' '}
+              <NumberDisplay
+                value={Number(
+                  formatUnits(
+                    expectedCollateral,
+                    typeof collateralDecimals === 'number' &&
+                      Number.isFinite(collateralDecimals)
+                      ? collateralDecimals
+                      : 18
+                  )
+                )}
+              />{' '}
+              {collateralSymbol || 'tokens'}
+            </>
+          ) : null}
+        </>
       )}
     </Button>
   );

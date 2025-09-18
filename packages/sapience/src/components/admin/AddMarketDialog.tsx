@@ -31,6 +31,7 @@ interface AddMarketDialogProps {
 const marketApiSchema = z
   .object({
     marketQuestion: z.string().trim().min(1, 'Market Question is required'),
+    shortName: z.string().trim().optional(),
     optionName: z.string().trim().optional(),
     claimStatementYesOrNumeric: z
       .string()
@@ -89,6 +90,7 @@ const createEmptyMarket = (id: number): MarketInput => {
   return {
     id,
     marketQuestion: '',
+    shortName: '',
     optionName: '',
     startTime: now.toString(),
     endTime: '', // Empty string - user must set this

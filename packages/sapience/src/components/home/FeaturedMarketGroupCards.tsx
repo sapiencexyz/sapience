@@ -232,7 +232,32 @@ export default function FeaturedMarketGroupCards() {
     }
 
     const randomized = shuffle(onePerCategory);
-    return randomized;
+
+    // Ensure we have at least 8 items; allow repeat categories if needed
+    const selectedKeys = new Set(randomized.map((g) => g.key));
+    const activePool = result.filter((g) => g.isActive);
+    const remaining = shuffle(
+      activePool.filter((g) => !selectedKeys.has(g.key))
+    );
+
+    const filled: GroupedMarketGroup[] = [...randomized];
+    for (const g of remaining) {
+      if (filled.length >= 8) break;
+      filled.push(g);
+    }
+
+    // If still fewer than 8 total active groups exist, repeat from start
+    if (filled.length < 8 && filled.length > 0) {
+      let i = 0;
+      while (filled.length < 8) {
+        filled.push(filled[i % filled.length]);
+        i++;
+        // Safety to avoid infinite loop, though conditions should prevent it
+        if (i > 32) break;
+      }
+    }
+
+    return filled;
   }, [enrichedMarketGroups, createRng, randomSeed]);
 
   if (isLoadingMarketGroups) {
@@ -240,8 +265,8 @@ export default function FeaturedMarketGroupCards() {
       <section className="pt-0 px-0 w-full relative z-10">
         <div className="w-full px-0">
           {/* Maintain space to prevent layout jump while data loads */}
-          <div className="mt-0 mb-1 md:mb-4">
-            <div className="h-[140px] md:h-[150px] w-full" />
+          <div className="mt-0 mb-6 md:mb-4">
+            <div className="h-[150px] md:h-[160px] w-full" />
           </div>
         </div>
       </section>
@@ -253,7 +278,7 @@ export default function FeaturedMarketGroupCards() {
       <div className="w-full px-0">
         {groupedMarketGroups.length === 0 ? (
           // Always reserve space, even when no items yet
-          <div className="relative mt-0 md:mt-0 mb-1 md:mb-4 h-[140px] md:h-[150px]" />
+          <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 h-[150px] md:h-[160px]" />
         ) : (
           <MobileAndDesktopLists groupedMarketGroups={groupedMarketGroups} />
         )}
@@ -330,14 +355,14 @@ function MobileAndDesktopLists({
   }, [desktopApi, items.length]);
 
   const desktopItemClass = React.useMemo(() => {
-    if (items.length >= 4) return 'pl-8 basis-1/2 lg:basis-1/4 h-full';
-    if (items.length === 3) return 'pl-8 basis-1/2 lg:basis-2/5 h-full';
+    // Always show 3 items per row on desktop when possible
+    if (items.length >= 3) return 'pl-8 basis-1/2 lg:basis-1/3 h-full';
     if (items.length === 2) return 'pl-8 basis-[60%] lg:basis-1/2 h-full';
-    return 'pl-8 basis-[80%] lg:basis-3/4 h-full';
+    return 'pl-8 basis-[80%] lg:basis-2/3 h-full';
   }, [items.length]);
 
   return (
-    <div className="relative mt-0 md:mt-0 mb-1 md:mb-4 min-h-[140px] md:h-[150px]">
+    <div className="relative mt-0 md:mt-0 mb-6 md:mb-4 min-h-[150px] md:min-h-[160px]">
       {/* Fade overlays */}
       <div
         className="pointer-events-none absolute inset-y-0 left-0 z-20 w-8 md:w-16 bg-gradient-to-r from-background to-transparent"
@@ -348,14 +373,14 @@ function MobileAndDesktopLists({
         aria-hidden
       />
       {/* Mobile: Embla carousel with auto-scroll */}
-      <div className="md:hidden w-full px-0">
+      <div className="md:hidden w-full px-0 h-[150px]">
         <Carousel
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
           plugins={[autoScrollPluginMobile]}
           setApi={setMobileApi}
-          className="w-full"
+          className="w-full h-full"
         >
-          <CarouselContent className="-ml-8">
+          <CarouselContent className="-ml-8 items-stretch h-full">
             {items.map((marketGroup) => (
               <CarouselItem
                 key={marketGroup.key}
@@ -380,16 +405,19 @@ function MobileAndDesktopLists({
       </div>
 
       {/* Dewtop: Embla carousel with auto-scroll */}
-      <div className="hidden md:block w-full px-0">
+      <div className="hidden md:block w-full px-0 h-[160px]">
         <Carousel
           opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
           plugins={[autoScrollPluginDesktop]}
           setApi={setDesktopApi}
           className="w-full h-full"
         >
-          <CarouselContent className="-ml-8 h-full">
+          <CarouselContent className="-ml-8 items-stretch h-full">
             {items.map((marketGroup) => (
-              <CarouselItem key={marketGroup.key} className={desktopItemClass}>
+              <CarouselItem
+                key={marketGroup.key}
+                className={`${desktopItemClass} h-full`}
+              >
                 <MarketCard
                   chainId={marketGroup.chainId}
                   marketAddress={marketGroup.marketAddress}

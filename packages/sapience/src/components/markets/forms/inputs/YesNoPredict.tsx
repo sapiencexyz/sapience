@@ -6,10 +6,12 @@ import { priceToSqrtPriceX96 } from '~/lib/utils/util';
 
 interface YesNoPredictProps {
   name?: string;
+  disabled?: boolean;
 }
 
 export default function YesNoPredict({
   name = 'predictionValue',
+  disabled = false,
 }: YesNoPredictProps) {
   const { register, setValue } = useFormContext();
   const [sliderValue, setSliderValue] = useState([50]); // Default to 50%
@@ -42,6 +44,7 @@ export default function YesNoPredict({
             min={0}
             step={1}
             className="w-full"
+            disabled={disabled}
           />
         </div>
 

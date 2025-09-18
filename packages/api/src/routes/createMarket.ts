@@ -7,6 +7,7 @@ const router = Router();
 // Define an interface for the market data structure
 interface MarketDataPayload {
   marketQuestion: string;
+  shortName?: string | null;
   optionName?: string | null;
   startTime: string | number;
   endTime: string | number;
@@ -27,6 +28,7 @@ async function createSingleMarket(
 ) {
   const {
     marketQuestion,
+    shortName,
     optionName,
     startTime,
     endTime,
@@ -57,6 +59,10 @@ async function createSingleMarket(
     data: {
       marketId: marketIndex + 1,
       question: marketQuestion,
+      shortName:
+        shortName && String(shortName).trim().length > 0
+          ? String(shortName).trim()
+          : null,
       optionName: optionName || null,
       claimStatementYesOrNumeric: claimStatementYesOrNumeric,
       claimStatementNo: claimStatementNo,

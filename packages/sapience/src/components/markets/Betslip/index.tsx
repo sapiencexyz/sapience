@@ -3,55 +3,55 @@
 import { Button } from '@sapience/ui/components/ui/button';
 
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@sapience/ui/components/ui/drawer';
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerTrigger,
-  DrawerHeader,
-  DrawerTitle,
-} from '@sapience/ui/components/ui/drawer';
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
-import Image from 'next/image';
-import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
-import { useMemo, useEffect } from 'react';
-import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { usePrivy } from '@privy-io/react-auth';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
+import Image from 'next/image';
+import { useEffect, useMemo } from 'react';
+import { useForm, type UseFormReturn } from 'react-hook-form';
+import { z } from 'zod';
 
-import { encodeFunctionData, parseUnits, erc20Abi, formatUnits } from 'viem';
+import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 import erc20ABI from '@sapience/ui/abis/erc20abi.json';
-import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useAccount, useReadContracts } from 'wagmi';
-import type { Address } from 'viem';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Abi } from 'abitype';
-import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import type { Address } from 'viem';
+import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
+import { useAccount, useReadContracts } from 'wagmi';
 import { wagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
+import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
-import { MarketGroupClassification } from '~/lib/types';
-import {
-  getDefaultFormPredictionValue,
-  DEFAULT_WAGER_AMOUNT,
-  YES_SQRT_PRICE_X96,
-} from '~/lib/utils/betslipUtils';
+import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { COLLATERAL_DECIMALS } from '~/lib/constants/numbers';
-import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
+import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { useSubmitParlay } from '~/hooks/forms/useSubmitParlay';
-import { PARLAY_CONTRACT_ADDRESS } from '~/hooks/useParlays';
-import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
-import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
-import { tickToPrice } from '~/lib/utils/tickUtils';
+import { COLLATERAL_DECIMALS } from '~/lib/constants/numbers';
 import { useWagerFlip } from '~/lib/context/WagerFlipContext';
+import { MarketGroupClassification } from '~/lib/types';
+import {
+  DEFAULT_WAGER_AMOUNT,
+  getDefaultFormPredictionValue,
+  YES_SQRT_PRICE_X96,
+} from '~/lib/utils/betslipUtils';
+import { tickToPrice } from '~/lib/utils/tickUtils';
+import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
@@ -85,8 +85,7 @@ const Betslip = ({
     });
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  // Parlay config: read minCollateral and collateral token decimals
-  const parlayChainId = betSlipPositions[0]?.chainId || 8453;
+  const parlayChainId = betSlipPositions[0]?.chainId || 42161;
   const {
     auctionId,
     bids,
@@ -97,47 +96,24 @@ const Betslip = ({
 
   // PredictionMarket address (constant)
   const PREDICTION_MARKET_ADDRESS =
-    '0x85b38C1e35F42163C5b9DbDe357b191E1042F5f0' as Address;
+    '0x9D18f97c191D397338709CDCe8F0915F8fF9BD82' as Address;
 
-  // Minimal ABI for PredictionMarket.getConfig()
-  const PREDICTION_MARKET_ABI: Abi = [
-    {
-      type: 'function',
-      name: 'getConfig',
-      stateMutability: 'view',
-      inputs: [],
-      outputs: [
-        {
-          name: 'config',
-          type: 'tuple',
-          components: [
-            { name: 'collateralToken', type: 'address' },
-            { name: 'minCollateral', type: 'uint256' },
-          ],
-        },
-      ],
-    },
-  ];
-
-  // Prefer reading config from PredictionMarket for OTC symbol if address is provided
+  // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
-    contracts:
-      PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0
-        ? [
-            {
-              address: PREDICTION_MARKET_ADDRESS,
-              abi: PREDICTION_MARKET_ABI,
-              functionName: 'getConfig',
-              chainId: parlayChainId,
-            },
-          ]
-        : [],
+    contracts: [
+      {
+        address: PREDICTION_MARKET_ADDRESS,
+        abi: PredictionMarket.abi as Abi,
+        functionName: 'getConfig',
+        chainId: parlayChainId,
+      },
+    ],
     query: {
-      enabled: !!PREDICTION_MARKET_ADDRESS && betSlipPositions.length > 0,
+      enabled: !!PREDICTION_MARKET_ADDRESS,
     },
   });
 
-  const collateralToken: Address | undefined = (() => {
+  const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       const cfg =
@@ -146,9 +122,9 @@ const Betslip = ({
       return cfg.collateralToken;
     }
     return undefined;
-  })();
+  }, [predictionMarketConfigRead.data]);
 
-  const minCollateralRaw: bigint | undefined = (() => {
+  const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       const cfg =
@@ -157,9 +133,9 @@ const Betslip = ({
       return cfg.minCollateral;
     }
     return undefined;
-  })();
+  }, [predictionMarketConfigRead.data]);
 
-  // Fetch collateral token symbol and decimals to display in parlay wager and format min
+  // Fetch collateral token symbol and decimals
   const erc20MetaRead = useReadContracts({
     contracts: collateralToken
       ? [
@@ -196,7 +172,7 @@ const Betslip = ({
     return undefined;
   }, [erc20MetaRead.data]);
 
-  const minParlayWager = useMemo(() => {
+  const minWager = useMemo(() => {
     if (!minCollateralRaw) return undefined;
     const decimals = collateralDecimals ?? 18;
     try {
@@ -208,48 +184,42 @@ const Betslip = ({
 
   // Disable logic is handled by page-level UI; no internal toggling
 
-  // Create dynamic form schema based on positions and from type (individual or parlay)
+  // Create separate form schemas for individual and parlay modes
   const formSchema: z.ZodType<any> = useMemo(() => {
-    const positionsSchema: Record<string, z.ZodTypeAny> = {};
+    if (isParlayMode) {
+      // Parlay mode only needs wagerAmount and limitAmount
+      return z
+        .object({
+          wagerAmount: wagerAmountSchema,
+          limitAmount: z.number().min(0),
+          positions: z.object({}).optional(), // Keep for interface compatibility
+        })
+        .refine((data) => data.wagerAmount && data.wagerAmount.trim() !== '', {
+          message: 'Wager amount is required',
+          path: ['wagerAmount'],
+        })
+        .refine(
+          (data) => data.limitAmount !== undefined && data.limitAmount >= 0,
+          { message: 'Limit amount is required', path: ['limitAmount'] }
+        );
+    } else {
+      // Individual mode needs positions with predictions and wagers
+      const positionsSchema: Record<string, z.ZodTypeAny> = {};
 
-    betSlipPositions.forEach((position) => {
-      positionsSchema[position.id] = z.object({
-        predictionValue: z.string().min(1, 'Please make a prediction'),
-        wagerAmount: wagerAmountSchema,
-        isFlipped: z.boolean().optional(),
+      betSlipPositions.forEach((position) => {
+        positionsSchema[position.id] = z.object({
+          predictionValue: z.string().min(1, 'Please make a prediction'),
+          wagerAmount: wagerAmountSchema,
+          isFlipped: z.boolean().optional(),
+        });
       });
-    });
 
-    return z
-      .object({
+      return z.object({
         positions: z.object(positionsSchema),
         wagerAmount: wagerAmountSchema.optional(),
         limitAmount: z.number().min(0).optional(),
-      })
-      .refine(
-        (data) => {
-          if (isParlayMode) {
-            return data.wagerAmount && data.wagerAmount.trim() !== '';
-          }
-          return true;
-        },
-        {
-          message: 'Wager amount is required',
-          path: ['wagerAmount'],
-        }
-      )
-      .refine(
-        (data) => {
-          if (isParlayMode) {
-            return data.limitAmount !== undefined && data.limitAmount >= 0;
-          }
-          return true;
-        },
-        {
-          message: 'Limit amount is required',
-          path: ['limitAmount'],
-        }
-      );
+      });
+    }
   }, [betSlipPositions, isParlayMode]);
 
   // Helper function to generate form values
@@ -346,19 +316,19 @@ const Betslip = ({
     mode: 'onChange',
   });
 
-  // Reactive form field values (avoid calling watch inside effects/memos)
-  const parlayWagerAmount = useWatch({
-    control: formMethods.control,
-    name: 'wagerAmount',
-  });
-  const parlayLimitAmount = useWatch({
-    control: formMethods.control,
-    name: 'limitAmount',
-  });
-  const parlayPositionsForm = useWatch({
-    control: formMethods.control,
-    name: 'positions',
-  });
+  // Reactive form field values (used only for individual mode)
+  // const parlayWagerAmount = useWatch({
+  //   control: formMethods.control,
+  //   name: 'wagerAmount',
+  // });
+  // const parlayLimitAmount = useWatch({
+  //   control: formMethods.control,
+  //   name: 'limitAmount',
+  // });
+  // const parlayPositionsForm = useWatch({
+  //   control: formMethods.control,
+  //   name: 'positions',
+  // });
 
   // Sync form when betslip positions change without clobbering existing values
   useEffect(() => {
@@ -432,21 +402,13 @@ const Betslip = ({
     );
   }, [formMethods, generateFormValues, positionsWithMarketData]);
 
-  // Ensure wager is at least minParlayWager when config loads
-  useEffect(() => {
-    if (!minParlayWager) return;
-    const current = formMethods.getValues('wagerAmount');
-    if (!current || Number(current) < Number(minParlayWager)) {
-      formMethods.setValue('wagerAmount', String(minParlayWager), {
-        shouldValidate: true,
-      });
-    }
-  }, [minParlayWager, formMethods]);
+  // Note: Minimum wager validation is now handled in BetslipParlayForm
 
-  // Calculate and set minimum payout when list length or wager amount changes
+  // Calculate and set minimum payout when list length changes (for individual mode)
   // Minimum payout = wagerAmount × 2^(number of positions), formatted to 2 decimals
   useEffect(() => {
-    const wagerAmount = parlayWagerAmount || DEFAULT_WAGER_AMOUNT;
+    const wagerAmount =
+      formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
     const listLength = positionsWithMarketData.filter(
       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
     ).length;
@@ -459,50 +421,50 @@ const Betslip = ({
         { shouldValidate: true }
       );
     }
-  }, [parlayWagerAmount, positionsWithMarketData, formMethods]);
+  }, [positionsWithMarketData, formMethods]);
 
-  // Prepare parlay positions for the hook
-  const parlayPositions = useMemo(() => {
-    const limitAmount = (parlayLimitAmount ?? '10').toString();
-    const positionsForm =
-      (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
-      {};
+  // Prepare parlay positions for the hook (currently unused but may be needed later)
+  // const parlayPositions = useMemo(() => {
+  //   const limitAmount = (parlayLimitAmount ?? '10').toString();
+  //   const positionsForm =
+  //     (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
+  //     {};
 
-    return positionsWithMarketData
-      .filter(
-        (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-      )
-      .map(({ position, marketClassification }) => {
-        const predValue = positionsForm?.[position.id]?.predictionValue;
-        if (
-          marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-        ) {
-          const selectedMarketId = Number(predValue ?? position.marketId);
-          return {
-            marketAddress: position.marketAddress,
-            marketId: selectedMarketId,
-            prediction: true,
-            limit: limitAmount,
-          };
-        }
-        // YES/NO path (default)
-        const isYes = predValue === YES_SQRT_PRICE_X96;
-        return {
-          marketAddress: position.marketAddress,
-          marketId: position.marketId,
-          prediction: isYes,
-          limit: limitAmount,
-        };
-      });
-  }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
+  //   return positionsWithMarketData
+  //     .filter(
+  //       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
+  //     )
+  //     .map(({ position, marketClassification }) => {
+  //       const predValue = positionsForm?.[position.id]?.predictionValue;
+  //       if (
+  //         marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
+  //       ) {
+  //         const selectedMarketId = Number(predValue ?? position.marketId);
+  //         return {
+  //           marketAddress: position.marketAddress,
+  //           marketId: selectedMarketId,
+  //           prediction: true,
+  //           limit: limitAmount,
+  //         };
+  //       }
+  //       // YES/NO path (default)
+  //       const isYes = predValue === YES_SQRT_PRICE_X96;
+  //       return {
+  //         marketAddress: position.marketAddress,
+  //         marketId: position.marketId,
+  //         prediction: isYes,
+  //         limit: limitAmount,
+  //       };
+  //     });
+  // }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
 
-  // Calculate payout amount = wager × 2^(number of positions)
-  const payoutAmount = useMemo(() => {
-    const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
-    const listLength = parlayPositions.length;
-    const payout = parseFloat(wager) * Math.pow(2, listLength);
-    return Number.isFinite(payout) ? payout.toFixed(2) : '0';
-  }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
+  // Calculate payout amount = wager × 2^(number of positions) (unused for now)
+  // const payoutAmount = useMemo(() => {
+  //   const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
+  //   const listLength = parlayPositions.length;
+  //   const payout = parseFloat(wager) * Math.pow(2, listLength);
+  //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
+  // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
   // Use the parlay submission hook
   const {
@@ -510,28 +472,19 @@ const Betslip = ({
     isSubmitting: isParlaySubmitting,
     error: parlayError,
   } = useSubmitParlay({
-    chainId: betSlipPositions[0]?.chainId || 8453, // Use first position's chainId or default to Base
-    parlayContractAddress: PARLAY_CONTRACT_ADDRESS,
+    chainId: betSlipPositions[0]?.chainId || 42161, // Use first position's chainId or default to Base
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
-    collateralTokenDecimals: collateralDecimals ?? 18,
-    positions: parlayPositions,
-    wagerAmount:
-      formMethods.watch('wagerAmount') ||
-      (minParlayWager ?? DEFAULT_WAGER_AMOUNT),
-    payoutAmount,
-    enabled:
-      parlayPositions.length > 0 &&
-      !!collateralToken &&
-      collateralDecimals != null,
+    enabled: !!collateralToken,
     onSuccess: () => {
       // Clear betslip and close popover; hook handles redirect to profile
       clearBetSlip();
       setIsPopoverOpen(false);
     },
-    onOrderCreated: (requestId) => {
+    onOrderCreated: (makerNftId, takerNftId, txHash) => {
       try {
-        notifyOrderCreated(requestId.toString());
+        notifyOrderCreated(`${makerNftId}-${takerNftId}`, txHash);
       } catch {
         console.error('Failed to notify order created');
       }
@@ -714,12 +667,24 @@ const Betslip = ({
       return;
     }
 
-    // If Auction flow is enabled, and we have a bid, build the mint request for PredictionMarket
+    // Find the best bid and submit via PredictionMarket.mint
     try {
       const nowSec = Math.floor(Date.now() / 1000);
       const validBids = bids.filter((b) => b.takerDeadline > nowSec);
-      // Pick highest takerWager
-      const best = validBids.reduce((best, cur) => {
+
+      if (validBids.length === 0) {
+        toast({
+          title: 'No valid bids',
+          description:
+            'No valid bids available. Please wait for new bids or try again.',
+          variant: 'destructive',
+          duration: 5000,
+        });
+        return;
+      }
+
+      // Pick highest takerWager (best payout for maker)
+      const bestBid = validBids.reduce((best, cur) => {
         try {
           return BigInt(cur.takerWager) > BigInt(best.takerWager) ? cur : best;
         } catch {
@@ -727,23 +692,36 @@ const Betslip = ({
         }
       }, validBids[0]);
 
-      if (best && address && buildMintRequestDataFromBid) {
+      if (bestBid && address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
           maker: address,
-          selectedBid: best,
+          selectedBid: bestBid,
           // Optional refCode left empty (0x00..00)
         });
-        // For now, just log; wiring actual write depends on contract address/ABI exposure
-        if (mintReq && process.env.NODE_ENV !== 'production') {
-          console.log('[OTC] Prepared MintPredictionRequestData', mintReq);
+
+        if (mintReq) {
+          // Submit the mint request to PredictionMarket
+          submitParlay(mintReq);
+          return;
         }
       }
-    } catch {
-      // ignore
-    }
 
-    // Fallback to legacy parlay submit (will be removed once OTC is fully enabled)
-    submitParlay();
+      // If we couldn't build a mint request, show an error
+      toast({
+        title: 'Unable to submit',
+        description: 'Could not prepare prediction data. Please try again.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Error in handleParlaySubmit:', error);
+      toast({
+        title: 'Submission error',
+        description: 'An error occurred while submitting your prediction.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+    }
   };
 
   const contentProps = {
@@ -767,14 +745,15 @@ const Betslip = ({
     isParlaySubmitting,
     parlayError,
     isSubmitting: Boolean(isPendingWriteContract),
-    minParlayWager,
-    parlayCollateralSymbol: collateralSymbol,
-    parlayCollateralAddress: collateralToken,
     parlayChainId,
-    parlayCollateralDecimals: collateralDecimals,
     auctionId,
     bids,
     requestQuotes,
+    // Collateral configuration
+    collateralToken,
+    collateralSymbol,
+    collateralDecimals,
+    minWager,
   };
 
   if (isCompact) {

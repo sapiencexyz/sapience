@@ -11,6 +11,7 @@ interface MultipleChoicePredictProps {
   options: Array<{ name: string; marketId: number }>;
   selectedMarketId: number;
   setSelectedMarketId: (marketId: number) => void;
+  disabled?: boolean;
 }
 
 export default function MultipleChoicePredict({
@@ -18,6 +19,7 @@ export default function MultipleChoicePredict({
   options,
   selectedMarketId,
   setSelectedMarketId,
+  disabled = false,
 }: MultipleChoicePredictProps) {
   const { register, setValue } = useFormContext();
   const [sliderValue, setSliderValue] = useState([50]); // Default to 50%
@@ -85,6 +87,7 @@ export default function MultipleChoicePredict({
                       }}
                       role="radio"
                       aria-checked={isSelected}
+                      disabled={disabled}
                       className={`w-full text-center justify-start font-normal border flex items-center gap-3 text-foreground ${shouldSpanFullRowMd ? 'md:col-span-3' : ''}`}
                       style={{
                         backgroundColor: unselectedBg,
@@ -144,6 +147,7 @@ export default function MultipleChoicePredict({
               min={0}
               step={1}
               className="w-full"
+              disabled={disabled}
             />
           </div>
         )}
