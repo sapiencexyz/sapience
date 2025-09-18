@@ -10,18 +10,10 @@ ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
 # Optional: Infura API key for WebSocket connections
 INFURA_API_KEY=your_infura_api_key_here
 
-# Optional: Custom contract addresses
-PREDICTION_MARKET_CONTRACT_ADDRESS=0xA5d368857C39267966f2096C4Fb509F3094E4E4a
-TEST_RESOLVER_ADDRESS=0xA0B6d6fd2Fe9E14A34DA49Ca4de7426F6b65667c
-
 # Optional: Database configuration
 DATABASE_URL=your_database_url_here
 
-# Optional: Test market configuration
-TEST_MARKET_GROUP_ADDRESS=your_market_group_address_here
-TEST_MARKET_ID=1
-
-# Optional: Test assertion configuration
-TEST_CLAIM=Test prediction market claim
-TEST_END_TIME=1234567890
-TEST_RESOLVED_TO_YES=true
+TEST_PRIVATE_KEY=
+PREDICTION_MARKET_CONTRACT_ADDRESS=0x1b007EEbC853DC5F13202D85d92d5712f15AC575
+TEST_RESOLVER_ADDRESS=0xeF789dA126d402Ac2a3D7AF0Fd19b891f7Cc8296
+TEST_MARKET_GROUP_ADDRESS=0xeecfc3deee7d224094807189d2aa818f89d7f000
