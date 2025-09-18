@@ -25,7 +25,7 @@ export function usePredictionMarketWriteContract(opts?: {
   // Hardcoded Arbitrum One + PredictionMarket address
   const APP_CHAIN_ID = 42161;
   const PREDICTION_MARKET_ADDRESS =
-    '0x1b007EEbC853DC5F13202D85d92d5712f15AC575' as `0x${string}`;
+    '0xB5583Daa6388291e56cF8509c2184B16c35e32d0' as `0x${string}`;
 
   function burn(tokenId: bigint, refCode: `0x${string}`) {
     if (!PREDICTION_MARKET_ADDRESS || !APP_CHAIN_ID) return;

@@ -19,7 +19,7 @@ import type {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 const PREDICTION_MARKET_CONTRACT_ADDRESS =
-  '0x1b007EEbC853DC5F13202D85d92d5712f15AC575';
+  '0xB5583Daa6388291e56cF8509c2184B16c35e32d0';
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
@@ -29,6 +29,7 @@ const PREDICTION_MARKET_ABI = [
     inputs: [
       { name: 'maker', type: 'address', indexed: true },
       { name: 'taker', type: 'address', indexed: true },
+      { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
       { name: 'makerNftTokenId', type: 'uint256', indexed: false },
       { name: 'takerNftTokenId', type: 'uint256', indexed: false },
       { name: 'makerCollateral', type: 'uint256', indexed: false },
@@ -62,47 +63,21 @@ const PREDICTION_MARKET_ABI = [
   },
 ] as const;
 
-// Minimal read ABI for getPrediction returning PredictionData
-const PREDICTION_MARKET_READ_ABI = [
-  {
-    type: 'function',
-    name: 'getPrediction',
-    stateMutability: 'view',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [
-      {
-        name: 'predictionData',
-        type: 'tuple',
-        components: [
-          { name: 'predictionId', type: 'uint256' },
-          { name: 'resolver', type: 'address' },
-          { name: 'maker', type: 'address' },
-          { name: 'taker', type: 'address' },
-          { name: 'encodedPredictedOutcomes', type: 'bytes' },
-          { name: 'makerNftTokenId', type: 'uint256' },
-          { name: 'takerNftTokenId', type: 'uint256' },
-          { name: 'makerCollateral', type: 'uint256' },
-          { name: 'takerCollateral', type: 'uint256' },
-          { name: 'settled', type: 'bool' },
-          { name: 'makerWon', type: 'bool' },
-        ],
-      },
-    ],
-  },
-] as const;
+// (no read ABI needed with on-event decoding)
 
 // Event signatures for filtering - using keccak256 hashes instead
 
-interface PredictionMintedEvent {
+type PredictionMintedEvent = {
   maker: string;
   taker: string;
+  encodedPredictedOutcomes: `0x${string}`;
   makerNftTokenId: bigint;
   takerNftTokenId: bigint;
   makerCollateral: bigint;
   takerCollateral: bigint;
   totalCollateral: bigint;
   refCode: string;
-}
+};
 
 interface PredictionBurnedEvent {
   maker: string;
@@ -264,7 +239,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       // Decode the event based on the topic
       const predictionMintedTopic = keccak256(
         toHex(
-          'PredictionMinted(address,address,uint256,uint256,uint256,uint256,uint256,bytes32)'
+          'PredictionMinted(address,address,bytes,uint256,uint256,uint256,uint256,uint256,bytes32)'
         )
       );
       const predictionBurnedTopic = keccak256(
@@ -291,7 +266,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
   private async processPredictionMinted(log: Log, block: Block): Promise<void> {
     try {
-      const decoded = decodeEventLog({
+      const decodedAny = decodeEventLog({
         abi: PREDICTION_MARKET_ABI,
         data: log.data,
         topics: log.topics,
@@ -299,14 +274,14 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
       const eventData = {
         eventType: 'PredictionMinted',
-        maker: decoded.args.maker,
-        taker: decoded.args.taker,
-        makerNftTokenId: decoded.args.makerNftTokenId.toString(),
-        takerNftTokenId: decoded.args.takerNftTokenId.toString(),
-        makerCollateral: decoded.args.makerCollateral.toString(),
-        takerCollateral: decoded.args.takerCollateral.toString(),
-        totalCollateral: decoded.args.totalCollateral.toString(),
-        refCode: decoded.args.refCode,
+        maker: decodedAny.args.maker,
+        taker: decodedAny.args.taker,
+        makerNftTokenId: decodedAny.args.makerNftTokenId.toString(),
+        takerNftTokenId: decodedAny.args.takerNftTokenId.toString(),
+        makerCollateral: decodedAny.args.makerCollateral.toString(),
+        takerCollateral: decodedAny.args.takerCollateral.toString(),
+        totalCollateral: decodedAny.args.totalCollateral.toString(),
+        refCode: decodedAny.args.refCode,
         blockNumber: Number(log.blockNumber),
         transactionHash: log.transactionHash,
         logIndex: log.logIndex,
@@ -364,32 +339,10 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         },
       });
 
-      // Fetch on-chain prediction to decode predicted outcomes
-      const prediction = (await this.client.readContract({
-        address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
-        abi: PREDICTION_MARKET_READ_ABI,
-        functionName: 'getPrediction',
-        args: [BigInt(decoded.args.makerNftTokenId)],
-      })) as unknown as {
-        predictionId: bigint;
-        resolver: string;
-        maker: string;
-        taker: string;
-        encodedPredictedOutcomes: `0x${string}`;
-        makerNftTokenId: bigint;
-        takerNftTokenId: bigint;
-        makerCollateral: bigint;
-        takerCollateral: bigint;
-        settled: boolean;
-        makerWon: boolean;
-      };
-
-      // Decode tuple(bytes32 marketId, bool prediction)[]
       const [outcomes] = decodeAbiParameters(
         [{ type: 'tuple(bytes32 marketId,bool prediction)[]' }],
-        prediction.encodedPredictedOutcomes
+        decodedAny.args.encodedPredictedOutcomes
       ) as unknown as [{ marketId: `0x${string}`; prediction: boolean }[]];
-
       const predictedOutcomes = outcomes.map((o) => ({
         conditionId: o.marketId,
         prediction: o.prediction,
@@ -419,8 +372,8 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       // Create Parlay if not exists
       const existingParlay = await prisma.parlay.findFirst({
         where: {
-          makerNftTokenId: prediction.makerNftTokenId.toString(),
-          takerNftTokenId: prediction.takerNftTokenId.toString(),
+          makerNftTokenId: eventData.makerNftTokenId,
+          takerNftTokenId: eventData.takerNftTokenId,
         },
       });
 
@@ -429,13 +382,11 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
           data: {
             chainId: this.chainId,
             marketAddress: log.address.toLowerCase(),
-            maker: prediction.maker.toLowerCase(),
-            taker: prediction.taker.toLowerCase(),
-            makerNftTokenId: prediction.makerNftTokenId.toString(),
-            takerNftTokenId: prediction.takerNftTokenId.toString(),
-            totalCollateral: (
-              prediction.makerCollateral + prediction.takerCollateral
-            ).toString(),
+            maker: eventData.maker.toLowerCase(),
+            taker: eventData.taker.toLowerCase(),
+            makerNftTokenId: eventData.makerNftTokenId,
+            takerNftTokenId: eventData.takerNftTokenId,
+            totalCollateral: eventData.totalCollateral,
             refCode: eventData.refCode,
             status: 'active',
             makerWon: null,
