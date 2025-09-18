@@ -8,11 +8,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@sapience/ui/components/ui/accordion';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@sapience/ui/components/ui/alert';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
   Select,
@@ -24,7 +19,7 @@ import {
 import { Switch } from '@sapience/ui/components/ui/switch';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useMutation } from '@tanstack/react-query';
-import { AlertCircle, Loader2, Plus, Trash } from 'lucide-react';
+import { Loader2, Plus, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { isAddress } from 'viem';
@@ -312,7 +307,6 @@ const CreateMarketGroupForm = () => {
   const [markets, setMarkets] = useState<MarketInput[]>([createEmptyMarket(1)]);
 
   // Form state
-  const [formError, setFormError] = useState<string | null>(null);
   const [activeMarketIndex, setActiveMarketIndex] = useState<number>(0);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -347,7 +341,7 @@ const CreateMarketGroupForm = () => {
       if (newMarkets[index]) {
         newMarkets[index] = {
           ...newMarkets[index],
-          [field]: value as any,
+          [field]: value as string | number,
         };
       } else {
         // This case should ideally not happen if IDs are managed correctly
@@ -463,7 +457,7 @@ const CreateMarketGroupForm = () => {
     }
   };
 
-  const validateFormData = (): string | null => {
+  const validateFormData = (): boolean => {
     // Prepare markets for validation by removing client-side 'id'
     const marketsToValidate = markets.map(
       ({ id: _id, ...marketData }) => marketData
@@ -491,13 +485,33 @@ const CreateMarketGroupForm = () => {
 
     try {
       combinedSchema.parse(formData);
-      return null;
+      return true;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return error.errors[0]?.message || 'Validation failed';
+        // Show the first validation error as a toast
+        const firstError = error.errors[0];
+        if (firstError) {
+          toast({
+            title: 'Validation Error',
+            description: firstError.message,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Validation Error',
+            description: 'Validation failed',
+            variant: 'destructive',
+          });
+        }
+      } else {
+        console.error('Unexpected validation error:', error);
+        toast({
+          title: 'Validation Error',
+          description: 'An unexpected validation error occurred.',
+          variant: 'destructive',
+        });
       }
-      console.error('Unexpected validation error:', error);
-      return 'An unexpected validation error occurred.';
+      return false;
     }
   };
 
@@ -529,16 +543,18 @@ const CreateMarketGroupForm = () => {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setFormError(null);
 
-    const validationError = validateFormData();
-    if (validationError) {
-      setFormError(validationError);
+    const isValid = validateFormData();
+    if (!isValid) {
       return;
     }
 
     if (!connectedAddress) {
-      setFormError('Please connect your wallet to create a market group');
+      toast({
+        title: 'Wallet Required',
+        description: 'Please connect your wallet to create a market group',
+        variant: 'destructive',
+      });
       return;
     }
 
@@ -570,9 +586,11 @@ const CreateMarketGroupForm = () => {
       router.push('/admin');
     } catch (error) {
       console.error('Error creating market group:', error);
-      setFormError(
-        error instanceof Error ? error.message : 'Failed to create market group'
-      );
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create market group',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -926,13 +944,6 @@ const CreateMarketGroupForm = () => {
               </Button>
             </div>
 
-            {formError && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{formError}</AlertDescription>
-              </Alert>
-            )}
           </form>
         </div>
       )}

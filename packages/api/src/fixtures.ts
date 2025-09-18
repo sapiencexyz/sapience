@@ -2,6 +2,7 @@ import prisma from './db';
 import fixturesData from './fixtures.json';
 import { IResourcePriceIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
+import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
 import type { Resource } from '../generated/prisma';
 
 export const TIME_INTERVALS = {
@@ -25,6 +26,7 @@ export const INDEXERS: {
   // 'sf-precipitation': new WeatherIndexer('precipitation'),
   // 'bitcoin-hashrate': new BtcHashIndexer(),
   'attestation-prediction-market': new EASPredictionIndexer(42161),
+  'prediction-market-events': new PredictionMarketIndexer(42161), // Arbitrum chain ID
 };
 
 // Function to initialize fixtures - upsert resources and markets from fixtures.json

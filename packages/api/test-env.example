@@ -1,0 +1,19 @@
+# Test Environment Variables for Prediction Market Indexer
+# Copy this file to .env and fill in your actual values
+
+# Required: Private key for testing (without 0x prefix)
+TEST_PRIVATE_KEY=your_private_key_here
+
+# Optional: Custom RPC URL (defaults to Arbitrum mainnet)
+ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+
+# Optional: Infura API key for WebSocket connections
+INFURA_API_KEY=your_infura_api_key_here
+
+# Optional: Database configuration
+DATABASE_URL=your_database_url_here
+
+TEST_PRIVATE_KEY=
+PREDICTION_MARKET_CONTRACT_ADDRESS=0x1b007EEbC853DC5F13202D85d92d5712f15AC575
+TEST_RESOLVER_ADDRESS=0xeF789dA126d402Ac2a3D7AF0Fd19b891f7Cc8296
+TEST_MARKET_GROUP_ADDRESS=0xeecfc3deee7d224094807189d2aa818f89d7f000

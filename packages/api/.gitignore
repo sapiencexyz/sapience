@@ -9,3 +9,6 @@ data
 /generated/prisma
 
 tsconfig.tsbuildinfo
+
+# Test NFT storage
+test-nft-ids.json

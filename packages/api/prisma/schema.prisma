@@ -417,6 +417,8 @@ enum transaction_type_enum {
   long
   short
   settledPosition
+  mintParlayNFTs
+  burnParlayNFTs
 }
 
 /// Chat message history for ephemeral chat websocket
