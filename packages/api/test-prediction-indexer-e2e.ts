@@ -1,16 +1,25 @@
 /**
  * PredictionMarket Indexer End-to-End Test
  * 
- * This script tests the PredictionMarket contract mint and burn functions
- * and verifies that the indexer correctly captures the events.
+ * This script tests the PredictionMarket contract mint and burn functions,
+ * submits assertions to the resolver, and verifies that the indexer correctly captures the events.
  * 
  * Usage:
  *   npm run test:prediction-mint    - Test only the mint function
  *   npm run test:prediction-burn    - Test only the burn function (requires mint first)
- *   npm run test:prediction-both    - Test both mint and burn in sequence
+ *   npm run test:prediction-both    - Test mint, assertion submission, and burn in sequence
+ *   npm run test:prediction-assertion - Test only the assertion submission function
  * 
- * The script saves NFT IDs to test-nft-ids.json between operations,
- * allowing you to run mint and burn tests separately.
+ * The script saves NFT IDs to test-nft-ids.json and assertion parameters to test-assertion-data.json
+ * between operations, allowing you to run mint, assertion, and burn tests separately.
+ * 
+ * The assertion parameters (claim, endTime, resolvedToYes) are automatically derived from the
+ * market data in the database during the mint test, or fall back to environment variables.
+ * 
+ * Environment Variables (used as fallback if market data not found):
+ *   TEST_CLAIM - The claim string for assertion submission (default: "Test prediction market claim")
+ *   TEST_END_TIME - The end time for the assertion (default: 1 hour from now)
+ *   TEST_RESOLVED_TO_YES - Whether the assertion resolves to yes (default: true)
  */
 
 // Load environment variables from .env file
@@ -63,11 +72,24 @@ interface PredictionSigningParams {
 
 // Environment variables
 const TEST_PRIVATE_KEY = process.env.TEST_PRIVATE_KEY;
-const PREDICTION_MARKET_CONTRACT_ADDRESS = process.env.PREDICTION_MARKET_CONTRACT_ADDRESS || '0xA5d368857C39267966f2096C4Fb509F3094E4E4a';
-const TEST_RESOLVER_ADDRESS = process.env.TEST_RESOLVER_ADDRESS || '0xA0B6d6fd2Fe9E14A34DA49Ca4de7426F6b65667c';
+const PREDICTION_MARKET_CONTRACT_ADDRESS = process.env.PREDICTION_MARKET_CONTRACT_ADDRESS;
+const TEST_RESOLVER_ADDRESS = process.env.TEST_RESOLVER_ADDRESS;
+const TEST_CLAIM = process.env.TEST_CLAIM || 'Test prediction market claim';
+const TEST_END_TIME = process.env.TEST_END_TIME ? parseInt(process.env.TEST_END_TIME) : Math.floor(Date.now() / 1000) + 3600; // Default to 1 hour from now
+const TEST_RESOLVED_TO_YES = process.env.TEST_RESOLVED_TO_YES === 'true';
 
 if (!TEST_PRIVATE_KEY) {
   console.error('❌ TEST_PRIVATE_KEY is required. Please set it in your .env file.');
+  process.exit(1);
+}
+
+if (!PREDICTION_MARKET_CONTRACT_ADDRESS) {
+  console.error('❌ PREDICTION_MARKET_CONTRACT_ADDRESS is required. Please set it in your .env file.');
+  process.exit(1);
+}
+
+if (!TEST_RESOLVER_ADDRESS) {
+  console.error('❌ TEST_RESOLVER_ADDRESS is required. Please set it in your .env file.');
   process.exit(1);
 }
 
@@ -75,9 +97,9 @@ if (!TEST_PRIVATE_KEY) {
 const args = process.argv.slice(2);
 const operation = args[0];
 
-if (!operation || !['mint', 'burn', 'both'].includes(operation)) {
-  console.error('❌ Please specify operation: mint, burn, or both');
-  console.error('Usage: npm run test-prediction-indexer-e2e [mint|burn|both]');
+if (!operation || !['mint', 'burn', 'both', 'assertion'].includes(operation)) {
+  console.error('❌ Please specify operation: mint, burn, both, or assertion');
+  console.error('Usage: npm run test-prediction-indexer-e2e [mint|burn|both|assertion]');
   process.exit(1);
 }
 
@@ -87,12 +109,23 @@ const __dirname = path.dirname(__filename);
 
 // NFT storage file path
 const NFT_STORAGE_FILE = path.join(__dirname, 'test-nft-ids.json');
+const ASSERTION_STORAGE_FILE = path.join(__dirname, 'test-assertion-data.json');
 
 // Interface for stored NFT data
 interface StoredNFTData {
   makerNftTokenId: string;
   takerNftTokenId: string;
   transactionHash: string;
+  timestamp: number;
+}
+
+// Interface for stored assertion data
+interface StoredAssertionData {
+  claim: string;
+  endTime: number;
+  resolvedToYes: boolean;
+  marketGroupAddress: string;
+  marketId: number;
   timestamp: number;
 }
 
@@ -153,6 +186,40 @@ function clearNFTData(): void {
     }
   } catch (error) {
     console.error('❌ Failed to clear NFT data:', (error as Error).message);
+  }
+}
+
+// Assertion data storage helper functions
+function saveAssertionData(assertionData: StoredAssertionData): void {
+  try {
+    fs.writeFileSync(ASSERTION_STORAGE_FILE, JSON.stringify(assertionData, null, 2));
+    console.log(`💾 Assertion data saved to ${ASSERTION_STORAGE_FILE}`);
+  } catch (error) {
+    console.error('❌ Failed to save assertion data:', (error as Error).message);
+  }
+}
+
+function loadAssertionData(): StoredAssertionData | null {
+  try {
+    if (!fs.existsSync(ASSERTION_STORAGE_FILE)) {
+      return null;
+    }
+    const data = fs.readFileSync(ASSERTION_STORAGE_FILE, 'utf8');
+    return JSON.parse(data) as StoredAssertionData;
+  } catch (error) {
+    console.error('❌ Failed to load assertion data:', (error as Error).message);
+    return null;
+  }
+}
+
+function clearAssertionData(): void {
+  try {
+    if (fs.existsSync(ASSERTION_STORAGE_FILE)) {
+      fs.unlinkSync(ASSERTION_STORAGE_FILE);
+      console.log('🗑️  Assertion data file cleared');
+    }
+  } catch (error) {
+    console.error('❌ Failed to clear assertion data:', (error as Error).message);
   }
 }
 
@@ -228,6 +295,34 @@ const PREDICTION_MARKET_ABI = [
       { name: 'owner', type: 'address' }
     ],
     outputs: [{ name: 'approvalHash', type: 'bytes32' }],
+    stateMutability: 'view'
+  }
+] as const;
+
+// Resolver contract ABI
+const RESOLVER_ABI = [
+  {
+    type: 'function',
+    name: 'submitAssertion',
+    inputs: [
+      { name: 'claim', type: 'bytes' },
+      { name: 'endTime', type: 'uint256' },
+      { name: 'resolvedToYes', type: 'bool' }
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable'
+  },
+  {
+    type: 'function',
+    name: 'config',
+    inputs: [],
+    outputs: [
+      { name: 'maxPredictionMarkets', type: 'uint256' },
+      { name: 'optimisticOracleV3', type: 'address' },
+      { name: 'bondCurrency', type: 'address' },
+      { name: 'bondAmount', type: 'uint256' },
+      { name: 'assertionLiveness', type: 'uint64' }
+    ],
     stateMutability: 'view'
   }
 ] as const;
@@ -403,56 +498,103 @@ async function signPredictionApproval(params: PredictionSigningParams, account: 
   }
 }
 
+async function fetchMarketData(marketGroupAddress: string, marketId: number): Promise<{ claim: string; endTime: number; resolvedToYes: boolean } | null> {
+  try {
+    console.log('🔍 Fetching market data from database...');
+    
+    const market = await prisma.market.findFirst({
+      where: {
+        market_group: {
+          address: marketGroupAddress.toLowerCase()
+        },
+        marketId: marketId
+      },
+      include: {
+        market_group: true
+      }
+    });
+
+    if (!market) {
+      console.log('⚠️  Market not found in database, using fallback values');
+      return null;
+    }
+
+    const claim = market.claimStatementYesOrNumeric || 'Test prediction market claim';
+    const endTime = market.endTimestamp || Math.floor(Date.now() / 1000) + 3600;
+    const resolvedToYes = true; // Default to true, can be overridden by environment variable
+
+    console.log('📋 Market data found:');
+    console.log(`  Claim: ${claim}`);
+    console.log(`  End Time: ${endTime}`);
+    console.log(`  Resolved To Yes: ${resolvedToYes}`);
+
+    return { claim, endTime, resolvedToYes };
+  } catch (error) {
+    console.error('❌ Failed to fetch market data:', (error as Error).message);
+    return null;
+  }
+}
+
 async function createPredictionData(takerDeadline: number): Promise<PredictionData> {
   console.log('🔧 Creating prediction data...');
+
+  const marketGroupAddress: string = process.env.TEST_MARKET_GROUP_ADDRESS as `0x${string}` || '0xeecfc3deee7d224094807189d2aa818f89d7f000';
+  const marketId: number = parseInt(process.env.TEST_MARKET_ID || '1');
+
+  console.log('📋 Using market group address: ', marketGroupAddress);
   
-  // Get real active market groups from database
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  const marketGroups = await prisma.marketGroup.findMany({
-    where: { 
-      chainId: 42161,
-      address: { 
-        not: null,
-        notIn: ['0x0000000000000000000000000000000000000000']
-      }
-    },
-    include: { 
-      market: {
-        where: {
-          endTimestamp: {
-            gt: nowSeconds
-          },
-          settled: {
-            not: true
-          }
-        }
-      }
-    },
-    take: 1
-  });
-
-  let marketGroupAddress: string;
-  let marketId: number;
-
-  if (marketGroups.length === 0 || !marketGroups[0].address || marketGroups[0].market.length === 0) {
-    // Fallback to a known market group address
-    marketGroupAddress = '0xeecfc3deee7d224094807189d2aa818f89d7f000';
-    marketId = 1;
-    console.log('📋 Using fallback market group (no active markets found in database)');
+  // Fetch market data for assertion parameters
+  const marketData = await fetchMarketData(marketGroupAddress, marketId);
+  
+  // Save assertion data for later use
+  if (marketData) {
+    const assertionData: StoredAssertionData = {
+      claim: marketData.claim,
+      endTime: marketData.endTime,
+      resolvedToYes: marketData.resolvedToYes,
+      marketGroupAddress,
+      marketId,
+      timestamp: Date.now()
+    };
+    saveAssertionData(assertionData);
   } else {
-    marketGroupAddress = marketGroups[0].address;
-    marketId = marketGroups[0].market[0].marketId;
-    console.log(`📋 Using active market group from database: ${marketGroupAddress}`);
-    console.log(`📋 Using active market ID: ${marketId}`);
+    // Use environment variables as fallback
+    const assertionData: StoredAssertionData = {
+      claim: TEST_CLAIM,
+      endTime: TEST_END_TIME,
+      resolvedToYes: TEST_RESOLVED_TO_YES,
+      marketGroupAddress,
+      marketId,
+      timestamp: Date.now()
+    };
+    saveAssertionData(assertionData);
   }
 
-  // Create predicted outcomes
+  // Compute bytes32 marketId exactly like resolver:
+  // marketId = keccak256(abi.encodePacked(claim, ":", endTime))
+  let claimForId: string;
+  let endTimeForId: number;
+  if (marketData) {
+    claimForId = marketData.claim;
+    endTimeForId = marketData.endTime;
+  } else {
+    claimForId = TEST_CLAIM;
+    endTimeForId = TEST_END_TIME;
+  }
+
+  const claimHex = toHex(claimForId) as `0x${string}`;
+  const colonHex = '0x3a' as `0x${string}`; // ':'
+  const endTimeHex = encodeAbiParameters(
+    [{ name: 'endTime', type: 'uint256' }],
+    [BigInt(endTimeForId)]
+  );
+  const packed = (claimHex + colonHex.slice(2) + endTimeHex.slice(2)) as `0x${string}`;
+  const marketIdBytes32 = keccak256(packed);
+
+  // Create predicted outcomes using bytes32 marketId
   const predictedOutcomes = [
     {
-      market: {
-        marketGroup: marketGroupAddress as `0x${string}`,
-        marketId: BigInt(marketId)
-      },
+      marketId: marketIdBytes32,
       prediction: true
     }
   ];
@@ -460,10 +602,7 @@ async function createPredictionData(takerDeadline: number): Promise<PredictionDa
   // Encode the predicted outcomes
   const encodedPredictedOutcomes = encodeAbiParameters(
     [{ name: 'predictedOutcomes', type: 'tuple[]', components: [
-      { name: 'market', type: 'tuple', components: [
-        { name: 'marketGroup', type: 'address' },
-        { name: 'marketId', type: 'uint256' }
-      ]},
+      { name: 'marketId', type: 'bytes32' },
       { name: 'prediction', type: 'bool' }
     ]}],
     [predictedOutcomes]
@@ -474,11 +613,11 @@ async function createPredictionData(takerDeadline: number): Promise<PredictionDa
     encodedPredictedOutcomes,
     takerCollateral: contractConfig.minCollateral,
     makerCollateral: contractConfig.minCollateral,
-    resolver: TEST_RESOLVER_ADDRESS,
+    resolver: TEST_RESOLVER_ADDRESS as `0x${string}`,
     maker: account.address,
     taker: account.address,
     takerDeadline,
-    predictionMarketAddress: PREDICTION_MARKET_CONTRACT_ADDRESS
+    predictionMarketAddress: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`
   }, account);
 
   return {
@@ -603,6 +742,123 @@ async function testMintFunction(): Promise<{ success: boolean; hash?: string; re
 
   } catch (error) {
     console.log('❌ Mint function call failed:', (error as Error).message);
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+async function submitAssertion(): Promise<{ success: boolean; hash?: string; receipt?: TransactionReceipt; error?: string }> {
+  console.log('📝 Submitting assertion to resolver...');
+  
+  try {
+    // Load assertion data from file
+    const assertionData = loadAssertionData();
+    if (!assertionData) {
+      console.log('❌ No assertion data found. Please run mint test first to generate assertion parameters.');
+      return { success: false, error: 'No assertion data found' };
+    }
+
+    console.log('📋 Using stored assertion data:');
+    console.log(`  Claim: ${assertionData.claim}`);
+    console.log(`  End Time: ${assertionData.endTime}`);
+    console.log(`  Resolved To Yes: ${assertionData.resolvedToYes}`);
+    console.log(`  Market Group: ${assertionData.marketGroupAddress}`);
+    console.log(`  Market ID: ${assertionData.marketId}`);
+
+    // Get resolver configuration to check if we need to approve bond currency
+    const resolverConfig = await publicClient.readContract({
+      address: TEST_RESOLVER_ADDRESS as `0x${string}`,
+      abi: RESOLVER_ABI,
+      functionName: 'config'
+    });
+
+    // Destructure the tuple result
+    const [, , bondCurrency, , assertionLiveness] = resolverConfig;
+    const bondAmount = 500n * 10n ** 6n;
+    console.log('📋 Resolver Configuration:');
+    console.log(`  Bond Currency: ${bondCurrency}`);
+    console.log(`  Bond Amount: ${bondAmount.toString()}`);
+    console.log(`  Assertion Liveness: ${assertionLiveness.toString()}`);
+
+    // Check and approve bond currency if needed
+    const bondAllowance = await publicClient.readContract({
+      address: bondCurrency as `0x${string}`,
+      abi: [{ name: 'allowance', type: 'function', stateMutability: 'view', inputs: [{ name: 'owner', type: 'address' }, { name: 'spender', type: 'address' }], outputs: [{ name: 'allowance', type: 'uint256' }] }],
+      functionName: 'allowance',
+      args: [account.address, TEST_RESOLVER_ADDRESS as `0x${string}`]
+    });
+
+    console.log(`🔐 Bond Currency Allowance: ${bondAllowance.toString()}`);
+    
+    if (bondAllowance < bondAmount) {
+      console.log(`🔐 Insufficient bond allowance. Approving ${bondAmount.toString()} tokens...`);
+      await walletClient.writeContract({
+        address: bondCurrency as `0x${string}`,
+        abi: [{ name: 'approve', type: 'function', stateMutability: 'nonpayable', inputs: [{ name: 'spender', type: 'address' }, { name: 'amount', type: 'uint256' }], outputs: [{ name: 'success', type: 'bool' }] }],
+        functionName: 'approve',
+        args: [TEST_RESOLVER_ADDRESS as `0x${string}`, bondAmount],
+        account: account,
+        chain: arbitrum
+      });
+      console.log('✅ Bond currency approved');
+    } else {
+      console.log('✅ Sufficient bond allowance for assertion');
+    }
+
+    // Convert claim string to bytes
+    const claimBytes = toHex(assertionData.claim) as `0x${string}`;
+    
+    console.log('🚀 Attempting to call submitAssertion()...');
+    console.log(`   Claim: ${assertionData.claim}`);
+    console.log(`   End Time: ${assertionData.endTime}`);
+    console.log(`   Resolved To Yes: ${assertionData.resolvedToYes}`);
+    
+    // Estimate gas first
+    try {
+      const gasEstimate = await publicClient.estimateContractGas({
+        address: TEST_RESOLVER_ADDRESS as `0x${string}`,
+        abi: RESOLVER_ABI,
+        functionName: 'submitAssertion',
+        args: [claimBytes, BigInt(assertionData.endTime), assertionData.resolvedToYes],
+        account: account.address
+      });
+      console.log(`⛽ Gas estimate: ${gasEstimate.toString()}`);
+    } catch (gasError) {
+      console.log('❌ Gas estimation failed:', (gasError as Error).message);
+    }
+    
+    // Send transaction
+    let hash: `0x${string}`;
+    try {
+      hash = await walletClient.writeContract({
+        address: TEST_RESOLVER_ADDRESS as `0x${string}`,
+        abi: RESOLVER_ABI,
+        functionName: 'submitAssertion',
+        args: [claimBytes, BigInt(assertionData.endTime), assertionData.resolvedToYes],
+        account: account,
+        chain: arbitrum,
+        gas: BigInt(1000000)
+      });
+      console.log(`✅ Assertion transaction sent: ${hash}`);
+    } catch (txError) {
+      console.log('❌ Transaction sending failed:', (txError as Error).message);
+      return { success: false, error: (txError as Error).message };
+    }
+      
+    // Wait for transaction receipt
+    let receipt: TransactionReceipt;
+    try {
+      receipt = await publicClient.waitForTransactionReceipt({ hash });
+      console.log(`✅ Assertion transaction confirmed in block: ${receipt.blockNumber}`);
+    } catch (receiptError) {
+      console.log('❌ Receipt waiting failed:', (receiptError as Error).message);
+      return { success: false, error: (receiptError as Error).message };
+    }
+      
+    console.log('🎉 Assertion submitted successfully!');
+    return { success: true, hash, receipt };
+
+  } catch (error) {
+    console.log('❌ Assertion submission failed:', (error as Error).message);
     return { success: false, error: (error as Error).message };
   }
 }
@@ -796,8 +1052,9 @@ async function runBurnTest(): Promise<void> {
     
     if (burnResult.success) {
       console.log('✅ Burn function test passed');
-      // Clear the NFT data after successful burn
+      // Clear the NFT and assertion data after successful burn
       clearNFTData();
+      clearAssertionData();
     } else {
       console.log('❌ Burn function test failed');
       if (burnResult.error) {
@@ -827,6 +1084,54 @@ async function runBurnTest(): Promise<void> {
 
   } catch (error) {
     console.error('❌ Burn test failed:', (error as Error).message);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+async function runAssertionTest(): Promise<void> {
+  console.log('📝 Starting Assertion Test');
+  console.log('============================================================');
+
+  try {
+    await setup();
+    console.log('============================================================');
+
+    console.log('ASSERTION SUBMISSION');
+    console.log('============================================================');
+    const assertionResult = await submitAssertion();
+    
+    if (assertionResult.success) {
+      console.log('✅ Assertion submission test passed');
+    } else {
+      console.log('❌ Assertion submission test failed');
+      if (assertionResult.error) {
+        console.log(`   Error: ${assertionResult.error}`);
+      }
+    }
+
+    console.log('============================================================');
+
+    // Check indexer events
+    console.log('INDEXER VERIFICATION');
+    console.log('============================================================');
+    const transactionHashes: string[] = [];
+    if (assertionResult.hash) transactionHashes.push(assertionResult.hash);
+    
+    const eventCount = await checkIndexerEvents(transactionHashes);
+
+    console.log('============================================================');
+    console.log('ASSERTION TEST SUMMARY');
+    console.log('============================================================');
+    console.log(`Assertion Submission: ${assertionResult.success ? '✅ PASSED' : '❌ FAILED'}`);
+    console.log(`Indexer Events Found: ${eventCount}`);
+    
+    if (eventCount === 0) {
+      console.log('⚠️  No indexer events found. Check if indexer is running.');
+    }
+
+  } catch (error) {
+    console.error('❌ Assertion test failed:', (error as Error).message);
   } finally {
     await prisma.$disconnect();
   }
@@ -872,6 +1177,7 @@ async function runBothTests(): Promise<void> {
         if (burnResult.success) {
           console.log('✅ Burn function test passed');
           clearNFTData();
+          clearAssertionData();
         } else {
           console.log('❌ Burn function test failed');
           if (burnResult.error) {
@@ -927,8 +1233,11 @@ async function main(): Promise<void> {
     case 'both':
       await runBothTests();
       break;
+    case 'assertion':
+      await runAssertionTest();
+      break;
     default:
-      console.error('❌ Invalid operation. Use: mint, burn, or both');
+      console.error('❌ Invalid operation. Use: mint, burn, both, or assertion');
       process.exit(1);
   }
 }

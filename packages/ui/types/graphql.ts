@@ -5101,7 +5101,9 @@ export type TransactionWhereUniqueInput = {
 
 export type Transaction_Type_Enum =
   | 'addLiquidity'
+  | 'burnParlayNFTs'
   | 'long'
+  | 'mintParlayNFTs'
   | 'removeLiquidity'
   | 'settledPosition'
   | 'short';

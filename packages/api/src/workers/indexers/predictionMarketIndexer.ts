@@ -10,10 +10,12 @@ import {
 } from 'viem';
 import Sentry from '../../instrument';
 import { IResourcePriceIndexer } from '../../interfaces';
-import type { Resource } from '../../../generated/prisma';
+import type { Resource, transaction_type_enum } from '../../../generated/prisma';
 
+
+// TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
-const PREDICTION_MARKET_CONTRACT_ADDRESS = '0xA5d368857C39267966f2096C4Fb509F3094E4E4a';
+const PREDICTION_MARKET_CONTRACT_ADDRESS = '0x1b007EEbC853DC5F13202D85d92d5712f15AC575';
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
@@ -235,27 +237,38 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         timestamp: Number(block.timestamp)
       };
 
-      // Store in database - we'll use the existing Event table
+      // Skip if this event already exists (avoid double-writing event and transaction)
+      const uniqueEventKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0
+      } as const;
 
-      const eventUpsertResult = await prisma.event.upsert({
+      const existingEvent = await prisma.event.findFirst({
         where: {
-          transactionHash_marketGroupId_blockNumber_logIndex: {
-            transactionHash: log.transactionHash || '',
-            marketGroupId: 0, // PredictionMarket events don't have a marketGroupId, using 0 instead of null
-            blockNumber: Number(log.blockNumber || 0),
-            logIndex: log.logIndex || 0
-          }
-        },
-        update: {
-          logData: eventData
-        },
-        create: {
+          transactionHash: uniqueEventKey.transactionHash,
+          blockNumber: uniqueEventKey.blockNumber,
+          logIndex: uniqueEventKey.logIndex,
+          marketGroupId: null
+        }
+      });
+
+      if (existingEvent) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate PredictionMinted event tx=${uniqueEventKey.transactionHash} block=${uniqueEventKey.blockNumber} logIndex=${uniqueEventKey.logIndex}`
+        );
+        return;
+      }
+
+      // Store in database - create only when not present
+      const eventUpsertResult = await prisma.event.create({
+        data: {
           blockNumber: Number(log.blockNumber || 0),
           transactionHash: log.transactionHash || '',
           timestamp: BigInt(block.timestamp),
           logIndex: log.logIndex || 0,
           logData: eventData,
-          marketGroupId: -1, // PredictionMarket events don't have a marketGroupId, using -1 instead of null
+          marketGroupId: null
         }
       });
 
@@ -265,12 +278,12 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         },
         create: {
           eventId: eventUpsertResult.id,
-          type: 'mintParlayNFTs',
+          type: 'mintParlayNFTs' as transaction_type_enum,
           collateral: eventData.totalCollateral,
         },
         update: {
           eventId: eventUpsertResult.id,
-          type: 'mintParlayNFTs',
+          type: 'mintParlayNFTs' as transaction_type_enum,
           collateral: eventData.totalCollateral,
         },
       });
@@ -305,25 +318,37 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         timestamp: Number(block.timestamp)
       };
 
-      await prisma.event.upsert({
+      // Skip duplicates
+      const burnedKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0
+      } as const;
+
+      const existingBurned = await prisma.event.findFirst({
         where: {
-          transactionHash_marketGroupId_blockNumber_logIndex: {
-            transactionHash: log.transactionHash || '',
-            marketGroupId: 0,
-            blockNumber: Number(log.blockNumber || 0),
-            logIndex: log.logIndex || 0
-          }
-        },
-        update: {
-          logData: eventData
-        },
-        create: {
+          transactionHash: burnedKey.transactionHash,
+          blockNumber: burnedKey.blockNumber,
+          logIndex: burnedKey.logIndex,
+          marketGroupId: null
+        }
+      });
+
+      if (existingBurned) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate PredictionBurned event tx=${burnedKey.transactionHash} block=${burnedKey.blockNumber} logIndex=${burnedKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
           blockNumber: Number(log.blockNumber || 0),
           transactionHash: log.transactionHash || '',
           timestamp: BigInt(block.timestamp),
           logIndex: log.logIndex || 0,
           logData: eventData,
-          marketGroupId: 0
+          marketGroupId: null
         }
       });
 
@@ -354,25 +379,37 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         timestamp: Number(block.timestamp)
       };
 
-      await prisma.event.upsert({
+      // Skip duplicates
+      const consolidatedKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0
+      } as const;
+
+      const existingConsolidated = await prisma.event.findFirst({
         where: {
-          transactionHash_marketGroupId_blockNumber_logIndex: {
-            transactionHash: log.transactionHash || '',
-            marketGroupId: 0,
-            blockNumber: Number(log.blockNumber || 0),
-            logIndex: log.logIndex || 0
-          }
-        },
-        update: {
-          logData: eventData
-        },
-        create: {
+          transactionHash: consolidatedKey.transactionHash,
+          blockNumber: consolidatedKey.blockNumber,
+          logIndex: consolidatedKey.logIndex,
+          marketGroupId: null
+        }
+      });
+
+      if (existingConsolidated) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate PredictionConsolidated event tx=${consolidatedKey.transactionHash} block=${consolidatedKey.blockNumber} logIndex=${consolidatedKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
           blockNumber: Number(log.blockNumber || 0),
           transactionHash: log.transactionHash || '',
           timestamp: BigInt(block.timestamp),
           logIndex: log.logIndex || 0,
           logData: eventData,
-          marketGroupId: 0
+          marketGroupId: null
         }
       });
 

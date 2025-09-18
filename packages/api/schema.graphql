@@ -4126,7 +4126,9 @@ input TransactionWhereUniqueInput {
 
 enum transaction_type_enum {
   addLiquidity
+  burnParlayNFTs
   long
+  mintParlayNFTs
   removeLiquidity
   settledPosition
   short

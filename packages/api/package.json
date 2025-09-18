@@ -34,6 +34,7 @@
     "test:prediction-mint": "tsx test-prediction-indexer-e2e.ts mint",
     "test:prediction-burn": "tsx test-prediction-indexer-e2e.ts burn",
     "test:prediction-both": "tsx test-prediction-indexer-e2e.ts both",
+    "test:prediction-assertion": "tsx test-prediction-indexer-e2e.ts assertion",
     "test:websocket": "tsx test-websocket-connection.ts",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",

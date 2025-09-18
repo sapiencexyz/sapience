@@ -20,3 +20,8 @@ DATABASE_URL=your_database_url_here
 # Optional: Test market configuration
 TEST_MARKET_GROUP_ADDRESS=your_market_group_address_here
 TEST_MARKET_ID=1
+
+# Optional: Test assertion configuration
+TEST_CLAIM=Test prediction market claim
+TEST_END_TIME=1234567890
+TEST_RESOLVED_TO_YES=true
