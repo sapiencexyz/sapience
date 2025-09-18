@@ -1050,6 +1050,13 @@ export type ConditionSumOrderByAggregateInput = {
   endTime?: InputMaybe<SortOrder>;
 };
 
+export type ConditionSummary = {
+  __typename?: 'ConditionSummary';
+  endTime?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
+  question?: Maybe<Scalars['String']['output']>;
+};
+
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
   NOT?: InputMaybe<Array<ConditionWhereInput>>;
@@ -3051,6 +3058,25 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
+export type ParlayType = {
+  __typename?: 'ParlayType';
+  chainId: Scalars['Int']['output'];
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  maker: Scalars['String']['output'];
+  makerNftTokenId: Scalars['String']['output'];
+  makerWon?: Maybe<Scalars['Boolean']['output']>;
+  marketAddress: Scalars['String']['output'];
+  mintedAt: Scalars['Int']['output'];
+  predictedOutcomes: Array<PredictedOutcomeType>;
+  refCode?: Maybe<Scalars['String']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
+  status: Scalars['String']['output'];
+  taker: Scalars['String']['output'];
+  takerNftTokenId: Scalars['String']['output'];
+  totalCollateral: Scalars['String']['output'];
+};
+
 export type PnLType = {
   __typename?: 'PnLType';
   collateralAddress?: Maybe<Scalars['String']['output']>;
@@ -3445,6 +3471,13 @@ export type PositionWhereUniqueInput = {
   transactions?: InputMaybe<TransactionListRelationFilter>;
 };
 
+export type PredictedOutcomeType = {
+  __typename?: 'PredictedOutcomeType';
+  condition?: Maybe<ConditionSummary>;
+  conditionId: Scalars['String']['output'];
+  prediction: Scalars['Boolean']['output'];
+};
+
 export type ProfitRankType = {
   __typename?: 'ProfitRankType';
   owner: Scalars['String']['output'];
@@ -3538,6 +3571,7 @@ export type Query = {
   totalVolumeByMarket: Scalars['Float']['output'];
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
+  userParlays: Array<ParlayType>;
 };
 
 
@@ -4217,6 +4251,13 @@ export type QueryTransactionsArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<TransactionWhereInput>;
+};
+
+
+export type QueryUserParlaysArgs = {
+  address: Scalars['String']['input'];
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 export type QueryMode =

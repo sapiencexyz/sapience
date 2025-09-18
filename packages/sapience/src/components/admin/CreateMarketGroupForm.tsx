@@ -588,7 +588,10 @@ const CreateMarketGroupForm = () => {
       console.error('Error creating market group:', error);
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create market group',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Failed to create market group',
         variant: 'destructive',
       });
     }
@@ -943,7 +946,6 @@ const CreateMarketGroupForm = () => {
                 Submit Market Group & Markets
               </Button>
             </div>
-
           </form>
         </div>
       )}

@@ -50,7 +50,10 @@ async function startResourceIndexers(): Promise<
   for (const [resourceSlug, indexer] of Object.entries(INDEXERS)) {
     let useEmptyResourceForIndexer = false;
     let resource: Resource | null = null;
-    if (resourceSlug === 'attestation-prediction-market' || resourceSlug === 'prediction-market-events') {
+    if (
+      resourceSlug === 'attestation-prediction-market' ||
+      resourceSlug === 'prediction-market-events'
+    ) {
       useEmptyResourceForIndexer = true;
     }
 
@@ -64,7 +67,10 @@ async function startResourceIndexers(): Promise<
         id: 0,
         slug: resourceSlug,
         name: resourceSlug,
-        description: resourceSlug === 'attestation-prediction-market' ? 'Attestation prediction market' : 'Prediction market events',
+        description:
+          resourceSlug === 'attestation-prediction-market'
+            ? 'Attestation prediction market'
+            : 'Prediction market events',
         createdAt: new Date(),
         categoryId: 1,
       } as Resource;

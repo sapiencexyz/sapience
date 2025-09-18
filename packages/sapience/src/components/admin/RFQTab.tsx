@@ -528,6 +528,7 @@ const RFQTab = ({
               <ResolveConditionCell
                 marketId={id as `0x${string}`}
                 endTime={original.endTime}
+                claim={original.claimStatement}
               />
               <Button
                 variant="secondary"

@@ -1,6 +1,10 @@
 'use client';
 
 import type { Address } from 'viem';
+import { useUserParlays } from '~/hooks/graphql/useUserParlays';
+import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
+const ZERO_REF_CODE =
+  '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`;
 import {
   Table,
   TableBody,
@@ -22,57 +26,69 @@ import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
 
 export default function UserParlaysTable({
+  account,
   showHeaderText = true,
 }: {
   account: Address;
-  chainId?: number;
   showHeaderText?: boolean;
-  marketAddressFilter?: string;
 }) {
-  type MockLeg = { question: string; choice: 'Yes' | 'No' };
-  type MockParlay = {
+  type UILeg = { question: string; choice: 'Yes' | 'No' };
+  type UIParlay = {
     positionId: number;
-    legs: MockLeg[];
+    legs: UILeg[];
     direction: 'Long' | 'Short';
-    endsAt: number; // timestamp in ms
+    endsAt: number; // ms
     status: 'active' | 'won' | 'lost';
+    tokenIdToClaim?: bigint;
   };
 
-  const mockParlays: MockParlay[] = [
-    {
-      positionId: 101234,
-      direction: 'Long',
-      endsAt: Date.now() + 1000 * 60 * 60 * 3, // 3d (rounded display)
-      status: 'active',
-      legs: [
-        { question: 'Will BTC close above $60k on Friday?', choice: 'Yes' },
-        { question: 'Will the S&P 500 be up this week?', choice: 'No' },
-      ],
-    },
-    {
-      positionId: 101235,
-      direction: 'Short',
-      endsAt: Date.now() - 1000 * 60 * 60 * 2, // expired 2h ago
-      status: 'won',
-      legs: [
-        { question: 'Will ETH average gas < 25 gwei tomorrow?', choice: 'Yes' },
-        { question: 'Will US CPI YoY be above 3% next print?', choice: 'No' },
-        {
-          question: 'Will SOL flip BNB in market cap this month?',
-          choice: 'No',
-        },
-      ],
-    },
-    {
-      positionId: 101236,
-      direction: 'Long',
-      endsAt: Date.now() - 1000 * 60 * 5, // expired 5m ago
-      status: 'lost',
-      legs: [{ question: 'Will BTC dominance rise next week?', choice: 'Yes' }],
-    },
-  ];
+  // Fetch real data
+  const { data } = useUserParlays({ address: String(account) });
 
-  const columns = React.useMemo<ColumnDef<MockParlay>[]>(
+  const viewer = String(account || '').toLowerCase();
+  const rows: UIParlay[] = (data || []).map((p: any) => {
+    const legs: UILeg[] = (p.predictedOutcomes || []).map((o: any) => ({
+      question: o?.condition?.question || o.conditionId,
+      choice: o.prediction ? 'Yes' : 'No',
+    }));
+    const endsAtSec =
+      p.endsAt ||
+      Math.max(
+        0,
+        ...(p.predictedOutcomes || []).map(
+          (o: any) => o?.condition?.endTime || 0
+        )
+      );
+    const userIsMaker =
+      typeof p.maker === 'string' && p.maker.toLowerCase() === viewer;
+    const userIsTaker =
+      typeof p.taker === 'string' && p.taker.toLowerCase() === viewer;
+    const isActive = p.status === 'active';
+    const userWon =
+      !isActive &&
+      ((userIsMaker && p.makerWon === true) ||
+        (userIsTaker && p.makerWon === false));
+    const status: UIParlay['status'] = isActive
+      ? 'active'
+      : userWon
+        ? 'won'
+        : 'lost';
+    const tokenIdToClaim = userWon
+      ? userIsMaker
+        ? BigInt(p.makerNftTokenId)
+        : BigInt(p.takerNftTokenId)
+      : undefined;
+    return {
+      positionId: p.makerNftTokenId ? Number(p.makerNftTokenId) : p.id,
+      legs,
+      direction: 'Long',
+      endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
+      status,
+      tokenIdToClaim,
+    };
+  });
+
+  const columns = React.useMemo<ColumnDef<UIParlay>[]>(
     () => [
       {
         id: 'positionId',
@@ -231,9 +247,10 @@ export default function UserParlaysTable({
                 {`Ends In ${Math.max(1, Math.ceil((row.original.endsAt - Date.now()) / (1000 * 60 * 60 * 24)))} Days`}
               </Button>
             )}
-            {row.original.status === 'won' && (
-              <Button size="sm">Claim Winnings</Button>
-            )}
+            {row.original.status === 'won' &&
+              row.original.tokenIdToClaim !== undefined && (
+                <ClaimButton tokenId={row.original.tokenIdToClaim} />
+              )}
             {row.original.status === 'lost' && (
               <Button size="sm" variant="outline" disabled>
                 Parlay Lost
@@ -251,7 +268,7 @@ export default function UserParlaysTable({
   ]);
 
   const table = useReactTable({
-    data: mockParlays,
+    data: rows,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -260,6 +277,22 @@ export default function UserParlaysTable({
     columnResizeMode: 'onChange',
     enableColumnResizing: false,
   });
+
+  function ClaimButton({ tokenId }: { tokenId: bigint }) {
+    const { burn, isPending } = usePredictionMarketWriteContract({
+      successMessage: 'Claim submitted',
+      fallbackErrorMessage: 'Claim failed',
+    });
+    return (
+      <Button
+        size="sm"
+        onClick={() => burn(tokenId, ZERO_REF_CODE)}
+        disabled={isPending}
+      >
+        {isPending ? 'Claiming...' : 'Claim Winnings'}
+      </Button>
+    );
+  }
 
   return (
     <div>

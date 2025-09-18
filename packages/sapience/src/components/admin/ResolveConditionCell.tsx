@@ -3,13 +3,14 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { useWallets } from '@privy-io/react-auth';
 import { Loader2 } from 'lucide-react';
-import { erc20Abi, zeroAddress } from 'viem';
+import { erc20Abi, zeroAddress, toHex } from 'viem';
 import { useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 type ResolveConditionCellProps = {
   marketId?: `0x${string}`;
   endTime?: number;
+  claim?: string;
   className?: string;
 };
 
@@ -33,7 +34,8 @@ const umaResolverAbi = [
   },
   {
     inputs: [
-      { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
+      { internalType: 'bytes', name: 'claim', type: 'bytes' },
+      { internalType: 'uint256', name: 'endTime', type: 'uint256' },
       { internalType: 'bool', name: 'resolvedToYes', type: 'bool' },
     ],
     name: 'submitAssertion',
@@ -44,8 +46,8 @@ const umaResolverAbi = [
 ] as const;
 
 const ResolveConditionCell = ({
-  marketId,
   endTime,
+  claim,
   className,
 }: ResolveConditionCellProps) => {
   const { wallets } = useWallets();
@@ -53,25 +55,10 @@ const ResolveConditionCell = ({
     | `0x${string}`
     | undefined;
 
-  // Defaults to Arbitrum + provided UMA resolver address if env vars are not set
-  const DEFAULT_UMA_RESOLVER_ADDRESS =
-    '0xFD2b0F02AC23e0dccfc922E77eAc7f9510B25323' as `0x${string}`;
-  const DEFAULT_UMA_CHAIN_ID = 42161;
-
-  const envUmaAddress = process.env.NEXT_PUBLIC_UMA_RESOLVER_ADDRESS as
-    | `0x${string}`
-    | undefined;
-  const envUmaChain = process.env.NEXT_PUBLIC_UMA_CHAIN_ID
-    ? Number(process.env.NEXT_PUBLIC_UMA_CHAIN_ID)
-    : undefined;
-
+  // Hardcoded Arbitrum One + UMA Resolver address
+  const UMA_CHAIN_ID = 42161;
   const UMA_RESOLVER_ADDRESS =
-    envUmaAddress && envUmaAddress.startsWith('0x')
-      ? envUmaAddress
-      : DEFAULT_UMA_RESOLVER_ADDRESS;
-  const UMA_CHAIN_ID = Number.isFinite(envUmaChain)
-    ? (envUmaChain as number)
-    : DEFAULT_UMA_CHAIN_ID;
+    '0xeF789dA126d402Ac2a3D7AF0Fd19b891f7Cc8296' as `0x${string}`;
 
   const nowSec = Math.floor(Date.now() / 1000);
   const pastEnd = !!endTime && nowSec >= endTime;
@@ -126,7 +113,7 @@ const ResolveConditionCell = ({
   const disabledButtons =
     !pastEnd ||
     !umaConfigured ||
-    !marketId ||
+    !(claim && endTime) ||
     !connectedAddress ||
     isSubmitting ||
     requiresApproval;
@@ -164,12 +151,13 @@ const ResolveConditionCell = ({
       <Button
         size="sm"
         onClick={() => {
-          if (!UMA_CHAIN_ID || !UMA_RESOLVER_ADDRESS || !marketId) return;
+          if (!UMA_CHAIN_ID || !UMA_RESOLVER_ADDRESS || !claim || !endTime)
+            return;
           submitWrite({
             address: UMA_RESOLVER_ADDRESS,
             abi: umaResolverAbi,
             functionName: 'submitAssertion',
-            args: [marketId, true],
+            args: [toHex(claim), BigInt(endTime), true],
             chainId: UMA_CHAIN_ID,
           });
         }}
@@ -187,12 +175,13 @@ const ResolveConditionCell = ({
         size="sm"
         variant="outline"
         onClick={() => {
-          if (!UMA_CHAIN_ID || !UMA_RESOLVER_ADDRESS || !marketId) return;
+          if (!UMA_CHAIN_ID || !UMA_RESOLVER_ADDRESS || !claim || !endTime)
+            return;
           submitWrite({
             address: UMA_RESOLVER_ADDRESS,
             abi: umaResolverAbi,
             functionName: 'submitAssertion',
-            args: [marketId, false],
+            args: [toHex(claim), BigInt(endTime), false],
             chainId: UMA_CHAIN_ID,
           });
         }}

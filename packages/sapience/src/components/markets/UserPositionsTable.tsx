@@ -214,12 +214,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
 
         {showParlaysTab && (
           <TabsContent value="parlays">
-            <UserParlaysTable
-              account={account}
-              chainId={chainId}
-              showHeaderText={false}
-              marketAddressFilter={marketAddress}
-            />
+            <UserParlaysTable account={account} showHeaderText={false} />
           </TabsContent>
         )}
 

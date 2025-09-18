@@ -941,6 +941,12 @@ input ConditionSumOrderByAggregateInput {
   endTime: SortOrder
 }
 
+type ConditionSummary {
+  endTime: Int
+  id: String!
+  question: String
+}
+
 input ConditionWhereInput {
   AND: [ConditionWhereInput!]
   NOT: [ConditionWhereInput!]
@@ -2862,6 +2868,24 @@ enum NullsOrder {
   last
 }
 
+type ParlayType {
+  chainId: Int!
+  endsAt: Int
+  id: Int!
+  maker: String!
+  makerNftTokenId: String!
+  makerWon: Boolean
+  marketAddress: String!
+  mintedAt: Int!
+  predictedOutcomes: [PredictedOutcomeType!]!
+  refCode: String
+  settledAt: Int
+  status: String!
+  taker: String!
+  takerNftTokenId: String!
+  totalCollateral: String!
+}
+
 type PnLType {
   collateralAddress: String
   collateralDecimals: Int
@@ -3228,6 +3252,12 @@ input PositionWhereUniqueInput {
   transactions: TransactionListRelationFilter
 }
 
+type PredictedOutcomeType {
+  condition: ConditionSummary
+  conditionId: String!
+  prediction: Boolean!
+}
+
 type ProfitRankType {
   owner: String!
   rank: Int
@@ -3319,6 +3349,7 @@ type Query {
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transaction(where: TransactionWhereUniqueInput!): Transaction
   transactions(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): [Transaction!]!
+  userParlays(address: String!, skip: Int! = 0, take: Int! = 50): [ParlayType!]!
 }
 
 enum QueryMode {

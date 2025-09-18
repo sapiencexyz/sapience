@@ -106,6 +106,7 @@ import {
   PnLResolver,
   VolumeResolver,
   ScoreResolver,
+  ParlayResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -212,7 +213,13 @@ export const initializeApolloServer = async () => {
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
   const allResolvers = queryResolvers
     .concat(relationResolvers)
-    .concat([CandleResolver, PnLResolver, VolumeResolver, ScoreResolver]);
+    .concat([
+      CandleResolver,
+      PnLResolver,
+      VolumeResolver,
+      ScoreResolver,
+      ParlayResolver,
+    ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolvers: allResolvers as any,
