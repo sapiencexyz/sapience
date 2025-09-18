@@ -462,20 +462,22 @@ const MarketFormFields = ({
 
   return (
     <div className="space-y-4 py-4">
-      {/* Market Question & Option Name */}
+      {/* Market Question */}
+      <div>
+        <Label htmlFor={fieldId('marketQuestion')}>Market Question</Label>
+        <Input
+          id={fieldId('marketQuestion')}
+          type="text"
+          value={market.marketQuestion}
+          onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
+          placeholder="Will Zohran become the Mayor of NYC?"
+          required
+          disabled={disabledFields?.marketQuestion}
+        />
+      </div>
+
+      {/* Short Name and Option Name */}
       <div className={'grid grid-cols-1 md:grid-cols-2 gap-4'}>
-        <div>
-          <Label htmlFor={fieldId('marketQuestion')}>Market Question</Label>
-          <Input
-            id={fieldId('marketQuestion')}
-            type="text"
-            value={market.marketQuestion}
-            onChange={(e) => onMarketChange('marketQuestion', e.target.value)}
-            placeholder="Will Zohran become the Mayor of NYC?"
-            required
-            disabled={disabledFields?.marketQuestion}
-          />
-        </div>
         <div>
           <Label htmlFor={fieldId('shortName')}>Short Name (optional)</Label>
           <Input
@@ -487,10 +489,6 @@ const MarketFormFields = ({
             disabled={false}
           />
         </div>
-      </div>
-
-      {/* Option Name */}
-      <div className={'grid grid-cols-1 md:grid-cols-2 gap-4'}>
         <div>
           <Label htmlFor={fieldId('optionName')}>
             Option Name (Multi-choice only)
