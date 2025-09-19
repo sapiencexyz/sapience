@@ -43,19 +43,19 @@ export function fontsFromData(fonts: {
     {
       name: 'AvenirNextRounded',
       data: fonts.regular,
-      weight: 400,
+      weight: 400 as const,
       style: 'normal' as const,
     },
     {
       name: 'AvenirNextRounded',
       data: fonts.demi,
-      weight: 600,
+      weight: 600 as const,
       style: 'normal' as const,
     },
     {
       name: 'AvenirNextRounded',
       data: fonts.bold,
-      weight: 700,
+      weight: 700 as const,
       style: 'normal' as const,
     },
   ];

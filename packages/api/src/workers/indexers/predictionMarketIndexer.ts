@@ -610,63 +610,41 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
   async watchBlocksForResource(resource: Resource): Promise<void> {
     if (this.isWatching) {
-      console.log('[PredictionMarketIndexer] Already watching blocks');
+      console.log('[PredictionMarketIndexer] Already watching events');
       return;
     }
 
     this.isWatching = true;
     console.log(
-      `[PredictionMarketIndexer] Starting to watch blocks for resource: ${resource.slug}`
+      `[PredictionMarketIndexer] Starting to watch events for resource: ${resource.slug}`
     );
 
     try {
-      // Watch for new blocks and process PredictionMarket events
-      const unwatch = this.client.watchBlocks({
-        onBlock: async (block) => {
-          try {
-            // Validate block object
-            if (!block || typeof block.number !== 'bigint') {
+      // Watch for all PredictionMarket events in a single watcher
+      const unwatch = this.client.watchContractEvent({
+        address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
+        abi: PREDICTION_MARKET_ABI,
+        onLogs: async (logs) => {
+          for (const log of logs) {
+            try {
+              // Get the block for timestamp information
+              const block = await this.client.getBlock({
+                blockNumber: log.blockNumber,
+                includeTransactions: false,
+              });
+              await this.processLog(log, block);
+            } catch (logError) {
               console.error(
-                '[PredictionMarketIndexer] Invalid block object received:',
-                block
+                `[PredictionMarketIndexer] Error processing log:`,
+                logError
               );
-              return;
+              Sentry.captureException(logError);
             }
-
-            // Get logs for the PredictionMarket contract in this block
-            const logs = await this.client.getLogs({
-              address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
-              fromBlock: block.number,
-              toBlock: block.number,
-            });
-
-            for (const log of logs) {
-              try {
-                await this.processLog(log, block);
-              } catch (logError) {
-                console.error(
-                  `[PredictionMarketIndexer] Error processing individual log:`,
-                  logError
-                );
-                Sentry.captureException(logError);
-                // Continue processing other logs
-              }
-            }
-          } catch (error) {
-            const blockNumber = block?.number
-              ? block.number.toString()
-              : 'unknown';
-            console.error(
-              `[PredictionMarketIndexer] Error processing block ${blockNumber}:`,
-              error
-            );
-            Sentry.captureException(error);
-            // Don't rethrow - continue processing other blocks
           }
         },
         onError: (error) => {
           console.error(
-            '[PredictionMarketIndexer] Error watching blocks:',
+            '[PredictionMarketIndexer] Error watching events:',
             error
           );
           Sentry.captureException(error);
@@ -679,7 +657,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
           setTimeout(() => {
             if (!this.isWatching) {
               console.log(
-                '[PredictionMarketIndexer] Restarting block watcher...'
+                '[PredictionMarketIndexer] Restarting event watcher...'
               );
               this.watchBlocksForResource(resource).catch(
                 (restartError: Error) => {
@@ -697,7 +675,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
       // Keep the process alive
       process.on('SIGINT', () => {
-        console.log('[PredictionMarketIndexer] Stopping block watcher...');
+        console.log('[PredictionMarketIndexer] Stopping event watcher...');
         unwatch();
         this.isWatching = false;
         process.exit(0);
@@ -707,7 +685,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       await new Promise(() => {});
     } catch (error) {
       console.error(
-        '[PredictionMarketIndexer] Error starting block watcher:',
+        '[PredictionMarketIndexer] Error starting event watchers:',
         error
       );
       Sentry.captureException(error);

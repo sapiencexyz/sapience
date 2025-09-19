@@ -12,3 +12,4 @@ tsconfig.tsbuildinfo
 
 # Test NFT storage
 test-nft-ids.json
+test-assertion-data.json

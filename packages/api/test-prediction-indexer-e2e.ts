@@ -334,6 +334,7 @@ const PREDICTION_MINTED_EVENT = {
   inputs: [
     { name: 'maker', type: 'address', indexed: true },
     { name: 'taker', type: 'address', indexed: true },
+    { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
     { name: 'makerNftTokenId', type: 'uint256', indexed: false },
     { name: 'takerNftTokenId', type: 'uint256', indexed: false },
     { name: 'makerCollateral', type: 'uint256', indexed: false },

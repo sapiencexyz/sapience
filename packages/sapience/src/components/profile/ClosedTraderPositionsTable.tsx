@@ -423,7 +423,6 @@ export default function ClosedTraderPositionsTable({
             if (!next) setOpenSharePositionId(null);
           }}
           trigger={<span />}
-          debugLabel="ClosedTraderShareDialog"
         />
       )}
     </div>
