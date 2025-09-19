@@ -753,7 +753,6 @@ type Condition {
   id: String!
   public: Boolean!
   question: String!
-  shortName: String
   similarMarkets: [String!]!
 }
 
@@ -777,7 +776,6 @@ type ConditionCountAggregate {
   id: Int!
   public: Int!
   question: Int!
-  shortName: Int!
   similarMarkets: Int!
 }
 
@@ -790,7 +788,6 @@ input ConditionCountOrderByAggregateInput {
   id: SortOrder
   public: SortOrder
   question: SortOrder
-  shortName: SortOrder
   similarMarkets: SortOrder
 }
 
@@ -808,7 +805,6 @@ type ConditionGroupBy {
   id: String!
   public: Boolean!
   question: String!
-  shortName: String
   similarMarkets: [String!]
 }
 
@@ -827,7 +823,6 @@ type ConditionMaxAggregate {
   id: String
   public: Boolean
   question: String
-  shortName: String
 }
 
 input ConditionMaxOrderByAggregateInput {
@@ -839,7 +834,6 @@ input ConditionMaxOrderByAggregateInput {
   id: SortOrder
   public: SortOrder
   question: SortOrder
-  shortName: SortOrder
 }
 
 type ConditionMinAggregate {
@@ -851,7 +845,6 @@ type ConditionMinAggregate {
   id: String
   public: Boolean
   question: String
-  shortName: String
 }
 
 input ConditionMinOrderByAggregateInput {
@@ -863,7 +856,6 @@ input ConditionMinOrderByAggregateInput {
   id: SortOrder
   public: SortOrder
   question: SortOrder
-  shortName: SortOrder
 }
 
 input ConditionOrderByRelationAggregateInput {
@@ -884,7 +876,6 @@ input ConditionOrderByWithAggregationInput {
   id: SortOrder
   public: SortOrder
   question: SortOrder
-  shortName: SortOrderInput
   similarMarkets: SortOrder
 }
 
@@ -898,7 +889,6 @@ input ConditionOrderByWithRelationInput {
   id: SortOrder
   public: SortOrder
   question: SortOrder
-  shortName: SortOrderInput
   similarMarkets: SortOrder
 }
 
@@ -911,7 +901,6 @@ enum ConditionScalarFieldEnum {
   id
   public
   question
-  shortName
   similarMarkets
 }
 
@@ -927,7 +916,6 @@ input ConditionScalarWhereWithAggregatesInput {
   id: StringWithAggregatesFilter
   public: BoolWithAggregatesFilter
   question: StringWithAggregatesFilter
-  shortName: StringNullableWithAggregatesFilter
   similarMarkets: StringNullableListFilter
 }
 
@@ -961,7 +949,6 @@ input ConditionWhereInput {
   id: StringFilter
   public: BoolFilter
   question: StringFilter
-  shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
 }
 
@@ -978,7 +965,6 @@ input ConditionWhereUniqueInput {
   id: String
   public: BoolFilter
   question: StringFilter
-  shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
 }
 
@@ -1315,7 +1301,6 @@ type Market {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
-  shortName: String
   similarMarkets: [String!]!
   startTimestamp: Int
   startingSqrtPriceX96: String
@@ -1384,7 +1369,6 @@ type MarketCountAggregate {
   question: Int!
   settled: Int!
   settlementPriceD18: Int!
-  shortName: Int!
   similarMarkets: Int!
   startTimestamp: Int!
   startingSqrtPriceX96: Int!
@@ -1416,7 +1400,6 @@ input MarketCountOrderByAggregateInput {
   question: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
-  shortName: SortOrder
   similarMarkets: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
@@ -1523,7 +1506,6 @@ type MarketGroupBy {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
-  shortName: String
   similarMarkets: [String!]
   startTimestamp: Int
   startingSqrtPriceX96: String
@@ -2063,7 +2045,6 @@ type MarketMaxAggregate {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
-  shortName: String
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -2094,7 +2075,6 @@ input MarketMaxOrderByAggregateInput {
   question: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
-  shortName: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
 }
@@ -2125,7 +2105,6 @@ type MarketMinAggregate {
   question: String
   settled: Boolean
   settlementPriceD18: Decimal
-  shortName: String
   startTimestamp: Int
   startingSqrtPriceX96: String
 }
@@ -2156,7 +2135,6 @@ input MarketMinOrderByAggregateInput {
   question: SortOrder
   settled: SortOrder
   settlementPriceD18: SortOrder
-  shortName: SortOrder
   startTimestamp: SortOrder
   startingSqrtPriceX96: SortOrder
 }
@@ -2201,7 +2179,6 @@ input MarketOrderByWithAggregationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
-  shortName: SortOrderInput
   similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
@@ -2235,7 +2212,6 @@ input MarketOrderByWithRelationInput {
   question: SortOrderInput
   settled: SortOrderInput
   settlementPriceD18: SortOrderInput
-  shortName: SortOrderInput
   similarMarkets: SortOrder
   startTimestamp: SortOrderInput
   startingSqrtPriceX96: SortOrderInput
@@ -2418,7 +2394,6 @@ enum MarketScalarFieldEnum {
   question
   settled
   settlementPriceD18
-  shortName
   similarMarkets
   startTimestamp
   startingSqrtPriceX96
@@ -2453,7 +2428,6 @@ input MarketScalarWhereWithAggregatesInput {
   question: StringNullableWithAggregatesFilter
   settled: BoolNullableWithAggregatesFilter
   settlementPriceD18: DecimalNullableWithAggregatesFilter
-  shortName: StringNullableWithAggregatesFilter
   similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableWithAggregatesFilter
   startingSqrtPriceX96: StringNullableWithAggregatesFilter
@@ -2522,7 +2496,6 @@ input MarketWhereInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
-  shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter
@@ -2560,7 +2533,6 @@ input MarketWhereUniqueInput {
   question: StringNullableFilter
   settled: BoolNullableFilter
   settlementPriceD18: DecimalNullableFilter
-  shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
   startTimestamp: IntNullableFilter
   startingSqrtPriceX96: StringNullableFilter

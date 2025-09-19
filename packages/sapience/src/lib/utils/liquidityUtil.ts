@@ -42,8 +42,9 @@ export interface PoolData {
   ticks: BarChartTick[];
 }
 
-const MAX_INT128 = JSBI.subtract(
-  JSBI.exponentiate(JSBI.BigInt(2), JSBI.BigInt(128)),
+
+const MAX_INT256 = JSBI.subtract(
+  JSBI.exponentiate(JSBI.BigInt(2), JSBI.BigInt(256)), 
   JSBI.BigInt(1)
 );
 
@@ -123,6 +124,7 @@ function computeInitializedTicks(
   let previousTickProcessed: TickProcessed = { ...activeTickProcessed };
   const ticksProcessed: TickProcessed[] = [];
 
+  console.log("activeTick index in computeInitializedTicks", activeTickProcessed.tickIdx);
   // Iterate outwards from the active tick
   for (let i = 0; i < numSurroundingTicks; i++) {
     // Using numSurroundingTicks to limit iterations
@@ -267,9 +269,9 @@ async function calculateLockedLiqudity(
   const mockTicks = [
     {
       index: tick.tickIdx - tickSpacing, // Lower bound tick
-      liquidityGross: liqGross,
+      liquidityGross: JSBI.BigInt(123),
       // Net liquidity is applied at the tick index, so the lower bound has the inverse
-      liquidityNet: JSBI.multiply(tick.liquidityNet, JSBI.BigInt('-1')),
+      liquidityNet: JSBI.BigInt(-123), //JSBI.multiply(tick.liquidityNet, JSBI.BigInt('-1')),
     },
     {
       index: tick.tickIdx, // Upper bound tick (where the net change occurs)
@@ -281,6 +283,8 @@ async function calculateLockedLiqudity(
   // Create a temporary Pool instance to calculate token amounts
   // The liquidity passed here (tick.liquidityActive) represents the liquidity
   // available IF the price were to move INTO this tick range.
+
+  console.log('tick.tickIdx, tick.liquidityActive, tick.liquidityNet in calculateLockedLiqudity', tick.tickIdx, tick.liquidityActive.toString(), tick.liquidityNet.toString());
   const pool =
     token0 && token1 && feeTier
       ? new Pool(
@@ -288,7 +292,7 @@ async function calculateLockedLiqudity(
           token1,
           feeTier,
           sqrtPriceX96,
-          tick.liquidityActive, // Use the active liquidity at this tick
+          tick.liquidityActive, 
           tick.tickIdx,
           mockTicks
         )
@@ -299,7 +303,7 @@ async function calculateLockedLiqudity(
 
   // Define a theoretical max amount of token0 to simulate swapping through the tick range
   const maxAmountToken0 = token0
-    ? CurrencyAmount.fromRawAmount(token0, MAX_INT128.toString())
+    ? CurrencyAmount.fromRawAmount(token0, MAX_INT256.toString())
     : undefined;
 
   let amount0 = 0;

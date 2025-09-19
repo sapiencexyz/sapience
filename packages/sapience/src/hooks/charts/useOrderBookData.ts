@@ -117,7 +117,13 @@ const aggregateTicksToLevels = (
     const size = tick.liquidityLockedToken0;
     if (size <= 1e-9) continue; // Skip negligible liquidity
     const priceKey = Math.floor(tick.price0 * 100) / 100; // Truncate to cents
+    
+    console.log('tick index and size in aggregateTicksToLevels', tick.tickIdx, size);
     grouped.set(priceKey, (grouped.get(priceKey) ?? 0) + size);
+  }
+
+  for (const [price, size] of grouped.entries()) {
+    console.log('price + size in aggregateTicksToLevels', price, size);
   }
 
   const sortedPrices = Array.from(grouped.keys()).sort((a, b) =>
@@ -346,6 +352,7 @@ export function useOrderBookData({
     }
 
     const { ticks: processedTicks } = processedPoolData;
+    console.log('processedTicks', processedTicks);
     const currentTickExact = pool.tickCurrent;
     const currentTickIndex = processedTicks.findIndex(
       (tick) => tick.tickIdx === currentTickExact
@@ -384,6 +391,8 @@ export function useOrderBookData({
           const referenceIndex = nearestTickIdx; // Use the found nearest index
 
           // Separate ticks into bids (below reference) and asks (above reference)
+          console.log('processedTicks.slice(0, referenceIndex)', processedTicks.slice(0, referenceIndex));
+          console.log('processedTicks.slice(referenceIndex + 1)', processedTicks.slice(referenceIndex + 1));
           const rawBids = processedTicks.slice(0, referenceIndex).reverse(); // Reverse for descending price order
           const rawAsks = processedTicks.slice(referenceIndex + 1);
 
@@ -471,6 +480,10 @@ export function useOrderBookData({
         !hookError)
   );
   const isError = isErrorTicks || hookError !== null;
+
+
+  console.log('orderBookData asks', orderBookData.asks);
+  console.log('orderBookData bids', orderBookData.bids);
 
   return {
     ...orderBookData,
