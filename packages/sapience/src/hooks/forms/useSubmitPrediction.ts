@@ -58,6 +58,7 @@ export function useSubmitPrediction({
       setAttestationSuccess(null);
       setTxHash(undefined);
     },
+    redirectProfileAnchor: 'forecasts',
   });
 
   const encodeSchemaData = useCallback(

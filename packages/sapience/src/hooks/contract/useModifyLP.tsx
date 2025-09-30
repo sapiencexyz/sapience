@@ -113,13 +113,11 @@ export function useModifyLP({
         setIsSuccess(false);
       },
       onTxHash: (_txHash: `0x${string}`) => {
-        toast({
-          title: 'Transaction submitted.',
-          description: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submission was successful. It may take a few moments to process.`,
-        });
+        // Success toast is handled centrally in the write hook after redirect
       },
       successMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} submission was successful`,
       fallbackErrorMessage: `Liquidity ${isAddMode ? 'increase' : 'decrease'} failed`,
+      redirectProfileAnchor: 'lp',
     });
 
   // Helper function to call increaseLiquidityPosition

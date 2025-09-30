@@ -1,12 +1,145 @@
-# Model Context Protocol Server
+# Model Context Protocol (MCP) Server
 
-Use Sapience's API with any [MCP client](https://modelcontextprotocol.io/clients) via the HTTP endpoint:
+Use Sapience with any [MCP client](https://modelcontextprotocol.io/clients) via the HTTP transport at:
 
 ```
 https://api.sapience.xyz/mcp
 ```
 
-* [**Claude**](/mcp/use-with-claude) - Integrate Sapience with [Claude](https://claude.ai) to provide it with tools that query the Sapience GraphQL API for live data, prepare transaction data for prediction markets, and more.
-* [**Cursor**](/mcp/use-with-cursor) - Allow agents in [Cursor](https://www.cursor.com/) to query the Sapience API directly, helping it better assist with software development.
-* [**Langchain**](/mcp/use-with-langchain) - Build research agents that trade prediction markets using [LangChain](https://www.langchain.com/) with Python or TypeScript.
-* [**Google ADK**](/mcp/use-with-google-adk) - Build research agents that trade prediction markets using [Google's Agent Development Kit](https://google.github.io/adk-docs/).
+## Transport and session lifecycle
+
+The MCP HTTP transport here uses a resumable session model:
+
+- POST `/mcp`: JSON-RPC requests (initialize, tools/list, tools/call, ...)
+- GET `/mcp`: Server-Sent Events (SSE) for server→client notifications
+- DELETE `/mcp`: End a session
+
+Headers:
+
+- `mcp-session-id`: Required on POST/GET/DELETE after initialization
+- `Last-Event-ID`: Optional on GET to resume SSE streams
+
+Authentication: none required today. Please be considerate; rate limiting may apply.
+
+## Minimal flow (raw HTTP)
+
+1) Initialize a session (no `mcp-session-id` header). The server responds with JSON-RPC and sets `mcp-session-id` in response headers.
+
+```bash
+curl -i -X POST \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "server/initialize",
+    "params": { "clientInfo": { "name": "curl", "version": "0.0.0" } }
+  }' \
+  https://api.sapience.xyz/mcp
+```
+
+2) Open the SSE stream for server→client notifications:
+
+```bash
+curl -N -H "mcp-session-id: <SESSION_ID_FROM_STEP_1>" \
+  https://api.sapience.xyz/mcp
+```
+
+3) List tools (now include the `mcp-session-id` header):
+
+```bash
+curl -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'mcp-session-id: <SESSION_ID_FROM_STEP_1>' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "tools/list",
+    "params": {}
+  }' \
+  https://api.sapience.xyz/mcp
+```
+
+4) Call a tool, e.g. `query_sapience_graphql`:
+
+```bash
+curl -X POST \
+  -H 'Content-Type: application/json' \
+  -H 'mcp-session-id: <SESSION_ID_FROM_STEP_1>' \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 3,
+    "method": "tools/call",
+    "params": {
+      "name": "query_sapience_graphql",
+      "arguments": {
+        "query": "query { markets(limit: 1) { id name } }"
+      }
+    }
+  }' \
+  https://api.sapience.xyz/mcp
+```
+
+5) End the session (optional):
+
+```bash
+curl -X DELETE \
+  -H 'mcp-session-id: <SESSION_ID_FROM_STEP_1>' \
+  https://api.sapience.xyz/mcp
+```
+
+## Tools catalog
+
+Tools are registered under the following groups. Use `tools/list` to discover accurate, current schemas.
+
+- GraphQL
+  - `introspect_sapience_schema`: Returns the GraphQL SDL
+  - `query_sapience_graphql`: Executes a GraphQL query with optional `variables` JSON string
+- Markets
+  - `list_active_markets`: Returns currently active markets (public)
+  - `get_sapience_quote`: Quote via Quoter API (chainId, marketGroupAddress, marketId, etc.)
+- Attestations
+  - `get_attestations_by_market`
+  - `get_attestations_by_address`
+  - `get_recent_attestations`
+- Misc
+  - `approve_token`: Returns ERC-20 approve calldata
+  - `balance_of_token`: Reads ERC-20 balance
+
+## Use with clients
+
+### Claude Desktop
+
+Add via `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
+    }
+  }
+}
+```
+
+Note: Claude Web custom MCP requires Max/Team/Enterprise. See their docs.
+
+### Cursor
+
+Settings → Cursor Settings → MCP → Add new global MCP server, then update `mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
+    }
+  }
+}
+```
+
+## Notes
+
+- Prefer using an MCP client (e.g., Claude Desktop, Cursor). MCP is a protocol, not a single POST endpoint.
+- No authentication today; terms may change. Check the API docs for updates.

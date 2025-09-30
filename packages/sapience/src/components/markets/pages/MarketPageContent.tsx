@@ -6,7 +6,7 @@ import {
 } from '@sapience/ui/components/charts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ArrowLeftRightIcon, DropletsIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -127,6 +127,8 @@ const MarketPageContent = () => {
   );
 
   const [activeFormTab, setActiveFormTab] = useState<string>('trade');
+  const [bucketSize, setBucketSize] = useState<number>(0.01);
+  const [maxRowsPerSide] = useState<number>(8);
 
   const [selectedPrices, setSelectedPrices] = useState<
     Record<LineType, boolean>
@@ -171,6 +173,8 @@ const MarketPageContent = () => {
     quoteTokenName,
     baseTokenName,
     enabled: true,
+    bucketSize,
+    maxRowsPerSide,
   });
   // ---- End: Hoisted OrderBook Data Fetching ----
 
@@ -259,7 +263,7 @@ const MarketPageContent = () => {
     availableMarkets.length > 0;
 
   return (
-    <div className="flex flex-col w-full min-h-[100dvh] overflow-y-auto lg:overflow-hidden pt-16">
+    <div className="flex flex-col w-full min-h-[100dvh] pt-16">
       <div className="flex flex-col w-full">
         <div className="flex flex-col px-4 md:px-3 lg:px-6 flex-1">
           <div className="mt-2 mb-6">
@@ -340,7 +344,7 @@ const MarketPageContent = () => {
           <div className="flex flex-col gap-4 lg:gap-8 xl:gap-6">
             {/* Top Row: Chart, and either OrderBook+Forms or MarketStatusDisplay */}
             {isExpired ? (
-              <div className="flex flex-col gap-6 lg:flex-row lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8 xl:gap-6">
                 {/* Chart Column */}
                 <div className="flex flex-col w-full relative flex-1 min-w-0 h-[320px] md:h-[460px]">
                   <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
@@ -380,7 +384,7 @@ const MarketPageContent = () => {
                   </div>
                 </div>
                 {/* Status Column (replaces OrderBook + Forms) */}
-                <div className="w-full lg:w-[340px] lg:shrink-0 order-2">
+                <div className="w-full lg:w-[340px] lg:shrink-0 order-2 lg:sticky lg:top-16 self-start">
                   <div className="h-[460px]">
                     <MarketStatusDisplay
                       marketGroupData={statusGroup as any}
@@ -390,9 +394,9 @@ const MarketPageContent = () => {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-6 lg:flex-row xl:grid xl:grid-cols-12 lg:gap-8 xl:gap-6">
+              <div className="flex flex-col gap-6 xl:grid xl:grid-cols-12 xl:gap-6 xl:items-start">
                 {/* Chart Column */}
-                <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[460px]">
+                <div className="flex flex-col w-full relative xl:col-span-6 h-[320px] md:h-[500px] xl:h-[440px]">
                   <div className="w-full flex-1 relative bg-card border border-border rounded shadow-sm p-2 md:p-3 pt-4 pl-4 md:pt-5 md:pl-5 overflow-hidden flex flex-col">
                     <div className="flex-1 relative">
                       <div className="absolute top-0 left-0 z-10">
@@ -431,27 +435,27 @@ const MarketPageContent = () => {
                   </div>
                 </div>
 
-                {/* OrderBook Column - Shows to the right of chart on xl+ */}
-                <div className="xl:col-span-3 xl:order-2 order-3">
-                  <div className="h-[460px]">
-                    <OrderBookChart
-                      quoteTokenName={quoteTokenName}
-                      baseTokenName={baseTokenName}
-                      className="h-full"
-                      asks={asks}
-                      bids={bids}
-                      lastPrice={lastPrice}
-                      isLoadingPool={isLoadingPool}
-                      isErrorPool={isErrorPool}
-                      isLoadingBook={isLoadingBook}
-                      isErrorBook={isErrorBook}
-                    />
-                  </div>
+                {/* OrderBook Column - Full width below form on lg, between chart and form on xl+ */}
+                <div className="xl:col-span-3 xl:order-2 order-3 lg:order-3 lg:basis-full lg:w-full xl:h-[440px]">
+                  <OrderBookChart
+                    quoteTokenName={quoteTokenName}
+                    baseTokenName={baseTokenName}
+                    asks={asks}
+                    bids={bids}
+                    lastPrice={lastPrice}
+                    isLoadingPool={isLoadingPool}
+                    isErrorPool={isErrorPool}
+                    isLoadingBook={isLoadingBook}
+                    isErrorBook={isErrorBook}
+                    bucketSize={bucketSize}
+                    onBucketSizeChange={setBucketSize}
+                    maxRowsPerSide={maxRowsPerSide}
+                  />
                 </div>
 
                 {/* Forms Column */}
-                <div className="w-full lg:max-w-[340px] xl:max-w-none xl:col-span-3 xl:order-3 order-2">
-                  <div className="bg-card rounded border border-border shadow-sm overflow-auto lg:h-[460px]">
+                <div className="w-full xl:max-w-none xl:col-span-3 xl:order-3 order-2 xl:sticky xl:top-16">
+                  <div className="bg-card rounded border border-border shadow-sm overflow-auto lg:h-[460px] xl:h-[440px]">
                     <div className="w-full">
                       {!positionId && (
                         <div className="px-3 py-1 border-b border-border">
@@ -460,19 +464,27 @@ const MarketPageContent = () => {
                             onValueChange={(value) => setActiveFormTab(value)}
                             className="w-full"
                           >
-                            <TabsList className="grid w-full grid-cols-2 h-auto p-0 bg-transparent">
+                            <TabsList className="relative grid w-full grid-cols-2 h-auto p-0 bg-transparent items-stretch">
                               <TabsTrigger
                                 value="trade"
-                                className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                                className="w-full justify-center items-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                               >
-                                Trade
+                                <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
+                                <span>Trade</span>
+                                <span aria-hidden="true" className="w-6" />
                               </TabsTrigger>
                               <TabsTrigger
                                 value="liquidity"
-                                className="w-full justify-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
+                                className="w-full justify-center items-center text-lg font-medium px-0 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-primary data-[state=inactive]:text-muted-foreground data-[state=inactive]:opacity-60 hover:opacity-80 transition-colors"
                               >
-                                Liquidity
+                                <span aria-hidden="true" className="w-6" />
+                                <DropletsIcon className="h-4 w-4 mr-2" />
+                                <span>Liquidity</span>
                               </TabsTrigger>
+                              <span
+                                aria-hidden="true"
+                                className="pointer-events-none absolute inset-y-2 left-1/2 -translate-x-1/2 w-px bg-border"
+                              />
                             </TabsList>
                           </Tabs>
                         </div>

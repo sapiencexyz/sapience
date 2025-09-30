@@ -1,6 +1,5 @@
 'use client';
 
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { graphqlRequest } from '@sapience/ui/lib';
 import type { MarketGroup as GraphQLMarketGroup } from '@sapience/ui/types/graphql';
 import type {
@@ -9,9 +8,7 @@ import type {
 } from '@tanstack/react-query';
 import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
-import { createContext, useContext, useEffect, useState } from 'react';
-
-import { gweiToEther, mainnetClient } from '../utils/util';
+import { createContext, useContext } from 'react';
 
 // import InstallDialog from '~/components/InstallDialog';
 
@@ -36,7 +33,6 @@ interface SapienceContextType {
   refetchMarketGroup: (
     options?: RefetchOptions
   ) => Promise<QueryObserverResult<GraphQLMarketGroup[], Error>>;
-  stEthPerToken: number | undefined;
 }
 
 const SapienceContext = createContext<SapienceContextType | undefined>(
@@ -60,6 +56,7 @@ const MARKET_GROUPS_QUERY = /* GraphQL */ `
         startTimestamp
         endTimestamp
         settled
+        settlementPriceD18
         optionName
         startingSqrtPriceX96
         baseAssetMinPriceTick
@@ -75,8 +72,6 @@ const MARKET_GROUPS_QUERY = /* GraphQL */ `
 export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [stEthPerToken, setStEthPerToken] = useState<number | undefined>();
-  const { toast } = useToast();
   // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
   // Permit: temporarily disabled. Always return permitted=true and do not fetch.
@@ -119,45 +114,6 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     },
   });
 
-  // Fetch stEthPerToken
-  useEffect(() => {
-    const fetchStEthPerToken = async () => {
-      try {
-        const data = await mainnetClient.readContract({
-          address: '0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0',
-          abi: [
-            {
-              inputs: [],
-              name: 'stEthPerToken',
-              outputs: [
-                {
-                  internalType: 'uint256',
-                  name: '',
-                  type: 'uint256',
-                },
-              ],
-              stateMutability: 'view',
-              type: 'function',
-            },
-          ],
-          functionName: 'stEthPerToken',
-        });
-        setStEthPerToken(Number(gweiToEther(data)));
-      } catch (error) {
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching stETH per token',
-          description:
-            error instanceof Error
-              ? error.message
-              : 'An unknown error occurred',
-        });
-      }
-    };
-
-    fetchStEthPerToken();
-  }, [toast]);
-
   /*
   // Handle InstallDialog visibility
   useEffect(() => {
@@ -199,7 +155,6 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
         isMarketsLoading,
         marketsError,
         refetchMarketGroup,
-        stEthPerToken,
       }}
     >
       {children}

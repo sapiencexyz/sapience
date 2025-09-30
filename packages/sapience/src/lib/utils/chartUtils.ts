@@ -1,5 +1,6 @@
 // Assuming CandleType is defined elsewhere, e.g., in interfaces or generated types
 import type { CandleType } from '@sapience/ui/types/graphql'; // Adjust path if needed
+import { formatEther } from 'viem';
 
 // Define the type for index candle data (partial CandleType)
 // Used because the index query only fetches timestamp and close
@@ -54,12 +55,12 @@ export const processCandleData = (
           combinedData[ts].markets = {};
         }
 
-        // Attempt to parse the close value
+        // Convert close (wei string) -> ether number using BigInt + formatEther
         try {
-          const closeValue = parseFloat(String(candle.close));
-          if (!Number.isNaN(closeValue)) {
-            // Assign value to the specific market ID for this timestamp
-            combinedData[ts].markets[marketId] = closeValue;
+          const closeWei = BigInt(candle.close as any);
+          const closeBaseUnits = Number(formatEther(closeWei));
+          if (!Number.isNaN(closeBaseUnits)) {
+            combinedData[ts].markets[marketId] = closeBaseUnits;
           } else {
             console.warn(
               `Invalid market close value encountered for market ${marketId}: ${candle.close} at timestamp ${ts}`
@@ -93,11 +94,12 @@ export const processCandleData = (
       }
 
       try {
-        const closeValue = parseFloat(String(candle.close));
-        // Check for valid number
-        if (!Number.isNaN(closeValue)) {
-          // Multiply raw close value by multiplier to get Wei value (consistent with usePriceChartData)
-          combinedData[ts].indexClose = closeValue * indexMultiplier;
+        // Index candles are in gwei; convert to wei (x1e9) then to base units
+        const gwei = BigInt(candle.close as any);
+        const wei = gwei * BigInt(indexMultiplier);
+        const baseUnits = Number(formatEther(wei));
+        if (!Number.isNaN(baseUnits)) {
+          combinedData[ts].indexClose = baseUnits;
         } else {
           console.warn(
             `Invalid index close value encountered: ${candle.close} at timestamp ${ts}`
@@ -159,7 +161,7 @@ export function getEffectiveMinTimestampFromData(
 }
 
 // Transform raw multi-market chart data into scaled and filtered data used by charts
-// - Divides Wei values by 1e18
+// - Values are already in base units (wei -> ether) from processing
 // - Optionally filters by minTimestamp
 // - Converts leading zero market values to undefined to avoid flat lines before first trade
 export function transformMarketGroupChartData(
@@ -180,23 +182,11 @@ export function transformMarketGroupChartData(
     : rawData;
 
   const scaledData = filteredByTimestamp.map((point) => {
-    const scaledIndexClose =
-      typeof point.indexClose === 'number'
-        ? point.indexClose / 1e18
-        : point.indexClose;
-
-    const scaledMarkets: { [marketId: string]: number | undefined } = {};
-    if (point.markets) {
-      Object.entries(point.markets).forEach(([marketId, value]) => {
-        scaledMarkets[marketId] =
-          typeof value === 'number' ? value / 1e18 : value;
-      });
-    }
-
+    // Values already converted to base units; no further scaling needed
     return {
       ...point,
-      indexClose: scaledIndexClose,
-      markets: scaledMarkets,
+      indexClose: point.indexClose,
+      markets: { ...(point.markets || {}) },
     };
   });
 

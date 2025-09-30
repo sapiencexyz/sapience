@@ -153,7 +153,7 @@ export default function BetslipParlayForm({
             <div key={s.id} className="pb-4 mb-4 border-b border-border">
               <div className="flex items-start gap-3">
                 <div className="flex-1">
-                  <h3 className="text-md text-foreground pr-2 whitespace-normal break-words">
+                  <h3 className="text-md text-foreground whitespace-normal break-words">
                     {s.question}{' '}
                     <span className="relative -top-0.5">
                       <Badge
@@ -177,14 +177,12 @@ export default function BetslipParlayForm({
             </div>
           ))}
 
-          <div className="pt-0">
-            <WagerInput
-              minAmount={minWager}
-              collateralSymbol={collateralSymbol}
-              collateralAddress={collateralToken}
-              chainId={chainId}
-            />
-          </div>
+          <WagerInput
+            minAmount={minWager}
+            collateralSymbol={collateralSymbol}
+            collateralAddress={collateralToken}
+            chainId={chainId}
+          />
 
           <div className="space-y-1">
             {bestBid ? (

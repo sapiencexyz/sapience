@@ -56,6 +56,24 @@ const MarketGroupSparklineComponent: React.FC<MarketGroupSparklineProps> = ({
     [rawChartData, minTimestamp]
   );
 
+  // Debug: log sparkline ranges per series
+  try {
+    const ranges = marketIds.map((id) => {
+      const values: number[] = [];
+      for (const p of data) {
+        const v = (p.markets as any)?.[String(id)];
+        if (typeof v === 'number' && Number.isFinite(v)) values.push(v);
+      }
+      const min = values.length ? Math.min(...values) : null;
+      const max = values.length ? Math.max(...values) : null;
+      return { marketId: id, count: values.length, min, max };
+    });
+
+    console.log('[MarketGroupSparkline] ranges', ranges);
+  } catch (_) {
+    // ignore
+  }
+
   const yAxisDomain = React.useMemo(() => {
     if (
       marketClassification === MarketGroupClassificationEnum.YES_NO ||
@@ -92,6 +110,7 @@ const MarketGroupSparklineComponent: React.FC<MarketGroupSparklineProps> = ({
         >
           <XAxis
             dataKey="timestamp"
+            type="number"
             axisLine={{ stroke: 'hsl(var(--muted-foreground))' }}
             tickLine={false}
             tick={false}

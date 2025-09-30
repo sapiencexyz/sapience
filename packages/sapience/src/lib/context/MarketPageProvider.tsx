@@ -159,9 +159,6 @@ export function MarketPageProvider({
 
   const marketClassification = useMemo(() => {
     if (!marketData) {
-      console.log(
-        '[MarketPageProvider] marketData is null, returning null for marketClassification.'
-      );
       return null;
     }
 

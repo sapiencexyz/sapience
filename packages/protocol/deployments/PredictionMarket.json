@@ -1,5 +1,5 @@
 {
-  "address": "0xB5583Daa6388291e56cF8509c2184B16c35e32d0",
+  "address": "0x8D1D1946cBc56F695584761d25D13F174906671C",
   "abi": [
     {
       "type": "constructor",
@@ -97,6 +97,19 @@
     },
     {
       "type": "function",
+      "name": "cancelOrder",
+      "inputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
+    },
+    {
+      "type": "function",
       "name": "config",
       "inputs": [],
       "outputs": [
@@ -173,6 +186,24 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "fillOrder",
+      "inputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "internalType": "uint256"
+        },
+        {
+          "name": "refCode",
+          "type": "bytes32",
+          "internalType": "bytes32"
+        }
+      ],
+      "outputs": [],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -358,6 +389,112 @@
     },
     {
       "type": "function",
+      "name": "getUnfilledOrder",
+      "inputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "tuple",
+          "internalType": "struct IPredictionStructs.LimitOrderData",
+          "components": [
+            {
+              "name": "orderId",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "encodedPredictedOutcomes",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "resolver",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "makerCollateral",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "takerCollateral",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "maker",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "taker",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "orderDeadline",
+              "type": "uint256",
+              "internalType": "uint256"
+            }
+          ]
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUnfilledOrderByMaker",
+      "inputs": [
+        {
+          "name": "maker",
+          "type": "address",
+          "internalType": "address"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUnfilledOrderIds",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256[]",
+          "internalType": "uint256[]"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "getUnfilledOrdersCount",
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "view"
+    },
+    {
+      "type": "function",
       "name": "getUserCollateralDeposits",
       "inputs": [
         {
@@ -501,6 +638,57 @@
         }
       ],
       "stateMutability": "view"
+    },
+    {
+      "type": "function",
+      "name": "placeOrder",
+      "inputs": [
+        {
+          "name": "orderRequestData",
+          "type": "tuple",
+          "internalType": "struct IPredictionStructs.OrderRequestData",
+          "components": [
+            {
+              "name": "encodedPredictedOutcomes",
+              "type": "bytes",
+              "internalType": "bytes"
+            },
+            {
+              "name": "orderDeadline",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "resolver",
+              "type": "address",
+              "internalType": "address"
+            },
+            {
+              "name": "makerCollateral",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "takerCollateral",
+              "type": "uint256",
+              "internalType": "uint256"
+            },
+            {
+              "name": "refCode",
+              "type": "bytes32",
+              "internalType": "bytes32"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "internalType": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable"
     },
     {
       "type": "function",
@@ -699,6 +887,141 @@
       "type": "event",
       "name": "EIP712DomainChanged",
       "inputs": [],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OrderCancelled",
+      "inputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "maker",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "makerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "takerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OrderFilled",
+      "inputs": [
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "maker",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "taker",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "makerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "takerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "refCode",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
+      "anonymous": false
+    },
+    {
+      "type": "event",
+      "name": "OrderPlaced",
+      "inputs": [
+        {
+          "name": "maker",
+          "type": "address",
+          "indexed": true,
+          "internalType": "address"
+        },
+        {
+          "name": "orderId",
+          "type": "uint256",
+          "indexed": true,
+          "internalType": "uint256"
+        },
+        {
+          "name": "encodedPredictedOutcomes",
+          "type": "bytes",
+          "indexed": false,
+          "internalType": "bytes"
+        },
+        {
+          "name": "resolver",
+          "type": "address",
+          "indexed": false,
+          "internalType": "address"
+        },
+        {
+          "name": "makerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "takerCollateral",
+          "type": "uint256",
+          "indexed": false,
+          "internalType": "uint256"
+        },
+        {
+          "name": "refCode",
+          "type": "bytes32",
+          "indexed": false,
+          "internalType": "bytes32"
+        }
+      ],
       "anonymous": false
     },
     {
@@ -1042,6 +1365,11 @@
     },
     {
       "type": "error",
+      "name": "InvalidEncodedPredictedOutcomes",
+      "inputs": []
+    },
+    {
+      "type": "error",
       "name": "InvalidMarketsAccordingToResolver",
       "inputs": []
     },
@@ -1073,6 +1401,26 @@
     {
       "type": "error",
       "name": "MakerIsNotCaller",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OrderExpired",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OrderNotExpired",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "OrderNotFound",
+      "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "PredictionAlreadySettled",
       "inputs": []
     },
     {
@@ -1126,22 +1474,27 @@
       "type": "error",
       "name": "TakerDeadlineExpired",
       "inputs": []
+    },
+    {
+      "type": "error",
+      "name": "TransferFailed",
+      "inputs": []
     }
   ],
   "constructorArgs": [
     "Prediction Market",
     "SPM",
     "0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02",
-    "1000000000000000000"
+    "10000000000000000"
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0xe8df58dc1869ce214733984c4a6d64f162f13bc7a797fb9db118c6b9077f7ad3",
-  "deployTxnBlockNumber": "380553670",
-  "deployTimestamp": "1758226495",
+  "deployTxnHash": "0xded91f993e9c9a0b9ec876342f0dfa75e530881b921cf0885252d1535ff612fa",
+  "deployTxnBlockNumber": "381946930",
+  "deployTimestamp": "1758574640",
   "sourceName": "src/predictionMarket/PredictionMarket.sol",
   "contractName": "PredictionMarket",
   "deployedOn": "deploy.PredictionMarket",
   "highlight": true,
-  "gasUsed": 3228263,
+  "gasUsed": 3691675,
   "gasCost": "10000000"
 }

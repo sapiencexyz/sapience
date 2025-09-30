@@ -39,4 +39,33 @@ interface IPredictionEvents {
         uint256 totalCollateral,
         bytes32 refCode
     );
+
+    // ============ Limit Order Events ============
+    event OrderPlaced(
+        address indexed maker,
+        uint256 indexed orderId,
+        bytes encodedPredictedOutcomes,
+        address resolver,
+        uint256 makerCollateral,
+        uint256 takerCollateral,
+        bytes32 refCode
+    );
+
+    event OrderFilled(
+        uint256 indexed orderId,
+        address indexed maker,
+        address indexed taker,
+        bytes encodedPredictedOutcomes,
+        uint256 makerCollateral,
+        uint256 takerCollateral,
+        bytes32 refCode
+    );
+
+    event OrderCancelled(
+        uint256 indexed orderId,
+        address indexed maker,
+        bytes encodedPredictedOutcomes,
+        uint256 makerCollateral,
+        uint256 takerCollateral
+    );
 }

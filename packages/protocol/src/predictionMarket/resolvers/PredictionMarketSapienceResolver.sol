@@ -43,10 +43,13 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     ) external view returns (bool isValid, Error error) {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
-        if (predictedOutcomes.length > config.maxPredictionMarkets) revert TooManyMarkets();
+        if (predictedOutcomes.length > config.maxPredictionMarkets)
+            revert TooManyMarkets();
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             if (predictedOutcomes[i].market.marketGroup == address(0)) {
@@ -74,7 +77,9 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
     function resolvePrediction(
         bytes calldata encodedPredictedOutcomes
     ) external view returns (bool isValid, Error error, bool makerWon) {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
         makerWon = true;
         isValid = true;
         error = Error.NO_ERROR;
@@ -117,7 +122,8 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         MarketIdentifier memory market
     ) internal view returns (bool) {
         // Validate market address
-        if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
+        if (market.marketGroup == address(0))
+            revert InvalidMarketGroupAddress();
 
         // Get the specific market data from the Sapience market group
         (ISapienceStructs.MarketData memory marketData, ) = ISapience(
@@ -142,8 +148,9 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         MarketIdentifier memory market
     ) internal view returns (bool outcome, bool settled) {
         // Validate market address
-        if (market.marketGroup == address(0)) revert InvalidMarketGroupAddress();
-        
+        if (market.marketGroup == address(0))
+            revert InvalidMarketGroupAddress();
+
         // Check if this is a Yes/No market first
         if (!_isYesNoMarket(market)) revert MarketIsNotYesNoMarket();
 
@@ -171,7 +178,7 @@ contract PredictionMarketSapienceResolver is IPredictionMarketResolver {
         // For Yes/No markets, the settlement price should be at one of the extreme bounds
         // We use the midpoint between min and max to determine the outcome
         uint256 midpoint = (minPrice + maxPrice) / 2;
-        
+
         if (settlementPrice >= midpoint) {
             // Market settled as YES (price is closer to max than min)
             outcome = true;

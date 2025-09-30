@@ -58,7 +58,7 @@ export const foilApi = {
   },
 };
 
-// Mainnet client for ENS resolution and stEthPerToken query
+// Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
@@ -67,6 +67,34 @@ export const mainnetClient = createPublicClient({
       )
     : http('https://ethereum-rpc.publicnode.com'),
 });
+
+// Use unknown to avoid structural type incompatibilities across different viem instances
+const publicClientCache: Map<number, unknown> = new Map();
+
+export function getPublicClientForChainId(chainId: number) {
+  const cached = publicClientCache.get(chainId);
+  if (cached) return cached as any;
+
+  const chainObj = Object.values(chains).find(
+    (c: any) => c?.id === chainId
+  ) as any;
+
+  // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
+  const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
+  const envUrl = process.env[envKey as string];
+
+  const defaultUrl =
+    envUrl ||
+    chainObj?.rpcUrls?.public?.http?.[0] ||
+    (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
+
+  const client = createPublicClient({
+    chain: chainObj ?? mainnet,
+    transport: defaultUrl ? http(defaultUrl) : http(),
+  });
+  publicClientCache.set(chainId, client);
+  return client;
+}
 
 export const gweiToEther = (gweiValue: bigint): string => {
   // First, convert gwei to wei (multiply by 10^9)
@@ -106,8 +134,10 @@ export const formatFiveSigFigs = (rawValue: number): string => {
   const suffixes = ['', 'K', 'M', 'B', 'T'];
 
   const countIntegerDigits = (n: number): number => {
-    if (n === 0) return 1; // display '0'
-    return Math.floor(Math.log10(Math.floor(Math.abs(n)))) + 1;
+    // Treat any non-positive or sub-1 value as having 1 integer digit for display purposes
+    if (n <= 0) return 1;
+    const digits = Math.floor(Math.log10(Math.abs(n))) + 1;
+    return digits > 0 ? digits : 1;
   };
 
   // Choose the highest suffix that keeps integer digits <= 5 and scaled >= 1
@@ -128,12 +158,27 @@ export const formatFiveSigFigs = (rawValue: number): string => {
   const truncated =
     (isNegative ? Math.ceil : Math.floor)(scaledValue * factor) / factor;
 
-  const formatted = truncated.toLocaleString('en-US', {
+  // Format with fixed decimals, then trim trailing zeros and any trailing decimal point
+  let formatted = truncated.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   });
+  if (decimals > 0) {
+    // Remove trailing zeros after decimal and potential dangling decimal separator
+    // Use regex on a plain string without locale commas by temporarily removing them
+    const plain = formatted.replace(/,/g, '');
+    const trimmedPlain = plain
+      .replace(/\.0+$/, '')
+      .replace(/(\.[0-9]*[1-9])0+$/, '$1')
+      .replace(/\.$/, '');
+    // Re-insert thousands separators
+    const parts = trimmedPlain.split('.');
+    const intPart = Number(parts[0]).toLocaleString('en-US');
+    formatted = parts.length > 1 ? `${intPart}.${parts[1]}` : intPart;
+  }
 
-  const sign = isNegative ? '-' : '';
+  // Avoid rendering a negative sign for values that truncate to 0
+  const sign = truncated === 0 ? '' : isNegative ? '-' : '';
   const suffix = suffixes[chosenIndex];
   return `${sign}${formatted}${suffix}`;
 };

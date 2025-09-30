@@ -11,14 +11,16 @@ interface NumberDisplayProps {
   value: number;
   className?: string;
   appendedText?: string;
+  decimals?: number;
 }
 
 const NumberDisplay = ({
   value,
   className,
   appendedText,
+  decimals,
 }: NumberDisplayProps) => {
-  const formattedValue = formatNumber(value);
+  const formattedValue = formatNumber(value, decimals ?? 2);
   const originalValue = value.toString();
   const textToDisplay = appendedText ? ` ${appendedText}` : '';
 

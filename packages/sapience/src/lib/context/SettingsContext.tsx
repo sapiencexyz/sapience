@@ -22,6 +22,8 @@ type SettingsContextValue = {
   researchAgentSystemMessage: string | null;
   researchAgentModel: string | null;
   researchAgentTemperature: number | null;
+  // Appearance settings
+  showAmericanOdds: boolean | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setQuoterBaseUrl: (value: string | null) => void;
@@ -32,6 +34,7 @@ type SettingsContextValue = {
   setResearchAgentSystemMessage: (value: string | null) => void;
   setResearchAgentModel: (value: string | null) => void;
   setResearchAgentTemperature: (value: number | null) => void;
+  setShowAmericanOdds: (value: boolean | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -42,6 +45,7 @@ type SettingsContextValue = {
     researchAgentSystemMessage: string;
     researchAgentModel: string;
     researchAgentTemperature: number;
+    showAmericanOdds: boolean;
   };
 };
 
@@ -56,6 +60,7 @@ const STORAGE_KEYS = {
   researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
   researchAgentModel: 'sapience.settings.researchAgentModel',
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
+  showAmericanOdds: 'sapience.settings.showAmericanOdds',
 } as const;
 
 function isHttpUrl(value: string): boolean {
@@ -180,6 +185,9 @@ export const SettingsProvider = ({
     setResearchAgentTemperatureOverride,
   ] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [showAmericanOddsOverride, setShowAmericanOddsOverride] = useState<
+    boolean | null
+  >(null);
 
   useEffect(() => {
     setMounted(true);
@@ -224,6 +232,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.researchAgentTemperature)
           : null;
+      const sao =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.showAmericanOdds)
+          : null;
       if (g && isHttpUrl(g)) setGraphqlOverride(g);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
@@ -242,6 +254,12 @@ export const SettingsProvider = ({
         if (Number.isFinite(parsed))
           setResearchAgentTemperatureOverride(parsed);
       }
+      if (sao != null) {
+        // store as '1' or '0' or 'true'/'false'
+        const lowered = sao.toLowerCase();
+        const val = lowered === '1' || lowered === 'true';
+        setShowAmericanOddsOverride(val);
+      }
     } catch {
       /* noop */
     }
@@ -259,6 +277,7 @@ export const SettingsProvider = ({
         'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, curious, succinct, and analytical. You proactively search the web for the most recent information relevant to the questions being discussed.',
       researchAgentModel: 'anthropic/claude-sonnet-4:online',
       researchAgentTemperature: 0.7,
+      showAmericanOdds: false,
     }),
     []
   );
@@ -304,6 +323,9 @@ export const SettingsProvider = ({
     : null;
   const researchAgentTemperature = mounted
     ? (researchAgentTemperatureOverride ?? defaults.researchAgentTemperature)
+    : null;
+  const showAmericanOdds = mounted
+    ? (showAmericanOddsOverride ?? defaults.showAmericanOdds)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -477,6 +499,22 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setShowAmericanOdds = useCallback((value: boolean | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.showAmericanOdds);
+        setShowAmericanOddsOverride(null);
+        return;
+      }
+      const v = Boolean(value);
+      window.localStorage.setItem(STORAGE_KEYS.showAmericanOdds, v ? '1' : '0');
+      setShowAmericanOddsOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -488,6 +526,7 @@ export const SettingsProvider = ({
     researchAgentSystemMessage,
     researchAgentModel,
     researchAgentTemperature,
+    showAmericanOdds,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
@@ -498,6 +537,7 @@ export const SettingsProvider = ({
     setResearchAgentSystemMessage,
     setResearchAgentModel,
     setResearchAgentTemperature,
+    setShowAmericanOdds,
     defaults,
   };
 

@@ -17,8 +17,6 @@ import {
 } from '@sapience/ui/components/ui/table';
 import { formatEther } from 'viem';
 import { useAccount } from 'wagmi';
-import Image from 'next/image';
-import { blo } from 'blo';
 
 import type { PositionType } from '@sapience/ui/types';
 import { InfoIcon } from 'lucide-react';
@@ -34,7 +32,9 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
 import SellPositionDialog from '../markets/SellPositionDialog';
-import SharePositionDialog from '../markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
+import { buildTradeShareParams } from '~/lib/share/buildTradeShareParams';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -340,7 +340,10 @@ export default function TraderPositionsTable({
                     <PositionSummaryCell
                       position={position}
                       sortedMarketsForColors={summaryMarketsForColors}
-                      showOptionBadge={context !== 'data_drawer'}
+                      showOptionBadge={
+                        context !== 'data_drawer' &&
+                        Number(position.collateral || '0') !== 0
+                      }
                     />
                   ) : (
                     (() => {
@@ -558,9 +561,8 @@ export default function TraderPositionsTable({
               return (
                 <div className="flex items-center gap-2">
                   {position.owner ? (
-                    <Image
-                      alt={position.owner}
-                      src={blo(position.owner as `0x${string}`)}
+                    <EnsAvatar
+                      address={position.owner}
                       className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                       width={20}
                       height={20}
@@ -612,11 +614,7 @@ export default function TraderPositionsTable({
                             position.market?.marketGroup?.collateralDecimals ||
                             18
                           }
-                          onSuccess={() => {
-                            console.log(
-                              `Settle action for position ${position.positionId} initiated.`
-                            );
-                          }}
+                          onSuccess={() => {}}
                         />
                       ) : (
                         <TooltipProvider>
@@ -645,11 +643,7 @@ export default function TraderPositionsTable({
                           position={position}
                           marketAddress={marketAddress}
                           chainId={position.market?.marketGroup?.chainId || 0}
-                          onSuccess={() => {
-                            console.log(
-                              `Close action for position ${position.positionId} sent.`
-                            );
-                          }}
+                          onSuccess={() => {}}
                         />
                       ) : isClosed ? (
                         (() => {
@@ -840,16 +834,22 @@ export default function TraderPositionsTable({
           </TableBody>
         </Table>
       </div>
-      {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
-          open={openSharePositionId !== null}
-          onOpenChange={(next) => {
-            if (!next) setOpenSharePositionId(null);
-          }}
-          trigger={<span />}
-        />
-      )}
+      {selectedPositionSnapshot &&
+        (() => {
+          const params = buildTradeShareParams(selectedPositionSnapshot);
+          return (
+            <ShareDialog
+              imagePath="/og/trade"
+              title="Share Your Wager"
+              open={openSharePositionId !== null}
+              onOpenChange={(next) => {
+                if (!next) setOpenSharePositionId(null);
+              }}
+              trigger={<span />}
+              {...params}
+            />
+          );
+        })()}
     </div>
   );
 }

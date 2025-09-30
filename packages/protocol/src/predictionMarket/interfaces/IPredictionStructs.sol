@@ -39,8 +39,30 @@ interface IPredictionStructs {
         uint256 takerCollateral;
         address maker;
         address taker;
-        bytes takerSignature; // Taker is allowing just this prediction 
+        bytes takerSignature; // Taker is allowing just this prediction
         uint256 takerDeadline; // deadline for the taker signature
         bytes32 refCode;
+    }
+
+    // Struct to mint prediction data
+    struct OrderRequestData {
+        bytes encodedPredictedOutcomes; // encoded predicted outcomes for the resolver to validate
+        uint256 orderDeadline;
+        address resolver;
+        uint256 makerCollateral;
+        uint256 takerCollateral;
+        bytes32 refCode;
+    }
+
+    // Struct to mint prediction data
+    struct LimitOrderData {
+        uint256 orderId; // zero means no order
+        bytes encodedPredictedOutcomes; // encoded predicted outcomes for the resolver to validate
+        address resolver;
+        uint256 makerCollateral;
+        uint256 takerCollateral;
+        address maker;
+        address taker;
+        uint256 orderDeadline;
     }
 }

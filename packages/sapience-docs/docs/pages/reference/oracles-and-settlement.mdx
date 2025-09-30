@@ -1,0 +1,101 @@
+---
+title: "Oracles & Settlement"
+description: "How markets resolve, UMA today, and interfaces for alternatives."
+---
+
+# Oracles & Settlement
+
+Sapience markets resolve via oracle-attested outcomes using a pluggable settlement architecture.
+
+## UMA Overview
+
+UMA (Universal Market Access) is our primary oracle solution that provides dispute-based verification for market outcomes.
+
+**How UMA Works:**
+- **Assertion Phase**: Anyone can submit a market outcome claim with a bond
+- **Challenge Period**: During the liveness window (typically hours to days), anyone can dispute the claim by posting a counter-bond
+- **Resolution**: If no dispute occurs, the assertion is accepted. If disputed, UMA's voting mechanism resolves the truth
+- **Finality**: Markets settle automatically once the challenge period expires without valid disputes
+
+UMA's optimistic approach means most assertions resolve quickly without disputes, while the economic incentives ensure accurate outcomes through potential challenges.
+
+## Order Book Markets Settlement Interface
+
+Order Book Markets (CLOB-like) use the UMA Settlement Module for continuous trading with concentrated liquidity:
+
+```solidity
+interface IUMASettlementModule {
+    event SettlementSubmitted(
+        uint256 marketId, 
+        address asserter, 
+        uint160 settlementSqrtPriceX96, 
+        uint256 submissionTime
+    );
+    event SettlementDisputed(uint256 marketId, uint256 disputeTime);
+    event MarketSettled(uint256 marketId, bytes32 assertionId, uint160 settlementSqrtPriceX96);
+
+    /**
+     * @notice Submit a settlement price for a market
+     * @param params Settlement parameters including market ID, asserter, and price
+     * @return assertionId The UMA assertion ID for tracking
+     */
+    function submitSettlementPrice(SettlementPriceParams memory params) external returns (bytes32);
+
+    /**
+     * @notice Callback when UMA resolves an assertion
+     * @param assertionId The assertion ID that was resolved
+     * @param assertedTruthfully Whether the assertion was determined to be truthful
+     */
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external;
+
+    /**
+     * @notice Callback when UMA assertion is disputed
+     * @param assertionId The assertion ID that was disputed
+     */
+    function assertionDisputedCallback(bytes32 assertionId) external;
+}
+
+struct SettlementPriceParams {
+    uint256 marketId;
+    address asserter;  // Address that posted the bond
+    uint160 settlementSqrtPriceX96;  // Settlement price in sqrt format
+}
+```
+
+## Batch Auction Markets Settlement Interface
+
+Batch Auction Markets (Auction/Intent) use the Prediction Market Resolver interface (verifier) that markets connect to:
+
+```solidity
+interface IPredictionMarketResolver {
+    enum Error {
+        NO_ERROR,
+        INVALID_MARKET,
+        MARKET_NOT_OPENED,
+        MARKET_NOT_SETTLED
+    }
+
+    /**
+     * @notice Validate predicted markets before minting positions
+     * @param encodedPredictedOutcomes Encoded outcomes to validate
+     * @return isValid Whether outcomes are valid
+     * @return error Error code if invalid
+     */
+    function validatePredictionMarkets(
+        bytes calldata encodedPredictedOutcomes
+    ) external view returns (bool isValid, Error error);
+
+    /**
+     * @notice Resolve a prediction and determine the winner
+     * @param encodedPredictedOutcomes Encoded outcomes to resolve
+     * @return isValid Whether resolution is possible
+     * @return error Error code if resolution cannot proceed
+     * @return makerWon True if maker wins, false if taker wins
+     */
+    function resolvePrediction(
+        bytes calldata encodedPredictedOutcomes
+    ) external view returns (bool isValid, Error error, bool makerWon);
+}
+```
+
+*Note: We have additional oracle adapters in development.*

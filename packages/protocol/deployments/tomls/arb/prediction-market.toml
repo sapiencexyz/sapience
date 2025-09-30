@@ -1,11 +1,11 @@
 name="prediction-market"
-version="1.0.5"
+version="1.0.6"
 preset="test"
 
 [var.settings]
 collateralToken = "0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02" # testUSDe on Arb1
-maxPredictionMarkets = "5"
-minCollateral = "1000000000000000000" # 1 sUSDe (18 decimals)
+maxPredictionMarkets = "15"
+minCollateral = "10000000000000000" # .01 sUSDe (18 decimals)
 
 # UMA Resolver
 approvedAsserter = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"

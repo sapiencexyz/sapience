@@ -58,7 +58,7 @@ const ResolveConditionCell = ({
   // Hardcoded Arbitrum One + UMA Resolver address
   const UMA_CHAIN_ID = 42161;
   const UMA_RESOLVER_ADDRESS =
-    '0x184f83A9481B2aaC937558Ad56F800Ec9b9fd8ad' as `0x${string}`;
+    '0x9052992cB14b7af25a3c40B27211d369c9ff7758' as `0x${string}`;
 
   const nowSec = Math.floor(Date.now() / 1000);
   const pastEnd = !!endTime && nowSec >= endTime;

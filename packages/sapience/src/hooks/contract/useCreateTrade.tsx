@@ -106,6 +106,7 @@ export function useCreateTrade({
       onSuccess,
       successMessage: 'Trade position submission was successful',
       fallbackErrorMessage: 'Failed to create trade position',
+      redirectProfileAnchor: 'trades',
     });
 
   // Function to actually create the trader position using sendCalls

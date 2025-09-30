@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -14,7 +13,6 @@ import {
   TabsTrigger,
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
-import { formatDistanceToNow } from 'date-fns';
 import {
   TrophyIcon,
   ListIcon,
@@ -27,7 +25,6 @@ import {
 import { useMemo, useState } from 'react';
 import { formatEther } from 'viem';
 import Image from 'next/image';
-import { blo } from 'blo';
 import * as chains from 'viem/chains';
 import {
   flexRender,
@@ -40,17 +37,21 @@ import {
 
 import DataDrawerFilter from './DataDrawerFilter';
 import MarketLeaderboard from './MarketLeaderboard';
+import {
+  TransactionTimeCell,
+  TransactionTypeCell,
+  TransactionOwnerCell,
+  TransactionAmountCell,
+  TransactionPositionCell,
+} from './TransactionCells';
 import LpPositionsTable from '~/components/profile/LpPositionsTable';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import NumberDisplay from '~/components/shared/NumberDisplay';
 import { usePositions } from '~/hooks/graphql/usePositions';
-import { useMarketPage } from '~/lib/context/MarketPageProvider';
 import {
-  getSeriesColorByIndex,
-  withAlpha,
-  CHART_SERIES_COLORS,
-} from '~/lib/theme/chartColors';
+  useForecasts,
+  type FormattedAttestation,
+} from '~/hooks/graphql/useForecasts';
+import { useMarketPage } from '~/lib/context/MarketPageProvider';
 
 const CenteredMessage = ({
   children,
@@ -64,8 +65,6 @@ const CenteredMessage = ({
   </div>
 );
 
-// using public/etherscan.svg asset for tx links
-
 interface TransactionTypeDisplay {
   label: string;
   variant: 'default' | 'secondary' | 'destructive' | 'outline';
@@ -76,10 +75,18 @@ const getTransactionTypeDisplay = (type: string): TransactionTypeDisplay => {
   switch (type) {
     case 'ADD_LIQUIDITY':
     case 'addLiquidity':
-      return { label: 'Add Liquidity', variant: 'outline' as const };
+      return {
+        label: 'Add Liquidity',
+        variant: 'outline' as const,
+        className: 'border-blue-500/40 bg-blue-500/10 text-blue-600',
+      };
     case 'REMOVE_LIQUIDITY':
     case 'removeLiquidity':
-      return { label: 'Remove Liquidity', variant: 'outline' as const };
+      return {
+        label: 'Remove Liquidity',
+        variant: 'outline' as const,
+        className: 'border-blue-500/40 bg-blue-500/10 text-blue-600',
+      };
     case 'LONG':
     case 'long':
       return {
@@ -100,6 +107,9 @@ const getTransactionTypeDisplay = (type: string): TransactionTypeDisplay => {
     case 'SETTLED_POSITION':
     case 'settledPosition':
       return { label: 'Settled Position', variant: 'secondary' as const };
+    case 'MINT_PARLAY_NFTS':
+    case 'mintParlayNFTs':
+      return { label: 'Create Parlay', variant: 'default' as const };
     default:
       return { label: type, variant: 'outline' as const };
   }
@@ -143,6 +153,9 @@ const MarketDataTables = () => {
     marketAddress: marketData?.marketGroup?.address || undefined,
   });
 
+  // Dev-only mount/logging to verify component and data context
+  // removed debug logging
+
   // Filter positions by type (memoized)
   const lpPositions = useMemo(
     () => allPositions.filter((pos) => pos.isLP),
@@ -168,8 +181,90 @@ const MarketDataTables = () => {
         (new Date(b.createdAt).getTime() || 0) -
         (new Date(a.createdAt).getTime() || 0)
     );
+    // removed debug logging
     return flattened;
   }, [allPositions]);
+
+  // Fetch forecasts for this market group (all attestations for the group)
+  const { data: forecasts = [] } = useForecasts({
+    marketAddress: marketData?.marketGroup?.address || undefined,
+  });
+
+  // Build quick lookup maps:
+  // 1) by attester + marketId
+  // 2) by marketId only (latest per option)
+  const forecastLookup = useMemo(() => {
+    // removed debug logging
+    const byAttester = new Map<string, FormattedAttestation>();
+    const byMarketId = new Map<string, FormattedAttestation>();
+    for (const att of forecasts) {
+      const attester = (att.attester || '').toLowerCase();
+      const hexId = (att.marketId || '').toLowerCase();
+      if (!hexId) continue;
+      // Index by attester:marketId (hex)
+      if (attester) {
+        byAttester.set(`${attester}:${hexId}`, att);
+      }
+      // Also index by attester:decimal
+      try {
+        const dec = parseInt(hexId, 16);
+        if (Number.isFinite(dec) && attester) {
+          byAttester.set(`${attester}:${String(dec)}`, att);
+        }
+      } catch {
+        // noop
+      }
+      // Index latest-by-marketId (prefer first seen since list is time-desc)
+      if (!byMarketId.has(hexId)) {
+        byMarketId.set(hexId, att);
+      }
+      try {
+        const dec = parseInt(hexId, 16);
+        const key = String(dec);
+        if (Number.isFinite(dec) && !byMarketId.has(key)) {
+          byMarketId.set(key, att);
+        }
+      } catch {
+        // noop
+      }
+    }
+    return { byAttester, byMarketId };
+  }, [forecasts]);
+
+  const toHexId = (id: any): string | undefined => {
+    if (id === undefined || id === null) return undefined;
+    const s = String(id);
+    if (s.startsWith('0x') || s.startsWith('0X')) return s.toLowerCase();
+    const n = Number(s);
+    if (Number.isFinite(n)) return `0x${n.toString(16)}`;
+    return undefined;
+  };
+
+  const findAttestationForTx = (tx: any): FormattedAttestation | undefined => {
+    const owner = (tx?.position?.owner || '').toLowerCase();
+    const marketIdRaw = tx?.position?.market?.marketId;
+    if (!owner || marketIdRaw === undefined || marketIdRaw === null)
+      return undefined;
+    const hexId = toHexId(marketIdRaw);
+    const decId = String(Number(marketIdRaw));
+    // Prefer user's own forecast
+    if (hexId) {
+      const byOwnerHex = forecastLookup.byAttester.get(`${owner}:${hexId}`);
+      if (byOwnerHex) return byOwnerHex;
+    }
+    const byOwnerDec = forecastLookup.byAttester.get(`${owner}:${decId}`);
+    if (byOwnerDec) return byOwnerDec;
+    // Fallback to latest forecast for this market option regardless of attester
+    if (hexId) {
+      const byMarketHex = forecastLookup.byMarketId.get(hexId);
+      if (byMarketHex) {
+        return byMarketHex;
+      }
+    }
+    const fallbackDec = forecastLookup.byMarketId.get(decId);
+    // removed debug logging
+    return fallbackDec;
+  };
 
   // Transactions table configuration (always define hooks at top level)
   const columns = useMemo<ColumnDef<any>[]>(
@@ -202,34 +297,7 @@ const MarketDataTables = () => {
             )}
           </Button>
         ),
-        cell: ({ row }: any) => {
-          const createdDate = new Date(row.original.createdAt);
-          const createdDisplay = formatDistanceToNow(createdDate, {
-            addSuffix: true,
-          });
-          const exactLocalDisplay = createdDate.toLocaleString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZoneName: 'short',
-          });
-          return (
-            <div>
-              <div
-                className="whitespace-nowrap font-medium"
-                title={exactLocalDisplay}
-              >
-                {createdDisplay}
-              </div>
-              <div className="text-sm text-muted-foreground mt-0.5">
-                {exactLocalDisplay}
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }: any) => <TransactionTimeCell tx={row.original} />,
       },
       {
         id: 'type',
@@ -249,7 +317,7 @@ const MarketDataTables = () => {
                   : 'descending'
             }
           >
-            Type
+            Action
             {column.getIsSorted() === 'asc' ? (
               <ArrowUp className="ml-1 h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -259,65 +327,7 @@ const MarketDataTables = () => {
             )}
           </Button>
         ),
-        cell: ({ row }: any) => {
-          const typeDisplay = getTransactionTypeDisplay(row.original.type);
-          return (
-            <Badge
-              variant={typeDisplay.variant}
-              className={typeDisplay.className}
-            >
-              {typeDisplay.label}
-            </Badge>
-          );
-        },
-      },
-      {
-        id: 'owner',
-        accessorFn: (row: any) =>
-          row.position.owner ? String(row.position.owner).toLowerCase() : '',
-        header: ({ column }: any) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Address
-            {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
-          </Button>
-        ),
-        cell: ({ row }: any) => (
-          <div>
-            <div className="flex items-center gap-2 min-w-0">
-              {row.original.position.owner ? (
-                <Image
-                  alt={row.original.position.owner}
-                  src={blo(row.original.position.owner as `0x${string}`)}
-                  className="w-5 h-5 rounded-sm ring-1 ring-border/50 shrink-0"
-                  width={20}
-                  height={20}
-                />
-              ) : null}
-              <div className="[&_span.font-mono]:text-foreground min-w-0">
-                <AddressDisplay address={row.original.position.owner || ''} />
-              </div>
-            </div>
-          </div>
-        ),
+        cell: ({ row }: any) => <TransactionTypeCell tx={row.original} />,
       },
       {
         id: 'amount',
@@ -350,17 +360,51 @@ const MarketDataTables = () => {
             )}
           </Button>
         ),
-        cell: ({ row }: any) => {
-          const amount = row.original.position.collateral
-            ? Number(formatEther(BigInt(row.original.position.collateral)))
-            : 0;
-          return (
-            <div className="flex items-center gap-1">
-              <NumberDisplay value={Math.abs(amount)} />
-              <span>{collateralAssetTicker}</span>
-            </div>
-          );
-        },
+        cell: ({ row }: any) => (
+          <TransactionAmountCell
+            tx={row.original}
+            collateralAssetTicker={
+              String(row.original?.type || '')
+                .toLowerCase()
+                .includes('mintparlay')
+                ? 'testUSDe'
+                : collateralAssetTicker
+            }
+            attestation={findAttestationForTx(row.original)}
+            sortedMarketsForColors={sortedMarketsForColors}
+          />
+        ),
+      },
+      {
+        id: 'owner',
+        accessorFn: (row: any) =>
+          row.position.owner ? String(row.position.owner).toLowerCase() : '',
+        header: ({ column }: any) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 h-auto font-medium text-foreground hover:opacity-80 transition-opacity inline-flex items-center"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Address
+            {column.getIsSorted() === 'asc' ? (
+              <ArrowUp className="ml-1 h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ArrowDown className="ml-1 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => <TransactionOwnerCell tx={row.original} />,
       },
       {
         id: 'position',
@@ -390,63 +434,16 @@ const MarketDataTables = () => {
             )}
           </Button>
         ),
-        cell: ({ row }: any) => {
-          const tx = row.original;
-          const position = tx.position;
-          const optionName = position.market?.optionName;
-          const positionMarketIdNum = Number(position.market?.marketId);
-          let optionIndex = sortedMarketsForColors.findIndex(
-            (m: any) => Number(m?.marketId) === positionMarketIdNum
-          );
-          if (optionIndex < 0 && optionName) {
-            optionIndex = sortedMarketsForColors.findIndex(
-              (m: any) => (m?.optionName ?? '') === optionName
-            );
-          }
-          let seriesColor =
-            optionIndex >= 0 ? getSeriesColorByIndex(optionIndex) : undefined;
-          if (!seriesColor) {
-            const paletteSize = CHART_SERIES_COLORS.length || 5;
-            const idNum = Number(positionMarketIdNum);
-            const fallbackIndex =
-              ((idNum % paletteSize) + paletteSize) % paletteSize;
-            seriesColor = getSeriesColorByIndex(fallbackIndex);
-          }
-          const isLiquidity = tx?.positionType === 'LP' || position.isLP;
-          return (
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="whitespace-nowrap">
-                  #{position.positionId}
-                </span>
-                <Badge
-                  variant="outline"
-                  className="font-normal whitespace-nowrap"
-                >
-                  {isLiquidity ? 'Liquidity' : 'Trader'}
-                </Badge>
-                {optionName ? (
-                  <Badge
-                    variant="outline"
-                    className="truncate max-w-[220px]"
-                    style={{
-                      backgroundColor: seriesColor
-                        ? withAlpha(seriesColor, 0.08)
-                        : undefined,
-                      borderColor: seriesColor
-                        ? withAlpha(seriesColor, 0.24)
-                        : undefined,
-                      color: seriesColor || undefined,
-                    }}
-                    title={optionName}
-                  >
-                    {optionName}
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-          );
-        },
+        cell: ({ row }: any) => (
+          <TransactionPositionCell
+            tx={row.original}
+            sortedMarketsForColors={sortedMarketsForColors}
+            comment={
+              (findAttestationForTx(row.original)?.comment || '').trim() ||
+              undefined
+            }
+          />
+        ),
       },
       {
         id: 'actions',
@@ -566,7 +563,7 @@ const MarketDataTables = () => {
                       colId === 'time'
                         ? 'Time'
                         : colId === 'type'
-                          ? 'Type'
+                          ? 'Action'
                           : colId === 'amount'
                             ? 'Amount'
                             : colId === 'position'

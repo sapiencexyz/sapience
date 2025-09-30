@@ -1,0 +1,188 @@
+---
+title: Design Dashboards, Games, and more
+description: Build your own app with @sapience/ui, GraphQL, Quoter, and Auctions.
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Build a Completely Custom App
+
+This guide shows how to scaffold a Next.js app that uses the `@sapience/ui` package for forms and components, and wires data via GraphQL and the Quoter/Auction APIs.
+
+## Install
+
+### Create a new Next.js app
+
+Prereqs: Node >= 20.14 and pnpm 9.x.
+
+```bash
+pnpm create next-app@14 my-sapience-app --ts --tailwind --eslint --app --use-pnpm --src-dir
+cd my-sapience-app
+```
+
+If your scaffold installs a different Next version, pin the version supported by `@sapience/ui`:
+
+```bash
+pnpm add -E next@14.2.30
+```
+
+### Install @sapience/ui
+
+```bash
+pnpm add @sapience/ui
+```
+
+### Install peer dependencies
+
+`@sapience/ui` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
+
+Core peer deps:
+
+```bash
+pnpm add -E next@14.2.30 react@19.1.0 react-dom@19.1.0 react-hook-form@7.53.0 @tanstack/react-query@5.56.2 wagmi@2.14.16 viem@2.23.5 graphql@16.11.0 @apollo/client@3.12.4 lucide-react@0.461.0 lightweight-charts@4.2.1 framer-motion@12.19.1 next-themes@0.3.0
+```
+
+Optional/feature-specific peer deps (install only if needed):
+
+```bash
+pnpm add -E @rainbow-me/rainbowkit@2.1.6 @tanstack/react-table@8.21.2 date-fns@3.6.0 dayjs@1.11.13 jsbi@3.2.5 react-countup@6.5.3 next-pwa@5.6.0 @uniswap/sdk-core@5.4.0 @uniswap/v3-core@1.0.1 @uniswap/v3-sdk@3.14.0
+```
+
+Tip: You can always check the exact versions in `@sapience/ui`'s `peerDependencies` and match them with `-E`.
+
+### Start the dev server
+
+```bash
+pnpm dev
+```
+
+## Import Components and Hooks
+
+```tsx
+import { TradeForm } from '@sapience/ui';
+```
+
+## Connect Data
+
+- GraphQL: fetch markets, prices, and positions
+- Quoter: size your trades with price constraints
+- Auction WS: submit/receive quotes for Batch Auction Markets
+- MCP: optional agentic tools for research/trading flows
+
+```ts
+// Quoter URL builder example
+function toQuoteUrl(params: {
+  base: string;
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number;
+  expectedPrice: number;
+  collateralAvailable: bigint;
+  maxIterations?: number;
+  priceLimit?: number;
+}) {
+  const { base, chainId, marketGroupAddress, marketId, expectedPrice, collateralAvailable, maxIterations, priceLimit } = params;
+  const qs = new URLSearchParams();
+  qs.set('expectedPrice', String(expectedPrice));
+  qs.set('collateralAvailable', String(collateralAvailable));
+  if (maxIterations) qs.set('maxIterations', String(maxIterations));
+  if (priceLimit) qs.set('priceLimit', String(priceLimit));
+  return `${base}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${qs.toString()}`;
+}
+```
+
+## Example Page
+
+```tsx
+import { useMemo, useState } from 'react';
+import { TradeForm } from '@sapience/ui';
+
+export default function TradePage() {
+  const [baseUrl] = useState('https://api.sapience.xyz');
+  const chainId = 1;
+  const marketGroupAddress = '0x...';
+  const marketId = 1;
+
+  const getEstimatedCost = useMemo(() => {
+    return async (size: string, direction: 'Long' | 'Short') => {
+      // naive example: call quoter to size collateral given a target price
+      const expectedPrice = direction === 'Long' ? 0.55 : 0.45;
+      const collateralAvailable = BigInt(1e18); // 1 token in wei
+      const url = toQuoteUrl({
+        base: baseUrl,
+        chainId,
+        marketGroupAddress,
+        marketId,
+        expectedPrice,
+        collateralAvailable,
+      });
+      const res = await fetch(url);
+      const data = await res.json();
+      // return collateral cost estimate string (for demo use expected maxSize)
+      return data.maxSize ?? '0';
+    };
+  }, [baseUrl]);
+
+  async function onTradeSubmit(values: { size: string; direction: 'Long' | 'Short'; slippage: string; }) {
+    // Integrate with write logic or relayer
+    console.log('submit trade', values);
+  }
+
+  return (
+    <TradeForm
+      onTradeSubmit={onTradeSubmit}
+      getEstimatedCost={getEstimatedCost}
+      collateralAssetTicker="sUSDS"
+      walletBalanceDisplay="100.0"
+    />
+  );
+}
+```
+
+## GraphQL Example
+
+```ts
+import { GraphQLClient, gql } from 'graphql-request';
+
+const client = new GraphQLClient('https://api.sapience.xyz/graphql');
+
+const MarketsQuery = gql`
+  query Markets {
+    markets { id title status }
+  }
+`;
+
+export async function fetchMarkets() {
+  return client.request(MarketsQuery);
+}
+```
+
+## Theming and UI
+
+`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
+
+```ts
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+import sapiencePreset from '@sapience/ui/tailwind-preset'
+
+export default {
+  presets: [sapiencePreset],
+  content: [
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './node_modules/@sapience/ui/dist/**/*.{js,mjs}'
+  ],
+} satisfies Config
+```
+
+## Next Steps
+
+- Add market data via GraphQL
+- Use Quoter to compute max size and price constraints
+- Add Auction WS for batch markets and limit-like quotes
+
+

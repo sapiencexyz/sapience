@@ -400,7 +400,7 @@ const ResearchAgent: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-sm border bg-card">
+    <Card className="shadow-sm border bg-card rounded-sm">
       {canChat ? (
         <ChatMessages
           messages={messages}

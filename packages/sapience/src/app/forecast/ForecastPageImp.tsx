@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useState, useCallback } from 'react';
 import { LayoutGridIcon, FileTextIcon, UserIcon } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -10,8 +9,9 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/sapience/ui/index';
+} from '@sapience/ui/components/ui/tooltip';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import PredictForm from '~/components/markets/forms/ForecastForm';
 import ForecastInfoNotice from '~/components/markets/ForecastInfoNotice';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -31,20 +31,6 @@ const TabsHeader = ({
   isAskTooltipOpen,
   setIsAskTooltipOpen,
 }: TabsHeaderProps) => {
-  const closeTimeoutRef = useRef<number | null>(null);
-
-  const handleTapOpen = () => {
-    if (closeTimeoutRef.current) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setIsAskTooltipOpen(true);
-    closeTimeoutRef.current = window.setTimeout(() => {
-      setIsAskTooltipOpen(false);
-      closeTimeoutRef.current = null;
-    }, 1500);
-  };
-
   return (
     <div className="border-b border-border bg-background border-t border-border">
       <div className="flex">
@@ -57,11 +43,7 @@ const TabsHeader = ({
         <TooltipProvider>
           <Tooltip open={isAskTooltipOpen} onOpenChange={setIsAskTooltipOpen}>
             <TooltipTrigger asChild>
-              <div
-                className="flex-1"
-                onClick={handleTapOpen}
-                onTouchStart={handleTapOpen}
-              >
+              <div className="flex-1">
                 <button
                   type="button"
                   disabled
@@ -83,7 +65,7 @@ const TabsHeader = ({
 };
 
 const ForecastPageImp = () => {
-  const { authenticated } = usePrivy();
+  const { hasConnectedWallet } = useConnectedWallet();
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -112,7 +94,7 @@ const ForecastPageImp = () => {
     return (
       <div
         className={`min-h-screen bg-background ${
-          authenticated ? 'pt-32' : 'pt-24 md:pt-0'
+          hasConnectedWallet ? 'pt-32' : 'pt-24 md:pt-0'
         }`}
       >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
@@ -135,7 +117,7 @@ const ForecastPageImp = () => {
     return (
       <div
         className={`min-h-screen bg-background ${
-          authenticated ? 'pt-24' : 'pt-24 md:pt-0'
+          hasConnectedWallet ? 'pt-24' : 'pt-24 md:pt-0'
         }`}
       >
         <div className="max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card">
@@ -213,12 +195,12 @@ const ForecastPageImp = () => {
   return (
     <div
       className={`min-h-screen bg-background ${
-        authenticated ? 'pt-20' : 'pt-20 md:pt-0'
+        hasConnectedWallet ? 'pt-16 mt-2' : 'pt-16 mt-2 md:pt-0 md:mt-0'
       }`}
     >
       {/* Main content container with Twitter-like layout */}
       <div
-        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${!authenticated ? 'mt-2 md:mt-0' : 'mt-2'}`}
+        className={`max-w-2xl mx-auto border-l border-r border-border min-h-screen bg-card ${hasConnectedWallet ? 'md:mt-2' : 'md:mt-0'}`}
       >
         <>
           {/* Tabs */}

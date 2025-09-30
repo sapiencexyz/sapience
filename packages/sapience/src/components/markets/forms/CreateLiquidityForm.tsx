@@ -316,12 +316,6 @@ export function CreateLiquidityForm({
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">Low Price</FormLabel>
-            <div className="text-sm text-muted-foreground">
-              Min:{' '}
-              <NumberDisplay
-                value={tickToPrice(lowPriceTick || 0, tickSpacing)}
-              />
-            </div>
           </div>
           <FormField
             control={control}
@@ -361,12 +355,6 @@ export function CreateLiquidityForm({
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
             <FormLabel className="block">High Price</FormLabel>
-            <div className="text-sm text-muted-foreground">
-              Max:{' '}
-              <NumberDisplay
-                value={tickToPrice(highPriceTick || 0, tickSpacing)}
-              />
-            </div>
           </div>
           <FormField
             control={control}

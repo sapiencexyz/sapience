@@ -1,13 +1,9 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 import { Switch } from '@sapience/ui/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+import { Tabs, TabsList, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { SquareStack as SquareStackIcon } from 'lucide-react';
 import CategoryChips from './CategoryChips';
 import type { FocusArea } from '~/lib/constants/focusAreas';
 
@@ -16,9 +12,6 @@ interface Category {
   slug: string;
   name: string;
 }
-
-const selectedStatusClass = 'bg-secondary';
-const hoverStatusClass = '';
 
 interface FocusAreaFilterProps {
   selectedCategorySlug: string | null;
@@ -31,7 +24,6 @@ interface FocusAreaFilterProps {
   categories: Category[] | null | undefined;
   getCategoryStyle: (categorySlug: string) => FocusArea | undefined;
   containerClassName?: string;
-  parlayFeatureEnabled: boolean;
 }
 
 const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
@@ -45,86 +37,78 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   categories,
   getCategoryStyle,
   containerClassName,
-  parlayFeatureEnabled,
 }) => {
-  const [isParlayTooltipOpen, setIsParlayTooltipOpen] = React.useState(false);
-  const closeTimeoutRef = React.useRef<number | null>(null);
-
-  const handleParlayTapOpen = () => {
-    if (closeTimeoutRef.current) {
-      window.clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
-    }
-    setIsParlayTooltipOpen(true);
-    closeTimeoutRef.current = window.setTimeout(() => {
-      setIsParlayTooltipOpen(false);
-      closeTimeoutRef.current = null;
-    }, 1500);
-  };
   return (
     <div className={containerClassName || 'px-0 py-0 w-full'}>
-      <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-2">
-        {/* Categories Row */}
-        <CategoryChips
-          selectedCategorySlug={selectedCategorySlug}
-          onCategoryClick={handleCategoryClick}
-          isLoading={isLoadingCategories}
-          categories={categories}
-          getCategoryStyle={getCategoryStyle}
-        />
-
-        {/* Status on the right (stacks below on small screens) */}
-        <div className="order-1 md:order-2 w-full md:w-auto flex-shrink-0 mb-1 md:mb-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground mr-1.5">
-              Status
+      <div className="w-full min-w-0 flex flex-col min-[1400px]:flex-row items-start min-[1400px]:items-center gap-2">
+        {/* Controls row: Parlay left, Status right (mobile). On largest, Status moves to centered sibling */}
+        <div className="w-full min-w-0 min-[1400px]:w-auto flex items-center gap-2">
+          {/* Parlay toggle */}
+          <div className="relative flex items-center gap-2 min-[1400px]:mr-2">
+            <SquareStackIcon
+              className="h-4 w-4 text-foreground"
+              aria-hidden="true"
+            />
+            <span className="text-sm font-medium text-foreground whitespace-nowrap mr-0.5">
+              Parlay Mode
             </span>
-            <button
-              type="button"
-              className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'active' ? selectedStatusClass : hoverStatusClass}`}
-              onClick={() => handleStatusFilterClick('active')}
-            >
-              Active
-            </button>
-            <button
-              type="button"
-              className={`px-2.5 py-1 text-xs rounded-full ${statusFilter === 'all' ? selectedStatusClass : hoverStatusClass}`}
-              onClick={() => handleStatusFilterClick('all')}
-            >
-              All
-            </button>
+            <Switch checked={parlayMode} onCheckedChange={onParlayModeChange} />
+          </div>
 
-            <div className="hidden md:block h-4 w-px bg-border mx-1" />
-            <div className="ml-auto md:ml-0 flex items-center gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground ml-2">
-                Parlay Mode
-              </span>
-              {parlayFeatureEnabled ? (
-                <Switch
-                  checked={parlayMode}
-                  onCheckedChange={onParlayModeChange}
-                />
-              ) : (
-                <TooltipProvider>
-                  <Tooltip
-                    open={isParlayTooltipOpen}
-                    onOpenChange={setIsParlayTooltipOpen}
-                  >
-                    <TooltipTrigger asChild>
-                      <div
-                        onClick={handleParlayTapOpen}
-                        onTouchStart={handleParlayTapOpen}
-                      >
-                        <Switch checked={false} disabled />
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Coming Soon</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              )}
-            </div>
+          {/* Status tabs (mobile/tablet): right-aligned */}
+          <div className="ml-auto min-[1400px]:hidden flex items-center mr-0">
+            <Tabs
+              value={statusFilter}
+              onValueChange={(v) =>
+                handleStatusFilterClick((v as 'active' | 'all') || 'active')
+              }
+            >
+              <TabsList className="inline-flex items-center p-1">
+                <TabsTrigger
+                  value="active"
+                  className="text-xs px-3 h-8 leading-none rounded-md"
+                >
+                  Active
+                </TabsTrigger>
+                <TabsTrigger
+                  value="all"
+                  className="text-xs px-3 h-8 leading-none rounded-md"
+                >
+                  All
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          {/* Desktop tabs are rendered on the right next to chips; omitted here */}
+        </div>
+
+        {/* Category chips: below controls on small; inline and right-aligned on largest */}
+        <div className="w-full min-w-0 min-[1400px]:flex-1 min-[1400px]:flex min-[1400px]:items-center min-[1400px]:justify-end min-[1400px]:gap-2">
+          <CategoryChips
+            selectedCategorySlug={selectedCategorySlug}
+            onCategoryClick={handleCategoryClick}
+            isLoading={isLoadingCategories}
+            categories={categories}
+            getCategoryStyle={getCategoryStyle}
+          />
+          {/* Status tabs (desktop >=1400px): placed to the right of chips with spacing */}
+          <div className="hidden min-[1400px]:flex items-center ml-4">
+            <Tabs
+              value={statusFilter}
+              onValueChange={(v) =>
+                handleStatusFilterClick((v as 'active' | 'all') || 'active')
+              }
+            >
+              <TabsList className="h-8">
+                <TabsTrigger value="active" className="text-xs">
+                  Active
+                </TabsTrigger>
+                <TabsTrigger value="all" className="text-xs">
+                  All
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
         </div>
       </div>

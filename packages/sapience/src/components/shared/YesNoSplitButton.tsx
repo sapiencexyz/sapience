@@ -11,6 +11,9 @@ interface YesNoSplitButtonProps {
   // When true, visually mark the corresponding side as selected
   selectedYes?: boolean;
   selectedNo?: boolean;
+  // Optional sublabels to render beneath the primary labels
+  yesOddsText?: string;
+  noOddsText?: string;
 }
 
 /**
@@ -25,7 +28,10 @@ export default function YesNoSplitButton({
   size = 'lg',
   selectedYes,
   selectedNo,
+  yesOddsText,
+  noOddsText,
 }: YesNoSplitButtonProps) {
+  const hasOdds = Boolean(yesOddsText || noOddsText);
   const sizeClasses =
     size === 'sm'
       ? 'h-8 text-sm'
@@ -47,11 +53,22 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedYes
-            ? 'text-emerald-900 dark:text-emerald-50 bg-emerald-500/30 hover:bg-emerald-500/40 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.25)]'
-            : 'text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60'
+            ? 'text-emerald-900 dark:text-white/90 bg-emerald-500/60 hover:bg-emerald-500/70 dark:bg-emerald-500/70 dark:hover:bg-emerald-500/80 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)] dark:shadow-[0_0_0_2px_rgba(16,185,129,0.45)]'
+            : 'text-emerald-700 dark:text-white/90 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60 shadow-[0_0_0_1px_rgba(16,185,129,0.18)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.28),_0_0_10px_rgba(16,185,129,0.18)] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(16,185,129,0.4),_0_0_12px_rgba(16,185,129,0.3)]'
         )}
       >
-        Yes
+        {hasOdds ? (
+          <span className="flex flex-col items-center justify-center translate-y-[1px]">
+            <span className="leading-none">Yes</span>
+            {yesOddsText ? (
+              <span className="text-[8px] leading-none text-emerald-900/80 dark:text-white/80 mt-0.5">
+                {yesOddsText}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          'Yes'
+        )}
       </button>
       <button
         type="button"
@@ -60,11 +77,22 @@ export default function YesNoSplitButton({
         className={cn(
           common,
           selectedNo
-            ? 'text-rose-900 dark:text-rose-50 bg-rose-500/30 hover:bg-rose-500/40 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.25)]'
-            : 'text-rose-700 dark:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60'
+            ? 'text-rose-900 dark:text-white/90 bg-rose-500/60 hover:bg-rose-500/70 dark:bg-rose-500/70 dark:hover:bg-rose-500/80 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.35)] dark:shadow-[0_0_0_2px_rgba(244,63,94,0.45)]'
+            : 'text-rose-700 dark:text-white/90 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] hover:shadow-[0_0_0_1px_rgba(244,63,94,0.28),_0_0_10px_rgba(244,63,94,0.18)] dark:shadow-[0_0_0_1px_rgba(244,63,94,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(244,63,94,0.4),_0_0_12px_rgba(244,63,94,0.3)]'
         )}
       >
-        No
+        {hasOdds ? (
+          <span className="flex flex-col items-center justify-center translate-y-[1px]">
+            <span className="leading-none">No</span>
+            {noOddsText ? (
+              <span className="text-[8px] leading-none text-rose-900/80 dark:text-white/80 mt-0.5">
+                {noOddsText}
+              </span>
+            ) : null}
+          </span>
+        ) : (
+          'No'
+        )}
       </button>
     </div>
   );

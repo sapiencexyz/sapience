@@ -313,6 +313,10 @@ contract PredictionMarketTest is Test {
         predictionMarket.ownerOf(makerNftTokenId);
         vm.expectRevert();
         predictionMarket.ownerOf(takerNftTokenId);
+
+        // Role-based sets cleared
+        assertEq(predictionMarket.getOwnedPredictionsCount(maker), 0);
+        assertEq(predictionMarket.getOwnedPredictionsCount(taker), 0);
     }
     
     function test_burn_success_takerWins() public {
@@ -345,6 +349,10 @@ contract PredictionMarketTest is Test {
         // Verify collateral payout
         assertEq(collateralToken.balanceOf(taker), takerBalanceBefore + TOTAL_COLLATERAL);
         assertEq(collateralToken.balanceOf(address(predictionMarket)), contractBalanceBefore - TOTAL_COLLATERAL);
+
+        // Role-based sets cleared
+        assertEq(predictionMarket.getOwnedPredictionsCount(maker), 0);
+        assertEq(predictionMarket.getOwnedPredictionsCount(taker), 0);
     }
     
     function test_burn_predictionNotFound() public {
@@ -416,6 +424,10 @@ contract PredictionMarketTest is Test {
         predictionMarket.ownerOf(makerNftTokenId);
         vm.expectRevert();
         predictionMarket.ownerOf(takerNftTokenId);
+
+        // Role-based sets cleared
+        assertEq(predictionMarket.getOwnedPredictionsCount(maker), 0);
+        assertEq(predictionMarket.getOwnedPredictionsCount(taker), 0);
     }
     
     function test_consolidatePrediction_makerAndTakerDifferent() public {
@@ -437,7 +449,7 @@ contract PredictionMarketTest is Test {
 
     // ============ View Function Tests ============
     
-    function test_getConfig() public {
+    function test_getConfig() public view {
         IPredictionStructs.Settings memory config = predictionMarket.getConfig();
         assertEq(config.collateralToken, address(collateralToken));
         assertEq(config.minCollateral, MIN_COLLATERAL);
@@ -710,6 +722,77 @@ contract PredictionMarketTest is Test {
         // Check deposits after burn (should be back to 0)
         assertEq(predictionMarket.getUserCollateralDeposits(maker), 0);
         assertEq(predictionMarket.getUserCollateralDeposits(taker), 0);
+    }
+
+    // ============ NFT Transfer Tests (role/mapping/deposit sync) ============
+
+    function test_transfer_makerNft_updatesPredictionAndDeposits() public {
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        vm.prank(maker);
+        (uint256 makerNftTokenId, uint256 takerNftTokenId) = predictionMarket.mint(request);
+
+        address newMaker = vm.addr(7);
+
+        // Pre-assertions
+        assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
+        assertEq(predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL);
+        assertEq(predictionMarket.getUserCollateralDeposits(newMaker), 0);
+        assertEq(predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL);
+
+        // Transfer maker NFT to newMaker
+        vm.prank(maker);
+        predictionMarket.transferFrom(maker, newMaker, makerNftTokenId);
+
+        // Ownership updated
+        assertEq(predictionMarket.ownerOf(makerNftTokenId), newMaker);
+
+        // Prediction role updated
+        IPredictionStructs.PredictionData memory pAfter = predictionMarket.getPrediction(makerNftTokenId);
+        assertEq(pAfter.maker, newMaker);
+        assertEq(pAfter.taker, taker);
+        assertEq(pAfter.makerNftTokenId, makerNftTokenId);
+        assertEq(pAfter.takerNftTokenId, takerNftTokenId);
+
+        // Deposits attribution moved from maker to newMaker
+        assertEq(predictionMarket.getUserCollateralDeposits(maker), 0);
+        assertEq(predictionMarket.getUserCollateralDeposits(newMaker), MAKER_COLLATERAL);
+        assertEq(predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL);
+
+        // Owned prediction counts updated
+        assertEq(predictionMarket.getOwnedPredictionsCount(maker), 0);
+        assertEq(predictionMarket.getOwnedPredictionsCount(newMaker), 1);
+        assertEq(predictionMarket.getOwnedPredictionsCount(taker), 1);
+    }
+
+    function test_transfer_takerNft_toMaker_resultsSingleOwnerAndMovesDeposits() public {
+        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        vm.prank(maker);
+        (uint256 makerNftTokenId, uint256 takerNftTokenId) = predictionMarket.mint(request);
+
+        // Pre-assertions
+        assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
+        assertEq(predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL);
+        assertEq(predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL);
+
+        // Transfer taker NFT to maker so maker ends up being both maker and taker
+        vm.prank(taker);
+        predictionMarket.transferFrom(taker, maker, takerNftTokenId);
+
+        // Ownership updated
+        assertEq(predictionMarket.ownerOf(takerNftTokenId), maker);
+
+        // Prediction party updated: taker becomes maker address
+        IPredictionStructs.PredictionData memory pAfter = predictionMarket.getPrediction(makerNftTokenId);
+        assertEq(pAfter.maker, maker);
+        assertEq(pAfter.taker, maker);
+
+        // Deposits attribution moved from taker to maker
+        assertEq(predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL + TAKER_COLLATERAL);
+        assertEq(predictionMarket.getUserCollateralDeposits(taker), 0);
+
+        // Owned predictions count for maker is now 2 (both NFTs), taker is 0
+        assertEq(predictionMarket.getOwnedPredictionsCount(maker), 2);
+        assertEq(predictionMarket.getOwnedPredictionsCount(taker), 0);
     }
 
 }

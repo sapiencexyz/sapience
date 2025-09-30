@@ -19,7 +19,7 @@ import type {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 const PREDICTION_MARKET_CONTRACT_ADDRESS =
-  '0xB5583Daa6388291e56cF8509c2184B16c35e32d0';
+  '0x8D1D1946cBc56F695584761d25D13F174906671C';
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
@@ -176,6 +176,11 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         `[PredictionMarketIndexer] Indexing ${blocks.length} blocks: ${blocks[0]} to ${blocks[blocks.length - 1]}`
       );
 
+      // For reindexing large ranges, use optimized batch processing
+      if (blocks.length > 1000) {
+        return await this.indexBlocksOptimized(blocks);
+      }
+
       for (const blockNumber of blocks) {
         await this.indexBlock(blockNumber);
       }
@@ -183,6 +188,87 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       return true;
     } catch (error) {
       console.error('[PredictionMarketIndexer] Error indexing blocks:', error);
+      Sentry.captureException(error);
+      return false;
+    }
+  }
+  private async indexBlocksOptimized(blocks: number[]): Promise<boolean> {
+    try {
+      console.log(
+        `[PredictionMarketIndexer] Using optimized batch processing for ${blocks.length} blocks`
+      );
+
+      const CHUNK_SIZE = 10000;
+      let processedBlocks = 0;
+
+      for (let i = 0; i < blocks.length; i += CHUNK_SIZE) {
+        const chunk = blocks.slice(i, i + CHUNK_SIZE);
+        const fromBlock = chunk[0];
+        const toBlock = chunk[chunk.length - 1];
+
+        console.log(
+          `[PredictionMarketIndexer] Processing chunk: blocks ${fromBlock} to ${toBlock} (${chunk.length} blocks)`
+        );
+
+        try {
+          // Single efficient query for the entire chunk
+          const logs = await this.client.getLogs({
+            address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
+            fromBlock: BigInt(fromBlock),
+            toBlock: BigInt(toBlock),
+          });
+
+          console.log(
+            `[PredictionMarketIndexer] Found ${logs.length} logs in chunk ${fromBlock}-${toBlock}`
+          );
+
+          // Process all logs in this chunk
+          for (const log of logs) {
+            try {
+              // Get block info only when we have a relevant log
+              const block = await this.client.getBlock({
+                blockNumber: log.blockNumber!,
+                includeTransactions: false,
+              });
+              await this.processLog(log, block);
+            } catch (logError) {
+              console.error(
+                `[PredictionMarketIndexer] Error processing log:`,
+                logError
+              );
+              Sentry.captureException(logError);
+              // Continue processing other logs
+            }
+          }
+
+          processedBlocks += chunk.length;
+          console.log(
+            `[PredictionMarketIndexer] Progress: ${processedBlocks}/${blocks.length} blocks (${Math.round((processedBlocks / blocks.length) * 100)}%)`
+          );
+        } catch (chunkError) {
+          console.error(
+            `[PredictionMarketIndexer] Error processing chunk ${fromBlock}-${toBlock}:`,
+            chunkError
+          );
+          Sentry.captureException(chunkError);
+
+          // fallback
+          console.log(
+            `[PredictionMarketIndexer] Falling back to individual block processing for chunk ${fromBlock}-${toBlock}`
+          );
+          for (const blockNumber of chunk) {
+            await this.indexBlock(blockNumber);
+          }
+          processedBlocks += chunk.length;
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error in optimized indexing:',
+        error
+      );
       Sentry.captureException(error);
       return false;
     }
@@ -307,38 +393,59 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
       if (existingEvent) {
         console.log(
-          `[PredictionMarketIndexer] Skipping duplicate PredictionMinted event tx=${uniqueEventKey.transactionHash} block=${uniqueEventKey.blockNumber} logIndex=${uniqueEventKey.logIndex}`
+          `[PredictionMarketIndexer] Event already exists tx=${uniqueEventKey.transactionHash} block=${uniqueEventKey.blockNumber} logIndex=${uniqueEventKey.logIndex}`
         );
-        return;
+
+        // For reindexing: still check if parlay needs to be created (might be missing due to old bug)
+        const existingParlay = await prisma.parlay.findFirst({
+          where: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
+            makerNftTokenId: eventData.makerNftTokenId,
+            takerNftTokenId: eventData.takerNftTokenId,
+          },
+        });
+
+        if (existingParlay) {
+          console.log(
+            `[PredictionMarketIndexer] Parlay already exists for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          return;
+        } else {
+          console.log(
+            `[PredictionMarketIndexer] Event exists but parlay missing - creating parlay for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          // Continue to parlay creation logic below
+        }
+      } else {
+        // Store new event in database
+        const eventUpsertResult = await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
+            marketGroupId: null,
+          },
+        });
+
+        await prisma.transaction.upsert({
+          where: {
+            eventId: eventUpsertResult.id,
+          },
+          create: {
+            eventId: eventUpsertResult.id,
+            type: 'mintParlayNFTs' as transaction_type_enum,
+            collateral: eventData.totalCollateral,
+          },
+          update: {
+            eventId: eventUpsertResult.id,
+            type: 'mintParlayNFTs' as transaction_type_enum,
+            collateral: eventData.totalCollateral,
+          },
+        });
       }
-
-      // Store in database - create only when not present
-      const eventUpsertResult = await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-          marketGroupId: null,
-        },
-      });
-
-      await prisma.transaction.upsert({
-        where: {
-          eventId: eventUpsertResult.id,
-        },
-        create: {
-          eventId: eventUpsertResult.id,
-          type: 'mintParlayNFTs' as transaction_type_enum,
-          collateral: eventData.totalCollateral,
-        },
-        update: {
-          eventId: eventUpsertResult.id,
-          type: 'mintParlayNFTs' as transaction_type_enum,
-          collateral: eventData.totalCollateral,
-        },
-      });
 
       const [outcomes] = decodeAbiParameters(
         [
@@ -375,34 +482,25 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         );
       }
 
-      // Create Parlay if not exists
-      const existingParlay = await prisma.parlay.findFirst({
-        where: {
+      // Create Parlay
+      await prisma.parlay.create({
+        data: {
+          chainId: this.chainId,
+          marketAddress: log.address.toLowerCase(),
+          maker: eventData.maker.toLowerCase(),
+          taker: eventData.taker.toLowerCase(),
           makerNftTokenId: eventData.makerNftTokenId,
           takerNftTokenId: eventData.takerNftTokenId,
+          totalCollateral: eventData.totalCollateral,
+          refCode: eventData.refCode,
+          status: 'active',
+          makerWon: null,
+          mintedAt: Number(block.timestamp),
+          settledAt: null,
+          endsAt: endsAt ?? null,
+          predictedOutcomes: predictedOutcomes as unknown as object,
         },
       });
-
-      if (!existingParlay) {
-        await prisma.parlay.create({
-          data: {
-            chainId: this.chainId,
-            marketAddress: log.address.toLowerCase(),
-            maker: eventData.maker.toLowerCase(),
-            taker: eventData.taker.toLowerCase(),
-            makerNftTokenId: eventData.makerNftTokenId,
-            takerNftTokenId: eventData.takerNftTokenId,
-            totalCollateral: eventData.totalCollateral,
-            refCode: eventData.refCode,
-            status: 'active',
-            makerWon: null,
-            mintedAt: Number(block.timestamp),
-            settledAt: null,
-            endsAt: endsAt ?? null,
-            predictedOutcomes: predictedOutcomes as unknown as object,
-          },
-        });
-      }
 
       console.log(
         `[PredictionMarketIndexer] Processed PredictionMinted: ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
@@ -477,6 +575,8 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       try {
         const parlay = await prisma.parlay.findFirst({
           where: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
             OR: [
               { makerNftTokenId: eventData.makerNftTokenId },
               { takerNftTokenId: eventData.takerNftTokenId },
@@ -573,6 +673,8 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       try {
         const parlay = await prisma.parlay.findFirst({
           where: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
             OR: [
               { makerNftTokenId: eventData.makerNftTokenId },
               { takerNftTokenId: eventData.takerNftTokenId },

@@ -33,8 +33,8 @@ const VaultsPageContent = () => {
   const VAULT_CHAIN_ID = 42161; // Arbitrum One
   const VAULT_ADDRESS = '0xD0Fd2e76dFB4449F422cdB2D0Bc3EA67A33b34b2';
 
-  // Parlays feature flag detection (same as MarketsPage.tsx)
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] = useState(false);
+  // Vaults feature flag detection
+  const [vaultsFeatureEnabled, setVaultsFeatureEnabled] = useState(false);
 
   // Vault integration
   const {
@@ -137,20 +137,17 @@ const VaultsPageContent = () => {
 
   useEffect(() => {
     try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      if (params?.get('parlays') === 'true') {
-        window.localStorage.setItem('sapience.parlays', 'true');
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        // Allow enabling via URL ?vaults=true (dev convenience)
+        if (params.get('vaults') === 'true') {
+          window.localStorage.setItem('sapience.vaults', 'true');
+        }
+        const stored = window.localStorage.getItem('sapience.vaults');
+        setVaultsFeatureEnabled(stored === 'true');
       }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('sapience.parlays')
-          : null;
-      setParlayFeatureEnabled(stored === 'true');
     } catch {
-      setParlayFeatureEnabled(false);
+      setVaultsFeatureEnabled(false);
     }
   }, []);
 
@@ -468,7 +465,7 @@ const VaultsPageContent = () => {
           {/* Vault */}
           <div>
             {/* TEMP: Gate Active UI behind env. Set NEXT_PUBLIC_ENABLE_VAULTS="1" to enable. */}
-            {parlayFeatureEnabled &&
+            {vaultsFeatureEnabled &&
             process.env.NEXT_PUBLIC_ENABLE_VAULTS === '1' ? (
               /* Active Vault Interface */
               <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
@@ -509,7 +506,7 @@ const VaultsPageContent = () => {
               /* Coming Soon State - Normal Interface with Overlay */
               <Card className="relative isolate overflow-hidden bg-background/[0.2] backdrop-blur-[2px] border border-gray-500/20 rounded-xl shadow-sm">
                 <CardContent
-                  className={`relative z-10 p-6 ${!parlayFeatureEnabled ? 'pointer-events-none select-none filter blur-sm' : ''}`}
+                  className={`relative z-10 p-6 ${!vaultsFeatureEnabled ? 'pointer-events-none select-none filter blur-sm' : ''}`}
                 >
                   <div className="space-y-6">
                     {/* Vault Header */}
@@ -552,7 +549,7 @@ const VaultsPageContent = () => {
                     {renderVaultForm()}
                   </div>
                 </CardContent>
-                {!parlayFeatureEnabled && <ComingSoonOverlay />}
+                {!vaultsFeatureEnabled && <ComingSoonOverlay />}
               </Card>
             )}
           </div>

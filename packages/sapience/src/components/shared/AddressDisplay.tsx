@@ -43,6 +43,7 @@ interface AddressDisplayProps {
   className?: string;
   compact?: boolean;
   showFullAddress?: boolean;
+  disablePopover?: boolean;
 }
 
 // Constants for the button and icon sizes
@@ -59,6 +60,7 @@ const AddressDisplay = ({
   className,
   compact,
   showFullAddress,
+  disablePopover,
 }: AddressDisplayProps) => {
   const { toast } = useToast();
   const { data: ensName } = useEnsName(address);
@@ -131,73 +133,83 @@ const AddressDisplay = ({
           </Link>
         )}
 
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
-            >
-              <ExternalLink
-                className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
-              />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="z-[70] w-30 p-1 flex flex-col gap-0.5">
-            <a
-              href={`https://app.zerion.io/${address}/history`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
-            >
-              <Image src="/zerion.svg" alt="Zerion" width={12} height={12} />
-              <span className="font-medium">Zerion</span>
-            </a>
-            <a
-              href={`https://debank.com/profile/${address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
-            >
-              <Image
-                src="/debank.svg"
-                alt="DeBank"
-                width={12}
-                height={12}
-                className="grayscale brightness-50"
-              />
-              <span className="font-medium">DeBank</span>
-            </a>
-            <a
-              href={`https://intel.arkm.com/explorer/address/${address}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
-            >
-              <Image
-                src="/arkm.svg"
-                alt="Arkm Explorer"
-                width={12}
-                height={12}
-              />
-              <span className="font-medium">Arkham Intel</span>
-            </a>
-            <a
-              href={`https://blockscan.com/address/${address}#transactions`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
-            >
-              <Image
-                src="/blockscan.svg"
-                alt="Blockscan"
-                width={12}
-                height={12}
-              />
-              <span className="font-medium">Blockscan</span>
-            </a>
-          </PopoverContent>
-        </Popover>
+        {!disablePopover && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`${buttonSizeClass} ${buttonSvgOverrideClass}`}
+              >
+                <ExternalLink
+                  className={`${iconSizeClass} text-muted-foreground hover:text-foreground`}
+                />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="z-[70] w-30 p-1 flex flex-col gap-0.5">
+              <a
+                href={`https://app.zerion.io/${address}/history`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Image
+                  src="/zerion.svg"
+                  alt="Zerion"
+                  width={12}
+                  height={12}
+                  className="dark:invert dark:brightness-90"
+                />
+                <span className="font-medium">Zerion</span>
+              </a>
+              <a
+                href={`https://debank.com/profile/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Image
+                  src="/debank.svg"
+                  alt="DeBank"
+                  width={12}
+                  height={12}
+                  className="grayscale brightness-50 dark:invert dark:brightness-90"
+                />
+                <span className="font-medium">DeBank</span>
+              </a>
+              <a
+                href={`https://intel.arkm.com/explorer/address/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Image
+                  src="/arkm.svg"
+                  alt="Arkm Explorer"
+                  width={12}
+                  height={12}
+                  className="dark:invert dark:brightness-90"
+                />
+                <span className="font-medium">Arkham Intel</span>
+              </a>
+              <a
+                href={`https://blockscan.com/address/${address}#transactions`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 p-1 rounded hover:bg-muted transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Image
+                  src="/blockscan.svg"
+                  alt="Blockscan"
+                  width={12}
+                  height={12}
+                  className="dark:invert dark:brightness-90"
+                />
+                <span className="font-medium">Blockscan</span>
+              </a>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
     </div>
   );

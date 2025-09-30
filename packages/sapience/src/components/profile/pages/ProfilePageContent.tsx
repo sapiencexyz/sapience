@@ -11,6 +11,12 @@ import {
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 
+import {
+  Telescope,
+  SquareStackIcon,
+  ArrowLeftRightIcon,
+  DropletsIcon,
+} from 'lucide-react';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import ClosedTraderPositionsTable from '~/components/profile/ClosedTraderPositionsTable';
@@ -19,10 +25,12 @@ import ForecastsTable from '~/components/profile/ForecastsTable';
 import UserParlaysTable from '~/components/parlays/UserParlaysTable';
 import { usePositions } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
+import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import { SCHEMA_UID } from '~/lib/constants/eas';
 import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import ProfileStats from '~/components/profile/ProfileStats';
+import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 
 const TAB_VALUES = ['trades', 'parlays', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -31,27 +39,7 @@ const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
 
-  // Feature flag: enable Parlays only when explicitly turned on
-  const [parlayFeatureEnabled, setParlayFeatureEnabled] =
-    useState<boolean>(false);
-  useEffect(() => {
-    try {
-      const params =
-        typeof window !== 'undefined'
-          ? new URLSearchParams(window.location.search)
-          : null;
-      if (params?.get('parlays') === 'true') {
-        window.localStorage.setItem('sapience.parlays', 'true');
-      }
-      const stored =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem('sapience.parlays')
-          : null;
-      setParlayFeatureEnabled(stored === 'true');
-    } catch {
-      setParlayFeatureEnabled(false);
-    }
-  }, []);
+  // Remove parlay feature flag; Parlays tab is always available
 
   const {
     data: positionsData,
@@ -86,12 +74,21 @@ const ProfilePageContent = () => {
     schemaId: SCHEMA_UID,
   });
 
+  // Parlays for this profile address
+  const { data: parlays, isLoading: parlaysLoading } = useUserParlays({
+    address: String(address),
+  });
+
   const allLoaded =
-    !positionsLoading && !forecastsLoading && !positionsFetching;
+    !positionsLoading &&
+    !forecastsLoading &&
+    !positionsFetching &&
+    !parlaysLoading;
 
   const hasTrades = traderPositions.length > 0;
   const hasLp = lpPositions.length > 0;
   const hasForecasts = (attestations?.length || 0) > 0;
+  const hasParlays = (parlays?.length || 0) > 0;
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -107,9 +104,6 @@ const ProfilePageContent = () => {
     const desired = (TAB_VALUES as readonly string[]).includes(rawHash)
       ? (rawHash as TabValue)
       : ('trades' as TabValue);
-    // If Parlays is disabled, fall back to trades
-    if (desired === 'parlays' && !parlayFeatureEnabled)
-      return 'trades' as TabValue;
     return desired;
   };
 
@@ -117,7 +111,7 @@ const ProfilePageContent = () => {
 
   useEffect(() => {
     setTabValue(getHashValue());
-  }, [parlayFeatureEnabled]);
+  }, []);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -137,10 +131,6 @@ const ProfilePageContent = () => {
     const nextValue = (TAB_VALUES as readonly string[]).includes(value)
       ? (value as TabValue)
       : ('trades' as TabValue);
-    // Prevent selecting Parlays when feature is disabled
-    if (nextValue === 'parlays' && !parlayFeatureEnabled) {
-      return;
-    }
     setTabValue(nextValue);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
@@ -159,19 +149,13 @@ const ProfilePageContent = () => {
         : '';
     const hasExplicitHash = (TAB_VALUES as readonly string[]).includes(rawHash);
     if (hasExplicitHash) {
-      // If user explicitly navigated to Parlays while disabled, redirect to trades
-      if (rawHash === 'parlays' && !parlayFeatureEnabled) {
-        didAutoRedirectRef.current = true;
-        handleTabChange('trades');
-        return;
-      }
       didAutoRedirectRef.current = true;
       return;
     }
 
     const tabHasContent = (tab: TabValue): boolean => {
       if (tab === 'trades') return hasTrades;
-      if (tab === 'parlays') return false; // Parlays is coming soon
+      if (tab === 'parlays') return hasParlays;
       if (tab === 'lp') return hasLp;
       if (tab === 'forecasts') return hasForecasts;
       return false;
@@ -183,33 +167,40 @@ const ProfilePageContent = () => {
       return;
     }
 
-    // Parlays is currently feature-flagged; skip it in auto-redirect logic unless enabled
     const firstWithContent: TabValue | null = hasTrades
       ? 'trades'
-      : hasLp
-        ? 'lp'
-        : hasForecasts
-          ? 'forecasts'
-          : null;
+      : hasParlays
+        ? 'parlays'
+        : hasLp
+          ? 'lp'
+          : hasForecasts
+            ? 'forecasts'
+            : null;
 
     if (firstWithContent && tabValue !== firstWithContent) {
       handleTabChange(firstWithContent);
     }
     // Mark as done to avoid overriding user interactions later
     didAutoRedirectRef.current = true;
-  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts, parlayFeatureEnabled]);
+  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
 
-  // If the feature flag becomes disabled while on Parlays, snap back to trades
-  useEffect(() => {
-    if (!parlayFeatureEnabled && tabValue === 'parlays') {
-      handleTabChange('trades');
-    }
-  }, [parlayFeatureEnabled, tabValue]);
+  // No feature flag; nothing to monitor
 
   return (
-    <div className="container max-w-6xl mx-auto py-32 px-4">
+    <div className="container max-w-6xl mx-auto py-24 lg:py-32 px-4">
       <div className="mb-5 lg:mb-10">
         <ProfileHeader address={address} />
+      </div>
+
+      <div className="mb-5">
+        {hasLoadedOnce ? (
+          <ProfileQuickMetrics
+            address={address}
+            forecastsCount={attestations?.length ?? 0}
+            positions={positionsData ?? []}
+            parlays={parlays ?? []}
+          />
+        ) : null}
       </div>
 
       <div className="mb-5">
@@ -217,7 +208,7 @@ const ProfilePageContent = () => {
       </div>
 
       {hasLoadedOnce ? (
-        !(hasTrades || hasLp || hasForecasts) ? (
+        !(hasTrades || hasParlays || hasLp || hasForecasts) ? (
           <EmptyProfileState />
         ) : (
           <Tabs
@@ -227,19 +218,19 @@ const ProfilePageContent = () => {
           >
             <TabsList className="grid w-full grid-cols-1 lg:grid-cols-4 h-auto gap-2 mb-5">
               <TabsTrigger className="w-full" value="trades">
+                <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
                 Trades
               </TabsTrigger>
-              <TabsTrigger
-                className="w-full"
-                value="parlays"
-                disabled={!parlayFeatureEnabled}
-              >
+              <TabsTrigger className="w-full" value="parlays">
+                <SquareStackIcon className="h-4 w-4 mr-2" />
                 Parlays
               </TabsTrigger>
               <TabsTrigger className="w-full" value="lp">
+                <DropletsIcon className="h-4 w-4 mr-2" />
                 Liquidity
               </TabsTrigger>
               <TabsTrigger className="w-full" value="forecasts">
+                <Telescope className="h-4 w-4 mr-2" />
                 Forecasts
               </TabsTrigger>
             </TabsList>

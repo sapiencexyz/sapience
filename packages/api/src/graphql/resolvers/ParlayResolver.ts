@@ -1,6 +1,22 @@
 import { Resolver, Query, Arg, Int, ObjectType, Field } from 'type-graphql';
 import prisma from '../../db';
 
+type PredictionMintedLogData = {
+  eventType: 'PredictionMinted';
+  maker: string;
+  taker: string;
+  makerNftTokenId: string;
+  takerNftTokenId: string;
+  makerCollateral: string;
+  takerCollateral: string;
+  totalCollateral: string;
+  refCode: string;
+  blockNumber: number;
+  transactionHash: string;
+  logIndex: number;
+  timestamp: number;
+};
+
 @ObjectType()
 class ConditionSummary {
   @Field(() => String)
@@ -53,6 +69,12 @@ class ParlayType {
 
   @Field(() => String)
   totalCollateral!: string;
+
+  @Field(() => String, { nullable: true })
+  makerCollateral?: string | null;
+
+  @Field(() => String, { nullable: true })
+  takerCollateral?: string | null;
 
   @Field(() => String, { nullable: true })
   refCode?: string | null;
@@ -108,6 +130,32 @@ export class ParlayResolver {
       : [];
     const condMap = new Map(conditions.map((c) => [c.id, c]));
 
+    // Preload mint events for the set of mint timestamps to derive maker/taker collateral
+    const mintTimestamps = Array.from(
+      new Set(rows.map((r) => BigInt(r.mintedAt)))
+    );
+    const mintEvents = mintTimestamps.length
+      ? await prisma.event.findMany({
+          where: {
+            marketGroupId: null,
+            timestamp: { in: mintTimestamps },
+          },
+        })
+      : [];
+
+    // Build lookup by maker/taker NFT ids
+    const mintKeyToEvent = new Map<string, PredictionMintedLogData>();
+    for (const ev of mintEvents) {
+      try {
+        const data = ev.logData as unknown as PredictionMintedLogData;
+        if (!data || data.eventType !== 'PredictionMinted') continue;
+        const key = `${String(data.makerNftTokenId)}-${String(data.takerNftTokenId)}`;
+        mintKeyToEvent.set(key, data);
+      } catch {
+        // ignore malformed rows
+      }
+    }
+
     return rows.map((r) => {
       const outcomesRaw =
         (r.predictedOutcomes as unknown as {
@@ -119,6 +167,8 @@ export class ParlayResolver {
         prediction: o.prediction,
         condition: condMap.get(o.conditionId) || null,
       }));
+      const mintKey = `${r.makerNftTokenId}-${r.takerNftTokenId}`;
+      const mintData = mintKeyToEvent.get(mintKey);
       return {
         id: r.id,
         chainId: r.chainId,
@@ -128,6 +178,8 @@ export class ParlayResolver {
         makerNftTokenId: r.makerNftTokenId,
         takerNftTokenId: r.takerNftTokenId,
         totalCollateral: r.totalCollateral,
+        makerCollateral: mintData?.makerCollateral?.toString?.() ?? null,
+        takerCollateral: mintData?.takerCollateral?.toString?.() ?? null,
         refCode: r.refCode,
         status: r.status as unknown as ParlayType['status'],
         makerWon: r.makerWon,

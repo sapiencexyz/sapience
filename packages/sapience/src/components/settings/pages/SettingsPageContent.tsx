@@ -16,6 +16,7 @@ import {
   CommandList,
 } from '@sapience/ui/components/ui/command';
 import { Textarea } from '@sapience/ui/components/ui/textarea';
+import { Switch } from '@sapience/ui/components/ui/switch';
 import {
   Tabs,
   TabsList,
@@ -24,10 +25,11 @@ import {
 } from '@sapience/ui/components/ui/tabs';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Monitor, Key, Settings, Bot } from 'lucide-react';
+import { Moon, Sun, Monitor, Key, Share2, Bot } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import LottieLoader from '~/components/shared/LottieLoader';
@@ -169,6 +171,7 @@ const SettingsPageContent = () => {
     researchAgentSystemMessage,
     researchAgentModel,
     researchAgentTemperature,
+    showAmericanOdds,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setQuoterBaseUrl,
@@ -178,6 +181,7 @@ const SettingsPageContent = () => {
     setResearchAgentSystemMessage,
     setResearchAgentModel,
     setResearchAgentTemperature,
+    setShowAmericanOdds,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -191,10 +195,10 @@ const SettingsPageContent = () => {
   const [modelInput, setModelInput] = useState('');
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
   const [isModelFocused, setIsModelFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState<'configuration' | 'agent'>(
-    'configuration'
-  );
-  const { ready, authenticated, exportWallet } = usePrivy();
+  const [activeTab, setActiveTab] = useState<
+    'network' | 'appearance' | 'agent'
+  >('network');
+  const { ready, exportWallet } = usePrivy();
   const { wallets } = useWallets();
   const activeWallet = (
     wallets && wallets.length > 0 ? (wallets[0] as any) : undefined
@@ -202,6 +206,7 @@ const SettingsPageContent = () => {
   const isActiveEmbeddedWallet = Boolean(
     (activeWallet as any)?.walletClientType === 'privy'
   );
+  const { hasConnectedWallet } = useConnectedWallet();
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
@@ -210,12 +215,19 @@ const SettingsPageContent = () => {
     setMounted(true);
   }, []);
 
-  // Sync active tab with URL hash (#configuration | #agent)
+  // Sync active tab with URL hash (#network | #appearance | #agent)
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncFromHash = () => {
       const hash = window.location.hash;
-      setActiveTab(hash === '#agent' ? 'agent' : 'configuration');
+      if (hash === '#agent') {
+        setActiveTab('agent');
+      } else if (hash === '#appearance') {
+        setActiveTab('appearance');
+      } else {
+        // Support legacy '#configuration' by mapping to 'network'
+        setActiveTab('network');
+      }
     };
     syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
@@ -352,14 +364,16 @@ const SettingsPageContent = () => {
           <Tabs
             value={activeTab}
             onValueChange={(val) => {
-              setActiveTab(val as 'configuration' | 'agent');
+              setActiveTab(val as 'network' | 'appearance' | 'agent');
               try {
                 if (typeof window === 'undefined') return;
                 const url = new URL(window.location.href);
                 if (val === 'agent') {
                   url.hash = '#agent';
+                } else if (val === 'appearance') {
+                  url.hash = '#appearance';
                 } else {
-                  url.hash = '#configuration';
+                  url.hash = '#network';
                 }
                 window.history.replaceState({}, '', url.toString());
               } catch {
@@ -372,11 +386,11 @@ const SettingsPageContent = () => {
               <TabsList className="order-2 md:order-1 grid w-full md:w-auto grid-cols-1 md:grid-cols-none md:grid-flow-col md:auto-cols-auto h-auto gap-2">
                 <TabsTrigger
                   className="w-full md:w-auto justify-center md:justify-start"
-                  value="configuration"
+                  value="network"
                 >
                   <span className="inline-flex items-center gap-1.5">
-                    <Settings className="w-4 h-4" />
-                    Configuration
+                    <Share2 className="w-4 h-4" />
+                    Network
                   </span>
                 </TabsTrigger>
                 <TabsTrigger
@@ -388,54 +402,22 @@ const SettingsPageContent = () => {
                     Agent
                   </span>
                 </TabsTrigger>
+                <TabsTrigger
+                  className="w-full md:w-auto justify-center md:justify-start"
+                  value="appearance"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    <Monitor className="w-4 h-4" />
+                    Appearance
+                  </span>
+                </TabsTrigger>
               </TabsList>
             </div>
 
-            <TabsContent value="configuration">
+            <TabsContent value="network">
               <Card className="bg-background">
                 <CardContent className="p-8">
                   <div className="space-y-6">
-                    <div className="grid gap-2">
-                      <Label htmlFor="theme">Theme</Label>
-                      <div id="theme" className="flex flex-col gap-1">
-                        {mounted && (
-                          <ToggleGroup
-                            type="single"
-                            value={theme ?? 'system'}
-                            onValueChange={(val) => {
-                              if (!val) return;
-                              setTheme(val);
-                            }}
-                            variant="outline"
-                            size="sm"
-                            className="w-full md:w-auto bg-background py-1 rounded-lg justify-start gap-2 md:gap-3"
-                          >
-                            <ToggleGroupItem
-                              value="light"
-                              aria-label="Light mode"
-                            >
-                              <Sun className="h-4 w-4" />
-                              <span>Light</span>
-                            </ToggleGroupItem>
-                            <ToggleGroupItem
-                              value="system"
-                              aria-label="System mode"
-                            >
-                              <Monitor className="h-4 w-4" />
-                              <span>System</span>
-                            </ToggleGroupItem>
-                            <ToggleGroupItem
-                              value="dark"
-                              aria-label="Dark mode"
-                            >
-                              <Moon className="h-4 w-4" />
-                              <span>Dark</span>
-                            </ToggleGroupItem>
-                          </ToggleGroup>
-                        )}
-                      </div>
-                    </div>
-
                     <div className="grid gap-2">
                       <Label htmlFor="ethereum-rpc-endpoint">
                         Ethereum RPC Endpoint
@@ -549,7 +531,13 @@ const SettingsPageContent = () => {
                         <div id="export-wallet">
                           <Button
                             onClick={exportWallet}
-                            disabled={!(ready && authenticated)}
+                            disabled={
+                              !(
+                                ready &&
+                                isActiveEmbeddedWallet &&
+                                hasConnectedWallet
+                              )
+                            }
                             size="sm"
                           >
                             <Key className="h-4 w-4" />
@@ -558,6 +546,72 @@ const SettingsPageContent = () => {
                         </div>
                       </div>
                     ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="appearance">
+              <Card className="bg-background">
+                <CardContent className="p-8">
+                  <div className="space-y-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="theme">Theme</Label>
+                      <div id="theme" className="flex flex-col gap-1">
+                        {mounted && (
+                          <ToggleGroup
+                            type="single"
+                            value={theme ?? 'system'}
+                            onValueChange={(val) => {
+                              if (!val) return;
+                              setTheme(val);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="w-full md:w-auto bg-background py-1 rounded-lg justify-start gap-2 md:gap-3"
+                          >
+                            <ToggleGroupItem
+                              value="light"
+                              aria-label="Light mode"
+                            >
+                              <Sun className="h-4 w-4" />
+                              <span>Light</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="system"
+                              aria-label="System mode"
+                            >
+                              <Monitor className="h-4 w-4" />
+                              <span>System</span>
+                            </ToggleGroupItem>
+                            <ToggleGroupItem
+                              value="dark"
+                              aria-label="Dark mode"
+                            >
+                              <Moon className="h-4 w-4" />
+                              <span>Dark</span>
+                            </ToggleGroupItem>
+                          </ToggleGroup>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid gap-1">
+                      <Label htmlFor="show-american-odds">
+                        Show American Odds
+                      </Label>
+                      <div
+                        id="show-american-odds"
+                        className="flex items-center h-10"
+                      >
+                        <Switch
+                          checked={Boolean(
+                            showAmericanOdds ?? defaults.showAmericanOdds
+                          )}
+                          onCheckedChange={(val) => setShowAmericanOdds(val)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -693,7 +747,7 @@ const SettingsPageContent = () => {
 
                     <div className="grid gap-2">
                       <Label htmlFor="research-temperature">Temperature</Label>
-                      <div className="space-y-2.5">
+                      <div className="mt-1 space-y-2.5">
                         <Slider
                           value={[temperatureInput]}
                           onValueChange={(vals) => {

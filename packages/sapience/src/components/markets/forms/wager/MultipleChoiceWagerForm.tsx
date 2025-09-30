@@ -145,7 +145,7 @@ export default function MultipleChoiceWagerForm({
           </div>
         </div>
         <div>
-          <div className="mt-2 mb-3">
+          <div className="mt-6 mb-3">
             <WagerInput
               collateralSymbol={marketGroupData.collateralSymbol || 'testUSDe'}
               collateralAddress={

@@ -566,6 +566,53 @@ contract PredictionMarketUmaResolverTest is Test {
         assertTrue(makerWon); // Default value
     }
 
+    function test_resolvePrediction_decisiveLossDespiteUnsettledMarkets() public {
+        // Setup two markets: one will be settled (and contradict prediction), one will remain unsettled
+        bytes memory claimSettled = "Decisive loss market";
+        bytes memory claimUnsettled = "Unsettled market";
+        uint256 endTimeSettled = 1735689600; // Dec 31, 2025
+        uint256 endTimeUnsettled = 1767225600; // Dec 31, 2026
+        bytes32 marketIdSettled = _logMarketIdGeneration(claimSettled, endTimeSettled);
+        bytes32 marketIdUnsettled = _logMarketIdGeneration(claimUnsettled, endTimeUnsettled);
+
+        // Advance time past both end times to allow assertion submission
+        vm.warp(endTimeUnsettled + 1);
+
+        // Submit assertions for both markets
+        vm.prank(asserter);
+        resolver.submitAssertion(claimSettled, endTimeSettled, true); // This will be settled to YES
+
+        vm.prank(asserter);
+        resolver.submitAssertion(claimUnsettled, endTimeUnsettled, true); // This will remain unsettled
+
+        // Settle only the first market
+        (, , , , bytes32 assertionIdSettled) = resolver.wrappedMarkets(marketIdSettled);
+        vm.prank(address(mockOptimisticOracleV3));
+        resolver.assertionResolvedCallback(assertionIdSettled, true);
+
+        // Predictions: wrong prediction for the settled market (false vs resolved YES)
+        // Order them with the UNSETTLED first to ensure code skips it and still returns decisive loss
+        PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes = new PredictionMarketUmaResolver.PredictedOutcome[](2);
+        outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
+            marketId: marketIdUnsettled,
+            prediction: true
+        });
+        outcomes[1] = PredictionMarketUmaResolver.PredictedOutcome({
+            marketId: marketIdSettled,
+            prediction: false // Wrong prediction against settled YES
+        });
+
+        bytes memory encodedOutcomes = abi.encode(outcomes);
+
+        (bool isValid, IPredictionMarketResolver.Error error, bool makerWon) = resolver.resolvePrediction(encodedOutcomes);
+
+        // Despite the presence of an unsettled market, a decisive loss on a settled market
+        // should return valid with NO_ERROR and makerWon = false
+        assertTrue(isValid);
+        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR));
+        assertFalse(makerWon);
+    }
+
     // ============ Encoding/Decoding Tests ============
     
     function test_encodePredictionOutcomes() public {

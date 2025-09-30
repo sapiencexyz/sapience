@@ -2846,6 +2846,7 @@ type ParlayType {
   endsAt: Int
   id: Int!
   maker: String!
+  makerCollateral: String
   makerNftTokenId: String!
   makerWon: Boolean
   marketAddress: String!
@@ -2855,6 +2856,7 @@ type ParlayType {
   settledAt: Int
   status: String!
   taker: String!
+  takerCollateral: String
   takerNftTokenId: String!
   totalCollateral: String!
 }
@@ -3285,6 +3287,7 @@ type Query {
   getMarketGroup(where: MarketGroupWhereUniqueInput!): MarketGroup
   getMarketLeaderboard(address: String!, chainId: Int!, marketId: String!): [PnLType!]!
   getMarketPrice(where: MarketPriceWhereUniqueInput!): MarketPrice
+  getParlayLeaderboard(chainId: Int!, marketAddress: String!): [PnLType!]!
   getPosition(where: PositionWhereUniqueInput!): Position
   getResource(where: ResourceWhereUniqueInput!): Resource
   getResourcePrice(where: ResourcePriceWhereUniqueInput!): ResourcePrice

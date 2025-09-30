@@ -1,3 +1,94 @@
+---
+title: "Quoter API"
+description: "Calculate the maximum position size given collateral and price constraints."
+---
+
+# Quoter API
+
+The Quoter API determines the largest position size that can be opened with a given amount of collateral while respecting target price constraints. It performs a bounded binary search against on-chain quoting to find a feasible, direction-aware size.
+
+## Endpoint
+
+- Production: `https://api.sapience.xyz/quoter` (confirm base URL)
+- Local (monorepo): `http://localhost:3001/quoter`
+
+### GET `/:chainId/:marketAddress/:marketId`
+
+Returns the maximum feasible position size for the specified market and target price, within the provided collateral budget.
+
+#### Path parameters
+- `chainId`: Number. Chain ID where the market group is deployed.
+- `marketAddress`: String. Market group contract address (`0x...`).
+- `marketId`: Number. Market ID within the group.
+
+#### Query parameters
+- `expectedPrice` (required): Decimal string. Target reference price after the trade.
+- `collateralAvailable` (required): Wei string. Collateral budget available for the position.
+- `maxIterations` (optional): Integer 1–10. Bounded binary search iterations (default: 10; max: 10).
+- `priceLimit` (optional): Decimal string. Price guardrail; defaults to current reference price.
+  - For LONG: fill price must be `> priceLimit` and `<= expectedPrice`.
+  - For SHORT: fill price must be `< priceLimit` and `>= expectedPrice`.
+
+#### Response
+```typescript
+type QuoteResponse = {
+  direction: 'LONG' | 'SHORT';
+  maxSize: string;            // signed wei string: LONG > 0, SHORT < 0
+  currentPrice: string;       // decimal string
+  expectedPrice: string;      // decimal string
+  collateralAvailable: string // wei string
+}
+```
+
+Notes:
+- `direction` is inferred from `expectedPrice` vs current reference price.
+- `maxSize` is signed: positive for LONG, negative for SHORT. Its absolute value is the largest feasible size given constraints.
+- All numeric values are strings to preserve precision.
+
+## Examples
+
+### Basic
+```bash
+curl "http://localhost:3001/quoter/1/0x1234000000000000000000000000000000005678/1?expectedPrice=1000&collateralAvailable=1000000000000000000"
+```
+
+Example response
+```json
+{
+  "direction": "LONG",
+  "maxSize": "500000000000000000",
+  "currentPrice": "950",
+  "expectedPrice": "1000",
+  "collateralAvailable": "1000000000000000000"
+}
+```
+
+### With price limit and custom iterations
+```bash
+curl "http://localhost:3001/quoter/1/0x1234000000000000000000000000000000005678/1?expectedPrice=1000&collateralAvailable=1000000000000000000&priceLimit=980&maxIterations=5"
+```
+
+## Errors
+
+The API returns structured errors with appropriate HTTP status codes:
+
+- 400 Bad Request
+  - `Invalid query parameters` (validation details included)
+  - `Expected price must be greater than 0`
+  - `Expected price must be different from current price`
+  - `Could not find a valid position size that satisfies the price constraints`
+  - `Insufficient liquidity. Try a smaller size.`
+- 404 Not Found
+  - `Market not found`
+  - `Current price not found`
+- 500 Internal Server Error
+
+## Implementation details
+
+- The service reads the current reference price from `getReferencePrice(marketId)`.
+- It runs a binary search (up to `maxIterations`, capped at 10) between zero and a theoretical cap derived from `collateralAvailable / currentPrice`.
+- Feasibility at each step is checked by simulating `quoteCreateTraderPosition(marketId, signedSize)` on the market group contract.
+- If the requested budget exceeds the feasible capacity at the price constraints, the service returns `400` with “Insufficient liquidity. Try a smaller size.”
 # Quoter API
 
 ## Overview

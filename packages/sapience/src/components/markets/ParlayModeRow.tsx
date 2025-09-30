@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import { format, formatDistanceToNow, fromUnixTime } from 'date-fns';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +10,8 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
+import SafeMarkdown from '~/components/shared/SafeMarkdown';
+import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 
 export interface ParlayModeRowProps {
   condition: {
@@ -27,28 +28,9 @@ export interface ParlayModeRowProps {
 }
 
 const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
-  const { id, question, shortName, endTime, description, similarMarkets } =
-    condition;
-  const { addParlaySelection, parlaySelections } = useBetSlipContext();
-
-  // Removed condition id display in dialog; keep id for keys only
-
-  const endInfo = React.useMemo(() => {
-    if (typeof endTime !== 'number' || endTime <= 0)
-      return { date: '', relative: '' };
-    let relative = '';
-    try {
-      relative = formatDistanceToNow(fromUnixTime(endTime), {
-        addSuffix: true,
-      });
-    } catch {
-      // ignore formatting errors
-    }
-    return {
-      date: format(new Date(endTime * 1000), 'MMM d, yyyy'),
-      relative,
-    };
-  }, [endTime]);
+  const { id, question, shortName, endTime, description } = condition;
+  const { addParlaySelection, removeParlaySelection, parlaySelections } =
+    useBetSlipContext();
 
   const displayQ = shortName || question;
 
@@ -64,21 +46,43 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
 
   const handleYes = React.useCallback(() => {
     if (!id) return;
+    const existing = parlaySelections.find((s) => s.conditionId === id);
+    if (existing && existing.prediction === true) {
+      removeParlaySelection(existing.id);
+      return;
+    }
     addParlaySelection({
       conditionId: id,
       question: displayQ,
       prediction: true,
     });
-  }, [id, displayQ, addParlaySelection]);
+  }, [
+    id,
+    displayQ,
+    parlaySelections,
+    removeParlaySelection,
+    addParlaySelection,
+  ]);
 
   const handleNo = React.useCallback(() => {
     if (!id) return;
+    const existing = parlaySelections.find((s) => s.conditionId === id);
+    if (existing && existing.prediction === false) {
+      removeParlaySelection(existing.id);
+      return;
+    }
     addParlaySelection({
       conditionId: id,
       question: displayQ,
       prediction: false,
     });
-  }, [id, displayQ, addParlaySelection]);
+  }, [
+    id,
+    displayQ,
+    parlaySelections,
+    removeParlaySelection,
+    addParlaySelection,
+  ]);
 
   return (
     <div className="border-b last:border-b-0 border-border">
@@ -99,44 +103,22 @@ const ParlayModeRow: React.FC<ParlayModeRowProps> = ({ condition, color }) => {
                   </div>
                 </button>
               </DialogTrigger>
-              <DialogContent className="max-w-sm">
+              <DialogContent className="w-[92vw] max-w-3xl break-words overflow-x-hidden">
                 <DialogHeader>
-                  <DialogTitle>{displayQ}</DialogTitle>
+                  <DialogTitle className="break-words whitespace-normal text-2xl font-medium">
+                    {displayQ}
+                  </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-3">
-                  {endInfo.date ? (
-                    <div className="text-xs text-muted-foreground">
-                      Ends {endInfo.date}
-                      {endInfo.relative ? (
-                        <span> ({endInfo.relative})</span>
-                      ) : null}
-                    </div>
-                  ) : null}
+                <div>
+                  <div className="flex items-center mb-4">
+                    <EndTimeDisplay endTime={endTime} size="large" />
+                  </div>
                   {description ? (
-                    <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                      {description}
-                    </div>
-                  ) : null}
-                  {Array.isArray(similarMarkets) &&
-                  similarMarkets.length > 0 ? (
-                    <div className="pt-2">
-                      <div className="text-xs font-medium text-muted-foreground mb-1">
-                        Similar Markets
-                      </div>
-                      <ul className="list-disc list-inside space-y-1">
-                        {similarMarkets.map((url, i) => (
-                          <li key={`${id}-sm-${i}`} className="text-sm">
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="underline text-muted-foreground hover:text-foreground break-all"
-                            >
-                              {url}
-                            </a>
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="text-sm leading-relaxed break-words [&_a]:break-all">
+                      <SafeMarkdown
+                        content={description}
+                        className="break-words [&_a]:break-all"
+                      />
                     </div>
                   ) : null}
                 </div>

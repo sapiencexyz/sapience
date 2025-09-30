@@ -25,7 +25,7 @@ const StatTile = ({
 }) => {
   return (
     <Card className="border-border/70">
-      <CardContent className="p-5">
+      <CardContent className="p-3 lg:p-5">
         <div className="flex items-center gap-3">
           {Icon ? (
             <Icon
@@ -34,17 +34,15 @@ const StatTile = ({
             />
           ) : null}
           <div className="flex-1">
-            <div className="text-xs md:text-sm text-muted-foreground font-medium mb-0.5">
+            <div className="text-sm text-muted-foreground font-medium mb-0.5">
               {label}
             </div>
-            <div className="flex items-baseline gap-2">
+            <div className="flex flex-col items-start gap-1 md:flex-row md:items-baseline md:gap-2">
               <div className="text-xl md:text-2xl font-heading font-normal">
                 {value}
               </div>
               {sublabel ? (
-                <div className="text-xs md:text-sm text-muted-foreground">
-                  {sublabel}
-                </div>
+                <div className="text-sm text-muted-foreground">{sublabel}</div>
               ) : null}
             </div>
           </div>
@@ -89,7 +87,7 @@ const ProfileStats = ({ address, className }: ProfileStatsProps) => {
   return (
     <div
       className={cn(
-        'grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4 my-4 lg:my-6',
+        'grid grid-cols-1 lg:grid-cols-2 gap-4 my-4 lg:my-6',
         className
       )}
     >

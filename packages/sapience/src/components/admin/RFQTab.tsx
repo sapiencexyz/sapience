@@ -45,6 +45,8 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
+import { useReadContract } from 'wagmi';
+import { keccak256, concatHex, toHex } from 'viem';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
@@ -248,6 +250,9 @@ const RFQTab = ({
           try {
             const body = {
               question: row.question.trim(),
+              ...(row.shortName && row.shortName.trim()
+                ? { shortName: row.shortName.trim() }
+                : {}),
               ...(row.categorySlug
                 ? { categorySlug: row.categorySlug.trim() }
                 : {}),
@@ -295,8 +300,129 @@ const RFQTab = ({
     setCsvImportOpen(false);
   };
 
+  // UMA Resolver config (same as used elsewhere in admin)
+  const UMA_CHAIN_ID = 42161;
+  const UMA_RESOLVER_ADDRESS =
+    '0x9052992cB14b7af25a3c40B27211d369c9ff7758' as `0x${string}`;
+
+  // Minimal ABI to read wrapped market status
+  const umaWrappedMarketAbi = [
+    {
+      inputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+      name: 'wrappedMarkets',
+      outputs: [
+        { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
+        { internalType: 'bool', name: 'assertionSubmitted', type: 'bool' },
+        { internalType: 'bool', name: 'settled', type: 'bool' },
+        { internalType: 'bool', name: 'resolvedToYes', type: 'bool' },
+        { internalType: 'bytes32', name: 'assertionId', type: 'bytes32' },
+      ],
+      stateMutability: 'view',
+      type: 'function',
+    },
+  ] as const;
+
+  function ConditionStatusBadges({
+    claimStatement,
+    endTime,
+  }: {
+    claimStatement?: string;
+    endTime?: number;
+  }) {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const isUpcoming = (endTime ?? 0) > nowSeconds;
+    const isPastEnd = !!endTime && endTime <= nowSeconds;
+
+    let marketId: `0x${string}` | undefined;
+    try {
+      if (claimStatement && endTime) {
+        const claimHex = toHex(claimStatement);
+        const colonHex = toHex(':');
+        const endTimeHex = toHex(BigInt(endTime), { size: 32 });
+        const packed = concatHex([claimHex, colonHex, endTimeHex]);
+        marketId = keccak256(packed);
+      }
+    } catch {
+      marketId = undefined;
+    }
+
+    const { data } = useReadContract({
+      address: UMA_RESOLVER_ADDRESS,
+      abi: umaWrappedMarketAbi,
+      functionName: 'wrappedMarkets',
+      args: marketId ? [marketId] : undefined,
+      chainId: UMA_CHAIN_ID,
+      query: { enabled: Boolean(marketId) },
+    });
+
+    const tuple = data;
+    const settled = Boolean(tuple?.[2] ?? false);
+
+    return (
+      <div className="flex flex-col items-start gap-1">
+        {isPastEnd && settled ? (
+          <Badge variant="outline" className="whitespace-nowrap">
+            Settled
+          </Badge>
+        ) : null}
+        {isPastEnd && !settled ? (
+          <Badge variant="destructive" className="whitespace-nowrap">
+            Needs Settlement
+          </Badge>
+        ) : null}
+        {isUpcoming ? (
+          <Badge variant="secondary" className="whitespace-nowrap">
+            Upcoming
+          </Badge>
+        ) : null}
+      </div>
+    );
+  }
+
   const columns: ColumnDef<RFQRow>[] = useMemo(
     () => [
+      {
+        id: 'badges',
+        header: () => null,
+        size: 140,
+        cell: ({ row }) => (
+          <ConditionStatusBadges
+            claimStatement={row.original.claimStatement}
+            endTime={row.original.endTime}
+          />
+        ),
+      },
+      {
+        header: 'End Time',
+        accessorKey: 'endTime',
+        size: 150,
+        cell: ({ getValue }) => {
+          const v = getValue() as number | undefined;
+          if (!v) return '';
+          let relative = '';
+          try {
+            relative = formatDistanceToNow(fromUnixTime(v), {
+              addSuffix: true,
+            });
+          } catch {
+            // ignore formatting errors
+          }
+          return (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="cursor-help">
+                    <div className="text-sm font-medium">{relative}</div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Unix timestamp: {v}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          );
+        },
+      },
       {
         header: 'ID',
         accessorKey: 'id',
@@ -378,37 +504,6 @@ const RFQTab = ({
         size: 120,
       },
       {
-        header: 'End Time',
-        accessorKey: 'endTime',
-        size: 150,
-        cell: ({ getValue }) => {
-          const v = getValue() as number | undefined;
-          if (!v) return '';
-          let relative = '';
-          try {
-            relative = formatDistanceToNow(fromUnixTime(v), {
-              addSuffix: true,
-            });
-          } catch {
-            // ignore formatting errors
-          }
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help">
-                    <div className="text-sm font-medium">{relative}</div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Unix timestamp: {v}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-      },
-      {
         header: 'Public',
         accessorKey: 'public',
         size: 80,
@@ -418,52 +513,6 @@ const RFQTab = ({
             <Badge variant={isPublic ? 'default' : 'secondary'}>
               {isPublic ? 'Yes' : 'No'}
             </Badge>
-          );
-        },
-      },
-      {
-        header: 'Claim Statement',
-        accessorKey: 'claimStatement',
-        size: 250,
-        cell: ({ getValue }) => {
-          const claim = getValue() as string;
-          const isLong = claim.length > 80;
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help line-clamp-3">{claim}</div>
-                </TooltipTrigger>
-                {isLong && (
-                  <TooltipContent className="max-w-xs">
-                    <p className="whitespace-pre-wrap">{claim}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-          );
-        },
-      },
-      {
-        header: 'Description/Rules',
-        accessorKey: 'description',
-        size: 250,
-        cell: ({ getValue }) => {
-          const description = getValue() as string;
-          const isLong = description.length > 80;
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-help line-clamp-3">{description}</div>
-                </TooltipTrigger>
-                {isLong && (
-                  <TooltipContent className="max-w-xs">
-                    <p className="whitespace-pre-wrap">{description}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
           );
         },
       },

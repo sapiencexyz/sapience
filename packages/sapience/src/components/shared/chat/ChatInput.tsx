@@ -38,7 +38,7 @@ export function ChatInput({
           if (e.key === 'Enter' && canAttemptSend) onSend();
         }}
         disabled={!canType}
-        placeholder={canChat ? 'Type a message...' : 'Log in to chat'}
+        placeholder={canChat ? 'Type a message...' : 'Connect wallet to chat'}
       />
       <Button
         onClick={() =>
@@ -46,7 +46,7 @@ export function ChatInput({
         }
         disabled={isDisabled}
       >
-        {canChat ? 'Send' : 'Log in'}
+        {canChat ? 'Send' : 'Connect wallet'}
       </Button>
     </div>
   );

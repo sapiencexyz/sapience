@@ -24,8 +24,10 @@ import {
   type SortingState,
 } from '@tanstack/react-table';
 import { getChainShortName } from '~/lib/utils/util';
-import SharePositionDialog from '~/components/markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
+import { buildTradeShareParams } from '~/lib/share/buildTradeShareParams';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
 
 interface ClosedTraderPositionsTableProps {
   positions: PositionType[];
@@ -80,10 +82,12 @@ export default function ClosedTraderPositionsTable({
     link?: string;
     question: string;
     symbol: string;
+    decimals: number;
     entry: number;
     exit: number;
     realized: number;
     closedAt?: Date;
+    isLost: boolean;
   }
 
   const rows: RowData[] = useMemo(() => {
@@ -105,6 +109,13 @@ export default function ClosedTraderPositionsTable({
         decimals
       );
       const realized = exit - entry;
+      let minWinThreshold = 0;
+      try {
+        minWinThreshold = Number(formatUnits(MINIMUM_POSITION_WIN, decimals));
+      } catch {
+        minWinThreshold = 0.01; // fallback for typical 18 decimals
+      }
+      const isLost = exit < minWinThreshold;
 
       return {
         id: p.id,
@@ -113,10 +124,12 @@ export default function ClosedTraderPositionsTable({
         link,
         question,
         symbol,
+        decimals,
         entry,
         exit,
         realized,
         closedAt,
+        isLost,
       };
     });
   }, [positions]);
@@ -238,7 +251,7 @@ export default function ClosedTraderPositionsTable({
                 : 'descending'
           }
         >
-          Entry
+          Wager
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-1 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -275,7 +288,7 @@ export default function ClosedTraderPositionsTable({
                 : 'descending'
           }
         >
-          Exit
+          To Win
           {column.getIsSorted() === 'asc' ? (
             <ArrowUp className="ml-1 h-4 w-4" />
           ) : column.getIsSorted() === 'desc' ? (
@@ -347,17 +360,23 @@ export default function ClosedTraderPositionsTable({
         const r = row.original;
         return (
           <div className="whitespace-nowrap text-right">
-            <button
-              type="button"
-              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-              onClick={() => {
-                setSelectedPositionSnapshot(r.position);
-                setOpenSharePositionId(r.positionId || null);
-                // ---
-              }}
-            >
-              Share
-            </button>
+            {r.isLost ? (
+              <Button size="sm" variant="outline" disabled>
+                Wager Lost
+              </Button>
+            ) : (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+                onClick={() => {
+                  setSelectedPositionSnapshot(r.position);
+                  setOpenSharePositionId(r.positionId || null);
+                  // ---
+                }}
+              >
+                Share
+              </button>
+            )}
           </div>
         );
       },
@@ -413,18 +432,25 @@ export default function ClosedTraderPositionsTable({
           ))}
         </TableBody>
       </Table>
-      {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
-          wagerOverride={selectedRow?.entry}
-          payoutOverride={selectedRow?.exit}
-          open={openSharePositionId !== null}
-          onOpenChange={(next) => {
-            if (!next) setOpenSharePositionId(null);
-          }}
-          trigger={<span />}
-        />
-      )}
+      {selectedPositionSnapshot &&
+        (() => {
+          const params = buildTradeShareParams(selectedPositionSnapshot, {
+            wagerOverride: selectedRow?.entry,
+            payoutOverride: selectedRow?.exit,
+          });
+          return (
+            <ShareDialog
+              imagePath="/og/trade"
+              title="Share Your Wager"
+              open={openSharePositionId !== null}
+              onOpenChange={(next) => {
+                if (!next) setOpenSharePositionId(null);
+              }}
+              trigger={<span />}
+              {...params}
+            />
+          );
+        })()}
     </div>
   );
 }

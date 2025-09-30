@@ -4,13 +4,22 @@ This document explains how to use the PredictionMarket contract with practical e
 
 ## Overview
 
-The PredictionMarket implements a streamlined prediction system where:
+The PredictionMarket implements a comprehensive prediction system with two main approaches:
+
+### 1. Direct Mint/Burn System
 - **Makers** create predictions by calling `mint()` with their collateral and desired outcomes
 - **Takers** compete by calling `mint()` with the same prediction data and their delta amount
 - The **first taker to mint** within the time limit wins the opportunity
 - Takers only provide the delta (profit amount), not the full payout
 - After market resolution, the **winner** (maker or taker) calls `burn()` to settle and withdraw winnings
 - Predictions can only be settled after markets are resolved
+
+### 2. Limit Order System
+- **Makers** can place limit orders using `placeOrder()` to set up predictions with specific terms
+- **Takers** can browse and fill available orders using `fillOrder()` when they match their criteria
+- Orders have expiration deadlines and can be cancelled by makers using `cancelOrder()`
+- Once filled, limit orders automatically create predictions that can be settled via `burn()`
+- This provides more flexibility and control over prediction timing and terms
 
 
 
@@ -378,30 +387,262 @@ market.consolidatePrediction(1);
 // Both NFTs are burned and Ana receives the full payout
 ```
 
+## Limit Order System
+
+The PredictionMarket contract now supports limit orders, providing makers with more control over their prediction terms and timing. This system allows makers to place orders that takers can fill at their convenience.
+
+### How Limit Orders Work
+
+1. **Maker places an order** using `placeOrder()` with specific terms
+2. **Takers browse available orders** and fill them using `fillOrder()`
+3. **Orders expire** after the specified deadline and can be cancelled
+4. **When filled**, orders automatically create predictions that work the same as direct mint predictions
+
+### Step 1: Ana Places a Limit Order
+
+Ana wants to place a limit order for her Bitcoin and Ethereum prediction:
+
+```solidity
+// Ana prepares her prediction data (same as before)
+bytes memory encodedPredictionOutcomes = resolver.encodePredictionOutcomes(
+    marketGroup1, // Bitcoin market group address
+    1,            // Bitcoin market ID
+    true,         // YES for Bitcoin
+    marketGroup2, // Ethereum market group address
+    2,            // Ethereum market ID
+    true          // YES for Ethereum
+);
+
+// Ana places a limit order
+uint256 orderId = market.placeOrder(
+    IPredictionStructs.OrderRequestData({
+        encodedPredictedOutcomes: encodedPredictionOutcomes,
+        orderDeadline: block.timestamp + 86400, // 24 hours from now
+        resolver: address(resolver),
+        makerCollateral: 1000e6,    // 1,000 USDC collateral
+        takerCollateral: 200e6,     // 200 USDC delta from taker
+        maker: ana,                 // Ana's address
+        refCode: bytes32(0)         // Reference code
+    })
+);
+
+console.log("Order placed with ID:", orderId);
+// Output: Order placed with ID: 1
+```
+
+**What happens during placeOrder:**
+- Ana's 1,000 USDC collateral is transferred to the contract
+- The order is stored with a unique order ID
+- The order is added to the unfilled orders list
+- An `OrderPlaced` event is emitted
+
+### Step 2: Bob and Carl Browse Available Orders
+
+Takers can now browse available orders:
+
+```solidity
+// Get all unfilled order IDs
+uint256[] memory unfilledOrderIds = market.getUnfilledOrderIds();
+console.log("Total unfilled orders:", unfilledOrderIds.length);
+// Output: Total unfilled orders: 1
+
+// Get details of a specific order
+IPredictionStructs.LimitOrderData memory order = market.getUnfilledOrder(orderId);
+console.log("Order maker:", order.maker);
+console.log("Order deadline:", order.orderDeadline);
+console.log("Maker collateral:", order.makerCollateral);
+console.log("Taker collateral:", order.takerCollateral);
+// Output: Order maker: ana
+// Output: Order deadline: 1703123456
+// Output: Maker collateral: 1000000000
+// Output: Taker collateral: 200000000
+
+// Check if the order is still valid (not expired)
+bool isOrderValid = block.timestamp < order.orderDeadline;
+console.log("Order is valid:", isOrderValid);
+// Output: Order is valid: true
+```
+
+### Step 3: Bob Fills the Order
+
+Bob decides to fill Ana's order:
+
+```solidity
+// Bob fills the order
+market.fillOrder(orderId, bytes32(0)); // Using order ID and ref code
+
+// Check if the order was filled
+IPredictionStructs.LimitOrderData memory filledOrder = market.getUnfilledOrder(orderId);
+console.log("Order still exists:", filledOrder.orderId != 0);
+// Output: Order still exists: false (order was filled)
+```
+
+**What happens during fillOrder:**
+- Bob's 200 USDC collateral is transferred to the contract
+- A prediction is automatically created using the order terms
+- The order is marked as filled (orderId set to 0)
+- An `OrderFilled` event is emitted
+- Two NFTs are minted (one for Ana, one for Bob)
+
+### Step 4: Check the Created Prediction
+
+After filling, we can check the prediction that was created:
+
+```solidity
+// The prediction was created with NFT IDs from the order
+// We can get prediction data using either NFT ID
+IPredictionStructs.PredictionData memory prediction = market.getPrediction(anaNftTokenId);
+
+console.log("Prediction maker:", prediction.maker);
+console.log("Prediction taker:", prediction.taker);
+console.log("Maker NFT ID:", prediction.makerNftTokenId);
+console.log("Taker NFT ID:", prediction.takerNftTokenId);
+console.log("Maker Collateral:", prediction.makerCollateral);
+console.log("Taker Collateral:", prediction.takerCollateral);
+// Output: Prediction maker: ana
+// Output: Prediction taker: bob
+// Output: Maker NFT ID: 3
+// Output: Taker NFT ID: 4
+// Output: Maker Collateral: 1000000000
+// Output: Taker Collateral: 200000000
+```
+
+### Step 5: Order Cancellation (Alternative Scenario)
+
+If Ana wants to cancel her order before it's filled:
+
+```solidity
+// Ana can only cancel orders after they expire
+// First, wait for the deadline to pass...
+// (In practice, this would happen after the orderDeadline timestamp)
+
+// Then Ana can cancel the order
+market.cancelOrder(orderId);
+
+// Check if the order was cancelled
+IPredictionStructs.LimitOrderData memory cancelledOrder = market.getUnfilledOrder(orderId);
+console.log("Order still exists:", cancelledOrder.orderId != 0);
+// Output: Order still exists: false (order was cancelled)
+
+// Ana's collateral is automatically returned
+console.log("Ana's USDC balance after cancellation:", IERC20(collateralToken).balanceOf(ana));
+// Output: Ana's USDC balance after cancellation: 1000000000 (1,000 USDC returned)
+```
+
+**What happens during cancelOrder:**
+- Ana's collateral is returned to her
+- The order is marked as cancelled (orderId set to 0)
+- The order is removed from unfilled orders lists
+- An `OrderCancelled` event is emitted
+
+### Step 6: Settlement (Same as Direct Mint)
+
+Once the prediction is created from a filled order, settlement works exactly the same:
+
+```solidity
+// After markets resolve, anyone can call burn to settle
+market.burn(anaNftTokenId); // Using maker NFT token ID
+
+// Check settlement results
+IPredictionStructs.PredictionData memory settledPrediction = market.getPrediction(anaNftTokenId);
+console.log("Prediction settled:", settledPrediction.settled);
+console.log("Maker won:", settledPrediction.makerWon);
+// Output: Prediction settled: true
+// Output: Maker won: true (assuming Ana's predictions were correct)
+```
+
+### Limit Order Query Functions
+
+The contract provides several functions to query limit orders:
+
+```solidity
+// Get total count of unfilled orders
+uint256 totalOrders = market.getUnfilledOrdersCount();
+console.log("Total unfilled orders:", totalOrders);
+
+// Get all unfilled order IDs
+uint256[] memory allOrderIds = market.getUnfilledOrderIds();
+
+// Get orders placed by a specific maker
+uint256[] memory anaOrders = market.getUnfilledOrderByMaker(ana);
+console.log("Ana's unfilled orders:", anaOrders.length);
+
+// Get details of a specific order
+IPredictionStructs.LimitOrderData memory orderDetails = market.getUnfilledOrder(orderId);
+```
+
+### Limit Order Events
+
+The system emits three main events for limit orders:
+
+```solidity
+// When an order is placed
+event OrderPlaced(
+    address indexed maker,
+    uint256 indexed orderId,
+    bytes encodedPredictedOutcomes,
+    address resolver,
+    uint256 makerCollateral,
+    uint256 takerCollateral,
+    bytes32 refCode
+);
+
+// When an order is filled
+event OrderFilled(
+    uint256 indexed orderId,
+    address indexed maker,
+    address indexed taker,
+    bytes encodedPredictedOutcomes,
+    uint256 makerCollateral,
+    uint256 takerCollateral,
+    bytes32 refCode
+);
+
+// When an order is cancelled
+event OrderCancelled(
+    uint256 indexed orderId,
+    address indexed maker,
+    bytes encodedPredictedOutcomes,
+    uint256 makerCollateral,
+    uint256 takerCollateral
+);
+```
+
 ## Key Features Summary
 
 ### For Makers (like Ana):
-- ✅ Create predictions by calling `mint()` with collateral
+- ✅ **Direct Mint**: Create predictions by calling `mint()` with collateral
+- ✅ **Limit Orders**: Place orders using `placeOrder()` for flexible timing
 - ✅ Set the prediction outcomes and amount
-- ✅ Get matched with a taker automatically
+- ✅ Get matched with a taker automatically (direct) or when takers fill orders
 - ✅ Receive winnings if predictions correct
-- ✅ No need to manage order books or expiration
+- ✅ Cancel unfilled orders after expiration
+- ✅ No need to manage complex order books
 
 ### For Takers (like Bob and Carl):
-- ✅ Compete by calling `mint()` with the same prediction data
-- ✅ First to mint wins the taker position
-- ✅ Provide delta amount directly when minting
-- ✅ No pre-deposits or order management needed
+- ✅ **Direct Competition**: Compete by calling `mint()` with the same prediction data
+- ✅ **Order Filling**: Browse and fill limit orders using `fillOrder()`
+- ✅ First to mint wins the taker position (direct) or first to fill order
+- ✅ Provide delta amount directly when minting or filling orders
+- ✅ No pre-deposits or complex order management needed
 - ✅ Receive winnings if maker loses
 
-### Simplified Flow:
-- ✅ **Mint**: Create prediction (maker) or claim taker position
-- ✅ **Burn**: Settle prediction and distribute winnings
+### Two Trading Approaches:
+- ✅ **Direct Mint/Burn**: Immediate prediction creation and competition
+- ✅ **Limit Orders**: Place orders with specific terms and deadlines
+- ✅ **Burn**: Settle prediction and distribute winnings (both approaches)
 - ✅ **Consolidate**: Self-trade option for makers
 
+### Limit Order System:
+- ✅ **Place Orders**: Set specific terms with expiration deadlines
+- ✅ **Fill Orders**: Browse available orders and fill when ready
+- ✅ **Cancel Orders**: Cancel unfilled orders after expiration
+- ✅ **Query Orders**: Get order details, counts, and maker-specific orders
+- ✅ **Automatic Prediction Creation**: Filled orders create standard predictions
+
 ### Signature System:
-- ✅ **ERC20 Permit**: No need for token approvals
-- ✅ **Taker Prediction Signature**: Ensures taker approves the specific prediction
+- ✅ **ERC20 Permit**: No need for token approvals (direct mint only)
+- ✅ **Taker Prediction Signature**: Ensures taker approves the specific prediction (direct mint only)
 - ✅ **Automatic Validation**: Resolver validates markets and outcomes
 
 ### Security Features:
@@ -411,6 +652,39 @@ market.consolidatePrediction(1);
 - ✅ Market validation through resolver
 - ✅ Safe token transfers using permits
 - ✅ Yes/No market validation only
+- ✅ Order expiration and cancellation protection
+
+## Choosing Between Direct Mint and Limit Orders
+
+Both approaches create the same final predictions, but they serve different use cases:
+
+### Use Direct Mint When:
+- ✅ **Immediate execution** is desired
+- ✅ **Competition-based** matching is preferred
+- ✅ You want to **react quickly** to market conditions
+- ✅ **Gas efficiency** is important (single transaction)
+- ✅ You have **ERC20 permit signatures** ready
+- ✅ You want **real-time** prediction creation
+
+### Use Limit Orders When:
+- ✅ **Flexible timing** is needed
+- ✅ You want to **set specific terms** and wait for takers
+- ✅ **Order management** is preferred over competition
+- ✅ You want to **cancel orders** if conditions change
+- ✅ **Browsing and selection** of orders is desired
+- ✅ You need **time to prepare** before filling orders
+
+### Comparison Summary:
+
+| Feature | Direct Mint | Limit Orders |
+|---------|-------------|--------------|
+| **Execution** | Immediate | On-demand |
+| **Competition** | First-come-first-served | Browse and select |
+| **Timing** | Real-time | Flexible |
+| **Cancellation** | Not applicable | After expiration |
+| **Gas Cost** | Lower (single tx) | Higher (multiple txs) |
+| **Signatures** | ERC20 permit required | Standard transfers |
+| **Order Management** | None needed | Full order lifecycle |
 
 ## Resolver Integration
 
@@ -439,4 +713,11 @@ PredictionMarketSapienceResolver resolver = new PredictionMarketSapienceResolver
 // - Calculates whether the maker won or lost
 ```
 
-This streamlined system eliminates the complexity of order books while maintaining the competitive nature of prediction markets. The `mint`/`burn` pattern makes it easy to create and settle predictions, while the resolver ensures proper market validation and outcome determination. 
+This comprehensive system provides both immediate execution (direct mint/burn) and flexible order management (limit orders) while maintaining the competitive nature of prediction markets. The dual approach accommodates different trading preferences:
+
+- **Direct mint/burn** offers streamlined, immediate prediction creation with competition-based matching
+- **Limit orders** provide flexible timing and order management capabilities
+- Both approaches use the same **resolver validation** and **settlement mechanisms**
+- The **NFT-based system** ensures clear ownership and easy tracking of predictions
+
+The resolver ensures proper market validation and outcome determination for both trading approaches, making the system robust and user-friendly regardless of your preferred trading style. 

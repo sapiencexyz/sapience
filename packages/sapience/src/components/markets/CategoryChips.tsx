@@ -32,12 +32,13 @@ const CategoryChips: React.FC<CategoryChipsProps> = ({
   getCategoryStyle,
 }) => {
   return (
-    <div className="order-2 md:order-1 flex-1 min-w-0 -mx-4 md:mx-0 pb-3 md:pb-0 border-b border-border md:border-b-0">
+    <div className="w-full max-w-full min-w-0 box-border mx-0 mt-1.5 min-[1400px]:mt-0 pb-0 md:pb-0 min-[1400px]:w-auto min-[1400px]:max-w-none">
+      {/* Mobile: wrapping container with x-scroll; desktop: natural width and right align controlled by parent */}
       <div
-        className="overflow-x-auto overflow-y-visible md:overflow-visible touch-pan-x overscroll-x-contain max-w-[100dvw] md:max-w-[calc(100dvw-4rem)] py-0.5 px-4 md:px-0"
+        className="overflow-x-auto overflow-y-hidden md:overflow-visible touch-pan-x overscroll-x-contain w-full max-w-full min-w-0 py-1 px-1 md:px-0 min-[1400px]:w-auto min-[1400px]:max-w-none"
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
-        <div className="w-max flex items-center gap-3.5 md:gap-4">
+        <div className="inline-flex min-w-max min-[1400px]:flex flex-nowrap whitespace-nowrap items-center gap-3.5 md:gap-4 pr-1 md:pr-0">
           <FocusAreaChip
             label="All Focus Areas"
             color={DEFAULT_CATEGORY_COLOR}

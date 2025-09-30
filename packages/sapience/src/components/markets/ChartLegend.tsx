@@ -26,7 +26,6 @@ interface ChartLegendProps {
   indexLineColor: string;
   yAxisConfig: YAxisConfig;
   optionNames?: string[] | null;
-  hoveredDataPoint?: MultiMarketChartDataPoint | null;
 }
 
 const ChartLegend: React.FC<ChartLegendProps> = ({
@@ -39,13 +38,11 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   indexLineColor,
   yAxisConfig,
   optionNames,
-  hoveredDataPoint,
 }) => {
   const MARKET_PREDICTION_LABEL = 'Market Prediction';
-  const displayDataPoint = hoveredDataPoint || latestDataPoint;
   const isMultipleChoice = Boolean(optionNames && optionNames.length > 1);
 
-  if (!displayDataPoint) {
+  if (!latestDataPoint) {
     return null; // No data to display legend for
   }
 
@@ -58,7 +55,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
   // Prepare items in the provided order to keep colors/labels consistent
   const items = marketIds.map((marketIdNum, index) => {
     const marketIdStr = String(marketIdNum);
-    const value = displayDataPoint.markets?.[marketIdStr];
+    const value = latestDataPoint?.markets?.[marketIdStr];
     return { marketIdNum, index, value };
   });
 
@@ -86,7 +83,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
         if (isMultipleChoice) {
           label = baseLabel;
         } else {
-          label = hoveredDataPoint ? baseLabel : `Current ${baseLabel}`;
+          label = `Current ${baseLabel}`;
         }
 
         const isPercentageMarket = yAxisConfig.unit === '%';
@@ -119,12 +116,7 @@ const ChartLegend: React.FC<ChartLegendProps> = ({
             style={{ backgroundColor: indexLineColor, opacity: 0.7 }} // Match line style
           />
           <span className="font-medium text-foreground">
-            {formatValue(
-              hoveredDataPoint &&
-                typeof hoveredDataPoint.indexClose === 'number'
-                ? hoveredDataPoint.indexClose
-                : latestIndexValue
-            )}
+            {formatValue(latestIndexValue)}
           </span>
           <span className="text-muted-foreground">Index</span>
           <TooltipProvider>

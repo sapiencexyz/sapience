@@ -6,10 +6,11 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useAccount } from 'wagmi';
-import { usePrivy } from '@privy-io/react-auth';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import MultipleChoicePredict from './inputs/MultipleChoicePredict';
 import NumericPredict from './inputs/NumericPredict';
 import YesNoPredict from './inputs/YesNoPredict';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
 import { tickToPrice } from '~/lib/utils/tickUtils';
@@ -29,7 +30,8 @@ export default function ForecastForm({
   disabled = false,
 }: ForecastFormProps) {
   const { isConnected } = useAccount();
-  const { login, authenticated } = usePrivy();
+  const { hasConnectedWallet } = useConnectedWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const firstMarket = marketGroupData.markets?.[0];
   const lowerBound = tickToPrice(firstMarket?.baseAssetMinPriceTick ?? 0);
   const upperBound = tickToPrice(firstMarket?.baseAssetMaxPriceTick ?? 0);
@@ -171,8 +173,12 @@ export default function ForecastForm({
   );
 
   const handleSubmit = async () => {
-    if (!authenticated || !isConnected) {
-      login();
+    if (!hasConnectedWallet || !isConnected) {
+      try {
+        connectOrCreateWallet();
+      } catch (error) {
+        console.error('Failed to connect or create wallet', error);
+      }
       return;
     }
     await submitPrediction();

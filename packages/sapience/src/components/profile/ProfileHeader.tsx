@@ -1,7 +1,6 @@
 'use client';
 
-import { blo } from 'blo';
-import Image from 'next/image';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 
@@ -11,11 +10,10 @@ interface ProfileHeaderProps {
 
 export default function ProfileHeader({ address }: ProfileHeaderProps) {
   return (
-    <div className="mb-8 flex flex-row items-center gap-4">
-      <Image
-        alt={address}
-        src={blo(address as `0x${string}`)}
-        className="w-16 h-16 rounded"
+    <div className="mb-6 flex flex-row items-center gap-4">
+      <EnsAvatar
+        address={address}
+        className="w-16 h-16"
         width={64}
         height={64}
       />
@@ -23,7 +21,14 @@ export default function ProfileHeader({ address }: ProfileHeaderProps) {
         <p className="text-muted-foreground block mb-1">
           Ethereum Account Address
         </p>
-        <div className="scale-125 origin-left">
+        <div className="sm:hidden scale-110 origin-left">
+          <AddressDisplay
+            address={address}
+            disableProfileLink
+            className="text-lg"
+          />
+        </div>
+        <div className="hidden sm:block scale-125 origin-left">
           <AddressDisplay
             address={address}
             disableProfileLink

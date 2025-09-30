@@ -1,0 +1,90 @@
+---
+title: Custom Trading App
+description: Fork this monorepo, run the Sapience app locally, customize, and deploy on Vercel.
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Customize the Trading App
+
+Copy the [sapience.xyz](https://sapience.xyz) app, make it your own, and deploy it on [Vercel](https://www.vercel.com).
+
+## Prerequisites
+
+- Node.js 20.x and pnpm 9.x
+- GitHub account and Vercel account
+
+## Fork the Sapience monorepo
+
+Fork the `foil` monorepo on GitHub, then clone your fork and install dependencies at the workspace root.
+
+```bash
+git clone <your-fork-url>
+cd foil
+pnpm install
+```
+
+## Run the Sapience app locally
+
+```bash
+# from repo root
+pnpm --filter sapience dev
+# or
+cd packages/sapience && pnpm dev
+```
+
+## Configure environment
+
+- Create a `.env.local` file in `packages/sapience` to configure your app. Defaults are sensible, but you can point to your own API and providers.
+
+```bash
+# packages/sapience/.env.local
+
+# API and backend
+NEXT_PUBLIC_FOIL_API_URL=https://api.sapience.xyz
+
+# RPC / providers
+NEXT_PUBLIC_RPC_URL=
+NEXT_PUBLIC_INFURA_API_KEY=
+
+# Auth (Privy)
+NEXT_PUBLIC_PRIVY_APP_ID=
+NEXT_PUBLIC_PRIVY_CLIENT_ID=
+PRIVY_APP_ID=
+PRIVY_APP_SECRET=
+
+# Optional features
+NEXT_PUBLIC_ENABLE_VAULTS=0
+NEXT_PUBLIC_VAULT_QUOTE_URL=
+NEXT_PUBLIC_VAULT_QUOTES_WS_URL=
+NEXT_PUBLIC_CHAT_REQUIRE_AUTH=true
+
+# Optional server utilities
+IPINFO_TOKEN=
+
+# LLM (client research assistant)
+# Use OpenRouter for flexible model choice and billing
+NEXT_PUBLIC_OPENAI_BASE_URL=https://openrouter.ai/api/v1
+# This key is stored client-side; set spending limits in OpenRouter
+NEXT_PUBLIC_OPENAI_API_KEY=
+NEXT_PUBLIC_RESEARCH_AGENT_MODEL=openai/gpt-4o
+```
+
+- Start editing pages in `packages/sapience/src`.
+- If you run your own API, set `NEXT_PUBLIC_FOIL_API_URL` accordingly.
+
+## Deploy Your Version
+
+1. Push your changes to your fork on GitHub.
+2. In Vercel, create a New Project and import your forked repo.
+3. Set Root Directory to `packages/sapience`.
+4. Framework Preset: Next.js (auto).
+5. Install Command: `pnpm install --frozen-lockfile`.
+6. Build Command: `pnpm build`.
+7. Set Node.js version to 20 in Project Settings (to match engines).
+8. Add the same environment variables from `.env.local` in Vercel → Settings → Environment Variables.
+9. Deploy.
+
+Vercel will install dependencies at the monorepo root, then build only the `packages/sapience` app.

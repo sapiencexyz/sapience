@@ -262,20 +262,9 @@ export function usePassiveLiquidityVault(
     isPending: isVaultPending,
   } = useSapienceWriteContract({
     onSuccess: () => {
-      toast({
-        title: 'Transaction successful',
-        description: 'Your vault transaction has been processed.',
-      });
       refetchVaultData();
       refetchUserData();
       refetchAssetBalance();
-    },
-    onError: (error) => {
-      toast({
-        title: 'Transaction failed',
-        description: error.message,
-        variant: 'destructive',
-      });
     },
     successMessage: 'Vault transaction submission was successful',
     fallbackErrorMessage: 'Vault transaction failed',

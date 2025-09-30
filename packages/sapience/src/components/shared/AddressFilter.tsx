@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Button } from '@sapience/ui/components/ui/button';
 import { Search, Loader2 } from 'lucide-react';
 import { isAddress } from 'viem';
 import { mainnetClient } from '~/lib/utils/util';
@@ -12,6 +11,7 @@ interface AddressFilterProps {
   onAddressChange: (address: string | null) => void;
   placeholder?: string;
   className?: string;
+  inputClassName?: string;
 }
 
 const AddressFilter = ({
@@ -19,140 +19,87 @@ const AddressFilter = ({
   onAddressChange,
   placeholder = 'Enter address or ENS...',
   className = '',
+  inputClassName = '',
 }: AddressFilterProps) => {
   const [inputValue, setInputValue] = useState('');
-  const [displayValue, setDisplayValue] = useState('');
-  const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
+  // Live filter state is driven directly by inputValue; we resolve ENS on the fly
   const [isResolving, setIsResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isInternalUpdate, setIsInternalUpdate] = useState(false);
 
   // Update input value when selectedAddress changes (only from external sources)
   useEffect(() => {
-    if (!isInternalUpdate && selectedAddress) {
-      // If selectedAddress is an ENS, keep the display value as the ENS, but inputValue and resolvedAddress as the address
-      setInputValue(selectedAddress);
-      setDisplayValue(selectedAddress);
-      if (!isAddress(selectedAddress) && selectedAddress.endsWith('.eth')) {
-        // Resolve ENS and call onAddressChange with the resolved address
-        (async () => {
-          setIsResolving(true);
-          setError(null);
-          try {
-            const ensAddress = await mainnetClient.getEnsAddress({
-              name: selectedAddress,
-            });
-            if (ensAddress && ensAddress !== resolvedAddress) {
-              setResolvedAddress(ensAddress);
-              setIsInternalUpdate(true);
-              onAddressChange(ensAddress);
-            }
-          } catch (_e) {
-            setError('Could not resolve ENS address');
-          } finally {
-            setIsResolving(false);
-          }
-        })();
+    if (!isInternalUpdate) {
+      if (selectedAddress) {
+        setInputValue(selectedAddress);
       } else {
-        setResolvedAddress(selectedAddress);
+        setInputValue('');
       }
-    } else if (!isInternalUpdate && !selectedAddress) {
-      setInputValue('');
-      setDisplayValue('');
-      setResolvedAddress(null);
     }
     setIsInternalUpdate(false);
   }, [selectedAddress]);
 
-  const handleAddressSubmit = async () => {
-    if (!inputValue.trim()) {
+  // Live filtering effect: apply onAddressChange as the user types
+  useEffect(() => {
+    const value = inputValue.trim();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    if (!value) {
       setIsInternalUpdate(true);
       onAddressChange(null);
-      setError(null);
-      setResolvedAddress(null);
-      return;
-    }
-
-    let resolvedAddr = inputValue.trim();
-    let displayVal = inputValue.trim();
-
-    // If it's not already a valid address, try to resolve it as ENS
-    if (!isAddress(inputValue.trim())) {
-      if (inputValue.trim().endsWith('.eth')) {
+      setIsResolving(false);
+    } else if (isAddress(value)) {
+      setIsInternalUpdate(true);
+      onAddressChange(value);
+      setIsResolving(false);
+    } else if (value.endsWith('.eth')) {
+      setIsResolving(true);
+      timer = setTimeout(async () => {
         try {
-          setIsResolving(true);
-          setError(null);
-          const ensAddress = await mainnetClient.getEnsAddress({
-            name: inputValue.trim(),
-          });
-
-          if (!ensAddress) {
-            setError('Could not resolve ENS address');
-            return;
-          }
-
-          resolvedAddr = ensAddress;
-          // Keep the original ENS input for display, but store resolved address
-          displayVal = inputValue.trim();
-          setDisplayValue(displayVal);
-          setResolvedAddress(resolvedAddr);
-          setError(null);
+          const ensAddress = await mainnetClient.getEnsAddress({ name: value });
           setIsInternalUpdate(true);
-          onAddressChange(resolvedAddr); // Always pass resolved address
-          return;
-        } catch (_error) {
-          setError('Error resolving ENS address');
-          return;
+          onAddressChange(ensAddress ?? null);
+        } catch (_e) {
+          // Swallow errors during live resolution; treat as no filter
+          setIsInternalUpdate(true);
+          onAddressChange(null);
         } finally {
           setIsResolving(false);
         }
-      } else {
-        setError('Invalid Ethereum address or ENS name');
-        return;
-      }
+      }, 400);
     } else {
-      // For regular addresses, display and resolve are the same
-      setDisplayValue(displayVal);
-      setResolvedAddress(resolvedAddr);
-      setError(null);
+      // Not a valid address nor an ENS; don't filter
       setIsInternalUpdate(true);
-      onAddressChange(resolvedAddr);
-      return;
+      onAddressChange(null);
+      setIsResolving(false);
     }
-  };
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [inputValue, onAddressChange]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-    setError(null);
   };
 
   const handleClear = () => {
     setInputValue('');
-    setDisplayValue('');
-    setResolvedAddress(null);
-    setError(null);
     setIsInternalUpdate(true);
     onAddressChange(null);
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleAddressSubmit();
-    }
-  };
-
   return (
-    <div className={`relative px-2 ${className}`}>
+    <div className={`relative ${className}`}>
       <div className="relative">
-        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-          <Search className="h-5 w-5 text-muted-foreground" />
-        </div>
+        <Search
+          className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none"
+          aria-hidden="true"
+        />
         <Input
           value={inputValue}
           onChange={handleInputChange}
-          onKeyPress={handleKeyPress}
           placeholder={placeholder}
-          className={`pl-10 h-12 text-base pr-10 ${error ? 'border-red-500' : ''}`}
+          className={`pl-8 pr-10 w-full ${inputClassName}`}
         />
         {inputValue && (
           <button
@@ -166,27 +113,10 @@ const AddressFilter = ({
           </button>
         )}
       </div>
-      {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
       {isResolving && (
         <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
           <Loader2 className="h-3 w-3 animate-spin" />
           <span>Resolving ENS...</span>
-        </div>
-      )}
-      {resolvedAddress && !error && (
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-sm text-muted-foreground">Filtering by:</span>
-          <span className="text-sm font-mono bg-muted px-2 py-1 rounded">
-            {displayValue}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-6 px-2 text-xs"
-            onClick={handleClear}
-          >
-            Clear
-          </Button>
         </div>
       )}
     </div>

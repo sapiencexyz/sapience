@@ -12,11 +12,14 @@ import { getChainShortName } from '~/lib/utils/util';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export interface MarketCardProps {
   chainId: number;
   marketAddress: string;
-  market: MarketWithContext[];
+  market: MarketWithContext;
+  yesMarketId?: number;
+  noMarketId?: number;
   color: string;
   displayQuestion: string;
   isActive?: boolean;
@@ -28,6 +31,8 @@ const MarketCard = ({
   chainId,
   marketAddress,
   market,
+  yesMarketId,
+  noMarketId,
   color,
   displayQuestion,
   isActive,
@@ -36,21 +41,14 @@ const MarketCard = ({
 }: MarketCardProps) => {
   const { addPosition, singlePositions } = useBetSlipContext();
   const router = useRouter();
+  const { showAmericanOdds } = useSettings();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
     [chainId]
   );
 
-  const sortedMarkets = React.useMemo(
-    () => [...market].sort((a, b) => a.marketId - b.marketId),
-    [market]
-  );
-
-  const marketIds = React.useMemo(
-    () => sortedMarkets.map((m) => m.marketId),
-    [sortedMarkets]
-  );
+  const marketIds = React.useMemo(() => [market.marketId], [market.marketId]);
 
   const { chartData, isLoading: isLoadingChartData } = useMarketGroupChartData({
     chainShortName,
@@ -68,7 +66,8 @@ const MarketCard = ({
       Object.entries(latestDataPoint.markets).forEach(
         ([marketIdStr, value]) => {
           if (typeof value === 'number') {
-            prices[parseInt(marketIdStr)] = value / 1e18;
+            // Values are already scaled to base units (0-1 for prob, numeric already in display units)
+            prices[parseInt(marketIdStr)] = value;
           }
         }
       );
@@ -103,83 +102,60 @@ const MarketCard = ({
 
   // Handler for Yes button
   const handleYesClick = () => {
-    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
+    const targetId =
+      typeof yesMarketId === 'number' ? yesMarketId : market.marketId;
+    const yesMarket = {
+      ...market,
+      marketId: targetId,
+      optionName: 'Yes',
+    } as MarketWithContext;
     handleAddToBetSlip(yesMarket, true);
     router.push('/markets');
   };
 
   // Handler for No button
   const handleNoClick = () => {
-    const noMarket = market.find((m) => m.optionName === 'No') || market[0];
-    handleAddToBetSlip(noMarket, false);
+    const targetId =
+      typeof noMarketId === 'number' ? noMarketId : market.marketId;
+    const noMkt = {
+      ...market,
+      marketId: targetId,
+      optionName: 'No',
+    } as MarketWithContext;
+    handleAddToBetSlip(noMkt, false);
     router.push('/markets');
   };
 
   const MarketPrediction = () => {
-    if (!isActive || market.length === 0) return null;
+    if (!isActive) return null;
 
-    if (
-      marketClassification === MarketGroupClassificationEnum.MULTIPLE_CHOICE
-    ) {
-      const marketPriceData = market.map((marketItem) => {
-        const currentPrice = latestPrices[marketItem.marketId] || 0;
-        return {
-          marketItem,
-          price: currentPrice,
-        };
-      });
+    const currentPrice = latestPrices[market.marketId] || 0;
 
-      const highestPricedMarket = marketPriceData.reduce((highest, current) =>
-        current.price > highest.price ? current : highest
-      );
-
-      if (highestPricedMarket.price > 0) {
+    if (currentPrice > 0) {
+      if (marketClassification === MarketGroupClassificationEnum.NUMERIC) {
         return (
           <span className="font-medium text-foreground">
-            {highestPricedMarket.marketItem.optionName}
+            {currentPrice.toFixed(2)}
+            {displayUnit && <span className="ml-1">{displayUnit}</span>}
+          </span>
+        );
+      } else {
+        return (
+          <span className="font-medium text-foreground">
+            {formatPriceAsPercentage(currentPrice)}
           </span>
         );
       }
-      return (
-        <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : <span>No wagers yet</span>}
-        </span>
-      );
-    } else {
-      let targetMarket = market[0];
-
-      if (marketClassification === MarketGroupClassificationEnum.YES_NO) {
-        targetMarket = market.find((m) => m.optionName === 'Yes') || market[0];
-      }
-
-      const currentPrice = latestPrices[targetMarket.marketId] || 0;
-
-      if (currentPrice > 0) {
-        if (marketClassification === MarketGroupClassificationEnum.NUMERIC) {
-          return (
-            <span className="font-medium text-foreground">
-              {currentPrice.toFixed(2)}
-              {displayUnit && <span className="ml-1">{displayUnit}</span>}
-            </span>
-          );
-        } else {
-          return (
-            <span className="font-medium text-foreground">
-              {formatPriceAsPercentage(currentPrice)}
-            </span>
-          );
-        }
-      }
-
-      return (
-        <span className="text-foreground">
-          {isLoadingChartData ? 'Loading...' : 'No wagers yet'}
-        </span>
-      );
     }
+
+    return (
+      <span className="text-foreground">
+        {isLoadingChartData ? 'Loading...' : 'No wagers yet'}
+      </span>
+    );
   };
 
-  const canShowPredictionElement = isActive && market.length > 0;
+  const canShowPredictionElement = isActive;
 
   // Compute selected state for YES/NO (singles mode) and for each option in multichoice
   const yesNoSelection = React.useMemo(() => {
@@ -196,6 +172,71 @@ const MarketCard = ({
       selectedNo: !!existing && existing.prediction === false,
     };
   }, [singlePositions, marketAddress, marketClassification]);
+
+  // Convert probability (0-1) to American odds string
+  const toAmericanOdds = React.useCallback((prob: number | undefined) => {
+    const p = typeof prob === 'number' ? prob : 0;
+    if (!(p > 0) || !(p < 1)) return undefined;
+    if (p > 0.5) {
+      const val = Math.round((p / (1 - p)) * 100);
+      return `-${val}`;
+    }
+    const val = Math.round(((1 - p) / p) * 100);
+    return `+${val}`;
+  }, []);
+
+  // Compute Yes/No odds text when applicable
+  const yesNoOdds = React.useMemo(() => {
+    if (
+      !isActive ||
+      marketClassification !== MarketGroupClassificationEnum.YES_NO
+    ) {
+      return {
+        yesOddsText: undefined as string | undefined,
+        noOddsText: undefined as string | undefined,
+      };
+    }
+    const resolvedYesId =
+      typeof yesMarketId === 'number'
+        ? yesMarketId
+        : market.optionName === 'Yes'
+          ? market.marketId
+          : undefined;
+    let p: number | undefined = undefined;
+    if (typeof resolvedYesId === 'number') {
+      p = latestPrices[resolvedYesId];
+    } else if (typeof latestPrices[market.marketId] === 'number') {
+      const base = latestPrices[market.marketId];
+      p =
+        market.optionName === 'No'
+          ? typeof base === 'number'
+            ? 1 - base
+            : undefined
+          : base;
+    }
+    return {
+      yesOddsText: toAmericanOdds(p),
+      noOddsText: toAmericanOdds(typeof p === 'number' ? 1 - p : undefined),
+    };
+  }, [
+    isActive,
+    marketClassification,
+    market,
+    yesMarketId,
+    latestPrices,
+    toAmericanOdds,
+  ]);
+
+  // No group-level selection; operate on the single provided market
+
+  // Slightly increase bottom padding for YES/NO markets so buttons don't sit too low
+  const bottomPaddingClass = React.useMemo(
+    () =>
+      marketClassification === MarketGroupClassificationEnum.YES_NO
+        ? 'pb-5'
+        : 'pb-4',
+    [marketClassification]
+  );
 
   return (
     <div className="w-full h-full">
@@ -215,7 +256,7 @@ const MarketCard = ({
             <div className="transition-colors">
               <div className="flex flex-col px-4 py-3 gap-3">
                 <div className="flex flex-col min-w-0 flex-1">
-                  <h3 className="text-sm md:text-base leading-snug mb-1">
+                  <h3 className="leading-snug min-h-[44px]">
                     <Link
                       href={`/markets/${chainShortName}:${marketAddress}`}
                       className="group"
@@ -239,68 +280,20 @@ const MarketCard = ({
             </div>
           </div>
 
-          <div className="mt-auto px-4 pb-4 pt-0">
-            {canShowPredictionElement && (
-              <div className="text-xs md:text-sm text-muted-foreground w-full mb-3">
-                <div className="truncate whitespace-nowrap min-w-0">
-                  <span className="text-muted-foreground">
-                    Market Prediction{' '}
-                  </span>
-                  <MarketPrediction />
-                </div>
+          <div className={`mt-auto px-4 pt-0 ${bottomPaddingClass}`}>
+            <div
+              className="text-xs md:text-sm text-muted-foreground w-full mb-3"
+              style={{
+                visibility: canShowPredictionElement ? 'visible' : 'hidden',
+              }}
+            >
+              <div className="truncate whitespace-nowrap min-w-0 h-4 md:h-5 flex items-center">
+                <span className="text-muted-foreground mr-0.5">
+                  Market Prediction:
+                </span>
+                <MarketPrediction />
               </div>
-            )}
-            {isActive &&
-              marketClassification ===
-                MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
-                <YesNoSplitButton
-                  onYes={() => {
-                    if (market.length === 0) return;
-                    const marketPriceData = market.map((marketItem) => ({
-                      marketItem,
-                      price: latestPrices[marketItem.marketId] || 0,
-                    }));
-                    const highestPricedMarket = marketPriceData.reduce(
-                      (highest, current) =>
-                        current.price > highest.price ? current : highest
-                    );
-                    const selectedMarket =
-                      highestPricedMarket.price > 0
-                        ? highestPricedMarket.marketItem
-                        : sortedMarkets[0];
-                    handleAddToBetSlip(
-                      selectedMarket,
-                      true,
-                      MarketGroupClassificationEnum.YES_NO
-                    );
-                    router.push('/markets');
-                  }}
-                  onNo={() => {
-                    if (market.length === 0) return;
-                    const marketPriceData = market.map((marketItem) => ({
-                      marketItem,
-                      price: latestPrices[marketItem.marketId] || 0,
-                    }));
-                    const highestPricedMarket = marketPriceData.reduce(
-                      (highest, current) =>
-                        current.price > highest.price ? current : highest
-                    );
-                    const selectedMarket =
-                      highestPricedMarket.price > 0
-                        ? highestPricedMarket.marketItem
-                        : sortedMarkets[0];
-                    handleAddToBetSlip(
-                      selectedMarket,
-                      false,
-                      MarketGroupClassificationEnum.YES_NO
-                    );
-                    router.push('/markets');
-                  }}
-                  className="w-full"
-                  size="md"
-                  // For this card case, we can't map per-option reliably; don't mark selected here
-                />
-              )}
+            </div>
             {isActive &&
               marketClassification === MarketGroupClassificationEnum.YES_NO && (
                 <YesNoSplitButton
@@ -310,6 +303,50 @@ const MarketCard = ({
                   size="md"
                   selectedYes={yesNoSelection.selectedYes}
                   selectedNo={yesNoSelection.selectedNo}
+                  yesOddsText={
+                    showAmericanOdds ? yesNoOdds.yesOddsText : undefined
+                  }
+                  noOddsText={
+                    showAmericanOdds ? yesNoOdds.noOddsText : undefined
+                  }
+                />
+              )}
+            {isActive &&
+              marketClassification ===
+                MarketGroupClassificationEnum.MULTIPLE_CHOICE && (
+                <YesNoSplitButton
+                  onYes={() => {
+                    handleAddToBetSlip(
+                      market,
+                      true,
+                      MarketGroupClassificationEnum.YES_NO
+                    );
+                    router.push('/markets');
+                  }}
+                  onNo={() => {
+                    handleAddToBetSlip(
+                      market,
+                      false,
+                      MarketGroupClassificationEnum.YES_NO
+                    );
+                    router.push('/markets');
+                  }}
+                  className="w-full"
+                  size="md"
+                  yesOddsText={
+                    showAmericanOdds
+                      ? toAmericanOdds(latestPrices[market.marketId])
+                      : undefined
+                  }
+                  noOddsText={
+                    showAmericanOdds
+                      ? toAmericanOdds(
+                          typeof latestPrices[market.marketId] === 'number'
+                            ? 1 - latestPrices[market.marketId]
+                            : undefined
+                        )
+                      : undefined
+                  }
                 />
               )}
           </div>

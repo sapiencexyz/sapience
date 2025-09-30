@@ -22,6 +22,8 @@ interface UsePoolOrderBookDataProps {
   // Add price range/zoom level if needed later
   baseTokenName?: string; // Add base token name for display
   enabled?: boolean; // Optional, defaults to true
+  bucketSize?: number; // Side-aware bucketing size (e.g., 0.1, 0.5, 1, 10)
+  maxRowsPerSide?: number; // Fixed number of buckets per side around midpoint
 }
 
 // Structure for each level in the order book UI
@@ -39,6 +41,7 @@ interface UsePoolOrderBookDataReturn {
   asks: OrderBookLevel[];
   bids: OrderBookLevel[];
   lastPrice: string | null;
+  lastPriceRaw: number | null;
   poolData: PoolData | undefined; // Raw processed data
   isLoading: boolean;
   isError: boolean;
@@ -67,11 +70,12 @@ const formatPrice = (
   price: number,
   pool: Pool | null,
   quoteTokenName?: string,
-  baseTokenName?: string
+  baseTokenName?: string,
+  decimals: number = 2
 ): string => {
-  if (!pool) return formatNumber(price, 2); // Default if pool not loaded, use 2 decimals
+  if (!pool) return formatNumber(price, decimals); // Default if pool not loaded
 
-  const formattedNumber = formatNumber(price, 2); // Always use 2 decimals
+  const formattedNumber = formatNumber(price, decimals);
   // Resolve symbols
   const base = baseTokenName ?? pool.token0.symbol ?? '';
   const quote = quoteTokenName ?? pool.token1.symbol ?? '';
@@ -103,42 +107,77 @@ const formatSize = (
   return symbol ? `${formattedSize} ${symbol}` : formattedSize; // Append symbol if it exists
 };
 
-// Aggregate ticks into cent-level order book rows
-const aggregateTicksToLevels = (
-  ticks: any[], // Processed ticks
-  ascending: boolean,
+// Helper: derive display decimals from bucketSize
+const derivePriceDecimals = (bucketSize: number | undefined): number => {
+  if (!bucketSize || !Number.isFinite(bucketSize)) return 2;
+  if (bucketSize >= 1) return 0;
+  const decimals = Math.ceil(-Math.log10(bucketSize));
+  return Math.max(0, Math.min(8, decimals));
+};
+
+// Build a fixed grid of bucket prices around a center price and aggregate sizes
+const aggregateTicksToGridLevels = (
+  ticks: any[],
+  side: 'ask' | 'bid',
+  bucketSize: number,
+  centerPrice: number,
+  numBuckets: number,
+  useToken1AsBase: boolean,
   pool: Pool | null,
   quoteTokenName?: string,
-  baseTokenName?: string
+  baseTokenName?: string,
+  priceDecimals: number = 2
 ): OrderBookLevel[] => {
-  // Group sizes by price truncated to cents
-  const grouped = new Map<number, number>();
+  const decimals = derivePriceDecimals(bucketSize);
+
+  // Group raw sizes by bucket key (string to avoid float precision issues)
+  const grouped = new Map<string, number>();
+  const priceKeyFor = (p: number): string => {
+    if (!Number.isFinite(bucketSize) || bucketSize <= 0)
+      return p.toFixed(decimals);
+    const q = p / bucketSize;
+    const k = side === 'bid' ? Math.floor(q) : Math.ceil(q);
+    const priceBucket = k * bucketSize;
+    return priceBucket.toFixed(decimals);
+  };
+
   for (const tick of ticks) {
-    const size = tick.liquidityLockedToken0;
+    const size = useToken1AsBase
+      ? tick.liquidityLockedToken1
+      : tick.liquidityLockedToken0;
     if (size <= 1e-9) continue; // Skip negligible liquidity
-    const priceKey = Math.floor(tick.price0 * 100) / 100; // Truncate to cents
-    
-    console.log('tick index and size in aggregateTicksToLevels', tick.tickIdx, size);
-    grouped.set(priceKey, (grouped.get(priceKey) ?? 0) + size);
+    const priceRaw = useToken1AsBase ? tick.price1 : tick.price0;
+    const key = priceKeyFor(priceRaw);
+    grouped.set(key, (grouped.get(key) ?? 0) + size);
   }
 
-  for (const [price, size] of grouped.entries()) {
-    console.log('price + size in aggregateTicksToLevels', price, size);
-  }
-
-  const sortedPrices = Array.from(grouped.keys()).sort((a, b) =>
-    ascending ? a - b : b - a
+  // Build the fixed grid of bucket prices
+  const firstAsk = Math.ceil(centerPrice / bucketSize) * bucketSize;
+  const askPrices: number[] = Array.from({ length: numBuckets }, (_, i) =>
+    Number((firstAsk + i * bucketSize).toFixed(decimals))
+  );
+  const firstBid = Math.floor(centerPrice / bucketSize) * bucketSize;
+  const bidPrices: number[] = Array.from({ length: numBuckets }, (_, i) =>
+    Number((firstBid - i * bucketSize).toFixed(decimals))
   );
 
+  const prices = side === 'ask' ? askPrices : bidPrices;
   let cumulative = 0;
-  return sortedPrices.map((price) => {
-    const size = grouped.get(price)!;
+  return prices.map((price) => {
+    const key = price.toFixed(decimals);
+    const size = grouped.get(key) ?? 0;
     cumulative += size;
     return {
       rawPrice: price,
       rawSize: size,
       rawTotal: cumulative,
-      price: formatPrice(price, pool, quoteTokenName, baseTokenName),
+      price: formatPrice(
+        price,
+        pool,
+        quoteTokenName,
+        baseTokenName,
+        priceDecimals
+      ),
       size: formatSize(size, pool, baseTokenName),
       total: formatSize(cumulative, pool, baseTokenName),
     };
@@ -157,6 +196,8 @@ export function useOrderBookData({
   quoteTokenName,
   baseTokenName, // Destructure baseTokenName
   enabled = true, // Default to true if not provided
+  bucketSize = 0.1,
+  maxRowsPerSide = 8,
 }: UsePoolOrderBookDataProps): UsePoolOrderBookDataReturn {
   const [processedPoolData, setProcessedPoolData] = useState<
     PoolData | undefined
@@ -170,6 +211,7 @@ export function useOrderBookData({
     asks: [],
     bids: [],
     lastPrice: null,
+    lastPriceRaw: null,
   });
   const [hookError, setHookError] = useState<Error | null>(null);
 
@@ -347,7 +389,12 @@ export function useOrderBookData({
   // 5. Derive Order Book Levels from Processed Data
   useEffect(() => {
     if (!processedPoolData || !pool) {
-      setOrderBookData({ asks: [], bids: [], lastPrice: null });
+      setOrderBookData({
+        asks: [],
+        bids: [],
+        lastPrice: null,
+        lastPriceRaw: null,
+      });
       return;
     }
 
@@ -357,6 +404,17 @@ export function useOrderBookData({
     const currentTickIndex = processedTicks.findIndex(
       (tick) => tick.tickIdx === currentTickExact
     );
+
+    // Determine orientation to keep price within 0-1 for binary-style markets
+    const resolveOrientationByPrice = (tick: any): boolean => {
+      const p0 = tick.price0;
+      const p1 = tick.price1;
+      // Prefer the orientation that yields price <= 1 (or closest to <=1)
+      const useToken1 = p1 <= 1 || (p0 > 1 && p1 < p0);
+      return useToken1;
+    };
+
+    const priceDecimals = derivePriceDecimals(bucketSize);
 
     if (currentTickIndex < 0) {
       console.warn(
@@ -377,12 +435,16 @@ export function useOrderBookData({
           // Use the nearest tick found as the 'current' for order book splitting
           // This handles cases where the exact current tick wasn't initialized/fetched
           const currentTick = processedTicks[nearestTickIdx];
-          const lastPriceRaw = currentTick.price0;
+          const useToken1AsBase = resolveOrientationByPrice(currentTick);
+          const lastPriceRaw = useToken1AsBase
+            ? currentTick.price1
+            : currentTick.price0;
           const lastPriceFormatted = formatPrice(
             lastPriceRaw,
             pool,
             quoteTokenName,
-            baseTokenName
+            baseTokenName,
+            priceDecimals
           );
           console.warn(
             `[useOrderBookData] Exact tick ${currentTickExact} not found. Using nearest tick ${currentTick.tickIdx} as reference. Last price: ${lastPriceFormatted}`
@@ -391,81 +453,122 @@ export function useOrderBookData({
           const referenceIndex = nearestTickIdx; // Use the found nearest index
 
           // Separate ticks into bids (below reference) and asks (above reference)
-          console.log('processedTicks.slice(0, referenceIndex)', processedTicks.slice(0, referenceIndex));
-          console.log('processedTicks.slice(referenceIndex + 1)', processedTicks.slice(referenceIndex + 1));
-          const rawBids = processedTicks.slice(0, referenceIndex).reverse(); // Reverse for descending price order
-          const rawAsks = processedTicks.slice(referenceIndex + 1);
+          const rawBids = processedTicks.slice(0, referenceIndex).reverse(); // below reference
+          const rawAsks = processedTicks.slice(referenceIndex + 1); // above reference
 
-          const bids: OrderBookLevel[] = aggregateTicksToLevels(
+          const bids: OrderBookLevel[] = aggregateTicksToGridLevels(
             rawBids,
-            false,
+            'bid',
+            bucketSize,
+            lastPriceRaw,
+            maxRowsPerSide,
+            useToken1AsBase,
             pool,
             quoteTokenName,
-            baseTokenName
+            baseTokenName,
+            priceDecimals
           );
 
-          const asks: OrderBookLevel[] = aggregateTicksToLevels(
+          const asks: OrderBookLevel[] = aggregateTicksToGridLevels(
             rawAsks,
-            true,
+            'ask',
+            bucketSize,
+            lastPriceRaw,
+            maxRowsPerSide,
+            useToken1AsBase,
             pool,
             quoteTokenName,
-            baseTokenName
+            baseTokenName,
+            priceDecimals
           );
 
           setOrderBookData({
             asks,
             bids,
             lastPrice: lastPriceFormatted, // Use price from nearest tick
+            lastPriceRaw,
           });
           return; // Exit after processing with nearest tick
         }
         console.warn('[useOrderBookData] Could not find nearest tick.');
-        setOrderBookData({ asks: [], bids: [], lastPrice: null });
+        setOrderBookData({
+          asks: [],
+          bids: [],
+          lastPrice: null,
+          lastPriceRaw: null,
+        });
         return; // Still couldn't find a reference point
       }
       console.warn(
         '[useOrderBookData] Cannot derive order book without current/reference tick.'
       );
-      setOrderBookData({ asks: [], bids: [], lastPrice: null });
+      setOrderBookData({
+        asks: [],
+        bids: [],
+        lastPrice: null,
+        lastPriceRaw: null,
+      });
       return; // Cannot proceed without current tick
     }
 
     const currentTick = processedTicks[currentTickIndex];
-    const lastPriceRaw = currentTick.price0; // Price of token0 (base) in terms of token1 (quote)
+    const useToken1AsBase = resolveOrientationByPrice(currentTick);
+    const lastPriceRaw = useToken1AsBase
+      ? currentTick.price1
+      : currentTick.price0; // Price in terms of quote
     const lastPriceFormatted = formatPrice(
       lastPriceRaw,
       pool,
       quoteTokenName,
-      baseTokenName
+      baseTokenName,
+      priceDecimals
     );
 
     // Separate ticks into bids (below current) and asks (above current)
     // Note: processedTicks are sorted by tickIdx ascending
-    const rawBids = processedTicks.slice(0, currentTickIndex).reverse(); // Reverse for descending price order
+    const rawBids = processedTicks.slice(0, currentTickIndex).reverse();
     const rawAsks = processedTicks.slice(currentTickIndex + 1);
 
-    const bids: OrderBookLevel[] = aggregateTicksToLevels(
+    const bids: OrderBookLevel[] = aggregateTicksToGridLevels(
       rawBids,
-      false,
+      'bid',
+      bucketSize,
+      lastPriceRaw,
+      maxRowsPerSide,
+      useToken1AsBase,
       pool,
       quoteTokenName,
-      baseTokenName
+      baseTokenName,
+      priceDecimals
     );
 
-    const asks: OrderBookLevel[] = aggregateTicksToLevels(
+    const asks: OrderBookLevel[] = aggregateTicksToGridLevels(
       rawAsks,
-      true,
+      'ask',
+      bucketSize,
+      lastPriceRaw,
+      maxRowsPerSide,
+      useToken1AsBase,
       pool,
       quoteTokenName,
-      baseTokenName
+      baseTokenName,
+      priceDecimals
     );
 
     setOrderBookData({
       asks,
       bids,
       lastPrice: lastPriceFormatted,
+      lastPriceRaw,
     });
-  }, [processedPoolData, pool, quoteTokenName, baseTokenName]);
+  }, [
+    processedPoolData,
+    pool,
+    quoteTokenName,
+    baseTokenName,
+    bucketSize,
+    maxRowsPerSide,
+  ]);
 
   // 6. Combine loading states and return
   const isLoading = Boolean(

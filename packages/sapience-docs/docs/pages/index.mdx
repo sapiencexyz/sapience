@@ -1,19 +1,195 @@
-![Sapience](/header.png)
+---
+layout: landing
+---
 
-[**Sapience**](https://sapience.xyz) is a decentralized forecasting community which aims to create the most accurate prediction markets on the planet. It leverages the [Foil](https://foil.xyz) protocol to create prediction markets using [Uniswap](https://uniswap.org) and [UMA](https://uma.xyz).
+import { HomePage } from 'vocs/components'
+import { useEffect, useRef, useState } from 'react'
+import LottieLoader from '../components/LottieLoader'
 
-Sapience and its dependencies are completely open source. The API is free to use with rate limiting. Paid keys will be made available in the future.
+export function DisableDesktopScroll() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflowY = html.style.overflowY
+    const previousBodyOverflowY = body.style.overflowY
 
-The Foil protocol is immutable. Once a market has been deployed onchain, no one can modify its logic. Anyone can permissionlessly interact with the markets onchain, regardless of API usage.
+    html.style.overflowY = 'hidden'
+    body.style.overflowY = 'hidden'
+    return () => {
+      html.style.overflowY = previousHtmlOverflowY
+      body.style.overflowY = previousBodyOverflowY
+    }
+  }, [])
+  return null
+}
 
-*The API is in alpha and subject to change without notice.*
+export function ThemedSpline() {
+  const [isDark, setIsDark] = useState(false)
+  const iframeRef = useRef(null)
 
-## Overview
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const root = document.documentElement
+    const body = document.body
 
-Each market group lives at a unique smart contract address on a blockchain. They consist of one or many markets, each with a sequential Market ID and a question. Markets can resolve to a numeric value (e.g. the average temperature in New York City in January of 2026) or binary value (with 1 representing "yes", 0 for "no".)
+    const compute = () => {
+      const dark =
+        root?.dataset?.theme === 'dark' ||
+        root?.classList?.contains('dark') ||
+        body?.dataset?.theme === 'dark' ||
+        body?.classList?.contains('dark')
+      setIsDark(Boolean(dark))
+    }
 
-Market groups may consist of just one market, multiple binary markets with the same ending time (for multiple-choice questions), or a series (e.g. for average temperature in January, February, etc.)
+    compute()
 
-Every market accepts collateral and allows base and quote tokens to be traded in a Uniswap pool (which is effectively an onchain orderbook) prior to an end time. Once the market is settled via UMA, individual positions can be settled.
+    const observer = new MutationObserver(compute)
+    observer.observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] })
+    if (body) observer.observe(body, { attributes: true, attributeFilter: ['class', 'data-theme'] })
 
-For a binary (yes/no) market, the base tokens represent a prediction that the market will resolve to "yes". If the market resolves to "yes", everyone holding a base token can redeem a pro-rata share of the collateral. Otherwise, those holding a quote token redeems pro-rata.
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        width: '100%',
+        height: '100dvh',
+        transform: 'scaleY(-1)',
+        pointerEvents: 'none',
+        zIndex: -1,
+        overflow: 'hidden',
+        opacity: 0.5,
+      }}
+    >
+      <iframe
+        ref={iframeRef}
+        src="https://my.spline.design/particlesfutarchy-SDhuN0OYiCRHRPt2fFec4bCm/"
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          colorScheme: 'light',
+          backgroundColor: 'transparent',
+          filter: 'none',
+        }}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        sandbox="allow-same-origin allow-scripts allow-downloads allow-forms allow-modals allow-orientation-lock allow-pointer-lock allow-popups allow-popups-to-escape-sandbox allow-presentation allow-storage-access-by-user-activation allow-top-navigation-by-user-activation"
+      />
+    </div>
+  )
+}
+
+<ThemedSpline />
+<DisableDesktopScroll />
+
+{/* Make the docs layout transparent on the homepage so the Spline shows through */}
+<style>{`
+  .vocs_Content,
+  .vocs_DocsLayout_gutterTop,
+  .vocs_DocsLayout_content {
+    background: transparent !important;
+  }
+
+  /* Hide footer on the landing page */
+  .vocs_Footer { display: none !important; }
+
+  /* Remove vertical padding from content wrapper on this page */
+  .vocs_Content { padding-top: 0 !important; padding-bottom: 0 !important; }
+
+  /* Ensure content area doesn't exceed viewport height by header size */
+  .vocs_Content { min-height: calc(100dvh - var(--vocs-header-height, 64px)) !important; }
+
+  /* Increase space between buttons; remove extra space under buttons */
+  .home-buttons { gap: 24px !important; margin-top: 8px !important; margin-bottom: 0 !important; }
+
+  /* Stack buttons on mobile and make them full-width */
+  @media (max-width: 640px) {
+    .home-buttons { flex-direction: column !important; gap: 12px !important; }
+    .home-buttons > * { width: 100%; justify-content: center; text-align: center !important; }
+    .loader-container { margin-bottom: 2px !important; }
+    .home-root { min-height: calc(100dvh - var(--vocs-header-height, 64px)); justify-content: center; padding-top: 0; }
+    .home-tagline { font-size: 16px; line-height: 1.3; }
+    /* Let mobile flow naturally to avoid awkward centering/extra space */
+    .vocs_DocsLayout { min-height: auto !important; height: auto !important; }
+    .vocs_Content { min-height: auto !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+    .vocs_DocsLayout_gutterTop { height: var(--vocs-header-height, 64px) !important; min-height: var(--vocs-header-height, 64px) !important; }
+  }
+
+  /* Vertically center hero content */
+  .home-root {
+    min-height: calc(100dvh - var(--vocs-header-height, 64px));
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+
+  /* Nudge hero slightly upward on desktop */
+  @media (min-width: 641px) {
+    .home-root { min-height: calc(100dvh - var(--vocs-header-height, 64px) - 32px); }
+  }
+
+  /* Re-override on mobile after global centering so it's top-aligned */
+  @media (max-width: 640px) {
+    .home-root { min-height: calc(100dvh - var(--vocs-header-height, 64px)) !important; justify-content: center !important; padding-top: 0 !important; }
+  }
+
+  /* Only lighten the underline, not the text */
+  .home-what-underline {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    text-decoration-color: color-mix(in srgb, currentColor 55%, transparent);
+  }
+
+  
+
+  /* Invert Lottie in dark mode via CSS class */
+  .invert-on-dark { filter: none; }
+  .loader-hero { opacity: 0.8; }
+  :root.dark .invert-on-dark,
+  .dark .invert-on-dark,
+  [data-theme='dark'] .invert-on-dark,
+  html[data-theme='dark'] .invert-on-dark,
+  body[data-theme='dark'] .invert-on-dark {
+    filter: invert(1) hue-rotate(180deg);
+  }
+`}</style>
+
+<HomePage.Root className="home-root">
+  <div className="loader-container" style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+    <LottieLoader width={96} height={96} className="invert-on-dark loader-hero" invertOnDark={false} />
+  </div>
+  <HomePage.Tagline className="home-tagline">
+    Build forecasting agents, prediction market trading bots, data dashboards, and guessing games secured by immutable smart contracts with open source APIs.
+  </HomePage.Tagline>
+
+  <HomePage.Buttons className="home-buttons" style={{ gap: '16px', marginTop: '8px', marginBottom: 0 }}>
+    <HomePage.Button href="/guides/forecasting-agent" variant="accent">Deploy a Forecasting Agent</HomePage.Button>
+    <HomePage.Button href="/guides/trading-bots" variant="accent">Build a Prediction Market Trading Bot</HomePage.Button>
+    <HomePage.Button href="/guides/custom-trading-app" variant="accent">Customize a Trading App</HomePage.Button>
+  </HomePage.Buttons>
+  <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '40px' }}>
+    <a
+      href="/getting-started/what-is-sapience"
+      className="home-what-underline"
+      style={{ fontSize: '14px' }}
+    >
+      What is Sapience?
+    </a>
+    <a
+      href="/getting-started/quickstart"
+      className="home-what-underline"
+      style={{ fontSize: '14px' }}
+    >
+      Quickstart Guide
+    </a>
+  </div>
+</HomePage.Root>

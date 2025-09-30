@@ -32,6 +32,7 @@ import { DEFAULT_FACTORY_ADDRESS } from './constants';
 import RFQTab from './RFQTab';
 import CLCsvImportDialog from './CLCsvImportDialog';
 import LiquidTab from './LiquidTab';
+import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -448,6 +449,8 @@ const Admin = () => {
   const [createConditionOpen, setCreateConditionOpen] = useState(false);
   const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
   const [clCsvImportOpen, setClCsvImportOpen] = useState(false);
+  const [predictionMarketReindexOpen, setPredictionMarketReindexOpen] =
+    useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -539,6 +542,22 @@ const Admin = () => {
                 <DialogTitle>Reindex Accuracy Scores</DialogTitle>
               </DialogHeader>
               <ReindexAccuracyForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={predictionMarketReindexOpen}
+            onOpenChange={setPredictionMarketReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Prediction Markets
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Prediction Markets</DialogTitle>
+              </DialogHeader>
+              <ReindexPredictionMarketForm />
             </DialogContent>
           </Dialog>
           <Dialog open={refreshCacheOpen} onOpenChange={setRefreshCacheOpen}>

@@ -1,0 +1,75 @@
+---
+title: "Quickstart"
+description: "Add Sapience docs to Cursor and enable MCP tools in minutes."
+---
+
+# Quickstart
+
+We recommend using an AI code editor—[Cursor](https://cursor.com), [ChatGPT Desktop](https://chatgpt.com/download) (OpenAI), or [Claude Code](https://www.anthropic.com/claude)—and connecting them to the Sapience Docs.
+
+Once the docs are in its context, you can simply ask the assistant to build for you.
+
+## Add Sapience Docs to Context
+
+Add the Sapience documentation as a knowledge source so your assistant can cite APIs, concepts, examples, and step-by-step guides while it works.
+
+### Cursor (recommended)
+
+Cursor is a modern, AI-powered IDE with a free plan available. [Download](https://cursor.com)
+- Add docs:
+  - Press `Cmd+K` (or open the palette) and type `@Docs`, or go to Settings → Features → Docs
+  - Choose "Add doc"
+  - Enter `https://docs.sapience.xyz/` as the URL
+  - Name it "Sapience Docs" and save to index
+  - Use in prompts: `@Docs Sapience Docs`
+
+### Claude Code (Claude Desktop)
+
+Claude Desktop is Anthropic’s desktop app optimized for Claude-based coding workflows. Free to start in many regions; advanced features may require a paid plan. [Download](https://www.anthropic.com/claude)
+- Add docs: Claude Desktop does not currently index external URLs as a persistent knowledge base. Keep `https://docs.sapience.xyz/` handy and paste specific page links into your prompts, or attach local files/snippets as needed. For deeper integration and live data, use MCP (below).
+
+### ChatGPT Desktop (OpenAI)
+
+OpenAI’s desktop app for ChatGPT supports coding workflows and integrates with your local files; free to start, with paid plans for advanced features. [Download](https://chatgpt.com/download)
+- Add docs: ChatGPT Desktop does not currently provide persistent site indexing. Paste `https://docs.sapience.xyz/` links (or specific pages) into your prompts for context. For live tools, use MCP in a supported client (e.g., Cursor or Claude Desktop).
+
+Tip: Regardless of editor, pasting a specific docs page URL (e.g., a GraphQL or MCP reference) gives the assistant the exact page to consult.
+
+## Attach the Sapience MCP server (Optional)
+
+Attaching MCP gives your editor live Sapience tools (GraphQL queries, market data, quotes, attestations, etc.). This enables troubleshooting against real data and understanding active markets. Learn more about the MCP server at [/api/mcp](/api/mcp).
+
+### Configuration
+
+Use this config with any MCP-enabled client to attach the Sapience server via `mcp-remote`:
+
+```json
+{
+  "mcpServers": {
+    "sapience": {
+      "command": "npx",
+      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
+    }
+  }
+}
+```
+
+See tool details and transport notes at [/api/mcp](/api/mcp).
+
+### Cursor: add the Sapience MCP server
+
+1) Open Cursor → Settings → Cursor Settings → MCP → Add new global MCP server
+2) Paste the configuration from the Configuration section above and save
+
+- Requires Node.js on your PATH so `npx` is available.
+- After saving, restart Cursor if tools do not appear.
+
+### Claude Code (Claude Desktop): add the Sapience MCP server
+
+Claude Desktop supports MCP remote servers via `mcp-remote`.
+
+1) Open Settings and search for "MCP" to edit the configuration file (see Anthropic docs for the file location on your OS)
+2) Paste the configuration from the Configuration section above and save
+
+- Ensure Node.js is installed so `npx` is available.
+- After saving, restart Claude Desktop and ask Claude to list available tools.

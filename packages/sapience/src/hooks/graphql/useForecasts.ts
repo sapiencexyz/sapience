@@ -112,6 +112,12 @@ interface UseForecastsProps {
   attesterAddress?: string;
   chainId?: number;
   marketId?: number;
+  options?: {
+    staleTime?: number;
+    refetchOnMount?: boolean | 'always';
+    refetchOnWindowFocus?: boolean;
+    enabled?: boolean;
+  };
 }
 
 // Function to generate consistent query key for both useForecasts and prefetchForecasts
@@ -143,9 +149,8 @@ const getForecasts = async ({
   if (marketAddress) {
     try {
       normalizedMarketAddress = getAddress(marketAddress);
-    } catch (e) {
-      console.error('Failed to normalize market address:', e);
-      // Fallback to the original address
+    } catch (_e) {
+      // swallow normalization error
     }
   }
 
@@ -153,9 +158,8 @@ const getForecasts = async ({
   if (attesterAddress) {
     try {
       normalizedAttesterAddress = getAddress(attesterAddress);
-    } catch (e) {
-      console.error('Failed to normalize attester address:', e);
-      // Fallback to the original address
+    } catch (_e) {
+      // swallow normalization error
     }
   }
 
@@ -187,8 +191,7 @@ const getForecasts = async ({
     );
 
     return data;
-  } catch (error) {
-    console.error('Failed to load forecasts:', error);
+  } catch (_error) {
     throw new Error('Failed to load forecasts');
   }
 };
@@ -199,6 +202,7 @@ export const useForecasts = ({
   attesterAddress,
   chainId,
   marketId,
+  options,
 }: UseForecastsProps) => {
   const queryKey = generateForecastsQueryKey({
     marketAddress,
@@ -222,10 +226,13 @@ export const useForecasts = ({
         attesterAddress,
         marketId,
       }),
-    enabled: Boolean(schemaId),
+    enabled: options?.enabled ?? Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
     refetchInterval: 10000, // Refetch every 10 seconds
+    staleTime: options?.staleTime ?? 10000,
+    refetchOnMount: options?.refetchOnMount ?? false,
+    refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
 
   // Transform raw attestations data into the proper format for the table
@@ -236,6 +243,10 @@ export const useForecasts = ({
       formatAttestationData(att)
     );
   }, [attestationsData]);
+
+  React.useEffect(() => {
+    // removed debug logging
+  }, [attestationsData, marketAddress, attesterAddress, marketId]);
 
   return { data, isLoading, error, refetch };
 };
@@ -273,8 +284,8 @@ const getForecastsPage = async (
   if (marketAddress) {
     try {
       normalizedMarketAddress = getAddress(marketAddress);
-    } catch (e) {
-      console.error('Failed to normalize market address:', e);
+    } catch (_e) {
+      // swallow normalization error
     }
   }
 
@@ -282,8 +293,8 @@ const getForecastsPage = async (
   if (attesterAddress) {
     try {
       normalizedAttesterAddress = getAddress(attesterAddress);
-    } catch (e) {
-      console.error('Failed to normalize attester address:', e);
+    } catch (_e) {
+      // swallow normalization error
     }
   }
 

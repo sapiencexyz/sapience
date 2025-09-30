@@ -1,0 +1,75 @@
+---
+layout: landing
+---
+
+import { HomePage } from 'vocs/components'
+import { useEffect, useRef, useState } from 'react'
+import LottieLoader from '../components/LottieLoader'
+
+export function DisableDesktopScroll() {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const html = document.documentElement
+    const body = document.body
+    const previousHtmlOverflowY = html.style.overflowY
+    const previousBodyOverflowY = body.style.overflowY
+
+    html.style.overflowY = 'hidden'
+    body.style.overflowY = 'hidden'
+    return () => {
+      html.style.overflowY = previousHtmlOverflowY
+      body.style.overflowY = previousBodyOverflowY
+    }
+  }, [])
+  return null
+}
+
+export function StorybookIframe() {
+  return (
+    <div
+      style={{
+        height: '100dvh',
+      }}
+    >
+      <iframe
+        src="/components-storybook/index.html"
+        style={{
+          width: '100%',
+          height: '100%',
+          border: 'none',
+          backgroundColor: 'transparent',
+        }}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+      />
+    </div>
+  )
+}
+
+<StorybookIframe />
+<DisableDesktopScroll />
+
+{/* Make the docs layout transparent on the storybook page so the iframe shows through */}
+<style>{`
+  .vocs_Content,
+  .vocs_DocsLayout_content {
+    background: transparent !important;
+  }
+
+  .vocs_DocsLayout_content {
+    width: 100vw !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .vocs_Content {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+`}</style>

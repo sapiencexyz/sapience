@@ -1,16 +1,10 @@
 import { Button } from '@sapience/ui/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useMemo, useEffect, useRef } from 'react';
-import { InfoIcon } from 'lucide-react';
 import { formatUnits } from 'viem';
 import NumberDisplay from '~/components/shared/NumberDisplay';
+import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
 
 import { useSettlePosition } from '~/hooks/contract/useSettlePosition';
 import { MINIMUM_POSITION_WIN } from '~/lib/constants/numbers';
@@ -166,31 +160,7 @@ const SettlePositionButton = ({
   };
 
   if (!isMarketSettled) {
-    return (
-      <span className="inline-flex items-center gap-2">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger>
-              <InfoIcon className="h-3.5 w-3.5 text-muted-foreground" />
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-[260px]">
-                Decentralized settlement typically takes hours, though it may
-                take longer in certain cases.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled
-          className="disabled:cursor-not-allowed"
-        >
-          Awaiting Settlement
-        </Button>
-      </span>
-    );
+    return <AwaitingSettlementBadge />;
   }
 
   // If position is already settled, show settled state

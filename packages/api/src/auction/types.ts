@@ -49,10 +49,15 @@ export interface BidPayload {
 
 export type ValidatedBid = BidPayload;
 
-export type ClientToServerMessage = {
-  type: 'auction.start';
-  payload: AuctionRequestPayload;
-};
+export type ClientToServerMessage =
+  | {
+      type: 'auction.start';
+      payload: AuctionRequestPayload;
+    }
+  | {
+      type: 'auction.subscribe';
+      payload: { auctionId: string };
+    };
 
 export type BotToServerMessage = { type: 'bid.submit'; payload: BidPayload };
 
@@ -61,7 +66,7 @@ export type ServerToClientMessage =
   | { type: 'bid.ack'; payload: { error?: string } }
   | {
       type: 'auction.bids';
-      payload: { bids: ValidatedBid[] };
+      payload: { auctionId: string; bids: ValidatedBid[] };
     }
   | {
       type: 'auction.started';

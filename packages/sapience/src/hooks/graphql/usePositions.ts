@@ -66,6 +66,7 @@ export const POSITIONS_QUERY = /* GraphQL */ `
         }
         event {
           transactionHash
+          logData
         }
       }
     }
@@ -135,6 +136,7 @@ export const ALL_POSITIONS_QUERY = /* GraphQL */ `
         }
         event {
           transactionHash
+          logData
         }
       }
     }

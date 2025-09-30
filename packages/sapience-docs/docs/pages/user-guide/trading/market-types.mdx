@@ -1,0 +1,87 @@
+---
+title: "Market Types"
+description: "Binary, numeric, and conditional (parlay) market formats."
+---
+
+### Market Types
+
+Sapience supports a variety of prediction market formats so traders and builders can choose the design best suited to their question:
+
+- **Binary Markets** – The simplest format: Yes/No outcomes. Example: “Will Candidate X win the election?” A “Yes” share pays $1 if correct, $0 otherwise.
+- **Numeric Markets** – Used when the outcome is a number or range, such as “What will ETH’s price be on December 31?” Traders can position across bands or continuous outcomes.
+- **Conditional Markets (Parlays)** – Bundle multiple outcomes together into one position. Example: “Will Team A win and turnout exceed 60%?” All conditions must resolve correctly for payout. Parlays enable creative, higher-reward forecasts.
+
+
+
+## Order Book Markets (CLOB-like)
+
+- Onchain order book; effectively CLOB-like with concentrated liquidity (similar to Uniswap v3's concentrated liquidity model)
+- Continuous matching; no native onchain resting limit orders
+- Maker/taker model; capital efficient via price ranges
+- Great for intraday trading and tight spreads
+- Limit-like behavior via bot-managed quotes/cancels
+- Data surfaces: on-chain events; order book snapshots (app layer); GraphQL
+
+## Batch Auction Markets (RFQ-like)
+
+- Batch auction / RFQ / intents-driven matching
+- Quotes are explicit price-constrained intents submitted off-chain to the relayer/auction
+- Discrete clearing events with netting; efficient for episodic flow
+- Components: Relayer, Quoter, contracts (market group, settlement adapters), indexer
+- Lifecycle: open → quote → cross → submit → settle
+- Data surfaces: WebSocket topics (quotes, provisional crosses, prints); GraphQL entities
+- See also: API → Batch Auction Relayer (topics, quote formats); API → Quoter (programmatic pricing/sizing); API → GraphQL (indexed data)
+
+## Comparison
+
+| Dimension | Order Book Markets (CLOB-like) | Batch Auction Markets (RFQ-like) |
+| --- | --- | --- |
+| Price representation | YES price in [0,1] | clearing/quote price per batch/intention |
+| Liquidity model | maker/taker + concentrated liquidity | commit/reveal, batch clearing, or RFQ matching |
+| Matching | continuous matching; limit-like via bot-enforced price discipline | discrete batch/intent settlement with explicit limit quotes |
+| Capital efficiency | high via concentration | high via netting and batch clearing |
+| Slippage dynamics | function of book depth | function of batch/quote quality |
+| Fees/incentives | maker/taker, rebates possible | auction/relayer fees, quote incentives |
+| Composability | onchain positions, tradable | intent-style settlement, programmable quotes |
+| Settlement interface | Order Book settlement adapter (CLOB-like) | Auction/Intent settlement adapter |
+
+## Why Not Conditional Tokens?
+
+Conditional tokens are a powerful primitive but can lead to UX and capital-efficiency constraints for our target use-cases.
+
+### Limitations
+
+- Fragmentation across outcome tokens increases friction
+- Complex settlement flows and redemption UX
+- Less natural fit for intent-driven or batch auction workflows
+
+### Sapience Approach
+
+- Order Book Markets (CLOB-like) for continuous trading with concentrated liquidity
+- Batch Auction Markets for batch/RFQ/intents with efficient netting
+- Unified APIs and pluggable settlement adapters
+
+## Key Entities
+
+### Market Groups (Order Book Markets)
+
+- Definition: The onchain contract instance that anchors a set of YES/NO markets sharing the same question and parameters.
+- Role: Holds market parameters, mints/burns positions, and is the contract you interact with for deploy and settle actions.
+- Structure: A market group may host multiple market instances (e.g., rolling epochs) for the same question over time.
+- Naming note: In smart contracts you may see groups referred to as “markets” and individual instances as “epochs”. In the app and docs we use “market group” for the contract and “market” for an individual trading instance.
+- Where it shows up:
+  - UI: Lists are grouped by `market group`; details pages are scoped to a group.
+  - API/GraphQL: `marketGroups` queries and `market.marketGroup` relations.
+  - Admin: Created via Market Group forms or imports; deployed from a factory.
+
+### Conditions (Batch Auction Markets)
+
+- Definition: A discrete statement to be resolved (claim + end time) that batch auctions and RFQ quotes reference. Quotes are submitted against a `conditionId`.
+- Role: Binds intents, quotes, and settlement. Clearing events and prints are scoped to a condition, and oracle resolution finalizes it.
+- Key fields: `claimStatement`, `endTime`, optional categorization/metadata; status progresses from open → closed → resolved.
+- Composability: Conditions power single-name auctions and parlays by allowing multiple conditions to be combined.
+- Where it shows up:
+  - UI: Parlay mode and auction lists display public conditions.
+  - API/GraphQL: `conditions` queries; quotes and prints reference `conditionId`.
+  - Admin: CSV import and CRUD for creating/editing conditions.
+

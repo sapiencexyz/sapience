@@ -3,7 +3,6 @@ import { encodeFunctionData, erc20Abi } from 'viem';
 
 import PredictionMarket from '@/protocol/deployments/PredictionMarket.json';
 import type { Abi } from 'abitype';
-import { useRouter } from 'next/navigation';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
@@ -29,7 +28,6 @@ export function useSubmitParlay({
   enabled = true,
 }: UseSubmitParlayProps) {
   const { address } = useAccount();
-  const router = useRouter();
 
   // Check current allowance to avoid unnecessary approvals
   const { data: currentAllowance } = useReadContract({
@@ -50,7 +48,7 @@ export function useSubmitParlay({
     },
   });
 
-  console.log('currentAllowance', currentAllowance);
+  // removed debug logging
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -61,9 +59,6 @@ export function useSubmitParlay({
       setSuccess('Parlay prediction minted successfully');
       setError(null);
       onSuccess?.();
-      if (address) {
-        router.push(`/profile/${address.toLowerCase()}#parlays`);
-      }
     },
     onError: (err) => {
       const message = err?.message || 'Transaction failed';
@@ -71,6 +66,7 @@ export function useSubmitParlay({
     },
     successMessage: 'Parlay prediction was successful',
     fallbackErrorMessage: 'Failed to submit parlay prediction',
+    redirectProfileAnchor: 'parlays',
   });
 
   // Prepare calls for sendCalls

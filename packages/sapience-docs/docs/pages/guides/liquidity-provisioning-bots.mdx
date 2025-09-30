@@ -1,0 +1,551 @@
+---
+title: "Liquidity Provisioning Bots"
+description: "Build automated liquidity providing strategies that earn fees while managing inventory risk."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Liquidity Provisioning Bots
+
+This guide builds on the previous bot guides. Complete the [Forecasting Agent](/guides/forecasting-agent) and [Trading Bots](/guides/trading-bots) first to understand basic bot setup and market interaction patterns.
+
+## What is Liquidity Provisioning?
+
+**Liquidity provisioning** means depositing your capital into a market to facilitate trading for others. When traders want to buy or sell, they trade against your liquidity. In return, you earn fees on every trade that passes through your position.
+
+Think of it like being a **market maker**:
+- Traditional traders: "I want to buy 100 Yes shares at 50 USDe"
+- Liquidity providers: "I'll provide liquidity between 0.45-0.55 USDe per share, so anyone can trade in that range"
+
+### How it works on Sapience
+
+1. **Deposit collateral** (e.g., 1,000 USDe) and choose a **price range** (e.g., 0.40-0.60 USDe per Yes Share)
+2. **The protocol automatically** converts your collateral into YES and NO tokens across that range
+3. **Traders pay fees** when they swap through your range (you earn these fees)
+4. **Your inventory shifts** as price moves—if price rises, you accumulate more NO tokens; if price falls, you get more YES tokens
+5. **At settlement**, your tokens convert to their final values (0 or 1 USDe), and you keep all fees earned
+
+### Key benefits
+
+- **Passive income**: Earn fees without actively trading
+- **Automated execution**: No need to manually place and cancel orders
+- **Flexible ranges**: Choose tight ranges for higher fees or wide ranges for more trading volume
+- **Multiple positions**: Run several strategies simultaneously
+
+### Key risks
+
+- **Inventory risk**: You might end up holding the losing side at settlement
+- **Impermanent loss**: Your final payout might be less than just holding the winning tokens
+- **Fee dependency**: You need to earn enough fees to compensate for potential losses
+
+---
+
+## For CLOB Market Makers
+
+If you're familiar with traditional order book market making, here's how LP translates:
+
+**CLOB**: Place discrete bid/ask orders → **LP**: Provide liquidity across continuous price ranges  
+**CLOB**: Cancel/replace orders as price moves → **LP**: Adjust range boundaries or add/remove liquidity  
+**CLOB**: Inventory changes when orders fill → **LP**: Inventory shifts continuously as price moves through your range  
+**CLOB**: Earn spread on filled orders → **LP**: Earn fees on all volume passing through your range  
+
+**Advantages of LP over CLOB:**
+- No latency wars or order replacement races
+- Continuous fee earning vs. discrete fills
+- Built-in inventory management through range selection
+- Lower operational overhead
+
+---
+
+## LP Strategy Examples
+
+### Wide Range Market Making
+
+**Strategy**: Provide liquidity across a broad price range to capture volume from large price movements while minimizing the risk of going out of range.
+
+This strategy works well for volatile markets where you want steady fee income without constantly rebalancing positions.
+
+```tsx
+import { useCreateLiquidityQuoter, useCreateLP } from '@sapience/app/hooks/contract';
+import { priceToTick } from '@sapience/app/lib/utils/tickUtils';
+
+async function wideRangeStrategy({ marketAddress, marketAbi, chainId, marketId, tickSpacing = 200 }) {
+  const collateralAmount = '2000'; // $2000 position size
+  
+  // Wide range: 20% to 80% (captures most price action)
+  const lowPrice = 0.20;
+  const highPrice = 0.80;
+
+  const lowTick = priceToTick(lowPrice, tickSpacing);
+  const highTick = priceToTick(highPrice, tickSpacing);
+
+  const { amount0, amount1 } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+    enabled: true,
+  });
+
+  const { createLP } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId: BigInt(marketId),
+    collateralAmount,
+    lowPriceTick: lowTick,
+    highPriceTick: highTick,
+    amount0,
+    amount1,
+    slippagePercent: 1.0, // 1% slippage tolerance
+  });
+
+  await createLP();
+  console.log(`Wide range LP created: ${lowPrice}-${highPrice}`);
+}
+```
+
+### Tight Range Scalping
+
+**Strategy**: Place liquidity in a narrow band around the current price to maximize fee APY. Requires active management to stay in range.
+
+Best for stable markets or when you have strong conviction about price staying within a tight range.
+
+```tsx
+async function tightRangeStrategy({ 
+  marketAddress, 
+  marketAbi, 
+  chainId, 
+  marketId, 
+  currentPrice, 
+  tickSpacing = 200 
+}) {
+  const collateralAmount = '500'; // Smaller position for active management
+  
+  // Tight 5% range around current price
+  const spread = 0.025; // 2.5% on each side
+  const lowPrice = Math.max(0.01, currentPrice - spread);
+  const highPrice = Math.min(0.99, currentPrice + spread);
+  
+  const lowTick = priceToTick(lowPrice, tickSpacing);
+  const highTick = priceToTick(highPrice, tickSpacing);
+  
+  const { amount0, amount1 } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+    enabled: true,
+  });
+  
+  const { createLP } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId: BigInt(marketId),
+    collateralAmount,
+    lowPriceTick: lowTick,
+    highPriceTick: highTick,
+    amount0,
+    amount1,
+    slippagePercent: 0.3, // Tight slippage for precise execution
+  });
+  
+  await createLP();
+  console.log(`Tight range LP created: ${lowPrice.toFixed(3)}-${highPrice.toFixed(3)}`);
+}
+
+// Rebalancing function for tight range strategy
+async function rebalanceTightRange({ 
+  positionId, 
+  currentPrice, 
+  currentLow, 
+  currentHigh,
+  marketAddress,
+  marketAbi,
+  chainId
+}) {
+  // Check if current price is near range edges
+  const priceRange = currentHigh - currentLow;
+  const distanceFromLow = currentPrice - currentLow;
+  const distanceFromHigh = currentHigh - currentPrice;
+  
+  // Rebalance if price is within 20% of range edges
+  if (distanceFromLow < priceRange * 0.2 || distanceFromHigh < priceRange * 0.2) {
+    console.log('Rebalancing tight range position...');
+    
+    // Close current position
+    await closeLiquidityPosition({ positionId, marketAddress, marketAbi, chainId });
+    
+    // Create new position centered on current price
+    await tightRangeStrategy({ 
+      marketAddress, 
+      marketAbi, 
+      chainId,
+      marketId: positionId, 
+      currentPrice 
+    });
+  }
+}
+```
+
+### Inventory-Aware Skewed Liquidity
+
+**Strategy**: Skew your liquidity based on your forecast and current inventory to optimize for both fees and directional exposure.
+
+Perfect when you have a forecast but want to earn fees while expressing that view.
+
+```tsx
+async function skewedLiquidityStrategy({ 
+  marketAddress, 
+  marketAbi, 
+  chainId, 
+  marketId, 
+  forecast, // Your probability forecast (0-1)
+  currentInventory, // { yesTokens, noTokens }
+  tickSpacing = 200 
+}) {
+  const collateralAmount = '1500';
+  
+  // Skew range based on forecast and inventory
+  const baseWidth = 0.15; // 15% base width
+  
+  // If forecast is bullish (>0.5), skew range higher
+  // If forecast is bearish (<0.5), skew range lower
+  const skewFactor = (forecast - 0.5) * 0.2; // Max 10% skew
+  
+  // Adjust for inventory imbalance
+  const inventoryTotal = currentInventory.yesTokens + currentInventory.noTokens;
+  const inventorySkew = inventoryTotal > 0 
+    ? (currentInventory.noTokens - currentInventory.yesTokens) / inventoryTotal * 0.1
+    : 0;
+  
+  const centerPrice = forecast + skewFactor + inventorySkew;
+  const lowPrice = Math.max(0.01, centerPrice - baseWidth / 2);
+  const highPrice = Math.min(0.99, centerPrice + baseWidth / 2);
+  
+  const lowTick = priceToTick(lowPrice, tickSpacing);
+  const highTick = priceToTick(highPrice, tickSpacing);
+  
+  console.log(`Skewed LP: forecast=${forecast.toFixed(3)}, range=${lowPrice.toFixed(3)}-${highPrice.toFixed(3)}`);
+  
+  const { amount0, amount1 } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+    enabled: true,
+  });
+  
+  const { createLP } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId: BigInt(marketId),
+    collateralAmount,
+    lowPriceTick: lowTick,
+    highPriceTick: highTick,
+    amount0,
+    amount1,
+    slippagePercent: 0.7,
+  });
+  
+  await createLP();
+}
+```
+
+### Multi-Range Grid Strategy
+
+**Strategy**: Create multiple LP positions at different price levels to capture fees across the entire market range while managing inventory risk.
+
+Excellent for earning consistent fees while limiting exposure to any single price range.
+
+```tsx
+async function gridStrategy({ 
+  marketAddress, 
+  marketAbi, 
+  chainId, 
+  marketId, 
+  totalCollateral = '3000',
+  numRanges = 5,
+  tickSpacing = 200 
+}) {
+  const collateralPerRange = (parseFloat(totalCollateral) / numRanges).toString();
+  const positions = [];
+  
+  // Create 5 ranges across the market
+  for (let i = 0; i < numRanges; i++) {
+    const rangeWidth = 0.15; // 15% width per range
+    const rangeCenter = 0.1 + (i * 0.8 / (numRanges - 1)); // Spread from 10% to 90%
+    
+    const lowPrice = Math.max(0.01, rangeCenter - rangeWidth / 2);
+    const highPrice = Math.min(0.99, rangeCenter + rangeWidth / 2);
+    
+    const lowTick = priceToTick(lowPrice, tickSpacing);
+    const highTick = priceToTick(highPrice, tickSpacing);
+    
+    const { amount0, amount1 } = useCreateLiquidityQuoter({
+      marketAddress,
+      marketAbi,
+      marketId: BigInt(marketId),
+      chainId,
+      collateralAmount: collateralPerRange,
+      lowTick,
+      highTick,
+      enabled: true,
+    });
+    
+    const { createLP } = useCreateLP({
+      marketAddress,
+      marketAbi,
+      chainId,
+      marketId: BigInt(marketId),
+      collateralAmount: collateralPerRange,
+      lowPriceTick: lowTick,
+      highPriceTick: highTick,
+      amount0,
+      amount1,
+      slippagePercent: 0.8,
+    });
+    
+    await createLP();
+    positions.push({ lowPrice, highPrice, collateral: collateralPerRange });
+    
+    console.log(`Grid range ${i + 1}: ${lowPrice.toFixed(3)}-${highPrice.toFixed(3)}`);
+    
+    // Add delay between positions to avoid rate limiting
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+  
+  return positions;
+}
+```
+
+### Dynamic Range Adjustment
+
+**Strategy**: Automatically adjust your LP ranges based on market volatility and time to resolution.
+
+Adapts to changing market conditions without manual intervention.
+
+```tsx
+import { useModifyLP, useModifyLiquidityQuoter } from '@sapience/app/hooks/contract';
+
+async function dynamicRangeStrategy({ 
+  marketAddress, 
+  marketAbi, 
+  chainId, 
+  marketId,
+  positionId,
+  currentLiquidity,
+  currentPrice,
+  volatility, // Recent price volatility (0-1)
+  timeToResolution, // Hours until market resolves
+  tickSpacing = 200 
+}) {
+  // Adjust range width based on volatility and time
+  let rangeWidth = 0.10; // Base 10% width
+  
+  // Widen range during high volatility
+  if (volatility > 0.05) rangeWidth *= 1.5;
+  if (volatility > 0.10) rangeWidth *= 2.0;
+  
+  // Narrow range as resolution approaches (less time for mean reversion)
+  if (timeToResolution < 24) rangeWidth *= 0.8; // Within 24 hours
+  if (timeToResolution < 6) rangeWidth *= 0.6;  // Within 6 hours
+  if (timeToResolution < 1) rangeWidth *= 0.4;  // Within 1 hour
+  
+  // Calculate new range
+  const lowPrice = Math.max(0.01, currentPrice - rangeWidth / 2);
+  const highPrice = Math.min(0.99, currentPrice + rangeWidth / 2);
+  
+  const lowTick = priceToTick(lowPrice, tickSpacing);
+  const highTick = priceToTick(highPrice, tickSpacing);
+  
+  console.log(`Dynamic range adjustment: ${lowPrice.toFixed(3)}-${highPrice.toFixed(3)} (vol: ${volatility.toFixed(3)}, hours: ${timeToResolution.toFixed(1)})`);
+  
+  // Remove current liquidity
+  const { modifyLP: removeLP } = useModifyLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    positionId: String(positionId),
+    mode: 'remove',
+    liquidityDelta: currentLiquidity,
+    amount0: BigInt(0),
+    amount1: BigInt(0),
+    collateralDelta: '0',
+    slippagePercent: 1.0,
+  });
+  
+  await removeLP();
+  
+  // Create new position with adjusted range
+  const collateralAmount = '1000';
+  const { amount0, amount1 } = useCreateLiquidityQuoter({
+    marketAddress,
+    marketAbi,
+    marketId: BigInt(marketId),
+    chainId,
+    collateralAmount,
+    lowTick,
+    highTick,
+    enabled: true,
+  });
+  
+  const { createLP } = useCreateLP({
+    marketAddress,
+    marketAbi,
+    chainId,
+    marketId: BigInt(marketId),
+    collateralAmount,
+    lowPriceTick: lowTick,
+    highPriceTick: highTick,
+    amount0,
+    amount1,
+    slippagePercent: 1.0,
+  });
+  
+  await createLP();
+}
+
+// Helper function to calculate recent volatility
+function calculateVolatility(priceHistory) {
+  if (priceHistory.length < 2) return 0;
+  
+  const returns = [];
+  for (let i = 1; i < priceHistory.length; i++) {
+    returns.push(Math.log(priceHistory[i] / priceHistory[i - 1]));
+  }
+  
+  const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+  const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+  
+  return Math.sqrt(variance);
+}
+```
+
+### Risk Management Utilities
+
+**Essential functions for managing LP positions safely:**
+
+```tsx
+import { useSapienceWriteContract } from '@sapience/app/hooks/blockchain/useSapienceWriteContract';
+
+// Monitor and close positions approaching dangerous inventory levels
+async function inventoryRiskManager({ 
+  positions, // Array of your LP positions with current inventory
+  maxInventoryRisk = 0.3 // Max 30% of position value in losing tokens
+}) {
+  for (const position of positions) {
+    const { positionId, yesTokens, noTokens, currentPrice, marketAddress, marketAbi, chainId } = position;
+    
+    const totalTokens = yesTokens + noTokens;
+    if (totalTokens === 0) continue;
+    
+    // Calculate inventory risk
+    const yesValue = yesTokens * currentPrice;
+    const noValue = noTokens * (1 - currentPrice);
+    const totalValue = yesValue + noValue;
+    
+    // Risk is the percentage of value in the likely losing side
+    const yesRisk = currentPrice < 0.5 ? yesValue / totalValue : 0;
+    const noRisk = currentPrice > 0.5 ? noValue / totalValue : 0;
+    const inventoryRisk = Math.max(yesRisk, noRisk);
+    
+    if (inventoryRisk > maxInventoryRisk) {
+      console.log(`High inventory risk detected: ${inventoryRisk.toFixed(3)} > ${maxInventoryRisk}`);
+      console.log(`Closing position ${positionId}...`);
+      
+      await closeLiquidityPosition({ 
+        positionId, 
+        marketAddress, 
+        marketAbi, 
+        chainId 
+      });
+    }
+  }
+}
+
+// Close a liquidity position
+async function closeLiquidityPosition({ positionId, marketAddress, marketAbi, chainId }) {
+  const { writeContract } = useSapienceWriteContract();
+  
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 30 * 60); // 30 min deadline
+  
+  await writeContract({
+    address: marketAddress,
+    abi: marketAbi,
+    functionName: 'closeLiquidityPosition',
+    args: [{
+      positionId: BigInt(positionId),
+      amount0Min: BigInt(0), // Accept any amount (adjust for slippage protection)
+      amount1Min: BigInt(0),
+      tradeSlippage: BigInt(1e16), // 1% max slippage
+      deadline,
+    }],
+    chainId,
+  });
+}
+
+// Emergency exit: close all positions
+async function emergencyExitAll(positions) {
+  console.log(`Emergency exit: closing ${positions.length} positions...`);
+  
+  for (const position of positions) {
+    try {
+      await closeLiquidityPosition(position);
+      console.log(`Closed position ${position.positionId}`);
+    } catch (error) {
+      console.error(`Failed to close position ${position.positionId}:`, error);
+    }
+  }
+}
+```
+
+---
+
+## Best Practices
+
+**Position Sizing:**
+- Start small while learning (10-20% of your intended size)
+- Scale up gradually as you understand fee patterns and inventory dynamics
+- Never risk more than you can afford to lose entirely
+
+**Risk Management:**
+- Set maximum inventory limits per position and across all positions
+- Monitor time to resolution—reduce exposure as settlement approaches
+- Use stop-losses based on unrealized P&L, not just token ratios
+
+**Fee Optimization:**
+- Analyze historical volume patterns to place ranges where trading activity is highest
+- Consider gas costs—don't create/modify positions too frequently
+- Track fee APY vs. inventory risk to optimize range selection
+
+**Operational:**
+- Always set reasonable slippage tolerances (0.5-2% depending on market conditions)
+- Ensure sufficient gas tokens for position management
+- Keep detailed logs of position performance for strategy refinement
+
+---
+
+## Next Steps
+
+Now that you understand liquidity provisioning strategies, you can:
+
+1. **Combine with forecasting**: Use your forecasting agent's predictions to inform LP range placement
+2. **Build hybrid strategies**: Mix LP positions with directional trading from your trading bot
+3. **Create custom strategies**: Adapt these examples to your specific market views and risk tolerance
+4. **Scale systematically**: Start with one strategy, measure performance, then expand
+
+The key to successful LP bot operation is starting simple, measuring everything, and iterating based on real performance data.

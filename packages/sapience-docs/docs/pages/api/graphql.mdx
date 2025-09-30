@@ -4,7 +4,11 @@
 
 GraphQL is a query language for APIs that allows clients to request exactly the data they need. Unlike REST APIs, GraphQL provides a single endpoint where you can request multiple resources in a single query, reducing the number of network requests and giving you more control over the data you receive.
 
-All data indexed by the Sapience API is available via the GraphQL endpoint. Explore what's available using [**the GraphQL sandbox**](https://api.sapience.xyz/graphql) in your web browser.
+All data indexed by the Sapience API is available via the GraphQL endpoint. Explore what's available using the GraphQL sandbox at `https://api.sapience.xyz/graphql`.
+
+<p style={{ color: 'var(--vocs-muted)' }}>
+  Open source. Public APIs today. x402 request‑charging planned. Be considerate and cache when possible.
+</p>
 
 ## Endpoint
 
@@ -27,15 +31,25 @@ const client = new ApolloClient({
 });
 
 // Example query
-const GET_DATA = gql`
-  query GetData {
-    // Your query here
+const GET_MARKETS = gql`
+  query GetMarkets($first: Int!, $now: Int!) {
+    markets(
+      first: $first
+      orderBy: endTimestamp
+      orderDirection: asc
+      where: { settled: false, endTimestamp_gt: $now }
+    ) {
+      marketId
+      question
+      endTimestamp
+      marketGroup { question address chainId }
+    }
   }
 `;
 
-// Execute query
 const { data } = await client.query({
-  query: GET_DATA
+  query: GET_MARKETS,
+  variables: { first: 3, now: Math.floor(Date.now() / 1000) }
 });
 ```
 
@@ -45,29 +59,34 @@ Using `gql` library:
 ```python
 from gql import gql, Client
 from gql.transport.requests import RequestsHTTPTransport
+import time
 
-transport = RequestsHTTPTransport(
-    url='https://api.sapience.xyz/graphql'
-)
-
+transport = RequestsHTTPTransport(url='https://api.sapience.xyz/graphql')
 client = Client(transport=transport, fetch_schema_from_transport=True)
 
-// Example query
 query = gql("""
-    query {
-        // Your query here
+  query GetMarkets($first: Int!, $now: Int!) {
+    markets(first: $first, orderBy: endTimestamp, orderDirection: asc, where: { settled: false, endTimestamp_gt: $now }) {
+      marketId
+      question
+      endTimestamp
+      marketGroup { question address chainId }
     }
+  }
 """)
 
-result = client.execute(query)
+result = client.execute(query, variable_values={"first": 3, "now": int(time.time())})
 ```
 
 ### cURL
 
 ```bash
+NOW=$(date +%s)
+PAYLOAD='{"query":"query($first:Int!,$now:Int!){ markets(first:$first, orderBy:endTimestamp, orderDirection:asc, where:{settled:false, endTimestamp_gt:$now}){ marketId question endTimestamp marketGroup{ question address chainId } } }","variables":{"first":3,"now":'$NOW'}}'
+
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d '{"query": "{ yourQuery }"}' \
+  -d "$PAYLOAD" \
   https://api.sapience.xyz/graphql
 ```
 
@@ -99,15 +118,12 @@ curl -X POST \
 ### Get the questions and end times for the three Sapience markets that end next
 
 ```graphql
-query GetNextEndingMarkets {
+query GetNextEndingMarkets($first: Int!, $now: Int!) {
   markets(
-    first: 3, 
-    orderBy: endTimestamp, 
-    orderDirection: asc, 
-    where: { 
-      settled: false,
-      endTimestamp_gt: ${Math.floor(Date.now() / 1000)}
-    }
+    first: $first,
+    orderBy: endTimestamp,
+    orderDirection: asc,
+    where: { settled: false, endTimestamp_gt: $now }
   ) {
     marketId
     question
@@ -120,3 +136,45 @@ query GetNextEndingMarkets {
   }
 }
 ```
+
+## Notes
+- APIs are currently a public good; be considerate and cache when possible.
+- Rate-limits may apply and can evolve as x402 request-charging rolls out.
+ - Pagination: many connections support `first`, `skip`, `orderBy`, `orderDirection`.
+ - Errors: responses follow standard GraphQL error objects with `message` and optional `path`/`extensions`.
+
+## Data & Events
+
+Sapience surfaces indexed on-chain events and derived data via GraphQL. You can query historical market states, positions, transactions, and candles, and combine them with live subscriptions where available.
+
+### Market Entities
+- markets, marketGroups, positions, transactions
+- marketCandles (OHLCV for markets)
+- For numeric feeds: indexPriceAtTime, indexCandles, resource*, resourceCandles
+
+### Candles
+Candles are precomputed at several intervals. You can request ranges using `startTime`, `endTime`, and `interval` where supported.
+
+```graphql
+query MarketCandles($marketId: String!, $interval: CandleInterval!, $start: Int!, $end: Int!) {
+  marketCandles(marketId: $marketId, interval: $interval, startTimestamp: $start, endTimestamp: $end) {
+    open
+    high
+    low
+    close
+    volume
+    startTimestamp
+    endTimestamp
+  }
+}
+```
+
+### Realtime
+For realtime auction flows and acknowledgements, use the Batch Auction Relayer WebSocket; for app-level updates, combine GraphQL queries with client polling or app-specific sockets as needed.
+
+- See API → Batch Auction Relayer for WebSocket topics (quotes, provisional crosses, final prints)
+- GraphQL is request/response; subscriptions may be introduced later
+
+### Notes
+- Indexing and caching are performed server-side; expect eventual consistency under reorgs
+- Use pagination on large ranges; cache responses aggressively

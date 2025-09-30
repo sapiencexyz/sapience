@@ -20,7 +20,10 @@ function isClientMessage(msg: unknown): msg is ClientToServerMessage {
     return false;
   }
   const msgObj = msg as Record<string, unknown>;
-  return typeof msgObj.type === 'string' && msgObj.type === 'auction.start';
+  return (
+    typeof msgObj.type === 'string' &&
+    (msgObj.type === 'auction.start' || msgObj.type === 'auction.subscribe')
+  );
 }
 
 function isBotMessage(msg: unknown): msg is BotToServerMessage {
@@ -209,11 +212,31 @@ export function createAuctionWebSocketServer() {
           if (bids.length > 0) {
             send(ws, {
               type: 'auction.bids',
-              payload: { bids },
+              payload: { auctionId, bids },
             });
             console.log(
               `[Auction-WS] Sent existing bids auctionId=${auctionId} count=${bids.length}`
             );
+          }
+          return;
+        }
+        if (msg.type === 'auction.subscribe') {
+          const auctionId = (msg.payload as { auctionId?: string })?.auctionId;
+          if (typeof auctionId === 'string' && auctionId.length > 0) {
+            subscribeToAuction(auctionId, ws, auctionSubscriptions);
+            // Immediately stream current bids if any
+            const bids = getBids(auctionId);
+            if (bids.length > 0) {
+              send(ws, {
+                type: 'auction.bids',
+                payload: { auctionId, bids },
+              });
+            }
+            console.log(
+              `[Auction-WS] subscribe accepted auctionId=${auctionId}`
+            );
+          } else {
+            console.warn('[Auction-WS] subscribe rejected: missing auctionId');
           }
           return;
         }
@@ -281,7 +304,7 @@ export function createAuctionWebSocketServer() {
         // Broadcast updated top bids only to auction subscribers
         const payload: ServerToClientMessage = {
           type: 'auction.bids',
-          payload: { bids: getBids(bid.auctionId) },
+          payload: { auctionId: bid.auctionId, bids: getBids(bid.auctionId) },
         };
         const recipients = broadcastToAuctionSubscribers(
           bid.auctionId,

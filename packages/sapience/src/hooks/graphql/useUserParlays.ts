@@ -21,6 +21,8 @@ export type Parlay = {
   makerNftTokenId: string;
   takerNftTokenId: string;
   totalCollateral: string;
+  makerCollateral?: string | null;
+  takerCollateral?: string | null;
   refCode?: string | null;
   status: 'active' | 'settled' | 'consolidated';
   makerWon?: boolean | null;
@@ -41,6 +43,8 @@ const USER_PARLAYS_QUERY = /* GraphQL */ `
       makerNftTokenId
       takerNftTokenId
       totalCollateral
+      makerCollateral
+      takerCollateral
       refCode
       status
       makerWon

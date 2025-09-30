@@ -102,15 +102,10 @@ export function useCreateLP({
       },
       onTxHash: (hash: `0x${string}`) => {
         setTxHash(hash);
-        toast({
-          title: 'Transaction submitted.',
-          description:
-            'Liquidity position submission was successful. Hash: ' + hash,
-          duration: 5000,
-        });
       },
       successMessage: 'Liquidity position submission was successful',
       fallbackErrorMessage: 'Failed to create liquidity position',
+      redirectProfileAnchor: 'lp',
     });
 
   // Set error if approval error occurs

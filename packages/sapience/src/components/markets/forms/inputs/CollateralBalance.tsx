@@ -1,7 +1,6 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { useEffect } from 'react';
 import { useAccount, useBalance } from 'wagmi';
-import { usePrivy } from '@privy-io/react-auth';
 import LottieLoader from '~/components/shared/LottieLoader';
 
 interface CollateralBalanceProps {
@@ -18,7 +17,6 @@ export default function CollateralBalance({
   chainId,
 }: CollateralBalanceProps) {
   const { address: accountAddress, isConnected } = useAccount();
-  const { authenticated } = usePrivy();
 
   const {
     data: balanceData,
@@ -30,34 +28,17 @@ export default function CollateralBalance({
     chainId,
     query: {
       enabled:
-        authenticated &&
-        isConnected &&
-        !!accountAddress &&
-        !!collateralAddress &&
-        !!chainId,
+        isConnected && !!accountAddress && !!collateralAddress && !!chainId,
     },
   });
 
   const fetchedBalance = balanceData?.formatted ?? '0';
 
   useEffect(() => {
-    if (
-      authenticated &&
-      isConnected &&
-      !!accountAddress &&
-      !!collateralAddress &&
-      !!chainId
-    ) {
+    if (isConnected && !!accountAddress && !!collateralAddress && !!chainId) {
       refetchBalance();
     }
-  }, [
-    authenticated,
-    isConnected,
-    accountAddress,
-    collateralAddress,
-    chainId,
-    refetchBalance,
-  ]);
+  }, [isConnected, accountAddress, collateralAddress, chainId, refetchBalance]);
 
   const numericBalance = parseFloat(fetchedBalance);
 
@@ -69,7 +50,7 @@ export default function CollateralBalance({
   };
 
   // Show "Get collateralSymbol" button that opens Privy login if wallet not connected
-  if (!authenticated || !isConnected || !accountAddress) {
+  if (!isConnected || !accountAddress) {
     return (
       <div className="flex items-center space-x-2">
         {/*
@@ -89,7 +70,6 @@ export default function CollateralBalance({
 
   // Show "Get collateralSymbol" button if connected but no balance
   if (
-    authenticated &&
     isConnected &&
     !isBalanceLoading &&
     (numericBalance === 0 || Number.isNaN(numericBalance))
@@ -120,7 +100,7 @@ export default function CollateralBalance({
   }
 
   if (!collateralAddress || !chainId) {
-    return;
+    return null;
   }
 
   return (

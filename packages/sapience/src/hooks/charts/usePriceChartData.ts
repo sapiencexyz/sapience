@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { formatEther } from 'viem';
 
 import type { CandleType } from '@sapience/ui/types/graphql';
-import { useSapience } from '../../lib/context/SapienceProvider'; // Corrected path
 
 // GraphQL Queries
 const GET_MARKET_CANDLES = /* GraphQL */ `
@@ -293,8 +292,6 @@ export const usePriceChartData = ({
   startTimestamp: marketStartTimestamp,
   endTimestamp: marketEndTimestamp,
 }: UsePriceChartDataProps): UsePriceChartDataReturn => {
-  const { stEthPerToken } = useSapience(); // Still needed for index scaling
-
   const fetchData = async (): Promise<PriceChartDataPoint[]> => {
     // Determine time range
     const now = Math.floor(Date.now() / 1000);
@@ -385,19 +382,9 @@ export const usePriceChartData = ({
 
     // --- Data Processing ---
 
-    // 1. Determine Index Multiplier (assuming resource/avg prices don't need scaling for now)
-    // TODO: Confirm if resource/trailing avg prices need scaling
-    let indexMultiplier: bigint;
-    const scalingConstant = 1e18;
-    if (quoteTokenName?.toLowerCase() === 'wsteth') {
-      indexMultiplier =
-        stEthPerToken && stEthPerToken > 0
-          ? (BigInt(1e18) * BigInt(scalingConstant)) /
-            BigInt(Math.floor(stEthPerToken * scalingConstant))
-          : BigInt(1e18);
-    } else {
-      indexMultiplier = BigInt(1e9); // Scale gwei to wei (Assuming default)
-    }
+    // 1. Determine Index Multiplier
+    // Use fixed gwei->wei scaling for index candles
+    const indexMultiplier: bigint = BigInt(1e9);
 
     // 2. Combine data using a Map
     const combinedDataMap = new Map<number, PriceChartDataPoint>();

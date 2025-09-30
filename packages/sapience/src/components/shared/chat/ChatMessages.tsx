@@ -5,6 +5,7 @@ import type { ChatMessage } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import LottieLoader from '~/components/shared/LottieLoader';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 
 type Props = {
   messages: ChatMessage[];
@@ -45,7 +46,7 @@ export function ChatMessages({
   return (
     <div
       ref={scrollRef}
-      className={`overflow-y-auto overscroll-contain p-3 space-y-2 ${className}`}
+      className={`overflow-y-auto overscroll-contain p-3 space-y-3 ${className}`}
     >
       {messages.map((m) => (
         <div
@@ -58,11 +59,20 @@ export function ChatMessages({
             m.address &&
             m.author === 'server' && (
               <div className="mb-0.5 opacity-80">
-                <AddressDisplay
-                  address={m.address}
-                  className="text-[10px]"
-                  compact
-                />
+                <div className="inline-flex items-center gap-1">
+                  <EnsAvatar
+                    address={m.address}
+                    alt={m.address}
+                    className="h-4 w-4 shrink-0"
+                    width={14}
+                    height={14}
+                  />
+                  <AddressDisplay
+                    address={m.address}
+                    className="text-[10px]"
+                    compact
+                  />
+                </div>
               </div>
             )
           )}

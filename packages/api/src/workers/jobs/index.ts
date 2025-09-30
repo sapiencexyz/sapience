@@ -7,6 +7,7 @@ import { reindexMarketGroupFactory } from './reindexMarketGroupFactory';
 import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexAccuracy } from './reindexAccuracy';
+import { reindexPredictionMarket } from './reindexPredictionMarket';
 
 const callReindex = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -121,6 +122,37 @@ const callReindexEAS = async (argv: string[]) => {
   process.exit(0);
 };
 
+const callReindexPredictionMarket = async (argv: string[]) => {
+  const chainId = parseInt(argv[3], 10);
+  const startTimestamp =
+    argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
+  const endTimestamp =
+    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
+  const clearExisting = argv[6] === 'true';
+
+  if (isNaN(chainId)) {
+    console.error(
+      'Invalid arguments. Usage: tsx src/worker.ts reindexPredictionMarket <chainId> [startTimestamp] [endTimestamp] [clearExisting]'
+    );
+    process.exit(1);
+  }
+
+  const result = await reindexPredictionMarket(
+    chainId,
+    startTimestamp,
+    endTimestamp,
+    clearExisting
+  );
+
+  if (!result) {
+    console.error('Failed to reindex prediction market');
+    process.exit(1);
+  }
+
+  console.log('Done reindexing prediction market');
+  process.exit(0);
+};
+
 const callBackfillAccuracy = async () => {
   await backfillAccuracy();
   console.log('Done backfilling accuracy scores');
@@ -161,6 +193,10 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       await reindexAccuracy(address, marketId);
       console.log('Done reindexing accuracy scores');
       process.exit(0);
+      return true;
+    }
+    case 'reindexPredictionMarket': {
+      await callReindexPredictionMarket(argv);
       return true;
     }
     default: {

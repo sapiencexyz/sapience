@@ -27,6 +27,7 @@
     "start:reindex-market-group-factory": "tsx src/workers/worker.ts reindexMarketGroupFactory $*",
     "start:reindex-eas": "tsx src/workers/worker.ts reindexEAS $*",
     "start:reindex-accuracy": "tsx src/workers/worker.ts reindexAccuracy $*",
+    "start:reindex-prediction-market": "tsx src/workers/worker.ts reindexPredictionMarket $*",
     "start:backfill-accuracy": "tsx src/workers/worker.ts backfillAccuracy $*",
     "test": "vitest run",
     "test:watch": "vitest",

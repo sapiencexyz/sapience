@@ -1,7 +1,7 @@
 'use client';
 
 import { Card } from '@sapience/ui/components/ui/card';
-import { useWallets, usePrivy } from '@privy-io/react-auth';
+import { usePrivy, useConnectOrCreateWallet } from '@privy-io/react-auth';
 import {
   AnimatePresence,
   motion,
@@ -13,15 +13,16 @@ import { ChatHeader } from './chat/ChatHeader';
 import { ChatMessages } from './chat/ChatMessages';
 import { ChatInput } from './chat/ChatInput';
 import { useChatConnection } from './chat/useChatConnection';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
-  const { wallets } = useWallets();
-  const { ready, authenticated, login } = usePrivy();
-  const connectedWallet = wallets[0];
+  const { ready } = usePrivy();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { connectedWallet, hasConnectedWallet } = useConnectedWallet();
   const addressOverride =
-    ready && authenticated ? connectedWallet?.address : undefined;
+    ready && hasConnectedWallet ? connectedWallet?.address : undefined;
 
   const {
     state: { messages, pendingText, setPendingText, canChat, canType },
@@ -29,13 +30,10 @@ const ChatWidget = () => {
   } = useChatConnection(isOpen, addressOverride);
 
   const handleLogin = () => {
-    if (ready && !authenticated) {
-      try {
-        login();
-        return;
-      } catch {
-        /* noop */
-      }
+    if (ready && !hasConnectedWallet) {
+      // Fire-and-forget wallet connection; errors are handled internally
+      void connectOrCreateWallet();
+      return;
     }
     loginNow();
   };

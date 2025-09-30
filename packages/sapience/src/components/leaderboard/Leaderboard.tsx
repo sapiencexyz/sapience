@@ -258,7 +258,7 @@ const OwnerCell = ({ cell }: { cell: { getValue: () => unknown } }) => (
 export default Leaderboard;
 
 const AccuracyLeaderboard = () => {
-  const { data, isLoading } = useAccuracyLeaderboard(10);
+  const { data, isLoading } = useAccuracyLeaderboard(100);
 
   const columns = useMemo<ColumnDef<ForecasterScore>[]>(
     () => [

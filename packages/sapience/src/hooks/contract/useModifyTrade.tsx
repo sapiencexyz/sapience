@@ -93,14 +93,11 @@ export function useModifyTrade({
         setIsSuccess(false);
       },
       onTxHash: (_txHash: `0x${string}`) => {
-        toast({
-          title: 'Transaction submitted.',
-          description:
-            'Position modification submission was successful. It may take a few moments to process.',
-        });
+        // Success toast is handled centrally in the write hook after redirect
       },
       successMessage: 'Position modification submission was successful',
       fallbackErrorMessage: 'Failed to modify position',
+      redirectProfileAnchor: 'trades',
     });
 
   // Set error if approval error occurs

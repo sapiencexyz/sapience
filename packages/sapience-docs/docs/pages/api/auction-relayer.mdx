@@ -1,0 +1,106 @@
+---
+title: "Batch Auction Relayer API"
+description: "Overview and integration notes for the Batch Auction WebSocket."
+---
+
+# Batch Auction Relayer API
+
+The Auction WebSocket connects makers and takers for short-lived batch auctions. Makers announce an auction; takers submit bids; the relayer validates and forwards bids back to the maker.
+
+- **Maker →** `auction.start` → relayer acks with `auction.ack` and broadcasts `auction.started`
+- **Taker →** `bid.submit` → relayer acks with `bid.ack` and streams `auction.bids` to the maker
+
+## Endpoints
+
+- Production: `wss://api.sapience.xyz/auction` (confirm base URL)
+- Local (monorepo): `ws://localhost:3001/auction`
+
+## Quick start
+
+### Minimal Maker flow (Node)
+```ts
+import WebSocket from 'ws';
+const ws = new WebSocket('ws://localhost:3001/auction');
+
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    type: 'auction.start',
+    payload: {
+      maker: '0xMaker123...',
+      wager: '1000000000000000000',
+      resolver: '0xResolver456...',
+      predictedOutcomes: ['0xdeadbeef']
+    },
+  }));
+});
+
+ws.on('message', (data) => {
+  const msg = JSON.parse(String(data));
+  if (msg.type === 'auction.ack') {
+    console.log('started auctionId=', msg.payload.auctionId);
+  }
+  if (msg.type === 'auction.bids') {
+    const bids = msg.payload.bids;
+    // choose best non-expired by takerWager (highest first)
+    bids.sort((a, b) => BigInt(b.takerWager) - BigInt(a.takerWager) > 0n ? 1 : -1);
+    console.log('top bid:', bids[0]);
+  }
+});
+```
+
+### Minimal Taker flow (Browser/Node)
+```ts
+const ws = new WebSocket('ws://localhost:3001/auction');
+
+ws.onmessage = (ev) => {
+  const msg = JSON.parse(String(ev.data));
+  if (msg.type === 'auction.started') {
+    const auction = msg.payload;
+    const now = Math.floor(Date.now()/1000);
+    const bid = {
+      type: 'bid.submit',
+      payload: {
+        auctionId: auction.auctionId,
+        taker: '0xTaker789...',
+        takerWager: (BigInt(auction.wager) / 2n).toString(),
+        takerDeadline: now + 60,
+        takerSignature: '0x...' // signature over typed payload (see Reference)
+      }
+    };
+    ws.send(JSON.stringify(bid));
+  }
+};
+```
+
+## Message lifecycle
+
+1) Maker sends `auction.start` with `maker`, `wager`, `resolver`, `predictedOutcomes[]`.
+2) Relayer responds to the same socket with `auction.ack { auctionId }` and broadcasts `auction.started` (with the same payload plus `auctionId`) to all connected clients.
+3) Takers send `bid.submit` with `auctionId`, `taker`, `takerWager`, `takerDeadline`, `takerSignature`.
+4) Relayer replies to the bidding socket with `bid.ack { error? }` and streams `auction.bids { bids[] }` to the maker’s subscribed socket for that auction.
+
+- Makers are automatically subscribed to their auction’s channel upon `auction.start`.
+- `auction.bids` is broadcast only to subscribers of that `auctionId`.
+- Auctions are short-lived (about 60 seconds) and expire automatically.
+
+## Validation (high level)
+
+- **Auction**: positive `wager`, ≥1 `predictedOutcomes`, valid `resolver`, valid `maker` address
+- **Bid**: `takerDeadline` in the future, positive `takerWager`, valid hex `takerSignature` format
+- Optional strict signature verification may be performed against `PredictionMarket.sol` using EIP-712 (see Reference for the typed payload and domain).
+
+## Limits and closes
+
+- Rate limit: 100 messages per 10s window; violations close with code `1008` and reason `rate_limited`
+- Max message size: 64,000 bytes; violations close with code `1009` and reason `message_too_large`
+
+## Selecting the best bid
+
+Relayer keeps all valid bids for the auction. The UI or maker should select the best non-expired bid, typically the highest `takerWager`.
+
+## Next steps
+
+- Read the full message schemas and typed-signature details in the Reference: [Batch Auction Relayer Reference](/reference/auction-relayer)
+- See a working taker bot in `packages/api/src/auction/botExample.ts` for practical integration patterns.
+
+

@@ -16,6 +16,7 @@ import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { useMarketGroupChartData } from '~/hooks/graphql/useMarketGroupChartData';
 import { DEFAULT_WAGER_AMOUNT } from '~/lib/utils/betslipUtils';
 import type { MultiMarketChartDataPoint } from '~/lib/utils/chartUtils';
+import { useSettings } from '~/lib/context/SettingsContext';
 
 export interface MarketGroupsRowProps {
   chainId: number;
@@ -40,6 +41,7 @@ const MarketGroupsRow = ({
 }: MarketGroupsRowProps) => {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const { addPosition, singlePositions } = useBetSlipContext();
+  const { showAmericanOdds } = useSettings();
 
   const chainShortName = React.useMemo(
     () => getChainShortName(chainId),
@@ -93,8 +95,8 @@ const MarketGroupsRow = ({
       Object.entries(latestDataPoint.markets).forEach(
         ([marketIdStr, value]) => {
           if (typeof value === 'number') {
-            // Scale down from Wei (divide by 1e18) to get decimal value between 0-1
-            prices[parseInt(marketIdStr)] = value / 1e18;
+            // Values are already scaled to base units (0-1 for prob, numeric already in display units)
+            prices[parseInt(marketIdStr)] = value;
           }
         }
       );
@@ -266,6 +268,45 @@ const MarketGroupsRow = ({
 
   const canShowPredictionElement = isActive && market.length > 0;
 
+  // Convert probability (0-1) to American odds string
+  const toAmericanOdds = React.useCallback((prob: number | undefined) => {
+    const p = typeof prob === 'number' ? prob : 0;
+    if (!(p > 0) || !(p < 1)) return undefined;
+    if (p > 0.5) {
+      const val = Math.round((p / (1 - p)) * 100);
+      return `-${val}`;
+    }
+    const val = Math.round(((1 - p) / p) * 100);
+    return `+${val}`;
+  }, []);
+
+  // Compute Yes/No odds text when applicable
+  const yesNoOdds = React.useMemo(() => {
+    if (
+      !isActive ||
+      marketClassification !== MarketGroupClassificationEnum.YES_NO ||
+      market.length === 0
+    ) {
+      return {
+        yesOddsText: undefined as string | undefined,
+        noOddsText: undefined as string | undefined,
+      };
+    }
+    const yesMarket = market.find((m) => m.optionName === 'Yes') || market[0];
+    const noMarket = market.find((m) => m.optionName === 'No');
+    const yesPrice = latestPrices[yesMarket.marketId];
+    const noPrice =
+      typeof noMarket?.marketId === 'number'
+        ? latestPrices[noMarket.marketId]
+        : typeof yesPrice === 'number'
+          ? 1 - yesPrice
+          : undefined;
+    return {
+      yesOddsText: toAmericanOdds(yesPrice),
+      noOddsText: toAmericanOdds(noPrice),
+    };
+  }, [isActive, marketClassification, market, latestPrices, toAmericanOdds]);
+
   return (
     <div className="w-full">
       {/* Main Row Container for Color Bar + Content */}
@@ -277,10 +318,10 @@ const MarketGroupsRow = ({
         />
 
         {/* Content Container */}
-        <div className="flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-6 md:py-2 gap-3">
+        <div className="relative flex-grow flex flex-col md:flex-row md:items-center md:justify-between px-4 pt-4 pb-4 md:py-2 gap-3">
           {/* Left Side: Question + Prediction */}
-          <div className="flex-grow">
-            <h3 className="text-md mb-1">
+          <div className="flex-grow pr-0">
+            <h3 className="text-md mb-1.5 break-words">
               <Link
                 href={`/markets/${chainShortName}:${marketAddress}`}
                 className="group"
@@ -292,19 +333,21 @@ const MarketGroupsRow = ({
             </h3>
             {/* Prediction Section (conditionally rendered) */}
             {canShowPredictionElement && (
-              <div className="text-xs text-muted-foreground">
-                <span className="text-muted-foreground">
-                  Market Prediction:{' '}
-                </span>
-                <MarketPrediction />
+              <div className="text-xs text-muted-foreground flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground">
+                    Market Prediction:{' '}
+                  </span>
+                  <MarketPrediction />
+                </div>
               </div>
             )}
           </div>
 
           {/* Right Side: Sparkline + Action Buttons */}
-          <div className="flex flex-row-reverse md:flex-row items-center gap-5 md:items-center md:gap-6 md:ml-6 w-full md:w-auto">
+          <div className="relative flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-6 md:ml-6 w-full md:w-auto">
             {hasSparklineData && (
-              <div className="block w-[80px] h-[40px] shrink-0">
+              <div className="hidden md:block w-[80px] h-[40px] shrink-0">
                 <Link
                   href={`/markets/${chainShortName}:${marketAddress}`}
                   className="block w-full h-full"
@@ -391,6 +434,12 @@ const MarketGroupsRow = ({
                           size="lg"
                           selectedYes={yesNoSelection.selectedYes}
                           selectedNo={yesNoSelection.selectedNo}
+                          yesOddsText={
+                            showAmericanOdds ? yesNoOdds.yesOddsText : undefined
+                          }
+                          noOddsText={
+                            showAmericanOdds ? yesNoOdds.noOddsText : undefined
+                          }
                         />
                       );
                     })()
@@ -441,7 +490,7 @@ const MarketGroupsRow = ({
                         >
                           {/* Left Side: Option Name + Prediction */}
                           <div className="flex-grow">
-                            <div className="text-foreground inline-flex items-center gap-2 mb-1">
+                            <div className="text-foreground inline-flex items-center gap-2 mb-1.5">
                               <Link
                                 href={`/markets/${chainShortName}:${marketAddress}/${marketItem.marketId}`}
                                 className="group inline-flex items-center"

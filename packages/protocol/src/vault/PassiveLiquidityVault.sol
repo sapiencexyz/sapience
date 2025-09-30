@@ -193,123 +193,6 @@ contract PassiveLiquidityVault is
         expirationTime = DEFAULT_EXPIRATION_TIME;
     }
 
-    // ============ ERC-4626 Overrides ============
-
-    /**
-     * @notice ERC-4626 COMPLIANCE NOTICE:
-     *
-     * This vault intentionally deviates from the ERC-4626 standard to implement a request-based
-     * deposit/withdrawal system with manager-controlled processing. The standard ERC-4626 functions
-     * are overridden to revert with NotImplemented() to prevent direct usage.
-     *
-     * DEVIATION RATIONALE:
-     * 1. Request-based System: Users create requests that are processed by a manager when conditions
-     *    are favorable, rather than immediate execution as required by ERC-4626.
-     * 2. Manager Control: A designated manager controls when deposits/withdrawals are processed,
-     *    allowing for better risk management and fair pricing.
-     * 3. Request Expiration: Requests can expire and be cancelled, providing users with an escape
-     *    mechanism if conditions change.
-     * 4. Interaction Delays: Users must wait between requests to prevent abuse and rapid-fire
-     *    interactions that could destabilize the vault.
-     *
-     * ALTERNATIVE INTERFACE:
-     * - Use requestDeposit(assets, expectedShares) instead of deposit()
-     * - Use requestWithdrawal(shares, expectedAssets) instead of withdraw()
-     * - Use emergencyWithdraw(shares) for immediate withdrawals in emergency mode
-     * - Use availableAssets() and totalDeployed() instead of totalAssets()
-     *
-     * COMPATIBILITY:
-     * While not ERC-4626 compliant, this vault maintains ERC-20 compliance for the share token
-     * and provides similar functionality through the request-based interface.
-     */
-
-    function deposit(
-        uint256 /* assets */,
-        address /* receiver */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function mint(
-        uint256 /* shares */,
-        address /* receiver */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function withdraw(
-        uint256 /* assets */,
-        address /* receiver */,
-        address /* owner */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function redeem(
-        uint256 /* shares */,
-        address /* receiver */,
-        address /* owner */
-    ) public override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function totalAssets()
-        public
-        view
-        override(ERC4626, IERC4626)
-        returns (uint256)
-    {
-        revert NotImplemented();
-    }
-
-    function previewDeposit(
-        uint256 /* assets */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewMint(
-        uint256 /* shares */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewWithdraw(
-        uint256 /* assets */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function previewRedeem(
-        uint256 /* shares */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxDeposit(
-        address /* receiver */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxMint(
-        address /* receiver */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxWithdraw(
-        address /* owner */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
-    function maxRedeem(
-        address /* owner */
-    ) public view override(ERC4626, IERC4626) returns (uint256) {
-        revert NotImplemented();
-    }
-
     // ============ Custom totals, Withdrawal and Deposit Functions ============
 
     function availableAssets() public view returns (uint256) {
@@ -765,4 +648,125 @@ contract PassiveLiquidityVault is
     function unpause() external onlyOwner {
         _unpause();
     }
+
+
+
+    // ============ ERC-4626 Overrides ============
+
+    /**
+     * @notice ERC-4626 COMPLIANCE NOTICE:
+     *
+     * This vault intentionally deviates from the ERC-4626 standard to implement a request-based
+     * deposit/withdrawal system with manager-controlled processing. The standard ERC-4626 functions
+     * are overridden to revert with NotImplemented() to prevent direct usage.
+     *
+     * DEVIATION RATIONALE:
+     * 1. Request-based System: Users create requests that are processed by a manager when conditions
+     *    are favorable, rather than immediate execution as required by ERC-4626.
+     * 2. Manager Control: A designated manager controls when deposits/withdrawals are processed,
+     *    allowing for better risk management and fair pricing.
+     * 3. Request Expiration: Requests can expire and be cancelled, providing users with an escape
+     *    mechanism if conditions change.
+     * 4. Interaction Delays: Users must wait between requests to prevent abuse and rapid-fire
+     *    interactions that could destabilize the vault.
+     *
+     * ALTERNATIVE INTERFACE:
+     * - Use requestDeposit(assets, expectedShares) instead of deposit()
+     * - Use requestWithdrawal(shares, expectedAssets) instead of withdraw()
+     * - Use emergencyWithdraw(shares) for immediate withdrawals in emergency mode
+     * - Use availableAssets() and totalDeployed() instead of totalAssets()
+     *
+     * COMPATIBILITY:
+     * While not ERC-4626 compliant, this vault maintains ERC-20 compliance for the share token
+     * and provides similar functionality through the request-based interface.
+     */
+
+    function deposit(
+        uint256 /* assets */,
+        address /* receiver */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function mint(
+        uint256 /* shares */,
+        address /* receiver */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function withdraw(
+        uint256 /* assets */,
+        address /* receiver */,
+        address /* owner */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function redeem(
+        uint256 /* shares */,
+        address /* receiver */,
+        address /* owner */
+    ) public override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function totalAssets()
+        public
+        view
+        override(ERC4626, IERC4626)
+        returns (uint256)
+    {
+        revert NotImplemented();
+    }
+
+    function previewDeposit(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewMint(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewWithdraw(
+        uint256 /* assets */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function previewRedeem(
+        uint256 /* shares */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxDeposit(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxMint(
+        address /* receiver */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxWithdraw(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+    function maxRedeem(
+        address /* owner */
+    ) public view override(ERC4626, IERC4626) returns (uint256) {
+        revert NotImplemented();
+    }
+
+
 }

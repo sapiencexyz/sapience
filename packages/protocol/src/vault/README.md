@@ -1,349 +1,224 @@
 # Passive Liquidity Vault
 
-An **ERC-4626 compliant** Solidity smart contract that implements a passive liquidity vault where an EOA (Externally Owned Account) can manage deposited funds to interact with other protocols. The vault uses a **queue-based system** with withdrawal delays to ensure fair and predictable liquidity management.
+An ERC-20 share token vault with a request-based flow for deposits and withdrawals. A designated EOA “manager” deploys funds to external protocols and processes user requests. The contract intentionally deviates from ERC-4626 immediate-execution semantics to enforce fair pricing, rate limits, and safety constraints.
 
-## ✅ ERC-4626 Compliance
+## ERC-4626 deviations and alternative interface
 
-This vault is fully compliant with the ERC-4626 "Tokenized Vault Standard", providing:
-- Standardized deposit/withdraw/mint/redeem functions
-- Automatic share-to-asset conversion
-- Maximum DeFi interoperability
-- Protection against inflation attacks through virtual shares
+This vault inherits ERC-4626/4626-compatible types but overrides the standard entry points to revert. Instead, use the request-based API:
+- `requestDeposit(uint256 assets, uint256 expectedShares)`
+- `requestWithdrawal(uint256 shares, uint256 expectedAssets)`
+- `processDeposit(address requestedBy)` and `processWithdrawal(address requestedBy)` (manager only)
+- `emergencyWithdraw(uint256 shares)` (when emergency mode is active)
+
+Additional views/utilities:
+- `availableAssets()` returns the vault’s token balance
+- `totalDeployed()` returns capital deployed in external protocols
+- `utilizationRate()` returns deployed/(deployed+available) in basis points
 
 ## Features
 
-### Core Functionality
-- **Queue-Based Operations**: Deposit and withdrawal requests are queued and processed with configurable delays
-- **Withdrawal Delay**: Configurable delay period (default: 1 day) to prevent bank runs
-- **EOA Management**: A designated manager (EOA) can approve funds usage to external protocols
-- **Utilization Rate**: Configurable maximum utilization rate to control risk
-- **Request Queues**: Deposit and withdrawal requests queued for processing
-- **Emergency Mode**: Emergency withdrawal mechanism bypassing delay system
-- **Asset/Share Reservation**: Prevents share price manipulation during delayed processing
+### Core functionality
+- **Request-based operations**: One pending request per user at a time (deposit or withdrawal)
+- **Interaction delay**: Users must wait between requests (default: 1 day)
+- **Request expiration**: Requests expire (default: 2 minutes) and can be cancelled by the user
+- **EOA management**: A designated manager processes requests and deploys/recalls funds
+- **Utilization limits**: Max utilization (default: 80%) enforced when approving deployments
+- **Emergency mode**: Proportional withdrawals from on-vault balance only
 
-### Safety Features
-- **Reentrancy Protection**: All external calls are protected against reentrancy attacks
-- **Pausable**: Contract can be paused by owner in emergency situations
-- **Access Control**: Role-based access control for different functions
-- **Utilization Limits**: Maximum utilization rate prevents over-leverage
-- **Queue Processing Locks**: Prevents race conditions during queue processing
-- **Safe Approval Pattern**: Protects against approval frontrunning attacks
-- **Conservative Rounding**: Favoring vault security in asset/share conversions
+### Safety features
+- **Reentrancy protection** via `ReentrancyGuard`
+- **Pausable** by owner
+- **Access control**: Owner vs Manager responsibilities
+- **Minimum deposit/withdraw size**: Prevents DoS with tiny amounts (`MIN_DEPOSIT`)
 
 ## Architecture
 
-### Key Components
+### Key components
 
-1. **Queue Management**
-   - Deposit requests queued for processing
-   - Withdrawal requests queued with delay period
-   - First-come-first-served processing order
-   - Batch processing with gas optimization
+1. **Request Management**
+   - Single `PendingRequest` per user at a time
+   - Users create requests; the manager processes them before they expire
+   - Users can cancel their own requests after expiration
 
 2. **Asset Management**
-   - ERC20 token representing the underlying asset
-   - Share-based accounting system
-   - Automatic conversion between assets and shares
-   - Reserved assets/shares to prevent price manipulation
+   - Underlying asset from ERC-4626 `asset()`
+   - ERC-20 shares minted/burned on processing
+   - `unconfirmedAssets` tracks assets held for unprocessed deposit requests
 
-3. **Request Queues**
-   - Deposit requests queued for immediate or delayed processing
-   - Withdrawal requests queued with configurable delay
-   - Processing locks to prevent race conditions
+3. **Fund Deployment**
+   - Manager can `approveFundsUsage(protocol, amount)` to external protocols
+   - Active protocols tracked; utilization checked before approvals
+   - `totalDeployed()` sums collateral held in supported protocols
 
-4. **Fund Deployment**
-   - Manager can approve funds usage to external protocols
-   - Tracks active protocols and deployed amounts
-   - Maintains utilization rate calculations
-   - NFT-based liquidity tracking for deployed funds
+4. **Risk Management**
+   - `maxUtilizationRate` cap (basis points)
+   - `interactionDelay` between user requests
+   - `expirationTime` for requests
+   - Emergency mode toggle by owner
 
-5. **Risk Management**
-   - Maximum utilization rate limits
-   - Emergency mode for crisis situations
-   - Pausable functionality
-   - Withdrawal delays to prevent bank runs
-
-### State Variables
+### State variables (selected)
 
 ```solidity
-IERC20 public immutable asset;           // Underlying asset token
-address public manager;                  // EOA manager address
-uint256 public maxUtilizationRate;       // Max utilization (basis points)
-uint256 public utilizationRate;          // Current utilization (basis points)
-uint256 public interactionDelay;          // Withdrawal delay in seconds (default: 1 day)
-uint256 public totalDeployed;            // Total deployed to protocols
-bool public emergencyMode;               // Emergency mode flag
+address public manager;                 // EOA manager address
+uint256 public maxUtilizationRate;      // Max utilization (basis points)
+uint256 public interactionDelay;        // Delay between user requests
+uint256 public expirationTime;          // Request expiration window
+bool public emergencyMode;              // Emergency mode flag
+uint256 public constant BASIS_POINTS = 10000;
+uint256 public constant MIN_DEPOSIT = 100e18; // Minimum amount guard
 
-// Queue processing state
-uint256 public lastProcessedWithdrawalIndex; // Last processed withdrawal index
-uint256 public lastProcessedDepositIndex;    // Last processed deposit index
-uint256 private reservedAssets;              // Reserved assets for pending withdrawals
-uint256 private reservedShares;              // Reserved shares for pending deposits
-bool private processingWithdrawals;          // Withdrawal processing lock
-bool private processingDeposits;             // Deposit processing lock
+// Requests and accounting
+mapping(address => uint256) public lastUserInteractionTimestamp;
+mapping(address => PendingRequest) public pendingRequests;
+uint256 private unconfirmedAssets;      // Deposits awaiting processing
+bool private processingRequests;        // Reentrancy guard for processing
 
-// Request queues
-WithdrawalRequest[] public withdrawalQueue; // Withdrawal requests
-DepositRequest[] public depositQueue;       // Deposit requests
-address[] public activeProtocols;           // Active protocol addresses
+// Active protocols (EnumerableSet)
+// address[] internal via set; exposed through getters
 ```
 
-### Data Structures
+### Data structures
 
 ```solidity
-struct WithdrawalRequest {
-    address user;             // User requesting withdrawal
-    uint256 shares;           // Shares to withdraw
-    uint256 assets;           // Asset amount (calculated at request time)
-    uint256 timestamp;        // Request timestamp
-    bool processed;           // Whether request has been processed
-}
-
-struct DepositRequest {
-    address user;             // User requesting deposit
-    uint256 amount;           // Amount to deposit
-    uint256 timestamp;        // Request timestamp
-    bool processed;           // Whether request has been processed
+struct PendingRequest {
+    address user;
+    bool isDeposit;     // true for deposit, false for withdrawal
+    uint256 shares;     // expected shares for deposits; burn amount for withdrawals
+    uint256 assets;     // deposit amount; expected assets for withdrawals
+    uint256 timestamp;  // creation time
+    bool processed;     // processed flag
 }
 ```
 
-## Queue System
+## Request system
 
-### How Queues Work
-
-The vault operates on a queue-based system to ensure fair and predictable processing:
-
-1. **Request Submission**:
-   - Deposits: Added to deposit queue for processing
-   - Withdrawals: Added to withdrawal queue with delay period
-   - First-come-first-served order maintained
-
-2. **Processing Timing**:
-   - Deposits: Can be processed immediately or with delay
-   - Withdrawals: Must wait for withdrawal delay period
-   - Batch processing with gas optimization
-
-3. **Queue Lifecycle**:
-   ```
-   Request → Queue → Delay (for withdrawals) → Processing → Completion
-   ```
-
-### Queue Processing
-
-When processing queues:
-1. Deposits are processed by minting shares to users
-2. Withdrawals are processed by burning shares and transferring assets
-3. Processing locks prevent race conditions
-4. Gas optimization limits batch sizes
+### Lifecycle
+1. User submits a request:
+   - Deposit: `requestDeposit(assets, expectedShares)` transfers `assets` to the vault and records the request
+   - Withdrawal: `requestWithdrawal(shares, expectedAssets)` records the request (no immediate transfer)
+2. Manager validates and processes before `expirationTime`:
+   - `processDeposit(requestedBy)` mints `shares` to the user
+   - `processWithdrawal(requestedBy)` burns `shares` and transfers `assets` to the user
+3. If not processed in time, users can cancel:
+   - `cancelDeposit()` returns assets
+   - `cancelWithdrawal()` clears the request
+4. Users must respect `interactionDelay` between consecutive requests
 
 ### Benefits
-
-- **Fair Processing**: First-come-first-served order
-- **Predictable Timing**: Users know when their requests will be processed
-- **Bank Run Protection**: Withdrawal delays prevent mass exits
-- **Gas Optimization**: Batch processing with size limits
-
-## Asset/Share Reservation System
-
-### How Reservation Works
-
-The vault implements a sophisticated reservation system to prevent share price manipulation:
-
-1. **Withdrawal Requests**:
-   - Shares are kept until processing time
-   - Asset amount calculated at processing time
-   - No immediate share burning or asset reservation
-
-2. **Deposit Requests**:
-   - Assets transferred immediately to vault
-   - Shares calculated and reserved
-   - Shares minted during processing
-
-3. **Price Stability**:
-   - Share price remains stable during request phase
-   - Conversion happens at processing time
-   - Conservative rounding favors vault security
-
-### Benefits
-
-- **Price Manipulation Protection**: No immediate share burning
-- **Fair Conversion**: Asset/share conversion at processing time
-- **Vault Security**: Conservative rounding approach
-- **Predictable Behavior**: Consistent share-to-asset ratios
+- **Fair processing** under manager control
+- **Predictable timing** via interaction delay and expiration
+- **Safety** against rapid-fire interactions and stale prices
 
 ## Usage
 
-### For Users
+### For users
 
 #### Depositing
 ```solidity
 // Approve vault to spend tokens
-asset.approve(address(vault), amount);
+asset.approve(address(vault), assets);
 
-// Request deposit (queued for processing)
-uint256 queuePosition = vault.requestDeposit(amount);
-
-// Check deposit status
-uint256 queueLength = vault.getDepositQueueLength();
+// Create a deposit request
+vault.requestDeposit(assets, expectedShares);
 ```
 
 #### Withdrawing
 ```solidity
-// Request withdrawal (queued with delay)
-uint256 queuePosition = vault.requestWithdrawal(shares);
-
-// Check withdrawal status
-uint256 pendingAmount = vault.getPendingWithdrawal(user);
-uint256 queueLength = vault.getWithdrawalQueueLength();
+// Create a withdrawal request
+vault.requestWithdrawal(shares, expectedAssets);
 ```
 
-#### Emergency Withdrawal
+#### Cancelling after expiration
 ```solidity
-// Only available when emergency mode is active
+vault.cancelDeposit();
+vault.cancelWithdrawal();
+```
+
+#### Emergency withdrawal
+```solidity
+// Only available when emergency mode is active; uses on-vault balance proportionally
 vault.emergencyWithdraw(shares);
 ```
 
-#### Checking Queue Status
-```solidity
-// Get queue information
-uint256 depositQueueLength = vault.getDepositQueueLength();
-uint256 withdrawalQueueLength = vault.getWithdrawalQueueLength();
+### For manager (EOA)
 
-// Check processing status
-bool processingWithdrawals = vault.isProcessingWithdrawals();
-bool processingDeposits = vault.isProcessingDeposits();
+#### Processing
+```solidity
+vault.processDeposit(user);
+vault.processWithdrawal(user);
 ```
 
-### For Manager (EOA)
-
-#### Approving Funds Usage
+#### Approving funds usage
 ```solidity
-// Approve funds usage to a protocol
 vault.approveFundsUsage(protocolAddress, amount);
-
-// Example: Approve to Compound
-vault.approveFundsUsage(compoundTokenAddress, amount);
 ```
 
-#### Checking Deployment Status
+#### Deployment status
 ```solidity
-// Get total deployed amount
-uint256 totalDeployed = vault.totalDeployed();
-
-// Get active protocols
-uint256 protocolCount = vault.getActiveProtocolsCount();
-address protocol = vault.getActiveProtocol(0);
+uint256 deployed = vault.totalDeployed();
+uint256 numProtocols = vault.getActiveProtocolsCount();
+address[] memory allProtocols = vault.getActiveProtocols();
+address first = vault.getActiveProtocol(0);
 ```
 
-### For Owner
+### For owner
 
 #### Configuration
 ```solidity
-// Set new manager
 vault.setManager(newManager);
-
-// Set maximum utilization rate (basis points)
-vault.setMaxUtilizationRate(8000); // 80%
-
-// Set withdrawal delay
-vault.setinteractionDelay(2 days);
-
-// Toggle emergency mode
+vault.setMaxUtilizationRate(8000);     // 80%
+vault.setInteractionDelay(1 days);     // default
+vault.setExpirationTime(2 minutes);    // default
 vault.toggleEmergencyMode();
-
-// Pause/unpause contract
 vault.pause();
 vault.unpause();
 ```
 
-#### Queue Management
-```solidity
-// Process withdrawal queue (with gas limit)
-vault.processWithdrawals(100); // Process up to 100 requests
+## Key functions
 
-// Process deposit queue (with gas limit)
-vault.processDeposits(100); // Process up to 100 requests
-```
+### Request functions
+- `requestDeposit(uint256 assets, uint256 expectedShares)`
+- `requestWithdrawal(uint256 shares, uint256 expectedAssets)`
+- `cancelDeposit()` / `cancelWithdrawal()`
+- `processDeposit(address requestedBy)` / `processWithdrawal(address requestedBy)` (manager)
 
-## Key Functions
+### Manager functions
+- `approveFundsUsage(address protocol, uint256 amount)`
 
-### Queue Functions
-- `requestDeposit(uint256 amount)`: Request deposit for processing
-- `requestWithdrawal(uint256 shares)`: Request withdrawal with delay
-- `processWithdrawals(uint256 maxRequests)`: Process withdrawal queue
-- `processDeposits(uint256 maxRequests)`: Process deposit queue
+### Emergency
+- `emergencyWithdraw(uint256 shares)`
 
-### Manager Functions
-- `approveFundsUsage(address protocol, uint256 amount)`: Approve funds usage to protocol
-
-### Emergency Functions
-- `emergencyWithdraw(uint256 shares)`: Emergency withdrawal (bypasses delay)
-
-### View Functions
-- `totalAssets()`: Get total assets in vault
-- `availableAssets()`: Get available assets for withdrawals
-- `getDepositQueueLength()`: Get length of deposit queue
-- `getWithdrawalQueueLength()`: Get length of withdrawal queue
-- `getActiveProtocolsCount()`: Get number of active protocols
-- `getPendingWithdrawal(address user)`: Get user's pending withdrawal amount
-- `getPendingDeposit(address user)`: Get user's pending deposit amount
+### Views
+- `availableAssets()`
+- `totalDeployed()`
+- `utilizationRate()`
+- `getActiveProtocolsCount()` / `getActiveProtocols()` / `getActiveProtocol(uint256)`
 
 ## Events
 
-The contract emits comprehensive events for all major operations:
+### Request events
+- `PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets)`
+- `PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets)`
+- `PendingRequestCancelled(address indexed user, bool direction, uint256 shares, uint256 assets)`
 
-### Request Events
-- `DepositRequested`: When a deposit is requested
-- `WithdrawalRequested`: When a withdrawal is requested
-- `DepositProcessed`: When a deposit request is processed
-- `WithdrawalProcessed`: When a withdrawal request is processed
+### Manager and configuration
+- `FundsApproved(address indexed manager, uint256 assets, address targetProtocol)`
+- `UtilizationRateUpdated(uint256 oldRate, uint256 newRate)`
+- `ManagerUpdated(address indexed oldManager, address indexed newManager)`
+- `InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay)`
+- `ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime)`
 
-### Manager Events
-- `FundsApproved`: When manager approves funds usage
+### Emergency
+- `EmergencyWithdrawal(address indexed user, uint256 shares, uint256 assets)`
 
-### Emergency Events
-- `EmergencyWithdrawal`: When emergency withdrawal occurs
-
-### Configuration Events
-- `ManagerUpdated`: When manager address changes
-- `MaxUtilizationRateUpdated`: When max utilization rate changes
-- `interactionDelayUpdated`: When withdrawal delay changes
-
-## Security Considerations
-
-### Reentrancy Protection
-All external calls are protected using OpenZeppelin's `ReentrancyGuard`.
-
-### Access Control
-- **Owner**: Can configure parameters, pause contract, set manager
-- **Manager**: Can approve funds usage to protocols
-- **Users**: Can deposit, request withdrawals, process withdrawals
-
-### Risk Management
-- **Utilization Limits**: Prevents over-leverage of vault funds
-- **Withdrawal Delays**: Prevents bank runs and mass exits
-- **Processing Locks**: Prevents race conditions during queue processing
-- **Emergency Mode**: Allows immediate withdrawals in crisis situations
-- **Pausable**: Can halt operations if needed
-
-### Economic Security
-- **Share-based Accounting**: Fair distribution of vault performance
-- **Queue-based Processing**: Ensures orderly and predictable processing
-- **Asset/Share Reservation**: Prevents price manipulation
-- **Conservative Rounding**: Favors vault security in conversions
-- **Safe Approval Pattern**: Protects against approval frontrunning
+## Security considerations
+- Reentrancy guarded processing and transfers
+- Strict role separation (Owner vs Manager)
+- Enforced min amounts and interaction delays
+- Utilization checks on deployments
+- Pausable + emergency mode
 
 ## Testing
-
-The contract includes comprehensive tests covering:
-
-- Queue management and processing
-- Deposit and withdrawal request handling
-- Fund deployment and utilization tracking
-- Emergency scenarios
-- Access control
-- Edge cases and error conditions
-- Gas optimization and batch processing
 
 Run tests with:
 ```bash
@@ -351,58 +226,31 @@ forge test --match-path test/vault/PassiveLiquidityVault.t.sol
 ```
 
 ## Deployment
+1. Deploy underlying asset (or use an existing ERC-20)
+2. Deploy the vault with asset address, manager address, name, and symbol
+3. Configure parameters (`setMaxUtilizationRate`, `setInteractionDelay`, `setExpirationTime`)
+4. Transfer ownership to governance if applicable
 
-1. Deploy the underlying asset token (if not using existing)
-2. Deploy the vault with asset address and manager address
-3. Configure parameters (max utilization, withdrawal delay)
-4. Transfer ownership to governance contract (if applicable)
+## Integration examples
 
-### Initial Configuration
+### Prediction markets
 ```solidity
-// Set withdrawal delay (default: 1 day)
-vault.setinteractionDelay(1 days);
-
-// Set maximum utilization rate (default: 80%)
-vault.setMaxUtilizationRate(8000);
-
-// Set manager address
-vault.setManager(managerAddress);
-```
-
-## Integration Examples
-
-### With Lending Protocols
-```solidity
-// Approve funds usage to Compound
-vault.approveFundsUsage(compoundTokenAddress, amount);
-```
-
-### With DEX Liquidity Pools
-```solidity
-// Approve funds usage to Uniswap
-vault.approveFundsUsage(uniswapRouter, amount);
-```
-
-### With Prediction Markets
-```solidity
-// Approve funds usage to PredictionMarket
 vault.approveFundsUsage(predictionMarketAddress, amount);
+// Manager later calls processDeposit/processWithdrawal as market conditions allow
 ```
 
-## Gas Optimization
+### DEXes / lending
+```solidity
+vault.approveFundsUsage(protocol, amount);
+```
 
-The contract is optimized for gas efficiency:
-
-- Uses `immutable` for constant values
-- Efficient storage layout
-- Minimal external calls
-- Batch processing for queues with size limits
-- Processing locks to prevent unnecessary operations
+## Gas optimization notes
+- Minimal external calls and storage writes
+- EnumerableSet for active protocol tracking
+- No on-chain FIFO queues or batch loops
 
 ## Upgradeability
-
-The contract is not upgradeable by design for maximum security. Configuration changes are handled through parameter updates by the owner.
+The contract is not upgradeable; parameters are configurable by the owner.
 
 ## License
-
 MIT License - see LICENSE file for details.

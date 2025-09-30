@@ -1,5 +1,5 @@
 {
-  "address": "0x184f83A9481B2aaC937558Ad56F800Ec9b9fd8ad",
+  "address": "0x9052992cB14b7af25a3c40B27211d369c9ff7758",
   "abi": [
     {
       "type": "constructor",
@@ -621,7 +621,7 @@
   ],
   "constructorArgs": [
     {
-      "maxPredictionMarkets": "5",
+      "maxPredictionMarkets": "15",
       "optimisticOracleV3": "0xa6147867264374F324524E30C02C331cF28aa879",
       "bondCurrency": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
       "bondAmount": "500000000",
@@ -632,13 +632,13 @@
     ]
   ],
   "linkedLibraries": {},
-  "deployTxnHash": "0x9f39a39b9e7d381987e1efb297b9888d12e995375e622c58a1582138df62fe8c",
-  "deployTxnBlockNumber": "380553690",
-  "deployTimestamp": "1758226500",
+  "deployTxnHash": "0x5110d5e3cba9c71245e2579cfe65678abc7ed26773040799fd9c740883171457",
+  "deployTxnBlockNumber": "381946955",
+  "deployTimestamp": "1758574646",
   "sourceName": "src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol",
   "contractName": "PredictionMarketUmaResolver",
   "deployedOn": "deploy.UMAResolver",
   "highlight": true,
-  "gasUsed": 1528644,
+  "gasUsed": 1477043,
   "gasCost": "10000000"
 }

@@ -79,7 +79,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
   const priceUnitDisplay = baseTokenName || 'USD';
 
   const links = (
-    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 items-start leading-6 sm:leading-5 sm:gap-y-5 sm:gap-x-4">
+    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 items-start leading-6 sm:leading-5 sm:gap-x-4">
       {totalVolume !== null && totalVolume !== undefined && (
         <div className="inline-flex items-center">
           <span className="inline-block mr-1.5">
@@ -102,7 +102,7 @@ const MarketHeader: React.FC<MarketHeaderProps> = ({
         </div>
       )}
 
-      <div className="inline-flex items-center gap-3">
+      <div className="inline-flex items-center gap-5">
         <a
           className="hover:no-underline inline-flex items-center"
           target="_blank"

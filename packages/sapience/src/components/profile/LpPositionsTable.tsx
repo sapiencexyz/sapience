@@ -16,12 +16,10 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import Link from 'next/link';
-import Image from 'next/image';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import type { PositionType } from '@sapience/ui/types';
-import { blo } from 'blo';
 import {
   flexRender,
   getCoreRowModel,
@@ -33,7 +31,8 @@ import {
 import React from 'react';
 import { ArrowUpDown, ArrowUp, ArrowDown, InfoIcon } from 'lucide-react';
 import SettlePositionButton from '../markets/SettlePositionButton';
-import SharePositionDialog from '../markets/SharePositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import PositionRange from '~/components/shared/PositionRange';
@@ -517,9 +516,8 @@ export default function LpPositionsTable({
           cell: ({ row }: { row: { original: PositionType } }) => (
             <div className="flex items-center gap-2">
               {row.original.owner ? (
-                <Image
-                  alt={row.original.owner}
-                  src={blo(row.original.owner as `0x${string}`)}
+                <EnsAvatar
+                  address={row.original.owner}
                   className="w-5 h-5 rounded-sm ring-1 ring-border/50"
                   width={20}
                   height={20}
@@ -575,7 +573,12 @@ export default function LpPositionsTable({
                         }
                         onSuccess={() => {
                           console.log(
-                            `Settle action for LP position ${position.positionId} initiated. Consider a data refetch.`
+                            'Liquidity position settled successfully',
+                            {
+                              positionId: position.positionId,
+                              marketAddress,
+                              chainId,
+                            }
                           );
                         }}
                       />
@@ -641,7 +644,6 @@ export default function LpPositionsTable({
                     onClick={() => {
                       setSelectedPositionSnapshot(position);
                       setOpenSharePositionId(position.positionId);
-                      // ---
                     }}
                   >
                     Share
@@ -715,8 +717,49 @@ export default function LpPositionsTable({
         </Table>
       </div>
       {selectedPositionSnapshot && (
-        <SharePositionDialog
-          position={selectedPositionSnapshot}
+        <ShareDialog
+          question={
+            selectedPositionSnapshot.market?.question || 'Liquidity Position'
+          }
+          symbol={
+            selectedPositionSnapshot.market?.marketGroup?.collateralSymbol ||
+            'testUSDe'
+          }
+          owner={selectedPositionSnapshot.owner || undefined}
+          groupAddress={
+            selectedPositionSnapshot.market?.marketGroup?.address ?? undefined
+          }
+          marketId={selectedPositionSnapshot.market?.marketId ?? undefined}
+          positionId={selectedPositionSnapshot.positionId}
+          imagePath="/og/liquidity"
+          title="Share Liquidity"
+          extraParams={{
+            low: (() => {
+              try {
+                // Convert ticks to price if present; fall back to formatted values if available elsewhere
+                const { lowPriceTick } = selectedPositionSnapshot as any;
+                if (typeof lowPriceTick === 'number') {
+                  const price = 1.0001 ** lowPriceTick;
+                  return price.toFixed(price < 1 ? 4 : 2);
+                }
+              } catch (err) {
+                console.error('Error computing low price from tick', err);
+              }
+              return '0.00';
+            })(),
+            high: (() => {
+              try {
+                const { highPriceTick } = selectedPositionSnapshot as any;
+                if (typeof highPriceTick === 'number') {
+                  const price = 1.0001 ** highPriceTick;
+                  return price.toFixed(price < 1 ? 4 : 2);
+                }
+              } catch (err) {
+                console.error('Error computing high price from tick', err);
+              }
+              return '0.00';
+            })(),
+          }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {
             if (!next) setOpenSharePositionId(null);

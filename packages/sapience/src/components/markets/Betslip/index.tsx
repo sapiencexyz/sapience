@@ -17,7 +17,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { usePrivy } from '@privy-io/react-auth';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { sapienceAbi } from '@sapience/ui/lib/abi';
 import Image from 'next/image';
 import { useEffect, useMemo } from 'react';
@@ -37,6 +37,7 @@ import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import type { useQuoter } from '~/hooks/forms/useQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
@@ -56,11 +57,13 @@ import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
   isParlayMode?: boolean; // controlled by page-level switch
+  onParlayModeChange?: (enabled: boolean) => void;
 }
 
 const Betslip = ({
   variant = 'triggered',
   isParlayMode: externalParlayMode = false,
+  onParlayModeChange,
 }: BetslipProps) => {
   const {
     betSlipPositions,
@@ -73,7 +76,8 @@ const Betslip = ({
 
   const isParlayMode = externalParlayMode;
   const isCompact = useIsBelow(1024);
-  const { login, authenticated } = usePrivy();
+  const { hasConnectedWallet } = useConnectedWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const { address } = useAccount();
   const { sendCalls, isPending: isPendingWriteContract } =
     useSapienceWriteContract({
@@ -82,6 +86,7 @@ const Betslip = ({
       },
       successMessage: 'Your prediction has been submitted.',
       fallbackErrorMessage: 'Failed to submit prediction',
+      redirectProfileAnchor: 'trades',
     });
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -96,7 +101,7 @@ const Betslip = ({
 
   // PredictionMarket address (constant)
   const PREDICTION_MARKET_ADDRESS =
-    '0xB5583Daa6388291e56cF8509c2184B16c35e32d0' as Address;
+    '0x8D1D1946cBc56F695584761d25D13F174906671C' as Address;
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
@@ -492,8 +497,12 @@ const Betslip = ({
   });
 
   const handleIndividualSubmit = () => {
-    if (!authenticated) {
-      login();
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch (error) {
+        console.error('connectOrCreateWallet failed', error);
+      }
       return;
     }
 
@@ -662,8 +671,12 @@ const Betslip = ({
   };
 
   const handleParlaySubmit = () => {
-    if (!authenticated) {
-      login();
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch (error) {
+        console.error('connectOrCreateWallet failed', error);
+      }
       return;
     }
 
@@ -726,6 +739,7 @@ const Betslip = ({
 
   const contentProps = {
     isParlayMode,
+    onParlayModeChange,
     individualMethods: formMethods as unknown as UseFormReturn<{
       positions: Record<
         string,

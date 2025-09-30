@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 
 import '@rainbow-me/rainbowkit/styles.css';
 
+import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
 import Layout from '~/components/layout';
 import GlobalLoader from '~/components/shared/GlobalLoader';
@@ -118,7 +119,9 @@ const RootLayout = ({ children }: RootLayoutProps) => {
             <ChatProvider>
               <PasswordScrim />
               <GlobalLoader />
-              <Layout>{children}</Layout>
+              <TooltipProvider>
+                <Layout>{children}</Layout>
+              </TooltipProvider>
               <Toaster />
               <InstallDialog />
               <div className="fixed bottom-5 right-5 z-[55]">

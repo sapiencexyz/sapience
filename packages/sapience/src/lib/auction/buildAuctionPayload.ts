@@ -40,7 +40,7 @@ export function buildAuctionStartPayload(
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
   // Use the deployed UMA resolver address
   const UMA_RESOLVER_ADDRESS =
-    '0x184f83A9481B2aaC937558Ad56F800Ec9b9fd8ad' as `0x${string}`;
+    '0x9052992cB14b7af25a3c40B27211d369c9ff7758' as `0x${string}`;
   const resolver: `0x${string}` = isHexAddress(resolverOverride)
     ? resolverOverride
     : UMA_RESOLVER_ADDRESS;

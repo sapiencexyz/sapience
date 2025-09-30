@@ -231,6 +231,65 @@ const handleReindexRequest = async (
   }
 };
 
+router.post(
+  '/prediction-market',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, startTimestamp, endTimestamp, clearExisting } = req.body;
+
+    if (!chainId || isNaN(parseInt(chainId))) {
+      res.status(400).json({ error: 'Valid chainId is required' });
+      return;
+    }
+
+    const startCommand = `pnpm run start:reindex-prediction-market ${chainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'} ${clearExisting || false}`;
+
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.NODE_ENV === 'staging';
+
+    if (isProduction) {
+      const renderServices = await fetchRenderServices();
+      const worker = renderServices.find(
+        (item: {
+          service?: {
+            type?: string;
+            name?: string;
+            branch?: string;
+            id?: string;
+          };
+        }) =>
+          item?.service?.type === 'background_worker' &&
+          item?.service?.name?.startsWith('background-worker') &&
+          item?.service?.branch ===
+            (process.env.NODE_ENV === 'staging' ? 'staging' : 'main')
+      );
+
+      if (!worker?.service?.id) {
+        throw new Error('Background worker not found');
+      }
+
+      const job = await createRenderJob(worker.service.id, startCommand);
+      await prisma.renderJob.create({
+        data: { jobId: job.id, serviceId: job.serviceId },
+      });
+      res.json({ success: true, job });
+      return;
+    }
+
+    // local development
+    try {
+      const result = await executeLocalReindex(startCommand);
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
 // New endpoint for missing prices reindexing
 router.post(
   '/missing-prices',

@@ -1,0 +1,176 @@
+---
+title: "Prediction Market Trading Bots"
+description: "Build on the Forecasting Bot to size and submit $1 trades via the Quoter API."
+---
+
+import BuilderGuideAlert from '../../components/BuilderGuideAlert'
+
+<BuilderGuideAlert />
+
+# Prediction Market Trading Bots
+
+This guide builds on the [Forecasting Agent](/guides/forecasting-agent) guide. Here, we'll add a minimal $1 trading flow using the Quoter API and execute trades in an agent "action".
+
+
+## Add a Dollar Wager
+
+Add a bot action that sizes a $1 wager with the Quoter API, then submits the trade. Use this as a drop‑in action in your agent.
+
+Action (e.g. `src/actions/dollarWager.ts`):
+
+```ts
+import Foil from './Foil.json' assert { type: 'json' };
+import { createWalletClient, createPublicClient, http, parseEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { base } from 'viem/chains';
+
+const WAGER_AMOUNT = parseEther('1'); // 1 sUSDS
+
+export function forecastToExpectedPriceDecimalString(percent: number): string {
+  const clamped = Math.max(0, Math.min(100, percent));
+  if (clamped === 0) return '0.0000009';
+  return (clamped / 100).toString();
+}
+
+export async function getQuote({ chainId, marketGroupAddress, marketId, forecastPercent }: {
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number | string;
+  forecastPercent: number;
+}) {
+  const expectedPrice = forecastToExpectedPriceDecimalString(forecastPercent);
+  const url = `https://api.sapience.xyz/quoter/${chainId}/${marketGroupAddress}/${marketId}?collateralAvailable=${WAGER_AMOUNT.toString()}&expectedPrice=${expectedPrice}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Quoter error ${res.status}`);
+  const { maxSize } = await res.json() as { maxSize: string };
+  return { positionSize: BigInt(maxSize) };
+}
+
+async function tradeAction({ marketAddress, marketId, positionSize }: {
+  marketAddress: `0x${string}`;
+  marketId: bigint;
+  positionSize: bigint; // from Quoter
+}) {
+  const ETHEREUM_PRIVATE_KEY = process.env.ETHEREUM_PRIVATE_KEY as `0x${string}` | undefined;
+  if (!ETHEREUM_PRIVATE_KEY) throw new Error('Missing ETHEREUM_PRIVATE_KEY');
+
+  const account = privateKeyToAccount(ETHEREUM_PRIVATE_KEY);
+  const walletClient = createWalletClient({ account, chain: base, transport: http() });
+  const publicClient = createPublicClient({ chain: base, transport: http() });
+
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 60);
+  const hash = await walletClient.writeContract({
+    address: marketAddress,
+    abi: Foil.abi,
+    functionName: 'createTraderPosition',
+    args: [marketId, positionSize, WAGER_AMOUNT, deadline],
+  });
+  await publicClient.waitForTransactionReceipt({ hash });
+}
+
+export async function dollarWagerAction({ chainId, marketGroupAddress, marketId, forecastPercent }: {
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number | string;
+  forecastPercent: number;
+}) {
+  const { positionSize } = await getQuote({ chainId, marketGroupAddress, marketId, forecastPercent });
+  await tradeAction({
+    marketAddress: marketGroupAddress as `0x${string}`,
+    marketId: BigInt(marketId),
+    positionSize,
+  });
+}
+```
+
+Wire it into the bot (e.g. `src/index.ts` in your Sage/Eliza template):
+
+```ts
+import { base } from 'viem/chains';
+import { dollarWagerAction } from './actions/dollarWager';
+
+// Inside your forecast loop or action registry
+async function onForecast({ marketGroupAddress, marketId, forecastPercent }: {
+  marketGroupAddress: string;
+  marketId: number | string;
+  forecastPercent: number;
+}) {
+  // Apply risk checks (budget caps, min confidence) before trading
+  await dollarWagerAction({
+    chainId: base.id,
+    marketGroupAddress,
+    marketId,
+    forecastPercent,
+  });
+}
+```
+
+---
+
+## Limit Order
+
+Alternatively, implement a client‑side limit order that waits for price to reach your level before quoting and submitting.
+
+Action (e.g. `src/actions/limitOrder.ts`):
+
+```ts
+import { base } from 'viem/chains';
+import { dollarWagerAction, getQuote } from './dollarWager';
+
+async function getCurrentYesPrice({ chainId, marketGroupAddress, marketId }: {
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number | string;
+}): Promise<number> {
+  // Implement with your preferred price source (polling/subscription). Return 0..1
+  throw new Error('getCurrentYesPrice not implemented');
+}
+
+export async function limitOrderAction({
+  chainId,
+  marketGroupAddress,
+  marketId,
+  limitPercent,
+}: {
+  chainId: number;
+  marketGroupAddress: string;
+  marketId: number | string;
+  limitPercent: number; // e.g. 62 means buy YES at <= 0.62
+}) {
+  const limit = limitPercent / 100;
+  while (true) {
+    const current = await getCurrentYesPrice({ chainId, marketGroupAddress, marketId });
+    if (current <= limit) {
+      const { positionSize } = await getQuote({
+        chainId,
+        marketGroupAddress,
+        marketId,
+        forecastPercent: limitPercent,
+      });
+      await dollarWagerAction({ chainId, marketGroupAddress, marketId, forecastPercent: limitPercent });
+      return;
+    }
+    await new Promise((r) => setTimeout(r, 5_000));
+  }
+}
+```
+
+Wire it into the bot (e.g. `src/index.ts`):
+
+```ts
+import { base } from 'viem/chains';
+import { limitOrderAction } from './actions/limitOrder';
+
+async function onForecastWithLimit({ marketGroupAddress, marketId }: {
+  marketGroupAddress: string;
+  marketId: number | string;
+}) {
+  // Example: buy YES only at <= 0.62
+  await limitOrderAction({
+    chainId: base.id,
+    marketGroupAddress,
+    marketId,
+    limitPercent: 62,
+  });
+}
+```
