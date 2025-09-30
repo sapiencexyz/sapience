@@ -7,9 +7,9 @@ import {
 } from './config';
 import { getStringParam, setStringParam } from '../candle-cache/dbUtils';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
-import { processParlayEventsForBlockRange } from 'src/parlay-reconciler/processor';
-import Sentry from '../instrument';
-
+import PredictionMarketIndexer from '../workers/indexers/predictionMarketIndexer';
+import { PREDICTION_MARKET_CONTRACT_ADDRESS } from '../workers/indexers/predictionMarketIndexer';
+import type { Block } from 'viem';
 
 export class ParlayReconciler {
   private static instance: ParlayReconciler;
@@ -45,15 +45,11 @@ export class ParlayReconciler {
     }
     this.isRunning = true;
     try {
-      await setReconcilerStatus(
-        'processing',
-        'Reconciling parlay events'
-      );
+      await setReconcilerStatus('processing', 'Reconciling parlay events');
 
       const lookbackSecondsEffective =
         lookbackSeconds ?? PARLAY_RECONCILE_CONFIG.defaultLookbackSeconds;
 
-      // Gather unique chains that have parlays
       const chainsRaw = await prisma.parlay.findMany({
         select: { chainId: true },
         distinct: ['chainId'],
@@ -61,33 +57,26 @@ export class ParlayReconciler {
       const chainIds = Array.from(new Set(chainsRaw.map((r) => r.chainId)));
 
       let totalScanned = 0;
-      let totalInserted = 0;
+      const totalInserted = 0;
       let totalUpdated = 0;
       let totalParlays = 0;
 
       for (const chainId of chainIds) {
         const client = getProviderForChain(chainId);
 
-        // Determine end block: use 'latest' to avoid extra RPC
         const toBlock = 'latest' as const;
 
-        // Determine start block, preferring watermark. Avoid timestamp binary search unless needed.
         const watermark = await this.getWatermark(chainId);
         let fromBlock: bigint | null = null;
         if (watermark) {
           fromBlock = watermark + 1n;
         }
         if (fromBlock === null) {
-          // If no watermark yet, use a conservative block offset fallback to avoid binary search
           const latestBlockNumber = await client.getBlockNumber();
-          const offset = BigInt(
-            PARLAY_RECONCILE_CONFIG.fallbackBlockLookback
-          );
+          const offset = BigInt(PARLAY_RECONCILE_CONFIG.fallbackBlockLookback);
           fromBlock =
             latestBlockNumber > offset ? latestBlockNumber - offset : 0n;
         }
-        // If caller specified a custom lookbackSeconds, optionally try timestamp search once
-        // but only if it would reduce the range compared to the fallback.
         if (!watermark && lookbackSecondsEffective > 0) {
           try {
             const ts = Math.floor(Date.now() / 1000) - lookbackSecondsEffective;
@@ -102,7 +91,6 @@ export class ParlayReconciler {
           }
         }
 
-        // Count parlays for this chain for metrics
         const parlayCount = await prisma.parlay.count({
           where: { chainId },
         });
@@ -111,106 +99,71 @@ export class ParlayReconciler {
         if (parlayCount === 0) continue;
 
         try {
-          const { scanned, inserted, updated, maxBlockSeen } =
-            await processParlayEventsForBlockRange(
-              chainId,
-              client,
-              fromBlock,
-              toBlock
-            );
-          totalScanned += scanned;
-          totalInserted += inserted;
-          totalUpdated += updated;
-          // Advance watermark only on successful processing for this chain.
+          // Use efficient single getLogs call like MarketEventReconciler
+          const logs = await client.getLogs({
+            address: PREDICTION_MARKET_CONTRACT_ADDRESS as `0x${string}`,
+            fromBlock,
+            toBlock,
+          });
+
+          totalScanned += logs.length;
+
+          if (logs.length > 0) {
+            const indexer = new PredictionMarketIndexer(chainId);
+
+            // Cache blocks to avoid repeated RPC calls (like MarketEventReconciler)
+            const blockCache = new Map<bigint, Block>();
+
+            for (const log of logs) {
+              try {
+                const logBlockNumber = log.blockNumber || 0n;
+
+                // Get block from cache or fetch once
+                let block = blockCache.get(logBlockNumber);
+                if (!block) {
+                  block = await client.getBlock({
+                    blockNumber: logBlockNumber,
+                  });
+                  blockCache.set(logBlockNumber, block);
+                }
+
+                // Process the log using existing indexer logic
+                // @ts-expect-error - accessing private method for reconciliation
+                await indexer.processLog(log, block);
+                totalUpdated += 1;
+              } catch (logError) {
+                console.error(
+                  `${PARLAY_RECONCILE_CONFIG.logPrefix} Error processing log:`,
+                  logError
+                );
+              }
+            }
+          }
           const newWatermark =
-            maxBlockSeen && maxBlockSeen > 0n
-              ? maxBlockSeen
-              : fromBlock > 0n
-                ? fromBlock - 1n
-                : 0n;
+            logs.length > 0 && logs[logs.length - 1].blockNumber
+              ? logs[logs.length - 1].blockNumber!
+              : toBlock === 'latest'
+                ? await client.getBlockNumber()
+                : BigInt(toBlock);
           await this.setWatermark(chainId, newWatermark);
         } catch (e) {
           console.error(
             `${PARLAY_RECONCILE_CONFIG.logPrefix} Failed processing batch for chain=${chainId}:`,
             e
           );
-          // Do not advance watermark on failure; next run will retry the same range
         }
       }
 
-      // Also update endsAt field for existing parlays
-      await this.reconcileEndsAtField();
-
       console.log(
-        `${PARLAY_RECONCILE_CONFIG.logPrefix} Run complete: chains=${chainIds.length}, parlays=${totalParlays}, scannedLogs=${totalScanned}, newParlays=${totalInserted}, updated=${totalUpdated}`
+        `${PARLAY_RECONCILE_CONFIG.logPrefix} Run complete: chains=${chainIds.length}, parlays=${totalParlays}, scannedLogs=${totalScanned}, newEvents=${totalInserted}, updated=${totalUpdated}`
       );
       await setStringParam(
         PARLAY_RECONCILE_IPC_KEYS.lastRunAt,
         new Date().toISOString()
       );
-      await setReconcilerStatus(
-        'idle',
-        'Parlay reconciliation completed'
-      );
+      await setReconcilerStatus('idle', 'Parlay reconciliation completed');
     } finally {
       this.isRunning = false;
     }
-  }
-
-
-  private async reconcileEndsAtField(): Promise<void> {
-    console.log(`${PARLAY_RECONCILE_CONFIG.logPrefix} Reconciling endsAt field`);
-
-    // Find parlays with null endsAt that have predictedOutcomes
-    const parlaysWithoutEndsAt = await prisma.parlay.findMany({
-      where: {
-        endsAt: null,
-        status: 'active', // Only update active parlays
-      },
-      take: PARLAY_RECONCILE_CONFIG.batchSize,
-    });
-
-    let endsAtUpdated = 0;
-    for (const parlay of parlaysWithoutEndsAt) {
-      try {
-        const outcomes = parlay.predictedOutcomes as unknown as {
-          conditionId: string;
-          prediction: boolean;
-        }[];
-
-        if (!outcomes || !Array.isArray(outcomes) || outcomes.length === 0) {
-          continue;
-        }
-
-        const conditionIds = outcomes.map((o) => o.conditionId);
-        const conditions = await prisma.condition.findMany({
-          where: { id: { in: conditionIds } },
-          select: { id: true, endTime: true },
-        });
-
-        if (conditions.length > 0) {
-          const endsAt = conditions.reduce(
-            (max, c) => (c.endTime > max ? c.endTime : max),
-            conditions[0].endTime
-          );
-
-          await prisma.parlay.update({
-            where: { id: parlay.id },
-            data: { endsAt },
-          });
-
-          endsAtUpdated++;
-        }
-      } catch (error) {
-        console.error(
-          `${PARLAY_RECONCILE_CONFIG.logPrefix} Error updating endsAt for parlay ${parlay.id}:`,
-          error
-        );
-      }
-    }
-
-    console.log(
-      `${PARLAY_RECONCILE_CONFIG.logPrefix} EndsAt reconciliation: processed ${parlaysWithoutEndsAt.length} parlays, updated ${endsAtUpdated}`
-    );
   }
 }

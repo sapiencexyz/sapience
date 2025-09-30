@@ -5,9 +5,8 @@ export const PARLAY_RECONCILE_CONFIG = {
     process.env.PARLAY_RECONCILE_LOOKBACK_SECONDS || '60'
   ),
   enableWatermark:
-    (
-      process.env.PARLAY_RECONCILE_ENABLE_WATERMARK || 'true'
-    ).toLowerCase() === 'true',
+    (process.env.PARLAY_RECONCILE_ENABLE_WATERMARK || 'true').toLowerCase() ===
+    'true',
   logPrefix: '[PARLAY_RECONCILER]',
   fallbackBlockLookback: Number(
     process.env.PARLAY_RECONCILE_FALLBACK_BLOCKS || '5000'
@@ -27,9 +26,7 @@ export async function getReconcilerStatus(): Promise<{
   description?: string;
   timestamp?: number;
 } | null> {
-  const raw = await getStringParam(
-    PARLAY_RECONCILE_IPC_KEYS.reconcilerStatus
-  );
+  const raw = await getStringParam(PARLAY_RECONCILE_IPC_KEYS.reconcilerStatus);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -47,8 +44,5 @@ export async function setReconcilerStatus(
     description,
     timestamp: Date.now(),
   });
-  await setStringParam(
-    PARLAY_RECONCILE_IPC_KEYS.reconcilerStatus,
-    payload
-  );
+  await setStringParam(PARLAY_RECONCILE_IPC_KEYS.reconcilerStatus, payload);
 }
