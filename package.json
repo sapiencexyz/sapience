@@ -20,7 +20,8 @@
     "start:reindex-market-group-factory": "pnpm --filter api run start:reindex-market-group-factory",
     "start:reindex-eas": "pnpm --filter api run start:reindex-eas",
     "start:reindex-accuracy": "pnpm --filter api run start:reindex-accuracy",
-    "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy"
+    "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy",
+    "start:reindex-prediction-market": "pnpm --filter api run start:reindex-prediction-market"
   },
   "keywords": [],
   "devDependencies": {

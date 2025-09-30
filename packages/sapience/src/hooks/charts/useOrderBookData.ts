@@ -36,6 +36,10 @@ export interface OrderBookLevel {
   rawTotal: number; // Raw numeric total
 }
 
+enum BidAsk {
+  ASK = 'ask',
+  BID = 'bid',
+}
 // Return type of the hook
 interface UsePoolOrderBookDataReturn {
   asks: OrderBookLevel[];
@@ -118,7 +122,7 @@ const derivePriceDecimals = (bucketSize: number | undefined): number => {
 // Build a fixed grid of bucket prices around a center price and aggregate sizes
 const aggregateTicksToGridLevels = (
   ticks: any[],
-  side: 'ask' | 'bid',
+  side: BidAsk,
   bucketSize: number,
   centerPrice: number,
   numBuckets: number,
@@ -136,7 +140,7 @@ const aggregateTicksToGridLevels = (
     if (!Number.isFinite(bucketSize) || bucketSize <= 0)
       return p.toFixed(decimals);
     const q = p / bucketSize;
-    const k = side === 'bid' ? Math.floor(q) : Math.ceil(q);
+    const k = side === BidAsk.BID ? Math.floor(q) : Math.ceil(q);
     const priceBucket = k * bucketSize;
     return priceBucket.toFixed(decimals);
   };
@@ -151,20 +155,39 @@ const aggregateTicksToGridLevels = (
     grouped.set(key, (grouped.get(key) ?? 0) + size);
   }
 
-  // Build the fixed grid of bucket prices
-  const firstAsk = Math.ceil(centerPrice / bucketSize) * bucketSize;
-  const askPrices: number[] = Array.from({ length: numBuckets }, (_, i) =>
-    Number((firstAsk + i * bucketSize).toFixed(decimals))
-  );
-  const firstBid = Math.floor(centerPrice / bucketSize) * bucketSize;
-  const bidPrices: number[] = Array.from({ length: numBuckets }, (_, i) =>
-    Number((firstBid - i * bucketSize).toFixed(decimals))
+  // Get sorted keys from grouped data
+  const sortedKeys = Array.from(grouped.keys()).sort(
+    (a, b) => Number(a) - Number(b)
   );
 
-  const prices = side === 'ask' ? askPrices : bidPrices;
+  // Filter and select buckets based on side
+  const selectedKeys: string[] = [];
+  let bucketsIncluded = 0;
+
+  if (side === BidAsk.ASK) {
+    // For asks: find keys >= centerPrice, sorted ascending
+    for (const key of sortedKeys) {
+      const price = Number(key);
+      if (price >= centerPrice && bucketsIncluded < numBuckets) {
+        selectedKeys.push(key);
+        bucketsIncluded++;
+      }
+    }
+  } else {
+    // For bids: find keys <= centerPrice, sorted descending
+    for (let i = sortedKeys.length - 1; i >= 0; i--) {
+      const key = sortedKeys[i];
+      const price = Number(key);
+      if (price <= centerPrice && bucketsIncluded < numBuckets) {
+        selectedKeys.push(key);
+        bucketsIncluded++;
+      }
+    }
+  }
+
   let cumulative = 0;
-  return prices.map((price) => {
-    const key = price.toFixed(decimals);
+  return selectedKeys.map((key) => {
+    const price = Number(key);
     const size = grouped.get(key) ?? 0;
     cumulative += size;
     return {
@@ -457,7 +480,7 @@ export function useOrderBookData({
 
           const bids: OrderBookLevel[] = aggregateTicksToGridLevels(
             rawBids,
-            'bid',
+            BidAsk.BID,
             bucketSize,
             lastPriceRaw,
             maxRowsPerSide,
@@ -470,7 +493,7 @@ export function useOrderBookData({
 
           const asks: OrderBookLevel[] = aggregateTicksToGridLevels(
             rawAsks,
-            'ask',
+            BidAsk.ASK,
             bucketSize,
             lastPriceRaw,
             maxRowsPerSide,
@@ -530,7 +553,7 @@ export function useOrderBookData({
 
     const bids: OrderBookLevel[] = aggregateTicksToGridLevels(
       rawBids,
-      'bid',
+      BidAsk.BID,
       bucketSize,
       lastPriceRaw,
       maxRowsPerSide,
@@ -543,7 +566,7 @@ export function useOrderBookData({
 
     const asks: OrderBookLevel[] = aggregateTicksToGridLevels(
       rawAsks,
-      'ask',
+      BidAsk.ASK,
       bucketSize,
       lastPriceRaw,
       maxRowsPerSide,

@@ -39,7 +39,7 @@ async function runCandleCacheBuilder(intervalSeconds: number) {
     await new Promise((resolve) => setTimeout(resolve, intervalSeconds * 1000));
   }
 }
-
+ 
 // Handle command line arguments
 async function handleWorkerCommands(args: string[]): Promise<boolean> {
   if (args.length <= 2) return false;
