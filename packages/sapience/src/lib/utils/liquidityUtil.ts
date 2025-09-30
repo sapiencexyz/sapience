@@ -93,15 +93,12 @@ function processTickDirection(
       previousTickProcessed.liquidityActive,
       JSBI.BigInt(currentInitializedTick.liquidityNet)
     );
-  } else if (
-    direction === Direction.DESC &&
-    JSBI.notEqual(previousTickProcessed.liquidityNet, JSBI.BigInt(0))
-  ) {
+  } else if (direction === Direction.DESC && currentInitializedTick) {
     // Liquidity is removed when crossing initialized ticks descendingly
     // We use the PREVIOUS tick's net liquidity change based on the formula
     currentTickProcessed.liquidityActive = JSBI.subtract(
       previousTickProcessed.liquidityActive,
-      previousTickProcessed.liquidityNet // Use previous tick's net liquidity
+      JSBI.BigInt(currentInitializedTick.liquidityNet) // Use previous tick's net liquidity
     );
   }
 
