@@ -6,7 +6,6 @@ import { app } from './app';
 import { createServer } from 'http';
 import { createAuctionWebSocketServer } from './auction/ws';
 import { createChatWebSocketServer } from './websocket/chat';
-import { createVaultQuotesWebSocketServer } from './websocket/vaultQuotes';
 import type { IncomingMessage } from 'http';
 import type { Socket } from 'net';
 import dotenv from 'dotenv';
@@ -64,7 +63,6 @@ const startServer = async () => {
   const auctionWsEnabled = process.env.ENABLE_AUCTION_WS !== 'false';
   const auctionWss = auctionWsEnabled ? createAuctionWebSocketServer() : null;
   const chatWss = createChatWebSocketServer();
-  const vaultQuotesWss = createVaultQuotesWebSocketServer();
 
   httpServer.on(
     'upgrade',
@@ -102,12 +100,7 @@ const startServer = async () => {
           });
           return;
         }
-        if (url.startsWith('/vault-quotes')) {
-          vaultQuotesWss.handleUpgrade(request, socket, head, (ws) => {
-            vaultQuotesWss.emit('connection', ws, request);
-          });
-          return;
-        }
+        // Deprecated: /vault-quotes is no longer used; multiplexed on /auction
       } catch {
         /* ignore */
       }
@@ -125,7 +118,6 @@ const startServer = async () => {
     console.log(`GraphQL endpoint available at /graphql`);
     if (auctionWsEnabled) console.log(`Auction WebSocket endpoint at /auction`);
     console.log(`Chat WebSocket endpoint at /chat`);
-    console.log(`Vault Quotes WebSocket endpoint at /vault-quotes`);
   });
 
   // Only set up Sentry error handling in production

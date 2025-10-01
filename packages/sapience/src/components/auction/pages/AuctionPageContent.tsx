@@ -1,13 +1,20 @@
 'use client';
 
 import type React from 'react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { decodeAbiParameters } from 'viem';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/ui/lib';
 import { SquareStack as SquareStackIcon, Zap } from 'lucide-react';
 import { Button } from '@sapience/ui/components/ui/button';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/ui/components/ui/tabs';
 import Link from 'next/link';
+import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
 import LoaderWithMessage from '~/components/shared/LoaderWithMessage';
 import {
   TransactionTimeCell,
@@ -18,9 +25,59 @@ import {
 import ParlayLegsList from '~/components/shared/ParlayLegsList';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
 
 const AuctionPageContent: React.FC = () => {
-  const { messages } = useAuctionRelayerFeed();
+  const TAB_VALUES = ['auctions', 'vault-quotes'] as const;
+  type TabValue = (typeof TAB_VALUES)[number];
+
+  const [tabValue, setTabValue] = useState<TabValue>('auctions');
+
+  const { messages } = useAuctionRelayerFeed({
+    observeVaultQuotes: tabValue === 'vault-quotes',
+  });
+
+  // Display real server broadcasts only; sort by time desc
+  const displayMessages = useMemo(() => {
+    return [...messages].sort((a, b) => Number(b.time) - Number(a.time));
+  }, [messages]);
+
+  // Group vault quote messages by vaultAddress so a single row updates from Pending → Value
+  const vaultQuoteRows = useMemo(() => {
+    try {
+      const relevant = displayMessages.filter(
+        (m) =>
+          m.type === 'vault_quote.requested' || m.type === 'vault_quote.update'
+      );
+      const map = new Map<
+        string,
+        { vaultAddress: string; time: number; quote?: string }
+      >();
+      for (const m of relevant) {
+        const vaultAddress = String((m as any)?.data?.vaultAddress ?? '');
+        if (!vaultAddress) continue;
+        const existing = map.get(vaultAddress);
+        const time = Number(m.time);
+        let quote = existing?.quote;
+        if (m.type === 'vault_quote.update') {
+          const v = (m as any)?.data?.vaultCollateralPerShare;
+          if (v != null) quote = String(v);
+        }
+        const latestTime = existing ? Math.max(existing.time, time) : time;
+        map.set(vaultAddress, { vaultAddress, time: latestTime, quote });
+      }
+      return Array.from(map.values()).sort((a, b) => b.time - a.time);
+    } catch {
+      return [] as Array<{
+        vaultAddress: string;
+        time: number;
+        quote?: string;
+      }>;
+    }
+  }, [displayMessages]);
+
+  // Removed ray-to-decimal formatting; relayer now sends decimal strings
 
   // Collect unique conditionIds from auction.started messages for enrichment
   const conditionIds = useMemo(() => {
@@ -144,6 +201,44 @@ const AuctionPageContent: React.FC = () => {
 
   const collateralAssetTicker = 'testUSDe';
 
+  const getHashValue = () => {
+    if (typeof window === 'undefined') return 'auctions' as TabValue;
+    const rawHash = window.location.hash?.replace('#', '').toLowerCase();
+    const desired = (TAB_VALUES as readonly string[]).includes(rawHash)
+      ? (rawHash as TabValue)
+      : ('auctions' as TabValue);
+    return desired;
+  };
+
+  useEffect(() => {
+    setTabValue(getHashValue());
+  }, []);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      setTabValue(getHashValue());
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('hashchange', onHashChange);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('hashchange', onHashChange);
+      }
+    };
+  }, []);
+
+  const handleTabChange = (value: string) => {
+    const nextValue = (TAB_VALUES as readonly string[]).includes(value)
+      ? (value as TabValue)
+      : ('auctions' as TabValue);
+    setTabValue(nextValue);
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
+      window.history.replaceState(null, '', url);
+    }
+  };
+
   function renderPredictionsCell(m: { type: string; data: any }) {
     try {
       if (m.type !== 'auction.started')
@@ -197,66 +292,83 @@ const AuctionPageContent: React.FC = () => {
   return (
     <div className="my-20 pt-1 px-3 md:px-6 lg:px-8 pr-4 md:pr-6 lg:pr-6">
       <div className="mx-auto w-full">
-        <div className="mt-3 mb-6 lg:mb-4 flex items-end justify-between">
-          <h1 className="text-xl font-medium inline-flex items-center gap-2">
-            <SquareStackIcon className="h-5 w-5" aria-hidden="true" />
-            <span>Parlay Auction Feed</span>
-          </h1>
-          <Link href="/feed">
-            <Button
-              variant="default"
-              size="xs"
-              className="h-7 px-2 text-xs whitespace-nowrap shrink-0 inline-flex items-center gap-2 lg:h-8 lg:px-3 lg:text-sm"
-            >
-              <Zap className="h-4 w-4" />
-              Live Activity
-            </Button>
-          </Link>
-        </div>
+        <Tabs
+          value={tabValue}
+          onValueChange={(v) => handleTabChange(String(v))}
+          className="w-full"
+        >
+          <div className="mt-3 mb-6 lg:mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <h1 className="text-xl font-medium inline-flex items-center gap-2">
+              <SquareStackIcon className="h-5 w-5" aria-hidden="true" />
+              <span>Parlay Auction Feed</span>
+            </h1>
+            <div className="flex items-center gap-3 md:gap-4 md:justify-end">
+              <TabsList size="sm">
+                <TabsTrigger size="sm" value="auctions">
+                  Parlay Auctions
+                </TabsTrigger>
+                <TabsTrigger size="sm" value="vault-quotes">
+                  Vault Quotes
+                </TabsTrigger>
+              </TabsList>
+              <Link href="/feed">
+                <Button
+                  variant="default"
+                  size="xs"
+                  className="h-7 px-2 text-xs whitespace-nowrap shrink-0 inline-flex items-center gap-2 lg:h-8 lg:px-3 lg:text-sm"
+                >
+                  <Zap className="h-4 w-4" />
+                  Live Activity
+                </Button>
+              </Link>
+            </div>
+          </div>
 
-        {messages.length === 0 ? (
-          <LoaderWithMessage
-            width={32}
-            height={32}
-            message="Listening for auctions..."
-            className="min-h-[calc(100dvh-16rem)] py-12"
-          />
-        ) : (
-          <div className="rounded border bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm [&>thead>tr>th:nth-child(2)]:w-[320px] [&>tbody>tr>td:nth-child(2)]:w-[320px] [&>tbody>tr>td]:align-middle">
-                <thead className="bg-muted/30 text-muted-foreground">
-                  <tr className="border-b">
-                    <th className="px-4 py-3 text-left align-middle font-medium">
-                      Time
-                    </th>
-                    <th className="px-4 py-3 text-left align-middle font-medium">
-                      Predictions
-                    </th>
-                    <th className="px-4 py-3 text-left align-middle font-medium">
-                      Verifier
-                    </th>
-                    <th className="px-4 py-3 text-left align-middle font-medium">
-                      Amount
-                    </th>
-                    <th className="px-4 py-3 text-left align-middle font-medium">
-                      Address
-                    </th>
-                    <th className="px-4 py-3 text-left align-middle font-medium"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {messages.map((m, idx) => {
-                    const isStarted = m.type === 'auction.started';
-                    const isBids = m.type === 'auction.bids';
-                    if (isBids) return null;
-                    return (
-                      <tr key={idx} className="border-b">
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <TransactionTimeCell tx={toUiTx(m)} />
-                        </td>
-                        {isStarted ? (
-                          <>
+          <TabsContent value="auctions">
+            {displayMessages.filter((m) => m.type === 'auction.started')
+              .length === 0 ? (
+              <div className="flex justify-center py-24">
+                <LoaderWithMessage
+                  width={32}
+                  height={32}
+                  message="Listening for messages..."
+                />
+              </div>
+            ) : (
+              <div className="rounded border bg-card">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm [&>thead>tr>th:nth-child(2)]:w-[320px] [&>tbody>tr>td:nth-child(2)]:w-[320px] [&>tbody>tr>td]:align-middle">
+                    <thead className="bg-muted/30 text-muted-foreground">
+                      <tr className="border-b">
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Time
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Predictions
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Verifier
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Amount
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Address
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayMessages
+                        .filter((m) => m.type === 'auction.started')
+                        .map((m, idx) => (
+                          <tr
+                            key={`started-${idx}`}
+                            className="border-b last:border-b-0"
+                          >
+                            <td className="px-4 py-3 whitespace-nowrap">
+                              <TransactionTimeCell tx={toUiTx(m)} />
+                            </td>
                             <td className="px-4 py-3">
                               {renderPredictionsCell(m)}
                             </td>
@@ -298,24 +410,100 @@ const AuctionPageContent: React.FC = () => {
                                 );
                               })()}
                             </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-4 py-3" colSpan={5}>
-                              <pre className="text-xs whitespace-pre-wrap break-words">
-                                {JSON.stringify(m.data ?? m, null, 2) ?? '—'}
-                              </pre>
-                            </td>
-                          </>
-                        )}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="vault-quotes">
+            {displayMessages.filter(
+              (m) =>
+                m.type === 'vault_quote.requested' ||
+                m.type === 'vault_quote.update'
+            ).length === 0 ? (
+              <div className="flex justify-center py-24">
+                <LoaderWithMessage
+                  width={32}
+                  height={32}
+                  message="Listening for messages..."
+                />
+              </div>
+            ) : (
+              <div className="rounded border bg-card">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm [&>thead>tr>th:nth-child(2)]:w-[320px] [&>tbody>tr>td:nth-child(2)]:w-[320px] [&>tbody>tr>td]:align-middle">
+                    <thead className="bg-muted/30 text-muted-foreground">
+                      <tr className="border-b">
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Time
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Vault
+                        </th>
+                        <th className="px-4 py-3 text-left align-middle font-medium">
+                          Share Value Quote
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                    </thead>
+                    <tbody>
+                      {vaultQuoteRows.map((row) => (
+                        <tr
+                          key={row.vaultAddress}
+                          className="border-b last:border-b-0"
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <TransactionTimeCell
+                              tx={toUiTx({
+                                time: row.time,
+                                type: 'vault_quote.update',
+                                data: {},
+                              })}
+                            />
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              {row.vaultAddress ? (
+                                <EnsAvatar
+                                  address={row.vaultAddress}
+                                  width={16}
+                                  height={16}
+                                />
+                              ) : null}
+                              <AddressDisplay
+                                address={row.vaultAddress}
+                                compact
+                                disablePopover
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {row.quote != null ? (
+                              <span className="whitespace-nowrap inline-flex items-center gap-1">
+                                <NumberDisplay
+                                  value={row.quote}
+                                  precision={6}
+                                />{' '}
+                                {collateralAssetTicker} per share
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">
+                                Pending…
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
 
 export type AuctionFeedMessage = {
   time: number; // ms epoch
@@ -10,27 +11,13 @@ export type AuctionFeedMessage = {
   data: unknown;
 };
 
-function toWsUrl(baseHttpUrl: string | null): string | null {
-  try {
-    if (!baseHttpUrl || baseHttpUrl.length === 0) {
-      const loc = typeof window !== 'undefined' ? window.location : undefined;
-      if (!loc) return null;
-      const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/auction`;
-    }
-    const u = new URL(baseHttpUrl);
-    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.search = '';
-    return u.toString();
-  } catch {
-    return null;
-  }
-}
-
-export function useAuctionRelayerFeed() {
+export function useAuctionRelayerFeed(options?: {
+  observeVaultQuotes?: boolean;
+}) {
+  const observeVaultQuotes = !!options?.observeVaultQuotes;
   const { apiBaseUrl } = useSettings();
   // Settings apiBaseUrl default already includes "/auction" path
-  const wsUrl = useMemo(() => toWsUrl(apiBaseUrl), [apiBaseUrl]);
+  const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
   const wsRef = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<AuctionFeedMessage[]>([]);
 
@@ -52,7 +39,14 @@ export function useAuctionRelayerFeed() {
       } catch (err) {
         console.error('[AUCTION-FEED] failed to log onopen', err);
       }
-      // No-op; we passively listen for public broadcasts like auction.started
+      // Opt-in to vault broadcast observer if requested
+      if (observeVaultQuotes) {
+        try {
+          ws.send(JSON.stringify({ type: 'vault_quote.observe' }));
+        } catch (err) {
+          console.error('[AUCTION-FEED] failed to send observe', err);
+        }
+      }
     };
     ws.onmessage = (ev) => {
       try {
@@ -135,13 +129,34 @@ export function useAuctionRelayerFeed() {
     return () => {
       closed = true;
       try {
+        if (ws.readyState === WebSocket.OPEN && observeVaultQuotes) {
+          ws.send(JSON.stringify({ type: 'vault_quote.unobserve' }));
+        }
         ws.close();
       } catch (err) {
         console.error('[AUCTION-FEED] failed to close websocket', err);
       }
       wsRef.current = null;
     };
-  }, [wsUrl]);
+  }, [wsUrl, observeVaultQuotes]);
+
+  // Handle dynamic toggling of observer after connection is established
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    if (ws.readyState !== WebSocket.OPEN) return;
+    try {
+      ws.send(
+        JSON.stringify({
+          type: observeVaultQuotes
+            ? 'vault_quote.observe'
+            : 'vault_quote.unobserve',
+        })
+      );
+    } catch (err) {
+      console.error('[AUCTION-FEED] failed to toggle observe', err);
+    }
+  }, [observeVaultQuotes]);
 
   return { messages };
 }

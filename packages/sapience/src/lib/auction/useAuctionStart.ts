@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
 
 export interface PredictedOutcomeInput {
   marketGroup: string; // address
@@ -37,25 +38,6 @@ export interface MintPredictionRequestData {
   refCode: `0x${string}`; // bytes32
 }
 
-function toWsUrl(baseHttpUrl: string | undefined): string | null {
-  try {
-    if (!baseHttpUrl || baseHttpUrl.length === 0) {
-      // Relative path
-      const loc = typeof window !== 'undefined' ? window.location : undefined;
-      if (!loc) return null;
-      const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/auction`;
-    }
-    const u = new URL(baseHttpUrl);
-    // Preserve any existing path from settings (which should already include /auction)
-    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.search = '';
-    return u.toString();
-  } catch {
-    return null;
-  }
-}
-
 function jsonStableStringify(value: unknown) {
   // Deep-stable stringify: sorts object keys at every level
   const serialize = (val: unknown): unknown => {
@@ -88,7 +70,7 @@ export function useAuctionStart() {
       return `${root}/auction`;
     }
   }, [apiBaseUrl]);
-  const wsUrl = useMemo(() => toWsUrl(apiBase || undefined), [apiBase]);
+  const wsUrl = useMemo(() => toAuctionWsUrl(apiBase || undefined), [apiBase]);
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);

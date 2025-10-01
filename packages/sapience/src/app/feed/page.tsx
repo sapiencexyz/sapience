@@ -349,14 +349,100 @@ export default function FeedPage() {
     return (
       <div className="relative min-h-screen">
         <SplineTopBackground />
-        <div className="mt-20 px-3 md:px-6 lg:px-8 pr-2 md:pr-5 lg:pr-6 relative">
+        <div className="my-20 pt-1 px-3 md:px-6 lg:px-8 pr-4 md:pr-6 lg:pr-6 relative">
           <div className="mx-auto w-full">
             {errorMessage ? (
               <div className="px-4 py-3 text-sm text-destructive">
                 {errorMessage}
               </div>
             ) : null}
-            <div className="flex items-center justify-center min-h-[calc(100vh-5rem)]">
+            <div className="mt-3 mb-6 xl:mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex items-end justify-between">
+                <h1 className="text-xl font-medium inline-flex items-center gap-2 shrink-0 whitespace-nowrap">
+                  <Zap className="h-5 w-5" aria-hidden="true" />
+                  <span className="whitespace-nowrap">Live Activity Feed</span>
+                </h1>
+                <Link href="/auction" className="xl:hidden">
+                  <Button
+                    variant="default"
+                    size="xs"
+                    className="h-7 px-2 text-xs whitespace-nowrap shrink-0 inline-flex items-center gap-2 lg:h-8 lg:px-3 lg:text-sm"
+                  >
+                    <SquareStackIcon className="h-4 w-4" />
+                    Parlay Auction
+                  </Button>
+                </Link>
+              </div>
+              <div className="flex items-end w-full xl:flex-1 min-w-0 gap-2 xl:gap-4 xl:justify-end">
+                <div className="grid grid-cols-1 gap-2 xl:gap-4 xl:grid-cols-3 xl:items-end w-full xl:max-w-[800px] min-w-0">
+                  <div className="px-0 lg:px-2 block xl:hidden text-xs text-muted-foreground">
+                    Filters
+                  </div>
+                  <div className="px-0 lg:px-0">
+                    <div className="relative">
+                      <Image
+                        src="/usde.svg"
+                        alt="USDe"
+                        width={20}
+                        height={20}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 h-5 w-5 z-10 opacity-90 pointer-events-none"
+                      />
+                      <Input
+                        inputMode="decimal"
+                        type="text"
+                        placeholder="Minimum amount"
+                        value={minAmountInput}
+                        onChange={(e) => {
+                          const v = e.target.value.replace(/[^0-9.]/g, '');
+                          const parts = v.split('.');
+                          const cleaned =
+                            parts.length > 2
+                              ? `${parts[0]}.${parts.slice(1).join('')}`
+                              : v;
+                          setMinAmountInput(cleaned);
+                        }}
+                        className="h-8 text-sm pr-20 pl-8 w-full"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs pointer-events-none">
+                        {primaryCollateralSymbol}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="px-0 lg:px-0">
+                    <div className="relative">
+                      <Search
+                        className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10 pointer-events-none"
+                        aria-hidden="true"
+                      />
+                      <Input
+                        placeholder="Search questions and positions"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-8 text-sm w-full pl-8"
+                      />
+                    </div>
+                  </div>
+                  <AddressFilter
+                    selectedAddress={address}
+                    onAddressChange={setAddress}
+                    placeholder="Filter by address or ENS"
+                    className="px-0 lg:pl-0 lg:pr-0"
+                    inputClassName="h-8 text-sm w-full"
+                  />
+                </div>
+                <Link href="/auction" className="hidden xl:block">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-8 whitespace-nowrap"
+                  >
+                    <SquareStackIcon className="h-4 w-4" />
+                    Parlay Auction
+                  </Button>
+                </Link>
+              </div>
+            </div>
+            <div className="flex items-center justify-center py-24">
               <LoaderWithMessage
                 width={32}
                 height={32}

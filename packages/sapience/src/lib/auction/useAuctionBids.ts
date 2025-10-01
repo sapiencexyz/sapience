@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
 
 export type AuctionBid = {
   auctionId: string;
@@ -11,26 +12,9 @@ export type AuctionBid = {
   takerSignature: string;
 };
 
-function toWsUrl(baseHttpUrl: string | null): string | null {
-  try {
-    if (!baseHttpUrl || baseHttpUrl.length === 0) {
-      const loc = typeof window !== 'undefined' ? window.location : undefined;
-      if (!loc) return null;
-      const proto = loc.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${loc.host}/auction`;
-    }
-    const u = new URL(baseHttpUrl);
-    u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-    u.search = '';
-    return u.toString();
-  } catch {
-    return null;
-  }
-}
-
 export function useAuctionBids(auctionId: string | null | undefined) {
   const { apiBaseUrl } = useSettings();
-  const wsUrl = useMemo(() => toWsUrl(apiBaseUrl), [apiBaseUrl]);
+  const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
   const wsRef = useRef<WebSocket | null>(null);
   const [bids, setBids] = useState<AuctionBid[]>([]);
 

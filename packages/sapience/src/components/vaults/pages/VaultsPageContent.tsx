@@ -10,8 +10,14 @@ import {
   TabsList,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from '@sapience/ui/components/ui/tooltip';
 import { useAccount } from 'wagmi';
 import { parseUnits } from 'viem';
+import { Vault as VaultIcon } from 'lucide-react';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 
@@ -52,10 +58,9 @@ const VaultsPageContent = () => {
     cancelWithdrawal,
     formatAssetAmount,
     formatSharesAmount,
-    formatUtilizationRate,
     minDeposit,
     allowance,
-    pricePerShareRay,
+    pricePerShare,
     vaultManager: _vaultManager,
     quoteSignatureValid,
   } = usePassiveLiquidityVault({
@@ -66,7 +71,7 @@ const VaultsPageContent = () => {
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  // No slippage; we rely on manager-provided vaultCollateralPerShare quote
+  // No slippage; we rely on manager-provided decimal pricePerShare quote
 
   // Derived validation
   const depositWei =
@@ -145,6 +150,17 @@ const VaultsPageContent = () => {
         }
         const stored = window.localStorage.getItem('sapience.vaults');
         setVaultsFeatureEnabled(stored === 'true');
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[VaultPage] feature flags', {
+            stored,
+            NEXT_PUBLIC_ENABLE_VAULTS: process.env.NEXT_PUBLIC_ENABLE_VAULTS,
+          });
+
+          console.debug('[VaultPage] inputs', {
+            VAULT_CHAIN_ID,
+            VAULT_ADDRESS,
+          });
+        }
       }
     } catch {
       setVaultsFeatureEnabled(false);
@@ -156,33 +172,49 @@ const VaultsPageContent = () => {
     if (!depositAmount || !assetDecimals) return 0n;
     try {
       const amountWei = parseUnits(depositAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (amountWei * 10n ** 18n) / pps;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return ppsScaled === 0n
+        ? 0n
+        : (amountWei * 10n ** BigInt(assetDecimals)) / ppsScaled;
     } catch {
       return 0n;
     }
-  }, [depositAmount, assetDecimals, pricePerShareRay]);
-
-  const minDepositShares = estDepositShares;
+  }, [depositAmount, assetDecimals, pricePerShare]);
 
   const estWithdrawAssets = useMemo(() => {
     if (!withdrawAmount || !assetDecimals) return 0n;
     try {
       const sharesWei = parseUnits(withdrawAmount, assetDecimals);
-      const pps =
-        pricePerShareRay && pricePerShareRay > 0n
-          ? pricePerShareRay
-          : 10n ** 18n;
-      return (sharesWei * pps) / 10n ** 18n;
+      const ppsScaled = parseUnits(
+        pricePerShare && pricePerShare !== '0' ? pricePerShare : '1',
+        assetDecimals
+      );
+      return (sharesWei * ppsScaled) / 10n ** BigInt(assetDecimals);
     } catch {
       return 0n;
     }
-  }, [withdrawAmount, assetDecimals, pricePerShareRay]);
+  }, [withdrawAmount, assetDecimals, pricePerShare]);
 
-  const minWithdrawAssets = estWithdrawAssets;
+  const withdrawSharesWei = useMemo(() => {
+    if (!withdrawAmount || !assetDecimals) return 0n;
+    try {
+      return parseUnits(withdrawAmount, assetDecimals);
+    } catch {
+      return 0n;
+    }
+  }, [withdrawAmount, assetDecimals]);
+
+  const withdrawExceedsShareBalance = useMemo(() => {
+    const balanceShares = userData?.balance ?? 0n;
+    try {
+      return withdrawSharesWei > balanceShares;
+    } catch {
+      return false;
+    }
+  }, [withdrawSharesWei, userData]);
 
   // Force light mode rendering for the iframe
   useEffect(() => {
@@ -220,9 +252,9 @@ const VaultsPageContent = () => {
         <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="deposit" className="space-y-4 mt-1">
+      <TabsContent value="deposit" className="space-y-2 mt-1">
         {/* Amount Input */}
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <div className="border border-input bg-background rounded-md px-3 py-3">
             <div className="flex items-center justify-between mb-0">
               <Input
@@ -232,23 +264,14 @@ const VaultsPageContent = () => {
                 className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
-                  testUSDe
-                </span>
+                <span className="text-lg text-muted-foreground">testUSDe</span>
               </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-0">
-              {depositAmount && (
-                <div className="text-right">
-                  Min Shares: {formatSharesAmount(minDepositShares)}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-0">
           <div className="flex items-center gap-2">
             <span>
               Balance: <NumberDisplay value={Number(shortWalletBalance)} />{' '}
@@ -263,15 +286,25 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          <div className="text-right">
-            Requested Shares: {formatSharesAmount(estDepositShares)} sapLP
-          </div>
+          {depositAmount &&
+          estDepositShares > 0n &&
+          ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+            <div className="text-right">
+              Requested Shares: {formatSharesAmount(estDepositShares)} sapLP
+            </div>
+          ) : (
+            (minDeposit ?? 0n) > 0n && (
+              <div className="text-right">
+                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)} testUSDe
+              </div>
+            )
+          )}
         </div>
 
         {/* Deposit Button */}
         <Button
           size="lg"
-          className="w-full text-base"
+          className="w-full text-base !mt-6"
           disabled={
             !isConnected ||
             !depositAmount ||
@@ -295,7 +328,7 @@ const VaultsPageContent = () => {
                   ? 'Invalid Quote Signature'
                   : requiresApproval
                     ? 'Approve & Deposit'
-                    : 'Deposit testUSDe'}
+                    : 'Submit Deposit'}
         </Button>
 
         {/* Pending Deposits list (boxes) below */}
@@ -333,9 +366,9 @@ const VaultsPageContent = () => {
           )}
       </TabsContent>
 
-      <TabsContent value="withdraw" className="space-y-4 mt-1">
+      <TabsContent value="withdraw" className="space-y-2 mt-1">
         {/* Amount Input */}
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           <div className="border border-input bg-background rounded-md px-3 py-3">
             <div className="flex items-center justify-between mb-0">
               <Input
@@ -345,23 +378,14 @@ const VaultsPageContent = () => {
                 className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground bg-muted/50 border border-border rounded px-2 py-0.5 leading-none">
-                  testUSDe
-                </span>
+                <span className="text-lg text-muted-foreground">testUSDe</span>
               </div>
-            </div>
-            <div className="text-xs text-muted-foreground mt-0">
-              {withdrawAmount && (
-                <div className="text-right">
-                  Min Assets: {formatAssetAmount(minWithdrawAssets)}
-                </div>
-              )}
             </div>
           </div>
         </div>
 
         {/* Balance and Requested row (outside input box) */}
-        <div className="flex items-center justify-between text-sm text-muted-foreground py-2">
+        <div className="flex items-center justify-between text-sm text-muted-foreground py-0">
           <div className="flex items-center gap-2">
             <span>
               Balance:{' '}
@@ -381,16 +405,20 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          <div className="text-right">
-            Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
-            testUSDe
-          </div>
+          {withdrawAmount &&
+            estWithdrawAssets > 0n &&
+            !withdrawExceedsShareBalance && (
+              <div className="text-right">
+                Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
+                testUSDe
+              </div>
+            )}
         </div>
 
         {/* Withdraw Button */}
         <Button
           size="lg"
-          className="w-full text-base"
+          className="w-full text-base !mt-6"
           disabled={
             !isConnected ||
             !withdrawAmount ||
@@ -456,10 +484,23 @@ const VaultsPageContent = () => {
       </div>
 
       {/* Main Content */}
-      <div className="container max-w-[750px] mx-auto px-4 pt-32 pb-12 relative z-10">
-        <h1 className="text-3xl md:text-5xl font-heading font-normal mb-6 md:mb-12">
-          Vaults
-        </h1>
+      <div className="container max-w-[600px] mx-auto px-4 pt-32 pb-12 relative z-10">
+        <div className="mb-5 md:mb-10 flex items-center justify-between">
+          <h1 className="text-3xl md:text-5xl font-heading font-normal">
+            Vaults
+          </h1>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex pointer-events-auto" tabIndex={0}>
+                <Button size="sm" disabled aria-label="Coming soon">
+                  <VaultIcon className="h-8 w-8" aria-hidden="true" />
+                  Deploy Vault
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Coming soon</TooltipContent>
+          </Tooltip>
+        </div>
 
         <div className="grid grid-cols-1 gap-8">
           {/* Vault */}
@@ -515,33 +556,6 @@ const VaultsPageContent = () => {
                         <h3 className="text-2xl font-medium">
                           Parlay Liquidity Vault
                         </h3>
-                        {vaultData && (
-                          <div className="mt-2 text-base text-muted-foreground">
-                            Utilization:{' '}
-                            {formatUtilizationRate(
-                              vaultData?.utilizationRate ?? 0n
-                            )}
-                            % (Max.{' '}
-                            {Math.round(
-                              Number(vaultData?.maxUtilizationRate ?? 0n) / 100
-                            )}
-                            %)
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-muted-foreground">
-                          Your Deposits
-                        </div>
-                        <div className="text-lg font-medium">
-                          {isLoadingUserData
-                            ? '...'
-                            : userData
-                              ? formatSharesAmount(userData.balance)
-                              : '0.00'}{' '}
-                          testUSDe
-                        </div>
-                        {/* Removed Withdrawal Delay and Pending lines per design update */}
                       </div>
                     </div>
 
