@@ -23,8 +23,14 @@ const config: StorybookConfig = {
     name: "@storybook/react-webpack5",
     options: {},
   },
-  typescript: {
-    check: true,
+  core: {
+    builder: {
+      name: "@storybook/builder-webpack5",
+      options: {
+        fsCache: true,
+        lazyCompilation: true,
+      },
+    },
   },
 };
 export default config;

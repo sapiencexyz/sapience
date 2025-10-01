@@ -313,23 +313,8 @@ export default function BetslipParlayForm({
                   </TooltipProvider>
                 </div>
                 {showNoBidsHint ? (
-                  <div className="text-xs text-muted-foreground mt-2">
-                    <span>If no bids appear, you can place a </span>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="text-primary underline"
-                          >
-                            limit order
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Coming Soon</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  <div className="text-xs text-muted-foreground font-medium mt-2">
+                    Some combinations may not receive bids
                   </div>
                 ) : null}
               </div>
