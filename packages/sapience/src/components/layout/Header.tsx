@@ -62,11 +62,8 @@ const NavLinks = ({
   onClose,
 }: NavLinksProps) => {
   const pathname = usePathname();
+  const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { setOpenMobile, isMobile } = useSidebar();
-  const { ready } = usePrivy();
-  const { wallets } = useWallets();
-  const connectedWallet = wallets[0];
-  const { hasConnectedWallet } = useConnectedWallet();
   const linkClass = isMobileProp
     ? 'sc-heading justify-start rounded-full'
     : 'sc-heading justify-start rounded-full';
@@ -169,11 +166,10 @@ const NavLinks = ({
 };
 
 const Header = () => {
-  const { ready, logout } = usePrivy();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { wallets } = useWallets();
-  const connectedWallet = wallets[0];
-  const { hasConnectedWallet } = useConnectedWallet();
+  const { logout } = usePrivy();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const { data: ensName } = useEnsName(connectedWallet?.address || '');
   const { disconnect } = useDisconnect();
   const [isScrolled, setIsScrolled] = useState(false);
