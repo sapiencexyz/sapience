@@ -113,6 +113,16 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
         embeddedWallets: {
           createOnLogin: 'users-without-wallets',
         },
+        appearance: {
+          walletChainType: 'ethereum-only',
+          walletList: [
+            'rabby_wallet',
+            'metamask',
+            'coinbase_wallet',
+            'rainbow',
+            'safe',
+          ],
+        },
       }}
     >
       <ThemeProvider
