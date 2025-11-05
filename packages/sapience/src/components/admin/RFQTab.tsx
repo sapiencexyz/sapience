@@ -52,6 +52,8 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
+import { CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL } from './constants';
+import { getChainIdFromLocalStorage } from './utils';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useMarketGroups';
@@ -109,27 +111,19 @@ const RFQTab = ({
   const { toast } = useToast();
   const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
-  
-  // Read chainId from localStorage
-  const getChainIdFromLocalStorage = (): number => {
-    if (typeof window === 'undefined') return 42161;
-    try {
-      const stored = window.localStorage.getItem('sapience.settings.chainId');
-      return stored ? parseInt(stored, 10) : 42161;
-    } catch {
-      return 42161;
-    }
-  };
 
   const currentChainId = getChainIdFromLocalStorage();
-  const currentChainName = currentChainId === 5064014 ? 'Ethereal' : 'Arbitrum';
+  const currentChainName =
+    currentChainId === CHAIN_ID_ETHEREAL ? 'Ethereal' : 'Arbitrum';
 
-
-  const { data: conditions, isLoading, refetch } = useConditions({
+  const {
+    data: conditions,
+    isLoading,
+    refetch,
+  } = useConditions({
     take: 500,
     chainId: currentChainId,
   });
-
 
   const [question, setQuestion] = useState('');
   const [shortName, setShortName] = useState('');
@@ -140,7 +134,9 @@ const RFQTab = ({
   const [description, setDescription] = useState('');
   const [similarMarketsText, setSimilarMarketsText] = useState('');
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
-  const [editingChainId, setEditingChainId] = useState<number | undefined>(undefined);
+  const [editingChainId, setEditingChainId] = useState<number | undefined>(
+    undefined
+  );
   const [filter, setFilter] = useState<ConditionFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -339,6 +335,7 @@ const RFQTab = ({
               claimStatement: row.claimStatement.trim(),
               description: row.description.trim(),
               similarMarkets: row.parsedSimilarMarkets || [],
+              chainId: currentChainId,
             };
 
             await postJson<RFQRow>('/conditions', body);
@@ -565,7 +562,8 @@ const RFQTab = ({
         size: 100,
         cell: ({ getValue }) => {
           const chainId = getValue() as number;
-          const chainName = chainId === 5064014 ? 'Ethereal' : 'Arbitrum';
+          const chainName =
+            chainId === CHAIN_ID_ETHEREAL ? 'Ethereal' : 'Arbitrum';
           return (
             <Badge variant="outline" className="whitespace-nowrap">
               {chainName}
@@ -654,7 +652,7 @@ const RFQTab = ({
                 size="sm"
                 onClick={() => {
                   setEditingId(id);
-                  setEditingChainId(original.chainId ?? 42161);
+                  setEditingChainId(original.chainId ?? CHAIN_ID_ARBITRUM);
                   setQuestion(original.question || '');
                   setShortName(original.shortName || '');
                   setCategorySlug(original.category?.slug || '');
@@ -713,7 +711,8 @@ const RFQTab = ({
         const isUpcoming = !!(row.endTime && row.endTime > now);
 
         if (filter === 'needs-settlement') {
-          passesSettlementFilter = isPastEnd && row._hasData && row._isSettled === false;
+          passesSettlementFilter =
+            isPastEnd && row._hasData && row._isSettled === false;
         } else if (filter === 'upcoming') {
           passesSettlementFilter = isUpcoming;
         } else if (filter === 'settled') {
@@ -803,7 +802,7 @@ const RFQTab = ({
               <SelectItem value="settled">Settled</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <span className="text-sm font-medium">Category:</span>
           <Select
             value={categoryFilter}
@@ -821,7 +820,7 @@ const RFQTab = ({
               ))}
             </SelectContent>
           </Select>
-          
+
           {(filter !== 'all' || categoryFilter !== 'all') && (
             <span className="text-sm text-muted-foreground">
               ({rows.length} {rows.length === 1 ? 'condition' : 'conditions'})
@@ -1059,7 +1058,7 @@ const RFQTab = ({
               <Input
                 value={
                   editingId
-                    ? editingChainId === 5064014
+                    ? editingChainId === CHAIN_ID_ETHEREAL
                       ? 'Ethereal'
                       : 'Arbitrum'
                     : currentChainName

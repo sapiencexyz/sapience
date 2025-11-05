@@ -723,7 +723,7 @@ const Admin = () => {
             if (typeof window === 'undefined') return;
             const nextHash = next === 'liquid' ? '#liquid' : '#rfq';
             if (window.location.hash !== nextHash) {
-                window.location.hash = nextHash;
+              window.location.hash = nextHash;
             }
           } catch {
             return;

@@ -50,8 +50,7 @@ export const useConditions = (opts?: {
   const take = opts?.take ?? 50;
   const skip = opts?.skip ?? 0;
   const chainId = opts?.chainId;
-  
-  
+
   return useQuery<ConditionType[], Error>({
     queryKey: ['conditions', take, skip, chainId],
     queryFn: async (): Promise<ConditionType[]> => {
@@ -61,11 +60,14 @@ export const useConditions = (opts?: {
         skip,
         ...(chainId !== undefined ? { chainId } : {}),
       };
-      
+
       console.log('[useConditions] GraphQL variables:', variables);
-      
-      const data = await graphqlRequest<ConditionsQueryResult>(GET_CONDITIONS, variables);
-      
+
+      const data = await graphqlRequest<ConditionsQueryResult>(
+        GET_CONDITIONS,
+        variables
+      );
+
       return data.conditions ?? [];
     },
   });
