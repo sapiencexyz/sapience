@@ -459,33 +459,21 @@ const Admin = () => {
   );
   const [adminError, setAdminError] = useState<string | null>(null);
   const [isEtherealChain, setIsEtherealChain] = useState(false);
-
-  // Determine initial tab based on chain ID
-  const getInitialTab = (): 'liquid' | 'rfq' => {
-    if (typeof window === 'undefined') return 'liquid';
-    try {
-      const chainId = window.localStorage.getItem('sapience.settings.chainId');
-      return chainId === CHAIN_ID_ETHEREAL ? 'rfq' : 'liquid';
-    } catch {
-      return 'liquid';
-    }
-  };
-
-  const [activeTab, setActiveTab] = useState<'liquid' | 'rfq'>(getInitialTab());
+  // Initialize with safe default to avoid hydration mismatch
+  const [activeTab, setActiveTab] = useState<'liquid' | 'rfq'>('liquid');
 
   // Check if we're on Ethereal chain and update state
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-
     const checkChainId = () => {
       try {
+        if (typeof window === 'undefined') return;
         const chainId = window.localStorage.getItem(
           'sapience.settings.chainId'
         );
         const isEthereal = chainId === CHAIN_ID_ETHEREAL;
         setIsEtherealChain(isEthereal);
       } catch {
-        // no-op
+        return;
       }
     };
 
@@ -543,6 +531,7 @@ const Admin = () => {
     };
 
     const applyHashToTab = () => {
+      if (typeof window === 'undefined') return;
       setActiveTab(hashToTab(window.location.hash));
     };
 
@@ -550,13 +539,19 @@ const Admin = () => {
     if (window.location.hash) {
       applyHashToTab();
     } else {
-      const defaultHash = '#liquid';
-      if (window.location.hash !== defaultHash) {
-        window.history.replaceState(
-          null,
-          '',
-          `${window.location.pathname}${defaultHash}`
-        );
+      try {
+        const defaultHash = '#liquid';
+        if (window.location.hash !== defaultHash) {
+          window.history.replaceState(
+            null,
+            '',
+            `${window.location.pathname}${defaultHash}`
+          );
+          // Manually sync since replaceState doesn't trigger hashchange
+          applyHashToTab();
+        }
+      } catch {
+        return;
       }
     }
 
@@ -724,11 +719,14 @@ const Admin = () => {
           }
           const next = v as 'liquid' | 'rfq';
           setActiveTab(next);
-          if (typeof window !== 'undefined') {
+          try {
+            if (typeof window === 'undefined') return;
             const nextHash = next === 'liquid' ? '#liquid' : '#rfq';
             if (window.location.hash !== nextHash) {
-              window.location.hash = nextHash;
+                window.location.hash = nextHash;
             }
+          } catch {
+            return;
           }
         }}
         className="w-full"

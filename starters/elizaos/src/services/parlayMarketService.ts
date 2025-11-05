@@ -27,7 +27,7 @@ export class ParlayMarketService {
       elizaLogger.info("[ParlayMarket] Fetching parlay conditions from GraphQL API");
       
       const { sapienceGraphql } = getApiEndpoints();
-      const query = `
+      const query =  /* GraphQL */ `
         query Conditions($take: Int, $skip: Int) {
           conditions(orderBy: { createdAt: desc }, take: $take, skip: $skip) {
             id
