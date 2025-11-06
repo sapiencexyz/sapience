@@ -6,7 +6,7 @@ import { CHAIN_ID_ARBITRUM } from '~/components/admin/constants';
  * - Avoiding hydration errors by reading in useEffect
  * - Monitoring changes across tabs/windows via storage events
  * - Monitoring changes in the same tab via custom events
- * 
+ *
  * @returns The current chainId from localStorage, defaults to CHAIN_ID_ARBITRUM
  */
 export const useChainIdFromLocalStorage = (): number => {
@@ -42,11 +42,17 @@ export const useChainIdFromLocalStorage = (): number => {
       readChainId();
     };
 
-    window.addEventListener('localStorageChange', handleCustomStorageChange as EventListener);
+    window.addEventListener(
+      'localStorageChange',
+      handleCustomStorageChange as EventListener
+    );
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('localStorageChange', handleCustomStorageChange as EventListener);
+      window.removeEventListener(
+        'localStorageChange',
+        handleCustomStorageChange as EventListener
+      );
     };
   }, []);
 

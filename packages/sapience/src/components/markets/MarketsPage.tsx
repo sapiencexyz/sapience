@@ -8,15 +8,16 @@ import dynamic from 'next/dynamic'; // Import dynamic
 import { useSearchParams, useRouter } from 'next/navigation';
 import * as React from 'react';
 import { Tabs, TabsTrigger } from '@sapience/sdk/ui/components/ui/tabs';
-import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-
 import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import { SearchBar } from '@sapience/sdk/ui';
+import { useEffect } from 'react';
 import ParlayConditionCard from './ParlayConditionCard';
+
 import MarketCard from './MarketCard';
 import MarketGroupsRow from './MarketGroupsRow';
 import ConditionRow from './ConditionRow';
 import FocusAreaFilter from './FocusAreaFilter';
+import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import {
   useEnrichedMarketGroups,
   useCategories,
@@ -32,7 +33,6 @@ import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
 import SuggestedBetslips from '~/components/markets/SuggestedBetslips';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { useEffect } from 'react';
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -101,8 +101,11 @@ const formatEndDate = (timestamp: number): string => {
 
 const MarketsPage = () => {
   // Use the new hook and update variable names
-  const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups, refetch: refetchMarketGroups } =
-    useEnrichedMarketGroups();
+  const {
+    data: enrichedMarketGroups,
+    isLoading: isLoadingMarketGroups,
+    refetch: refetchMarketGroups,
+  } = useEnrichedMarketGroups();
   const { data: categories, isLoading: isLoadingCategories } = useCategories();
 
   const searchParams = useSearchParams();
