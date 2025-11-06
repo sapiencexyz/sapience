@@ -31,6 +31,8 @@ import type { MarketGroupClassification } from '~/lib/types'; // Added import
 import { getYAxisConfig, getMarketHeaderQuestion } from '~/lib/utils/util';
 import Betslip from '~/components/markets/Betslip';
 import SuggestedBetslips from '~/components/markets/SuggestedBetslips';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { useEffect } from 'react';
 
 // Custom hook for debouncing values
 function useDebounce<T>(value: T, delay: number): T {
@@ -99,7 +101,7 @@ const formatEndDate = (timestamp: number): string => {
 
 const MarketsPage = () => {
   // Use the new hook and update variable names
-  const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups } =
+  const { data: enrichedMarketGroups, isLoading: isLoadingMarketGroups, refetch: refetchMarketGroups } =
     useEnrichedMarketGroups();
   const { data: categories, isLoading: isLoadingCategories } = useCategories();
 
@@ -167,9 +169,19 @@ const MarketsPage = () => {
     }
   };
 
+  // Read chainId from localStorage with event monitoring
+  const chainId = useChainIdFromLocalStorage();
+
   // RFQ Conditions via GraphQL
   const { data: allConditions = [], isLoading: isLoadingConditions } =
-    useConditions({ take: 200 });
+    useConditions({ take: 200, chainId });
+
+  // Refetch data when chainId changes
+  useEffect(() => {
+    // useConditions will automatically refetch when chainId changes (it's in the queryKey)
+    // But we need to manually refetch marketGroups since chainId is not in its queryKey
+    refetchMarketGroups();
+  }, [chainId, refetchMarketGroups]);
 
   // State for text filter
   const [searchTerm, setSearchTerm] = React.useState('');
