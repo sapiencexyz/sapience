@@ -913,13 +913,16 @@ export default function UserParlaysTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          if (row.original.status === 'lost') {
+          if (
+            row.original.status === 'lost' ||
+            rowKeyToResolution.get(row.original.positionId)?.state === 'lost'
+          ) {
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
                   To Win
                 </div>
-                <span className="text-muted-foreground">Parlay Lost</span>
+                <span className="text-muted-foreground">Wager Lost</span>
               </div>
             );
           }
@@ -977,8 +980,11 @@ export default function UserParlaysTable({
         cell: ({ row }) => {
           const symbol = 'testUSDe';
           const isClosed = row.original.status !== 'active';
+          const lostParlayUnclaimed =
+            row.original.status === 'active' &&
+            rowKeyToResolution.get(row.original.positionId)?.state === 'lost';
 
-          if (!isClosed) {
+          if (!isClosed && !lostParlayUnclaimed) {
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
@@ -989,9 +995,6 @@ export default function UserParlaysTable({
             );
           }
 
-          const pnlValue = Number(
-            formatEther(BigInt(row.original.userPnL || '0'))
-          );
           const viewerWagerWei =
             row.original.addressRole === 'maker'
               ? (row.original.makerCollateralWei ?? 0n)
@@ -1001,6 +1004,11 @@ export default function UserParlaysTable({
                   row.original.takerCollateralWei ??
                   0n);
           const viewerWager = Number(formatEther(viewerWagerWei));
+
+          const pnlValue = lostParlayUnclaimed
+            ? -viewerWager
+            : Number(formatEther(BigInt(row.original.userPnL || '0')));
+
           const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
 
           return (
@@ -1096,7 +1104,7 @@ export default function UserParlaysTable({
                   if (res.state === 'lost') {
                     return (
                       <Button size="sm" variant="outline" disabled>
-                        Parlay Lost
+                        Wager Lost
                       </Button>
                     );
                   }
@@ -1160,7 +1168,7 @@ export default function UserParlaysTable({
                 )}
               {row.original.status === 'lost' && (
                 <Button size="sm" variant="outline" disabled>
-                  Parlay Lost
+                  Wager Lost
                 </Button>
               )}
               {(() => {
