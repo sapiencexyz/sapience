@@ -65,6 +65,43 @@ const PREDICTION_MARKET_ABI = [
       { name: 'refCode', type: 'bytes32', indexed: false },
     ],
   },
+  {
+    type: 'event',
+    name: 'OrderPlaced',
+    inputs: [
+      { name: 'maker', type: 'address', indexed: true },
+      { name: 'orderId', type: 'uint256', indexed: true },
+      { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
+      { name: 'resolver', type: 'address', indexed: false },
+      { name: 'makerCollateral', type: 'uint256', indexed: false },
+      { name: 'takerCollateral', type: 'uint256', indexed: false },
+      { name: 'refCode', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderFilled',
+    inputs: [
+      { name: 'orderId', type: 'uint256', indexed: true },
+      { name: 'maker', type: 'address', indexed: true },
+      { name: 'taker', type: 'address', indexed: true },
+      { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
+      { name: 'makerCollateral', type: 'uint256', indexed: false },
+      { name: 'takerCollateral', type: 'uint256', indexed: false },
+      { name: 'refCode', type: 'bytes32', indexed: false },
+    ],
+  },
+  {
+    type: 'event',
+    name: 'OrderCancelled',
+    inputs: [
+      { name: 'orderId', type: 'uint256', indexed: true },
+      { name: 'maker', type: 'address', indexed: true },
+      { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
+      { name: 'makerCollateral', type: 'uint256', indexed: false },
+      { name: 'takerCollateral', type: 'uint256', indexed: false },
+    ],
+  },
 ] as const;
 
 // (no read ABI needed with on-event decoding)
@@ -98,6 +135,34 @@ interface PredictionConsolidatedEvent {
   takerNftTokenId: bigint;
   totalCollateral: bigint;
   refCode: string;
+}
+
+interface OrderPlacedEvent {
+  maker: string;
+  orderId: bigint;
+  encodedPredictedOutcomes: `0x${string}`;
+  resolver: string;
+  makerCollateral: bigint;
+  takerCollateral: bigint;
+  refCode: string;
+}
+
+interface OrderFilledEvent {
+  orderId: bigint;
+  maker: string;
+  taker: string;
+  encodedPredictedOutcomes: `0x${string}`;
+  makerCollateral: bigint;
+  takerCollateral: bigint;
+  refCode: string;
+}
+
+interface OrderCancelledEvent {
+  orderId: bigint;
+  maker: string;
+  encodedPredictedOutcomes: `0x${string}`;
+  makerCollateral: bigint;
+  takerCollateral: bigint;
 }
 
 class PredictionMarketIndexer implements IResourcePriceIndexer {
@@ -340,6 +405,19 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       const predictionConsolidatedTopic = keccak256(
         toHex('PredictionConsolidated(uint256,uint256,uint256,bytes32)')
       );
+      const orderPlacedTopic = keccak256(
+        toHex(
+          'OrderPlaced(address,uint256,bytes,address,uint256,uint256,bytes32)'
+        )
+      );
+      const orderFilledTopic = keccak256(
+        toHex(
+          'OrderFilled(uint256,address,address,bytes,uint256,uint256,bytes32)'
+        )
+      );
+      const orderCancelledTopic = keccak256(
+        toHex('OrderCancelled(uint256,address,bytes,uint256,uint256)')
+      );
 
       if (log.topics[0] === predictionMintedTopic) {
         await this.processPredictionMinted(log, block);
@@ -347,6 +425,12 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
         await this.processPredictionBurned(log, block);
       } else if (log.topics[0] === predictionConsolidatedTopic) {
         await this.processPredictionConsolidated(log, block);
+      } else if (log.topics[0] === orderPlacedTopic) {
+        await this.processOrderPlaced(log, block);
+      } else if (log.topics[0] === orderFilledTopic) {
+        await this.processOrderFilled(log, block);
+      } else if (log.topics[0] === orderCancelledTopic) {
+        await this.processOrderCancelled(log, block);
       }
     } catch (error) {
       console.error('[PredictionMarketIndexer] Error processing log:', error);
@@ -709,6 +793,326 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
     } catch (error) {
       console.error(
         '[PredictionMarketIndexer] Error processing PredictionConsolidated:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
+  private async processOrderPlaced(log: Log, block: Block): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: PREDICTION_MARKET_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: OrderPlacedEvent };
+
+      const eventData = {
+        eventType: 'OrderPlaced',
+        maker: decoded.args.maker,
+        orderId: decoded.args.orderId.toString(),
+        resolver: decoded.args.resolver,
+        makerCollateral: decoded.args.makerCollateral.toString(),
+        takerCollateral: decoded.args.takerCollateral.toString(),
+        refCode: decoded.args.refCode,
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        timestamp: Number(block.timestamp),
+      };
+
+      const orderPlacedKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingOrderPlaced = await prisma.event.findFirst({
+        where: {
+          transactionHash: orderPlacedKey.transactionHash,
+          blockNumber: orderPlacedKey.blockNumber,
+          logIndex: orderPlacedKey.logIndex,
+          marketGroupId: null,
+        },
+      });
+
+      if (existingOrderPlaced) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate OrderPlaced event tx=${orderPlacedKey.transactionHash} block=${orderPlacedKey.blockNumber} logIndex=${orderPlacedKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+          marketGroupId: null,
+        },
+      });
+
+      const [outcomes] = decodeAbiParameters(
+        [
+          {
+            type: 'tuple[]',
+            components: [{ type: 'bytes32' }, { type: 'bool' }],
+          },
+        ],
+        decoded.args.encodedPredictedOutcomes
+      ) as unknown as [[`0x${string}`, boolean][]];
+      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+        conditionId: marketId,
+        prediction,
+      }));
+
+      try {
+        await prisma.limitOrder.upsert({
+          where: {
+            chainId_marketAddress_orderId: {
+              chainId: this.chainId,
+              marketAddress: log.address.toLowerCase(),
+              orderId: eventData.orderId,
+            },
+          },
+          create: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
+            orderId: eventData.orderId,
+            maker: eventData.maker.toLowerCase(),
+            resolver: eventData.resolver.toLowerCase(),
+            makerCollateral: eventData.makerCollateral,
+            takerCollateral: eventData.takerCollateral,
+            refCode: eventData.refCode,
+            status: 'pending',
+            placedAt: Number(block.timestamp),
+            placedTxHash: log.transactionHash || '',
+            predictedOutcomes: predictedOutcomes as unknown as object,
+          },
+          update: {
+            maker: eventData.maker.toLowerCase(),
+            resolver: eventData.resolver.toLowerCase(),
+            makerCollateral: eventData.makerCollateral,
+            takerCollateral: eventData.takerCollateral,
+            refCode: eventData.refCode,
+            placedAt: Number(block.timestamp),
+            placedTxHash: log.transactionHash || '',
+            predictedOutcomes: predictedOutcomes as unknown as object,
+          },
+        });
+      } catch (orderError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to create LimitOrder:',
+          orderError
+        );
+      }
+
+      console.log(
+        `[PredictionMarketIndexer] Processed OrderPlaced: orderId=${eventData.orderId}, maker=${eventData.maker}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing OrderPlaced:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
+  private async processOrderFilled(log: Log, block: Block): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: PREDICTION_MARKET_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: OrderFilledEvent };
+
+      const eventData = {
+        eventType: 'OrderFilled',
+        orderId: decoded.args.orderId.toString(),
+        maker: decoded.args.maker,
+        taker: decoded.args.taker,
+        makerCollateral: decoded.args.makerCollateral.toString(),
+        takerCollateral: decoded.args.takerCollateral.toString(),
+        refCode: decoded.args.refCode,
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        timestamp: Number(block.timestamp),
+      };
+
+      // Skip duplicates
+      const orderFilledKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingOrderFilled = await prisma.event.findFirst({
+        where: {
+          transactionHash: orderFilledKey.transactionHash,
+          blockNumber: orderFilledKey.blockNumber,
+          logIndex: orderFilledKey.logIndex,
+          marketGroupId: null,
+        },
+      });
+
+      if (existingOrderFilled) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate OrderFilled event tx=${orderFilledKey.transactionHash} block=${orderFilledKey.blockNumber} logIndex=${orderFilledKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+          marketGroupId: null,
+        },
+      });
+
+      try {
+        const order = await prisma.limitOrder.findUnique({
+          where: {
+            chainId_marketAddress_orderId: {
+              chainId: this.chainId,
+              marketAddress: log.address.toLowerCase(),
+              orderId: eventData.orderId,
+            },
+          },
+        });
+
+        if (order) {
+          await prisma.limitOrder.update({
+            where: { id: order.id },
+            data: {
+              status: 'filled',
+              taker: eventData.taker.toLowerCase(),
+              filledAt: Number(block.timestamp),
+              filledTxHash: log.transactionHash || '',
+            },
+          });
+        } else {
+          console.warn(
+            `[PredictionMarketIndexer] OrderFilled but no matching LimitOrder found for orderId=${eventData.orderId}`
+          );
+        }
+      } catch (orderError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to update LimitOrder on fill:',
+          orderError
+        );
+      }
+
+      console.log(
+        `[PredictionMarketIndexer] Processed OrderFilled: orderId=${eventData.orderId}, maker=${eventData.maker}, taker=${eventData.taker}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing OrderFilled:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
+  private async processOrderCancelled(log: Log, block: Block): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: PREDICTION_MARKET_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: OrderCancelledEvent };
+
+      const eventData = {
+        eventType: 'OrderCancelled',
+        orderId: decoded.args.orderId.toString(),
+        maker: decoded.args.maker,
+        makerCollateral: decoded.args.makerCollateral.toString(),
+        takerCollateral: decoded.args.takerCollateral.toString(),
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        timestamp: Number(block.timestamp),
+      };
+
+      const orderCancelledKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingOrderCancelled = await prisma.event.findFirst({
+        where: {
+          transactionHash: orderCancelledKey.transactionHash,
+          blockNumber: orderCancelledKey.blockNumber,
+          logIndex: orderCancelledKey.logIndex,
+          marketGroupId: null,
+        },
+      });
+
+      if (existingOrderCancelled) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate OrderCancelled event tx=${orderCancelledKey.transactionHash} block=${orderCancelledKey.blockNumber} logIndex=${orderCancelledKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+          marketGroupId: null,
+        },
+      });
+
+      try {
+        const order = await prisma.limitOrder.findUnique({
+          where: {
+            chainId_marketAddress_orderId: {
+              chainId: this.chainId,
+              marketAddress: log.address.toLowerCase(),
+              orderId: eventData.orderId,
+            },
+          },
+        });
+
+        if (order) {
+          await prisma.limitOrder.update({
+            where: { id: order.id },
+            data: {
+              status: 'cancelled',
+              cancelledAt: Number(block.timestamp),
+              cancelledTxHash: log.transactionHash || '',
+            },
+          });
+        } else {
+          console.warn(
+            `[PredictionMarketIndexer] OrderCancelled but no matching LimitOrder found for orderId=${eventData.orderId}`
+          );
+        }
+      } catch (orderError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to update LimitOrder on cancel:',
+          orderError
+        );
+      }
+
+      console.log(
+        `[PredictionMarketIndexer] Processed OrderCancelled: orderId=${eventData.orderId}, maker=${eventData.maker}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing OrderCancelled:',
         error
       );
       Sentry.captureException(error);

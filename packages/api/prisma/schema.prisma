@@ -495,3 +495,51 @@ enum ParlayStatus {
   settled
   consolidated
 }
+
+
+model LimitOrder {
+  id                Int       @id @default(autoincrement())
+  createdAt         DateTime  @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId           Int
+  marketAddress     String    @db.VarChar
+  orderId           String    @db.VarChar
+  maker             String    @db.VarChar
+  resolver          String    @db.VarChar
+  
+  // Order details
+  makerCollateral   String    @db.VarChar
+  takerCollateral   String    @db.VarChar
+  refCode           String?   @db.VarChar
+  
+  // Status and lifecycle
+  status            LimitOrderStatus @default(pending)
+  
+  // Timestamps
+  placedAt          Int
+  filledAt          Int?
+  cancelledAt       Int?
+  
+  // Set when order is filled
+  taker             String?   @db.VarChar
+  
+  // Transaction hashes for traceability
+  placedTxHash      String    @db.VarChar
+  filledTxHash      String?   @db.VarChar
+  cancelledTxHash   String?   @db.VarChar
+  
+  predictedOutcomes Json      @db.Json
+  
+  @@unique([chainId, marketAddress, orderId], map: "UQ_limit_order_chain_market_id")
+  @@index([maker], map: "IDX_limit_order_maker")
+  @@index([chainId, status], map: "IDX_limit_order_chain_status")
+  @@index([status], map: "IDX_limit_order_status")
+  @@map("limit_order")
+}
+
+enum LimitOrderStatus {
+  pending
+  filled
+  cancelled
+}
