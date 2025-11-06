@@ -46,13 +46,10 @@ export default function Features() {
         <div className="space-y-3">
           <div className="eyebrow text-foreground">SPOT MARKETS</div>
           <p className="headline max-w-5xl">
-            As an alternative to peer-to-peer auctions,{' '}
-            <a href="/markets#spot-markets" className="gold-link">
-              spot markets
-            </a>{' '}
-            integrate with Uniswap. Users trade <em>Yes</em> tokens more like
-            they do with a traditional orderbook, but using smart contracts
-            instead of a private exchange.
+            As an alternative to peer-to-peer auctions, spot markets integrate
+            with Uniswap. Users trade <em>Yes</em> tokens more like they do with
+            a traditional orderbook, but using smart contracts instead of a
+            private exchange.
           </p>
         </div>
       </div>

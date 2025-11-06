@@ -1240,17 +1240,17 @@ export default function UserParlaysTable({
         <h2 className="text-lg font-medium mb-2">Your Parlays</h2>
       )}
       {rows.length === 0 && !isLoading ? (
-        <EmptyTabState message="No parlays found" />
+        <EmptyTabState centered message="No parlays found" />
       ) : isLoading && rows.length === 0 ? (
-        <div className="flex justify-center py-16">
-          <LottieLoader width={32} height={32} />
+        <div className="w-full min-h-[300px] flex items-center justify-center">
+          <LottieLoader width={12} height={12} />
         </div>
       ) : (
         <>
           <div className="border-y border-border rounded-none overflow-hidden bg-brand-black relative">
             {isLoading && (
               <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                <LottieLoader width={32} height={32} />
+                <LottieLoader width={12} height={12} />
               </div>
             )}
             <Table className="table-auto">
@@ -1315,13 +1315,6 @@ export default function UserParlaysTable({
                   Scroll to load more • {data.length} of {totalCount}
                 </span>
               )}
-            </div>
-          )}
-          {!hasMore && data.length > 0 && (
-            <div className="flex items-center justify-center px-4 py-4 border-b border-border bg-brand-black">
-              <span className="text-sm text-muted-foreground">
-                All {data.length} parlays loaded
-              </span>
             </div>
           )}
         </>

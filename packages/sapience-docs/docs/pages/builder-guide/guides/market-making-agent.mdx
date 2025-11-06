@@ -1,66 +1,120 @@
 ---
-title: "Market Making Agent"
-description: "Deploy a market making agent to provide liquidity on Sapience."
+title: "Deploy a Market Making Agent"
+description: "Fork and run the minimal market making starter to provide auction liquidity on Sapience."
 ---
 
 import BuilderGuideAlert from '../../../components/BuilderGuideAlert'
 
 <BuilderGuideAlert />
 
-# Market Making Agent
+# Deploy a Market Making Agent
 
-This guide shows how a market maker listens for auction requests and provides signed bids.
+Use our minimal starter to listen for auction requests and submit signed bids as a liquidity provider.
 
-## Maker (liquidity provider) flow
+<div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+  <a href="https://github.com/sapiencexyz/sapience/tree/main/starters/market-maker">
+    <img alt="Open starter on GitHub" src="https://img.shields.io/badge/Open%20starter%20on%20GitHub-sapiencexyz%2Fsapience-181717?logo=github" />
+  </a>
+  <a href="https://github.com/sapiencexyz/sapience/fork">
+    <img alt="Fork this repo" src="https://img.shields.io/badge/Fork%20this%20repo-181717?logo=github" />
+  </a>
+  <a href="https://www.npmjs.com/package/@sapience/sdk">
+    <img alt="SDK on npm" src="https://img.shields.io/npm/v/%40sapience%2Fsdk" />
+  </a>
+  <a href="/builder-guide/api/auction-relayer">
+    <img alt="Auction Relayer API" src="https://img.shields.io/badge/API-Auction%20Relayer-blue" />
+  </a>
+  <a href="/builder-guide/api/graphql">
+    <img alt="GraphQL API" src="https://img.shields.io/badge/API-GraphQL-blue" />
+  </a>
+  <a href="/builder-guide/reference/contracts-and-addresses">
+    <img alt="Contracts & Addresses" src="https://img.shields.io/badge/Reference-Contracts%20%26%20Addresses-6f42c1" />
+  </a>
+  
+</div>
 
-1. Connect to the WebSocket
-2. Listen for `auction.started { auctionId, maker, wager, resolver, predictedOutcomes[] }`
-3. Construct and send `bid.submit { auctionId, taker, takerWager, takerDeadline, takerSignature, makerNonce }`
-4. Receive `bid.ack { error? }`
-5. Optionally `auction.subscribe { auctionId }` to keep receiving `auction.bids`
+## What you’ll build
 
-## Minimal listener and bid (Node)
+- Connects to the Auction Relayer WebSocket
+- Performs a one‑time MAX ERC‑20 approval for the `PredictionMarket` contract
+- Filters auctions by maker wager and sends a fixed‑amount bid
+- Signs bids with EIP‑712 using your private key
 
-```ts
-import WebSocket from 'ws';
+## Quickstart
 
-const ws = new WebSocket('wss://api.sapience.xyz/auction');
+Prereqs: Node 18+, pnpm
 
-ws.on('message', (data) => {
-  try {
-    const msg = JSON.parse(String(data));
-    if (msg.type === 'auction.started') {
-      const auction = msg.payload;
-      const bid = createBid(auction);
-      ws.send(JSON.stringify(bid));
-    }
-  } catch (e) {
-    console.error('parse error', e);
-  }
-});
+```bash
+git clone https://github.com/sapiencexyz/sapience
+cd sapience/starters/market-maker
+pnpm install
 
-function createBid(auction: any) {
-  const now = Math.floor(Date.now() / 1000);
-  return {
-    type: 'bid.submit',
-    payload: {
-      auctionId: auction.auctionId,
-      taker: '0xMakerEOAUsedToProvideLiquidity...',
-      takerWager: (BigInt(auction.wager) / 2n).toString(),
-      takerDeadline: now + 60,
-      takerSignature: '0x' + '11'.repeat(32) + '22'.repeat(32),
-      makerNonce: 1,
-    },
-  } as const;
-}
+# Copy and add your private key
+cp env.example .env
+
+# Run with local SDK linked from monorepo
+pnpm dev
+
+# Or, run against the published SDK
+pnpm dev:published
 ```
 
-## Notes
+## How it works
 
-- Ensure ERC‑20 approvals for the collateral token if you automate on-chain fills
-- The relayer enforces structure and expiry; optional strict EIP‑712 verification mirrors on‑chain `SignatureProcessor`
+1. Connect to the relayer WebSocket
+2. Listen for `auction.started { auctionId, maker, wager, resolver, predictedOutcomes[] }`
+3. Filter out small auctions via `MIN_MAKER_WAGER`
+4. Ensure ERC‑20 approval (one‑time MAX) for the `PredictionMarket` contract
+5. Build EIP‑712 typed data and sign with `PRIVATE_KEY`
+6. Send `bid.submit { auctionId, taker, takerWager, takerDeadline, takerSignature, makerNonce }`
+7. Handle `bid.ack { error? }` and optionally observe `auction.bids`
+8. Auto‑reconnect on close/error
 
-## Reference
+## Code walkthrough (starter highlights)
 
-- Builder Reference: `[Auction Relayer](/builder-guide/reference/auction-relayer)`
-- On-chain: `packages/protocol/src/predictionMarket/PredictionMarket.sol`
+- Configuration & defaults: resolves `RELAYER_WS_URL`, `CHAIN_ID`, `RPC_URL`, and contract addresses from the SDK
+- One‑time approval: checks allowance and sends `approve(MAX)` if needed
+- WebSocket handlers: reacts to `auction.started`, `bid.ack`, and `auction.bids`
+- Market metadata: decodes `predictedOutcomes` and fetches condition titles via GraphQL for readable logs
+- Signing: uses SDK helpers to build and sign the EIP‑712 `TakerBid` payload
+- Strategy knobs: `BID_AMOUNT`, `MIN_MAKER_WAGER`, `DEADLINE_SECONDS`
+
+Minimal bid submission (excerpt):
+
+```ts
+const { domain, types, primaryType, message } = buildTakerBidTypedData({
+  auction: {
+    maker: auction.maker,
+    resolver: auction.resolver,
+    predictedOutcomes: auction.predictedOutcomes,
+    wager: auction.wager,
+  },
+  takerWager,
+  takerDeadline,
+  chainId: CHAIN_ID,
+  verifyingContract: VERIFYING_CONTRACT,
+  taker: TAKER,
+});
+
+const takerSignature = await signTakerBid({ privateKey: PRIVATE_KEY_HEX, domain, types, primaryType, message });
+
+ws.send(JSON.stringify({
+  type: 'bid.submit',
+  payload: { auctionId, taker: TAKER, takerWager: String(takerWager), takerDeadline, takerSignature, makerNonce },
+}));
+```
+
+## Customize your strategy
+
+- Adjust `MIN_MAKER_WAGER` to target larger auctions only
+- Change `BID_AMOUNT` sizing or derive it from `auction.wager`
+- Filter by topic or condition group by inspecting decoded `predictedOutcomes`
+- Add risk checks: time windows, max exposure, per‑maker rate limits
+
+## Safety and risks
+
+::::warning
+- Use a dedicated wallet and start with small amounts
+- Approvals are MAX by default; revoke if needed after testing
+- Keep your `PRIVATE_KEY` secure and never commit it to source control
+::::

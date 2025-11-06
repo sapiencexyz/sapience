@@ -63,7 +63,12 @@ async function tradeAction({ marketAddress, marketId, positionSize }: {
     address: marketAddress,
     abi: Foil.abi,
     functionName: 'createTraderPosition',
-    args: [marketId, positionSize, WAGER_AMOUNT, deadline],
+    args: [{
+      marketId,
+      size: positionSize,
+      maxCollateral: WAGER_AMOUNT,
+      deadline,
+    }],
   });
   await publicClient.waitForTransactionReceipt({ hash });
 }

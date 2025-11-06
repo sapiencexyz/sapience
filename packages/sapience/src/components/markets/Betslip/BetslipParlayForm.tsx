@@ -245,7 +245,7 @@ export default function BetslipParlayForm({
           {parlaySelections.map((s) => (
             <div
               key={s.id}
-              className="-mx-4 px-4 py-2 border-b border-brand-white/10 first:border-t"
+              className="-mx-4 px-4 py-2.5 border-b border-brand-white/10 first:border-t"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">

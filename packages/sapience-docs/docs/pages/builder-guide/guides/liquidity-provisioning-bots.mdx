@@ -67,6 +67,8 @@ If you're familiar with traditional order book market making, here's how LP tran
 
 This strategy works well for volatile markets where you want steady fee income without constantly rebalancing positions.
 
+> **Note**: These examples use internal hooks from the Sapience monorepo (`packages/sapience/src/hooks/contract`). If building a standalone app, you'll need to implement equivalent hooks using viem's contract interaction methods or adapt the SDK patterns.
+
 ```tsx
 import { useCreateLiquidityQuoter, useCreateLP } from '@sapience/app/hooks/contract';
 import { priceToTick } from '@sapience/app/lib/utils/tickUtils';
@@ -340,6 +342,7 @@ Adapts to changing market conditions without manual intervention.
 
 ```tsx
 import { useModifyLP, useModifyLiquidityQuoter } from '@sapience/app/hooks/contract';
+import { priceToTick } from '@sapience/app/lib/utils/tickUtils';
 
 async function dynamicRangeStrategy({ 
   marketAddress, 

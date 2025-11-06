@@ -8,6 +8,9 @@ interface SegmentedTabsListProps
   extends React.ComponentPropsWithoutRef<typeof TabsList> {
   primaryColor?: string;
   triggerClassName?: string;
+  // Optional radius class overrides
+  containerRadiusClassName?: string; // defaults to rounded-xl
+  triggerRadiusClassName?: string; // defaults to rounded-md
 }
 
 // Supports CSS variable-based colors (e.g., "hsl(var(--primary))") by returning
@@ -38,10 +41,14 @@ export const SegmentedTabsList: React.FC<SegmentedTabsListProps> = ({
   children,
   primaryColor = 'hsl(var(--primary))',
   triggerClassName,
+  containerRadiusClassName,
+  triggerRadiusClassName,
   ...rest
 }) => {
   const segBg = withAlpha(primaryColor, 0.05);
   const segActiveBg = withAlpha(primaryColor, 0.09);
+  const containerRadius = containerRadiusClassName || 'rounded-md';
+  const triggerRadius = triggerRadiusClassName || 'rounded-sm';
 
   const enhancedChildren = React.Children.map(children, (child) => {
     if (!React.isValidElement(child)) return child;
@@ -50,7 +57,8 @@ export const SegmentedTabsList: React.FC<SegmentedTabsListProps> = ({
       | string
       | undefined;
     const mergedClassName = cn(
-      'text-sm px-3 h-8 leading-none rounded-md data-[state=active]:bg-[var(--seg-active)]',
+      'text-sm px-3 h-8 leading-none data-[state=active]:bg-[var(--seg-active)]',
+      triggerRadius,
       triggerClassName,
       childClassName
     );
@@ -69,7 +77,8 @@ export const SegmentedTabsList: React.FC<SegmentedTabsListProps> = ({
   return (
     <TabsList
       className={cn(
-        'inline-flex items-center p-1 rounded-xl bg-[var(--seg-bg)]',
+        'inline-flex items-center p-1 bg-[var(--seg-bg)]',
+        containerRadius,
         className
       )}
       style={{ ['--seg-bg' as any]: segBg }}

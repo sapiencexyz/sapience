@@ -164,7 +164,7 @@ export default function LpPositionsTable({
       : undefined);
 
   if (!positions || positions.length === 0) {
-    return <EmptyTabState message="No liquidity positions found" />;
+    return <EmptyTabState centered message="No liquidity positions found" />;
   }
 
   const validPositions = positions.filter(
@@ -181,7 +181,7 @@ export default function LpPositionsTable({
   );
 
   if (validPositions.length === 0) {
-    return <EmptyTabState message="No liquidity positions found" />;
+    return <EmptyTabState centered message="No liquidity positions found" />;
   }
 
   const hasMultipleMarkets = validPositions.some(

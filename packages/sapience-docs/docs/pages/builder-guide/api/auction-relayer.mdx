@@ -29,7 +29,8 @@ ws.on('open', () => {
       maker: '0xMaker123...',
       wager: '1000000000000000000',
       resolver: '0xResolver456...',
-      predictedOutcomes: ['0xdeadbeef']
+      predictedOutcomes: ['0xdeadbeef'],
+      makerNonce: 1
     },
   }));
 });
@@ -64,7 +65,8 @@ ws.onmessage = (ev) => {
         taker: '0xTaker789...',
         takerWager: (BigInt(auction.wager) / 2n).toString(),
         takerDeadline: now + 60,
-        takerSignature: '0x...' // signature over typed payload (see Reference)
+        takerSignature: '0x...', // signature over typed payload (see Reference)
+        makerNonce: auction.makerNonce
       }
     };
     ws.send(JSON.stringify(bid));
@@ -74,10 +76,10 @@ ws.onmessage = (ev) => {
 
 ## Message lifecycle
 
-1) Maker sends `auction.start` with `maker`, `wager`, `resolver`, `predictedOutcomes[]`.
+1) Maker sends `auction.start` with `maker`, `wager`, `resolver`, `predictedOutcomes[]`, `makerNonce`.
 2) Relayer responds to the same socket with `auction.ack { auctionId }` and broadcasts `auction.started` (with the same payload plus `auctionId`) to all connected clients.
-3) Takers send `bid.submit` with `auctionId`, `taker`, `takerWager`, `takerDeadline`, `takerSignature`.
-4) Relayer replies to the bidding socket with `bid.ack { error? }` and streams `auction.bids { bids[] }` to the maker’s subscribed socket for that auction.
+3) Takers send `bid.submit` with `auctionId`, `taker`, `takerWager`, `takerDeadline`, `takerSignature`, `makerNonce`.
+4) Relayer replies to the bidding socket with `bid.ack { error? }` and streams `auction.bids { bids[] }` to the maker's subscribed socket for that auction.
 
 - Makers are automatically subscribed to their auction’s channel upon `auction.start`.
 - `auction.bids` is broadcast only to subscribers of that `auctionId`.

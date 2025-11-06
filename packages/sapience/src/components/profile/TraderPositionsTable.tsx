@@ -756,7 +756,7 @@ export default function TraderPositionsTable({
   });
 
   if (isEmpty) {
-    return <EmptyTabState message="No trades found" />;
+    return <EmptyTabState centered message="No trades found" />;
   }
 
   return (

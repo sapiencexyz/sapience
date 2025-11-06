@@ -12,7 +12,10 @@
     "contracts/**/*",
     "ui/**/*",
     "queries/**/*",
-    "types/**/*"
+    "types/**/*",
+    "auction/**/*",
+    "relayer/**/*",
+    "onchain/**/*"
   ],
   "exclude": [
     "node_modules",

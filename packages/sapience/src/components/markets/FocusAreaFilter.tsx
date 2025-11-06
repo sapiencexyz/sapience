@@ -34,6 +34,9 @@ interface FocusAreaFilterProps {
   viewMode: 'list' | 'grid';
   onToggleViewMode: () => void;
   showViewToggle?: boolean;
+  // New optional flags for markets page layout tweaks
+  showParlayToggle?: boolean;
+  hideStatusTabsOnMobile?: boolean;
 }
 
 const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
@@ -50,8 +53,12 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
   viewMode,
   onToggleViewMode,
   showViewToggle,
+  showParlayToggle,
+  hideStatusTabsOnMobile,
 }) => {
   const visibleViewToggle = showViewToggle ?? true;
+  const showParlay = showParlayToggle ?? true;
+  const statusTabsContainerClassName = `${hideStatusTabsOnMobile ? 'hidden md:flex' : 'flex'} ml-auto flex-nowrap items-center mr-0 gap-2`;
   // Use the same muted primary background treatment as the "All Focus Areas" chip
   const withAlpha = (c: string, alpha: number) => {
     const hexMatch = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
@@ -78,20 +85,22 @@ const FocusAreaFilter: React.FC<FocusAreaFilterProps> = ({
         {/* Controls row: moves to the right on large screens */}
         <div className="w-full min-w-0 min-[1400px]:w-auto flex items-center gap-2 min-[1400px]:order-2 min-[1400px]:justify-end">
           {/* View mode segmented control: Perps (parlay) | Spot */}
-          <div className="relative flex items-center gap-2 min-[1400px]:mr-2">
-            <Tabs
-              value={parlayMode ? 'perps' : 'spot'}
-              onValueChange={(v) => onParlayModeChange(v === 'perps')}
-            >
-              <SegmentedTabsList>
-                <TabsTrigger value="perps">Parlays</TabsTrigger>
-                <TabsTrigger value="spot">Spot</TabsTrigger>
-              </SegmentedTabsList>
-            </Tabs>
-          </div>
+          {showParlay ? (
+            <div className="relative flex items-center gap-2 min-[1400px]:mr-2">
+              <Tabs
+                value={parlayMode ? 'perps' : 'spot'}
+                onValueChange={(v) => onParlayModeChange(v === 'perps')}
+              >
+                <SegmentedTabsList>
+                  <TabsTrigger value="perps">Parlays</TabsTrigger>
+                  <TabsTrigger value="spot">Spot</TabsTrigger>
+                </SegmentedTabsList>
+              </Tabs>
+            </div>
+          ) : null}
 
           {/* Status tabs: visible on all sizes; right-aligned on large */}
-          <div className="ml-auto flex flex-nowrap items-center mr-0 gap-2">
+          <div className={statusTabsContainerClassName}>
             <Tabs
               value={statusFilter}
               onValueChange={(v) =>

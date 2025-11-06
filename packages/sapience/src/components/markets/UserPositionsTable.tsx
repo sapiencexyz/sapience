@@ -195,7 +195,7 @@ const UserPositionsTable: React.FC<UserPositionsTableProps> = ({
           ) : null}
           {traderPositionsOpen.length === 0 &&
           traderPositionsClosed.length === 0 ? (
-            <EmptyTabState message="No trades found" />
+            <EmptyTabState centered message="No trades found" />
           ) : null}
         </TabsContent>
 

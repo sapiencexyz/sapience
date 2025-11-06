@@ -718,7 +718,7 @@ const ForecastsTable = ({
 
   // Empty state
   if (!attestations || attestations.length === 0) {
-    return <EmptyTabState message="No forecasts found" />;
+    return <EmptyTabState centered message="No forecasts found" />;
   }
 
   const renderContent = (

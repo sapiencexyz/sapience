@@ -1,0 +1,28 @@
+{
+  "name": "@sapience/market-maker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "SAPIENCE_SDK_PATH=../../packages/sdk/dist/index.js tsx src/index.ts",
+    "dev:published": "tsx src/index.ts",
+    "start": "node --enable-source-maps dist/index.js",
+    "build": "tsc -p tsconfig.json",
+    "prestart": "npm run build"
+  },
+  "dependencies": {
+    "@sapience/sdk": "^0.1.0",
+    "dotenv": "^16.4.5",
+    "viem": "2.23.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.2",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

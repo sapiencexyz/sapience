@@ -7,4 +7,6 @@ export * from './mcp/client';
 export * from './onchain/tx';
 export * from './onchain/eas';
 export * from './onchain/attest';
+export * from './auction/signing';
+export * from './relayer/auctionWs';
 

@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { ReactElement } from 'react';
-
 interface LottieLoaderProps {
   className?: string;
   width?: number | string;
@@ -11,63 +8,20 @@ interface LottieLoaderProps {
 
 const LottieLoader = ({
   className = '',
-  width = 24,
-  height = 24,
+  width = 12,
+  height = 12,
 }: LottieLoaderProps) => {
-  const [LottieView, setLottieView] = useState<ReactElement | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    // Dynamically import lottie-react only on the client side
-    const loadLottie = async () => {
-      try {
-        const { useLottie } = await import('lottie-react');
-
-        const options = {
-          animationData: undefined,
-          path: '/lottie/loader.json',
-          loop: true,
-          autoplay: true,
-          className,
-          style: {
-            width,
-            height,
-          },
-        };
-
-        // We can't use the hook directly here since we're in an effect
-        // Instead, we'll create a wrapper component
-        const LottieComponent = () => {
-          const { View } = useLottie(options);
-          return (
-            <span
-              className={`inline-flex items-center align-middle whitespace-nowrap opacity-50 ${className}`}
-              style={{ width, height }}
-            >
-              {View}
-            </span>
-          );
-        };
-
-        setLottieView(<LottieComponent />);
-        setIsLoaded(true);
-      } catch (error) {
-        console.error('Failed to load lottie-react:', error);
-        setIsLoaded(true); // Still set loaded to show fallback
-      }
-    };
-
-    loadLottie();
-  }, [className, width, height]);
-
-  // Return fallback during SSR and while loading
-  if (!isLoaded || !LottieView) {
-    return (
-      <span className={`inline-block ${className}`} style={{ width, height }} />
-    );
-  }
-
-  return LottieView;
+  const SCALE = 0.5;
+  const computedWidth =
+    typeof width === 'number' ? Math.max(1, width * SCALE) : width;
+  const computedHeight =
+    typeof height === 'number' ? Math.max(1, height * SCALE) : height;
+  return (
+    <span
+      className={`inline-block align-middle rounded-full bg-foreground opacity-50 animate-ping ${className}`}
+      style={{ width: computedWidth, height: computedHeight }}
+    />
+  );
 };
 
 export default LottieLoader;
