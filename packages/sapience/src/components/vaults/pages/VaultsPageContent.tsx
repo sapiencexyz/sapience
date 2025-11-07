@@ -1,6 +1,5 @@
 'use client';
 
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/sdk/ui/components/ui/card';
@@ -27,14 +26,14 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { PROTOCOL_VAULT_ADDRESS } from '~/lib/constants';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
   const { connectOrCreateWallet } = useConnectOrCreateWallet({});
-  // Constants for vault integration
-  const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID; // default chain
-  const VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
+  // Constants for vault integration - use chain ID from localStorage
+  const VAULT_CHAIN_ID = useChainIdFromLocalStorage();
+  const VAULT_ADDRESS = passiveLiquidityVault[VAULT_CHAIN_ID]?.address;
 
   // Vaults are always enabled
 
@@ -705,13 +704,13 @@ const VaultsPageContent = () => {
                       </h3>
                       <div className="flex items-center gap-2">
                         <EnsAvatar
-                          address={PROTOCOL_VAULT_ADDRESS}
+                          address={VAULT_ADDRESS}
                           width={16}
                           height={16}
                           className="shrink-0"
                         />
                         <AddressDisplay
-                          address={PROTOCOL_VAULT_ADDRESS}
+                          address={VAULT_ADDRESS}
                           compact
                           className="text-xs text-muted-foreground"
                           hideVaultIcon
@@ -748,7 +747,7 @@ const VaultsPageContent = () => {
                       </div>
                       <p className="mt-2 text-xs">
                         <Link
-                          href={`/profile/${PROTOCOL_VAULT_ADDRESS}`}
+                          href={`/profile/${VAULT_ADDRESS}`}
                           className="gold-link"
                         >
                           View Portfolio

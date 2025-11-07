@@ -17,7 +17,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
-import { PROTOCOL_VAULT_ADDRESS } from '~/lib/constants';
+import { passiveLiquidityVault } from '@sapience/sdk/contracts';
 
 // Create a public client for ENS resolution
 const publicClient = createPublicClient({
@@ -118,8 +118,10 @@ const AddressDisplay = ({
       ? 'text-xs text-muted-foreground/80'
       : '';
 
-  const isVaultAddress =
-    address.toLowerCase() === PROTOCOL_VAULT_ADDRESS.toLowerCase();
+  // Check if address matches any vault address across all chains
+  const isVaultAddress = Object.values(passiveLiquidityVault).some(
+    (vault) => vault.address.toLowerCase() === address.toLowerCase()
+  );
 
   return (
     <div
