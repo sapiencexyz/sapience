@@ -206,6 +206,8 @@ async function startParlayAuction({
         const { UMA_RESOLVER } = getContractAddresses();
         const predictedOutcomes = await encodeParlayOutcomes(markets, predictions);
 
+        const chainId = parseInt(process.env.CHAIN_ID || "42161");
+
         const auctionMessage = {
           type: "auction.start",
           payload: {
@@ -214,6 +216,7 @@ async function startParlayAuction({
             resolver: UMA_RESOLVER,
             predictedOutcomes,
             makerNonce: contractNonce,
+            chainId: chainId,
           },
         };
 

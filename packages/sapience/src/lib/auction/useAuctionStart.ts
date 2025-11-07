@@ -16,6 +16,7 @@ export interface AuctionParams {
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   maker: `0x${string}`; // maker EOA address
   makerNonce: number; // nonce for the maker
+  chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
 }
 
 export interface QuoteBid {
@@ -161,6 +162,7 @@ export function useAuctionStart() {
           predictedOutcomes: params.predictedOutcomes,
           maker: params.maker,
           makerNonce: params.makerNonce,
+          chainId: params.chainId,
         },
       };
 

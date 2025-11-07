@@ -12,6 +12,7 @@ import {
   type PredictedOutcomeInputStub,
 } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 // Use one as the default wager for prediction requests
 
 export interface MarketPredictionRequestProps {
@@ -42,7 +43,8 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
 
   const { address: makerAddress } = useAccount();
   const { requestQuotes, bids } = useAuctionStart();
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
+  const chainId = useChainIdFromLocalStorage();
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address || predictionMarket[DEFAULT_CHAIN_ID]?.address;
   const ZERO_ADDRESS =
     '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
@@ -89,7 +91,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     abi: predictionMarketAbi,
     functionName: 'nonces',
     args: selectedMakerAddress ? [selectedMakerAddress] : undefined,
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     query: { enabled: !!selectedMakerAddress && !!PREDICTION_MARKET_ADDRESS },
   });
 
@@ -165,6 +167,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
           predictedOutcomes: payload.predictedOutcomes,
           maker: selectedMakerAddress,
           makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
+          chainId: chainId,
         });
         setQueuedRequest(false);
       };
@@ -182,6 +185,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     selectedMakerAddress,
     makerNonce,
     requestQuotes,
+    chainId,
   ]);
 
   const handleRequestPrediction = React.useCallback(() => {
@@ -203,6 +207,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
             predictedOutcomes: payload.predictedOutcomes,
             maker: selectedMakerAddress,
             makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
+            chainId: chainId,
           });
         };
         // Jitter send to avoid concurrency clobbering
@@ -223,6 +228,7 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
     requestQuotes,
     isRequesting,
     eager,
+    chainId,
   ]);
 
   // Only fire eager once both maker address and outcomes are ready

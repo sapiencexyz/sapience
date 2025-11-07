@@ -6,6 +6,7 @@ export interface AuctionRequestPayload {
   resolver: string; // contract address for market validation
   maker: string; // EOA address of the maker initiating the auction
   makerNonce: number; // nonce for the maker
+  chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
 }
 
 export interface BidQuote {

@@ -201,6 +201,12 @@ function start() {
         const auctionId = auction.auctionId as string;
         const makerWager = BigInt(auction.wager || '0');
         const makerNonce = (auction.makerNonce as number) ?? 0;
+        const auctionChainId = (auction.chainId as number | undefined);
+
+        // Ignore auctions on different chains
+        if (auctionChainId && auctionChainId !== CHAIN_ID) {
+          return;
+        }
 
         // Ignore auctions below minimum before logging anything
         if (makerWager < MIN_MAKER_WAGER) {

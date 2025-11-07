@@ -219,6 +219,7 @@ export default function BetslipParlayForm({
         predictedOutcomes: payload.predictedOutcomes,
         maker: selectedMakerAddress,
         makerNonce: makerNonce !== undefined ? Number(makerNonce) : 0,
+        chainId: chainId,
       };
       requestQuotes(params);
       setLastQuoteRequestMs(Date.now());
@@ -233,6 +234,7 @@ export default function BetslipParlayForm({
     selectedMakerAddress,
     makerNonce,
     makerAddress,
+    chainId,
   ]);
 
   return (
