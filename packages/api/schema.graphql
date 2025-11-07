@@ -3389,8 +3389,8 @@ type Query {
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transaction(where: TransactionWhereUniqueInput!): Transaction
   transactions(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): [Transaction!]!
-  userParlays(address: String!, orderBy: String, orderDirection: String, skip: Int! = 0, take: Int! = 50): [ParlayType!]!
-  userParlaysCount(address: String!): Int!
+  userParlays(address: String!, chainId: Int, orderBy: String, orderDirection: String, skip: Int! = 0, take: Int! = 50): [ParlayType!]!
+  userParlaysCount(address: String!, chainId: Int): Int!
 }
 
 enum QueryMode {

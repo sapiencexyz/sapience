@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import type { Address } from 'viem';
 
@@ -10,9 +10,8 @@ import {
   TabsTrigger,
 } from '@sapience/sdk/ui/components/ui/tabs';
 import Link from 'next/link';
-import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-
 import { Telescope, ArrowLeftRightIcon, DropletsIcon } from 'lucide-react';
+import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import TraderPositionsTable from '~/components/profile/TraderPositionsTable';
 import ClosedTraderPositionsTable from '~/components/profile/ClosedTraderPositionsTable';
@@ -28,6 +27,8 @@ import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '~/components/admin/constants';
 
 const TAB_VALUES = ['parlays', 'trades', 'lp', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -37,6 +38,8 @@ type TabValue = (typeof TAB_VALUES)[number];
 const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
+  const chainId = useChainIdFromLocalStorage();
+  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL;
 
   // Remove parlay feature flag; Parlays tab is always available
 
@@ -73,9 +76,10 @@ const ProfilePageContent = () => {
     schemaId: SCHEMA_UID,
   });
 
-  // Parlays for this profile address
+  // Parlays for this profile address, filtered by chainId
   const { data: parlays, isLoading: parlaysLoading } = useUserParlays({
     address: String(address),
+    chainId,
   });
 
   const allLoaded =
@@ -89,13 +93,36 @@ const ProfilePageContent = () => {
   const hasForecasts = (attestations?.length || 0) > 0;
   const hasParlays = (parlays?.length || 0) > 0;
 
-  const tabHasContent = (tab: TabValue): boolean => {
-    if (tab === 'trades') return hasTrades;
-    if (tab === 'parlays') return hasParlays;
-    if (tab === 'lp') return hasLp;
-    if (tab === 'forecasts') return hasForecasts;
-    return false;
-  };
+  // On Ethereal chain, only show parlays; otherwise show all tabs
+  const shouldShowTradesTab = !isEtherealChain && hasTrades;
+  const shouldShowLpTab = !isEtherealChain && hasLp;
+  const shouldShowForecastsTab = !isEtherealChain && hasForecasts;
+  const shouldShowParlaysTab = hasParlays;
+
+  // Count visible tabs to determine if we should show the tab switcher
+  const visibleTabsCount = [
+    shouldShowParlaysTab,
+    shouldShowTradesTab,
+    shouldShowLpTab,
+    shouldShowForecastsTab,
+  ].filter(Boolean).length;
+  const shouldShowTabSwitcher = visibleTabsCount > 1;
+
+  const tabHasContent = useCallback(
+    (tab: TabValue): boolean => {
+      if (tab === 'trades') return shouldShowTradesTab;
+      if (tab === 'parlays') return shouldShowParlaysTab;
+      if (tab === 'lp') return shouldShowLpTab;
+      if (tab === 'forecasts') return shouldShowForecastsTab;
+      return false;
+    },
+    [
+      shouldShowTradesTab,
+      shouldShowParlaysTab,
+      shouldShowLpTab,
+      shouldShowForecastsTab,
+    ]
+  );
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -134,39 +161,49 @@ const ProfilePageContent = () => {
     };
   }, []);
 
-  const handleTabChange = (value: string) => {
-    const nextValue = (TAB_VALUES as readonly string[]).includes(value)
-      ? (value as TabValue)
-      : ('parlays' as TabValue);
-    // Prevent navigating to hidden tabs (only enforce for spot tabs)
-    if (
-      (nextValue === 'trades' && !hasTrades) ||
-      (nextValue === 'lp' && !hasLp)
-    ) {
-      const firstWithContent: TabValue | null = hasParlays
-        ? 'parlays'
-        : hasTrades
-          ? 'trades'
-          : hasLp
-            ? 'lp'
-            : hasForecasts
-              ? 'forecasts'
-              : null;
-      const fallback = firstWithContent ?? ('parlays' as TabValue);
-      setTabValue(fallback);
+  const handleTabChange = useCallback(
+    (value: string) => {
+      const nextValue = (TAB_VALUES as readonly string[]).includes(value)
+        ? (value as TabValue)
+        : ('parlays' as TabValue);
+      // Prevent navigating to hidden tabs
+      if (
+        (nextValue === 'parlays' && !shouldShowParlaysTab) ||
+        (nextValue === 'trades' && !shouldShowTradesTab) ||
+        (nextValue === 'lp' && !shouldShowLpTab) ||
+        (nextValue === 'forecasts' && !shouldShowForecastsTab)
+      ) {
+        const firstWithContent: TabValue | null = shouldShowParlaysTab
+          ? 'parlays'
+          : shouldShowTradesTab
+            ? 'trades'
+            : shouldShowLpTab
+              ? 'lp'
+              : shouldShowForecastsTab
+                ? 'forecasts'
+                : null;
+        const fallback = firstWithContent ?? ('parlays' as TabValue);
+        setTabValue(fallback);
+        if (typeof window !== 'undefined') {
+          const url = `${window.location.pathname}${window.location.search}#${fallback}`;
+          window.history.replaceState(null, '', url);
+        }
+        return;
+      }
+
+      setTabValue(nextValue);
       if (typeof window !== 'undefined') {
-        const url = `${window.location.pathname}${window.location.search}#${fallback}`;
+        const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
         window.history.replaceState(null, '', url);
       }
-      return;
-    }
-
-    setTabValue(nextValue);
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
-      window.history.replaceState(null, '', url);
-    }
-  };
+    },
+    [
+      shouldShowParlaysTab,
+      shouldShowTradesTab,
+      shouldShowLpTab,
+      shouldShowForecastsTab,
+    ]
+  );
 
   const didAutoRedirectRef = useRef(false);
 
@@ -193,13 +230,13 @@ const ProfilePageContent = () => {
       return;
     }
 
-    const firstWithContent: TabValue | null = hasParlays
+    const firstWithContent: TabValue | null = shouldShowParlaysTab
       ? 'parlays'
-      : hasTrades
+      : shouldShowTradesTab
         ? 'trades'
-        : hasLp
+        : shouldShowLpTab
           ? 'lp'
-          : hasForecasts
+          : shouldShowForecastsTab
             ? 'forecasts'
             : null;
 
@@ -208,7 +245,16 @@ const ProfilePageContent = () => {
     }
     // Mark as done to avoid overriding user interactions later
     didAutoRedirectRef.current = true;
-  }, [hasLoadedOnce, hasTrades, hasLp, hasForecasts]);
+  }, [
+    hasLoadedOnce,
+    shouldShowParlaysTab,
+    shouldShowTradesTab,
+    shouldShowLpTab,
+    shouldShowForecastsTab,
+    tabValue,
+    handleTabChange,
+    tabHasContent,
+  ]);
 
   return (
     <div className="mx-auto pt-24 lg:pt-24 pb-0 px-3 md:px-6 lg:px-8 w-full min-h-screen flex flex-col">
@@ -229,7 +275,12 @@ const ProfilePageContent = () => {
       </div>
 
       {hasLoadedOnce ? (
-        !(hasTrades || hasParlays || hasLp || hasForecasts) ? (
+        !(
+          shouldShowParlaysTab ||
+          shouldShowTradesTab ||
+          shouldShowLpTab ||
+          shouldShowForecastsTab
+        ) ? (
           <EmptyProfileState />
         ) : (
           <div className="pb-0 flex-1 flex flex-col">
@@ -238,120 +289,135 @@ const ProfilePageContent = () => {
               onValueChange={handleTabChange}
               className="w-full flex-1 flex flex-col"
             >
-              <div className="mb-3">
-                <SegmentedTabsList>
-                  <TabsTrigger className="justify-center" value="parlays">
-                    <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
-                    Trades
-                  </TabsTrigger>
-                  {hasTrades ? (
-                    <TabsTrigger className="justify-center" value="trades">
-                      <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
-                      Spot Trades
-                    </TabsTrigger>
-                  ) : null}
-                  {hasLp ? (
-                    <TabsTrigger className="justify-center" value="lp">
-                      <DropletsIcon className="h-4 w-4 mr-2" />
-                      Spot Liquidity
-                    </TabsTrigger>
-                  ) : null}
-                  <TabsTrigger className="justify-center" value="forecasts">
-                    <Telescope className="h-4 w-4 mr-2" />
-                    Forecasts
-                  </TabsTrigger>
-                </SegmentedTabsList>
-              </div>
+              {shouldShowTabSwitcher ? (
+                <div className="mb-3">
+                  <SegmentedTabsList>
+                    {shouldShowParlaysTab ? (
+                      <TabsTrigger className="justify-center" value="parlays">
+                        <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
+                        Trades
+                      </TabsTrigger>
+                    ) : null}
+                    {shouldShowTradesTab ? (
+                      <TabsTrigger className="justify-center" value="trades">
+                        <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
+                        Spot Trades
+                      </TabsTrigger>
+                    ) : null}
+                    {shouldShowLpTab ? (
+                      <TabsTrigger className="justify-center" value="lp">
+                        <DropletsIcon className="h-4 w-4 mr-2" />
+                        Spot Liquidity
+                      </TabsTrigger>
+                    ) : null}
+                    {shouldShowForecastsTab ? (
+                      <TabsTrigger className="justify-center" value="forecasts">
+                        <Telescope className="h-4 w-4 mr-2" />
+                        Forecasts
+                      </TabsTrigger>
+                    ) : null}
+                  </SegmentedTabsList>
+                </div>
+              ) : null}
 
               <div className="-mx-3 md:-mx-6 lg:-mx-8 bg-brand-black flex-1">
-                <TabsContent
-                  value="parlays"
-                  className="mt-0 flex-1 flex flex-col"
-                >
-                  {hasParlays ? (
-                    <UserParlaysTable
-                      account={address}
-                      showHeaderText={false}
-                    />
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center border-t border-border">
-                      <EmptyTabState centered message="No parlays found" />
-                    </div>
-                  )}
-                </TabsContent>
+                {shouldShowParlaysTab ? (
+                  <TabsContent
+                    value="parlays"
+                    className="mt-0 flex-1 flex flex-col"
+                  >
+                    {hasParlays ? (
+                      <UserParlaysTable
+                        account={address}
+                        showHeaderText={false}
+                        chainId={chainId}
+                      />
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                        <EmptyTabState centered message="No parlays found" />
+                      </div>
+                    )}
+                  </TabsContent>
+                ) : null}
 
-                <TabsContent
-                  value="trades"
-                  className="mt-0 flex-1 flex flex-col"
-                >
-                  {traderPositionsOpen.length > 0 ? (
-                    <div>
-                      <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                        Active
-                      </h3>
-                      <TraderPositionsTable
-                        positions={traderPositionsOpen}
+                {shouldShowTradesTab ? (
+                  <TabsContent
+                    value="trades"
+                    className="mt-0 flex-1 flex flex-col"
+                  >
+                    {traderPositionsOpen.length > 0 ? (
+                      <div>
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                          Active
+                        </h3>
+                        <TraderPositionsTable
+                          positions={traderPositionsOpen}
+                          context="profile"
+                        />
+                      </div>
+                    ) : null}
+                    {traderPositionsClosed.length > 0 ? (
+                      <div className="mt-6">
+                        <h3 className="font-medium text-sm text-muted-foreground mb-2">
+                          Closed
+                        </h3>
+                        <ClosedTraderPositionsTable
+                          positions={traderPositionsClosed}
+                        />
+                      </div>
+                    ) : null}
+                    {traderPositionsOpen.length === 0 &&
+                    traderPositionsClosed.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                        <EmptyTabState centered message="No trades found" />
+                      </div>
+                    ) : null}
+                  </TabsContent>
+                ) : null}
+
+                {shouldShowLpTab ? (
+                  <TabsContent value="lp" className="mt-0 flex-1 flex flex-col">
+                    {hasLp ? (
+                      <LpPositionsTable
+                        positions={lpPositions}
                         context="profile"
                       />
-                    </div>
-                  ) : null}
-                  {traderPositionsClosed.length > 0 ? (
-                    <div className="mt-6">
-                      <h3 className="font-medium text-sm text-muted-foreground mb-2">
-                        Closed
-                      </h3>
-                      <ClosedTraderPositionsTable
-                        positions={traderPositionsClosed}
-                      />
-                    </div>
-                  ) : null}
-                  {traderPositionsOpen.length === 0 &&
-                  traderPositionsClosed.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center border-t border-border">
-                      <EmptyTabState centered message="No trades found" />
-                    </div>
-                  ) : null}
-                </TabsContent>
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                        <EmptyTabState
+                          centered
+                          message="No liquidity positions found"
+                        />
+                      </div>
+                    )}
+                  </TabsContent>
+                ) : null}
 
-                <TabsContent value="lp" className="mt-0 flex-1 flex flex-col">
-                  {hasLp ? (
-                    <LpPositionsTable
-                      positions={lpPositions}
-                      context="profile"
-                    />
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center border-t border-border">
-                      <EmptyTabState
-                        centered
-                        message="No liquidity positions found"
-                      />
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent
-                  value="forecasts"
-                  className="mt-0 flex-1 flex flex-col"
-                >
-                  {hasForecasts ? (
-                    <ForecastsTable attestations={attestations} />
-                  ) : (
-                    <div className="flex-1 flex items-center justify-center border-t border-border">
-                      <EmptyTabState
-                        centered
-                        message={
-                          <span>
-                            No{' '}
-                            <Link href="/forecast" className="underline">
-                              forecasts
-                            </Link>{' '}
-                            found
-                          </span>
-                        }
-                      />
-                    </div>
-                  )}
-                </TabsContent>
+                {shouldShowForecastsTab ? (
+                  <TabsContent
+                    value="forecasts"
+                    className="mt-0 flex-1 flex flex-col"
+                  >
+                    {hasForecasts ? (
+                      <ForecastsTable attestations={attestations} />
+                    ) : (
+                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                        <EmptyTabState
+                          centered
+                          message={
+                            <span>
+                              No{' '}
+                              <Link href="/forecast" className="underline">
+                                forecasts
+                              </Link>{' '}
+                              found
+                            </span>
+                          }
+                        />
+                      </div>
+                    )}
+                  </TabsContent>
+                ) : null}
               </div>
             </Tabs>
           </div>

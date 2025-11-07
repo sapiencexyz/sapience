@@ -87,12 +87,17 @@ class ParlayType {
 export class ParlayResolver {
   @Query(() => Int)
   async userParlaysCount(
-    @Arg('address', () => String) address: string
+    @Arg('address', () => String) address: string,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
     const addr = address.toLowerCase();
-    const count = await prisma.parlay.count({
-      where: { OR: [{ maker: addr }, { taker: addr }] },
-    });
+    const where: Prisma.ParlayWhereInput = {
+      OR: [{ maker: addr }, { taker: addr }],
+    };
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+    const count = await prisma.parlay.count({ where });
     return count;
   }
 
@@ -103,7 +108,8 @@ export class ParlayResolver {
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true })
-    orderDirection?: string
+    orderDirection?: string,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<ParlayType[]> {
     const addr = address.toLowerCase();
 
@@ -188,40 +194,122 @@ export class ParlayResolver {
 
       if (orderBy === 'wager') {
         // For wager, sort by the viewer's individual collateral
-        const rows = await prisma.$queryRaw<Parlay[]>`
-          SELECT * FROM parlay
-          WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
-          ORDER BY CASE 
-            WHEN LOWER(maker) = ${addr} THEN CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
-            WHEN LOWER(taker) = ${addr} THEN CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
-            ELSE 0
-          END ${Prisma.raw(direction)}
-          LIMIT ${take}
-          OFFSET ${skip}
-        `;
-        return processRows(rows);
+        if (chainId !== undefined && chainId !== null) {
+          const rows = await prisma.$queryRaw<Parlay[]>`
+            SELECT * FROM parlay
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
+            ORDER BY CASE 
+              WHEN LOWER(maker) = ${addr} THEN CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+              WHEN LOWER(taker) = ${addr} THEN CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+              ELSE 0
+            END ${Prisma.raw(direction)}
+            LIMIT ${take}
+            OFFSET ${skip}
+          `;
+          return processRows(rows);
+        } else {
+          const rows = await prisma.$queryRaw<Parlay[]>`
+            SELECT * FROM parlay
+            WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
+            ORDER BY CASE 
+              WHEN LOWER(maker) = ${addr} THEN CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+              WHEN LOWER(taker) = ${addr} THEN CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+              ELSE 0
+            END ${Prisma.raw(direction)}
+            LIMIT ${take}
+            OFFSET ${skip}
+          `;
+          return processRows(rows);
+        }
       }
 
       if (orderBy === 'pnl') {
         // For PnL, calculate profit/loss based on whether user is maker/taker and won/lost
+        if (chainId !== undefined && chainId !== null) {
+          const rows = await prisma.$queryRaw<Parlay[]>`
+            SELECT * FROM parlay
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
+            ORDER BY CASE 
+              WHEN status = 'active' THEN 0
+              WHEN LOWER(maker) = ${addr} THEN
+                CASE 
+                  WHEN "makerWon" = true THEN 
+                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+                  ELSE 
+                    -CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+                END
+              WHEN LOWER(taker) = ${addr} THEN
+                CASE 
+                  WHEN "makerWon" = false THEN 
+                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+                  ELSE 
+                    -CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+                END
+              ELSE 0
+            END ${Prisma.raw(direction)}
+            LIMIT ${take}
+            OFFSET ${skip}
+          `;
+          return processRows(rows);
+        } else {
+          const rows = await prisma.$queryRaw<Parlay[]>`
+            SELECT * FROM parlay
+            WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
+            ORDER BY CASE 
+              WHEN status = 'active' THEN 0
+              WHEN LOWER(maker) = ${addr} THEN
+                CASE 
+                  WHEN "makerWon" = true THEN 
+                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+                  ELSE 
+                    -CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
+                END
+              WHEN LOWER(taker) = ${addr} THEN
+                CASE 
+                  WHEN "makerWon" = false THEN 
+                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+                  ELSE 
+                    -CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+                END
+              ELSE 0
+            END ${Prisma.raw(direction)}
+            LIMIT ${take}
+            OFFSET ${skip}
+          `;
+          return processRows(rows);
+        }
+      }
+
+      // For toWin, sort by totalCollateral but treat lost parlays as 0
+      if (chainId !== undefined && chainId !== null) {
+        const rows = await prisma.$queryRaw<Parlay[]>`
+          SELECT * FROM parlay
+          WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
+          ORDER BY CASE 
+            WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
+            WHEN status != 'active' THEN
+              CASE
+                WHEN (LOWER(maker) = ${addr} AND "makerWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
+                WHEN (LOWER(taker) = ${addr} AND "makerWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
+                ELSE 0
+              END
+            ELSE 0
+          END ${Prisma.raw(direction)}
+          LIMIT ${take}
+          OFFSET ${skip}
+        `;
+        return processRows(rows);
+      } else {
         const rows = await prisma.$queryRaw<Parlay[]>`
           SELECT * FROM parlay
           WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
           ORDER BY CASE 
-            WHEN status = 'active' THEN 0
-            WHEN LOWER(maker) = ${addr} THEN
-              CASE 
-                WHEN "makerWon" = true THEN 
-                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
-                ELSE 
-                  -CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
-              END
-            WHEN LOWER(taker) = ${addr} THEN
-              CASE 
-                WHEN "makerWon" = false THEN 
-                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
-                ELSE 
-                  -CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
+            WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
+            WHEN status != 'active' THEN
+              CASE
+                WHEN (LOWER(maker) = ${addr} AND "makerWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
+                WHEN (LOWER(taker) = ${addr} AND "makerWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
+                ELSE 0
               END
             ELSE 0
           END ${Prisma.raw(direction)}
@@ -230,25 +318,6 @@ export class ParlayResolver {
         `;
         return processRows(rows);
       }
-
-      // For toWin, sort by totalCollateral but treat lost parlays as 0
-      const rows = await prisma.$queryRaw<Parlay[]>`
-        SELECT * FROM parlay
-        WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
-        ORDER BY CASE 
-          WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
-          WHEN status != 'active' THEN
-            CASE
-              WHEN (LOWER(maker) = ${addr} AND "makerWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
-              WHEN (LOWER(taker) = ${addr} AND "makerWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
-              ELSE 0
-            END
-          ELSE 0
-        END ${Prisma.raw(direction)}
-        LIMIT ${take}
-        OFFSET ${skip}
-      `;
-      return processRows(rows);
     }
 
     // For other sorting (like 'created'), use normal Prisma orderBy
@@ -260,8 +329,15 @@ export class ParlayResolver {
       orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
+    const where: Prisma.ParlayWhereInput = {
+      OR: [{ maker: addr }, { taker: addr }],
+    };
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+
     const rows = await prisma.parlay.findMany({
-      where: { OR: [{ maker: addr }, { taker: addr }] },
+      where,
       orderBy: orderByClause,
       take,
       skip,

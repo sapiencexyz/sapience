@@ -39,6 +39,7 @@ const USER_PARLAYS_QUERY = /* GraphQL */ `
     $skip: Int
     $orderBy: String
     $orderDirection: String
+    $chainId: Int
   ) {
     userParlays(
       address: $address
@@ -46,6 +47,7 @@ const USER_PARLAYS_QUERY = /* GraphQL */ `
       skip: $skip
       orderBy: $orderBy
       orderDirection: $orderDirection
+      chainId: $chainId
     ) {
       id
       chainId
@@ -76,10 +78,10 @@ const USER_PARLAYS_QUERY = /* GraphQL */ `
   }
 `;
 
-export function useUserParlaysCount(address?: string) {
+export function useUserParlaysCount(address?: string, chainId?: number) {
   const enabled = Boolean(address);
   const { data } = useQuery({
-    queryKey: ['userParlaysCount', address],
+    queryKey: ['userParlaysCount', address, chainId],
     enabled,
     staleTime: 60_000, // 1 minute
     gcTime: 5 * 60 * 1000,
@@ -88,11 +90,11 @@ export function useUserParlaysCount(address?: string) {
     queryFn: async () => {
       const resp = await graphqlRequest<{ userParlaysCount: number }>(
         /* GraphQL */ `
-          query UserParlaysCount($address: String!) {
-            userParlaysCount(address: $address)
+          query UserParlaysCount($address: String!, $chainId: Int) {
+            userParlaysCount(address: $address, chainId: $chainId)
           }
         `,
-        { address }
+        { address, chainId: chainId ?? null }
       );
       return resp?.userParlaysCount ?? 0;
     },
@@ -106,11 +108,27 @@ export function useUserParlays(params: {
   skip?: number;
   orderBy?: string;
   orderDirection?: string;
+  chainId?: number;
 }) {
-  const { address, take = 50, skip = 0, orderBy, orderDirection } = params;
+  const {
+    address,
+    take = 50,
+    skip = 0,
+    orderBy,
+    orderDirection,
+    chainId,
+  } = params;
   const enabled = Boolean(address);
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['userParlays', address, take, skip, orderBy, orderDirection],
+    queryKey: [
+      'userParlays',
+      address,
+      take,
+      skip,
+      orderBy,
+      orderDirection,
+      chainId,
+    ],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -125,6 +143,7 @@ export function useUserParlays(params: {
           skip,
           orderBy,
           orderDirection,
+          chainId: chainId ?? null,
         }
       );
       const base = resp?.userParlays ?? [];

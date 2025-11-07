@@ -44,7 +44,9 @@ const MarketPredictionRequest: React.FC<MarketPredictionRequestProps> = ({
   const { address: makerAddress } = useAccount();
   const { requestQuotes, bids } = useAuctionStart();
   const chainId = useChainIdFromLocalStorage();
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address || predictionMarket[DEFAULT_CHAIN_ID]?.address;
+  const PREDICTION_MARKET_ADDRESS =
+    predictionMarket[chainId]?.address ||
+    predictionMarket[DEFAULT_CHAIN_ID]?.address;
   const ZERO_ADDRESS =
     '0x0000000000000000000000000000000000000000' as `0x${string}`;
 

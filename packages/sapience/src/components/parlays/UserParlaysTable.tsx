@@ -189,9 +189,11 @@ function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
 export default function UserParlaysTable({
   account,
   showHeaderText = true,
+  chainId,
 }: {
   account: Address;
   showHeaderText?: boolean;
+  chainId?: number;
 }) {
   // ---
   const queryClient = useQueryClient();
@@ -252,15 +254,15 @@ export default function UserParlaysTable({
   const orderBy = sorting[0]?.id;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
-  // Reset when account or sorting changes
+  // Reset when account, sorting, or chainId changes
   React.useEffect(() => {
     setSkip(0);
     setAllLoadedData([]);
     setHasMore(true);
-  }, [account, sorting]);
+  }, [account, sorting, chainId]);
 
   // Fetch total count
-  const totalCount = useUserParlaysCount(String(account));
+  const totalCount = useUserParlaysCount(String(account), chainId);
 
   // Fetch real data with pagination - fetch one extra to detect if there are more pages
   const { data: rawData, isLoading } = useUserParlays({
@@ -269,6 +271,7 @@ export default function UserParlaysTable({
     skip,
     orderBy,
     orderDirection,
+    chainId,
   });
 
   // Append new data when it arrives
