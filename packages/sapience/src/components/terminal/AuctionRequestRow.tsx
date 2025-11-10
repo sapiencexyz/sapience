@@ -25,8 +25,8 @@ import {
 import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { predictionMarket } from '@sapience/sdk/contracts';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
@@ -68,13 +68,14 @@ const AuctionRequestRow: React.FC<Props> = ({
   const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const { apiBaseUrl } = useSettings();
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
-  const verifyingContract = predictionMarket[DEFAULT_CHAIN_ID]?.address as
+  const chainId = useChainIdFromLocalStorage();
+  const verifyingContract = predictionMarket[chainId]?.address as
     | `0x${string}`
     | undefined;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   // Resolve collateral token from PredictionMarket config (fallback to default constant)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
   const predictionMarketConfigRead = useReadContracts({
     contracts: PREDICTION_MARKET_ADDRESS
       ? [
@@ -82,7 +83,7 @@ const AuctionRequestRow: React.FC<Props> = ({
             address: PREDICTION_MARKET_ADDRESS,
             abi: predictionMarketAbi,
             functionName: 'getConfig',
-            chainId: DEFAULT_CHAIN_ID,
+            chainId: chainId,
           },
         ]
       : [],
@@ -105,7 +106,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     abi: erc20Abi,
     address: COLLATERAL_ADDRESS,
     functionName: 'decimals',
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     query: { enabled: Boolean(COLLATERAL_ADDRESS) },
   });
   const tokenDecimals = useMemo(() => {
@@ -127,7 +128,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         '0x0000000000000000000000000000000000000000',
       verifyingContract as `0x${string}`,
     ],
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     query: {
       enabled: Boolean(address && COLLATERAL_ADDRESS && verifyingContract),
     },
@@ -139,7 +140,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       abi: predictionMarketAbi,
       functionName: 'nonces',
       args: typeof maker === 'string' ? [maker as `0x${string}`] : undefined,
-      chainId: DEFAULT_CHAIN_ID,
+      chainId: chainId,
       query: {
         enabled: Boolean(PREDICTION_MARKET_ADDRESS && maker),
       },
@@ -388,7 +389,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         const domain = {
           name: 'SignatureProcessor',
           version: '1',
-          chainId: DEFAULT_CHAIN_ID,
+          chainId: chainId,
           verifyingContract,
         } as const;
         const types = {

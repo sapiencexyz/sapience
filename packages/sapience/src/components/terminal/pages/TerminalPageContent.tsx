@@ -24,12 +24,13 @@ import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect'
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useReadContracts } from 'wagmi';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
+  const chainId = useChainIdFromLocalStorage();
 
   const [pinnedAuctions, setPinnedAuctions] = useState<string[]>([]);
   const [minWager, setMinWager] = useState<string>('1');
@@ -390,7 +391,7 @@ const TerminalPageContent: React.FC = () => {
 
   const collateralAssetTicker = 'testUSDe';
   // Fetch PredictionMarket config to get collateral token, then read ERC20 decimals
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
   const predictionMarketConfigRead = useReadContracts({
     contracts: PREDICTION_MARKET_ADDRESS
       ? [
@@ -398,7 +399,7 @@ const TerminalPageContent: React.FC = () => {
             address: PREDICTION_MARKET_ADDRESS,
             abi: predictionMarketAbi,
             functionName: 'getConfig',
-            chainId: DEFAULT_CHAIN_ID,
+            chainId: chainId,
           },
         ]
       : [],
@@ -421,7 +422,7 @@ const TerminalPageContent: React.FC = () => {
             address: collateralTokenAddress,
             abi: erc20Abi,
             functionName: 'decimals',
-            chainId: DEFAULT_CHAIN_ID,
+            chainId: chainId,
           },
         ]
       : [],

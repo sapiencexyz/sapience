@@ -3,8 +3,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useReadContract } from 'wagmi';
 import { formatUnits } from 'viem';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { predictionMarket } from '@sapience/sdk/contracts';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import {
@@ -21,11 +21,12 @@ import { useApprovalDialog } from './ApprovalDialogContext';
 
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
+  const chainId = useChainIdFromLocalStorage();
 
   const COLLATERAL_ADDRESS = DEFAULT_COLLATERAL_ASSET as
     | `0x${string}`
     | undefined;
-  const SPENDER_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address as
+  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
     | `0x${string}`
     | undefined;
 
@@ -33,7 +34,7 @@ const ApprovalDialog: React.FC = () => {
     abi: erc20Abi,
     address: COLLATERAL_ADDRESS,
     functionName: 'decimals',
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     query: { enabled: Boolean(COLLATERAL_ADDRESS) },
   });
 
@@ -41,7 +42,7 @@ const ApprovalDialog: React.FC = () => {
     abi: erc20Abi,
     address: COLLATERAL_ADDRESS,
     functionName: 'symbol',
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     query: { enabled: Boolean(COLLATERAL_ADDRESS) },
   });
 
@@ -74,7 +75,7 @@ const ApprovalDialog: React.FC = () => {
     tokenAddress: COLLATERAL_ADDRESS,
     spenderAddress: SPENDER_ADDRESS,
     amount: approveAmount,
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: chainId,
     decimals: tokenDecimals,
     enabled: Boolean(COLLATERAL_ADDRESS && SPENDER_ADDRESS),
   });
