@@ -144,11 +144,8 @@ model Market {
   position                           Position[]
 
   @@unique([marketGroupId, marketId], map: "UQ_0a0e1fcc7164cb26a957c806314")
-  @@unique([marketGroupId, marketId], map: "UQ_6e25995aba1162dc315f8214ee7")
   @@index([marketGroupId], map: "IDX_02755ce1b56a981eef76c0b59b")
   @@index([marketId], map: "IDX_b8cf3f5b97db288fd5252e1cb0")
-  @@index([marketGroupId], map: "IDX_bf8c48db94805b3077cfe30fa6")
-  @@index([marketId], map: "IDX_f89ec06faf22da268399ae6a9b")
   @@map("market")
 }
 
