@@ -55,6 +55,7 @@ import {
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
@@ -97,7 +98,9 @@ const Betslip = ({
   // Removed repetitive debug log
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const parlayChainId = betSlipPositions[0]?.chainId || DEFAULT_CHAIN_ID;
+  const chainId = useChainIdFromLocalStorage();
+  const parlayChainId = chainId || betSlipPositions[0]?.chainId || DEFAULT_CHAIN_ID;
+  
   const {
     auctionId,
     bids,
