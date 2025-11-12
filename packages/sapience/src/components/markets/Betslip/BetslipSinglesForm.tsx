@@ -14,6 +14,7 @@ import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { fetchQuoteByUrl, toQuoteUrl } from '~/hooks/forms/quoteApi';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface BetslipSinglesFormProps {
   methods: UseFormReturn<{
@@ -34,6 +35,8 @@ export default function BetslipSinglesForm({
   const { positionsWithMarketData, betSlipPositions, removePosition } =
     useBetSlipContext();
   const { quoterBaseUrl, apiBaseUrl: relayerBaseUrl } = useSettings();
+  const chainId = positionsWithMarketData[0]?.position.chainId;
+  const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   const hasAtLeastOneLoadedQuestion = positionsWithMarketData.some(
     (p) =>
@@ -200,7 +203,7 @@ export default function BetslipSinglesForm({
                       chainId: positionsWithMarketData[0]?.position.chainId,
                       address:
                         positionsWithMarketData[0]?.position.marketAddress,
-                      collateralSymbol: 'testUSDe',
+                      collateralSymbol: fallbackCollateralSymbol,
                     } as unknown as any)
                   }
                   marketClassification={MarketGroupClassificationEnum.YES_NO}

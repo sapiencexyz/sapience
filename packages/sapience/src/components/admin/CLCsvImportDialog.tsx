@@ -46,11 +46,11 @@ import {
   DEFAULT_MIN_PRICE_TICK,
   DEFAULT_MAX_PRICE_TICK,
   DEFAULT_BASE_TOKEN_NAME,
-  DEFAULT_QUOTE_TOKEN_NAME,
 } from './constants';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 type Props = {
   open: boolean;
@@ -86,6 +86,8 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
   const { postJson } = useAdminApi();
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
+  const defaultQuoteTokenName =
+    COLLATERAL_SYMBOLS[currentChainId] || 'testUSDe';
 
   const [csvErrors, setCsvErrors] = useState<string[]>([]);
   const [rows, setRows] = useState<CsvRow[]>([]);
@@ -247,7 +249,7 @@ const CLCsvImportDialog = ({ open, onOpenChange }: Props) => {
           const rules = (first['rules'] ?? '').trim();
           const category = (first['categorySlug'] ?? '').trim();
           const baseTokenName = DEFAULT_BASE_TOKEN_NAME;
-          const quoteTokenName = DEFAULT_QUOTE_TOKEN_NAME;
+          const quoteTokenName = defaultQuoteTokenName;
 
           const nowSec = Math.floor(Date.now() / 1000);
           const markets = g.rows.map((r) => {

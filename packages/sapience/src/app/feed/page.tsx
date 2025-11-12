@@ -19,6 +19,8 @@ import {
 
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import AddressFilter from '~/components/shared/AddressFilter';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 type FeedTransaction = Pick<
   TransactionType,
@@ -109,6 +111,8 @@ type PredictedOutcome = {
 };
 
 export default function FeedPage() {
+  const chainId = useChainIdFromLocalStorage();
+  const defaultCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const [rows, setRows] = useState<FeedRow[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [firstLoadComplete, setFirstLoadComplete] = useState(false);
@@ -131,8 +135,8 @@ export default function FeedPage() {
       const sym = (r as any)?.collateralAssetTicker;
       if (typeof sym === 'string' && sym.trim()) return sym;
     }
-    return 'testUSDe';
-  }, [rows]);
+    return defaultCollateralSymbol;
+  }, [rows, defaultCollateralSymbol]);
 
   const buildRows = useCallback(
     (
@@ -240,21 +244,21 @@ export default function FeedPage() {
             Comp,
             key: `${tx.id}-maker`,
             tx: makerTx,
-            collateralAssetTicker: 'testUSDe',
+            collateralAssetTicker: defaultCollateralSymbol,
             sortedMarketsForColors,
           } as FeedRow,
           {
             Comp,
             key: `${tx.id}-taker`,
             tx: takerTx,
-            collateralAssetTicker: 'testUSDe',
+            collateralAssetTicker: defaultCollateralSymbol,
             sortedMarketsForColors,
           } as FeedRow,
         ];
       });
       return built;
     },
-    []
+    [defaultCollateralSymbol]
   );
 
   const fetchAndBuild = useCallback(async () => {

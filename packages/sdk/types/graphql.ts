@@ -845,7 +845,6 @@ export type Condition = {
   __typename?: 'Condition';
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
-  chainId: Scalars['Int']['output'];
   claimStatement: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
@@ -865,13 +864,11 @@ export type ConditionCategoryArgs = {
 export type ConditionAvgAggregate = {
   __typename?: 'ConditionAvgAggregate';
   categoryId?: Maybe<Scalars['Float']['output']>;
-  chainId?: Maybe<Scalars['Float']['output']>;
   endTime?: Maybe<Scalars['Float']['output']>;
 };
 
 export type ConditionAvgOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
-  chainId?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
 };
 
@@ -879,7 +876,6 @@ export type ConditionCountAggregate = {
   __typename?: 'ConditionCountAggregate';
   _all: Scalars['Int']['output'];
   categoryId: Scalars['Int']['output'];
-  chainId: Scalars['Int']['output'];
   claimStatement: Scalars['Int']['output'];
   createdAt: Scalars['Int']['output'];
   description: Scalars['Int']['output'];
@@ -893,7 +889,6 @@ export type ConditionCountAggregate = {
 
 export type ConditionCountOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
-  chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
@@ -913,7 +908,6 @@ export type ConditionGroupBy = {
   _min?: Maybe<ConditionMinAggregate>;
   _sum?: Maybe<ConditionSumAggregate>;
   categoryId?: Maybe<Scalars['Int']['output']>;
-  chainId: Scalars['Int']['output'];
   claimStatement: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
@@ -934,7 +928,6 @@ export type ConditionListRelationFilter = {
 export type ConditionMaxAggregate = {
   __typename?: 'ConditionMaxAggregate';
   categoryId?: Maybe<Scalars['Int']['output']>;
-  chainId?: Maybe<Scalars['Int']['output']>;
   claimStatement?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   description?: Maybe<Scalars['String']['output']>;
@@ -947,7 +940,6 @@ export type ConditionMaxAggregate = {
 
 export type ConditionMaxOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
-  chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
@@ -961,7 +953,6 @@ export type ConditionMaxOrderByAggregateInput = {
 export type ConditionMinAggregate = {
   __typename?: 'ConditionMinAggregate';
   categoryId?: Maybe<Scalars['Int']['output']>;
-  chainId?: Maybe<Scalars['Int']['output']>;
   claimStatement?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   description?: Maybe<Scalars['String']['output']>;
@@ -974,7 +965,6 @@ export type ConditionMinAggregate = {
 
 export type ConditionMinOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
-  chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
@@ -996,7 +986,6 @@ export type ConditionOrderByWithAggregationInput = {
   _min?: InputMaybe<ConditionMinOrderByAggregateInput>;
   _sum?: InputMaybe<ConditionSumOrderByAggregateInput>;
   categoryId?: InputMaybe<SortOrderInput>;
-  chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
@@ -1011,7 +1000,6 @@ export type ConditionOrderByWithAggregationInput = {
 export type ConditionOrderByWithRelationInput = {
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
-  chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
@@ -1025,7 +1013,6 @@ export type ConditionOrderByWithRelationInput = {
 
 export type ConditionScalarFieldEnum =
   | 'categoryId'
-  | 'chainId'
   | 'claimStatement'
   | 'createdAt'
   | 'description'
@@ -1041,7 +1028,6 @@ export type ConditionScalarWhereWithAggregatesInput = {
   NOT?: InputMaybe<Array<ConditionScalarWhereWithAggregatesInput>>;
   OR?: InputMaybe<Array<ConditionScalarWhereWithAggregatesInput>>;
   categoryId?: InputMaybe<IntNullableWithAggregatesFilter>;
-  chainId?: InputMaybe<IntWithAggregatesFilter>;
   claimStatement?: InputMaybe<StringWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   description?: InputMaybe<StringWithAggregatesFilter>;
@@ -1056,13 +1042,11 @@ export type ConditionScalarWhereWithAggregatesInput = {
 export type ConditionSumAggregate = {
   __typename?: 'ConditionSumAggregate';
   categoryId?: Maybe<Scalars['Int']['output']>;
-  chainId?: Maybe<Scalars['Int']['output']>;
   endTime?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ConditionSumOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
-  chainId?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
 };
 
@@ -1080,7 +1064,6 @@ export type ConditionWhereInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
-  chainId?: InputMaybe<IntFilter>;
   claimStatement?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
@@ -1098,7 +1081,6 @@ export type ConditionWhereUniqueInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
-  chainId?: InputMaybe<IntFilter>;
   claimStatement?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
@@ -4303,6 +4285,7 @@ export type QueryTransactionsArgs = {
 
 export type QueryUserParlaysArgs = {
   address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
   orderBy?: InputMaybe<Scalars['String']['input']>;
   orderDirection?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
@@ -4312,6 +4295,7 @@ export type QueryUserParlaysArgs = {
 
 export type QueryUserParlaysCountArgs = {
   address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type QueryMode =

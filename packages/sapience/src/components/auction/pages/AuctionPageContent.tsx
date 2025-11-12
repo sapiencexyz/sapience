@@ -26,8 +26,12 @@ import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const AuctionPageContent: React.FC = () => {
+  const chainId = useChainIdFromLocalStorage();
+  const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const TAB_VALUES = ['auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];
 
@@ -197,8 +201,6 @@ const AuctionPageContent: React.FC = () => {
       position: { owner: '' },
     } as UiTransaction;
   }
-
-  const collateralAssetTicker = 'testUSDe';
 
   const getHashValue = () => {
     if (typeof window === 'undefined') return 'auctions' as TabValue;

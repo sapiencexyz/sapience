@@ -47,10 +47,10 @@ import {
   DEFAULT_MAX_PRICE_TICK,
   DEFAULT_FACTORY_ADDRESS,
   DEFAULT_BASE_TOKEN_NAME,
-  DEFAULT_QUOTE_TOKEN_NAME,
 } from './constants';
 import { useResources } from '~/hooks/useResources';
 import { useAdminApi } from '~/hooks/useAdminApi';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 // API base URL resolved at call time via foilApi
 
@@ -260,6 +260,8 @@ const createMarketFromPrevious = (
 const CreateMarketGroupForm = () => {
   const { address: connectedAddress } = useAccount();
   const currentChainId = useChainId();
+  const defaultQuoteTokenName =
+    COLLATERAL_SYMBOLS[currentChainId] || 'testUSDe';
   const { toast } = useToast();
   // Remove unused queryClient
   const { data: resources } = useResources();
@@ -296,7 +298,7 @@ const CreateMarketGroupForm = () => {
     DEFAULT_BASE_TOKEN_NAME
   );
   const [quoteTokenName, setQuoteTokenName] = useState<string>(
-    DEFAULT_QUOTE_TOKEN_NAME
+    defaultQuoteTokenName
   );
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     null
@@ -368,7 +370,7 @@ const CreateMarketGroupForm = () => {
           setSelectedResourceId(null);
           // Update token names for Yes/No markets
           setBaseTokenName('Yes');
-          setQuoteTokenName(DEFAULT_QUOTE_TOKEN_NAME);
+          setQuoteTokenName(defaultQuoteTokenName);
         } else {
           setSelectedResourceId(Number(value));
           // Clear token names for indexed markets
@@ -661,7 +663,7 @@ const CreateMarketGroupForm = () => {
                       // Update token names based on resource selection
                       if (newResourceId === null) {
                         setBaseTokenName('Yes');
-                        setQuoteTokenName(DEFAULT_QUOTE_TOKEN_NAME);
+                        setQuoteTokenName(defaultQuoteTokenName);
                       } else {
                         setBaseTokenName('');
                         setQuoteTokenName('');

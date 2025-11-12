@@ -27,10 +27,12 @@ import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
   const chainId = useChainIdFromLocalStorage();
+  const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   const [pinnedAuctions, setPinnedAuctions] = useState<string[]>([]);
   const [minWager, setMinWager] = useState<string>('1');
@@ -389,7 +391,6 @@ const TerminalPageContent: React.FC = () => {
     }
   }
 
-  const collateralAssetTicker = 'testUSDe';
   // Fetch PredictionMarket config to get collateral token, then read ERC20 decimals
   const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
   const predictionMarketConfigRead = useReadContracts({

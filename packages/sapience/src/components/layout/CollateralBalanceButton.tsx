@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { useMemo } from 'react';
 import { useReadContract } from 'wagmi';
 import { erc20Abi, formatUnits } from 'viem';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { Badge } from '@sapience/sdk/ui/components/ui/badge';
@@ -16,6 +15,8 @@ import {
 } from '@sapience/sdk/ui/components/ui/tooltip';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { DEFAULT_COLLATERAL_ASSET } from '~/components/admin/constants';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface CollateralBalanceButtonProps {
   onClick?: () => void;
@@ -30,6 +31,8 @@ export default function CollateralBalanceButton({
 }: CollateralBalanceButtonProps) {
   const { wallets } = useWallets();
   const connectedWallet = wallets[0];
+  const chainId = useChainIdFromLocalStorage();
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   const accountAddress = connectedWallet?.address as `0x${string}` | undefined;
 
@@ -39,7 +42,7 @@ export default function CollateralBalanceButton({
     abi: erc20Abi,
     address: collateralAssetAddress,
     functionName: 'decimals',
-    chainId: DEFAULT_CHAIN_ID,
+    chainId,
     query: { enabled: Boolean(accountAddress) },
   });
 
@@ -48,7 +51,7 @@ export default function CollateralBalanceButton({
     address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: accountAddress ? [accountAddress] : undefined,
-    chainId: DEFAULT_CHAIN_ID,
+    chainId,
     query: { enabled: Boolean(accountAddress) },
   });
 
@@ -56,15 +59,15 @@ export default function CollateralBalanceButton({
     try {
       const dec =
         typeof decimals === 'number' ? decimals : Number(decimals ?? 18);
-      if (!balance) return `0 testUSDe`;
+      if (!balance) return `0 ${collateralSymbol}`;
       const human = formatUnits(balance, dec);
       const num = Number(human);
-      if (Number.isNaN(num)) return `0 testUSDe`;
-      return `${formatFiveSigFigs(num)} testUSDe`;
+      if (Number.isNaN(num)) return `0 ${collateralSymbol}`;
+      return `${formatFiveSigFigs(num)} ${collateralSymbol}`;
     } catch {
-      return `0 testUSDe`;
+      return `0 ${collateralSymbol}`;
     }
-  }, [balance, decimals]);
+  }, [balance, decimals, collateralSymbol]);
 
   return (
     <div className={`flex w-fit mx-3 md:mx-0 mt-0 ${className ?? ''}`}>
@@ -113,7 +116,7 @@ export default function CollateralBalanceButton({
               >
                 Discord
               </a>{' '}
-              to request testUSDe
+              to request {collateralSymbol}
             </span>
           </TooltipContent>
         </Tooltip>

@@ -6,6 +6,8 @@ import { BarChart2, Target } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface ProfileStatsProps {
   address: string;
@@ -53,6 +55,8 @@ const StatTile = ({
 };
 
 const ProfileStats = ({ address, className }: ProfileStatsProps) => {
+  const chainId = useChainIdFromLocalStorage();
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const { data: profit, isLoading: profitLoading } = useUserProfitRank(address);
   const { data: accuracy, isLoading: accuracyLoading } =
     useForecasterRank(address);
@@ -62,7 +66,7 @@ const ProfileStats = ({ address, className }: ProfileStatsProps) => {
   ) : (
     <NumberDisplay
       value={Number(profit?.totalPnL || 0)}
-      appendedText=" testUSDe"
+      appendedText={` ${collateralSymbol}`}
     />
   );
 

@@ -34,6 +34,7 @@ export function useVaultShareQuoteWs(
     source: 'fallback',
   });
   const wsRef = useRef<WebSocket | null>(null);
+  const lastValidQuoteRef = useRef<VaultShareWsQuote | null>(null);
   const { apiBaseUrl } = useSettings();
 
   const wsUrl = useMemo(() => {
@@ -61,6 +62,11 @@ export function useVaultShareQuoteWs(
     let closed = false;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
+
+    // Restore last valid quote if available to prevent flashing to 0
+    if (lastValidQuoteRef.current) {
+      setQuote(lastValidQuoteRef.current);
+    }
 
     ws.onopen = () => {
       try {
@@ -97,12 +103,20 @@ export function useVaultShareQuoteWs(
             p.chainId === chainId &&
             p.vaultAddress?.toLowerCase() === vaultAddress.toLowerCase()
           ) {
-            setQuote({
+            const newQuote = {
               vaultCollateralPerShare: String(p.vaultCollateralPerShare),
               updatedAtMs: p.timestamp,
-              source: 'ws',
+              source: 'ws' as const,
               raw: p,
-            });
+            };
+            // Store as last valid quote if it's not '0'
+            if (
+              p.vaultCollateralPerShare &&
+              p.vaultCollateralPerShare !== '0'
+            ) {
+              lastValidQuoteRef.current = newQuote;
+            }
+            setQuote(newQuote);
           }
         }
       } catch (error) {

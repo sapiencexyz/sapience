@@ -27,6 +27,8 @@ import { formatFiveSigFigs, bigIntAbs } from '~/lib/utils/util';
 import type { Parlay } from '~/hooks/graphql/useUserParlays';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 type MetricBadgeProps = {
   icon?: React.ReactNode;
@@ -146,14 +148,20 @@ function MetricBadge({
   );
 }
 
-function useProfileBalance(address?: string) {
+function useProfileBalance(
+  address?: string,
+  chainId?: number,
+  collateralSymbol?: string
+) {
   const collateralAssetAddress = DEFAULT_COLLATERAL_ASSET;
+  const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
+  const effectiveSymbol = collateralSymbol ?? 'testUSDe';
 
   const { data: decimals } = useReadContract({
     abi: erc20Abi,
     address: collateralAssetAddress,
     functionName: 'decimals',
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: effectiveChainId,
     query: { enabled: Boolean(address) },
   });
 
@@ -162,7 +170,7 @@ function useProfileBalance(address?: string) {
     address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: address ? [address as `0x${string}`] : undefined,
-    chainId: DEFAULT_CHAIN_ID,
+    chainId: effectiveChainId,
     query: { enabled: Boolean(address) },
   });
 
@@ -171,18 +179,19 @@ function useProfileBalance(address?: string) {
       const dec =
         typeof decimals === 'number' ? decimals : Number(decimals ?? 18);
       if (balance === undefined || balance === null)
-        return { display: '0', tooltip: '0 testUSDe' };
+        return { display: '0', tooltip: `0 ${effectiveSymbol}` };
       const human = formatUnits(balance as unknown as bigint, dec);
       const num = Number(human);
-      if (Number.isNaN(num)) return { display: '0', tooltip: '0 testUSDe' };
+      if (Number.isNaN(num))
+        return { display: '0', tooltip: `0 ${effectiveSymbol}` };
       return {
         display: `${formatFiveSigFigs(num)}`,
-        tooltip: `${num.toLocaleString()} testUSDe`,
+        tooltip: `${num.toLocaleString()} ${effectiveSymbol}`,
       };
     } catch {
-      return { display: '0', tooltip: '0 testUSDe' };
+      return { display: '0', tooltip: `0 ${effectiveSymbol}` };
     }
-  }, [balance, decimals]);
+  }, [balance, decimals, effectiveSymbol]);
 
   return memo;
 }
@@ -325,7 +334,9 @@ export default function ProfileQuickMetrics({
   parlays,
   className,
 }: ProfileQuickMetricsProps) {
-  const balance = useProfileBalance(address);
+  const chainId = useChainIdFromLocalStorage();
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
+  const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(positions, parlays, address);
   const first = useFirstActivity(positions, parlays);
   const forecastsIsFinite = Number.isFinite(forecastsCount);
@@ -347,7 +358,7 @@ export default function ProfileQuickMetrics({
   const pnlRank = profitLoading
     ? undefined
     : profit?.rank
-      ? `testUSDe (Rank #${profit.rank})`
+      ? `${collateralSymbol} (Rank #${profit.rank})`
       : undefined;
 
   const accValue = accuracyLoading
@@ -397,7 +408,7 @@ export default function ProfileQuickMetrics({
           imageSrc="/usde.svg"
           label="Available Balance"
           value={balance.display}
-          sublabel="testUSDe"
+          sublabel={collateralSymbol}
           tooltip={balance.tooltip}
           size="normal"
         />
@@ -407,7 +418,7 @@ export default function ProfileQuickMetrics({
           icon={<TrendingUp className="h-4 w-4 opacity-70" />}
           label="Trading Volume"
           value={volume.display}
-          sublabel="testUSDe"
+          sublabel={collateralSymbol}
           size="normal"
         />
       </li>

@@ -13,10 +13,12 @@ import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const AutoBid: React.FC = () => {
   const { address } = useAccount();
   const chainId = useChainIdFromLocalStorage();
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   const COLLATERAL_ADDRESS = DEFAULT_COLLATERAL_ASSET as
     | `0x${string}`
@@ -114,7 +116,7 @@ const AutoBid: React.FC = () => {
             <div className="px-1">
               <div className="text-xs font-medium">Approved Spend</div>
               <div className="font-mono text-[13px] text-brand-white inline-flex items-center gap-1">
-                {allowanceDisplay} testUSDe
+                {allowanceDisplay} {collateralSymbol}
                 <button
                   type="button"
                   className="inline-flex items-center justify-center"
@@ -130,7 +132,7 @@ const AutoBid: React.FC = () => {
             <div className="px-1">
               <div className="text-xs font-medium">Account Balance</div>
               <div className="font-mono text-[13px] text-brand-white inline-flex items-center gap-1">
-                {balanceDisplay} testUSDe
+                {balanceDisplay} {collateralSymbol}
               </div>
             </div>
           </div>

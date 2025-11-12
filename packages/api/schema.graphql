@@ -746,6 +746,7 @@ input CollateralTransferWhereInput {
 type Condition {
   category(where: CategoryWhereInput): Category
   categoryId: Int
+  chainId: Int!
   claimStatement: String!
   createdAt: DateTimeISO!
   description: String!
@@ -759,17 +760,20 @@ type Condition {
 
 type ConditionAvgAggregate {
   categoryId: Float
+  chainId: Float
   endTime: Float
 }
 
 input ConditionAvgOrderByAggregateInput {
   categoryId: SortOrder
+  chainId: SortOrder
   endTime: SortOrder
 }
 
 type ConditionCountAggregate {
   _all: Int!
   categoryId: Int!
+  chainId: Int!
   claimStatement: Int!
   createdAt: Int!
   description: Int!
@@ -783,6 +787,7 @@ type ConditionCountAggregate {
 
 input ConditionCountOrderByAggregateInput {
   categoryId: SortOrder
+  chainId: SortOrder
   claimStatement: SortOrder
   createdAt: SortOrder
   description: SortOrder
@@ -801,6 +806,7 @@ type ConditionGroupBy {
   _min: ConditionMinAggregate
   _sum: ConditionSumAggregate
   categoryId: Int
+  chainId: Int!
   claimStatement: String!
   createdAt: DateTimeISO!
   description: String!
@@ -820,6 +826,7 @@ input ConditionListRelationFilter {
 
 type ConditionMaxAggregate {
   categoryId: Int
+  chainId: Int
   claimStatement: String
   createdAt: DateTimeISO
   description: String
@@ -832,6 +839,7 @@ type ConditionMaxAggregate {
 
 input ConditionMaxOrderByAggregateInput {
   categoryId: SortOrder
+  chainId: SortOrder
   claimStatement: SortOrder
   createdAt: SortOrder
   description: SortOrder
@@ -844,6 +852,7 @@ input ConditionMaxOrderByAggregateInput {
 
 type ConditionMinAggregate {
   categoryId: Int
+  chainId: Int
   claimStatement: String
   createdAt: DateTimeISO
   description: String
@@ -856,6 +865,7 @@ type ConditionMinAggregate {
 
 input ConditionMinOrderByAggregateInput {
   categoryId: SortOrder
+  chainId: SortOrder
   claimStatement: SortOrder
   createdAt: SortOrder
   description: SortOrder
@@ -877,6 +887,7 @@ input ConditionOrderByWithAggregationInput {
   _min: ConditionMinOrderByAggregateInput
   _sum: ConditionSumOrderByAggregateInput
   categoryId: SortOrderInput
+  chainId: SortOrder
   claimStatement: SortOrder
   createdAt: SortOrder
   description: SortOrder
@@ -891,6 +902,7 @@ input ConditionOrderByWithAggregationInput {
 input ConditionOrderByWithRelationInput {
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
+  chainId: SortOrder
   claimStatement: SortOrder
   createdAt: SortOrder
   description: SortOrder
@@ -904,6 +916,7 @@ input ConditionOrderByWithRelationInput {
 
 enum ConditionScalarFieldEnum {
   categoryId
+  chainId
   claimStatement
   createdAt
   description
@@ -920,6 +933,7 @@ input ConditionScalarWhereWithAggregatesInput {
   NOT: [ConditionScalarWhereWithAggregatesInput!]
   OR: [ConditionScalarWhereWithAggregatesInput!]
   categoryId: IntNullableWithAggregatesFilter
+  chainId: IntWithAggregatesFilter
   claimStatement: StringWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   description: StringWithAggregatesFilter
@@ -933,11 +947,13 @@ input ConditionScalarWhereWithAggregatesInput {
 
 type ConditionSumAggregate {
   categoryId: Int
+  chainId: Int
   endTime: Int
 }
 
 input ConditionSumOrderByAggregateInput {
   categoryId: SortOrder
+  chainId: SortOrder
   endTime: SortOrder
 }
 
@@ -954,6 +970,7 @@ input ConditionWhereInput {
   OR: [ConditionWhereInput!]
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
+  chainId: IntFilter
   claimStatement: StringFilter
   createdAt: DateTimeFilter
   description: StringFilter
@@ -971,6 +988,7 @@ input ConditionWhereUniqueInput {
   OR: [ConditionWhereInput!]
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
+  chainId: IntFilter
   claimStatement: StringFilter
   createdAt: DateTimeFilter
   description: StringFilter

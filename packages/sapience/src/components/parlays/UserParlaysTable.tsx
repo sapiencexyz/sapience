@@ -64,6 +64,7 @@ import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import AntiParlayBadge from '~/components/shared/AntiParlayBadge';
 import LottieLoader from '~/components/shared/LottieLoader';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 function PredictionsScroller({
   legs,
@@ -196,6 +197,7 @@ export default function UserParlaysTable({
   chainId?: number;
 }) {
   // ---
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useAccount();
   const hasWallet = Boolean(connectedAddress);
@@ -847,7 +849,7 @@ export default function UserParlaysTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const symbol = 'testUSDe';
+          const symbol = collateralSymbol;
           const viewerWagerWei =
             row.original.addressRole === 'maker'
               ? (row.original.makerCollateralWei ?? 0n)
@@ -912,7 +914,7 @@ export default function UserParlaysTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const symbol = 'testUSDe';
+          const symbol = collateralSymbol;
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
@@ -981,7 +983,7 @@ export default function UserParlaysTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const symbol = 'testUSDe';
+          const symbol = collateralSymbol;
           const isClosed = row.original.status !== 'active';
           const lostParlayUnclaimed =
             row.original.status === 'active' &&

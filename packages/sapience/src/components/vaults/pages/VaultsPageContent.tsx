@@ -27,6 +27,7 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
@@ -34,6 +35,7 @@ const VaultsPageContent = () => {
   // Constants for vault integration - use chain ID from localStorage
   const VAULT_CHAIN_ID = useChainIdFromLocalStorage();
   const VAULT_ADDRESS = passiveLiquidityVault[VAULT_CHAIN_ID]?.address;
+  const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
   // Vaults are always enabled
 
@@ -303,7 +305,9 @@ const VaultsPageContent = () => {
                 className="text-lg bg-transparent border-none p-0 h-auto font-normal placeholder:text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0"
               />
               <div className="flex items-center gap-2">
-                <span className="text-lg text-muted-foreground">testUSDe</span>
+                <span className="text-lg text-muted-foreground">
+                  {collateralSymbol}
+                </span>
               </div>
             </div>
           </div>
@@ -314,7 +318,7 @@ const VaultsPageContent = () => {
           <div className="flex items-center gap-2">
             <span>
               Balance: <NumberDisplay value={Number(shortWalletBalance)} />{' '}
-              testUSDe
+              {collateralSymbol}
             </span>
             <Button
               variant="outline"
@@ -338,7 +342,8 @@ const VaultsPageContent = () => {
           ) : (
             (minDeposit ?? 0n) > 0n && (
               <div className="sm:text-right">
-                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)} testUSDe
+                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
+                {collateralSymbol}
               </div>
             )
           )}
@@ -447,7 +452,7 @@ const VaultsPageContent = () => {
             !withdrawExceedsShareBalance && (
               <div className="sm:text-right">
                 Requested Collateral: {formatAssetAmount(estWithdrawAssets)}{' '}
-                testUSDe
+                {collateralSymbol}
               </div>
             )}
         </div>
@@ -573,33 +578,16 @@ const VaultsPageContent = () => {
   };
 
   // Derived vault metrics for display
+  // TVL = availableAssets + totalDeployed (direct on-chain reads)
   const tvlWei = useMemo(() => {
     try {
-      const totalAssetsWei = vaultData?.totalAssets ?? 0n;
-      if (totalAssetsWei > 0n) return totalAssetsWei;
-
-      // Fallback: derive TVL from totalSupply * pricePerShare when assets aren't populated
-      if (
-        vaultData?.totalSupply &&
-        pricePerShare &&
-        pricePerShare !== '0' &&
-        assetDecimals !== undefined
-      ) {
-        try {
-          const ppsScaled = parseUnits(pricePerShare, assetDecimals);
-          return (
-            (vaultData.totalSupply * ppsScaled) / 10n ** BigInt(assetDecimals)
-          );
-        } catch {
-          // ignore fallback errors and return 0n below
-        }
-      }
-
-      return 0n;
+      const available = vaultData?.availableAssets ?? 0n;
+      const deployed = vaultData?.totalDeployed ?? 0n;
+      return available + deployed;
     } catch {
       return 0n;
     }
-  }, [vaultData, pricePerShare, assetDecimals]);
+  }, [vaultData]);
 
   const deployedWei = useMemo(() => {
     try {
@@ -722,7 +710,7 @@ const VaultsPageContent = () => {
                         Total Value Locked
                       </div>
                       <div className="text-xl font-normal font-mono">
-                        {tvlDisplay} testUSDe
+                        {tvlDisplay} {collateralSymbol}
                       </div>
                     </div>
                   </div>
@@ -736,7 +724,7 @@ const VaultsPageContent = () => {
                           Utilization Rate: {utilizationDisplay}
                         </div>
                         <div className="text-sm font-normal">
-                          Deployed: {deployedDisplay} testUSDe
+                          Deployed: {deployedDisplay} {collateralSymbol}
                         </div>
                       </div>
                       <div className="w-full h-2 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
@@ -775,7 +763,7 @@ const VaultsPageContent = () => {
                               {pendingRequest.isDeposit ? (
                                 <>
                                   {formatAssetAmount(pendingRequest.assets)}{' '}
-                                  testUSDe
+                                  {collateralSymbol}
                                   {depositQueuePosition
                                     ? ` · Queue #${depositQueuePosition}`
                                     : ''}

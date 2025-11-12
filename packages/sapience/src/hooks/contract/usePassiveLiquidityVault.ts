@@ -35,7 +35,7 @@ const hasFunction = (name: string, inputsLength?: number) => {
 };
 
 export interface VaultData {
-  totalAssets: bigint;
+  availableAssets: bigint;
   totalSupply: bigint;
   totalDeployed: bigint;
   utilizationRate: bigint;
@@ -101,7 +101,7 @@ export function usePassiveLiquidityVault(
       {
         abi: PARLAY_VAULT_ABI,
         address: VAULT_ADDRESS,
-        functionName: 'totalAssets',
+        functionName: 'availableAssets',
         chainId: TARGET_CHAIN_ID,
       },
       {
@@ -316,7 +316,7 @@ export function usePassiveLiquidityVault(
   // Parse vault data
   const parsedVaultData: VaultData | null = vaultData
     ? {
-        totalAssets: (vaultData[0]?.result as bigint) || 0n,
+        availableAssets: (vaultData[0]?.result as bigint) || 0n,
         totalSupply: (vaultData[1]?.result as bigint) || 0n,
         totalDeployed: (vaultData[2]?.result as bigint) || 0n,
         utilizationRate: (vaultData[3]?.result as bigint) || 0n,

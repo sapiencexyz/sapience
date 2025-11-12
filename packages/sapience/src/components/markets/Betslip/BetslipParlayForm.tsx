@@ -21,6 +21,7 @@ import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { formatNumber } from '~/lib/utils/util';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface BetslipParlayFormProps {
   methods: UseFormReturn<{
@@ -55,13 +56,15 @@ export default function BetslipParlayForm({
   bids = [],
   requestQuotes,
   collateralToken,
-  collateralSymbol,
+  collateralSymbol: collateralSymbolProp,
   collateralDecimals,
   minWager,
   predictionMarketAddress,
 }: BetslipParlayFormProps) {
   const { parlaySelections, removeParlaySelection } = useBetSlipContext();
   const { address: makerAddress } = useAccount();
+  const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
+  const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
@@ -315,7 +318,7 @@ export default function BetslipParlayForm({
                       return 0n;
                     }
                   })();
-                  const symbol = collateralSymbol || 'testUSDe';
+                  const symbol = collateralSymbol;
                   const humanTotal = (() => {
                     try {
                       const human = Number(formatUnits(totalWei, decimals));

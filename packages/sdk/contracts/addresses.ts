@@ -1,6 +1,6 @@
 import type { Address } from 'viem';
 
-export type ChainId = 10 | 8453 | 42161 | number;
+export type ChainId = 10 | 8453 | 42161 | 5064014 | number;
 
 export interface ContractAddressEntry {
   address: Address;
