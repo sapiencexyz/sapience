@@ -103,11 +103,10 @@ const createChainClient = (
   }
 
   if (chain.id === 5064014) {
-    const rpcUrl =
-      process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
+    const rpcUrl = 'wss://rpc.ethereal.trade';
     return createPublicClient({
       chain,
-      transport: http(rpcUrl),
+      transport: webSocket(rpcUrl),
       batch: {
         multicall: true,
       },
