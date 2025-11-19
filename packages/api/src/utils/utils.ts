@@ -34,10 +34,10 @@ export const convergeChain: viem.Chain = {
 
 export const etherealChain: viem.Chain = {
   id: 5064014,
-  name: 'Ethereal',
+  name: 'EtherealChain',
   nativeCurrency: {
-    name: 'Ether',
-    symbol: 'ETH',
+    name: 'Ethena USDe',
+    symbol: 'USDe',
     decimals: 18,
   },
   rpcUrls: {
@@ -103,10 +103,10 @@ const createChainClient = (
   }
 
   if (chain.id === 5064014) {
-    const rpcUrl = 'wss://rpc.ethereal.trade';
+    const rpcUrl = 'https://rpc.ethereal.trade';
     return createPublicClient({
       chain,
-      transport: webSocket(rpcUrl),
+      transport: http(rpcUrl),
       batch: {
         multicall: true,
       },

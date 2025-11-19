@@ -166,6 +166,8 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
   private isWatching: boolean = false;
   private chainId: number;
   private contractAddress: `0x${string}`;
+  private sigintHandler: (() => void) | null = null;
+  private currentUnwatch: (() => void) | null = null;
 
   constructor(chainId: number) {
     this.chainId = chainId;
@@ -385,7 +387,9 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
   private async processLog(log: Log, block: Block): Promise<void> {
     try {
-      console.log(`[PredictionMarketIndexer] Processing log: ${log.address}`);
+      console.log(
+        `[PredictionMarketIndexer] Processing log: ${log.address} logIndex: ${log.logIndex}`
+      );
       // Check if this is a PredictionMarket event
       if (log.address.toLowerCase() !== this.contractAddress.toLowerCase()) {
         console.log(
@@ -1130,6 +1134,29 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       return;
     }
 
+    // Clean up any existing watcher before creating a new one
+    if (this.currentUnwatch) {
+      try {
+        console.log('[PredictionMarketIndexer] Cleaning up existing watcher');
+        this.currentUnwatch();
+      } catch (error) {
+        console.error(
+          '[PredictionMarketIndexer] Error cleaning up old watcher:',
+          error
+        );
+      }
+      this.currentUnwatch = null;
+    }
+
+    // Remove any existing SIGINT listener
+    if (this.sigintHandler) {
+      console.log(
+        '[PredictionMarketIndexer] Removing existing SIGINT listener'
+      );
+      process.removeListener('SIGINT', this.sigintHandler);
+      this.sigintHandler = null;
+    }
+
     this.isWatching = true;
     console.log(
       `[PredictionMarketIndexer:${this.chainId}] Starting to watch events for resource: ${resource.slug} on contract ${this.contractAddress}`
@@ -1137,7 +1164,7 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
 
     try {
       // Watch for all PredictionMarket events in a single watcher
-      const unwatch = this.client.watchContractEvent({
+      this.currentUnwatch = this.client.watchContractEvent({
         address: this.contractAddress,
         abi: PREDICTION_MARKET_ABI,
         onLogs: async (logs) => {
@@ -1148,13 +1175,13 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
                 blockNumber: log.blockNumber,
                 includeTransactions: false,
               });
+
               await this.processLog(log, block);
             } catch (logError) {
               console.error(
                 `[PredictionMarketIndexer] Error processing log:`,
                 logError
               );
-              Sentry.captureException(logError);
             }
           }
         },
@@ -1165,6 +1192,22 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
           );
           Sentry.captureException(error);
           this.isWatching = false;
+
+          // Clean up the failed watcher for non-EtherealChain only - Ethereal doesn't rate limit but is flaky
+          if (this.currentUnwatch && this.chainId !== 5064014) {
+            try {
+              console.log(
+                '[PredictionMarketIndexer] Cleaning up failed watcher'
+              );
+              this.currentUnwatch();
+            } catch (cleanupError) {
+              console.error(
+                '[PredictionMarketIndexer] Error cleaning up failed watcher:',
+                cleanupError
+              );
+            }
+            this.currentUnwatch = null;
+          }
 
           // Attempt to restart after a delay
           console.log(
@@ -1190,12 +1233,21 @@ class PredictionMarketIndexer implements IResourcePriceIndexer {
       });
 
       // Keep the process alive
-      process.on('SIGINT', () => {
+      this.sigintHandler = () => {
         console.log('[PredictionMarketIndexer] Stopping event watcher...');
-        unwatch();
+        if (this.currentUnwatch) {
+          this.currentUnwatch();
+          this.currentUnwatch = null;
+        }
         this.isWatching = false;
+        if (this.sigintHandler) {
+          process.removeListener('SIGINT', this.sigintHandler);
+          this.sigintHandler = null;
+        }
         process.exit(0);
-      });
+      };
+      console.log('[PredictionMarketIndexer] Adding SIGINT listener');
+      process.on('SIGINT', this.sigintHandler);
 
       // Keep the process running
       await new Promise(() => {});
