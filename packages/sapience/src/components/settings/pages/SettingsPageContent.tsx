@@ -228,10 +228,6 @@ const SettingsPageContent = () => {
       // Default to Ethereal when there is no stored value or an unknown value
       setSelectedChain('ethereal');
     }
-    console.log(
-      'window.localStorage.getItem(sapience.settings.selectedRpcURL)',
-      window.localStorage.getItem(RPC_STORAGE_KEY)
-    );
     setRpcInput(
       window.localStorage.getItem(RPC_STORAGE_KEY) || defaults.rpcURL
     );
@@ -251,8 +247,7 @@ const SettingsPageContent = () => {
       setRpcInput(nextRpcUrl);
       setRpcUrl(nextRpcUrl);
       window.localStorage.setItem(CHAIN_ID_STORAGE_KEY, nextChainId);
-    } catch (e) {
-      console.log('error', e);
+    } catch {
       // no-op
     }
   }, [selectedChain, defaults.rpcURL, setRpcUrl]);

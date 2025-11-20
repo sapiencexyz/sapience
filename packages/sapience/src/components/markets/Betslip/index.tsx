@@ -26,7 +26,7 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -154,7 +154,12 @@ const Betslip = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Fetch collateral token symbol and decimals
+  // Check if we're on an Ethereal chain
+  const isEtherealChain = useMemo(() => {
+    return COLLATERAL_SYMBOLS[parlayChainId] === 'USDe';
+  }, [parlayChainId]);
+
+  // Fetch collateral token symbol and decimals (skip for Ethereal chains)
   const erc20MetaRead = useReadContracts({
     contracts: collateralToken
       ? [
@@ -172,24 +177,34 @@ const Betslip = ({
           },
         ]
       : [],
-    query: { enabled: !!collateralToken },
+    query: { enabled: !!collateralToken && !isEtherealChain },
   });
 
   const collateralSymbol: string | undefined = useMemo(() => {
+    // For Ethereal chains, use the native symbol from constants
+    if (isEtherealChain) {
+      return COLLATERAL_SYMBOLS[parlayChainId] || 'USDe';
+    }
+    // For other chains, use the ERC20 token symbol
     const item = erc20MetaRead.data?.[0];
     if (item && item.status === 'success') {
       return String(item.result as unknown as string);
     }
     return undefined;
-  }, [erc20MetaRead.data]);
+  }, [erc20MetaRead.data, isEtherealChain, parlayChainId]);
 
   const collateralDecimals: number | undefined = useMemo(() => {
+    // For Ethereal chains, native USDe always has 18 decimals
+    if (isEtherealChain) {
+      return 18;
+    }
+    // For other chains, fetch from ERC20 token
     const item = erc20MetaRead.data?.[1];
     if (item && item.status === 'success') {
       return Number(item.result as unknown as number);
     }
     return undefined;
-  }, [erc20MetaRead.data]);
+  }, [erc20MetaRead.data, isEtherealChain]);
 
   const minWager = useMemo(() => {
     if (!minCollateralRaw) return undefined;

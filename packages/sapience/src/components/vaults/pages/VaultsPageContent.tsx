@@ -382,7 +382,8 @@ const VaultsPageContent = () => {
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
               isPermitLoading ||
-              isRestricted
+              isRestricted ||
+              exceedsVaultCapacity
             }
             onClick={async () => {
               if (!isConnected) {
@@ -411,9 +412,11 @@ const VaultsPageContent = () => {
                       ? 'Waiting for Price Quote'
                       : !pricePerShare || pricePerShare === '0'
                         ? 'No Price Available'
-                        : requiresApproval
-                          ? 'Approve & Deposit'
-                          : 'Submit Deposit'}
+                        : exceedsVaultCapacity
+                          ? 'Exceeds Vault Capacity'
+                          : requiresApproval
+                            ? 'Approve & Deposit'
+                            : 'Submit Deposit'}
           </Button>
         </div>
 
@@ -655,6 +658,24 @@ const VaultsPageContent = () => {
     }
   }, [deployedWei, formatAssetAmount]);
 
+  // Vault capacity check (1000 USDe max)
+  const VAULT_CAPACITY_WEI = useMemo(() => {
+    try {
+      return parseUnits('1000', assetDecimals ?? 18);
+    } catch {
+      return parseUnits('1000', 18);
+    }
+  }, [assetDecimals]);
+
+  const exceedsVaultCapacity = useMemo(() => {
+    try {
+      const newTotal = tvlWei + depositWei;
+      return newTotal > VAULT_CAPACITY_WEI;
+    } catch {
+      return false;
+    }
+  }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
   const utilizationDisplay = useMemo(() => {
     try {
       return `${Math.round(utilizationPercent)}%`;
@@ -797,26 +818,33 @@ const VaultsPageContent = () => {
                             </p>
                           </div>
                           {pendingRequest.isDeposit ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={
-                                Date.now() >=
+                            (() => {
+                              const expiresAt =
                                 (Number(pendingRequest.timestamp) +
                                   Number(expirationTime ?? 0n)) *
-                                  1000
-                              }
-                              onClick={async () => {
-                                setPendingAction('cancelDeposit');
-                                await cancelDeposit(VAULT_CHAIN_ID);
-                                setPendingAction(undefined);
-                              }}
-                            >
-                              {isVaultPending &&
-                              pendingAction === 'cancelDeposit'
-                                ? 'Processing...'
-                                : 'Cancel'}
-                            </Button>
+                                1000;
+                              const isExpired = Date.now() >= expiresAt;
+
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isExpired}
+                                  onClick={async () => {
+                                    setPendingAction('cancelDeposit');
+                                    await cancelDeposit(VAULT_CHAIN_ID);
+                                    setPendingAction(undefined);
+                                  }}
+                                >
+                                  {isVaultPending &&
+                                  pendingAction === 'cancelDeposit'
+                                    ? 'Processing...'
+                                    : isExpired
+                                      ? 'Expired'
+                                      : 'Cancel'}
+                                </Button>
+                              );
+                            })()
                           ) : (
                             <Button
                               variant="outline"
