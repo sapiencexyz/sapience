@@ -406,9 +406,7 @@ export default function BetslipParlayForm({
                   className="mb-3"
                 />
                 <Button
-                  className={`w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit ${
-                    isWagerOver1M ? 'betslip-submit-rainbow' : ''
-                  }`}
+                  className="w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit"
                   disabled={true}
                   type="submit"
                   size="lg"
