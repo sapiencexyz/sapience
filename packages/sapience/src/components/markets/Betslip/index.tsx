@@ -33,7 +33,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Address } from 'viem';
 import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
-import { wagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
+import {
+  wagerAmountSchema,
+  createWagerAmountSchema,
+} from '~/components/markets/forms/inputs/WagerInput';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
@@ -56,6 +59,7 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '~/components/admin/constants';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
@@ -231,9 +235,13 @@ const Betslip = ({
   const formSchema: z.ZodType<any> = useMemo(() => {
     if (isParlayMode) {
       // Parlay mode only needs wagerAmount and limitAmount
+      // Use createWagerAmountSchema to include min/max validation
+      // Max amount is 10 for Ethereal chain, undefined otherwise
+      const maxAmount = chainId === CHAIN_ID_ETHEREAL ? '10' : undefined;
+      const wagerSchema = createWagerAmountSchema(minWager, maxAmount);
       return z
         .object({
-          wagerAmount: wagerAmountSchema,
+          wagerAmount: wagerSchema,
           limitAmount: z.number().min(0),
           positions: z.object({}).optional(), // Keep for interface compatibility
         })
@@ -263,7 +271,7 @@ const Betslip = ({
         limitAmount: z.number().min(0).optional(),
       });
     }
-  }, [betSlipPositions, isParlayMode]);
+  }, [betSlipPositions, isParlayMode, minWager, chainId]);
 
   // Helper function to generate form values
   const generateFormValues = useMemo(() => {
