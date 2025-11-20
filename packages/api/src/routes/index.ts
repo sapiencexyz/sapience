@@ -7,6 +7,7 @@ import { router as createMarketRoutes } from './createMarket';
 import { Router } from 'express';
 import { adminAuth } from '../middleware';
 import { router as conditionsRoutes } from './conditions';
+import { router as referralsRoutes } from './referrals';
 
 const router = Router();
 const adminRouter = Router();
@@ -15,6 +16,7 @@ const adminRouter = Router();
 adminRouter.use(adminAuth);
 
 router.use('/quoter', quoterRoutes);
+router.use('/referrals', referralsRoutes);
 
 adminRouter.use('/marketGroups', marketRoutes);
 adminRouter.use('/reindex', reindexRoutes);

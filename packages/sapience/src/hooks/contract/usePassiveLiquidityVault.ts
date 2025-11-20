@@ -1,11 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { erc20Abi, formatUnits, parseUnits, encodeFunctionData } from 'viem';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
+import {
+  erc20Abi,
+  formatUnits,
+  parseUnits,
+  encodeFunctionData,
+  parseAbi,
+} from 'viem';
 import type { Abi } from 'abitype';
 import { liquidityVaultAbi } from '@sapience/sdk';
-import { useReadContracts, useAccount } from 'wagmi';
+import { useReadContracts, useAccount, useBalance } from 'wagmi';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -252,14 +262,26 @@ export function usePassiveLiquidityVault(
     },
   });
 
-  // Read asset balance (USDe)
+  // Check if we're on an Ethereal chain
+  const isEtherealChain =
+    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL ||
+    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
+
+  // Native balance for Ethereal chains
+  const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
+    address,
+    chainId: TARGET_CHAIN_ID,
+    query: { enabled: !!address && isEtherealChain },
+  });
+
+  // Read asset balance (ERC20 token for non-Ethereal chains)
   const {
     data: assetBalance,
     isLoading: isLoadingAssetBalance,
     refetch: refetchAssetBalance,
   } = useReadContracts({
     contracts:
-      address && vaultData?.[7]?.result
+      address && vaultData?.[7]?.result && !isEtherealChain
         ? [
             {
               abi: erc20Abi,
@@ -284,7 +306,7 @@ export function usePassiveLiquidityVault(
           ]
         : [],
     query: {
-      enabled: !!address && !!vaultData?.[7]?.result,
+      enabled: !!address && !!vaultData?.[7]?.result && !isEtherealChain,
     },
   });
 
@@ -297,7 +319,11 @@ export function usePassiveLiquidityVault(
     onSuccess: () => {
       refetchVaultData();
       refetchUserData();
-      refetchAssetBalance();
+      if (isEtherealChain) {
+        refetchNativeBalance();
+      } else {
+        refetchAssetBalance();
+      }
       try {
         refetchPendingMapping?.();
       } catch {
@@ -443,9 +469,18 @@ export function usePassiveLiquidityVault(
     : null;
 
   // Get asset decimals (default to 18 while loading to avoid UI flash)
-  const assetDecimals = (assetBalance?.[1]?.result as number) || 18;
-  const userAssetBalance = (assetBalance?.[0]?.result as bigint) || 0n;
-  const currentAllowance = (assetBalance?.[2]?.result as bigint) || 0n;
+  const assetDecimals = isEtherealChain
+    ? 18 // Native USDe always has 18 decimals
+    : (assetBalance?.[1]?.result as number) || 18;
+
+  const userAssetBalance = isEtherealChain
+    ? nativeBalance?.value || 0n // Use native balance on Ethereal
+    : (assetBalance?.[0]?.result as bigint) || 0n; // Use ERC20 balance on other chains
+
+  const currentAllowance = isEtherealChain
+    ? 0n // No allowance needed for native assets
+    : (assetBalance?.[2]?.result as bigint) || 0n;
+
   const minDeposit = (vaultData?.[9]?.result as bigint) || 0n; // MIN_DEPOSIT
 
   // Queue details parsing (preserve ordering: [withdrawal?, deposit?])
@@ -494,12 +529,12 @@ export function usePassiveLiquidityVault(
       if (!raw) return null;
       // Support both named tuple object and array tuple
       if (Array.isArray(raw)) {
-        const [user, isDeposit, shares, assets, timestamp, processed] = raw as [
+        const [shares, assets, timestamp, user, isDeposit, processed] = raw as [
+          bigint,
+          bigint,
+          bigint,
           Address,
           boolean,
-          bigint,
-          bigint,
-          bigint,
           boolean,
         ];
         if (
@@ -672,6 +707,42 @@ export function usePassiveLiquidityVault(
           : [amountWei],
       });
 
+      if (isEtherealChain) {
+        const wrapCalldata = encodeFunctionData({
+          abi: parseAbi(['function deposit() payable']),
+          functionName: 'deposit',
+        });
+
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [VAULT_ADDRESS, amountWei],
+        });
+
+        await sendCalls({
+          chainId,
+          calls: [
+            {
+              to: parsedVaultData.asset, // wUSDe contract address
+              data: wrapCalldata,
+              value: amountWei, // Native USDe to wrap
+            },
+            {
+              to: parsedVaultData.asset, // wUSDe contract address
+              data: approveCalldata,
+              value: 0n, // No value for approve
+            },
+            {
+              to: VAULT_ADDRESS,
+              data: requestDepositCalldata,
+              value: 0n, // No value for the deposit call itself
+            },
+          ],
+        });
+        return;
+      }
+
+      // For non-Ethereal chains, use ERC20 approval flow
       // If approval is required, batch approve + requestDeposit
       if (currentAllowance < amountWei) {
         const approveCalldata = encodeFunctionData({

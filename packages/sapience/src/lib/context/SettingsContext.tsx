@@ -55,7 +55,10 @@ const STORAGE_KEYS = {
   quoter: 'sapience.settings.quoterBaseUrl',
   chat: 'sapience.settings.chatBaseUrl',
   admin: 'sapience.settings.adminBaseUrl',
+  // NOTE: `rpcURL` is a legacy key that is intentionally ignored in favor of
+  // `selectedRpcURL` so that old Arbitrum-specific overrides do not persist.
   rpcURL: 'sapience.settings.rpcURL',
+  selectedRpcURL: 'sapience.settings.selectedRpcURL',
   openrouterApiKey: 'sapience.settings.openrouterApiKey',
   researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
   researchAgentModel: 'sapience.settings.researchAgentModel',
@@ -210,9 +213,9 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.admin)
           : null;
-      const r =
+      const rSelected =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.rpcURL)
+          ? window.localStorage.getItem(STORAGE_KEYS.selectedRpcURL)
           : null;
       const ork =
         typeof window !== 'undefined'
@@ -243,7 +246,7 @@ export const SettingsProvider = ({
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
-      if (r && isHttpUrl(r)) setRpcOverride(r);
+      if (rSelected && isHttpUrl(rSelected)) setRpcOverride(rSelected);
       if (ork) setOpenrouterApiKeyOverride(ork);
       if (rsm) setResearchAgentSystemMessageOverride(rsm);
       if (rmodel) setResearchAgentModelOverride(rmodel);
@@ -413,13 +416,13 @@ export const SettingsProvider = ({
     try {
       if (typeof window === 'undefined') return;
       if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.rpcURL);
+        window.localStorage.removeItem(STORAGE_KEYS.selectedRpcURL);
         setRpcOverride(null);
         return;
       }
       const v = value.trim();
       if (!isHttpUrl(v)) return;
-      window.localStorage.setItem(STORAGE_KEYS.rpcURL, v);
+      window.localStorage.setItem(STORAGE_KEYS.selectedRpcURL, v);
       setRpcOverride(v);
     } catch {
       /* noop */
@@ -585,7 +588,7 @@ export const settingsStorage = {
     return v || null;
   },
   getRpcUrl(): string | null {
-    const v = this.read('rpcURL');
+    const v = this.read('selectedRpcURL');
     return v || null;
   },
 };

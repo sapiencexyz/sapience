@@ -23,24 +23,45 @@ function getClientIpFromHeaders(headers: Headers): string | null {
   return null;
 }
 
+type IpInfoResponse = {
+  country?: string;
+};
+
 async function getIpInfo(ip: string) {
   const token = process.env.IPINFO_TOKEN;
   if (!token) return null;
   try {
     const response = await fetch(`https://ipinfo.io/${ip}?token=${token}`);
     if (!response.ok) return null;
-    return await response.json();
+    return (await response.json()) as IpInfoResponse;
   } catch {
     return null;
   }
 }
 
-async function isGeofenced(ip: string | null) {
-  if (!process.env.IPINFO_TOKEN) return false;
-  if (!ip) return true;
+type GeofenceResult = {
+  blocked: boolean;
+  country: string | null;
+};
+
+async function getGeofenceResult(ip: string | null): Promise<GeofenceResult> {
+  if (!process.env.IPINFO_TOKEN) {
+    return { blocked: false, country: null };
+  }
+
+  if (!ip) {
+    return { blocked: true, country: null };
+  }
+
   const ipInfo = await getIpInfo(ip);
-  if (!ipInfo) return true;
-  return GEOFENCED_COUNTRIES.includes(ipInfo.country);
+  if (!ipInfo || !ipInfo.country) {
+    return { blocked: true, country: null };
+  }
+
+  return {
+    blocked: GEOFENCED_COUNTRIES.includes(ipInfo.country),
+    country: ipInfo.country,
+  };
 }
 
 function corsHeaders(origin: string | null) {
@@ -64,8 +85,50 @@ export async function GET(req: Request) {
 
   try {
     const ip = getClientIpFromHeaders(req.headers);
-    const blocked = await isGeofenced(ip);
-    return new Response(JSON.stringify({ permitted: !blocked }), {
+
+    // Development override: allow forcing geofence locally without relying on IP.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.FORCE_GEOFENCE_LOCAL === '1'
+    ) {
+      const body: Record<string, unknown> = {
+        permitted: false,
+        country: null,
+      };
+
+      // Optional debug information in development when requested.
+      if (url.searchParams.get('debug') === '1') {
+        body.ip = ip;
+        body.tokenPresent = !!process.env.IPINFO_TOKEN;
+        body.reason = 'FORCE_GEOFENCE_LOCAL override';
+      }
+
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          ...baseHeaders,
+        },
+      });
+    }
+
+    const { blocked, country } = await getGeofenceResult(ip);
+
+    const body: Record<string, unknown> = {
+      permitted: !blocked,
+      country,
+    };
+
+    // Optional debug information in development when requested.
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      url.searchParams.get('debug') === '1'
+    ) {
+      body.ip = ip;
+      body.tokenPresent = !!process.env.IPINFO_TOKEN;
+    }
+
+    return new Response(JSON.stringify(body), {
       status: 200,
       headers: {
         'Content-Type': 'application/json',

@@ -468,7 +468,7 @@ const Admin = () => {
       try {
         if (typeof window === 'undefined') return;
         const chainId = window.localStorage.getItem(
-          'sapience.settings.chainId'
+          'sapience.settings.selectedChainId'
         );
         const isEthereal = chainId === CHAIN_ID_ETHEREAL;
         setIsEtherealChain(isEthereal);
@@ -482,7 +482,7 @@ const Admin = () => {
 
     // Listen for storage changes (e.g., when chain ID changes in settings from other tabs)
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'sapience.settings.chainId') {
+      if (e.key === 'sapience.settings.selectedChainId') {
         checkChainId();
       }
     };

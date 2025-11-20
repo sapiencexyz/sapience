@@ -18,7 +18,7 @@ describe('api/permit edge route', () => {
     const res = await GET(req);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ permitted: true });
+    expect(body).toEqual({ permitted: true, country: null });
   });
 
   it('handles CORS preflight', () => {

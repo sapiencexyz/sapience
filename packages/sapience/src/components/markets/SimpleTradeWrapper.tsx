@@ -5,7 +5,7 @@ import { useAccount } from 'wagmi';
 import { CreateTradeForm, ModifyTradeForm } from './forms';
 import type { TradeFormMarketDetails } from './forms/CreateTradeForm';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
-import { useSapience } from '~/lib/context/SapienceProvider';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import { PositionKind } from '~/hooks/contract/usePositions';
 
 interface SimpleTradeWrapperProps {
@@ -31,7 +31,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
     refetchPositions,
   } = useMarketPage();
 
-  const { permitData } = useSapience();
+  const { permitData, isPermitLoading } = useRestrictedJurisdiction();
 
   const position = positionId ? getPositionById(positionId) : null;
   const hasPosition = !!position && position.kind === PositionKind.Trade;
@@ -66,7 +66,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
             onSuccess={handleSuccess}
             positionId={positionId as string}
             permitData={permitData}
-            isPermitLoadingPermit={false}
+            isPermitLoadingPermit={isPermitLoading}
           />
         </div>
       ) : (
@@ -76,7 +76,7 @@ const SimpleTradeWrapper: React.FC<SimpleTradeWrapperProps> = ({
           onConnectWallet={handleConnectWallet}
           onSuccess={handleSuccess}
           permitData={permitData}
-          isPermitLoadingPermit={false}
+          isPermitLoadingPermit={isPermitLoading}
         />
       )}
     </div>

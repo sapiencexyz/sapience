@@ -540,3 +540,29 @@ enum LimitOrderStatus {
   filled
   cancelled
 }
+
+/// Application-level user record, keyed by wallet address,
+/// used for referrals and other per-wallet metadata.
+model User {
+  id           Int      @id @default(autoincrement())
+  createdAt    DateTime @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  /// Canonical Ethereum wallet address for this user.
+  address      String   @unique(map: "UQ_user_address") @db.VarChar
+
+  /// keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex.
+  refCodeHash  String?  @unique(map: "UQ_user_ref_code_hash") @db.VarChar
+
+  /// Maximum number of referrals this user's code allows. Default is 0,
+  /// so codes are not usable until explicitly configured.
+  maxReferrals Int      @default(0)
+
+  referredById Int?
+  referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals    User[]  @relation("UserReferrals")
+
+  @@index([address], map: "IDX_user_address")
+  @@map("app_user")
+}
+

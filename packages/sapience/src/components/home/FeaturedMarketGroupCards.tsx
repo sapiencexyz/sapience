@@ -12,6 +12,8 @@ import { useSidebar } from '@sapience/sdk/ui/components/ui/sidebar';
 import TickerMarketCard from './ticker/TickerMarketCard';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import { getActivePublicConditions } from './featuredConditions';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 // Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
 
@@ -28,9 +30,11 @@ interface FeaturedCondition {
 }
 
 export default function FeaturedMarketGroupCards() {
-  // Fetch recent conditions
+  // Fetch recent conditions for the currently selected chain
+  const chainId = useChainIdFromLocalStorage();
   const { data: conditions, isLoading: isLoadingConditions } = useConditions({
     take: 100,
+    chainId,
   });
 
   // Per-mount random seed to vary picks between mounts but keep them stable within a session
@@ -56,11 +60,7 @@ export default function FeaturedMarketGroupCards() {
     const now = Math.floor(Date.now() / 1000);
 
     // 1) Active + public conditions
-    const activePublic = conditions.filter((c) => {
-      if (typeof c.endTime !== 'number' || c.endTime <= 0) return false;
-      if (!c.public) return false;
-      return now <= c.endTime;
-    });
+    const activePublic = getActivePublicConditions(conditions, now);
 
     // 2) Map with color metadata
     const mapped: FeaturedCondition[] = activePublic.map((c) => {

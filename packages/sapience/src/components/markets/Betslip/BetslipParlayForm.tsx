@@ -22,6 +22,10 @@ import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 import { formatNumber } from '~/lib/utils/util';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '~/components/admin/constants';
 
 interface BetslipParlayFormProps {
   methods: UseFormReturn<{
@@ -66,33 +70,20 @@ export default function BetslipParlayForm({
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
+  const selectedChainId = useChainIdFromLocalStorage();
+  const isEtherealChain = selectedChainId === CHAIN_ID_ETHEREAL;
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
 
-  // Generate or retrieve a stable guest taker address for logged-out users
-  const guestTakerAddress = useMemo<`0x${string}` | null>(() => {
-    try {
-      if (typeof window === 'undefined') return null;
-      let addr = window.localStorage.getItem('sapience_guest_taker_address');
-      if (!addr) {
-        const bytes = new Uint8Array(20);
-        window.crypto.getRandomValues(bytes);
-        addr =
-          '0x' +
-          Array.from(bytes)
-            .map((b) => b.toString(16).padStart(2, '0'))
-            .join('');
-        window.localStorage.setItem('sapience_guest_taker_address', addr);
-      }
-      return addr as `0x${string}`;
-    } catch {
-      return null;
-    }
-  }, []);
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
-  // Prefer connected wallet address; fall back to guest address
-  const selectedTakerAddress = takerAddress ?? guestTakerAddress ?? undefined;
+  // Use zero address as the guest taker address when the user is logged out
+  const guestTakerAddress: `0x${string}` =
+    '0x0000000000000000000000000000000000000000';
+
+  // Prefer connected wallet address; fall back to zero address
+  const selectedTakerAddress = takerAddress ?? guestTakerAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
@@ -111,6 +102,13 @@ export default function BetslipParlayForm({
     control: methods.control,
     name: 'wagerAmount',
   });
+
+  // Check if wager is over 1M for rainbow effect
+  const isWagerOver1M = useMemo(() => {
+    if (!parlayWagerAmount) return false;
+    const wagerNum = Number(parlayWagerAmount);
+    return !Number.isNaN(wagerNum) && wagerNum >= 1000000;
+  }, [parlayWagerAmount]);
 
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
@@ -204,6 +202,8 @@ export default function BetslipParlayForm({
     if (!parlaySelections || parlaySelections.length === 0) return;
     // If a wallet is connected, require a real takerNonce before broadcasting RFQ
     if (takerAddress && takerNonce === undefined) return;
+    // Don't request quotes if there are form validation errors
+    if (Object.keys(methods.formState.errors).length > 0) return;
     const wagerStr = parlayWagerAmount || '0';
     try {
       const decimals = Number.isFinite(collateralDecimals as number)
@@ -238,6 +238,7 @@ export default function BetslipParlayForm({
     takerNonce,
     takerAddress,
     chainId,
+    methods.formState.errors,
   ]);
 
   return (
@@ -291,6 +292,7 @@ export default function BetslipParlayForm({
           <div className="mt-4">
             <WagerInput
               minAmount={minWager}
+              maxAmount={isEtherealChain ? '1000000' : undefined}
               collateralSymbol={collateralSymbol}
               collateralAddress={collateralToken}
               chainId={chainId}
@@ -334,13 +336,13 @@ export default function BetslipParlayForm({
                   return (
                     <div className="mt-3 mb-4">
                       <div className="flex items-center gap-1.5 rounded-md border-[1.5px] border-ethena/80 bg-ethena/20 px-3 py-2.5 w-full min-h-[48px] shadow-[0_0_10px_rgba(136,180,245,0.25)]">
-                        <span className="inline-flex items-center gap-1.5 whitespace-nowrap shrink-0">
+                        <span className="inline-flex items-center gap-2 whitespace-nowrap shrink-0">
                           <Image
                             src="/usde.svg"
                             alt="USDe"
-                            width={18}
-                            height={18}
-                            className="opacity-90 w-4.5 h-4.5"
+                            width={24}
+                            height={24}
+                            className="opacity-90 ml-[-2px] w-6 h-6"
                           />
                           <span className="font-medium text-brand-white">
                             To Win:
@@ -360,16 +362,27 @@ export default function BetslipParlayForm({
                     </div>
                   );
                 })()}
+                <RestrictedJurisdictionBanner
+                  show={!isPermitLoading && isRestricted}
+                  className="mb-3"
+                />
                 <Button
-                  className="w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit"
+                  className={`w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit ${
+                    isWagerOver1M ? 'betslip-submit-rainbow' : ''
+                  }`}
                   disabled={
-                    isSubmitting || bestBid.makerDeadline * 1000 - nowMs <= 0
+                    isSubmitting ||
+                    bestBid.makerDeadline * 1000 - nowMs <= 0 ||
+                    isPermitLoading ||
+                    isRestricted
                   }
                   type="submit"
                   size="lg"
                   variant="default"
                 >
-                  {isSubmitting ? 'Submitting Wager...' : 'Submit Wager'}
+                  {isSubmitting
+                    ? 'Submitting Prediction...'
+                    : 'Submit Prediction'}
                 </Button>
                 <div className="mt-0.5 py-1 flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1 text-foreground">
@@ -388,6 +401,10 @@ export default function BetslipParlayForm({
               </div>
             ) : (
               <div className="text-center">
+                <RestrictedJurisdictionBanner
+                  show={!isPermitLoading && isRestricted}
+                  className="mb-3"
+                />
                 <Button
                   className="w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit"
                   disabled={true}

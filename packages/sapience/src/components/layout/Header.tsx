@@ -30,6 +30,7 @@ import {
   Bot,
   Zap,
   Trophy,
+  Users,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -38,13 +39,26 @@ import { SiSubstack } from 'react-icons/si';
 
 import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import CollateralBalanceButton from './CollateralBalanceButton';
 import { shortenAddress } from '~/lib/utils/util';
 import { useEnsName } from '~/components/shared/AddressDisplay';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
+import ReferralsDialog from '~/components/shared/ReferralsDialog';
+import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCodeDialog';
 
-// logo.svg will be rendered via next/image below
+const USER_REFERRAL_STATUS_QUERY = `
+  query UserReferralStatus($wallet: String!) {
+    user(where: { address: $wallet }) {
+      address
+      refCodeHash
+      referredBy {
+        id
+      }
+    }
+  }
+`;
 
 const isActive = (path: string, pathname: string) => {
   if (path === '/') {
@@ -69,8 +83,6 @@ const NavLinks = ({
     ? 'sc-heading justify-start rounded-full'
     : 'sc-heading justify-start rounded-full';
   const activeClass = 'text-accent-gold';
-
-  // No feature flag: Chat button is always available in the sidebar for authenticated users
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -192,6 +204,9 @@ const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const thresholdRef = useRef(12);
   const headerRef = useRef<HTMLElement | null>(null);
+  const [isReferralsOpen, setIsReferralsOpen] = useState(false);
+  const [isReferralRequiredOpen, setIsReferralRequiredOpen] = useState(false);
+  const lastWalletAddressRef = useRef<string | null>(null);
 
   useEffect(() => {
     const recalcThreshold = () => {
@@ -236,6 +251,75 @@ const Header = () => {
       window.removeEventListener('scroll', onScroll);
     };
   }, []);
+
+  // When a wallet connects (or the active wallet changes), check with the
+  // backend whether this address has an associated referral relationship
+  // (either as a referee or a referrer). If not, open a blocking dialog
+  // that requires the user to either enter a code or disconnect.
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!ready || !hasConnectedWallet || !connectedWallet?.address) {
+        setIsReferralRequiredOpen(false);
+        lastWalletAddressRef.current = null;
+        return;
+      }
+
+      const currentAddress = connectedWallet.address.toLowerCase();
+      const previousAddress = lastWalletAddressRef.current;
+      lastWalletAddressRef.current = currentAddress;
+
+      // Only re-check when the address actually changes.
+      if (previousAddress === currentAddress) {
+        return;
+      }
+
+      try {
+        const data = await graphqlRequest<{
+          user: {
+            address: string;
+            refCodeHash?: string | null;
+            referredBy?: { id: number } | null;
+          } | null;
+        }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
+
+        if (cancelled) return;
+
+        const user = data?.user;
+        const hasServerReferral = !!(
+          user &&
+          (user.refCodeHash || user.referredBy)
+        );
+
+        if (hasServerReferral) {
+          setIsReferralRequiredOpen(false);
+          return;
+        }
+
+        // No referral relationship on the backend: require a code.
+        setIsReferralRequiredOpen(true);
+      } catch {
+        // On network or GraphQL errors, fall back to localStorage so we don't
+        // accidentally lock out users who have previously provided a code.
+        try {
+          if (typeof window === 'undefined') return;
+          const key = `sapience:referralCode:${currentAddress}`;
+          const existing = window.localStorage.getItem(key);
+          setIsReferralRequiredOpen(!existing);
+        } catch {
+          // If localStorage is unavailable, err on the side of not gating.
+          setIsReferralRequiredOpen(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, hasConnectedWallet, connectedWallet?.address]);
 
   const hasDisconnect = (
     x: unknown
@@ -428,50 +512,67 @@ const Header = () => {
                 <CollateralBalanceButton className="hidden md:flex" />
               )}
               {ready && hasConnectedWallet && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="rounded-md h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90 font-mono"
-                    >
-                      {connectedWallet?.address ? (
-                        <>
-                          {/* Mobile: avatar fills the entire circular button */}
-                          <EnsAvatar
-                            address={connectedWallet.address}
-                            className="h-8 w-8 rounded-sm ring-inset md:hidden"
-                            width={32}
-                            height={32}
-                          />
-                          {/* Desktop: small avatar next to address */}
-                          <EnsAvatar
-                            address={connectedWallet.address}
-                            className="hidden md:inline-flex h-6 w-6 rounded-sm"
-                            width={20}
-                            height={20}
-                          />
-                        </>
-                      ) : (
-                        <User className="h-5 w-5" />
-                      )}
-                      {connectedWallet?.address && (
-                        <span className="hidden md:inline text-sm font-normal">
-                          {ensName || shortenAddress(connectedWallet.address)}
-                        </span>
-                      )}
-                      <span className="sr-only">User Menu</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={handleLogout}
-                      className="flex items-center cursor-pointer"
-                    >
-                      <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="rounded-md h-10 w-10 md:h-9 md:w-auto ml-1.5 md:ml-0 gap-2 p-0 md:pl-2 md:pr-3 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90 font-mono"
+                      >
+                        {connectedWallet?.address ? (
+                          <>
+                            {/* Mobile: avatar fills the entire circular button */}
+                            <EnsAvatar
+                              address={connectedWallet.address}
+                              className="h-8 w-8 rounded-sm ring-inset md:hidden"
+                              width={32}
+                              height={32}
+                            />
+                            {/* Desktop: small avatar next to address */}
+                            <EnsAvatar
+                              address={connectedWallet.address}
+                              className="hidden md:inline-flex h-6 w-6 rounded-sm"
+                              width={20}
+                              height={20}
+                            />
+                          </>
+                        ) : (
+                          <User className="h-5 w-5" />
+                        )}
+                        {connectedWallet?.address && (
+                          <span className="hidden md:inline text-sm font-normal">
+                            {ensName || shortenAddress(connectedWallet.address)}
+                          </span>
+                        )}
+                        <span className="sr-only">User Menu</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        className="flex items-center cursor-pointer"
+                        onSelect={(event) => {
+                          event.preventDefault();
+                          setIsReferralsOpen(true);
+                        }}
+                      >
+                        <Users className="mr-0.5 opacity-75 h-4 w-4" />
+                        <span>Referrals</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        className="flex items-center cursor-pointer"
+                      >
+                        <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
+                        <span>Log out</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <ReferralsDialog
+                    open={isReferralsOpen}
+                    onOpenChange={setIsReferralsOpen}
+                    walletAddress={connectedWallet?.address}
+                  />
+                </>
               )}
               {/* Address now displayed inside the black default button on desktop */}
               {ready && !hasConnectedWallet && (
@@ -492,6 +593,18 @@ const Header = () => {
           </div>
         </div>
       </header>
+
+      {ready && hasConnectedWallet && connectedWallet?.address && (
+        <RequiredReferralCodeDialog
+          open={isReferralRequiredOpen}
+          onOpenChange={setIsReferralRequiredOpen}
+          walletAddress={connectedWallet.address}
+          onCodeSet={() => {
+            setIsReferralRequiredOpen(false);
+          }}
+          onLogout={handleLogout}
+        />
+      )}
 
       {/* Mobile Sidebar only */}
       <Sidebar

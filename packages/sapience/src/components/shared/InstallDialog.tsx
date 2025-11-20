@@ -68,10 +68,26 @@ const InstallDialog = () => {
     }
 
     if (forceShow) return true;
+
     if (isMobile && !isStandalone) {
-      if (lastDismissedAt == null) return true;
+      // On the very first eligible encounter, behave as if the user
+      // immediately dismissed the dialog: record a dismissal timestamp
+      // and do NOT show the dialog. It will only appear on the next
+      // cycle once the configured window has elapsed.
+      if (lastDismissedAt == null) {
+        try {
+          if (typeof window !== 'undefined') {
+            window.localStorage.setItem(LOCAL_STORAGE_KEY, String(Date.now()));
+          }
+        } catch {
+          // ignore
+        }
+        return false;
+      }
+
       if (Date.now() - lastDismissedAt >= DISMISSAL_WINDOW_MS) return true;
     }
+
     return false;
   };
 

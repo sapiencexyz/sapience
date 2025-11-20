@@ -16,6 +16,8 @@ import { useCreateTrade } from '~/hooks/contract/useCreateTrade';
 import { useQuoter } from '~/hooks/forms/useQuoter';
 import { tickToPrice } from '~/lib/utils/tickUtils';
 import { MarketGroupClassification } from '~/lib/types';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 interface NumericWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -132,11 +134,15 @@ export default function NumericWagerForm({
     }
   }, [wagerAmount, predictionValue]);
 
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
+
   const isButtonDisabled =
     !methods.formState.isValid ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade;
+    isCreatingTrade ||
+    isPermitLoading ||
+    isRestricted;
 
   // Determine button text
   const getButtonText = () => {
@@ -145,7 +151,7 @@ export default function NumericWagerForm({
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
-    return 'Submit Wager';
+    return 'Submit Prediction';
   };
 
   // Quote data is now handled by the shared QuoteDisplay component
@@ -184,7 +190,10 @@ export default function NumericWagerForm({
           />
         </div>
 
-        {/* Permit gating removed */}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoading && isRestricted}
+          className="mt-2"
+        />
 
         <div className="space-y-3">
           <WagerDisclaimer />

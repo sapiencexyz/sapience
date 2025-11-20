@@ -26,14 +26,17 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Address } from 'viem';
 import { encodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
-import { wagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
+import {
+  wagerAmountSchema,
+  createWagerAmountSchema,
+} from '~/components/markets/forms/inputs/WagerInput';
 import { useBetSlipContext } from '~/lib/context/BetSlipContext';
 
 import { BetslipContent } from '~/components/markets/Betslip/BetslipContent';
@@ -56,6 +59,7 @@ import { tickToPrice } from '~/lib/utils/tickUtils';
 import { calculateCollateralLimit, DEFAULT_SLIPPAGE } from '~/utils/trade';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '~/components/admin/constants';
 
 interface BetslipProps {
   variant?: 'triggered' | 'panel';
@@ -150,7 +154,12 @@ const Betslip = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Fetch collateral token symbol and decimals
+  // Check if we're on an Ethereal chain
+  const isEtherealChain = useMemo(() => {
+    return COLLATERAL_SYMBOLS[parlayChainId] === 'USDe';
+  }, [parlayChainId]);
+
+  // Fetch collateral token symbol and decimals (skip for Ethereal chains)
   const erc20MetaRead = useReadContracts({
     contracts: collateralToken
       ? [
@@ -168,24 +177,34 @@ const Betslip = ({
           },
         ]
       : [],
-    query: { enabled: !!collateralToken },
+    query: { enabled: !!collateralToken && !isEtherealChain },
   });
 
   const collateralSymbol: string | undefined = useMemo(() => {
+    // For Ethereal chains, use the native symbol from constants
+    if (isEtherealChain) {
+      return COLLATERAL_SYMBOLS[parlayChainId] || 'USDe';
+    }
+    // For other chains, use the ERC20 token symbol
     const item = erc20MetaRead.data?.[0];
     if (item && item.status === 'success') {
       return String(item.result as unknown as string);
     }
     return undefined;
-  }, [erc20MetaRead.data]);
+  }, [erc20MetaRead.data, isEtherealChain, parlayChainId]);
 
   const collateralDecimals: number | undefined = useMemo(() => {
+    // For Ethereal chains, native USDe always has 18 decimals
+    if (isEtherealChain) {
+      return 18;
+    }
+    // For other chains, fetch from ERC20 token
     const item = erc20MetaRead.data?.[1];
     if (item && item.status === 'success') {
       return Number(item.result as unknown as number);
     }
     return undefined;
-  }, [erc20MetaRead.data]);
+  }, [erc20MetaRead.data, isEtherealChain]);
 
   const minWager = useMemo(() => {
     if (!minCollateralRaw) return undefined;
@@ -231,9 +250,13 @@ const Betslip = ({
   const formSchema: z.ZodType<any> = useMemo(() => {
     if (isParlayMode) {
       // Parlay mode only needs wagerAmount and limitAmount
+      // Use createWagerAmountSchema to include min/max validation
+      // Max amount is 10 for Ethereal chain, undefined otherwise
+      const maxAmount = chainId === CHAIN_ID_ETHEREAL ? '10' : undefined;
+      const wagerSchema = createWagerAmountSchema(minWager, maxAmount);
       return z
         .object({
-          wagerAmount: wagerAmountSchema,
+          wagerAmount: wagerSchema,
           limitAmount: z.number().min(0),
           positions: z.object({}).optional(), // Keep for interface compatibility
         })
@@ -263,7 +286,7 @@ const Betslip = ({
         limitAmount: z.number().min(0).optional(),
       });
     }
-  }, [betSlipPositions, isParlayMode]);
+  }, [betSlipPositions, isParlayMode, minWager, chainId]);
 
   // Helper function to generate form values
   const generateFormValues = useMemo(() => {

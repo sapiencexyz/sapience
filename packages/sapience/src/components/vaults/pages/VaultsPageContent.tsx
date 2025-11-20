@@ -28,6 +28,8 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
@@ -37,7 +39,7 @@ const VaultsPageContent = () => {
   const VAULT_ADDRESS = passiveLiquidityVault[VAULT_CHAIN_ID]?.address;
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
-  // Vaults are always enabled
+  // Vaults are always enabled, but may be gated by jurisdiction
 
   // Vault integration
   const {
@@ -70,6 +72,8 @@ const VaultsPageContent = () => {
     vaultAddress: VAULT_ADDRESS,
     chainId: VAULT_CHAIN_ID,
   });
+
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
@@ -358,6 +362,12 @@ const VaultsPageContent = () => {
             </div>
           )}
 
+          <RestrictedJurisdictionBanner
+            show={!isPermitLoading && isRestricted}
+            className="mb-1"
+            iconClassName="h-4 w-4"
+          />
+
           {/* Deposit Button */}
           <Button
             size="lg"
@@ -370,7 +380,10 @@ const VaultsPageContent = () => {
               !pricePerShare ||
               pricePerShare === '0' ||
               isInteractionDelayActive ||
-              !!(pendingRequest && !pendingRequest.processed)
+              !!(pendingRequest && !pendingRequest.processed) ||
+              isPermitLoading ||
+              isRestricted ||
+              exceedsVaultCapacity
             }
             onClick={async () => {
               if (!isConnected) {
@@ -399,9 +412,11 @@ const VaultsPageContent = () => {
                       ? 'Waiting for Price Quote'
                       : !pricePerShare || pricePerShare === '0'
                         ? 'No Price Available'
-                        : requiresApproval
-                          ? 'Approve & Deposit'
-                          : 'Submit Deposit'}
+                        : exceedsVaultCapacity
+                          ? 'Exceeds Vault Capacity'
+                          : requiresApproval
+                            ? 'Approve & Deposit'
+                            : 'Submit Deposit'}
           </Button>
         </div>
 
@@ -466,6 +481,12 @@ const VaultsPageContent = () => {
             </div>
           )}
 
+          <RestrictedJurisdictionBanner
+            show={!isPermitLoading && isRestricted}
+            className="mb-1"
+            iconClassName="h-4 w-4"
+          />
+
           {/* Withdraw Button */}
           <Button
             size="lg"
@@ -478,7 +499,9 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              withdrawExceedsShareBalance
+              withdrawExceedsShareBalance ||
+              isPermitLoading ||
+              isRestricted
             }
             onClick={async () => {
               if (!isConnected) {
@@ -635,6 +658,24 @@ const VaultsPageContent = () => {
     }
   }, [deployedWei, formatAssetAmount]);
 
+  // Vault capacity check (1000 USDe max)
+  const VAULT_CAPACITY_WEI = useMemo(() => {
+    try {
+      return parseUnits('1000', assetDecimals ?? 18);
+    } catch {
+      return parseUnits('1000', 18);
+    }
+  }, [assetDecimals]);
+
+  const exceedsVaultCapacity = useMemo(() => {
+    try {
+      const newTotal = tvlWei + depositWei;
+      return newTotal > VAULT_CAPACITY_WEI;
+    } catch {
+      return false;
+    }
+  }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
   const utilizationDisplay = useMemo(() => {
     try {
       return `${Math.round(utilizationPercent)}%`;
@@ -777,26 +818,33 @@ const VaultsPageContent = () => {
                             </p>
                           </div>
                           {pendingRequest.isDeposit ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={
-                                Date.now() >=
+                            (() => {
+                              const expiresAt =
                                 (Number(pendingRequest.timestamp) +
                                   Number(expirationTime ?? 0n)) *
-                                  1000
-                              }
-                              onClick={async () => {
-                                setPendingAction('cancelDeposit');
-                                await cancelDeposit(VAULT_CHAIN_ID);
-                                setPendingAction(undefined);
-                              }}
-                            >
-                              {isVaultPending &&
-                              pendingAction === 'cancelDeposit'
-                                ? 'Processing...'
-                                : 'Cancel'}
-                            </Button>
+                                1000;
+                              const isExpired = Date.now() >= expiresAt;
+
+                              return (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={isExpired}
+                                  onClick={async () => {
+                                    setPendingAction('cancelDeposit');
+                                    await cancelDeposit(VAULT_CHAIN_ID);
+                                    setPendingAction(undefined);
+                                  }}
+                                >
+                                  {isVaultPending &&
+                                  pendingAction === 'cancelDeposit'
+                                    ? 'Processing...'
+                                    : isExpired
+                                      ? 'Expired'
+                                      : 'Cancel'}
+                                </Button>
+                              );
+                            })()
                           ) : (
                             <Button
                               variant="outline"

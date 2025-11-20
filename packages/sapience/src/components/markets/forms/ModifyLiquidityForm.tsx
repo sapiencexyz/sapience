@@ -1,10 +1,5 @@
 import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@sapience/sdk/ui/components/ui/alert';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
@@ -33,6 +28,7 @@ import {
 } from '~/hooks/contract';
 import { useModifyLP } from '~/hooks/contract/useModifyLP';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import PositionRange from '~/components/shared/PositionRange';
 
 interface ModifyLiquidityFormValues {
@@ -222,9 +218,6 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
     }
-    if (isPermitLoadingPermit) {
-      return { text: 'Checking permissions...', loading: true };
-    }
     if (permitData?.permitted === false) {
       return { text: 'Action Unavailable', loading: false };
     }
@@ -388,18 +381,10 @@ export const ModifyLiquidityForm: React.FC<ModifyLiquidityFormProps> = ({
 
         <SlippageTolerance />
 
-        {/* Permit Alert */}
-        {!isPermitLoadingPermit && permitData?.permitted === false && (
-          <Alert
-            variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
-          >
-            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
-            <AlertDescription>
-              You cannot provide liquidity using this app.
-            </AlertDescription>
-          </Alert>
-        )}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoadingPermit && permitData?.permitted === false}
+          className="mb-4"
+        />
 
         <Button
           type="submit"

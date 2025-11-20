@@ -15,6 +15,8 @@ import { generateQuoteQueryKey } from '~/hooks/forms/useQuoter';
 import { fetchQuoteByUrl, toQuoteUrl } from '~/hooks/forms/quoteApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 interface BetslipSinglesFormProps {
   methods: UseFormReturn<{
@@ -37,6 +39,7 @@ export default function BetslipSinglesForm({
   const { quoterBaseUrl, apiBaseUrl: relayerBaseUrl } = useSettings();
   const chainId = positionsWithMarketData[0]?.position.chainId;
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   const hasAtLeastOneLoadedQuestion = positionsWithMarketData.some(
     (p) =>
@@ -212,16 +215,23 @@ export default function BetslipSinglesForm({
                 />
               </div>
             )}
+            <RestrictedJurisdictionBanner
+              show={!isPermitLoading && isRestricted}
+              className="mb-3"
+            />
             <Button
               type="submit"
               variant="default"
               size="lg"
               className="w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90"
               disabled={
-                positionsWithMarketData.some((p) => p.isLoading) || isSubmitting
+                positionsWithMarketData.some((p) => p.isLoading) ||
+                isSubmitting ||
+                isPermitLoading ||
+                isRestricted
               }
             >
-              Submit Wager{betSlipPositions.length > 1 ? 's' : ''}
+              Submit Prediction{betSlipPositions.length > 1 ? 's' : ''}
             </Button>
             <WagerDisclaimer className="mt-3" />
           </>

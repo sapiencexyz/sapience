@@ -23,6 +23,8 @@ import {
   NO_SQRT_PRICE_X96,
 } from '~/lib/utils/betslipUtils';
 import { DEFAULT_SLIPPAGE } from '~/utils/trade';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 interface YesNoWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -35,6 +37,7 @@ export default function YesNoWagerForm({
 }: YesNoWagerFormProps) {
   const successHandled = useRef(false);
   const searchParams = useSearchParams();
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -143,7 +146,9 @@ export default function YesNoWagerForm({
     !methods.formState.isValid ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade;
+    isCreatingTrade ||
+    isPermitLoading ||
+    isRestricted;
 
   // Determine button text
   const getButtonText = () => {
@@ -152,7 +157,7 @@ export default function YesNoWagerForm({
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
-    return 'Submit Wager';
+    return 'Submit Prediction';
   };
 
   // Quote data is now handled by the shared QuoteDisplay component
@@ -210,7 +215,10 @@ export default function YesNoWagerForm({
           />
         </div>
 
-        {/* Permit gating removed */}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoading && isRestricted}
+          className="mt-2"
+        />
 
         <div className="space-y-3">
           <WagerDisclaimer />

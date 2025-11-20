@@ -18,6 +18,8 @@ import { useQuoter } from '~/hooks/forms/useQuoter';
 import { getQuoteParamsFromPosition } from '~/hooks/forms/useMultiQuoter';
 import { MarketGroupClassification } from '~/lib/types';
 import { useWagerFlip } from '~/lib/context/WagerFlipContext';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 interface MultipleChoiceWagerFormProps {
   marketGroupData: MarketGroupType;
@@ -30,6 +32,7 @@ export default function MultipleChoiceWagerForm({
 }: MultipleChoiceWagerFormProps) {
   const successHandled = useRef(false);
   const { isFlipped } = useWagerFlip();
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   // Form validation schema
   const formSchema: z.ZodType = useMemo(() => {
@@ -136,7 +139,9 @@ export default function MultipleChoiceWagerForm({
     !methods.formState.isValid ||
     isQuoteLoading ||
     !!quoteError ||
-    isCreatingTrade;
+    isCreatingTrade ||
+    isPermitLoading ||
+    isRestricted;
 
   // Determine button text
   const getButtonText = () => {
@@ -145,7 +150,7 @@ export default function MultipleChoiceWagerForm({
     if (!wagerAmount || Number(wagerAmount) <= 0) return 'Enter Wager Amount';
     if (quoteError) return 'Wager Unavailable';
 
-    return 'Submit Wager';
+    return 'Submit Prediction';
   };
 
   // Quote data is now handled by the shared QuoteDisplay component
@@ -187,7 +192,10 @@ export default function MultipleChoiceWagerForm({
           />
         </div>
 
-        {/* Permit gating removed */}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoading && isRestricted}
+          className="mt-2"
+        />
 
         <div className="space-y-3">
           <WagerDisclaimer />

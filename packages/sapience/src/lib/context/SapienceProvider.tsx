@@ -74,7 +74,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
 
-  // Permit: temporarily disabled. Always return permitted=true and do not fetch.
+  // Permit/geofence check – use the edge route as the single source of truth.
   const {
     data: permitData,
     isLoading: isPermitLoading,
@@ -82,10 +82,38 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     refetch: refetchPermitData,
   } = useQuery<PermitResponse, Error>({
     queryKey: ['permit'],
-    // Stubbed query returns permitted=true and is disabled by default
-    queryFn: (): PermitResponse => ({ permitted: true }),
-    enabled: false,
-    initialData: { permitted: true },
+    /**
+     * Only run this query in the browser. On the server we skip it entirely
+     * so we don't attempt a relative fetch from a non-window environment.
+     * Client-side hydration will run the query immediately.
+     */
+    enabled: typeof window !== 'undefined',
+    queryFn: async (): Promise<PermitResponse> => {
+      if (typeof window === 'undefined') {
+        // Should not be hit because of enabled flag; defensive fallback.
+        return { permitted: true };
+      }
+
+      const response = await fetch('/api/permit', {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch permit status: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const json = (await response.json()) as Partial<PermitResponse>;
+      return {
+        permitted: Boolean(json.permitted),
+      };
+    },
+    staleTime: 5 * 60 * 1000, // cache decision for a short period
+    retry: 1,
   });
 
   // Fetch market groups

@@ -1,10 +1,5 @@
 import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@sapience/sdk/ui/components/ui/alert';
 import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
@@ -44,6 +39,7 @@ import {
   TOKEN_DECIMALS,
 } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { MarketGroupClassification } from '~/lib/types'; // Added import
 import { bigIntAbs } from '~/lib/utils/util';
 import { CHART_SERIES_COLORS } from '~/lib/theme/chartColors';
@@ -64,7 +60,6 @@ interface PermitDataType {
 
 function getButtonState({
   isConnected,
-  isPermitLoadingPermit,
   permitData,
   isQuoting,
   isApproving,
@@ -75,7 +70,6 @@ function getButtonState({
   isClosingPosition,
 }: {
   isConnected: boolean;
-  isPermitLoadingPermit: boolean;
   permitData?: { permitted?: boolean } | null;
   isQuoting: boolean;
   isApproving: boolean;
@@ -87,9 +81,6 @@ function getButtonState({
 }): { text: string; loading: boolean; disabled: boolean } {
   if (!isConnected) {
     return { text: 'Connect Wallet', loading: false, disabled: false };
-  }
-  if (isPermitLoadingPermit) {
-    return { text: 'Checking permissions...', loading: true, disabled: true };
   }
   if (permitData?.permitted === false) {
     return { text: 'Action Unavailable', loading: false, disabled: true };
@@ -397,7 +388,6 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
   // Get button state
   const buttonState = getButtonState({
     isConnected,
-    isPermitLoadingPermit,
     permitData,
     isQuoting,
     isApproving,
@@ -575,18 +565,10 @@ const ModifyTradeFormInternal: React.FC<ModifyTradeFormProps> = ({
         {/* Slippage Tolerance */}
         <SlippageTolerance />
 
-        {/* Permit Alert */}
-        {!isPermitLoadingPermit && permitData?.permitted === false && (
-          <Alert
-            variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
-          >
-            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
-            <AlertDescription>
-              You cannot trade using this app.
-            </AlertDescription>
-          </Alert>
-        )}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoadingPermit && permitData?.permitted === false}
+          className="mb-4"
+        />
 
         {/* Action Buttons */}
         <div className="mt-6 space-y-2">

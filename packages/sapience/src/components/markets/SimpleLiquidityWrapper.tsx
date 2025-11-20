@@ -11,7 +11,7 @@ import { useAccount } from 'wagmi';
 import { CreateLiquidityForm, ModifyLiquidityForm } from './forms';
 import { useTokenBalance } from '~/hooks/contract';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
-import { useSapience } from '~/lib/context/SapienceProvider';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 
 interface SimpleLiquidityWrapperProps {
   positionId?: string;
@@ -26,8 +26,8 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
   const { connectOrCreateWallet } = useConnectOrCreateWallet();
   const [modifyMode, setModifyMode] = useState<'add' | 'remove'>('add');
 
-  // Fetch permit data using useSapience hook
-  const { permitData } = useSapience();
+  // Fetch permit/geofence status once at the wrapper level
+  const { permitData, isPermitLoading } = useRestrictedJurisdiction();
 
   // Get data from the forecast context
   const {
@@ -122,7 +122,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
             positionId={positionId as string}
             mode={modifyMode}
             permitData={permitData}
-            isPermitLoadingPermit={false}
+            isPermitLoadingPermit={isPermitLoading}
           />
         </div>
       ) : (
@@ -131,7 +131,7 @@ const SimpleLiquidityWrapper: React.FC<SimpleLiquidityWrapperProps> = ({
           walletData={walletData}
           onSuccess={handleSuccess}
           permitData={permitData}
-          isPermitLoadingPermit={false}
+          isPermitLoadingPermit={isPermitLoading}
         />
       )}
     </div>

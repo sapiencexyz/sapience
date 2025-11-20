@@ -1,10 +1,5 @@
 import { NumberDisplay } from '@sapience/sdk/ui/components/NumberDisplay';
 import { SlippageTolerance } from '@sapience/sdk/ui/components/SlippageTolerance';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@sapience/sdk/ui/components/ui/alert';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   Form,
@@ -28,6 +23,7 @@ import { useCreateLP, useCreateLiquidityQuoter } from '~/hooks/contract';
 import { useLiquidityForm } from '~/hooks/forms/useLiquidityForm';
 import { TOKEN_DECIMALS } from '~/lib/constants/numbers';
 import { useMarketPage } from '~/lib/context/MarketPageProvider';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { priceToTick, tickToPrice } from '~/lib/utils/tickUtils';
 import { getChainShortName, formatFiveSigFigs } from '~/lib/utils/util';
 
@@ -246,9 +242,6 @@ export function CreateLiquidityForm({
     if (!isConnected) {
       return { text: 'Connect Wallet', loading: false };
     }
-    if (isPermitLoadingPermit) {
-      return { text: 'Checking permissions...', loading: true };
-    }
     if (permitData?.permitted === false) {
       return { text: 'Action Unavailable', loading: false };
     }
@@ -407,18 +400,10 @@ export function CreateLiquidityForm({
 
         <SlippageTolerance />
 
-        {/* Permit Alert */}
-        {!isPermitLoadingPermit && permitData?.permitted === false && (
-          <Alert
-            variant="destructive"
-            className="mb-4 bg-destructive/10 dark:bg-destructive/20 dark:text-red-700 rounded"
-          >
-            <AlertTitle>Accessing Via Prohibited Region</AlertTitle>
-            <AlertDescription>
-              You cannot provide liquidity using this app.
-            </AlertDescription>
-          </Alert>
-        )}
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoadingPermit && permitData?.permitted === false}
+          className="mb-4"
+        />
 
         {/* Action Button */}
         <div className="mt-8">

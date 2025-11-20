@@ -90,6 +90,14 @@ type AggregateTransaction {
   _sum: TransactionSumAggregate
 }
 
+type AggregateUser {
+  _avg: UserAvgAggregate
+  _count: UserCountAggregate
+  _max: UserMaxAggregate
+  _min: UserMinAggregate
+  _sum: UserSumAggregate
+}
+
 type AggregatedProfitEntryType {
   owner: String!
   totalPnL: Float!
@@ -3316,6 +3324,7 @@ type Query {
   aggregateResource(cursor: ResourceWhereUniqueInput, orderBy: [ResourceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourceWhereInput): AggregateResource!
   aggregateResourcePrice(cursor: ResourcePriceWhereUniqueInput, orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): AggregateResourcePrice!
   aggregateTransaction(cursor: TransactionWhereUniqueInput, orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): AggregateTransaction!
+  aggregateUser(cursor: UserWhereUniqueInput, orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): AggregateUser!
   allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
   attestation(where: AttestationWhereUniqueInput!): Attestation
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
@@ -3343,6 +3352,8 @@ type Query {
   findFirstResourcePriceOrThrow(cursor: ResourcePriceWhereUniqueInput, distinct: [ResourcePriceScalarFieldEnum!], orderBy: [ResourcePriceOrderByWithRelationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): ResourcePrice
   findFirstTransaction(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
   findFirstTransactionOrThrow(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): Transaction
+  findFirstUser(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User
+  findFirstUserOrThrow(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User
   forecasterScore(attester: String!): ForecasterScoreType
   getAttestation(where: AttestationWhereUniqueInput!): Attestation
   getCategory(where: CategoryWhereUniqueInput!): Category
@@ -3356,6 +3367,7 @@ type Query {
   getResource(where: ResourceWhereUniqueInput!): Resource
   getResourcePrice(where: ResourcePriceWhereUniqueInput!): ResourcePrice
   getTransaction(where: TransactionWhereUniqueInput!): Transaction
+  getUser(where: UserWhereUniqueInput!): User
   groupByAttestation(by: [AttestationScalarFieldEnum!]!, having: AttestationScalarWhereWithAggregatesInput, orderBy: [AttestationOrderByWithAggregationInput!], skip: Int, take: Int, where: AttestationWhereInput): [AttestationGroupBy!]!
   groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
   groupByCondition(by: [ConditionScalarFieldEnum!]!, having: ConditionScalarWhereWithAggregatesInput, orderBy: [ConditionOrderByWithAggregationInput!], skip: Int, take: Int, where: ConditionWhereInput): [ConditionGroupBy!]!
@@ -3366,6 +3378,7 @@ type Query {
   groupByResource(by: [ResourceScalarFieldEnum!]!, having: ResourceScalarWhereWithAggregatesInput, orderBy: [ResourceOrderByWithAggregationInput!], skip: Int, take: Int, where: ResourceWhereInput): [ResourceGroupBy!]!
   groupByResourcePrice(by: [ResourcePriceScalarFieldEnum!]!, having: ResourcePriceScalarWhereWithAggregatesInput, orderBy: [ResourcePriceOrderByWithAggregationInput!], skip: Int, take: Int, where: ResourcePriceWhereInput): [ResourcePriceGroupBy!]!
   groupByTransaction(by: [TransactionScalarFieldEnum!]!, having: TransactionScalarWhereWithAggregatesInput, orderBy: [TransactionOrderByWithAggregationInput!], skip: Int, take: Int, where: TransactionWhereInput): [TransactionGroupBy!]!
+  groupByUser(by: [UserScalarFieldEnum!]!, having: UserScalarWhereWithAggregatesInput, orderBy: [UserOrderByWithAggregationInput!], skip: Int, take: Int, where: UserWhereInput): [UserGroupBy!]!
   indexCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): CandleAndTimestampType!
   indexPriceAtTime(address: String!, chainId: Int!, marketId: String!, timestamp: Int!): CandleType
   legacyMarketCandles(address: String!, chainId: Int!, from: Int!, interval: Int!, marketId: String!, to: Int!): [CandleType!]!
@@ -3389,8 +3402,10 @@ type Query {
   totalVolumeByMarket(chainId: Int!, marketAddress: String!, marketId: Int!): Float!
   transaction(where: TransactionWhereUniqueInput!): Transaction
   transactions(cursor: TransactionWhereUniqueInput, distinct: [TransactionScalarFieldEnum!], orderBy: [TransactionOrderByWithRelationInput!], skip: Int, take: Int, where: TransactionWhereInput): [Transaction!]!
+  user(where: UserWhereUniqueInput!): User
   userParlays(address: String!, chainId: Int, orderBy: String, orderDirection: String, skip: Int! = 0, take: Int! = 50): [ParlayType!]!
   userParlaysCount(address: String!, chainId: Int): Int!
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }
 
 enum QueryMode {
@@ -4222,6 +4237,231 @@ input TransactionWhereUniqueInput {
   quoteToken: StringNullableFilter
   tradeRatioD18: StringNullableFilter
   type: Enumtransaction_type_enumFilter
+}
+
+"""
+Application-level user record, keyed by wallet address,
+used for referrals and other per-wallet metadata.
+"""
+type User {
+  _count: UserCount
+
+  """Canonical Ethereum wallet address for this user."""
+  address: String!
+  createdAt: DateTimeISO!
+  id: Int!
+
+  """
+  Maximum number of referrals this user's code allows. Default is 0,
+  so codes are not usable until explicitly configured.
+  """
+  maxReferrals: Int!
+
+  """keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex."""
+  refCodeHash: String
+  referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  referredBy(where: UserWhereInput): User
+  referredById: Int
+  updatedAt: DateTimeISO!
+}
+
+type UserAvgAggregate {
+  id: Float
+  maxReferrals: Float
+  referredById: Float
+}
+
+input UserAvgOrderByAggregateInput {
+  id: SortOrder
+  maxReferrals: SortOrder
+  referredById: SortOrder
+}
+
+type UserCount {
+  referrals(where: UserWhereInput): Int!
+}
+
+type UserCountAggregate {
+  _all: Int!
+  address: Int!
+  createdAt: Int!
+  id: Int!
+  maxReferrals: Int!
+  refCodeHash: Int!
+  referredById: Int!
+  updatedAt: Int!
+}
+
+input UserCountOrderByAggregateInput {
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrder
+  referredById: SortOrder
+  updatedAt: SortOrder
+}
+
+type UserGroupBy {
+  _avg: UserAvgAggregate
+  _count: UserCountAggregate
+  _max: UserMaxAggregate
+  _min: UserMinAggregate
+  _sum: UserSumAggregate
+  address: String!
+  createdAt: DateTimeISO!
+  id: Int!
+  maxReferrals: Int!
+  refCodeHash: String
+  referredById: Int
+  updatedAt: DateTimeISO!
+}
+
+input UserListRelationFilter {
+  every: UserWhereInput
+  none: UserWhereInput
+  some: UserWhereInput
+}
+
+type UserMaxAggregate {
+  address: String
+  createdAt: DateTimeISO
+  id: Int
+  maxReferrals: Int
+  refCodeHash: String
+  referredById: Int
+  updatedAt: DateTimeISO
+}
+
+input UserMaxOrderByAggregateInput {
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrder
+  referredById: SortOrder
+  updatedAt: SortOrder
+}
+
+type UserMinAggregate {
+  address: String
+  createdAt: DateTimeISO
+  id: Int
+  maxReferrals: Int
+  refCodeHash: String
+  referredById: Int
+  updatedAt: DateTimeISO
+}
+
+input UserMinOrderByAggregateInput {
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrder
+  referredById: SortOrder
+  updatedAt: SortOrder
+}
+
+input UserNullableRelationFilter {
+  is: UserWhereInput
+  isNot: UserWhereInput
+}
+
+input UserOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input UserOrderByWithAggregationInput {
+  _avg: UserAvgOrderByAggregateInput
+  _count: UserCountOrderByAggregateInput
+  _max: UserMaxOrderByAggregateInput
+  _min: UserMinOrderByAggregateInput
+  _sum: UserSumOrderByAggregateInput
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrderInput
+  referredById: SortOrderInput
+  updatedAt: SortOrder
+}
+
+input UserOrderByWithRelationInput {
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrderInput
+  referrals: UserOrderByRelationAggregateInput
+  referredBy: UserOrderByWithRelationInput
+  referredById: SortOrderInput
+  updatedAt: SortOrder
+}
+
+enum UserScalarFieldEnum {
+  address
+  createdAt
+  id
+  maxReferrals
+  refCodeHash
+  referredById
+  updatedAt
+}
+
+input UserScalarWhereWithAggregatesInput {
+  AND: [UserScalarWhereWithAggregatesInput!]
+  NOT: [UserScalarWhereWithAggregatesInput!]
+  OR: [UserScalarWhereWithAggregatesInput!]
+  address: StringWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  maxReferrals: IntWithAggregatesFilter
+  refCodeHash: StringNullableWithAggregatesFilter
+  referredById: IntNullableWithAggregatesFilter
+  updatedAt: DateTimeWithAggregatesFilter
+}
+
+type UserSumAggregate {
+  id: Int
+  maxReferrals: Int
+  referredById: Int
+}
+
+input UserSumOrderByAggregateInput {
+  id: SortOrder
+  maxReferrals: SortOrder
+  referredById: SortOrder
+}
+
+input UserWhereInput {
+  AND: [UserWhereInput!]
+  NOT: [UserWhereInput!]
+  OR: [UserWhereInput!]
+  address: StringFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  maxReferrals: IntFilter
+  refCodeHash: StringNullableFilter
+  referrals: UserListRelationFilter
+  referredBy: UserNullableRelationFilter
+  referredById: IntNullableFilter
+  updatedAt: DateTimeFilter
+}
+
+input UserWhereUniqueInput {
+  AND: [UserWhereInput!]
+  NOT: [UserWhereInput!]
+  OR: [UserWhereInput!]
+  address: String
+  createdAt: DateTimeFilter
+  id: Int
+  maxReferrals: IntFilter
+  refCodeHash: String
+  referrals: UserListRelationFilter
+  referredBy: UserNullableRelationFilter
+  referredById: IntNullableFilter
+  updatedAt: DateTimeFilter
 }
 
 enum transaction_type_enum {

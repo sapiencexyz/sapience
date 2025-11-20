@@ -12,6 +12,8 @@ import {
   PopoverContent,
 } from '@sapience/sdk/ui/components/ui/popover';
 import { Pencil } from 'lucide-react';
+import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
+import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 type ExpiryMode = 'duration' | 'datetime';
 
@@ -68,6 +70,8 @@ const PlaceBidForm: React.FC<Props> = ({
   const [seconds, setSeconds] = useState<string>('60'); // compact variant expiry seconds
   const [increment, setIncrement] = useState<number>(1);
   const [anchorAmount, setAnchorAmount] = useState<number | null>(null);
+
+  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   const parsedAmount = useMemo(() => {
     const n = Number(amount);
@@ -159,7 +163,8 @@ const PlaceBidForm: React.FC<Props> = ({
     return expirySeconds >= min && expirySeconds <= max;
   }, [expirySeconds]);
 
-  const canSubmit = isAmountValid && isExpiryValid;
+  const canSubmit =
+    isAmountValid && isExpiryValid && !isPermitLoading && !isRestricted;
 
   const presetDurations = useMemo(
     () => [
@@ -179,7 +184,11 @@ const PlaceBidForm: React.FC<Props> = ({
     }, [seconds]);
     const isExpiryValidCompact =
       seconds !== '' && Number.isFinite(secondsNumber) && secondsNumber > 0;
-    const canSubmitCompact = isAmountValid && isExpiryValidCompact;
+    const canSubmitCompact =
+      isAmountValid &&
+      isExpiryValidCompact &&
+      !isPermitLoading &&
+      !isRestricted;
     const makerDisplay = Number.isFinite(makerAmountDisplay as number)
       ? Number(makerAmountDisplay)
       : 0;
@@ -346,6 +355,12 @@ const PlaceBidForm: React.FC<Props> = ({
             </Popover>
           </div>
         </div>
+
+        <RestrictedJurisdictionBanner
+          show={!isPermitLoading && isRestricted}
+          className="mt-2"
+          iconClassName="h-4 w-4"
+        />
 
         {/* Submit button: full width under form */}
         <button

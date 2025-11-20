@@ -93,6 +93,7 @@ import {
   FindUniqueAttestationResolver,
   FindUniqueAttestationOrThrowResolver,
   GroupByAttestationResolver,
+
   // Condition queries
   AggregateConditionResolver,
   FindFirstConditionResolver,
@@ -101,6 +102,15 @@ import {
   FindUniqueConditionResolver,
   FindUniqueConditionOrThrowResolver,
   GroupByConditionResolver,
+
+  // User queries
+  AggregateUserResolver,
+  FindFirstUserResolver,
+  FindFirstUserOrThrowResolver,
+  FindManyUserResolver,
+  FindUniqueUserResolver,
+  FindUniqueUserOrThrowResolver,
+  GroupByUserResolver,
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
@@ -211,6 +221,15 @@ export const initializeApolloServer = async () => {
     FindUniqueConditionResolver,
     FindUniqueConditionOrThrowResolver,
     GroupByConditionResolver,
+
+    // User queries
+    AggregateUserResolver,
+    FindFirstUserResolver,
+    FindFirstUserOrThrowResolver,
+    FindManyUserResolver,
+    FindUniqueUserResolver,
+    FindUniqueUserOrThrowResolver,
+    GroupByUserResolver,
   ];
 
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
