@@ -176,7 +176,6 @@ export function WagerInput({
                 finalValue = `${parts[0]}.${parts.slice(1).join('')}`;
               }
               
-              console.log("parts onChange", parts, e.target.value, finalValue);
               // Update the input's value directly to keep it in sync
               if (e.target.value !== finalValue) {
                 e.target.value = finalValue;

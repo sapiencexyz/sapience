@@ -202,10 +202,7 @@ export default function BetslipParlayForm({
     if (!parlaySelections || parlaySelections.length === 0) return;
     // If a wallet is connected, require a real takerNonce before broadcasting RFQ
     if (takerAddress && takerNonce === undefined) return;
-    console.log("parlayWagerAmount", parlayWagerAmount);
     // Don't request quotes if there are form validation errors
-    console.log("Object.keys(methods.formState.errors)", Object.keys(methods.formState.errors).length);
-    console.log("methods.formState.errors", methods.formState.errors['wagerAmount']);
     if (Object.keys(methods.formState.errors).length > 0) return;
     const wagerStr = parlayWagerAmount || '0';
     try {
