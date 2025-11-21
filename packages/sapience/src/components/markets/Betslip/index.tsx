@@ -860,7 +860,6 @@ const Betslip = ({
 
       if (bestBid && address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
-          maker: address,
           selectedBid: bestBid,
           // Optional refCode left empty (0x00..00)
         });

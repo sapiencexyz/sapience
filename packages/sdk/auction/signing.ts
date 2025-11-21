@@ -26,6 +26,7 @@ export function buildMakerBidTypedData(args: {
   chainId: number;
   verifyingContract: Address;
   maker: Address;
+  makerNonce: bigint;
 }): {
   domain: TypedDataDomain;
   types: { Approve: readonly [
@@ -51,6 +52,7 @@ export function buildMakerBidTypedData(args: {
       { type: 'address' },
       { type: 'address' },
       { type: 'uint256' },
+      { type: 'uint256' },
     ],
     [
       encodedPredictedOutcomes,
@@ -59,6 +61,7 @@ export function buildMakerBidTypedData(args: {
       args.auction.resolver,
       args.auction.taker,
       typeof args.makerDeadline === 'bigint' ? args.makerDeadline : BigInt(args.makerDeadline),
+      args.makerNonce,
     ],
   );
 

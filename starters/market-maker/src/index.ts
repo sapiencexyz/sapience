@@ -201,6 +201,8 @@ function start() {
         const auctionId = auction.auctionId as string;
         const takerWager = BigInt(auction.wager || '0');
         const auctionChainId = (auction.chainId as number | undefined);
+        const makerNonce = BigInt(auction.takerNonce as number ?? 0);
+
 
         // Ignore auctions on different chains
         if (auctionChainId && auctionChainId !== CHAIN_ID) {
@@ -258,6 +260,7 @@ function start() {
           return;
         }
 
+
         const { domain, types, primaryType, message } = buildMakerBidTypedData({
           auction: {
             taker: auction.taker as Address,
@@ -270,6 +273,7 @@ function start() {
           chainId: CHAIN_ID,
           verifyingContract: VERIFYING_CONTRACT,
           maker: MAKER,
+          makerNonce,
         });
 
         const makerSignature = await signMakerBid({
@@ -280,7 +284,6 @@ function start() {
           message,
         });
 
-        const makerNonce = 1; // Maker's own nonce for the bid
 
         const bid = {
           type: 'bid.submit',
@@ -290,7 +293,7 @@ function start() {
             makerWager: makerWager.toString(),
             makerDeadline,
             makerSignature,
-            makerNonce,
+            makerNonce: makerNonce.toString(),
           },
         };
 

@@ -28,7 +28,10 @@ export interface QuoteBid {
   makerNonce: number; // nonce for the maker
 }
 
-// Struct shape expected by PredictionMarket.mint()
+// Struct shape expected by PredictionMarket.mint() 
+// @dev notice that this interface follows contract field names, not API field names
+// Contract "maker" = API "taker" (auction creator)
+// Contract "taker" = API "maker" (bidder)
 export interface MintPredictionRequestData {
   encodedPredictedOutcomes: `0x${string}`; // single bytes per contract
   resolver: `0x${string}`;
@@ -243,7 +246,6 @@ export function useAuctionStart() {
 
   const buildMintRequestDataFromBid = useCallback(
     (args: {
-      maker: `0x${string}`;
       selectedBid: QuoteBid;
       refCode?: `0x${string}`;
     }): MintPredictionRequestData | null => {
@@ -255,7 +257,7 @@ export function useAuctionStart() {
         const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
         if (!resolver || predictedOutcomes.length === 0) return null;
 
-        // Contract field names haven't changed - map API roles to contract roles:
+        // Contract field names haven't changed - map BID (API) roles to contract roles:
         // Contract "maker" = API "taker" (auction creator)
         // Contract "taker" = API "maker" (bidder)
         return {
