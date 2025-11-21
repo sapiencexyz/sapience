@@ -278,17 +278,6 @@
     /* Slow down the vertical sweep for a smoother, more ambient hover */
     animation: betslip-glow-cycle 6s linear infinite;
   }
-  /* Rainbow effect on hover when wager is over 1M */
-  .betslip-submit-rainbow:hover:not(:disabled)::before {
-    opacity: 1;
-    animation: betslip-glow-cycle 4s linear infinite;
-  }
-  .betslip-submit-rainbow:hover:not(:disabled) {
-    box-shadow: 0 0 18px rgba(255, 255, 255, 0.22);
-    text-shadow:
-      0 0 6px rgba(255, 255, 255, 0.7),
-      0 0 14px rgba(255, 255, 255, 0.35);
-  }
   /* Eyebrow and headline utilities */
   .eyebrow {
     @apply uppercase font-medium text-sm leading-5 tracking-widest;

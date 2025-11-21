@@ -98,8 +98,8 @@ export function WagerInput({
     register,
     formState: { errors },
     getValues,
-    trigger,
     setValue,
+    clearErrors,
   } = useFormContext();
   const chainShortName = getChainShortName(chainId);
 
@@ -170,18 +170,26 @@ export function WagerInput({
 
               // Handle multiple decimal points
               const parts = cleanedValue.split('.');
+              let finalValue = cleanedValue;
               if (parts.length > 2) {
-                const newValue = `${parts[0]}.${parts.slice(1).join('')}`;
-                setValue(name, newValue, { shouldValidate: false });
-                return;
+                // If multiple decimal points, keep only the first one
+                finalValue = `${parts[0]}.${parts.slice(1).join('')}`;
+              }
+              
+              console.log("parts onChange", parts, e.target.value, finalValue);
+              // Update the input's value directly to keep it in sync
+              if (e.target.value !== finalValue) {
+                e.target.value = finalValue;
               }
 
-              if (value !== cleanedValue) {
-                setValue(name, cleanedValue, { shouldValidate: false });
-              }
-
-              // Trigger validation (form-level schema will handle min/max)
-              trigger(name);
+              // Update the form state and validate immediately
+              // This ensures form state is updated synchronously for useWatch to pick up changes
+              setValue(name, finalValue, { 
+                shouldValidate: true,
+                shouldDirty: true,
+                shouldTouch: true,
+              });
+              clearErrors(name);
             },
           })}
         />

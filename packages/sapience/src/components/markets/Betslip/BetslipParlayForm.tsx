@@ -202,7 +202,10 @@ export default function BetslipParlayForm({
     if (!parlaySelections || parlaySelections.length === 0) return;
     // If a wallet is connected, require a real takerNonce before broadcasting RFQ
     if (takerAddress && takerNonce === undefined) return;
+    console.log("parlayWagerAmount", parlayWagerAmount);
     // Don't request quotes if there are form validation errors
+    console.log("Object.keys(methods.formState.errors)", Object.keys(methods.formState.errors).length);
+    console.log("methods.formState.errors", methods.formState.errors['wagerAmount']);
     if (Object.keys(methods.formState.errors).length > 0) return;
     const wagerStr = parlayWagerAmount || '0';
     try {
@@ -367,8 +370,8 @@ export default function BetslipParlayForm({
                   className="mb-3"
                 />
                 <Button
-                  className={`w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed betslip-submit ${
-                    isWagerOver1M ? 'betslip-submit-rainbow' : ''
+                  className={`w-full py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 hover:text-brand-white cursor-pointer disabled:cursor-not-allowed ${
+                    isWagerOver1M ? 'betslip-submit' : ''
                   }`}
                   disabled={
                     isSubmitting ||
