@@ -175,7 +175,7 @@ export function WagerInput({
                 // If multiple decimal points, keep only the first one
                 finalValue = `${parts[0]}.${parts.slice(1).join('')}`;
               }
-              
+
               // Update the input's value directly to keep it in sync
               if (e.target.value !== finalValue) {
                 e.target.value = finalValue;
@@ -183,7 +183,7 @@ export function WagerInput({
 
               // Update the form state and validate immediately
               // This ensures form state is updated synchronously for useWatch to pick up changes
-              setValue(name, finalValue, { 
+              setValue(name, finalValue, {
                 shouldValidate: true,
                 shouldDirty: true,
                 shouldTouch: true,
