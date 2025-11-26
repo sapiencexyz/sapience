@@ -92,7 +92,7 @@ const PlaceBidForm: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAmountDisplay]);
 
-  // One-time anchor to the best bid on mount/init; do not react to subsequent best bid changes
+  // One-time anchor to the best bid on mount/init
   useEffect(() => {
     if (anchorAmount != null) return;
     const base = Number(bestBidDisplay);
@@ -106,6 +106,27 @@ const PlaceBidForm: React.FC<Props> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bestBidDisplay]);
+
+  // Update anchor and amount whenever a new higher bid comes in
+  // This ensures the form always shows a bid above the current best bid
+  useEffect(() => {
+    const base = Number(bestBidDisplay);
+    if (!Number.isFinite(base) || base <= 0) return;
+    // Only update if the new best bid is higher than the current anchor
+    // This prevents overwriting user input when bids decrease or stay the same
+    if (anchorAmount != null && base <= anchorAmount) return;
+
+    // Update anchor to the new best bid
+    setAnchorAmount(base);
+    // Update amount to be the new best bid + increment
+    const next = base + increment;
+    try {
+      setAmount(next.toFixed(decimals));
+    } catch {
+      setAmount(String(next));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bestBidDisplay, increment, decimals]);
 
   // After a bid is submitted, re-anchor to the latest best bid value passed down at that time
   useEffect(() => {

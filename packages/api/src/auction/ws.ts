@@ -283,7 +283,26 @@ export function createAuctionWebSocketServer() {
     let rateResetAt = Date.now() + RATE_LIMIT_WINDOW_MS;
 
     ws.on('message', async (data: RawData) => {
-      // basic rate limiting and size guard
+      // Parse message early to check for ping (keepalive messages excluded from rate limiting)
+      const msg = safeParse<
+        ClientToServerMessage | BotToServerMessage | { type?: string }
+      >(data);
+
+      // Handle ping/pong keepalive (excluded from rate limiting and size checks)
+      if (
+        msg &&
+        typeof msg === 'object' &&
+        (msg as { type?: string })?.type === 'ping'
+      ) {
+        try {
+          ws.send(JSON.stringify({ type: 'pong' }));
+        } catch (err) {
+          console.error('[Auction-WS] Failed to send pong:', err);
+        }
+        return;
+      }
+
+      // basic rate limiting and size guard (applies to all non-ping messages)
       const now = Date.now();
       if (now > rateResetAt) {
         rateCount = 0;
@@ -321,9 +340,7 @@ export function createAuctionWebSocketServer() {
         }
         return;
       }
-      const msg = safeParse<
-        ClientToServerMessage | BotToServerMessage | { type?: string }
-      >(data);
+
       if (!msg || typeof msg !== 'object') {
         console.warn(`[Auction-WS] Invalid JSON from ${ip}`);
         return;
