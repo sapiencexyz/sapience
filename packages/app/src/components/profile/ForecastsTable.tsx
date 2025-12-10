@@ -24,8 +24,7 @@ import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
-import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
 
@@ -100,12 +99,10 @@ const renderPredictionCell = ({
 }: {
   row: { original: FormattedAttestation };
 }) => {
-  const { value } = row.original; // sqrtPriceX96 as string
+  const { value } = row.original; // D18 format: percentage * 10^18
 
-  const priceD18 = sqrtPriceX96ToPriceD18(BigInt(value));
-  const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-  const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-  const percentage = Math.round(Number(percentageD2) / 100);
+  // Convert D18 to percentage (0-100)
+  const percentage = d18ToPercentage(value);
 
   return (
     <span className="font-mono text-ethena whitespace-nowrap">
@@ -213,15 +210,12 @@ const renderActionsCell = ({
     ? formatDistanceStrict(createdAt, resolutionDate, { unit: 'day' })
     : '—';
 
-  // Compute odds percentage
+  // Compute odds percentage from D18 format
   let oddsPercent: number | null = null;
   try {
-    const priceD18 = sqrtPriceX96ToPriceD18(BigInt(row.original.value));
-    const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-    const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-    oddsPercent = Math.round(Number(percentageD2) / 100);
+    oddsPercent = Math.round(d18ToPercentage(row.original.value));
   } catch (err) {
-    console.error('Failed to compute odds percentage from sqrtPriceX96', err);
+    console.error('Failed to compute odds percentage from D18 value', err);
   }
 
   const oddsStr = oddsPercent !== null ? `${oddsPercent}%` : '';

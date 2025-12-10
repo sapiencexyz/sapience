@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { useAccount } from 'wagmi';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,10 +8,10 @@ import { Button } from '@sapience/sdk/ui/components/ui/button';
 import YesNoPredict from '~/components/markets/forms/inputs/YesNoPredict';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
 import { MarketGroupClassification } from '~/lib/types';
-import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 
 export interface ConditionForecastFormProps {
   conditionId: string;
+  resolver: string;
   question: string;
   endTime?: number;
   onSuccess?: () => void;
@@ -23,32 +23,34 @@ type FormValues = { predictionValue: string; comment?: string };
 
 const ConditionForecastForm: React.FC<ConditionForecastFormProps> = ({
   conditionId,
+  resolver,
+  question: _question,
+  endTime: _endTime,
   onSuccess,
   disabled = false,
 }) => {
   const { address } = useAccount();
+  // Validate predictionValue as a percentage (0-100)
   const formSchema: z.ZodType<FormValues> = useMemo(() => {
     return z.object({
       predictionValue: z
         .string()
         .min(1)
         .refine(
-          (val) =>
-            BigInt(val) >= BigInt(0) &&
-            BigInt(val) <= BigInt(YES_SQRT_X96_PRICE),
+          (val) => {
+            const num = parseFloat(val);
+            return !isNaN(num) && num >= 0 && num <= 100;
+          },
           {
-            message: 'Please select Yes or No',
+            message: 'Probability must be between 0 and 100',
           }
         ),
       comment: z.string().optional(),
     });
   }, []);
 
-  const defaultPredictionValue: string = useMemo(() => {
-    const yesBigInt = BigInt(YES_SQRT_X96_PRICE);
-    const half = (yesBigInt * BigInt(500000)) / BigInt(1000000);
-    return half.toString();
-  }, []);
+  // Default to 50% probability
+  const defaultPredictionValue = '50';
 
   const methods = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -56,25 +58,16 @@ const ConditionForecastForm: React.FC<ConditionForecastFormProps> = ({
     mode: 'onChange',
   });
 
-  useEffect(() => {
-    methods.setValue('predictionValue', defaultPredictionValue);
-  }, [defaultPredictionValue, methods]);
-
   const predictionValue = methods.watch('predictionValue');
   const comment = methods.watch('comment');
 
-  // Conditions-only: placeholders for market data
-  const marketAddress = '0x0000000000000000000000000000000000000000';
-  const marketId = 0;
-
   const { submitPrediction, isAttesting } = useSubmitPrediction({
-    marketAddress,
     marketClassification: MarketGroupClassification.YES_NO,
     submissionValue: predictionValue,
-    marketId,
     comment,
     onSuccess,
-    conditionIdHex: conditionId as `0x${string}`,
+    resolver: resolver as `0x${string}`,
+    condition: conditionId as `0x${string}`,
   });
 
   const handleSubmit = async () => {

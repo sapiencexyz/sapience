@@ -157,9 +157,6 @@ export default function CreatePositionFormView({
     });
   }, [bids, parlayWagerAmount, nowMs]);
 
-  // Check if we received bids but they've all expired
-  const allBidsExpired = bids.length > 0 && !bestBid;
-
   // Check if we recently made a request (within 5 seconds) - show "Waiting for Bids..." during cooldown
   const recentlyRequested =
     lastQuoteRequestMs != null && nowMs - lastQuoteRequestMs < 5000;
@@ -218,10 +215,8 @@ export default function CreatePositionFormView({
   // Show "Request Bids" button when:
   // 1. No valid bids exist (never received or all expired)
   // 2. Not in the 5-second cooldown period after making a request
-  const showNoBidsHint =
-    !bestBid &&
-    !recentlyRequested &&
-    (allBidsExpired || lastQuoteRequestMs != null);
+  // Since automatic auction trigger is disabled, show button immediately when no bids
+  const showNoBidsHint = !bestBid && !recentlyRequested;
 
   // Crossfade between disclaimer and hint when bids may not arrive
   const HINT_FADE_MS = 300;
@@ -271,11 +266,6 @@ export default function CreatePositionFormView({
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
-
-  // Trigger RFQ quote requests when selections or wager change
-  useEffect(() => {
-    triggerAuctionRequest();
-  }, [triggerAuctionRequest]);
 
   return (
     <FormProvider {...methods}>

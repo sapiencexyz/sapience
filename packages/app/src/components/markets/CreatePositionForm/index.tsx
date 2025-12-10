@@ -47,7 +47,6 @@ import {
   getDefaultFormPredictionValue,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
-import { tickToPrice } from '~/lib/utils/tickUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
@@ -278,30 +277,12 @@ const CreatePositionForm = ({
             position.marketId
           );
 
-          // For numeric markets, compute a sensible midpoint default when market data is available
+          // For numeric markets, leave blank to let the numeric input compute/display a midpoint locally
+          // For YES/NO, use default sqrt price
           if (!predictionValue) {
             if (classification === MarketGroupClassification.NUMERIC) {
-              const withData = positionsWithMarketData.find(
-                (p) => p.position.id === position.id
-              );
-              const firstMarket = withData?.marketGroupData?.markets?.[0];
-              if (firstMarket) {
-                const lowerBound = tickToPrice(
-                  firstMarket.baseAssetMinPriceTick ?? 0
-                );
-                const upperBound = tickToPrice(
-                  firstMarket.baseAssetMaxPriceTick ?? 0
-                );
-                const mid = (lowerBound + upperBound) / 2;
-                predictionValue = String(
-                  mid > -1 && mid < 1 ? mid.toFixed(6) : Math.round(mid)
-                );
-              } else {
-                // Leave blank to let the numeric input compute/display a midpoint locally
-                predictionValue = '';
-              }
+              predictionValue = '';
             } else if (classification === MarketGroupClassification.YES_NO) {
-              // Explicit fallback only for YES/NO
               predictionValue = YES_SQRT_PRICE_X96;
             }
           }

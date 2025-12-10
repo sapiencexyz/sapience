@@ -9,11 +9,7 @@ import {
   lzUmaResolver,
 } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
-
-// Known UMA resolver addresses (case-insensitive check)
-const UMA_RESOLVER_ADDRESSES = new Set([
-  '0xC873efA9D22A09e39101efB977C03011620bF015'.toLowerCase(),
-]);
+import { UMA_RESOLVER_ADDRESSES } from '~/lib/constants';
 
 interface TechSpecTableProps {
   conditionId: string;

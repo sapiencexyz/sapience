@@ -12,18 +12,12 @@ type Hex = `0x${string}`;
 const EAS_ADDRESS_ARBITRUM: Address = "0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458";
 const ARBITRUM_CHAIN_ID = 42161;
 
-// Legacy: EAS contract addresses by chain (kept for backwards compatibility)
-const EAS_CONTRACTS: Record<number, string> = {
-  1: "0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587", // Ethereum Mainnet
-  11155111: "0xC2679fBD37d54388Ce493F1DB75320D236e1815e", // Sepolia
-  10: "0x4200000000000000000000000000000000000021", // Optimism
-  8453: "0x4200000000000000000000000000000000000021", // Base
-  42161: "0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458", // Arbitrum
-};
+// UMA Resolver on Arbitrum (default resolver for conditions)
+const UMA_RESOLVER_ARBITRUM: Address = "0x2cc1311871b9fc7bfcb809c75da4ba25732eafb9";
 
-// Prediction market schema
-const SCHEMA_ID =
-  "0x2dbb0921fa38ebc044ab0a7fe109442c456fb9ad39a68ce0a32f193744d17744";
+// Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
+const SCHEMA_ID: Hex =
+  "0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49";
 
 // EAS ABI for attestation
 const EAS_ABI = [
@@ -56,12 +50,6 @@ const EAS_ABI = [
   },
 ] as const;
 
-interface Prediction {
-  probability: number;
-  reasoning: string;
-  confidence: number;
-}
-
 export type ForecastCalldata = {
   to: Address;
   data: Hex;
@@ -73,26 +61,37 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as Hex;
 
 /**
- * Convert probability (0-100) to sqrtPriceX96 format
- * This is the standard format used by Uniswap V3 style AMMs
- * Formula: sqrtPriceX96 = sqrt(price) * 2^96
+ * Convert probability (0-100) to D18 format
+ * D18 means 18 decimal places, so 50% = 50 * 10^18
  */
-function probabilityToSqrtPriceX96(prob: number): bigint {
-  const price = prob / 100;
-  const sqrtPrice = Math.sqrt(price);
-  const Q96 = BigInt('79228162514264337593543950336'); // 2^96
-  return BigInt(Math.round(sqrtPrice * Number(Q96)));
+function probabilityToD18(prob: number): bigint {
+  return BigInt(Math.round(prob * 1e18));
+}
+
+/**
+ * Decode probability from D18 format back to 0-100
+ */
+export function decodeProbabilityFromD18(value: string): number | null {
+  try {
+    const forecastBigInt = BigInt(value);
+    const probability = Number(forecastBigInt) / 1e18;
+    return Math.max(0, Math.min(100, probability));
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Build calldata for submitting a forecast attestation to Arbitrum EAS.
- * 
- * @param conditionId - The condition/question ID (bytes32)
+ *
+ * @param resolver - The resolver contract address (defaults to UMA resolver on Arbitrum)
+ * @param condition - The condition data as bytes (typically the conditionId)
  * @param probability - Probability 0-100 that the condition resolves YES
  * @param comment - Optional comment/reasoning (max 180 chars, will be truncated)
  */
 export function buildForecastCalldata(
-  conditionId: Hex,
+  resolver: Address,
+  condition: Hex,
   probability: number,
   comment?: string,
 ): ForecastCalldata {
@@ -108,19 +107,18 @@ export function buildForecastCalldata(
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      "address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment",
+      "address resolver, bytes condition, uint256 forecast, string comment",
     ),
     [
-      ZERO_ADDRESS,
-      0n,
-      conditionId,
-      probabilityToSqrtPriceX96(probability),
+      resolver,
+      condition,
+      probabilityToD18(probability),
       truncatedComment,
     ],
   );
 
   const attestationRequest = {
-    schema: SCHEMA_ID as Hex,
+    schema: SCHEMA_ID,
     data: {
       recipient: ZERO_ADDRESS,
       expirationTime: 0n,
@@ -145,9 +143,22 @@ export function buildForecastCalldata(
   };
 }
 
+/**
+ * Get the default UMA resolver address for Arbitrum
+ */
+export function getDefaultResolver(): Address {
+  return UMA_RESOLVER_ARBITRUM;
+}
+
 // ============================================================================
-// Legacy API (kept for backwards compatibility)
+// Legacy API (wrapper for backwards compatibility)
 // ============================================================================
+
+interface Prediction {
+  probability: number;
+  reasoning: string;
+  confidence: number;
+}
 
 export interface AttestationCalldata {
   to: string;
@@ -160,62 +171,23 @@ export interface AttestationCalldata {
 /** @deprecated Use buildForecastCalldata instead */
 export async function buildAttestationCalldata(
   prediction: Prediction,
-  chainId: number = 42161, // Default to Arbitrum
+  _chainId: number = 42161,
   conditionId?: `0x${string}`,
 ): Promise<AttestationCalldata | null> {
-  const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as `0x${string}`;
-  const ZERO_BYTES32 = "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`;
-
   try {
-    // Use Viem to encode the attestation data directly
-    // Schema: 'address marketAddress,uint256 marketId,bytes32 questionId,uint160 prediction,string comment'
-    const encodedData = encodeAbiParameters(
-      parseAbiParameters(
-        "address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment",
-      ),
-      [
-        ZERO_ADDRESS,
-        0n,
-        conditionId || ZERO_BYTES32,
-        probabilityToSqrtPriceX96(prediction.probability), // Calculate sqrtPriceX96 for the prediction
-        prediction.reasoning.length > 180
-          ? prediction.reasoning.substring(0, 177) + "..."
-          : prediction.reasoning,
-      ],
+    const condition = conditionId || ("0x" as Hex);
+    const calldata = buildForecastCalldata(
+      UMA_RESOLVER_ARBITRUM,
+      condition,
+      prediction.probability,
+      prediction.reasoning,
     );
 
-    // Build the attestation request
-    const attestationRequest = {
-      schema: SCHEMA_ID as `0x${string}`,
-      data: {
-        recipient: ZERO_ADDRESS,
-        expirationTime: 0n,
-        revocable: false,
-        refUID: ZERO_BYTES32,
-        data: encodedData as `0x${string}`,
-        value: 0n,
-      },
-    };
-
-    // Encode the function call
-    const calldata = encodeFunctionData({
-      abi: EAS_ABI,
-      functionName: "attest",
-      args: [attestationRequest],
-    });
-
-    const easAddress = EAS_CONTRACTS[chainId];
-    if (!easAddress) {
-      elizaLogger.warn(`No EAS contract for chain ${chainId}`);
-      return null;
-    }
-
-
     return {
-      to: easAddress,
-      data: calldata,
-      value: "0",
-      chainId,
+      to: calldata.to,
+      data: calldata.data,
+      value: calldata.value,
+      chainId: calldata.chainId,
       description: `Attest: ${prediction.probability}% YES`,
     };
   } catch (error) {

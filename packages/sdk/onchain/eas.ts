@@ -44,17 +44,20 @@ const EAS_ABI = [
   },
 ] as const;
 
-// EAS schema id for prediction market attestations
+// EAS schema id for forecast attestations
+// Schema: address resolver, bytes condition, uint256 forecast, string comment
 const SCHEMA_ID: Hex =
-  '0x2dbb0921fa38ebc044ab0a7fe109442c456fb9ad39a68ce0a32f193744d17744';
+  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
 
-export function decodeProbabilityFromUint160(value: string): number | null {
+/**
+ * Decode probability from D18 format
+ * D18 means 18 decimal places, so 50 * 10^18 = 50%
+ */
+export function decodeProbabilityFromD18(value: string): number | null {
   try {
     const predictionBigInt = BigInt(value);
-    const Q96 = BigInt('79228162514264337593543950336');
-    const sqrtPrice = Number((predictionBigInt * BigInt(10 ** 18)) / Q96) / 10 ** 18;
-    const price = sqrtPrice * sqrtPrice;
-    const probability = price * 100;
+    // Divide by 10^18 to get probability 0-100
+    const probability = Number(predictionBigInt) / 1e18;
     return Math.max(0, Math.min(100, probability));
   } catch {
     return null;
@@ -64,27 +67,21 @@ export function decodeProbabilityFromUint160(value: string): number | null {
 export async function buildAttestationCalldata(
   prediction: { probability: number; reasoning: string; confidence: number },
   chainId: number = DEFAULT_CHAIN_ID,
-  conditionId?: Hex,
+  resolver?: Address,
+  condition?: Hex,
 ): Promise<AttestationCalldata | null> {
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
   const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
+  const EMPTY_BYTES = '0x' as Hex;
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      'address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment',
+      'address resolver, bytes condition, uint256 forecast, string comment',
     ),
     [
-      ZERO_ADDRESS,
-      0n,
-      (conditionId || ZERO_BYTES32) as Hex,
-      (() => {
-        const price = prediction.probability / 100;
-        const effectivePrice = price * 10 ** 18;
-        const sqrtEffectivePrice = Math.sqrt(effectivePrice);
-        const JS_2_POW_96 = 2 ** 96;
-        const sqrtPriceX96Float = sqrtEffectivePrice * JS_2_POW_96;
-        return BigInt(Math.round(sqrtPriceX96Float));
-      })(),
+      resolver || ZERO_ADDRESS,
+      condition || EMPTY_BYTES,
+      BigInt(Math.round(prediction.probability * 1e18)), // D18 format
       prediction.reasoning.length > 180
         ? `${prediction.reasoning.substring(0, 177)}...`
         : prediction.reasoning,

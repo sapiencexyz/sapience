@@ -52,15 +52,17 @@ type Attestation {
   attester: String!
   blockNumber: Int!
   comment: String
+  condition: String
   createdAt: DateTimeISO!
   data: String!
   decodedDataJson: String!
   id: Int!
-  marketAddress: String!
-  marketId: String!
+  marketAddress: String
+  marketId: String
   prediction: String!
-  questionId: String!
+  questionId: String
   recipient: String!
+  resolver: String
   schemaId: String!
   time: Int!
   transactionHash: String!
@@ -84,6 +86,7 @@ type AttestationCountAggregate {
   attester: Int!
   blockNumber: Int!
   comment: Int!
+  condition: Int!
   createdAt: Int!
   data: Int!
   decodedDataJson: Int!
@@ -93,6 +96,7 @@ type AttestationCountAggregate {
   prediction: Int!
   questionId: Int!
   recipient: Int!
+  resolver: Int!
   schemaId: Int!
   time: Int!
   transactionHash: Int!
@@ -103,6 +107,7 @@ input AttestationCountOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
+  condition: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
@@ -112,6 +117,7 @@ input AttestationCountOrderByAggregateInput {
   prediction: SortOrder
   questionId: SortOrder
   recipient: SortOrder
+  resolver: SortOrder
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -127,15 +133,17 @@ type AttestationGroupBy {
   attester: String!
   blockNumber: Int!
   comment: String
+  condition: String
   createdAt: DateTimeISO!
   data: String!
   decodedDataJson: String!
   id: Int!
-  marketAddress: String!
-  marketId: String!
+  marketAddress: String
+  marketId: String
   prediction: String!
-  questionId: String!
+  questionId: String
   recipient: String!
+  resolver: String
   schemaId: String!
   time: Int!
   transactionHash: String!
@@ -146,6 +154,7 @@ type AttestationMaxAggregate {
   attester: String
   blockNumber: Int
   comment: String
+  condition: String
   createdAt: DateTimeISO
   data: String
   decodedDataJson: String
@@ -155,6 +164,7 @@ type AttestationMaxAggregate {
   prediction: String
   questionId: String
   recipient: String
+  resolver: String
   schemaId: String
   time: Int
   transactionHash: String
@@ -165,6 +175,7 @@ input AttestationMaxOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
+  condition: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
@@ -174,6 +185,7 @@ input AttestationMaxOrderByAggregateInput {
   prediction: SortOrder
   questionId: SortOrder
   recipient: SortOrder
+  resolver: SortOrder
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -184,6 +196,7 @@ type AttestationMinAggregate {
   attester: String
   blockNumber: Int
   comment: String
+  condition: String
   createdAt: DateTimeISO
   data: String
   decodedDataJson: String
@@ -193,6 +206,7 @@ type AttestationMinAggregate {
   prediction: String
   questionId: String
   recipient: String
+  resolver: String
   schemaId: String
   time: Int
   transactionHash: String
@@ -203,6 +217,7 @@ input AttestationMinOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
+  condition: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
@@ -212,6 +227,7 @@ input AttestationMinOrderByAggregateInput {
   prediction: SortOrder
   questionId: SortOrder
   recipient: SortOrder
+  resolver: SortOrder
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -227,15 +243,17 @@ input AttestationOrderByWithAggregationInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
+  condition: SortOrderInput
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
+  marketAddress: SortOrderInput
+  marketId: SortOrderInput
   prediction: SortOrder
-  questionId: SortOrder
+  questionId: SortOrderInput
   recipient: SortOrder
+  resolver: SortOrderInput
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -247,15 +265,17 @@ input AttestationOrderByWithRelationInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
+  condition: SortOrderInput
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
+  marketAddress: SortOrderInput
+  marketId: SortOrderInput
   prediction: SortOrder
-  questionId: SortOrder
+  questionId: SortOrderInput
   recipient: SortOrder
+  resolver: SortOrderInput
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -271,6 +291,7 @@ enum AttestationScalarFieldEnum {
   attester
   blockNumber
   comment
+  condition
   createdAt
   data
   decodedDataJson
@@ -280,6 +301,7 @@ enum AttestationScalarFieldEnum {
   prediction
   questionId
   recipient
+  resolver
   schemaId
   time
   transactionHash
@@ -293,15 +315,17 @@ input AttestationScalarWhereWithAggregatesInput {
   attester: StringWithAggregatesFilter
   blockNumber: IntWithAggregatesFilter
   comment: StringNullableWithAggregatesFilter
+  condition: StringNullableWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   data: StringWithAggregatesFilter
   decodedDataJson: StringWithAggregatesFilter
   id: IntWithAggregatesFilter
-  marketAddress: StringWithAggregatesFilter
-  marketId: StringWithAggregatesFilter
+  marketAddress: StringNullableWithAggregatesFilter
+  marketId: StringNullableWithAggregatesFilter
   prediction: StringWithAggregatesFilter
-  questionId: StringWithAggregatesFilter
+  questionId: StringNullableWithAggregatesFilter
   recipient: StringWithAggregatesFilter
+  resolver: StringNullableWithAggregatesFilter
   schemaId: StringWithAggregatesFilter
   time: IntWithAggregatesFilter
   transactionHash: StringWithAggregatesFilter
@@ -316,12 +340,13 @@ type AttestationScore {
   errorSquared: Float
   id: Int!
   madeAt: Int!
-  marketAddress: String!
-  marketId: String!
+  marketAddress: String
+  marketId: String
   outcome: Int
   probabilityD18: String
   probabilityFloat: Float
   questionId: String
+  resolver: String
   scoredAt: DateTimeISO
   used: Boolean!
 }
@@ -339,12 +364,13 @@ input AttestationScoreOrderByWithRelationInput {
   errorSquared: SortOrderInput
   id: SortOrder
   madeAt: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
+  marketAddress: SortOrderInput
+  marketId: SortOrderInput
   outcome: SortOrderInput
   probabilityD18: SortOrderInput
   probabilityFloat: SortOrderInput
   questionId: SortOrderInput
+  resolver: SortOrderInput
   scoredAt: SortOrderInput
   used: SortOrder
 }
@@ -360,12 +386,13 @@ input AttestationScoreWhereInput {
   errorSquared: FloatNullableFilter
   id: IntFilter
   madeAt: IntFilter
-  marketAddress: StringFilter
-  marketId: StringFilter
+  marketAddress: StringNullableFilter
+  marketId: StringNullableFilter
   outcome: IntNullableFilter
   probabilityD18: StringNullableFilter
   probabilityFloat: FloatNullableFilter
   questionId: StringNullableFilter
+  resolver: StringNullableFilter
   scoredAt: DateTimeNullableFilter
   used: BoolFilter
 }
@@ -390,15 +417,17 @@ input AttestationWhereInput {
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
+  condition: StringNullableFilter
   createdAt: DateTimeFilter
   data: StringFilter
   decodedDataJson: StringFilter
   id: IntFilter
-  marketAddress: StringFilter
-  marketId: StringFilter
+  marketAddress: StringNullableFilter
+  marketId: StringNullableFilter
   prediction: StringFilter
-  questionId: StringFilter
+  questionId: StringNullableFilter
   recipient: StringFilter
+  resolver: StringNullableFilter
   schemaId: StringFilter
   time: IntFilter
   transactionHash: StringFilter
@@ -413,15 +442,17 @@ input AttestationWhereUniqueInput {
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
+  condition: StringNullableFilter
   createdAt: DateTimeFilter
   data: StringFilter
   decodedDataJson: StringFilter
   id: Int
-  marketAddress: StringFilter
-  marketId: StringFilter
+  marketAddress: StringNullableFilter
+  marketId: StringNullableFilter
   prediction: StringFilter
-  questionId: StringFilter
+  questionId: StringNullableFilter
   recipient: StringFilter
+  resolver: StringNullableFilter
   schemaId: StringFilter
   time: IntFilter
   transactionHash: StringFilter
@@ -1327,7 +1358,7 @@ type Query {
   profitRankByAddress(owner: String!): ProfitRankType!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   user(where: UserWhereUniqueInput!): User
-  userParlays(address: String!, chainId: Int, orderBy: String, orderDirection: String, skip: Int! = 0, take: Int! = 50): [ParlayType!]!
+  userParlays(address: String!, chainId: Int, orderBy: String, orderDirection: String, skip: Int! = 0, status: String, take: Int! = 50): [ParlayType!]!
   userParlaysCount(address: String!, chainId: Int): Int!
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }

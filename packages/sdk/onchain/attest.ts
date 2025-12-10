@@ -19,9 +19,10 @@ export function probability(value: number): Probability {
 const EAS_ADDRESS_ARBITRUM: Address = '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458';
 const ARBITRUM_CHAIN_ID = 42161;
 
-// EAS schema id for prediction market attestations
+// EAS schema id for forecast attestations
+// Schema: address resolver, bytes condition, uint256 forecast, string comment
 const SCHEMA_ID: Hex =
-  '0x2dbb0921fa38ebc044ab0a7fe109442c456fb9ad39a68ce0a32f193744d17744';
+  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
 
 // EAS ABI (attest)
 const EAS_ABI = [
@@ -58,15 +59,12 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
 
 /**
- * Convert probability (0-100) to sqrtPriceX96 format
- * This is the standard format used by Uniswap V3 style AMMs
- * Formula: sqrtPriceX96 = sqrt(price) * 2^96
+ * Convert probability (0-100) to D18 format
+ * D18 means 18 decimal places, so 50% = 50 * 10^18
  */
-function probabilityToSqrtPriceX96(prob: number): bigint {
-  const price = prob / 100;
-  const sqrtPrice = Math.sqrt(price);
-  const Q96 = BigInt('79228162514264337593543950336'); // 2^96
-  return BigInt(Math.round(sqrtPrice * Number(Q96)));
+function probabilityToD18(prob: number): bigint {
+  // prob is 0-100, so multiply by 10^18
+  return BigInt(Math.round(prob * 1e18));
 }
 
 export type ForecastCalldata = {
@@ -78,13 +76,15 @@ export type ForecastCalldata = {
 
 /**
  * Build calldata for submitting a forecast attestation to Arbitrum EAS.
- * 
- * @param conditionId - The condition/question ID (bytes32)
+ *
+ * @param resolver - The resolver contract address
+ * @param condition - The condition data (bytes)
  * @param probability - Probability 0-100 that the condition resolves YES
  * @param comment - Optional comment/reasoning (max 180 chars, will be truncated)
  */
 export function buildForecastCalldata(
-  conditionId: Hex,
+  resolver: Address,
+  condition: Hex,
   prob: number,
   comment?: string,
 ): ForecastCalldata {
@@ -100,13 +100,12 @@ export function buildForecastCalldata(
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      'address marketAddress, uint256 marketId, bytes32 questionId, uint160 prediction, string comment',
+      'address resolver, bytes condition, uint256 forecast, string comment',
     ),
     [
-      ZERO_ADDRESS,
-      0n,
-      conditionId,
-      probabilityToSqrtPriceX96(prob),
+      resolver,
+      condition,
+      probabilityToD18(prob),
       truncatedComment,
     ],
   );
@@ -139,20 +138,22 @@ export function buildForecastCalldata(
 
 /**
  * Submit a forecast attestation to Arbitrum EAS.
- * 
+ *
  * This is the main entry point for agents to submit forecasts.
  * Always submits to Arbitrum mainnet.
- * 
- * @param conditionId - The condition/question ID (bytes32)
+ *
+ * @param resolver - The resolver contract address
+ * @param condition - The condition data (bytes)
  * @param probability - Probability 0-100 that the condition resolves YES
  * @param comment - Optional comment/reasoning (max 180 chars)
  * @param privateKey - Wallet private key for signing
  * @param rpc - Arbitrum RPC URL (defaults to public endpoint)
- * 
+ *
  * @example
  * ```ts
  * const { hash } = await submitForecast({
- *   conditionId: '0x1234...abcd',
+ *   resolver: '0x1234...abcd',
+ *   condition: '0x...',
  *   probability: 75,
  *   comment: 'High confidence based on recent polling data',
  *   privateKey: '0x...',
@@ -160,14 +161,16 @@ export function buildForecastCalldata(
  * ```
  */
 export async function submitForecast(args: {
-  conditionId: Hex;
+  resolver: Address;
+  condition: Hex;
   probability: number;
   comment?: string;
   privateKey: Hex;
   rpc?: string;
 }): Promise<{ hash: Hex; calldata: ForecastCalldata }> {
   const calldata = buildForecastCalldata(
-    args.conditionId,
+    args.resolver,
+    args.condition,
     args.probability,
     args.comment,
   );

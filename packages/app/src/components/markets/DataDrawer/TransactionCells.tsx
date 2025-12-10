@@ -22,8 +22,7 @@ import {
   withAlpha,
   CHART_SERIES_COLORS,
 } from '~/lib/theme/chartColors';
-import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
-import { sqrtPriceX96ToPriceD18, getChainShortName } from '~/lib/utils/util';
+import { d18ToPercentage, getChainShortName } from '~/lib/utils/util';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 
 export interface UiTransaction {
@@ -366,10 +365,8 @@ export function TransactionAmountCell({
   let predictionBadge: React.ReactNode = null;
   if (shouldShowBadgesInAmount && attestation && attestation.value) {
     try {
-      const priceD18 = sqrtPriceX96ToPriceD18(BigInt(attestation.value));
-      const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-      const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-      const percentage = Math.round(Number(percentageD2) / 100);
+      // Convert D18 to percentage (0-100)
+      const percentage = Math.round(d18ToPercentage(attestation.value));
       const shouldColor = percentage !== 50;
       const isGreen = shouldColor && percentage > 50;
       const isRed = shouldColor && percentage < 50;
@@ -712,12 +709,8 @@ export function TransactionPositionCell({
     let predictionBadge: React.ReactNode = null;
     try {
       if (attestation && attestation.value) {
-        const priceD18 = sqrtPriceX96ToPriceD18(BigInt(attestation.value));
-        const YES_SQRT_X96_PRICE_D18 =
-          sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-        const percentageD2 =
-          (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-        const percentage = Math.round(Number(percentageD2) / 100);
+        // Convert D18 to percentage (0-100)
+        const percentage = Math.round(d18ToPercentage(attestation.value));
         const shouldColor = percentage !== 50;
         const isGreen = shouldColor && percentage > 50;
         const isRed = shouldColor && percentage < 50;

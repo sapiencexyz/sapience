@@ -1,6 +1,6 @@
 import { Resolver, Query, Arg, Int, ObjectType, Field } from 'type-graphql';
 import prisma from '../../db';
-import { Prisma, Parlay } from '../../../generated/prisma';
+import { Prisma, Parlay, ParlayStatus } from '../../../generated/prisma';
 
 @ObjectType()
 class ConditionSummary {
@@ -109,7 +109,8 @@ export class ParlayResolver {
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true })
     orderDirection?: string,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('status', () => String, { nullable: true }) status?: string
   ): Promise<ParlayType[]> {
     const addr = address.toLowerCase();
 
@@ -191,14 +192,15 @@ export class ParlayResolver {
     // For numeric/calculated sorting (wager, toWin, pnl), we need raw SQL
     if (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl') {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
+      const statusFilter = status ? Prisma.sql`AND status = ${status}` : Prisma.empty;
 
       if (orderBy === 'wager') {
         // For wager, sort by the viewer's individual collateral
         if (chainId !== undefined && chainId !== null) {
           const rows = await prisma.$queryRaw<Parlay[]>`
             SELECT * FROM parlay
-            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
-            ORDER BY CASE 
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId} ${statusFilter}
+            ORDER BY CASE
               WHEN LOWER(maker) = ${addr} THEN CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
               WHEN LOWER(taker) = ${addr} THEN CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
               ELSE 0
@@ -210,8 +212,8 @@ export class ParlayResolver {
         } else {
           const rows = await prisma.$queryRaw<Parlay[]>`
             SELECT * FROM parlay
-            WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
-            ORDER BY CASE 
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) ${statusFilter}
+            ORDER BY CASE
               WHEN LOWER(maker) = ${addr} THEN CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
               WHEN LOWER(taker) = ${addr} THEN CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
               ELSE 0
@@ -228,21 +230,21 @@ export class ParlayResolver {
         if (chainId !== undefined && chainId !== null) {
           const rows = await prisma.$queryRaw<Parlay[]>`
             SELECT * FROM parlay
-            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
-            ORDER BY CASE 
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId} ${statusFilter}
+            ORDER BY CASE
               WHEN status = 'active' THEN 0
               WHEN LOWER(maker) = ${addr} THEN
-                CASE 
-                  WHEN "makerWon" = true THEN 
+                CASE
+                  WHEN "makerWon" = true THEN
                     CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
-                  ELSE 
+                  ELSE
                     -CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
                 END
               WHEN LOWER(taker) = ${addr} THEN
-                CASE 
-                  WHEN "makerWon" = false THEN 
+                CASE
+                  WHEN "makerWon" = false THEN
                     CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
-                  ELSE 
+                  ELSE
                     -CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
                 END
               ELSE 0
@@ -254,21 +256,21 @@ export class ParlayResolver {
         } else {
           const rows = await prisma.$queryRaw<Parlay[]>`
             SELECT * FROM parlay
-            WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
-            ORDER BY CASE 
+            WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) ${statusFilter}
+            ORDER BY CASE
               WHEN status = 'active' THEN 0
               WHEN LOWER(maker) = ${addr} THEN
-                CASE 
-                  WHEN "makerWon" = true THEN 
+                CASE
+                  WHEN "makerWon" = true THEN
                     CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
-                  ELSE 
+                  ELSE
                     -CAST(COALESCE("makerCollateral", '0') AS DECIMAL)
                 END
               WHEN LOWER(taker) = ${addr} THEN
-                CASE 
-                  WHEN "makerWon" = false THEN 
+                CASE
+                  WHEN "makerWon" = false THEN
                     CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
-                  ELSE 
+                  ELSE
                     -CAST(COALESCE("takerCollateral", '0') AS DECIMAL)
                 END
               ELSE 0
@@ -284,8 +286,8 @@ export class ParlayResolver {
       if (chainId !== undefined && chainId !== null) {
         const rows = await prisma.$queryRaw<Parlay[]>`
           SELECT * FROM parlay
-          WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId}
-          ORDER BY CASE 
+          WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) AND "chainId" = ${chainId} ${statusFilter}
+          ORDER BY CASE
             WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
             WHEN status != 'active' THEN
               CASE
@@ -302,8 +304,8 @@ export class ParlayResolver {
       } else {
         const rows = await prisma.$queryRaw<Parlay[]>`
           SELECT * FROM parlay
-          WHERE LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}
-          ORDER BY CASE 
+          WHERE (LOWER(maker) = ${addr} OR LOWER(taker) = ${addr}) ${statusFilter}
+          ORDER BY CASE
             WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
             WHEN status != 'active' THEN
               CASE
@@ -334,6 +336,9 @@ export class ParlayResolver {
     };
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
+    }
+    if (status) {
+      where.status = status as ParlayStatus;
     }
 
     const rows = await prisma.parlay.findMany({

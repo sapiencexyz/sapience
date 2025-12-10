@@ -30,7 +30,9 @@ export async function reindexAccuracy(
       select: { questionId: true },
       distinct: ['questionId'],
     });
-    conditionIds = distinctConditions.map((a) => a.questionId);
+    conditionIds = distinctConditions
+      .map((a) => a.questionId)
+      .filter((id): id is string => !!id);
   }
 
   for (const condId of conditionIds) {

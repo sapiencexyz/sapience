@@ -4,7 +4,7 @@ import React from 'react';
 import { getAddress } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
-import { SCHEMA_UID } from '../../lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants';
 
 // Type for the raw data fetched from the API
 interface RawAttestation {
@@ -14,9 +14,7 @@ interface RawAttestation {
   time: number; // API returns time as a number (Unix timestamp)
   prediction: string;
   comment: string;
-  marketAddress: string;
-  marketId: string;
-  questionId?: string;
+  condition?: string;
 }
 
 // Parameterized version of the query
@@ -28,10 +26,8 @@ const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
       attester
       time
       prediction
-      marketId
       comment
-      marketAddress
-      questionId
+      condition
     }
   }
 `;
@@ -57,10 +53,8 @@ const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
       attester
       time
       prediction
-      marketId
       comment
-      marketAddress
-      questionId
+      condition
     }
   }
 `;
@@ -78,11 +72,9 @@ export type FormattedAttestation = {
   shortAttester: string;
   value: string;
   comment: string;
-  marketAddress: string;
   time: string; // Formatted time string
   rawTime: number; // Original timestamp
-  marketId: string; // Add marketId from raw data
-  questionId?: string;
+  questionId?: string; // conditionId from EAS schema
 };
 
 // Format raw attestation data into a displayable format
@@ -105,18 +97,14 @@ const formatAttestationData = (
     time: formattedTime,
     rawTime: attestation.time,
     comment: attestation.comment,
-    marketAddress: attestation.marketAddress,
-    marketId: attestation.marketId, // Include marketId from raw data
-    questionId: attestation.questionId,
+    questionId: attestation.condition, // conditionId from EAS schema
   };
 };
 
 interface UseForecastsProps {
-  marketAddress?: string;
   schemaId?: string;
   attesterAddress?: string;
   chainId?: number;
-  marketId?: number;
   conditionId?: string;
   options?: {
     staleTime?: number;
@@ -128,41 +116,26 @@ interface UseForecastsProps {
 
 // Function to generate consistent query key for both useForecasts and prefetchForecasts
 const generateForecastsQueryKey = ({
-  marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   chainId,
-  marketId,
   conditionId,
 }: UseForecastsProps) => {
   return [
     'attestations',
     schemaId,
-    marketAddress || null,
     attesterAddress || null,
     chainId || null,
-    marketId || null,
     conditionId || null,
   ];
 };
 
 const getForecasts = async ({
-  marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
-  marketId,
   conditionId,
 }: UseForecastsProps) => {
   // Normalize addresses if provided
-  let normalizedMarketAddress = marketAddress;
-  if (marketAddress) {
-    try {
-      normalizedMarketAddress = getAddress(marketAddress);
-    } catch (_e) {
-      // swallow normalization error
-    }
-  }
-
   let normalizedAttesterAddress = attesterAddress;
   if (attesterAddress) {
     try {
@@ -174,18 +147,11 @@ const getForecasts = async ({
 
   // Prepare variables, omitting undefined ones
   const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedMarketAddress) {
-    filters.push({ marketAddress: { equals: normalizedMarketAddress } });
-  }
   if (normalizedAttesterAddress) {
     filters.push({ attester: { equals: normalizedAttesterAddress } });
   }
-
-  if (marketId) {
-    filters.push({ marketId: { equals: String(marketId) } });
-  }
   if (conditionId) {
-    filters.push({ questionId: { equals: conditionId } as any });
+    filters.push({ condition: { equals: conditionId } as any });
   }
 
   const variables = {
@@ -209,20 +175,16 @@ const getForecasts = async ({
 };
 
 export const useForecasts = ({
-  marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   chainId,
-  marketId,
   conditionId,
   options,
 }: UseForecastsProps) => {
   const queryKey = generateForecastsQueryKey({
-    marketAddress,
     schemaId,
     attesterAddress,
     chainId,
-    marketId,
     conditionId,
   });
 
@@ -235,10 +197,8 @@ export const useForecasts = ({
     queryKey,
     queryFn: () =>
       getForecasts({
-        marketAddress,
         schemaId,
         attesterAddress,
-        marketId,
         conditionId,
       }),
     enabled: options?.enabled ?? Boolean(schemaId),
@@ -258,10 +218,6 @@ export const useForecasts = ({
       formatAttestationData(att)
     );
   }, [attestationsData]);
-
-  React.useEffect(() => {
-    // removed debug logging
-  }, [attestationsData, marketAddress, attesterAddress, marketId]);
 
   return { data, isLoading, error, refetch };
 };
@@ -288,22 +244,7 @@ const getForecastsPage = async (
   params: UseForecastsProps,
   page: { take: number; cursorId?: number }
 ) => {
-  const {
-    marketAddress,
-    schemaId = SCHEMA_UID,
-    attesterAddress,
-    marketId,
-    conditionId,
-  } = params;
-
-  let normalizedMarketAddress = marketAddress;
-  if (marketAddress) {
-    try {
-      normalizedMarketAddress = getAddress(marketAddress);
-    } catch (_e) {
-      // swallow normalization error
-    }
-  }
+  const { schemaId = SCHEMA_UID, attesterAddress, conditionId } = params;
 
   let normalizedAttesterAddress = attesterAddress;
   if (attesterAddress) {
@@ -315,17 +256,11 @@ const getForecastsPage = async (
   }
 
   const filters: Record<string, { equals: string }>[] = [];
-  if (normalizedMarketAddress) {
-    filters.push({ marketAddress: { equals: normalizedMarketAddress } });
-  }
   if (normalizedAttesterAddress) {
     filters.push({ attester: { equals: normalizedAttesterAddress } });
   }
-  if (marketId) {
-    filters.push({ marketId: { equals: String(marketId) } });
-  }
   if (conditionId) {
-    filters.push({ questionId: { equals: conditionId } as any });
+    filters.push({ condition: { equals: conditionId } as any });
   }
 
   const variables: Record<string, any> = {
@@ -350,21 +285,17 @@ const getForecastsPage = async (
 };
 
 export const useInfiniteForecasts = ({
-  marketAddress,
   schemaId = SCHEMA_UID,
   attesterAddress,
   chainId,
-  marketId,
   conditionId,
 }: UseForecastsProps & { pageSize?: number }) => {
   const pageSize = 10;
   const queryKey = [
     ...generateForecastsQueryKey({
-      marketAddress,
       schemaId,
       attesterAddress,
       chainId,
-      marketId,
       conditionId,
     }),
     'infinite',
@@ -374,7 +305,7 @@ export const useInfiniteForecasts = ({
     queryKey,
     queryFn: ({ pageParam }) =>
       getForecastsPage(
-        { marketAddress, schemaId, attesterAddress, marketId, conditionId },
+        { schemaId, attesterAddress, conditionId },
         { take: pageSize, cursorId: pageParam as number | undefined }
       ),
     initialPageParam: undefined as number | undefined,

@@ -513,9 +513,13 @@ Analyze and respond with ONLY valid JSON:
         };
       }
 
-      const { buildForecastCalldata } = await loadSdk();
-      
+      const { buildForecastCalldata, getDefaultResolver } = await loadSdk();
+
+      // Use the default UMA resolver for Arbitrum
+      const resolver = getDefaultResolver?.() || "0x2cc1311871b9fc7bfcb809c75da4ba25732eafb9";
+
       const calldata = buildForecastCalldata(
+        resolver as `0x${string}`,
         condition.id as `0x${string}`,
         prediction.probability,
         prediction.reasoning
@@ -594,11 +598,9 @@ Analyze and respond with ONLY valid JSON:
 
   private decodeProbability(predictionValue: string): number | null {
     try {
-      const predictionBigInt = BigInt(predictionValue);
-      const Q96 = BigInt("79228162514264337593543950336"); // 2^96
-      // sqrtPriceX96 = sqrt(price) * 2^96, so sqrtPrice = sqrtPriceX96 / 2^96
-      const sqrtPrice = Number(predictionBigInt) / Number(Q96);
-      const probability = (sqrtPrice * sqrtPrice) * 100;
+      // D18 format: probability * 10^18
+      const forecastBigInt = BigInt(predictionValue);
+      const probability = Number(forecastBigInt) / 1e18;
       return Math.max(0, Math.min(100, probability));
     } catch (error) {
       elizaLogger.warn(`[ForecastService] Failed to decode probability ${predictionValue}:`, error);

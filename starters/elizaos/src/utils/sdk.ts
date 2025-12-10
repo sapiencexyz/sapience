@@ -38,9 +38,11 @@ export async function loadSdk(): Promise<SdkModule> {
   if (!sdk.buildForecastCalldata) {
     console.log("[SDK] buildForecastCalldata not found in SDK, using local fallback");
     try {
-      const { buildForecastCalldata, buildAttestationCalldata } = await import("../utils/eas.js");
+      const { buildForecastCalldata, buildAttestationCalldata, getDefaultResolver, decodeProbabilityFromD18 } = await import("../utils/eas.js");
       sdk.buildForecastCalldata = buildForecastCalldata;
       sdk.buildAttestationCalldata = buildAttestationCalldata;
+      sdk.getDefaultResolver = getDefaultResolver;
+      sdk.decodeProbabilityFromD18 = decodeProbabilityFromD18;
     } catch (e) {
       console.warn("Failed to load local forecast calldata implementation:", e);
     }

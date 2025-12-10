@@ -1,6 +1,5 @@
 import { useFormContext } from 'react-hook-form';
 import { useState, useEffect } from 'react';
-import { priceToSqrtPriceX96 } from '~/lib/utils/util';
 import ForecastOddsSlider from '~/components/shared/ForecastOddsSlider';
 
 interface YesNoPredictProps {
@@ -15,17 +14,9 @@ export default function YesNoPredict({
   const { register, setValue } = useFormContext();
   const [sliderValue, setSliderValue] = useState(50); // Default to 50%
 
-  // Calculate the sqrtPriceX96 value based on slider percentage
-  const calculateSqrtPriceX96 = (percentage: number) => {
-    const decimal = percentage / 100;
-    const result = priceToSqrtPriceX96(decimal);
-    return result.toString();
-  };
-
-  // Update form value when slider changes
+  // Update form value when slider changes - store percentage directly (0-100)
   useEffect(() => {
-    const sqrtPriceX96Value = calculateSqrtPriceX96(sliderValue);
-    setValue(name, sqrtPriceX96Value, { shouldValidate: true });
+    setValue(name, sliderValue.toString(), { shouldValidate: true });
   }, [sliderValue, name, setValue]);
 
   return (

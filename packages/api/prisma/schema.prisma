@@ -83,9 +83,11 @@ model Attestation {
   decodedDataJson String   @db.VarChar @default("")
 
   // Prediction market schema data
-  marketAddress   String   @db.VarChar
-  marketId        String   @db.VarChar
-  questionId      String   @db.VarChar
+  marketAddress   String?  @db.VarChar
+  marketId        String?  @db.VarChar
+  questionId      String?  @db.VarChar
+  resolver        String?  @db.VarChar
+  condition       String?  @db.Text
   prediction      String   @db.VarChar
   comment         String?  @db.Text
 
@@ -99,6 +101,7 @@ model Attestation {
   @@index([marketAddress], map: "IDX_attestation_market_address")
   @@index([marketId], map: "IDX_attestation_market_id")
   @@index([questionId], map: "IDX_attestation_question_id")
+  @@index([resolver], map: "IDX_attestation_resolver")
   @@map("attestation")
 }
 
@@ -110,9 +113,10 @@ model AttestationScore {
   attestationId    Int         @unique
   attestation      Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   attester         String      @db.VarChar
-  marketAddress    String      @db.VarChar
-  marketId         String      @db.VarChar
+  marketAddress    String?     @db.VarChar
+  marketId         String?     @db.VarChar
   questionId       String?     @db.VarChar
+  resolver         String?     @db.VarChar
 
   // Forecast metadata
   madeAt           Int

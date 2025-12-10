@@ -10,7 +10,7 @@ import {
   type FormattedAttestation,
 } from '~/hooks/graphql/useForecasts';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants';
 
 type Anchor = 'forecasts' | 'positions';
 

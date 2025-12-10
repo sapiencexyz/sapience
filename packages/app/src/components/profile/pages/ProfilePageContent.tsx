@@ -17,7 +17,7 @@ import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants';
 import LottieLoader from '~/components/shared/LottieLoader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import EmptyTabState from '~/components/shared/EmptyTabState';

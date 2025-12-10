@@ -7,10 +7,9 @@ import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { AddressDisplay } from './AddressDisplay';
 import LottieLoader from './LottieLoader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
-import { SCHEMA_UID } from '~/lib/constants/eas';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
+import { SCHEMA_UID } from '~/lib/constants';
+import { d18ToPercentage } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
-import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -118,13 +117,11 @@ function attestationToComment(
   }
 
   // Format prediction text - all condition forecasts are YES_NO
+  // prediction is in D18 format: percentage * 10^18
   let predictionText = '';
   let predictionPercent: number | undefined = undefined;
 
-  const priceD18 = sqrtPriceX96ToPriceD18(prediction);
-  const YES_SQRT_X96_PRICE_D18 = sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-  const percentageD2 = (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-  predictionPercent = Math.round(Number(percentageD2) / 100);
+  predictionPercent = Math.round(d18ToPercentage(prediction));
   const prob = Number.isFinite(predictionPercent)
     ? Number(predictionPercent) / 100
     : NaN;

@@ -4,19 +4,7 @@ import Image from 'next/image';
 import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { Copy, Gavel } from 'lucide-react';
 import { useMemo } from 'react';
-
-// Mapping of resolver addresses to their display names and icons
-const RESOLVER_INFO: Record<
-  string,
-  { name: string; icon?: string; iconAlt?: string }
-> = {
-  '0xC873efA9D22A09e39101efB977C03011620bF015': {
-    name: 'UMA',
-    icon: '/uma.svg',
-    iconAlt: 'UMA',
-  },
-  // Add more resolver mappings here as needed
-};
+import { UMA_RESOLVER_DISPLAY } from '~/lib/constants';
 
 interface ResolverBadgeProps {
   resolverAddress: string | null | undefined;
@@ -37,10 +25,10 @@ export function ResolverBadge({
     if (!resolverAddress) return null;
     const normalizedAddress = resolverAddress.toLowerCase();
     // Find matching resolver info (case-insensitive)
-    const entry = Object.entries(RESOLVER_INFO).find(
+    const entry = Object.entries(UMA_RESOLVER_DISPLAY).find(
       ([address]) => address.toLowerCase() === normalizedAddress
     );
-    return entry ? RESOLVER_INFO[entry[0]] : null;
+    return entry ? UMA_RESOLVER_DISPLAY[entry[0]] : null;
   }, [resolverAddress]);
 
   if (!resolverAddress) {

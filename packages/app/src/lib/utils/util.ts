@@ -211,6 +211,19 @@ export const sqrtPriceX96ToPriceD18 = (sqrtPriceX96: bigint): bigint => {
 };
 
 /**
+ * Converts a D18 forecast value to a percentage (0-100)
+ * D18 format: 50% = 50 * 10^18
+ * @param d18Value The D18 value as bigint or string
+ * @returns The percentage (0-100)
+ */
+export const d18ToPercentage = (d18Value: bigint | string): number => {
+  const value = typeof d18Value === 'string' ? BigInt(d18Value) : d18Value;
+  // Divide by 10^18 to get the percentage
+  // Use Number conversion with care - D18 values for 0-100 are safe
+  return Number(value) / 1e18;
+};
+
+/**
  * Converts a price to sqrtPriceX96 format used by Uniswap V3
  * @param price The price to convert
  * @returns The sqrtPriceX96 value

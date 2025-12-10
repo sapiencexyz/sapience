@@ -21,7 +21,6 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
-import type { MarketGroup as MarketGroupType } from '@sapience/sdk/types/graphql';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/positionFormUtils';
@@ -50,7 +49,7 @@ export interface PositionSelection {
 // Interface for market data with position
 export interface PositionWithMarketData {
   position: CreatePositionEntry;
-  marketGroupData: MarketGroupType | undefined;
+  marketGroupData: undefined;
   marketClassification: MarketGroupClassification | undefined;
   isLoading: boolean;
   error: boolean | null;

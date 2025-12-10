@@ -39,7 +39,7 @@ contract ConfigurePredictionMarketLZResolverUmaSide is Script {
         );
 
         // Optional tuning via env
-        // resolver.setLzReceiveCost(uint128(vm.envUint("UMA_LZ_RECEIVE_COST")));
+        resolver.setLzReceiveCost(uint128(vm.envUint("UMA_LZ_RECEIVE_COST")));
         // resolver.setGasThresholds(vm.envUint("UMA_GAS_WARN"), vm.envUint("UMA_GAS_CRIT"));
 
         // Optional: allow a specific asserter

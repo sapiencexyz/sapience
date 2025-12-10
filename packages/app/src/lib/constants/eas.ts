@@ -1,2 +1,0 @@
-export const SCHEMA_UID =
-  '0x2dbb0921fa38ebc044ab0a7fe109442c456fb9ad39a68ce0a32f193744d17744';

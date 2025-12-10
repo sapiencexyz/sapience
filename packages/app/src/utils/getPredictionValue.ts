@@ -1,11 +1,15 @@
 import { MarketGroupClassification } from '~/lib/types';
 
+/**
+ * Convert prediction input to D18 format (18 decimal places)
+ * For probability predictions: 50% = 50 * 10^18
+ * For numeric predictions: value * 10^18
+ */
 export function getPredictionValue(
   classification: MarketGroupClassification,
   predictionInput: string
 ) {
   let finalPredictionBigInt: bigint;
-  const JS_2_POW_96 = 2 ** 96;
 
   switch (classification) {
     case MarketGroupClassification.NUMERIC: {
@@ -16,19 +20,25 @@ export function getPredictionValue(
           'Numeric prediction input must be a valid non-negative number.'
         );
       }
-      const effectivePrice = inputNum * 10 ** 18;
-      const sqrtEffectivePrice = Math.sqrt(effectivePrice);
-      const sqrtPriceX96Float = sqrtEffectivePrice * JS_2_POW_96;
-      finalPredictionBigInt = BigInt(Math.round(sqrtPriceX96Float));
+      // D18 format: value * 10^18
+      finalPredictionBigInt = BigInt(Math.round(inputNum * 1e18));
       break;
     }
     case MarketGroupClassification.YES_NO:
       console.log('predictionInput yes no', predictionInput);
-      finalPredictionBigInt = BigInt(predictionInput);
+      // predictionInput is already the probability value (0-100)
+      // Convert to D18: prob * 10^18
+      finalPredictionBigInt = BigInt(
+        Math.round(parseFloat(predictionInput) * 1e18)
+      );
       break;
     case MarketGroupClassification.MULTIPLE_CHOICE:
       console.log('predictionInput multiple choice', predictionInput);
-      finalPredictionBigInt = BigInt(predictionInput);
+      // predictionInput is already the probability value (0-100)
+      // Convert to D18: prob * 10^18
+      finalPredictionBigInt = BigInt(
+        Math.round(parseFloat(predictionInput) * 1e18)
+      );
       break;
     default: {
       // This will catch any unhandled enum members at compile time

@@ -4,7 +4,6 @@ import { useIsBelow } from '@sapience/sdk/ui/hooks/use-mobile';
 import { useIsMobile } from '@sapience/sdk/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { type Market as GraphQLMarketType } from '@sapience/sdk/types/graphql';
 import { useState, useMemo, useCallback } from 'react';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -24,15 +23,6 @@ const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
 });
-
-// Define local interfaces based on expected data shape
-export interface MarketWithContext extends GraphQLMarketType {
-  marketAddress: string;
-  chainId: number;
-  collateralAsset: string;
-  categorySlug: string;
-  categoryId: string;
-}
 
 // Helper to convert days from now to Unix timestamp
 function daysFromNowToTimestamp(days: number): number {

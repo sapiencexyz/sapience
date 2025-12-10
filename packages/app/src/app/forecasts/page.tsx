@@ -1,7 +1,7 @@
 import { QueryClient, dehydrate } from '@tanstack/react-query';
 import ForecastPageImp from '~/app/forecasts/ForecastPageImp';
 import Hydrate from '~/components/Hydrate';
-import { SCHEMA_UID } from '~/lib/constants/eas';
+import { SCHEMA_UID } from '~/lib/constants';
 import { prefetchForecasts } from '~/hooks/graphql/useForecasts';
 
 export function generateMetadata() {

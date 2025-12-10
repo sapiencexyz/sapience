@@ -34,13 +34,13 @@ import { ResolverBadge } from '~/components/shared/ResolverBadge';
 import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
+import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import { usePositionsByConditionId } from '~/hooks/graphql/usePositionsByConditionId';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { sqrtPriceX96ToPriceD18 } from '~/lib/utils/util';
-import { YES_SQRT_X96_PRICE } from '~/lib/constants/numbers';
+import { d18ToPercentage } from '~/lib/utils/util';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import {
   type PredictionData,
@@ -334,20 +334,15 @@ export default function QuestionPageContent({
           comment?: string;
         }) => {
           try {
-            // Parse prediction value (stored as sqrtPriceX96 bigint string)
-            // Convert from sqrtPriceX96 to percentage (0-100)
+            // Parse prediction value (stored in D18 format: percentage * 10^18)
             let predictionPercent = 50; // Default fallback
             const predictionValue = forecast.value;
             if (predictionValue) {
               try {
-                // Convert sqrtPriceX96 to percentage
-                const prediction = BigInt(predictionValue);
-                const priceD18 = sqrtPriceX96ToPriceD18(prediction);
-                const YES_SQRT_X96_PRICE_D18 =
-                  sqrtPriceX96ToPriceD18(YES_SQRT_X96_PRICE);
-                const percentageD2 =
-                  (priceD18 * BigInt(10000)) / YES_SQRT_X96_PRICE_D18;
-                predictionPercent = Math.round(Number(percentageD2) / 100);
+                // Convert D18 to percentage (0-100)
+                predictionPercent = Math.round(
+                  d18ToPercentage(predictionValue)
+                );
                 // Clamp to 0-100 range
                 predictionPercent = Math.max(
                   0,
@@ -355,7 +350,7 @@ export default function QuestionPageContent({
                 );
               } catch (error) {
                 console.warn(
-                  '[QuestionPageContent] Error converting sqrtPriceX96 to percentage:',
+                  '[QuestionPageContent] Error converting D18 to percentage:',
                   {
                     value: predictionValue,
                     error,
@@ -642,6 +637,7 @@ export default function QuestionPageContent({
           <div className="p-4 border-b border-border/60">
             <ConditionForecastForm
               conditionId={conditionId}
+              resolver={resolverAddress ?? UMA_RESOLVER_ARBITRUM}
               question={data.shortName || data.question || ''}
               endTime={data.endTime ?? undefined}
               categorySlug={data.category?.slug}
@@ -748,6 +744,7 @@ export default function QuestionPageContent({
           <div className="p-4 border-b border-border/60">
             <ConditionForecastForm
               conditionId={conditionId}
+              resolver={resolverAddress ?? UMA_RESOLVER_ARBITRUM}
               question={data.shortName || data.question || ''}
               endTime={data.endTime ?? undefined}
               categorySlug={data.category?.slug}

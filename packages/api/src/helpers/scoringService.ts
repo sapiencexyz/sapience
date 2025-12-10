@@ -19,9 +19,9 @@ export async function upsertAttestationScoreFromAttestation(
     create: {
       attestationId: att.id,
       attester: att.attester.toLowerCase(),
-      marketAddress: att.marketAddress.toLowerCase(),
-      marketId: att.marketId,
-      questionId: att.questionId,
+      marketAddress: att.marketAddress?.toLowerCase() ?? null,
+      marketId: att.marketId ?? null,
+      resolver: att.resolver,
       madeAt: att.time,
       used: false,
       probabilityD18: normalized.probabilityD18,
@@ -214,7 +214,11 @@ export async function computeTimeWeightedForAttesterSummary(
   if (distinctMarkets.length === 0)
     return { sumTimeWeightedError: 0, numTimeWeighted: 0 };
 
-  const conditionIds = [...new Set(distinctMarkets.map((m) => m.marketId))];
+  const conditionIds = [
+    ...new Set(
+      distinctMarkets.map((m) => m.marketId).filter((id): id is string => !!id)
+    ),
+  ];
 
   // 2) Fetch condition metadata needed for outcome and end time in ONE query
   const conditions = await prisma.condition.findMany({
@@ -263,6 +267,7 @@ export async function computeTimeWeightedForAttesterSummary(
   // 4) Group rows by market and compute time-weighted error per market
   const byMarket = new Map<MarketKey, { madeAt: number; p: number }[]>();
   for (const r of rows) {
+    if (!r.marketId) continue;
     const k = key(r.marketId);
     const m = meta.get(k);
     if (!m || m.end == null || m.outcome == null) continue;
@@ -341,7 +346,11 @@ export async function computeTimeWeightedForAttestersSummary(
       { sumTimeWeightedError: number; numTimeWeighted: number }
     >();
 
-  const conditionIds = [...new Set(distinctMarkets.map((m) => m.marketId))];
+  const conditionIds = [
+    ...new Set(
+      distinctMarkets.map((m) => m.marketId).filter((id): id is string => !!id)
+    ),
+  ];
 
   // 2) Condition metadata for those IDs
   const conditions = await prisma.condition.findMany({
@@ -410,6 +419,7 @@ export async function computeTimeWeightedForAttestersSummary(
   >();
 
   for (const r of rows) {
+    if (!r.marketAddress || !r.marketId) continue;
     const att = (r.attester || '').toLowerCase();
     const k = key(r.marketId);
     const m = meta.get(k);
