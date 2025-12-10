@@ -1,6 +1,6 @@
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 const predictionMarketAbi = [
   {
@@ -28,18 +28,18 @@ export function usePredictionMarketWriteContract(opts?: {
     onError: opts?.onError,
   });
 
-  // Arbitrum One + PredictionMarket address
-  const APP_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[DEFAULT_CHAIN_ID]?.address;
+  // Use the currently selected chain from localStorage
+  const chainId = useChainIdFromLocalStorage();
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
 
   function burn(tokenId: bigint, refCode: `0x${string}`) {
-    if (!PREDICTION_MARKET_ADDRESS || !APP_CHAIN_ID) return;
+    if (!PREDICTION_MARKET_ADDRESS || !chainId) return;
     return writeContract({
       address: PREDICTION_MARKET_ADDRESS,
       abi: predictionMarketAbi,
       functionName: 'burn',
       args: [tokenId, refCode],
-      chainId: APP_CHAIN_ID,
+      chainId,
     });
   }
 

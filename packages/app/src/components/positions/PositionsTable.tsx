@@ -27,17 +27,17 @@ import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatDistanceToNow } from 'date-fns';
-// Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
-const UMA_RESOLVER_MIN_ABI = [
+// Minimal ABI for PredictionMarketLZResolver.getPredictionResolution(bytes)
+const LZ_RESOLVER_MIN_ABI = [
   {
     type: 'function',
-    name: 'resolvePrediction',
+    name: 'getPredictionResolution',
     stateMutability: 'view',
     inputs: [{ name: 'encodedPredictedOutcomes', type: 'bytes' }],
     outputs: [
-      { name: 'isValid', type: 'bool' },
+      { name: 'isResolved', type: 'bool' },
       { name: 'error', type: 'uint8' },
-      { name: 'makerWon', type: 'bool' },
+      { name: 'parlaySuccess', type: 'bool' },
     ],
   },
 ] as const;
@@ -414,8 +414,8 @@ export default function PositionsTable({
   }, [rows, nowMs]);
 
   const viewerTokenInfo = React.useMemo(
-    () =>
-      rowsNeedingResolution.map((r) => ({
+    () => {
+      return rowsNeedingResolution.map((r) => ({
         rowKey: r.positionId,
         tokenId:
           r.addressRole === 'maker'
@@ -424,7 +424,8 @@ export default function PositionsTable({
         // Note: positionId was set to the viewer-relevant NFT id earlier
         marketAddress: r.marketAddress,
         chainId: r.chainId,
-      })),
+      }));
+    },
     [rowsNeedingResolution]
   );
 
@@ -455,10 +456,14 @@ export default function PositionsTable({
     }[] = [];
     const items = activeOwners?.data || [];
     const viewerAddr = viewer;
+    
     items.forEach((item, idx) => {
       const info = viewerTokenInfo[idx];
       if (!info) return;
-      if (item && item.status === 'success') {
+      
+      if (!item) return;
+      
+      if (item.status === 'success') {
         const owner = String(item.result || '').toLowerCase();
         if (owner && owner === viewerAddr) {
           out.push({
@@ -470,6 +475,7 @@ export default function PositionsTable({
         }
       }
     });
+    
     return out;
   }, [activeOwners?.data, viewer, viewerTokenInfo]);
 
@@ -490,30 +496,35 @@ export default function PositionsTable({
     query: { enabled: !isLoading && getPredictionReads.length > 0 },
   });
 
-  // Phase 3: resolver.resolvePrediction(encodedPredictedOutcomes)
+  // Phase 3: resolver.getPredictionResolution(encodedPredictedOutcomes)
   const resolverReads = React.useMemo(() => {
     const calls: any[] = [];
     const preds = predictionDatas?.data || [];
+    
     preds.forEach((item: any, idx: number) => {
+      const base = ownedRowEntries[idx];
+      
       if (!item || item.status !== 'success') return;
+      
       try {
         const result = item.result;
         const resolver: Address = result.resolver as Address;
         const encoded = result.encodedPredictedOutcomes as `0x${string}`;
-        const base = ownedRowEntries[idx];
-        if (resolver && encoded && base) {
-          calls.push({
-            address: resolver,
-            abi: UMA_RESOLVER_MIN_ABI as unknown as Abi,
-            functionName: 'resolvePrediction',
-            args: [encoded],
-            chainId: base.chainId,
-          });
-        }
+        
+        if (!resolver || !encoded || !base) return;
+        
+        calls.push({
+          address: resolver,
+          abi: LZ_RESOLVER_MIN_ABI as unknown as Abi,
+          functionName: 'getPredictionResolution',
+          args: [encoded],
+          chainId: base.chainId,
+        });
       } catch {
-        // ignore mis-shaped result
+        // ignore errors
       }
     });
+    
     return calls;
   }, [predictionDatas?.data, ownedRowEntries]);
   const resolverResults = useReadContracts({
@@ -524,6 +535,7 @@ export default function PositionsTable({
   // Build a map from rowKey -> ChainResolutionState
   const rowKeyToResolution = React.useMemo(() => {
     const map = new Map<number, ChainResolutionState>();
+
     // default: if we attempted ownerOf but do not own, consider 'claimed'
     viewerTokenInfo.forEach((info, idx) => {
       const ownerItem = activeOwners?.data?.[idx];
@@ -535,21 +547,30 @@ export default function PositionsTable({
     });
 
     const res = resolverResults?.data || [];
+    
     for (let i = 0; i < res.length; i++) {
       const base = ownedRowEntries[i];
       const resItem = res[i];
       if (!base || !resItem) continue;
       const rowKey = base.rowKey;
+
       if (resItem.status !== 'success') {
         // couldn't resolve yet → awaiting
-        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
+        if (!map.has(rowKey)) {
+          map.set(rowKey, { state: 'awaiting' });
+        }
         continue;
       }
       try {
-        const tuple = resItem.result as any; // [isValid, error, makerWon]
-        const isValid = Boolean(tuple?.[0]);
-        const makerWon = Boolean(tuple?.[2]);
-        if (!isValid) {
+        const tuple = resItem.result as any;
+        // LZResolver returns: [isResolved, error, parlaySuccess]
+        const isResolved = Boolean(tuple?.[0]);
+        const parlaySuccess = Boolean(tuple?.[2]);
+        
+        // parlaySuccess means maker won
+        const makerWon = parlaySuccess;
+
+        if (!isResolved) {
           map.set(rowKey, { state: 'awaiting' });
           continue;
         }
@@ -558,6 +579,7 @@ export default function PositionsTable({
         if (!row) continue;
         const viewerIsMaker = row.addressRole === 'maker';
         const viewerWon = viewerIsMaker ? makerWon : !makerWon;
+
         map.set(
           rowKey,
           viewerWon
@@ -565,15 +587,18 @@ export default function PositionsTable({
             : { state: 'lost' }
         );
       } catch {
-        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
+        if (!map.has(rowKey)) {
+          map.set(rowKey, { state: 'awaiting' });
+        }
       }
     }
+    
     return map;
   }, [
     viewerTokenInfo,
     activeOwners?.data,
     resolverResults?.data,
-    predictionDatas?.data,
+    ownedRowEntries,
     rows,
     viewer,
   ]);
@@ -968,10 +993,15 @@ export default function PositionsTable({
                 row.original.endsAt <= Date.now() &&
                 row.original.addressRole !== 'unknown' &&
                 (() => {
-                  const res = rowKeyToResolution.get(row.original.positionId);
-                  if (!res) return <AwaitingSettlementBadge />;
-                  if (res.state === 'awaiting')
+                  const positionId = row.original.positionId;
+                  const res = rowKeyToResolution.get(positionId);
+                  
+                  if (!res) {
                     return <AwaitingSettlementBadge />;
+                  }
+                  if (res.state === 'awaiting') {
+                    return <AwaitingSettlementBadge />;
+                  }
                   if (res.state === 'claim') {
                     const isOwnerConnected =
                       connectedAddress &&
@@ -979,6 +1009,7 @@ export default function PositionsTable({
                         String(account || '').toLowerCase();
                     const isThisTokenClaiming =
                       isClaimPending && claimingTokenId === res.tokenId;
+                    
                     return isOwnerConnected ? (
                       <Button
                         size="sm"
