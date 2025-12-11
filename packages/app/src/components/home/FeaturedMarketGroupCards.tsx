@@ -17,7 +17,7 @@ import { getActivePublicConditions } from './featuredConditions';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
-// Removed LottieLoader in favor of simple fade-in cards and fixed-height placeholder
+// Removed Loader in favor of simple fade-in cards and fixed-height placeholder
 
 // Interface for featured conditions in the homepage carousel
 interface FeaturedCondition {

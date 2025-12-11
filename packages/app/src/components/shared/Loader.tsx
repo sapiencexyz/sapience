@@ -1,11 +1,11 @@
 'use client';
 
-interface LottieLoaderProps {
+interface LoaderProps {
   className?: string;
   size?: number;
 }
 
-const LottieLoader = ({ className = '', size = 12 }: LottieLoaderProps) => {
+const Loader = ({ className = '', size = 12 }: LoaderProps) => {
   return (
     <span
       className={`inline-block align-middle rounded-full bg-muted-foreground animate-loader-pulse ${className}`}
@@ -14,4 +14,4 @@ const LottieLoader = ({ className = '', size = 12 }: LottieLoaderProps) => {
   );
 };
 
-export default LottieLoader;
+export default Loader;

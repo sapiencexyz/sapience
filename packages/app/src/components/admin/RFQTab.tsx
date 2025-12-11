@@ -90,6 +90,7 @@ type CSVRow = {
   description: string;
   shortName?: string;
   similarMarkets?: string;
+  group?: string;
 };
 
 type ValidatedCSVRow = CSVRow & {
@@ -99,6 +100,7 @@ type ValidatedCSVRow = CSVRow & {
   parsedEndTime?: number;
   parsedPublic?: boolean;
   parsedSimilarMarkets?: string[];
+  parsedGroup?: string;
 };
 
 type RFQTabProps = {
@@ -279,6 +281,9 @@ const RFQTab = ({
         .filter((url) => url.length > 0);
     }
 
+    // Parse group (optional, any non-empty string is valid)
+    const parsedGroup = row.group?.trim() || undefined;
+
     return {
       ...row,
       rowIndex,
@@ -287,6 +292,7 @@ const RFQTab = ({
       parsedEndTime,
       parsedPublic,
       parsedSimilarMarkets,
+      parsedGroup,
     };
   };
 
@@ -352,6 +358,7 @@ const RFQTab = ({
               description: row.description.trim(),
               similarMarkets: row.parsedSimilarMarkets || [],
               chainId: currentChainId,
+              ...(row.parsedGroup ? { groupName: row.parsedGroup } : {}),
             };
 
             await postJson<RFQRow>('/conditions', body);
@@ -913,8 +920,11 @@ const RFQTab = ({
               Upload a CSV file to bulk import conditions. The file should have
               the following columns:
               <code className="block mt-2 p-2 bg-muted rounded text-sm">
-                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets
+                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets,group
               </code>
+              <span className="block mt-1 text-xs">
+                group is optional - finds or creates a condition group by name
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -958,6 +968,9 @@ const RFQTab = ({
                           Question
                         </th>
                         <th className="p-2 text-left whitespace-nowrap">
+                          Group
+                        </th>
+                        <th className="p-2 text-left whitespace-nowrap">
                           Status
                         </th>
                         <th className="p-2 text-left whitespace-nowrap">
@@ -971,6 +984,9 @@ const RFQTab = ({
                           <td className="p-2 font-mono">{row.rowIndex}</td>
                           <td className="p-2 max-w-xs truncate">
                             {row.question}
+                          </td>
+                          <td className="p-2 max-w-xs truncate text-muted-foreground">
+                            {row.parsedGroup || '—'}
                           </td>
                           <td className="p-2">
                             {row.isValid ? (

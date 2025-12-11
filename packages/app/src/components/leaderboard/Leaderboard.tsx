@@ -43,7 +43,7 @@ import {
   type ForecasterScore,
 } from '~/hooks/graphql/useAccuracyLeaderboard';
 
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-8 h-8" />,
 });
@@ -56,7 +56,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 
 const LoadingIndicator = () => (
   <div className="flex justify-center items-center min-h-[200px] w-full">
-    <LottieLoader width={32} height={32} />
+    <Loader size={16} />
   </div>
 );
 

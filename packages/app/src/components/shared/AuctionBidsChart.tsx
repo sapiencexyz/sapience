@@ -166,6 +166,7 @@ const AuctionBidsChart: React.FC<Props> = ({
         key: string;
         start: number;
         end: number;
+        simulationStatus?: 'pending' | 'success' | 'failed';
         data: {
           time: number;
           amount: number;

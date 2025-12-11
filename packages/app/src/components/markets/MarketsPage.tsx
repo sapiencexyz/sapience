@@ -17,8 +17,8 @@ import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLoc
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
 
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+// Dynamically import Loader
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   // Use a simple div as placeholder during load
   loading: () => <div className="w-8 h-8" />,
@@ -118,7 +118,7 @@ const MarketsPage = () => {
           minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
-        <LottieLoader width={32} height={32} />
+        <Loader size={16} />
       </div>
     );
   }

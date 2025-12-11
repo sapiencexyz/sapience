@@ -294,6 +294,22 @@
     animation: shimmer 4s ease-in-out infinite;
     animation-delay: 2s;
   }
+
+  /* Loader pulse animation - subtle, tight pulse for loading indicators */
+  @keyframes loader-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+  .animate-loader-pulse {
+    animation: loader-pulse 1s ease-in-out infinite;
+  }
 }
 
 @layer components {

@@ -9,18 +9,25 @@ import {
   DialogTrigger,
 } from '@sapience/sdk/ui/components/ui/dialog';
 import { Input } from '@sapience/sdk/ui/components/ui/input';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@sapience/sdk/ui/components/ui/tabs';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import { Plus, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 
 import RFQTab from './RFQTab';
+import ConditionGroupsTab from './ConditionGroupsTab';
 import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+// Dynamically import Loader
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-8 h-8" />,
 });
@@ -96,7 +103,7 @@ const ReindexAccuracyForm = () => {
       <Button type="submit" disabled={isLoading}>
         {isLoading ? (
           <>
-            <LottieLoader width={16} height={16} />
+            <Loader size={12} />
             <span className="ml-2">Processing...</span>
           </>
         ) : (
@@ -120,6 +127,10 @@ const Admin = () => {
   );
   const [adminError, setAdminError] = useState<string | null>(null);
 
+  // Condition Groups state
+  const [createGroupOpen, setCreateGroupOpen] = useState(false);
+  const [groupCsvImportOpen, setGroupCsvImportOpen] = useState(false);
+
   const isHttpUrl = (value: string) => {
     try {
       const u = new URL(value);
@@ -130,7 +141,7 @@ const Admin = () => {
   };
 
   return (
-    <div className="container pt-24 mx-auto px-6 pb-6">
+    <div className="container pt-6 mx-auto px-6 pb-6">
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-3xl">Control Center</h1>
         <div className="flex items-center space-x-4">
@@ -243,28 +254,63 @@ const Admin = () => {
           </Dialog>
         </div>
       </header>
-      <RFQTab
-        createOpen={createConditionOpen}
-        setCreateOpen={setCreateConditionOpen}
-        csvImportOpen={rfqCsvImportOpen}
-        onCsvImportOpenChange={setRfqCsvImportOpen}
-        actionButtons={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setRfqCsvImportOpen(true)}
-            >
-              <Upload className="mr-1 h-4 w-4" />
-              Import CSV
-            </Button>
-            <Button size="sm" onClick={() => setCreateConditionOpen(true)}>
-              <Plus className="mr-1 h-4 w-4" />
-              New Condition
-            </Button>
-          </>
-        }
-      />
+
+      <Tabs defaultValue="conditions" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="conditions">Conditions</TabsTrigger>
+          <TabsTrigger value="groups">Condition Groups</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="conditions">
+          <RFQTab
+            createOpen={createConditionOpen}
+            setCreateOpen={setCreateConditionOpen}
+            csvImportOpen={rfqCsvImportOpen}
+            onCsvImportOpenChange={setRfqCsvImportOpen}
+            actionButtons={
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRfqCsvImportOpen(true)}
+                >
+                  <Upload className="mr-1 h-4 w-4" />
+                  Import CSV
+                </Button>
+                <Button size="sm" onClick={() => setCreateConditionOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  New Condition
+                </Button>
+              </>
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="groups">
+          <ConditionGroupsTab
+            createOpen={createGroupOpen}
+            setCreateOpen={setCreateGroupOpen}
+            csvImportOpen={groupCsvImportOpen}
+            onCsvImportOpenChange={setGroupCsvImportOpen}
+            actionButtons={
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setGroupCsvImportOpen(true)}
+                >
+                  <Upload className="mr-1 h-4 w-4" />
+                  Import CSV
+                </Button>
+                <Button size="sm" onClick={() => setCreateGroupOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  New Group
+                </Button>
+              </>
+            }
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

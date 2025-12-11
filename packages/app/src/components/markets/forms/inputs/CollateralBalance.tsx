@@ -1,7 +1,7 @@
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 
 interface CollateralBalanceProps {
@@ -86,7 +86,7 @@ export default function CollateralBalance({
   if (isBalanceLoading) {
     return (
       <div className="flex items-center space-x-2 opacity-50 py-1">
-        <LottieLoader width={16} height={16} />
+        <Loader size={12} />
       </div>
     );
   }

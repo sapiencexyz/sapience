@@ -33,6 +33,10 @@ export interface QuoteBid {
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's bid signature
   makerNonce: number; // nonce for the maker
+  /** Client-side validity marker for UI display/filtering */
+  validationStatus?: 'pending' | 'valid' | 'invalid';
+  /** Optional reason when validationStatus === 'invalid' */
+  validationError?: string;
 }
 
 // Struct shape expected by PredictionMarket.mint()

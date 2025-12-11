@@ -52,19 +52,22 @@ const TradePopoverContent: React.FC<TradePopoverContentProps> = ({
         </span>
       </div>
 
-      {/* Line 2: from address */}
-      <div className="flex items-center gap-1 text-muted-foreground">
-        <span className="text-sm mr-1">bid from</span>
-        <EnsAvatar
-          address={leftAddress || ''}
-          className="w-3 h-3 rounded-[2px] ring-1 ring-border/50 shrink-0"
-          width={12}
-          height={12}
-        />
-        <div className="min-w-0">
-          <AddressDisplay address={leftAddress || ''} compact />
-        </div>
-      </div>
+      {/* Line 2: from address (only show if valid non-zero address) */}
+      {leftAddress &&
+        leftAddress !== '0x0000000000000000000000000000000000000000' && (
+          <div className="flex items-center gap-1 text-muted-foreground">
+            <span className="text-sm mr-1">bid from</span>
+            <EnsAvatar
+              address={leftAddress}
+              className="w-3 h-3 rounded-[2px] ring-1 ring-border/50 shrink-0"
+              width={12}
+              height={12}
+            />
+            <div className="min-w-0">
+              <AddressDisplay address={leftAddress} compact />
+            </div>
+          </div>
+        )}
 
       {/* Line 3: expires first, separator, then percent */}
       <div className="flex items-center gap-2">

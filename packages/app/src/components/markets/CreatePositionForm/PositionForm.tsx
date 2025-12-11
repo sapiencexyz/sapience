@@ -13,8 +13,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { WagerInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
@@ -70,6 +72,8 @@ export default function PositionForm({
 }: PositionFormProps) {
   const { selections, removeSelection } = useCreatePositionContext();
   const { address: takerAddress } = useAccount();
+  const { hasConnectedWallet } = useConnectedWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
@@ -78,6 +82,12 @@ export default function PositionForm({
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
+  // Keep the last estimate visible even if subsequent bids arrive as pending/failed
+  // so the UI doesn't flicker back to a disabled "waiting" state.
+  const [stickyEstimateBid, setStickyEstimateBid] = useState<QuoteBid | null>(
+    null
+  );
+  // State for managing bid clearing when wager/selections change (for animations)
   const [validBids, setValidBids] = useState<QuoteBid[]>(bids);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
@@ -127,7 +137,7 @@ export default function PositionForm({
     }
   }, [parlayWagerAmount, collateralDecimals]);
 
-  // Create a stable key from selections to detect changes
+  // Create a stable key from selections to detect changes (for animation clearing)
   const selectionsKey = useMemo(() => {
     return selections
       .map((s) => `${s.conditionId}:${s.prediction}`)
@@ -136,7 +146,7 @@ export default function PositionForm({
   }, [selections]);
   const prevSelectionsKeyRef = useRef<string>(selectionsKey);
 
-  // Clear bids when wager amount changes
+  // Clear bids when wager amount changes (for animations)
   useEffect(() => {
     if (prevWagerAmountRef.current !== (parlayWagerAmount || '')) {
       setValidBids([]);
@@ -144,7 +154,7 @@ export default function PositionForm({
     }
   }, [parlayWagerAmount]);
 
-  // Clear bids when selections change (prediction flipped, added, or removed)
+  // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
     if (prevSelectionsKeyRef.current !== selectionsKey) {
       setValidBids([]);
@@ -152,15 +162,38 @@ export default function PositionForm({
     }
   }, [selectionsKey]);
 
-  // Update valid bids when new bids come in
+  // Update valid bids when new bids come in (for animations)
   useEffect(() => {
     setValidBids(bids);
   }, [bids]);
 
-  const bestBid = useMemo(() => {
-    if (!validBids || validBids.length === 0) return null;
-    const nonExpiredBids = validBids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
-    if (nonExpiredBids.length === 0) return null;
+  // Filter bids: only show bids marked as valid as best bids
+  const { bestBid, estimateBid } = useMemo(() => {
+    if (!validBids || validBids.length === 0) return { bestBid: null, estimateBid: null };
+
+    // Get non-expired bids
+    const nonExpiredBids = validBids.filter(
+      (bid) => bid.makerDeadline * 1000 > nowMs
+    );
+    if (nonExpiredBids.length === 0)
+      return { bestBid: null, estimateBid: null };
+
+    // Only bids marked as valid are valid for submission
+    const validFilteredBids = nonExpiredBids.filter(
+      (bid) => bid.validationStatus === 'valid'
+    );
+
+    // If we have no valid bids and exactly one invalid bid, show it as an estimate.
+    // This matches the "single failing bid shows ESTIMATE" behavior.
+    const failedBids = nonExpiredBids.filter(
+      (bid) => bid.validationStatus === 'invalid'
+    );
+    const estimateFromFailed =
+      validFilteredBids.length === 0 && failedBids.length === 1 ? failedBids[0] : null;
+
+    if (validFilteredBids.length === 0) {
+      return { bestBid: null, estimateBid: estimateFromFailed };
+    }
     const makerWagerStr = parlayWagerAmount || '0';
     let makerWager: bigint;
     try {
@@ -168,10 +201,11 @@ export default function PositionForm({
     } catch {
       makerWager = 0n;
     }
-    return nonExpiredBids.reduce((best, current) => {
+
+    const best = validFilteredBids.reduce((acc, current) => {
       const bestPayout = (() => {
         try {
-          return makerWager + BigInt(best.makerWager);
+          return makerWager + BigInt(acc.makerWager);
         } catch {
           return 0n;
         }
@@ -184,13 +218,45 @@ export default function PositionForm({
         }
       })();
 
-      return currentPayout > bestPayout ? current : best;
+      return currentPayout > bestPayout ? current : acc;
     });
+
+    return { bestBid: best, estimateBid: null };
   }, [validBids, parlayWagerAmount, nowMs]);
 
-  // Check if we recently made a request (within 5 seconds) - show "Waiting for Bids..." during cooldown
+  // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
+  useEffect(() => {
+    if (bestBid) {
+      setStickyEstimateBid(null);
+      return;
+    }
+    if (estimateBid) {
+      setStickyEstimateBid(estimateBid);
+      return;
+    }
+    // Clear the sticky estimate when there are no non-expired bids left.
+    const hasAnyNonExpired = bids.some((b) => b.makerDeadline * 1000 > nowMs);
+    if (!hasAnyNonExpired) setStickyEstimateBid(null);
+  }, [bestBid, estimateBid, bids, nowMs]);
+
+  // Cooldown duration for showing loader after requesting bids (15 seconds)
+  const QUOTE_COOLDOWN_MS = 15000;
+
+  // Check if we recently made a request - show loader during cooldown
   const recentlyRequested =
-    lastQuoteRequestMs != null && nowMs - lastQuoteRequestMs < 5000;
+    lastQuoteRequestMs != null &&
+    nowMs - lastQuoteRequestMs < QUOTE_COOLDOWN_MS;
+
+  // Restart cooldown when we receive an estimate bid (failed simulation)
+  // This keeps the loader showing while waiting for valid bids
+  const prevEstimateBidRef = useRef<typeof estimateBid>(null);
+  useEffect(() => {
+    if (estimateBid && !prevEstimateBidRef.current) {
+      // New estimate bid received - restart cooldown
+      setLastQuoteRequestMs(Date.now());
+    }
+    prevEstimateBidRef.current = estimateBid;
+  }, [estimateBid]);
 
   // Derive a stable dependency for form validation state
   const hasFormErrors = Object.keys(methods.formState.errors).length > 0;
@@ -243,9 +309,22 @@ export default function PositionForm({
     ]
   );
 
+  // Handler for "Initiate Auction" button - requires login first
+  const handleRequestBids = useCallback(() => {
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch (err) {
+        console.error('connectOrCreateWallet failed', err);
+      }
+      return;
+    }
+    triggerAuctionRequest({ forceRefresh: true });
+  }, [hasConnectedWallet, connectOrCreateWallet, triggerAuctionRequest]);
+
   // Show "Request Bids" button when:
   // 1. No valid bids exist (never received or all expired)
-  // 2. Not in the 5-second cooldown period after making a request
+  // 2. Not in the cooldown period after making a request
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
 
@@ -403,15 +482,16 @@ export default function PositionForm({
             />
             <BidDisplay
               bestBid={bestBid}
+              estimateBid={stickyEstimateBid}
               wagerAmount={parlayWagerAmount || '0'}
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
               nowMs={nowMs}
-              isWaitingForBids={recentlyRequested && !bestBid}
-              showRequestBidsButton={showNoBidsHint}
-              onRequestBids={() =>
-                triggerAuctionRequest({ forceRefresh: true })
+              isWaitingForBids={
+                recentlyRequested && !bestBid && !stickyEstimateBid
               }
+              showRequestBidsButton={showNoBidsHint}
+              onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
               isSubmitDisabled={isPermitLoading || isRestricted}

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import type { ChatMessage } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 
@@ -101,7 +101,7 @@ export function ChatMessages({
       )}
       {messages.length === 0 && showLoader && (
         <div className="w-full h-full flex items-center justify-center">
-          <LottieLoader width={32} height={32} />
+          <Loader size={16} />
         </div>
       )}
       <div ref={endRef} />

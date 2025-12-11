@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/sdk/ui/components/ui/badge';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { AddressDisplay } from './AddressDisplay';
-import LottieLoader from './LottieLoader';
+import Loader from './Loader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
 import { d18ToPercentage } from '~/lib/utils/util';
@@ -308,7 +308,7 @@ const Comments = ({
         <>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <LottieLoader width={32} height={32} />
+              <Loader size={16} />
             </div>
           ) : displayComments.length === 0 ? null : (
             <>
@@ -424,7 +424,7 @@ const Comments = ({
               })}
               {isFetchingNextPage && (
                 <div className="flex flex-col items-center justify-center py-6">
-                  <LottieLoader width={32} height={32} />
+                  <Loader size={12} />
                 </div>
               )}
               {!hasNextPage && <div className="py-4" />}

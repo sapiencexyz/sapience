@@ -506,11 +506,22 @@ export type BoolWithAggregatesFilter = {
 export type Category = {
   __typename?: 'Category';
   _count?: Maybe<CategoryCount>;
+  conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   slug: Scalars['String']['output'];
+};
+
+
+export type CategoryConditionGroupsArgs = {
+  cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionGroupWhereInput>;
 };
 
 
@@ -619,6 +630,7 @@ export type CategoryOrderByWithAggregationInput = {
 };
 
 export type CategoryOrderByWithRelationInput = {
+  conditionGroups?: InputMaybe<ConditionGroupOrderByRelationAggregateInput>;
   conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
@@ -655,6 +667,7 @@ export type CategoryWhereInput = {
   AND?: InputMaybe<Array<CategoryWhereInput>>;
   NOT?: InputMaybe<Array<CategoryWhereInput>>;
   OR?: InputMaybe<Array<CategoryWhereInput>>;
+  conditionGroups?: InputMaybe<ConditionGroupListRelationFilter>;
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<IntFilter>;
@@ -666,6 +679,7 @@ export type CategoryWhereUniqueInput = {
   AND?: InputMaybe<Array<CategoryWhereInput>>;
   NOT?: InputMaybe<Array<CategoryWhereInput>>;
   OR?: InputMaybe<Array<CategoryWhereInput>>;
+  conditionGroups?: InputMaybe<ConditionGroupListRelationFilter>;
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
@@ -681,8 +695,11 @@ export type Condition = {
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
   claimStatement: Scalars['String']['output'];
+  conditionGroup?: Maybe<ConditionGroup>;
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
+  displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime: Scalars['Int']['output'];
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
@@ -700,11 +717,18 @@ export type ConditionCategoryArgs = {
   where?: InputMaybe<CategoryWhereInput>;
 };
 
+
+export type ConditionConditionGroupArgs = {
+  where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
 export type ConditionAvgAggregate = {
   __typename?: 'ConditionAvgAggregate';
   assertionTimestamp?: Maybe<Scalars['Float']['output']>;
   categoryId?: Maybe<Scalars['Float']['output']>;
   chainId?: Maybe<Scalars['Float']['output']>;
+  conditionGroupId?: Maybe<Scalars['Float']['output']>;
+  displayOrder?: Maybe<Scalars['Float']['output']>;
   endTime?: Maybe<Scalars['Float']['output']>;
   settledAt?: Maybe<Scalars['Float']['output']>;
 };
@@ -713,6 +737,8 @@ export type ConditionAvgOrderByAggregateInput = {
   assertionTimestamp?: InputMaybe<SortOrder>;
   categoryId?: InputMaybe<SortOrder>;
   chainId?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrder>;
 };
@@ -725,8 +751,10 @@ export type ConditionCountAggregate = {
   categoryId: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
   claimStatement: Scalars['Int']['output'];
+  conditionGroupId: Scalars['Int']['output'];
   createdAt: Scalars['Int']['output'];
   description: Scalars['Int']['output'];
+  displayOrder: Scalars['Int']['output'];
   endTime: Scalars['Int']['output'];
   id: Scalars['Int']['output'];
   openInterest: Scalars['Int']['output'];
@@ -745,8 +773,10 @@ export type ConditionCountOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
   chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -757,6 +787,43 @@ export type ConditionCountOrderByAggregateInput = {
   settledAt?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroup = {
+  __typename?: 'ConditionGroup';
+  _count?: Maybe<ConditionGroupCount>;
+  category?: Maybe<Category>;
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  conditions: Array<Condition>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+};
+
+
+export type ConditionGroupCategoryArgs = {
+  where?: InputMaybe<CategoryWhereInput>;
+};
+
+
+export type ConditionGroupConditionsArgs = {
+  cursor?: InputMaybe<ConditionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionWhereInput>;
+};
+
+export type ConditionGroupAvgAggregate = {
+  __typename?: 'ConditionGroupAvgAggregate';
+  categoryId?: Maybe<Scalars['Float']['output']>;
+  id?: Maybe<Scalars['Float']['output']>;
+};
+
+export type ConditionGroupAvgOrderByAggregateInput = {
+  categoryId?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupBy = {
@@ -771,8 +838,10 @@ export type ConditionGroupBy = {
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
   claimStatement: Scalars['String']['output'];
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
+  displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime: Scalars['Int']['output'];
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
@@ -783,6 +852,162 @@ export type ConditionGroupBy = {
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
+};
+
+export type ConditionGroupCount = {
+  __typename?: 'ConditionGroupCount';
+  condition: Scalars['Int']['output'];
+};
+
+
+export type ConditionGroupCountConditionArgs = {
+  where?: InputMaybe<ConditionWhereInput>;
+};
+
+export type ConditionGroupCountAggregate = {
+  __typename?: 'ConditionGroupCountAggregate';
+  _all: Scalars['Int']['output'];
+  categoryId: Scalars['Int']['output'];
+  createdAt: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['Int']['output'];
+};
+
+export type ConditionGroupCountOrderByAggregateInput = {
+  categoryId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  name?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupGroupBy = {
+  __typename?: 'ConditionGroupGroupBy';
+  _avg?: Maybe<ConditionGroupAvgAggregate>;
+  _count?: Maybe<ConditionGroupCountAggregate>;
+  _max?: Maybe<ConditionGroupMaxAggregate>;
+  _min?: Maybe<ConditionGroupMinAggregate>;
+  _sum?: Maybe<ConditionGroupSumAggregate>;
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  name: Scalars['String']['output'];
+};
+
+export type ConditionGroupListRelationFilter = {
+  every?: InputMaybe<ConditionGroupWhereInput>;
+  none?: InputMaybe<ConditionGroupWhereInput>;
+  some?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+export type ConditionGroupMaxAggregate = {
+  __typename?: 'ConditionGroupMaxAggregate';
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+};
+
+export type ConditionGroupMaxOrderByAggregateInput = {
+  categoryId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  name?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupMinAggregate = {
+  __typename?: 'ConditionGroupMinAggregate';
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+  name?: Maybe<Scalars['String']['output']>;
+};
+
+export type ConditionGroupMinOrderByAggregateInput = {
+  categoryId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  name?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupNullableRelationFilter = {
+  is?: InputMaybe<ConditionGroupWhereInput>;
+  isNot?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+export type ConditionGroupOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupOrderByWithAggregationInput = {
+  _avg?: InputMaybe<ConditionGroupAvgOrderByAggregateInput>;
+  _count?: InputMaybe<ConditionGroupCountOrderByAggregateInput>;
+  _max?: InputMaybe<ConditionGroupMaxOrderByAggregateInput>;
+  _min?: InputMaybe<ConditionGroupMinOrderByAggregateInput>;
+  _sum?: InputMaybe<ConditionGroupSumOrderByAggregateInput>;
+  categoryId?: InputMaybe<SortOrderInput>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  name?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupOrderByWithRelationInput = {
+  category?: InputMaybe<CategoryOrderByWithRelationInput>;
+  categoryId?: InputMaybe<SortOrderInput>;
+  conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  name?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupScalarFieldEnum =
+  | 'categoryId'
+  | 'createdAt'
+  | 'id'
+  | 'name';
+
+export type ConditionGroupScalarWhereWithAggregatesInput = {
+  AND?: InputMaybe<Array<ConditionGroupScalarWhereWithAggregatesInput>>;
+  NOT?: InputMaybe<Array<ConditionGroupScalarWhereWithAggregatesInput>>;
+  OR?: InputMaybe<Array<ConditionGroupScalarWhereWithAggregatesInput>>;
+  categoryId?: InputMaybe<IntNullableWithAggregatesFilter>;
+  createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
+  id?: InputMaybe<IntWithAggregatesFilter>;
+  name?: InputMaybe<StringWithAggregatesFilter>;
+};
+
+export type ConditionGroupSumAggregate = {
+  __typename?: 'ConditionGroupSumAggregate';
+  categoryId?: Maybe<Scalars['Int']['output']>;
+  id?: Maybe<Scalars['Int']['output']>;
+};
+
+export type ConditionGroupSumOrderByAggregateInput = {
+  categoryId?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+};
+
+export type ConditionGroupWhereInput = {
+  AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  NOT?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  OR?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  category?: InputMaybe<CategoryNullableRelationFilter>;
+  categoryId?: InputMaybe<IntNullableFilter>;
+  conditions?: InputMaybe<ConditionListRelationFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<IntFilter>;
+  name?: InputMaybe<StringFilter>;
+};
+
+export type ConditionGroupWhereUniqueInput = {
+  AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  NOT?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  OR?: InputMaybe<Array<ConditionGroupWhereInput>>;
+  category?: InputMaybe<CategoryNullableRelationFilter>;
+  categoryId?: InputMaybe<IntNullableFilter>;
+  conditions?: InputMaybe<ConditionListRelationFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ConditionListRelationFilter = {
@@ -798,8 +1023,10 @@ export type ConditionMaxAggregate = {
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId?: Maybe<Scalars['Int']['output']>;
   claimStatement?: Maybe<Scalars['String']['output']>;
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   description?: Maybe<Scalars['String']['output']>;
+  displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['String']['output']>;
   openInterest?: Maybe<Scalars['String']['output']>;
@@ -817,8 +1044,10 @@ export type ConditionMaxOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
   chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -837,8 +1066,10 @@ export type ConditionMinAggregate = {
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId?: Maybe<Scalars['Int']['output']>;
   claimStatement?: Maybe<Scalars['String']['output']>;
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   description?: Maybe<Scalars['String']['output']>;
+  displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime?: Maybe<Scalars['Int']['output']>;
   id?: Maybe<Scalars['String']['output']>;
   openInterest?: Maybe<Scalars['String']['output']>;
@@ -856,8 +1087,10 @@ export type ConditionMinOrderByAggregateInput = {
   categoryId?: InputMaybe<SortOrder>;
   chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -884,8 +1117,10 @@ export type ConditionOrderByWithAggregationInput = {
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -905,8 +1140,11 @@ export type ConditionOrderByWithRelationInput = {
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
   claimStatement?: InputMaybe<SortOrder>;
+  conditionGroup?: InputMaybe<ConditionGroupOrderByWithRelationInput>;
+  conditionGroupId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -925,8 +1163,10 @@ export type ConditionScalarFieldEnum =
   | 'categoryId'
   | 'chainId'
   | 'claimStatement'
+  | 'conditionGroupId'
   | 'createdAt'
   | 'description'
+  | 'displayOrder'
   | 'endTime'
   | 'id'
   | 'openInterest'
@@ -947,8 +1187,10 @@ export type ConditionScalarWhereWithAggregatesInput = {
   categoryId?: InputMaybe<IntNullableWithAggregatesFilter>;
   chainId?: InputMaybe<IntWithAggregatesFilter>;
   claimStatement?: InputMaybe<StringWithAggregatesFilter>;
+  conditionGroupId?: InputMaybe<IntNullableWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   description?: InputMaybe<StringWithAggregatesFilter>;
+  displayOrder?: InputMaybe<IntNullableWithAggregatesFilter>;
   endTime?: InputMaybe<IntWithAggregatesFilter>;
   id?: InputMaybe<StringWithAggregatesFilter>;
   openInterest?: InputMaybe<StringWithAggregatesFilter>;
@@ -966,6 +1208,8 @@ export type ConditionSumAggregate = {
   assertionTimestamp?: Maybe<Scalars['Int']['output']>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId?: Maybe<Scalars['Int']['output']>;
+  conditionGroupId?: Maybe<Scalars['Int']['output']>;
+  displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime?: Maybe<Scalars['Int']['output']>;
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
@@ -974,6 +1218,8 @@ export type ConditionSumOrderByAggregateInput = {
   assertionTimestamp?: InputMaybe<SortOrder>;
   categoryId?: InputMaybe<SortOrder>;
   chainId?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
   endTime?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrder>;
 };
@@ -996,8 +1242,11 @@ export type ConditionWhereInput = {
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
   claimStatement?: InputMaybe<StringFilter>;
+  conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
+  conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
+  displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<StringFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -1020,8 +1269,11 @@ export type ConditionWhereUniqueInput = {
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
   claimStatement?: InputMaybe<StringFilter>;
+  conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
+  conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
+  displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   openInterest?: InputMaybe<StringFilter>;
@@ -1400,12 +1652,16 @@ export type Query = {
   categories: Array<Category>;
   category?: Maybe<Category>;
   condition?: Maybe<Condition>;
+  conditionGroup?: Maybe<ConditionGroup>;
+  conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   findFirstAttestation?: Maybe<Attestation>;
   findFirstAttestationOrThrow?: Maybe<Attestation>;
   findFirstCategory?: Maybe<Category>;
   findFirstCategoryOrThrow?: Maybe<Category>;
   findFirstCondition?: Maybe<Condition>;
+  findFirstConditionGroup?: Maybe<ConditionGroup>;
+  findFirstConditionGroupOrThrow?: Maybe<ConditionGroup>;
   findFirstConditionOrThrow?: Maybe<Condition>;
   findFirstUser?: Maybe<User>;
   findFirstUserOrThrow?: Maybe<User>;
@@ -1505,6 +1761,21 @@ export type QueryConditionArgs = {
 };
 
 
+export type QueryConditionGroupArgs = {
+  where: ConditionGroupWhereUniqueInput;
+};
+
+
+export type QueryConditionGroupsArgs = {
+  cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+
 export type QueryConditionsArgs = {
   cursor?: InputMaybe<ConditionWhereUniqueInput>;
   distinct?: InputMaybe<Array<ConditionScalarFieldEnum>>;
@@ -1562,6 +1833,26 @@ export type QueryFindFirstConditionArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<ConditionWhereInput>;
+};
+
+
+export type QueryFindFirstConditionGroupArgs = {
+  cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionGroupWhereInput>;
+};
+
+
+export type QueryFindFirstConditionGroupOrThrowArgs = {
+  cursor?: InputMaybe<ConditionGroupWhereUniqueInput>;
+  distinct?: InputMaybe<Array<ConditionGroupScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<ConditionGroupOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<ConditionGroupWhereInput>;
 };
 
 
@@ -1726,6 +2017,7 @@ export type SortOrderInput = {
   nulls?: InputMaybe<NullsOrder>;
   sort: SortOrder;
 };
+
 
 export type StringFilter = {
   contains?: InputMaybe<Scalars['String']['input']>;

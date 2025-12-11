@@ -26,7 +26,7 @@ import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
 const CHAIN_ID_ARBITRUM = '42161';
@@ -355,7 +355,7 @@ const SettingsPageContent = () => {
 
         {!hydrated ? (
           <div className="h-[720px] flex items-center justify-center">
-            <LottieLoader width={48} height={48} />
+            <Loader size={20} />
           </div>
         ) : (
           <Tabs

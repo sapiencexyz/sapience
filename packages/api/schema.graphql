@@ -474,6 +474,7 @@ input BoolWithAggregatesFilter {
 
 type Category {
   _count: CategoryCount
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   createdAt: DateTimeISO!
   id: Int!
@@ -566,6 +567,7 @@ input CategoryOrderByWithAggregationInput {
 }
 
 input CategoryOrderByWithRelationInput {
+  conditionGroups: ConditionGroupOrderByRelationAggregateInput
   conditions: ConditionOrderByRelationAggregateInput
   createdAt: SortOrder
   id: SortOrder
@@ -602,6 +604,7 @@ input CategoryWhereInput {
   AND: [CategoryWhereInput!]
   NOT: [CategoryWhereInput!]
   OR: [CategoryWhereInput!]
+  conditionGroups: ConditionGroupListRelationFilter
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: IntFilter
@@ -613,6 +616,7 @@ input CategoryWhereUniqueInput {
   AND: [CategoryWhereInput!]
   NOT: [CategoryWhereInput!]
   OR: [CategoryWhereInput!]
+  conditionGroups: ConditionGroupListRelationFilter
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: Int
@@ -627,8 +631,11 @@ type Condition {
   categoryId: Int
   chainId: Int!
   claimStatement: String!
+  conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
+  conditionGroupId: Int
   createdAt: DateTimeISO!
   description: String!
+  displayOrder: Int
   endTime: Int!
   id: String!
   openInterest: String!
@@ -645,6 +652,8 @@ type ConditionAvgAggregate {
   assertionTimestamp: Float
   categoryId: Float
   chainId: Float
+  conditionGroupId: Float
+  displayOrder: Float
   endTime: Float
   settledAt: Float
 }
@@ -653,6 +662,8 @@ input ConditionAvgOrderByAggregateInput {
   assertionTimestamp: SortOrder
   categoryId: SortOrder
   chainId: SortOrder
+  conditionGroupId: SortOrder
+  displayOrder: SortOrder
   endTime: SortOrder
   settledAt: SortOrder
 }
@@ -664,8 +675,10 @@ type ConditionCountAggregate {
   categoryId: Int!
   chainId: Int!
   claimStatement: Int!
+  conditionGroupId: Int!
   createdAt: Int!
   description: Int!
+  displayOrder: Int!
   endTime: Int!
   id: Int!
   openInterest: Int!
@@ -684,8 +697,10 @@ input ConditionCountOrderByAggregateInput {
   categoryId: SortOrder
   chainId: SortOrder
   claimStatement: SortOrder
+  conditionGroupId: SortOrder
   createdAt: SortOrder
   description: SortOrder
+  displayOrder: SortOrder
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
@@ -696,6 +711,26 @@ input ConditionCountOrderByAggregateInput {
   settledAt: SortOrder
   shortName: SortOrder
   similarMarkets: SortOrder
+}
+
+type ConditionGroup {
+  _count: ConditionGroupCount
+  category(where: CategoryWhereInput): Category
+  categoryId: Int
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  createdAt: DateTimeISO!
+  id: Int!
+  name: String!
+}
+
+type ConditionGroupAvgAggregate {
+  categoryId: Float
+  id: Float
+}
+
+input ConditionGroupAvgOrderByAggregateInput {
+  categoryId: SortOrder
+  id: SortOrder
 }
 
 type ConditionGroupBy {
@@ -709,8 +744,10 @@ type ConditionGroupBy {
   categoryId: Int
   chainId: Int!
   claimStatement: String!
+  conditionGroupId: Int
   createdAt: DateTimeISO!
   description: String!
+  displayOrder: Int
   endTime: Int!
   id: String!
   openInterest: String!
@@ -721,6 +758,152 @@ type ConditionGroupBy {
   settledAt: Int
   shortName: String
   similarMarkets: [String!]
+}
+
+type ConditionGroupCount {
+  condition(where: ConditionWhereInput): Int!
+}
+
+type ConditionGroupCountAggregate {
+  _all: Int!
+  categoryId: Int!
+  createdAt: Int!
+  id: Int!
+  name: Int!
+}
+
+input ConditionGroupCountOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+}
+
+type ConditionGroupGroupBy {
+  _avg: ConditionGroupAvgAggregate
+  _count: ConditionGroupCountAggregate
+  _max: ConditionGroupMaxAggregate
+  _min: ConditionGroupMinAggregate
+  _sum: ConditionGroupSumAggregate
+  categoryId: Int
+  createdAt: DateTimeISO!
+  id: Int!
+  name: String!
+}
+
+input ConditionGroupListRelationFilter {
+  every: ConditionGroupWhereInput
+  none: ConditionGroupWhereInput
+  some: ConditionGroupWhereInput
+}
+
+type ConditionGroupMaxAggregate {
+  categoryId: Int
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+}
+
+input ConditionGroupMaxOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+}
+
+type ConditionGroupMinAggregate {
+  categoryId: Int
+  createdAt: DateTimeISO
+  id: Int
+  name: String
+}
+
+input ConditionGroupMinOrderByAggregateInput {
+  categoryId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+}
+
+input ConditionGroupNullableRelationFilter {
+  is: ConditionGroupWhereInput
+  isNot: ConditionGroupWhereInput
+}
+
+input ConditionGroupOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input ConditionGroupOrderByWithAggregationInput {
+  _avg: ConditionGroupAvgOrderByAggregateInput
+  _count: ConditionGroupCountOrderByAggregateInput
+  _max: ConditionGroupMaxOrderByAggregateInput
+  _min: ConditionGroupMinOrderByAggregateInput
+  _sum: ConditionGroupSumOrderByAggregateInput
+  categoryId: SortOrderInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+}
+
+input ConditionGroupOrderByWithRelationInput {
+  category: CategoryOrderByWithRelationInput
+  categoryId: SortOrderInput
+  conditions: ConditionOrderByRelationAggregateInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+}
+
+enum ConditionGroupScalarFieldEnum {
+  categoryId
+  createdAt
+  id
+  name
+}
+
+input ConditionGroupScalarWhereWithAggregatesInput {
+  AND: [ConditionGroupScalarWhereWithAggregatesInput!]
+  NOT: [ConditionGroupScalarWhereWithAggregatesInput!]
+  OR: [ConditionGroupScalarWhereWithAggregatesInput!]
+  categoryId: IntNullableWithAggregatesFilter
+  createdAt: DateTimeWithAggregatesFilter
+  id: IntWithAggregatesFilter
+  name: StringWithAggregatesFilter
+}
+
+type ConditionGroupSumAggregate {
+  categoryId: Int
+  id: Int
+}
+
+input ConditionGroupSumOrderByAggregateInput {
+  categoryId: SortOrder
+  id: SortOrder
+}
+
+input ConditionGroupWhereInput {
+  AND: [ConditionGroupWhereInput!]
+  NOT: [ConditionGroupWhereInput!]
+  OR: [ConditionGroupWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  name: StringFilter
+}
+
+input ConditionGroupWhereUniqueInput {
+  AND: [ConditionGroupWhereInput!]
+  NOT: [ConditionGroupWhereInput!]
+  OR: [ConditionGroupWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: Int
+  name: String
 }
 
 input ConditionListRelationFilter {
@@ -735,8 +918,10 @@ type ConditionMaxAggregate {
   categoryId: Int
   chainId: Int
   claimStatement: String
+  conditionGroupId: Int
   createdAt: DateTimeISO
   description: String
+  displayOrder: Int
   endTime: Int
   id: String
   openInterest: String
@@ -754,8 +939,10 @@ input ConditionMaxOrderByAggregateInput {
   categoryId: SortOrder
   chainId: SortOrder
   claimStatement: SortOrder
+  conditionGroupId: SortOrder
   createdAt: SortOrder
   description: SortOrder
+  displayOrder: SortOrder
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
@@ -773,8 +960,10 @@ type ConditionMinAggregate {
   categoryId: Int
   chainId: Int
   claimStatement: String
+  conditionGroupId: Int
   createdAt: DateTimeISO
   description: String
+  displayOrder: Int
   endTime: Int
   id: String
   openInterest: String
@@ -792,8 +981,10 @@ input ConditionMinOrderByAggregateInput {
   categoryId: SortOrder
   chainId: SortOrder
   claimStatement: SortOrder
+  conditionGroupId: SortOrder
   createdAt: SortOrder
   description: SortOrder
+  displayOrder: SortOrder
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
@@ -820,8 +1011,10 @@ input ConditionOrderByWithAggregationInput {
   categoryId: SortOrderInput
   chainId: SortOrder
   claimStatement: SortOrder
+  conditionGroupId: SortOrderInput
   createdAt: SortOrder
   description: SortOrder
+  displayOrder: SortOrderInput
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
@@ -841,8 +1034,11 @@ input ConditionOrderByWithRelationInput {
   categoryId: SortOrderInput
   chainId: SortOrder
   claimStatement: SortOrder
+  conditionGroup: ConditionGroupOrderByWithRelationInput
+  conditionGroupId: SortOrderInput
   createdAt: SortOrder
   description: SortOrder
+  displayOrder: SortOrderInput
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
@@ -861,8 +1057,10 @@ enum ConditionScalarFieldEnum {
   categoryId
   chainId
   claimStatement
+  conditionGroupId
   createdAt
   description
+  displayOrder
   endTime
   id
   openInterest
@@ -884,8 +1082,10 @@ input ConditionScalarWhereWithAggregatesInput {
   categoryId: IntNullableWithAggregatesFilter
   chainId: IntWithAggregatesFilter
   claimStatement: StringWithAggregatesFilter
+  conditionGroupId: IntNullableWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   description: StringWithAggregatesFilter
+  displayOrder: IntNullableWithAggregatesFilter
   endTime: IntWithAggregatesFilter
   id: StringWithAggregatesFilter
   openInterest: StringWithAggregatesFilter
@@ -902,6 +1102,8 @@ type ConditionSumAggregate {
   assertionTimestamp: Int
   categoryId: Int
   chainId: Int
+  conditionGroupId: Int
+  displayOrder: Int
   endTime: Int
   settledAt: Int
 }
@@ -910,6 +1112,8 @@ input ConditionSumOrderByAggregateInput {
   assertionTimestamp: SortOrder
   categoryId: SortOrder
   chainId: SortOrder
+  conditionGroupId: SortOrder
+  displayOrder: SortOrder
   endTime: SortOrder
   settledAt: SortOrder
 }
@@ -931,8 +1135,11 @@ input ConditionWhereInput {
   categoryId: IntNullableFilter
   chainId: IntFilter
   claimStatement: StringFilter
+  conditionGroup: ConditionGroupNullableRelationFilter
+  conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
   description: StringFilter
+  displayOrder: IntNullableFilter
   endTime: IntFilter
   id: StringFilter
   openInterest: StringFilter
@@ -955,8 +1162,11 @@ input ConditionWhereUniqueInput {
   categoryId: IntNullableFilter
   chainId: IntFilter
   claimStatement: StringFilter
+  conditionGroup: ConditionGroupNullableRelationFilter
+  conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
   description: StringFilter
+  displayOrder: IntNullableFilter
   endTime: IntFilter
   id: String
   openInterest: StringFilter
@@ -1335,12 +1545,16 @@ type Query {
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
   category(where: CategoryWhereUniqueInput!): Category
   condition(where: ConditionWhereUniqueInput!): Condition
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   findFirstAttestation(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstAttestationOrThrow(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
   findFirstCondition(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): Condition
+  findFirstConditionGroup(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): ConditionGroup
+  findFirstConditionGroupOrThrow(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): ConditionGroup
   findFirstConditionOrThrow(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): Condition
   findFirstUser(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User
   findFirstUserOrThrow(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User

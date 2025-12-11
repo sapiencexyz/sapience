@@ -1,8 +1,10 @@
 import type React from 'react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type { Order } from '../types';
 import OrderCard from './OrderCard';
 import { cn } from '~/lib/utils/util';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 
 export type OrdersListProps = {
   orders: Order[];
@@ -29,6 +31,20 @@ const OrdersList: React.FC<OrdersListProps> = ({
 }) => {
   const ordersScrollRef = useRef<HTMLDivElement | null>(null);
   const [showOrdersScrollShadow, setShowOrdersScrollShadow] = useState(false);
+  const { hasConnectedWallet } = useConnectedWallet();
+  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+
+  const handleCreateOrder = useCallback(() => {
+    if (!hasConnectedWallet) {
+      try {
+        connectOrCreateWallet();
+      } catch (error) {
+        console.error('connectOrCreateWallet failed', error);
+      }
+      return;
+    }
+    onCreateOrder();
+  }, [hasConnectedWallet, connectOrCreateWallet, onCreateOrder]);
 
   useEffect(() => {
     const node = ordersScrollRef.current;
@@ -65,7 +81,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
             <button
               type="button"
               className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent-gold underline decoration-dotted decoration-accent-gold/70 underline-offset-4 transition-colors hover:text-accent-gold/80"
-              onClick={onCreateOrder}
+              onClick={handleCreateOrder}
             >
               Create Order
             </button>
@@ -77,7 +93,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
               <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
                 <button
                   type="button"
-                  onClick={onCreateOrder}
+                  onClick={handleCreateOrder}
                   className="gold-link"
                 >
                   Create an order

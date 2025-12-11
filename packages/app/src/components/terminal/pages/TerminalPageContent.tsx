@@ -816,7 +816,7 @@ const TerminalPageContent: React.FC = () => {
                 }}
               >
                 <div className="flex-none">
-                  <div className="pl-4 pr-3 py-3 border-b border-border/60 bg-muted/10">
+                  <div className="p-3 border-b border-border/60 bg-muted/10">
                     <div className="flex items-center gap-4">
                       <div className="grid gap-3 grid-cols-2 md:grid-cols-4 flex-1">
                         {/* Categories */}

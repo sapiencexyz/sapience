@@ -12,7 +12,7 @@ import Image from 'next/image';
 import { Copy, Share2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 
 interface OgShareDialogBaseProps {
   imageSrc: string; // Relative path with query, e.g. "/og/trade?..."
@@ -22,7 +22,7 @@ interface OgShareDialogBaseProps {
   shareText?: string; // Text for navigator.share
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  loaderSizePx?: number; // defaults to 48 for consistency
+  loaderSizePx?: number; // defaults to 20 for consistency
   copyButtonText?: string; // defaults to "Copy Image"
   shareButtonText?: string; // defaults to "Share"
 }
@@ -36,7 +36,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     shareText,
     open: controlledOpen,
     onOpenChange,
-    loaderSizePx = 48,
+    loaderSizePx = 20,
     copyButtonText = 'Copy Image',
     shareButtonText = 'Share',
   } = props;
@@ -106,7 +106,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           <div className="w-full aspect-[1200/630] bg-muted rounded overflow-hidden relative border border-border">
             {imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <LottieLoader width={loaderSizePx} height={loaderSizePx} />
+                <Loader size={loaderSizePx} />
               </div>
             )}
             <Image

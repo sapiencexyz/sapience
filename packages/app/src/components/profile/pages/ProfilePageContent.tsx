@@ -18,7 +18,7 @@ import PositionsTable from '~/components/positions/PositionsTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import { SCHEMA_UID } from '~/lib/constants';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
@@ -280,7 +280,7 @@ const ProfilePageContent = () => {
         )
       ) : (
         <div className="flex justify-center py-24">
-          <LottieLoader />
+          <Loader />
         </div>
       )}
     </div>

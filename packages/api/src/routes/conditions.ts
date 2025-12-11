@@ -30,6 +30,7 @@ router.post('/', async (req: Request, res: Response) => {
       description,
       similarMarkets,
       chainId,
+      groupName,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -41,6 +42,7 @@ router.post('/', async (req: Request, res: Response) => {
       description?: string;
       similarMarkets?: string[];
       chainId?: number;
+      groupName?: string;
     };
 
     if (!question || !endTime || !claimStatement || !description) {
@@ -60,6 +62,24 @@ router.post('/', async (req: Request, res: Response) => {
           .json({ message: `Category with slug ${categorySlug} not found` });
       }
       resolvedCategoryId = category.id;
+    }
+
+    // Find or create condition group if groupName is provided
+    let resolvedGroupId: number | null = null;
+    if (groupName && groupName.trim()) {
+      let group = await prisma.conditionGroup.findFirst({
+        where: { name: groupName.trim() },
+      });
+      if (!group) {
+        // Create with inherited category (smart default)
+        group = await prisma.conditionGroup.create({
+          data: {
+            name: groupName.trim(),
+            categoryId: resolvedCategoryId ?? undefined,
+          },
+        });
+      }
+      resolvedGroupId = group.id;
     }
 
     const endTimeInt = parseInt(String(endTime), 10);
@@ -109,8 +129,10 @@ router.post('/', async (req: Request, res: Response) => {
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
+          conditionGroupId: resolvedGroupId ?? undefined,
+          displayOrder: resolvedGroupId ? 0 : undefined,
         },
-        include: { category: true },
+        include: { category: true, conditionGroup: true },
       });
       return res.status(201).json(condition);
     } catch (e: unknown) {

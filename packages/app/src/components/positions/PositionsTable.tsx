@@ -64,7 +64,7 @@ import ShareDialog from '~/components/shared/ShareDialog';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import LottieLoader from '~/components/shared/LottieLoader';
+import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
@@ -413,21 +413,18 @@ export default function PositionsTable({
     );
   }, [rows, nowMs]);
 
-  const viewerTokenInfo = React.useMemo(
-    () => {
-      return rowsNeedingResolution.map((r) => ({
-        rowKey: r.positionId,
-        tokenId:
-          r.addressRole === 'maker'
-            ? BigInt(r.positionId) // positionId chosen from maker/taker id earlier
-            : BigInt(r.positionId),
-        // Note: positionId was set to the viewer-relevant NFT id earlier
-        marketAddress: r.marketAddress,
-        chainId: r.chainId,
-      }));
-    },
-    [rowsNeedingResolution]
-  );
+  const viewerTokenInfo = React.useMemo(() => {
+    return rowsNeedingResolution.map((r) => ({
+      rowKey: r.positionId,
+      tokenId:
+        r.addressRole === 'maker'
+          ? BigInt(r.positionId) // positionId chosen from maker/taker id earlier
+          : BigInt(r.positionId),
+      // Note: positionId was set to the viewer-relevant NFT id earlier
+      marketAddress: r.marketAddress,
+      chainId: r.chainId,
+    }));
+  }, [rowsNeedingResolution]);
 
   // Phase 1: ownerOf(viewerTokenId)
   const activeOwnerReads = React.useMemo(
@@ -456,13 +453,13 @@ export default function PositionsTable({
     }[] = [];
     const items = activeOwners?.data || [];
     const viewerAddr = viewer;
-    
+
     items.forEach((item, idx) => {
       const info = viewerTokenInfo[idx];
       if (!info) return;
-      
+
       if (!item) return;
-      
+
       if (item.status === 'success') {
         const owner = String(item.result || '').toLowerCase();
         if (owner && owner === viewerAddr) {
@@ -475,7 +472,7 @@ export default function PositionsTable({
         }
       }
     });
-    
+
     return out;
   }, [activeOwners?.data, viewer, viewerTokenInfo]);
 
@@ -500,19 +497,19 @@ export default function PositionsTable({
   const resolverReads = React.useMemo(() => {
     const calls: any[] = [];
     const preds = predictionDatas?.data || [];
-    
+
     preds.forEach((item: any, idx: number) => {
       const base = ownedRowEntries[idx];
-      
+
       if (!item || item.status !== 'success') return;
-      
+
       try {
         const result = item.result;
         const resolver: Address = result.resolver as Address;
         const encoded = result.encodedPredictedOutcomes as `0x${string}`;
-        
+
         if (!resolver || !encoded || !base) return;
-        
+
         calls.push({
           address: resolver,
           abi: LZ_RESOLVER_MIN_ABI as unknown as Abi,
@@ -524,7 +521,7 @@ export default function PositionsTable({
         // ignore errors
       }
     });
-    
+
     return calls;
   }, [predictionDatas?.data, ownedRowEntries]);
   const resolverResults = useReadContracts({
@@ -547,7 +544,7 @@ export default function PositionsTable({
     });
 
     const res = resolverResults?.data || [];
-    
+
     for (let i = 0; i < res.length; i++) {
       const base = ownedRowEntries[i];
       const resItem = res[i];
@@ -566,7 +563,7 @@ export default function PositionsTable({
         // LZResolver returns: [isResolved, error, parlaySuccess]
         const isResolved = Boolean(tuple?.[0]);
         const parlaySuccess = Boolean(tuple?.[2]);
-        
+
         // parlaySuccess means maker won
         const makerWon = parlaySuccess;
 
@@ -592,7 +589,7 @@ export default function PositionsTable({
         }
       }
     }
-    
+
     return map;
   }, [
     viewerTokenInfo,
@@ -995,7 +992,7 @@ export default function PositionsTable({
                 (() => {
                   const positionId = row.original.positionId;
                   const res = rowKeyToResolution.get(positionId);
-                  
+
                   if (!res) {
                     return <AwaitingSettlementBadge />;
                   }
@@ -1009,7 +1006,7 @@ export default function PositionsTable({
                         String(account || '').toLowerCase();
                     const isThisTokenClaiming =
                       isClaimPending && claimingTokenId === res.tokenId;
-                    
+
                     return isOwnerConnected ? (
                       <Button
                         size="sm"
@@ -1192,14 +1189,14 @@ export default function PositionsTable({
         <EmptyTabState centered message="No positions found" />
       ) : isLoading && rows.length === 0 ? (
         <div className="w-full min-h-[300px] flex items-center justify-center">
-          <LottieLoader width={12} height={12} />
+          <Loader size={12} />
         </div>
       ) : (
         <>
           <div className="border-y border-border rounded-none overflow-hidden bg-brand-black relative">
             {isLoading && (
               <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                <LottieLoader width={12} height={12} />
+                <Loader size={12} />
               </div>
             )}
             <Table className="table-auto">
@@ -1254,7 +1251,7 @@ export default function PositionsTable({
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
-                  <LottieLoader width={24} height={24} />
+                  <Loader size={12} />
                   <span className="text-sm text-muted-foreground">
                     Loading more positions...
                   </span>

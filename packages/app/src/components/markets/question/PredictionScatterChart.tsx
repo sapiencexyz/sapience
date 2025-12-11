@@ -33,7 +33,7 @@ import MarketBadge from '~/components/markets/MarketBadge';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import type { PredictionData, ForecastData } from './types';
 
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-8 h-8" />,
 });
@@ -103,7 +103,7 @@ export function PredictionScatterChart({
   if (isLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <LottieLoader width={32} height={32} />
+        <Loader size={16} />
       </div>
     );
   }

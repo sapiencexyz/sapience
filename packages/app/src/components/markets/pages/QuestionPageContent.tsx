@@ -52,7 +52,7 @@ import {
   scatterChartStyles,
 } from '~/components/markets/question';
 
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-8 h-8" />,
 });
@@ -485,7 +485,7 @@ export default function QuestionPageContent({
           minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
-        <LottieLoader width={32} height={32} />
+        <Loader size={16} />
       </div>
     );
   }

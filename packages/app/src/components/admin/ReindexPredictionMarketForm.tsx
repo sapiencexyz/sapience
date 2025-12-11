@@ -15,8 +15,8 @@ import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
-// Dynamically import LottieLoader
-const LottieLoader = dynamic(() => import('~/components/shared/LottieLoader'), {
+// Dynamically import Loader
+const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-4 h-4" />,
 });
@@ -197,7 +197,7 @@ const ReindexPredictionMarketForm = () => {
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? (
           <>
-            <LottieLoader width={16} height={16} />
+            <Loader size={12} />
             <span className="ml-2">Processing...</span>
           </>
         ) : (

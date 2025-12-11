@@ -31,3 +31,4 @@ export type ForecastData = {
   attester: string;
   comment: string;
 };
+

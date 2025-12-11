@@ -18,6 +18,7 @@ export interface ConditionType {
   assertionId?: string;
   assertionTimestamp?: number;
   openInterest: string;
+  conditionGroupId?: number | null;
 }
 
 // Filter options for backend filtering
@@ -52,6 +53,7 @@ const GET_CONDITIONS = /* GraphQL */ `
       assertionId
       assertionTimestamp
       openInterest
+      conditionGroupId
       category {
         id
         name
