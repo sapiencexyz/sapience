@@ -669,19 +669,21 @@ const ConditionGroupsTab = ({
               />
             </div>
             {categories && categories.length > 0 && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Category (optional)</label>
-              <Select value={categorySlug} onValueChange={setCategorySlug}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">None</SelectItem>
-                  {categories?.map((c) => (
-                    <SelectItem key={c.slug} value={c.slug}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Category (optional)
+                </label>
+                <Select value={categorySlug} onValueChange={setCategorySlug}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">None</SelectItem>
+                    {categories?.map((c) => (
+                      <SelectItem key={c.slug} value={c.slug}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -831,4 +833,3 @@ const ConditionGroupsTab = ({
 };
 
 export default ConditionGroupsTab;
-

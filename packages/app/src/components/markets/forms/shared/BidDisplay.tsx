@@ -100,7 +100,9 @@ export default function BidDisplay({
   const [toWinAnimationKey, setToWinAnimationKey] = useState(0);
   const [buttonAnimationKey, setButtonAnimationKey] = useState(0);
   const [isToWinVisible, setIsToWinVisible] = useState(true);
-  const [effectiveBestBid, setEffectiveBestBid] = useState<QuoteBid | null>(bestBid);
+  const [effectiveBestBid, setEffectiveBestBid] = useState<QuoteBid | null>(
+    bestBid
+  );
   const [frozenToWinAmount, setFrozenToWinAmount] = useState<string>('0.00');
   const prevBestBidRef = useRef<QuoteBid | null>(null);
   const prevWagerAmountRef = useRef<string>(wagerAmount);
@@ -172,7 +174,7 @@ export default function BidDisplay({
       setEffectiveBestBid(null);
       setFrozenToWinAmount('0.00');
     }
-    
+
     const prevBid = prevBestBidRef.current;
     const isFirstBid = !prevBid && bestBid;
     const isNewBid =
@@ -195,7 +197,7 @@ export default function BidDisplay({
       isWaitingForAnimationRef.current = true;
       // Start button animation immediately
       setButtonAnimationKey((prev) => prev + 1);
-      
+
       // Wait for button animation to complete before showing "To Win"
       // Button delay: 100ms (animation delay) + ~500ms (spring animation) = ~600ms
       const toWinTimer = setTimeout(() => {
@@ -203,7 +205,7 @@ export default function BidDisplay({
         setToWinAnimationKey((prev) => prev + 1);
         isWaitingForAnimationRef.current = false;
       }, 600);
-      
+
       return () => {
         clearTimeout(toWinTimer);
       };
@@ -278,9 +280,24 @@ export default function BidDisplay({
         type: 'submit' as const,
       };
     }
+    // If showing estimated quote (no valid bid, but estimate available), show "WAITING FOR BIDS..."
+    if (!effectiveBestBid && estimateBid && estimateTotal) {
+      return {
+        text: 'WAITING FOR BIDS...',
+        disabled: true,
+        onClick: () => {},
+        type: 'button' as const,
+      };
+    }
     // If wager changed (isToWinVisible is false and not waiting for animation) but effectiveBestBid exists,
     // show "INITIATE AUCTION" to allow requesting new bids for the new wager amount
-    if (!bestBid && !effectiveBestBid && !isWaitingForBids && !isToWinVisible && !isWaitingForAnimationRef.current) {
+    if (
+      !bestBid &&
+      !effectiveBestBid &&
+      !isWaitingForBids &&
+      !isToWinVisible &&
+      !isWaitingForAnimationRef.current
+    ) {
       return {
         text: 'INITIATE AUCTION',
         disabled: isWaitingForBids,
@@ -289,8 +306,12 @@ export default function BidDisplay({
       };
     }
     // No bid or waiting state
+    const baseText =
+      showRequestBidsButton && !isWaitingForBids
+        ? 'INITIATE AUCTION'
+        : 'WAITING FOR BIDS...';
     return {
-      text: showRequestBidsButton && !isWaitingForBids ? 'INITIATE AUCTION' : 'WAITING FOR BIDS...',
+      text: baseText,
       disabled: !showRequestBidsButton || isWaitingForBids,
       onClick: () => showRequestBidsButton && onRequestBids(),
       type: 'button' as const,

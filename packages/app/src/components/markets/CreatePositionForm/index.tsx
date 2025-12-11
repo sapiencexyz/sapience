@@ -534,7 +534,9 @@ const CreatePositionForm = ({
     // Find the best bid and submit via PredictionMarket.mint
     try {
       const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter((b) => b.makerDeadline > nowSec);
+      const validBids = bids.filter(
+        (b) => b.makerDeadline > nowSec && b.validationStatus === 'valid'
+      );
 
       if (validBids.length === 0) {
         toast({
@@ -557,6 +559,7 @@ const CreatePositionForm = ({
       }, validBids[0]);
 
       if (bestBid && address && buildMintRequestDataFromBid) {
+        console.log('bestBid before buildMintRequestDataFromBid', bestBid);
         const mintReq = buildMintRequestDataFromBid({
           selectedBid: bestBid,
           // Optional refCode left empty (0x00..00)

@@ -117,6 +117,8 @@ export default function PositionForm({
     name: 'wagerAmount',
   });
   const prevWagerAmountRef = useRef<string>(parlayWagerAmount || '');
+  // Track the request configuration to ignore stale bids
+  const currentRequestKeyRef = useRef<string | null>(null);
 
   // Apply rainbow hover effect only for wagers over 1k
   const isRainbowHoverEnabled = useMemo(() => {
@@ -150,6 +152,9 @@ export default function PositionForm({
   useEffect(() => {
     if (prevWagerAmountRef.current !== (parlayWagerAmount || '')) {
       setValidBids([]);
+      setStickyEstimateBid(null);
+      setLastQuoteRequestMs(null); // Reset cooldown when wager changes
+      currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevWagerAmountRef.current = parlayWagerAmount || '';
     }
   }, [parlayWagerAmount]);
@@ -158,18 +163,33 @@ export default function PositionForm({
   useEffect(() => {
     if (prevSelectionsKeyRef.current !== selectionsKey) {
       setValidBids([]);
+      setStickyEstimateBid(null);
+      setLastQuoteRequestMs(null); // Reset cooldown when selections change
+      currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevSelectionsKeyRef.current = selectionsKey;
     }
   }, [selectionsKey]);
 
   // Update valid bids when new bids come in (for animations)
+  // Only accept bids if they match the current request configuration
   useEffect(() => {
-    setValidBids(bids);
-  }, [bids]);
+    const currentRequestKey = `${selectionsKey}:${parlayWagerAmount || ''}`;
+    // If we have a request key set, only accept bids that match it
+    // If request key is null, it means selections/wager changed, so ignore all incoming bids
+    if (currentRequestKeyRef.current === null) {
+      // Configuration changed, ignore incoming bids
+      return;
+    }
+    // Only accept bids if they match the current request
+    if (currentRequestKeyRef.current === currentRequestKey) {
+      setValidBids(bids);
+    }
+  }, [bids, selectionsKey, parlayWagerAmount]);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
-    if (!validBids || validBids.length === 0) return { bestBid: null, estimateBid: null };
+    if (!validBids || validBids.length === 0)
+      return { bestBid: null, estimateBid: null };
 
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
@@ -189,7 +209,9 @@ export default function PositionForm({
       (bid) => bid.validationStatus === 'invalid'
     );
     const estimateFromFailed =
-      validFilteredBids.length === 0 && failedBids.length === 1 ? failedBids[0] : null;
+      validFilteredBids.length === 0 && failedBids.length === 1
+        ? failedBids[0]
+        : null;
 
     if (validFilteredBids.length === 0) {
       return { bestBid: null, estimateBid: estimateFromFailed };
@@ -292,6 +314,8 @@ export default function PositionForm({
 
         requestQuotes(params, options);
         setLastQuoteRequestMs(Date.now());
+        // Set the request key to match incoming bids to this configuration
+        currentRequestKeyRef.current = `${selectionsKey}:${parlayWagerAmount || ''}`;
       } catch {
         // ignore formatting errors
       }
