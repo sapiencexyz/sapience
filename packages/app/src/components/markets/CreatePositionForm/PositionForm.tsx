@@ -8,23 +8,22 @@ import {
   DialogTitle,
 } from '@sapience/sdk/ui/components/ui/dialog';
 import { Info } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
+import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { WagerInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 
@@ -79,6 +78,7 @@ export default function PositionForm({
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
+  const [validBids, setValidBids] = useState<QuoteBid[]>(bids);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
@@ -106,6 +106,7 @@ export default function PositionForm({
     control: methods.control,
     name: 'wagerAmount',
   });
+  const prevWagerAmountRef = useRef<string>(parlayWagerAmount || '');
 
   // Apply rainbow hover effect only for wagers over 1k
   const isRainbowHoverEnabled = useMemo(() => {
@@ -126,10 +127,23 @@ export default function PositionForm({
     }
   }, [parlayWagerAmount, collateralDecimals]);
 
+  // Clear bids when wager amount changes
+  useEffect(() => {
+    if (prevWagerAmountRef.current !== (parlayWagerAmount || '')) {
+      setValidBids([]);
+      prevWagerAmountRef.current = parlayWagerAmount || '';
+    }
+  }, [parlayWagerAmount]);
+
+  // Update valid bids when new bids come in
+  useEffect(() => {
+    setValidBids(bids);
+  }, [bids]);
+
   const bestBid = useMemo(() => {
-    if (!bids || bids.length === 0) return null;
-    const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
-    if (validBids.length === 0) return null;
+    if (!validBids || validBids.length === 0) return null;
+    const nonExpiredBids = validBids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
+    if (nonExpiredBids.length === 0) return null;
     const makerWagerStr = parlayWagerAmount || '0';
     let makerWager: bigint;
     try {
@@ -137,7 +151,7 @@ export default function PositionForm({
     } catch {
       makerWager = 0n;
     }
-    return validBids.reduce((best, current) => {
+    return nonExpiredBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
           return makerWager + BigInt(best.makerWager);
@@ -155,7 +169,7 @@ export default function PositionForm({
 
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, parlayWagerAmount, nowMs]);
+  }, [validBids, parlayWagerAmount, nowMs]);
 
   // Check if we recently made a request (within 5 seconds) - show "Waiting for Bids..." during cooldown
   const recentlyRequested =
@@ -391,7 +405,7 @@ export default function PositionForm({
               hintMounted={hintMounted}
               disclaimerVisible={disclaimerVisible}
               disclaimerMounted={disclaimerMounted}
-              allBids={bids}
+              allBids={validBids}
               takerWagerWei={takerWagerWei}
               takerAddress={selectedTakerAddress}
               showAddPredictionsHint={selections.length === 1}
