@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { formatUnits, parseUnits } from 'viem';
 import { ChevronDown, Info } from 'lucide-react';
@@ -97,6 +97,7 @@ export default function BidDisplay({
   const [buttonAnimationKey, setButtonAnimationKey] = useState(0);
   const [isToWinVisible, setIsToWinVisible] = useState(true);
   const [effectiveBestBid, setEffectiveBestBid] = useState<QuoteBid | null>(bestBid);
+  const [frozenToWinAmount, setFrozenToWinAmount] = useState<string>('0.00');
   const prevBestBidRef = useRef<QuoteBid | null>(null);
   const prevWagerAmountRef = useRef<string>(wagerAmount);
   const hasAnimatedButtonRef = useRef<boolean>(false);
@@ -108,6 +109,8 @@ export default function BidDisplay({
     if (prevWagerAmountRef.current !== wagerAmount) {
       // Clear the effective bid since wager changed
       setEffectiveBestBid(null);
+      // Clear frozen "To Win" amount
+      setFrozenToWinAmount('0.00');
       // Mark that we just cleared due to wager change
       justClearedByWagerChangeRef.current = true;
       // Fade out "To Win" div
@@ -127,6 +130,34 @@ export default function BidDisplay({
     }
   }, [wagerAmount]);
 
+  // Helper function to calculate "To Win" amount
+  const calculateToWinAmount = useCallback(
+    (bid: QuoteBid, wager: string): string => {
+      let userWagerWei: bigint = 0n;
+      try {
+        userWagerWei = parseUnits(wager || '0', collateralDecimals);
+      } catch {
+        userWagerWei = 0n;
+      }
+
+      const totalWei = (() => {
+        try {
+          return userWagerWei + BigInt(bid.makerWager);
+        } catch {
+          return 0n;
+        }
+      })();
+
+      try {
+        const human = Number(formatUnits(totalWei, collateralDecimals));
+        return formatNumber(human, 2);
+      } catch {
+        return '0.00';
+      }
+    },
+    [collateralDecimals]
+  );
+
   // Detect when bid appears/changes and trigger animations for "To Win" and button
   useEffect(() => {
     // Update effective bid when bestBid changes
@@ -135,6 +166,7 @@ export default function BidDisplay({
     } else if (!justClearedByWagerChangeRef.current) {
       // If bestBid becomes null and it wasn't due to wager change, clear effective bid
       setEffectiveBestBid(null);
+      setFrozenToWinAmount('0.00');
     }
     
     const prevBid = prevBestBidRef.current;
@@ -144,6 +176,12 @@ export default function BidDisplay({
       prevBid &&
       (bestBid.makerWager !== prevBid.makerWager ||
         bestBid.makerDeadline !== prevBid.makerDeadline);
+
+    // Calculate and freeze "To Win" amount when a new bid appears
+    if ((isFirstBid || isNewBid) && bestBid) {
+      const frozenAmount = calculateToWinAmount(bestBid, wagerAmount);
+      setFrozenToWinAmount(frozenAmount);
+    }
 
     // Only animate button on the first bid and we haven't already animated it
     if (isFirstBid && !hasAnimatedButtonRef.current) {
@@ -173,39 +211,18 @@ export default function BidDisplay({
 
     // Update ref
     prevBestBidRef.current = bestBid;
-  }, [bestBid]);
+  }, [bestBid, wagerAmount, calculateToWinAmount]);
 
   // Convert QuoteBids to AuctionBidData for the chart
   const chartBids = useMemo(() => quoteBidsToAuctionBids(allBids), [allBids]);
-  // Calculate payout from best bid
+  // Calculate remaining seconds and use frozen "To Win" amount
   const { humanTotal, remainingSecs } = (() => {
     if (!effectiveBestBid) {
       return { humanTotal: '0.00', remainingSecs: 0 };
     }
 
-    let userWagerWei: bigint = 0n;
-    try {
-      userWagerWei = parseUnits(wagerAmount || '0', collateralDecimals);
-    } catch {
-      userWagerWei = 0n;
-    }
-
-    const totalWei = (() => {
-      try {
-        return userWagerWei + BigInt(effectiveBestBid.makerWager);
-      } catch {
-        return 0n;
-      }
-    })();
-
-    const humanTotalVal = (() => {
-      try {
-        const human = Number(formatUnits(totalWei, collateralDecimals));
-        return formatNumber(human, 2);
-      } catch {
-        return '0.00';
-      }
-    })();
+    // Use frozen "To Win" amount instead of calculating dynamically
+    const humanTotalVal = frozenToWinAmount;
 
     const remainingMs = effectiveBestBid.makerDeadline * 1000 - nowMs;
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));

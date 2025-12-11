@@ -127,6 +127,15 @@ export default function PositionForm({
     }
   }, [parlayWagerAmount, collateralDecimals]);
 
+  // Create a stable key from selections to detect changes
+  const selectionsKey = useMemo(() => {
+    return selections
+      .map((s) => `${s.conditionId}:${s.prediction}`)
+      .sort()
+      .join('|');
+  }, [selections]);
+  const prevSelectionsKeyRef = useRef<string>(selectionsKey);
+
   // Clear bids when wager amount changes
   useEffect(() => {
     if (prevWagerAmountRef.current !== (parlayWagerAmount || '')) {
@@ -134,6 +143,14 @@ export default function PositionForm({
       prevWagerAmountRef.current = parlayWagerAmount || '';
     }
   }, [parlayWagerAmount]);
+
+  // Clear bids when selections change (prediction flipped, added, or removed)
+  useEffect(() => {
+    if (prevSelectionsKeyRef.current !== selectionsKey) {
+      setValidBids([]);
+      prevSelectionsKeyRef.current = selectionsKey;
+    }
+  }, [selectionsKey]);
 
   // Update valid bids when new bids come in
   useEffect(() => {
