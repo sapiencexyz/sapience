@@ -75,7 +75,7 @@ interface CreatePositionContextType {
   positionsWithMarketData: PositionWithMarketData[];
 }
 
-const CreatePositionContext = createContext<
+export const CreatePositionContext = createContext<
   CreatePositionContextType | undefined
 >(undefined);
 

@@ -88,7 +88,7 @@ export function useSubmitPosition({
     },
     successMessage: 'Position prediction was successful',
     fallbackErrorMessage: 'Failed to submit position prediction',
-    redirectProfileAnchor: 'positions',
+    redirectPage: 'markets',
     // Minimal share intent for position; callers can include OG if they compute it
     shareIntent: {},
   });
