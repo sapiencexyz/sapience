@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  usePrivy,
-  useWallets,
-  useConnectOrCreateWallet,
-} from '@privy-io/react-auth';
+import { usePrivy, useWallets } from '@privy-io/react-auth';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import {
   DropdownMenu,
@@ -46,6 +42,8 @@ import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
 import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCodeDialog';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useAuth } from '~/lib/context/AuthContext';
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
@@ -190,7 +188,8 @@ const Header = () => {
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { wallets } = useWallets();
   const { logout } = usePrivy();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
+  const { setLoggedOut } = useAuth();
   const { data: ensName } = useEnsName(connectedWallet?.address || '');
   const { disconnect } = useDisconnect();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -345,46 +344,45 @@ const Header = () => {
     typeof (x as { disconnect?: unknown }).disconnect === 'function';
 
   const handleLogout = async () => {
+    // Clear app-specific localStorage items first
     try {
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem('sapience.chat.token');
         window.localStorage.removeItem('sapience.chat.tokenExpiresAt');
-        try {
-          window.dispatchEvent(new Event('sapience:chat_logout'));
-        } catch {
-          /* noop */
-        }
+        window.dispatchEvent(new Event('sapience:chat_logout'));
       }
     } catch {
-      /* noop */
+      // localStorage not available
     }
-    // Proactively disconnect any connected wallets (wagmi + Privy wallet instances)
+
+    // Disconnect Privy wallets (external wallets detected by Privy)
+    for (const wallet of wallets) {
+      try {
+        if (hasDisconnect(wallet)) {
+          wallet.disconnect();
+        }
+      } catch {
+        // Some wallets don't support programmatic disconnect (e.g., Frame)
+      }
+    }
+
+    // Disconnect wagmi connections
     try {
       disconnect?.();
     } catch {
-      /* noop */
+      // Ignore disconnect errors
     }
-    try {
-      if (Array.isArray(wallets)) {
-        for (const w of wallets) {
-          try {
-            // Some wallet connectors expose a disconnect method
-            if (hasDisconnect(w)) {
-              await Promise.resolve(w.disconnect());
-            }
-          } catch {
-            /* noop */
-          }
-        }
-      }
-    } catch {
-      /* noop */
-    }
+
+    // Privy logout
     try {
       await logout();
     } catch {
-      /* noop */
+      // Ignore logout errors
     }
+
+    // Mark as logged out in app state
+    // This handles wallets that don't support programmatic disconnect (e.g., Frame)
+    setLoggedOut();
   };
 
   return (
@@ -587,13 +585,7 @@ const Header = () => {
               {/* Address now displayed inside the black default button on desktop */}
               {ready && !hasConnectedWallet && (
                 <Button
-                  onClick={() => {
-                    try {
-                      connectOrCreateWallet();
-                    } catch {
-                      /* noop */
-                    }
-                  }}
+                  onClick={openConnectDialog}
                   className="bg-primary hover:bg-primary/90 rounded-md h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
                 >
                   <span>Log in</span>
