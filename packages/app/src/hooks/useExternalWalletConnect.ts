@@ -2,14 +2,14 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useConnect, useConfig } from 'wagmi';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected, coinbaseWallet } from 'wagmi/connectors';
 import type { EIP6963ProviderDetail } from './useWalletDiscovery';
 
 type ConnectingWallet = string | null;
 
 /**
  * Hook for connecting to external wallets
- * Supports EIP-6963 discovered wallets, WalletConnect, Coinbase, and OKX
+ * Supports EIP-6963 discovered wallets, Coinbase, and OKX
  */
 export function useExternalWalletConnect() {
   const { connectAsync } = useConnect();
@@ -55,29 +55,6 @@ export function useExternalWalletConnect() {
     },
     [connectAsync, chainId]
   );
-
-  /**
-   * Connect via WalletConnect
-   */
-  const connectWalletConnect = useCallback(async () => {
-    setConnectingWallet('walletconnect');
-    setError(null);
-
-    try {
-      const connector = walletConnect({
-        projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
-        showQrModal: true,
-      });
-
-      await connectAsync({ connector, chainId });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to connect';
-      setError(message);
-      console.error('[ExternalWalletConnect] WalletConnect failed:', err);
-    } finally {
-      setConnectingWallet(null);
-    }
-  }, [connectAsync, chainId]);
 
   /**
    * Connect via Coinbase Wallet
@@ -146,7 +123,6 @@ export function useExternalWalletConnect() {
     isConnecting,
     error,
     connectEIP6963Wallet,
-    connectWalletConnect,
     connectCoinbaseWallet,
     connectOKXWallet,
   };

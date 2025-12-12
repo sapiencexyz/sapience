@@ -6,7 +6,7 @@ import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
 import { sepolia, base, cannon, type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
-import { injected, walletConnect, coinbaseWallet } from 'wagmi/connectors';
+import { injected, coinbaseWallet } from 'wagmi/connectors';
 
 import type React from 'react';
 import { useMemo } from 'react';
@@ -118,10 +118,6 @@ const useWagmiConfig = () => {
       chains: chains as unknown as readonly [Chain, ...Chain[]],
       connectors: [
         injected(),
-        walletConnect({
-          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
-          showQrModal: true,
-        }),
         coinbaseWallet({
           appName: 'Sapience',
         }),
