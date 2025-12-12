@@ -123,7 +123,7 @@ export function useUserParlays(params: {
     chainId,
   } = params;
   const enabled = Boolean(address);
-  const { data, isLoading, isFetching, error } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
       'positions',
       address,
@@ -139,6 +139,7 @@ export function useUserParlays(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
+      console.log('[useUserParlays] Querying positions for address:', address);
       const resp = await graphqlRequest<{ positions: Parlay[] }>(
         USER_PARLAYS_QUERY,
         {
@@ -151,6 +152,7 @@ export function useUserParlays(params: {
         }
       );
       const base = resp?.positions ?? [];
+      console.log('[useUserParlays] Positions data:', base);
 
       // Collect unique condition IDs to fetch shortNames in a secondary query
       const conditionIds = Array.from(
@@ -214,5 +216,6 @@ export function useUserParlays(params: {
     data: data ?? [],
     isLoading: !!enabled && (isLoading || isFetching),
     error,
+    refetch,
   };
 }

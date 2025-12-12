@@ -91,13 +91,11 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" variant="outline">
-            {title}
-          </Button>
-        )}
-      </DialogTrigger>
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[720px]">
         <DialogHeader className="pb-2">
           <DialogTitle>{title}</DialogTitle>

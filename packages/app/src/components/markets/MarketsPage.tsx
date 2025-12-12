@@ -20,6 +20,7 @@ import MarketsDataTable from '~/components/markets/MarketsDataTable';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
+import ShareAfterMarketsRedirect from '~/components/shared/ShareAfterMarketsRedirect';
 
 // Dynamically import Loader
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -147,9 +148,11 @@ const MarketsPage = () => {
 
   // Render content once loaded
   return (
-    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
-      {/* Render only one position form instance based on viewport */}
-      {isCompact ? (
+    <>
+      <ShareAfterMarketsRedirect />
+      <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
+        {/* Render only one position form instance based on viewport */}
+        {isCompact ? (
         <div className="block lg:hidden">
           <CreatePositionForm />
         </div>
@@ -199,6 +202,7 @@ const MarketsPage = () => {
         </div>
       ) : null}
     </div>
+    </>
   );
 };
 

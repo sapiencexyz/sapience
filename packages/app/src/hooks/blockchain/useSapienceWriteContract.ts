@@ -151,7 +151,10 @@ export function useSapienceWriteContract({
     (maybeHash?: string) => {
       try {
         if (typeof window === 'undefined') return;
-        if (!redirectProfileAnchor) return;
+        // Write intent if redirecting to profile (with anchor) or to markets
+        const shouldWriteForProfile = redirectPage === 'profile' && redirectProfileAnchor;
+        const shouldWriteForMarkets = redirectPage === 'markets';
+        if (!shouldWriteForProfile && !shouldWriteForMarkets) return;
         if (shareIntent === undefined) return; // only write when caller explicitly opts-in
 
         const connectedAddress = (
@@ -163,9 +166,12 @@ export function useSapienceWriteContract({
           .toLowerCase();
         if (!connectedAddress) return;
 
+        // Determine anchor: use redirectProfileAnchor for profile, 'positions' for markets
+        const anchor = redirectPage === 'markets' ? 'positions' : redirectProfileAnchor;
+
         const intent = {
           address: connectedAddress,
-          anchor: redirectProfileAnchor,
+          anchor: anchor,
           clientTimestamp: Date.now(),
           txHash: maybeHash || undefined,
           // Spread all shareIntent properties to allow custom data
@@ -181,7 +187,7 @@ export function useSapienceWriteContract({
         console.error(e);
       }
     },
-    [redirectProfileAnchor, shareIntent, wagmiAddress, wallets]
+    [redirectPage, redirectProfileAnchor, shareIntent, wagmiAddress, wallets]
   );
 
   // Helper to detect if this is a withdrawal operation that should trigger unwrapping

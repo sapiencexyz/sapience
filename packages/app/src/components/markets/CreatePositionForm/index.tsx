@@ -559,7 +559,6 @@ const CreatePositionForm = ({
       }, validBids[0]);
 
       if (bestBid && address && buildMintRequestDataFromBid) {
-        console.log('bestBid before buildMintRequestDataFromBid', bestBid);
         const mintReq = buildMintRequestDataFromBid({
           selectedBid: bestBid,
           // Optional refCode left empty (0x00..00)
