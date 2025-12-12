@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect, useConnectors } from 'wagmi';
+import type { Connector } from 'wagmi';
 import {
   Dialog,
   DialogContent,
@@ -11,26 +12,13 @@ import {
 } from '@sapience/sdk/ui/components/ui/dialog';
 import { Button } from '@sapience/sdk/ui/components/ui/button';
 import { Mail, Wallet } from 'lucide-react';
-import Image from 'next/image';
 
-import {
-  useWalletDiscovery,
-  type EIP6963ProviderDetail,
-} from '~/hooks/useWalletDiscovery';
-import { useExternalWalletConnect } from '~/hooks/useExternalWalletConnect';
 import { useAuth } from '~/lib/context/AuthContext';
 
 interface ConnectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-// Wallet icons as data URLs (from @rainbow-me/rainbowkit)
-const WALLET_ICONS = {
-  coinbase:
-    'data:image/svg+xml,<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">%0A<rect width="28" height="28" fill="%232C5FF6"/>%0A<path fill-rule="evenodd" clip-rule="evenodd" d="M14 23.8C19.4124 23.8 23.8 19.4124 23.8 14C23.8 8.58761 19.4124 4.2 14 4.2C8.58761 4.2 4.2 8.58761 4.2 14C4.2 19.4124 8.58761 23.8 14 23.8ZM11.55 10.8C11.1358 10.8 10.8 11.1358 10.8 11.55V16.45C10.8 16.8642 11.1358 17.2 11.55 17.2H16.45C16.8642 17.2 17.2 16.8642 17.2 16.45V11.55C17.2 11.1358 16.8642 10.8 16.45 10.8H11.55Z" fill="white"/>%0A</svg>%0A',
-  okx: 'data:image/svg+xml,<svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">%0A<rect width="28" height="28" fill="black"/>%0A<path d="M16.8 11.2H11.2V16.8H16.8V11.2Z" fill="white"/>%0A<path d="M11.2 5.6H5.6V11.2H11.2V5.6Z" fill="white"/>%0A<path d="M22.4 5.6H16.8V11.2H22.4V5.6Z" fill="white"/>%0A<path d="M11.2 16.8H5.6V22.4H11.2V16.8Z" fill="white"/>%0A<path d="M22.4 16.8H16.8V22.4H22.4V16.8Z" fill="white"/>%0A</svg>%0A',
-};
 
 export default function ConnectDialog({
   open,
@@ -41,17 +29,11 @@ export default function ConnectDialog({
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
 
-  // EIP-6963 wallet discovery
-  const { discoveredWallets, isDiscovering } = useWalletDiscovery();
+  // Wagmi's built-in connector discovery (includes EIP-6963 wallets)
+  const connectors = useConnectors();
+  const { connect, isPending } = useConnect();
 
-  // External wallet connection handlers
-  const {
-    connectingWallet,
-    isConnecting,
-    connectEIP6963Wallet,
-    connectCoinbaseWallet,
-    connectOKXWallet,
-  } = useExternalWalletConnect();
+  const [connectingId, setConnectingId] = useState<string | null>(null);
 
   // Track client-side hydration
   useEffect(() => {
@@ -72,38 +54,43 @@ export default function ConnectDialog({
     login();
   }, [login, onOpenChange, clearLoggedOut]);
 
-  const handleEIP6963Connect = useCallback(
-    async (wallet: EIP6963ProviderDetail) => {
+  const handleConnectorClick = useCallback(
+    (connector: Connector) => {
       clearLoggedOut();
-      await connectEIP6963Wallet(wallet);
+      setConnectingId(connector.id);
+      connect(
+        { connector },
+        {
+          onSettled: () => setConnectingId(null),
+        }
+      );
     },
-    [connectEIP6963Wallet, clearLoggedOut]
+    [connect, clearLoggedOut]
   );
 
-  const handleCoinbaseClick = useCallback(async () => {
-    clearLoggedOut();
-    await connectCoinbaseWallet();
-  }, [connectCoinbaseWallet, clearLoggedOut]);
+  // Filter connectors to show useful options
+  // - Show injected/EIP-6963 discovered wallets
+  // - Filter out duplicates and internal connectors
+  const filteredConnectors = connectors.filter((connector) => {
+    const id = connector.id.toLowerCase();
+    const name = connector.name.toLowerCase();
 
-  const handleOKXClick = useCallback(async () => {
-    clearLoggedOut();
-    await connectOKXWallet();
-  }, [connectOKXWallet, clearLoggedOut]);
+    // Skip WalletConnect (removed from UI per user request)
+    if (id.includes('walletconnect') || name.includes('walletconnect')) {
+      return false;
+    }
 
-  // Filter out WalletConnect, Coinbase, and OKX from discovered wallets
-  // (they're shown separately as always-available options)
-  const filteredDiscoveredWallets = discoveredWallets.filter((wallet) => {
-    const rdns = wallet.info.rdns.toLowerCase();
-    const name = wallet.info.name.toLowerCase();
-    return (
-      !rdns.includes('walletconnect') &&
-      !name.includes('walletconnect') &&
-      !rdns.includes('coinbase') &&
-      !name.includes('coinbase') &&
-      !rdns.includes('okx') &&
-      !rdns.includes('okex') &&
-      !name.includes('okx')
-    );
+    // Include injected wallets (EIP-6963 discovered)
+    if (connector.type === 'injected') {
+      return true;
+    }
+
+    // Include Coinbase Wallet
+    if (id.includes('coinbase') || name.includes('coinbase')) {
+      return true;
+    }
+
+    return false;
   });
 
   return (
@@ -148,25 +135,24 @@ export default function ConnectDialog({
             </p>
           )}
 
-          {/* Discovered wallets from EIP-6963 */}
+          {/* Connectors from wagmi (includes EIP-6963 discovered wallets) */}
           {isClient &&
-            filteredDiscoveredWallets.map((wallet) => {
-              const isThisWalletConnecting =
-                connectingWallet === wallet.info.rdns;
+            filteredConnectors.map((connector) => {
+              const isThisConnecting = connectingId === connector.id;
 
               return (
                 <Button
-                  key={wallet.info.uuid}
+                  key={connector.id}
                   variant="outline"
                   className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
-                  onClick={() => handleEIP6963Connect(wallet)}
-                  disabled={isConnecting}
+                  onClick={() => handleConnectorClick(connector)}
+                  disabled={isPending}
                 >
                   <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
-                    {wallet.info.icon ? (
+                    {connector.icon ? (
                       <img
-                        src={wallet.info.icon}
-                        alt={wallet.info.name}
+                        src={connector.icon}
+                        alt={connector.name}
                         width={28}
                         height={28}
                         className="w-full h-full object-cover"
@@ -176,71 +162,17 @@ export default function ConnectDialog({
                     )}
                   </div>
                   <span>
-                    {isThisWalletConnecting
-                      ? 'Connecting...'
-                      : wallet.info.name}
+                    {isThisConnecting ? 'Connecting...' : connector.name}
                   </span>
                 </Button>
               );
             })}
 
-          {/* Discovering indicator */}
-          {isClient &&
-            isDiscovering &&
-            filteredDiscoveredWallets.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-1">
-                Detecting wallets...
-              </p>
-            )}
-
-          {/* Always-available options: OKX Wallet */}
-          {isClient && (
-            <Button
-              variant="outline"
-              className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
-              onClick={handleOKXClick}
-              disabled={isConnecting}
-            >
-              <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
-                <Image
-                  src={WALLET_ICONS.okx}
-                  alt="OKX Wallet"
-                  width={28}
-                  height={28}
-                  className="w-full h-full object-cover"
-                  unoptimized
-                />
-              </div>
-              <span>
-                {connectingWallet === 'okx' ? 'Connecting...' : 'OKX Wallet'}
-              </span>
-            </Button>
-          )}
-
-          {/* Always-available options: Coinbase Wallet */}
-          {isClient && (
-            <Button
-              variant="outline"
-              className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
-              onClick={handleCoinbaseClick}
-              disabled={isConnecting}
-            >
-              <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
-                <Image
-                  src={WALLET_ICONS.coinbase}
-                  alt="Coinbase Wallet"
-                  width={28}
-                  height={28}
-                  className="w-full h-full object-cover"
-                  unoptimized
-                />
-              </div>
-              <span>
-                {connectingWallet === 'coinbase'
-                  ? 'Connecting...'
-                  : 'Coinbase Wallet'}
-              </span>
-            </Button>
+          {/* No wallets found */}
+          {isClient && filteredConnectors.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-2">
+              No wallets detected. Install a wallet extension to connect.
+            </p>
           )}
         </div>
       </DialogContent>
