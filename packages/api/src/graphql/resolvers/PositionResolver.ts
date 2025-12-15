@@ -1,6 +1,6 @@
-import { Resolver, Query, Arg, Int, ObjectType, Field } from 'type-graphql';
+import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
+import { Position, Prisma } from '../../../generated/prisma';
 import prisma from '../../db';
-import { Prisma, Position } from '../../../generated/prisma';
 
 @ObjectType()
 class ConditionSummary {
@@ -15,6 +15,12 @@ class ConditionSummary {
 
   @Field(() => Int, { nullable: true })
   endTime?: number | null;
+
+  @Field(() => Boolean)
+  settled!: boolean;
+
+  @Field(() => Boolean)
+  resolvedToYes!: boolean;
 }
 
 @ObjectType()
@@ -133,6 +139,8 @@ export class PositionResolver {
               question: true,
               shortName: true,
               endTime: true,
+              settled: true,
+              resolvedToYes: true,
             },
           },
         },
@@ -146,6 +154,8 @@ export class PositionResolver {
           question: p.condition.question ?? null,
           shortName: p.condition.shortName ?? null,
           endTime: p.condition.endTime ?? null,
+          settled: p.condition.settled,
+          resolvedToYes: p.condition.resolvedToYes,
         };
         const entry: PredictionType = {
           conditionId: p.conditionId,
@@ -389,6 +399,8 @@ export class PositionResolver {
             question: true,
             shortName: true,
             endTime: true,
+            settled: true,
+            resolvedToYes: true,
           },
         },
       },
@@ -402,6 +414,8 @@ export class PositionResolver {
         question: p.condition.question ?? null,
         shortName: p.condition.shortName ?? null,
         endTime: p.condition.endTime ?? null,
+        settled: p.condition.settled,
+        resolvedToYes: p.condition.resolvedToYes,
       };
       const entry: PredictionType = {
         conditionId: p.conditionId,
