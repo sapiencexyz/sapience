@@ -25,13 +25,6 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    if (searchParams.has('debug')) {
-      return new Response('ok', {
-        status: 200,
-        headers: { 'content-type': 'text/plain' },
-      });
-    }
-
     const question =
       normalizeText(searchParams.get('q'), 160) || 'Trade on Sapience';
     const wagerRaw = normalizeText(searchParams.get('wager'), 32);

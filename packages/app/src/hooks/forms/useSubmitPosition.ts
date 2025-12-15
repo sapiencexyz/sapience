@@ -27,6 +27,13 @@ interface UseSubmitPositionProps {
     takerNftId: bigint,
     txHash?: string
   ) => void;
+  betslipData?: {
+    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    wager: string;
+    payout?: string;
+    symbol: string;
+    lastNftId?: string; // Last NFT ID before this parlay was submitted
+  };
 }
 
 export function useSubmitPosition({
@@ -35,6 +42,7 @@ export function useSubmitPosition({
   collateralTokenAddress,
   onSuccess,
   enabled = true,
+  betslipData,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
 
@@ -89,8 +97,8 @@ export function useSubmitPosition({
     successMessage: 'Position prediction was successful',
     fallbackErrorMessage: 'Failed to submit position prediction',
     redirectPage: 'markets',
-    // Minimal share intent for position; callers can include OG if they compute it
-    shareIntent: {},
+    // Include betslip data in share intent if provided
+    shareIntent: betslipData ? { betslip: betslipData } : {},
   });
 
   // Prepare calls for sendCalls

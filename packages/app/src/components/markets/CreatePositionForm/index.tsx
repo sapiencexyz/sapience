@@ -20,16 +20,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { DollarSign } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useMemo, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, type CSSProperties } from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  COLLATERAL_SYMBOLS,
+  CHAIN_ID_ETHEREAL,
+} from '@sapience/sdk/constants';
 import { useToast } from '@sapience/sdk/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import {
   wagerAmountSchema,
@@ -40,6 +44,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { useUserParlays } from '~/hooks/graphql/useUserParlays';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import { validateBids } from '~/lib/auction/validateBids';
 import { MarketGroupClassification } from '~/lib/types';
@@ -50,7 +55,6 @@ import {
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
@@ -77,8 +81,20 @@ const CreatePositionForm = ({
   const { address } = useAccount();
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
-  const parlayChainId =
-    chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID;
+  const parlayChainId = useMemo(
+    () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
+    [chainId, createPositionEntries]
+  );
+
+  // Get latest NFT ID from positions for tracking
+  // Always call hook unconditionally to maintain hook order
+  const { data: userPositions } = useUserParlays({
+    address: address ? String(address).toLowerCase() : undefined,
+    chainId: parlayChainId,
+    take: 1, // Only need the latest one
+    orderBy: 'mintedAt',
+    orderDirection: 'desc',
+  });
 
   const {
     auctionId,
@@ -491,6 +507,101 @@ const CreatePositionForm = ({
   //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
   // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
+  // Capture betslip data for share intent
+  const getBetslipData = useCallback(() => {
+    const wagerAmount =
+      formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+
+    // Build legs from selections
+    const legs = selections.map((s) => ({
+      question: s.question,
+      choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
+    }));
+
+    // Format wager
+    const wager =
+      typeof wagerAmount === 'string' ? wagerAmount : String(wagerAmount);
+
+    // Calculate actual payout from best bid if available
+    let payout: string | undefined = undefined;
+    if (bids && bids.length > 0 && collateralDecimals) {
+      const nowSec = Math.floor(Date.now() / 1000);
+      const validBids = bids.filter(
+        (b) => b.makerDeadline > nowSec && b.validationStatus === 'valid'
+      );
+
+      if (validBids.length > 0) {
+        // Find best bid (highest makerWager = best payout)
+        const bestBid = validBids.reduce((best, cur) => {
+          try {
+            return BigInt(cur.makerWager) > BigInt(best.makerWager)
+              ? cur
+              : best;
+          } catch {
+            return best;
+          }
+        }, validBids[0]);
+
+        // Calculate total payout: userWager + bidMakerWager
+        try {
+          const userWagerWei = parseUnits(wager, collateralDecimals);
+          const bidMakerWagerWei = BigInt(bestBid.makerWager);
+          const totalPayoutWei = userWagerWei + bidMakerWagerWei;
+          const totalPayoutHuman = formatUnits(
+            totalPayoutWei,
+            collateralDecimals
+          );
+          payout = parseFloat(totalPayoutHuman).toFixed(2);
+        } catch (_e) {
+          // Error calculating payout from bid
+        }
+      }
+    }
+
+    // Fallback to limitAmount if no bid available
+    if (!payout) {
+      const limitAmount = formMethods.getValues('limitAmount');
+      if (limitAmount !== undefined) {
+        payout =
+          typeof limitAmount === 'string' ? limitAmount : String(limitAmount);
+      }
+    }
+
+    // Get latest NFT ID from positions for tracking
+    let lastNftId: string | undefined = undefined;
+    if (userPositions && userPositions.length > 0) {
+      // Get the highest NFT ID from current positions
+      const latestPosition = userPositions.reduce((latest, current) => {
+        try {
+          const latestNftId = BigInt(latest.predictorNftTokenId || '0');
+          const currentNftId = BigInt(current.predictorNftTokenId || '0');
+          return currentNftId > latestNftId ? current : latest;
+        } catch {
+          return latest;
+        }
+      }, userPositions[0]);
+
+      if (latestPosition && latestPosition.predictorNftTokenId) {
+        lastNftId = latestPosition.predictorNftTokenId;
+      }
+    }
+
+    return {
+      legs,
+      wager,
+      payout,
+      symbol: collateralSymbol || 'testUSDe',
+      lastNftId,
+    };
+  }, [
+    selections,
+    formMethods,
+    collateralSymbol,
+    bids,
+    collateralDecimals,
+    userPositions,
+  ]);
+
   // Use the parlay submission hook
   const {
     submitPosition,
@@ -502,6 +613,7 @@ const CreatePositionForm = ({
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
+    betslipData: getBetslipData(),
     onSuccess: () => {
       // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();
@@ -511,7 +623,7 @@ const CreatePositionForm = ({
       try {
         notifyOrderCreated(`${makerNftId}-${takerNftId}`, txHash);
       } catch {
-        console.error('Failed to notify order created');
+        // Failed to notify order created
       }
     },
   });
@@ -525,8 +637,8 @@ const CreatePositionForm = ({
     if (!hasConnectedWallet) {
       try {
         connectOrCreateWallet();
-      } catch (error) {
-        console.error('connectOrCreateWallet failed', error);
+      } catch (_error) {
+        // connectOrCreateWallet failed
       }
       return;
     }
@@ -578,8 +690,7 @@ const CreatePositionForm = ({
         variant: 'destructive',
         duration: 5000,
       });
-    } catch (error) {
-      console.error('Error in handlePositionSubmit:', error);
+    } catch (_error) {
       toast({
         title: 'Submission error',
         description: 'An error occurred while submitting your prediction.',

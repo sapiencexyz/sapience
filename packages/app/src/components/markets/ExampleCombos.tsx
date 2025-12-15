@@ -423,8 +423,8 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                       </TableCell>
                     </motion.tr>
                   ))
-                : topCombos.map((item) => {
-                    const { combo, probability, status } = item;
+                : topCombos.map((item, idx) => {
+                    const { combo, probability, status, auctionId } = item;
                     const legs = comboToLegs(combo);
                     // Create a stable key from condition IDs and predictions
                     const comboKey = combo
@@ -433,10 +433,12 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           `${leg.condition.id}-${leg.prediction ? 'y' : 'n'}`
                       )
                       .join('_');
+                    // Use auctionId if available for uniqueness, otherwise fall back to comboKey + index
+                    const uniqueKey = auctionId || `${comboKey}-${idx}`;
 
                     return (
                       <motion.tr
-                        key={comboKey}
+                        key={uniqueKey}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}

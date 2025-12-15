@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
@@ -14,12 +14,29 @@ type ShareIntentStored = {
   anchor: Anchor;
   clientTimestamp: number;
   txHash?: string;
-  og?: { imagePath: string; params?: Record<string, any> };
+  lastNftId?: string; // Last NFT ID from positions before this parlay was submitted
+  og?: {
+    imagePath: string;
+    params?: Record<string, string | number | boolean | null | undefined>;
+  };
+  betslip?: {
+    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    wager: string;
+    payout?: string;
+    symbol: string;
+    lastNftId?: string; // Last NFT ID before this parlay was submitted
+  };
 };
 
 export default function ShareAfterMarketsRedirect() {
   const [open, setOpen] = useState(false);
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [storedLastNftId, setStoredLastNftId] = useState<string | undefined>(
+    undefined
+  );
+  const [storedExpectedLegs, setStoredExpectedLegs] = useState<
+    Array<{ question: string; choice: 'Yes' | 'No' }> | undefined
+  >(undefined);
   const clearedRef = useRef(false);
   const { address } = useAccount();
 
@@ -33,16 +50,17 @@ export default function ShareAfterMarketsRedirect() {
   // Wrapper to refetch positions data immediately
   const refetchPositionsWrapper = useCallback(() => {
     if (!lowerAddress) return;
-    console.log('[ShareAfterMarketsRedirect] Refetching positions query for latest data');
     refetchPositions().catch((err) => {
-      console.error('[ShareAfterMarketsRedirect] Error refetching positions:', err);
+      console.error(
+        '[ShareAfterMarketsRedirect] Error refetching positions:',
+        err
+      );
     });
   }, [lowerAddress, refetchPositions]);
 
   const clearIntent = useCallback(() => {
     try {
       if (typeof window === 'undefined') return;
-      console.log('[ShareAfterMarketsRedirect] Clearing share intent from sessionStorage');
       window.sessionStorage.removeItem('sapience:share-intent');
       clearedRef.current = true;
     } catch (e) {
@@ -58,13 +76,6 @@ export default function ShareAfterMarketsRedirect() {
         return null;
       }
       const parsed = JSON.parse(raw) as ShareIntentStored;
-      console.log('[ShareAfterMarketsRedirect] Read share intent:', {
-        address: parsed.address,
-        anchor: parsed.anchor,
-        hasOg: !!parsed.og,
-        txHash: parsed.txHash,
-        clientTimestamp: parsed.clientTimestamp,
-      });
       return parsed || null;
     } catch (e) {
       console.error('[ShareAfterMarketsRedirect] Error reading intent:', e);
@@ -72,7 +83,54 @@ export default function ShareAfterMarketsRedirect() {
     }
   }, []);
 
-  // Build minimal OG url from resolved parlay
+  // Build OG url from betslip data
+  const buildOgUrlFromBetslip = useCallback(
+    (betslip: ShareIntentStored['betslip']): string | null => {
+      if (!lowerAddress || !betslip) {
+        return null;
+      }
+      try {
+        const qp = new URLSearchParams();
+        qp.set('addr', lowerAddress);
+
+        // Add legs
+        if (betslip.legs && betslip.legs.length > 0) {
+          betslip.legs.forEach((leg) => {
+            if (leg.question) {
+              qp.append('leg', `${leg.question}|${leg.choice}`);
+            }
+          });
+        }
+
+        // Add wager
+        if (betslip.wager) {
+          qp.set('wager', betslip.wager);
+        }
+
+        // Add payout
+        if (betslip.payout) {
+          qp.set('payout', betslip.payout);
+        }
+
+        // Add symbol
+        if (betslip.symbol) {
+          qp.set('symbol', betslip.symbol);
+        }
+
+        const ogUrl = `/og/position?${qp.toString()}`;
+        return ogUrl;
+      } catch (e) {
+        console.error(
+          '[ShareAfterMarketsRedirect] Error building OG URL from betslip:',
+          e
+        );
+        return null;
+      }
+    },
+    [lowerAddress]
+  );
+
+  // Build minimal OG url from resolved parlay (fallback)
   const toOgUrl = useCallback(
     (entity: Parlay): string | null => {
       if (!lowerAddress) {
@@ -119,13 +177,6 @@ export default function ShareAfterMarketsRedirect() {
         qp.set('symbol', collateralSymbol);
 
         const ogUrl = `/og/position?${qp.toString()}`;
-        console.log('[ShareAfterMarketsRedirect] Built OG URL:', {
-          url: ogUrl,
-          legsCount: legs.length,
-          hasWager: !!position?.predictorCollateral,
-          hasPayout: !!position?.totalCollateral,
-          positionId: position?.id,
-        });
         return ogUrl;
       } catch (e) {
         console.error('[ShareAfterMarketsRedirect] Error building OG URL:', e);
@@ -135,168 +186,100 @@ export default function ShareAfterMarketsRedirect() {
     [lowerAddress]
   );
 
-  // // Main effect: attempt to resolve and show
-  // useEffect(() => {
-  //   console.log('[ShareAfterMarketsRedirect] useEffect triggered', {
-  //     hasWindow: typeof window !== 'undefined',
-  //     cleared: clearedRef.current,
-  //     hasAddress: !!lowerAddress,
-  //     positionsCount: positions?.length || 0,
-  //   });
-    
-  //   if (typeof window === 'undefined') return;
-  //   if (clearedRef.current) {
-  //     console.log('[ShareAfterMarketsRedirect] Intent already cleared, skipping');
-  //     return;
-  //   }
-  //   if (!lowerAddress) {
-  //     console.log('[ShareAfterMarketsRedirect] Waiting for address to be available');
-  //     return; // Wait for address to be available
-  //   }
-
-  //   const intent = readIntent();
-  //   if (!intent) {
-  //     console.log('[ShareAfterMarketsRedirect] No intent found in sessionStorage');
-  //     return;
-  //   }
-
-  //   // Validate address and anchor
-  //   const intentAddr = String(intent.address || '').toLowerCase();
-  //   if (!intentAddr || intentAddr !== lowerAddress) {
-  //     console.log('[ShareAfterMarketsRedirect] Address mismatch:', {
-  //       intentAddr,
-  //       lowerAddress,
-  //     });
-  //     return;
-  //   }
-  //   // Only handle positions anchor for markets page
-  //   if (intent.anchor !== 'positions') {
-  //     console.log('[ShareAfterMarketsRedirect] Anchor mismatch, expected positions, got:', intent.anchor);
-  //     return;
-  //   }
-
-  //   console.log('[ShareAfterMarketsRedirect] Valid intent found, starting resolution');
-
-  //   // Path 1: immediate OG provided by caller
-  //   if (intent.og && intent.og.imagePath) {
-  //     try {
-  //       console.log('[ShareAfterMarketsRedirect] Using provided OG image path:', intent.og.imagePath);
-  //       const params = new URLSearchParams(
-  //         Object.fromEntries(
-  //           Object.entries(intent.og.params || {})
-  //             .filter(([, v]) => v !== undefined && v !== null)
-  //             .map(([k, v]) => [k, String(v)])
-  //         )
-  //       );
-  //       const src = `${intent.og.imagePath}?${params.toString()}`;
-  //       console.log('[ShareAfterMarketsRedirect] Opening dialog with provided OG URL:', src);
-  //       setImageSrc(src);
-  //       setOpen(true);
-  //       clearIntent();
-  //       return;
-  //     } catch (e) {
-  //       console.error('[ShareAfterMarketsRedirect] Error using provided OG, falling through to resolution:', e);
-  //       // fallthrough to resolution
-  //     }
-  //   }
-
-  //   // Path 2: attempt to resolve via data hooks, up to 60s
-  //   const start = Date.now();
-  //   const windowMs = 2 * 60 * 1000; // 2 minutes
-  //   const deadline = start + 60 * 1000; // give up after 60s
-  //   console.log('[ShareAfterMarketsRedirect] Starting resolution timer, deadline:', new Date(deadline).toISOString());
-    
-  //   let checkCount = 0;
-  //   const timer = setInterval(() => {
-  //     checkCount++;
-  //     const now = Date.now();
-  //     if (now > deadline) {
-  //       console.log('[ShareAfterMarketsRedirect] Resolution deadline reached after', checkCount, 'checks');
-  //       clearInterval(timer);
-  //       clearIntent();
-  //       return;
-  //     }
-
-  //     const ts = Number(intent.clientTimestamp || 0);
-  //     const minTs = ts - windowMs;
-
-  //     // Refetch positions to ensure we have the latest data before resolving
-  //     refetchPositionsWrapper();
-
-  //     const list: Parlay[] = positions || [];
-  //     const filtered = list.filter(
-  //       (p: Parlay) => Number(p.mintedAt) * 1000 >= minTs
-  //     );
-      
-  //     if (checkCount % 5 === 0) {
-  //       console.log('[ShareAfterMarketsRedirect] Resolution check', checkCount, ':', {
-  //         totalPositions: list.length,
-  //         filteredCount: filtered.length,
-  //         minTimestamp: new Date(minTs).toISOString(),
-  //         intentTimestamp: new Date(ts).toISOString(),
-  //       });
-  //     }
-
-  //     const resolved =
-  //       filtered.sort(
-  //         (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
-  //       )[0] || null;
-
-  //     if (resolved) {
-  //       console.log('[ShareAfterMarketsRedirect] Parlay resolved:', {
-  //         id: resolved.id,
-  //         mintedAt: new Date(Number(resolved.mintedAt) * 1000).toISOString(),
-  //         predictionsCount: resolved.predictions?.length || 0,
-  //       });
-  //       const src = toOgUrl(resolved);
-  //       if (src) {
-  //         console.log('[ShareAfterMarketsRedirect] Opening dialog with resolved parlay OG URL:', src);
-  //         clearInterval(timer);
-  //         setImageSrc(src);
-  //         setOpen(true);
-  //         clearIntent();
-  //       } else {
-  //         console.warn('[ShareAfterMarketsRedirect] Failed to build OG URL from resolved parlay');
-  //       }
-  //     }
-  //   }, 1000);
-
-  //   return () => clearInterval(timer);
-  // }, [
-  //   lowerAddress,
-  //   positions,
-  //   readIntent,
-  //   toOgUrl,
-  //   clearIntent,
-  //   refetchPositionsWrapper,
-  // ]);
-
-  // Handle same-page navigation: when already on /markets and a new intent is written
-  // This effect triggers the share dialog when intent is detected, even if we're already on the page
+  // Handle intent detection and open dialog with betslip data
+  // Uses periodic check to detect intents written while already on the page
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!lowerAddress) return;
 
-    // Check for intent periodically when on the page
-    // This handles the case where user submits parlay while already on /markets
-    const checkInterval = setInterval(() => {
-      // Skip if dialog is already open or intent was cleared
-      if (clearedRef.current || open) return;
-      
+    const checkAndOpenDialog = () => {
+      // Skip if intent was cleared
+      if (clearedRef.current) return;
+
       const intent = readIntent();
-      if (!intent) return;
-      
+      if (!intent) {
+        // If no intent but dialog is open, close it to reset state
+        if (open) {
+          setOpen(false);
+          setImageSrc(null);
+        }
+        return;
+      }
+
       // Validate intent
       const intentAddr = String(intent.address || '').toLowerCase();
       if (intentAddr !== lowerAddress) return;
       if (intent.anchor !== 'positions') return;
 
-      console.log('[ShareAfterMarketsRedirect] Periodic check found valid intent (same-page navigation), triggering resolution');
+      // If dialog is already open, close it first to reset state for new intent
+      // This handles the case where multiple parlays are created without refresh
+      if (open) {
+        setOpen(false);
+        setImageSrc(null);
+        setStoredLastNftId(undefined); // Reset stored NFT ID for new intent
+        setStoredExpectedLegs(undefined); // Reset stored expected legs for new intent
+        clearedRef.current = false;
+        return; // Will process new intent on next check cycle
+      }
+
+      // Update intent with latest NFT ID if not already set (for tracking)
+      // Prefer lastNftId from betslip data, otherwise get from positions
+      // Also store in state when found
+      if (!intent.lastNftId) {
+        let nftIdToUse: string | undefined = intent.betslip?.lastNftId;
+
+        // If found in betslip, store it in state immediately
+        if (nftIdToUse) {
+          setStoredLastNftId(nftIdToUse);
+        }
+
+        if (!nftIdToUse && positions && positions.length > 0) {
+          // Get the highest NFT ID from current positions
+          const latestPosition = positions.reduce((latest, current) => {
+            try {
+              const latestNftId = BigInt(latest.predictorNftTokenId || '0');
+              const currentNftId = BigInt(current.predictorNftTokenId || '0');
+              return currentNftId > latestNftId ? current : latest;
+            } catch {
+              return latest;
+            }
+          }, positions[0]);
+
+          if (latestPosition && latestPosition.predictorNftTokenId) {
+            nftIdToUse = latestPosition.predictorNftTokenId;
+          }
+        }
+
+        if (nftIdToUse) {
+          const updatedIntent = {
+            ...intent,
+            lastNftId: nftIdToUse,
+          };
+          try {
+            window.sessionStorage.setItem(
+              'sapience:share-intent',
+              JSON.stringify(updatedIntent)
+            );
+            // Store in state so it persists after intent is cleared
+            setStoredLastNftId(nftIdToUse);
+            // Update local intent reference for this check cycle
+            Object.assign(intent, updatedIntent);
+          } catch (e) {
+            console.error(
+              '[ShareAfterMarketsRedirect] Error updating intent with NFT ID:',
+              e
+            );
+          }
+        }
+      }
 
       // Path 1: immediate OG provided by caller
       if (intent.og && intent.og.imagePath) {
+        // Store expected legs in state if available in betslip
+        if (intent.betslip?.legs) {
+          setStoredExpectedLegs(intent.betslip.legs);
+        }
         try {
-          console.log('[ShareAfterMarketsRedirect] Using provided OG image path from periodic check:', intent.og.imagePath);
           const params = new URLSearchParams(
             Object.fromEntries(
               Object.entries(intent.og.params || {})
@@ -305,25 +288,39 @@ export default function ShareAfterMarketsRedirect() {
             )
           );
           const src = `${intent.og.imagePath}?${params.toString()}`;
-          console.log('[ShareAfterMarketsRedirect] Opening dialog with provided OG URL from periodic check:', src);
           setImageSrc(src);
           setOpen(true);
           clearIntent();
           return;
         } catch (e) {
-          console.error('[ShareAfterMarketsRedirect] Error using provided OG from periodic check:', e);
+          console.error(
+            '[ShareAfterMarketsRedirect] Error using provided OG:',
+            e
+          );
         }
       }
-      console.log('[ShareAfterMarketsRedirect] Trying to resolve via positions data:', positions);
-      // Path 2: attempt to resolve via positions data
-      
-      // Refetch positions to ensure we have the latest data before resolving
+
+      // Path 2: build OG URL from betslip data
+      if (intent.betslip) {
+        // Store expected legs in state so they persist after intent is cleared
+        if (intent.betslip.legs) {
+          setStoredExpectedLegs(intent.betslip.legs);
+        }
+        const src = buildOgUrlFromBetslip(intent.betslip);
+        if (src) {
+          setImageSrc(src);
+          setOpen(true);
+          clearIntent();
+          return;
+        }
+      }
+
+      // Path 3: fallback to position resolution (if betslip data not available)
       refetchPositionsWrapper();
-      
+
       const list: Parlay[] = positions || [];
-      console.log('[ShareAfterMarketsRedirect] Positions data from periodic check:', list);
       if (list.length === 0) {
-        // Positions not loaded yet, will try again on next check
+        // Will retry when positions load
         return;
       }
 
@@ -339,48 +336,90 @@ export default function ShareAfterMarketsRedirect() {
         filtered.sort(
           (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
         )[0] || null;
-      console.log('[ShareAfterMarketsRedirect] Resolved parlay from periodic check:', resolved);
+
       if (resolved) {
-        console.log('[ShareAfterMarketsRedirect] Parlay resolved from periodic check:', {
-          id: resolved.id,
-          mintedAt: new Date(Number(resolved.mintedAt) * 1000).toISOString(),
-          predictionsCount: resolved.predictions?.length || 0,
-        });
         const src = toOgUrl(resolved);
         if (src) {
-          console.log('[ShareAfterMarketsRedirect] Opening dialog with resolved parlay OG URL from periodic check:', src);
           setImageSrc(src);
           setOpen(true);
           clearIntent();
-        } else {
-          console.warn('[ShareAfterMarketsRedirect] Failed to build OG URL from resolved parlay in periodic check');
         }
       }
-    }, 500);
+    };
+
+    // Check immediately
+    checkAndOpenDialog();
+
+    // Also check periodically to catch intents written while already on the page
+    const checkInterval = setInterval(() => {
+      checkAndOpenDialog();
+    }, 500); // Check every 500ms
 
     return () => clearInterval(checkInterval);
-  }, [lowerAddress, positions, readIntent, toOgUrl, clearIntent, open, refetchPositionsWrapper]);
+  }, [
+    lowerAddress,
+    positions,
+    readIntent,
+    buildOgUrlFromBetslip,
+    toOgUrl,
+    clearIntent,
+    open,
+    refetchPositionsWrapper,
+  ]);
 
   useEffect(() => {
-    if (open) {
-      console.log('[ShareAfterMarketsRedirect] Share dialog opened with image:', imageSrc);
-    } else if (imageSrc) {
-      console.log('[ShareAfterMarketsRedirect] Share dialog closed');
+    if (!open) {
       // Reset clearedRef when dialog closes so new intents can be processed
-      clearedRef.current = false;
+      if (clearedRef.current) {
+        clearedRef.current = false;
+      }
+      // Clear imageSrc when dialog closes to allow new intents to be processed
+      if (imageSrc) {
+        setImageSrc(null);
+      }
     }
   }, [open, imageSrc]);
 
-  useEffect(() => {
-    console.log('[ShareAfterMarketsRedirect] Component state:', {
-      hasImageSrc: !!imageSrc,
-      open,
-      imageSrc,
-    });
-  }, [imageSrc, open]);
+  // Get position timestamp and expected legs from intent for tracking (must be before conditional return)
+  const positionTimestamp = useMemo(() => {
+    if (!imageSrc) return undefined;
+    const intent = readIntent();
+    return intent?.clientTimestamp ? intent.clientTimestamp : undefined;
+  }, [imageSrc, readIntent]);
+
+  const expectedLegs = useMemo(() => {
+    if (!imageSrc) return undefined;
+    // First try to read from intent, then fall back to stored state
+    const intent = readIntent();
+    const intentLegs = intent?.betslip?.legs;
+    if (intentLegs) {
+      // Update state if we found it in intent
+      if (JSON.stringify(intentLegs) !== JSON.stringify(storedExpectedLegs)) {
+        setStoredExpectedLegs(intentLegs);
+      }
+      return intentLegs;
+    }
+    // Fall back to stored state (persists after intent is cleared)
+    return storedExpectedLegs;
+  }, [imageSrc, readIntent, storedExpectedLegs]);
+
+  const lastNftId = useMemo(() => {
+    if (!imageSrc) return undefined;
+    // First try to read from intent, then fall back to stored state
+    const intent = readIntent();
+    const intentNftId = intent?.lastNftId;
+    if (intentNftId) {
+      // Update state if we found it in intent
+      if (intentNftId !== storedLastNftId) {
+        setStoredLastNftId(intentNftId);
+      }
+      return intentNftId;
+    }
+    // Fall back to stored state (persists after intent is cleared)
+    return storedLastNftId;
+  }, [imageSrc, readIntent, storedLastNftId]);
 
   if (!imageSrc) {
-    console.log('[ShareAfterMarketsRedirect] No imageSrc, not rendering dialog');
     return null;
   }
 
@@ -389,12 +428,14 @@ export default function ShareAfterMarketsRedirect() {
       imageSrc={imageSrc}
       open={open}
       onOpenChange={(newOpen) => {
-        console.log('[ShareAfterMarketsRedirect] Dialog open state changed:', newOpen);
         setOpen(newOpen);
       }}
       title="Share"
       shareTitle="Share"
+      trackPosition={true}
+      positionTimestamp={positionTimestamp}
+      expectedLegs={expectedLegs}
+      lastNftId={lastNftId}
     />
   );
 }
-

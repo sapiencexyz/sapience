@@ -37,6 +37,13 @@ interface ShareIntentOg {
 interface ShareIntentPartial {
   positionId?: string | number;
   og?: ShareIntentOg;
+  betslip?: {
+    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    wager: string;
+    payout?: string;
+    symbol: string;
+    lastNftId?: string; // Last NFT ID before this parlay was submitted
+  };
   // Additional optional hints can be added over time
 }
 
@@ -152,7 +159,8 @@ export function useSapienceWriteContract({
       try {
         if (typeof window === 'undefined') return;
         // Write intent if redirecting to profile (with anchor) or to markets
-        const shouldWriteForProfile = redirectPage === 'profile' && redirectProfileAnchor;
+        const shouldWriteForProfile =
+          redirectPage === 'profile' && redirectProfileAnchor;
         const shouldWriteForMarkets = redirectPage === 'markets';
         if (!shouldWriteForProfile && !shouldWriteForMarkets) return;
         if (shareIntent === undefined) return; // only write when caller explicitly opts-in
@@ -167,7 +175,8 @@ export function useSapienceWriteContract({
         if (!connectedAddress) return;
 
         // Determine anchor: use redirectProfileAnchor for profile, 'positions' for markets
-        const anchor = redirectPage === 'markets' ? 'positions' : redirectProfileAnchor;
+        const anchor =
+          redirectPage === 'markets' ? 'positions' : redirectProfileAnchor;
 
         const intent = {
           address: connectedAddress,
@@ -250,9 +259,10 @@ export function useSapienceWriteContract({
 
   const maybeRedirect = useCallback(() => {
     // Determine if we should redirect
-    const shouldRedirectToProfile = redirectPage === 'profile' && redirectProfileAnchor;
+    const shouldRedirectToProfile =
+      redirectPage === 'profile' && redirectProfileAnchor;
     const shouldRedirectToMarkets = redirectPage === 'markets';
-    
+
     if (!shouldRedirectToProfile && !shouldRedirectToMarkets) return;
     if (didRedirectRef.current) return; // Guard against double navigation
     if (typeof window === 'undefined') return; // SSR safety
@@ -261,12 +271,14 @@ export function useSapienceWriteContract({
       didRedirectRef.current = true;
 
       if (shouldRedirectToMarkets) {
-        // Clear betslip before redirecting to markets
+        // Note: betslip clearing is now done AFTER shareIntent is written
+        // This ensures betslip data is available for image generation
+        router.push(`/${redirectPage}`);
+        // Clear betslip after redirect (shareIntent already written)
         if (createPositionContext) {
           createPositionContext.clearPositionForm();
           createPositionContext.clearSelections();
         }
-        router.push(`/${redirectPage}`);
       } else if (shouldRedirectToProfile) {
         const connectedAddress = wagmiAddress || (wallets?.[0] as any)?.address;
         if (!connectedAddress) return; // No address available yet
@@ -278,7 +290,14 @@ export function useSapienceWriteContract({
       console.error(e);
       // noop on navigation errors
     }
-  }, [redirectPage, redirectProfileAnchor, wallets, wagmiAddress, router, createPositionContext]);
+  }, [
+    redirectPage,
+    redirectProfileAnchor,
+    wallets,
+    wagmiAddress,
+    router,
+    createPositionContext,
+  ]);
 
   // Common success handler
   const handleTransactionSuccess = useCallback(
@@ -408,7 +427,6 @@ export function useSapienceWriteContract({
               calls: [unwrapTx],
               experimental_fallback: true,
             });
-            console.log('Auto-unwrap completed successfully');
           }
         } catch (error) {
           console.error('Auto-unwrap failed:', error);
@@ -794,8 +812,8 @@ export function useSapienceWriteContract({
                   duration: 5000,
                 });
                 didShowSuccessToastRef.current = true;
-              } catch (e) {
-                console.error(e);
+              } catch (_e) {
+                // Error showing success toast
               }
               onTxHash?.(transactionHash);
               setTxHash(transactionHash);
@@ -896,6 +914,10 @@ export function useSapienceWriteContract({
       shouldAutoUnwrap,
       executeAutoUnwrap,
       ensureEmbeddedAuth,
+      redirectPage,
+      shareIntent,
+      onSuccess,
+      successMessage,
     ]
   );
 

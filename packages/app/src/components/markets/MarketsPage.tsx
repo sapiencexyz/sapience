@@ -153,55 +153,55 @@ const MarketsPage = () => {
       <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
         {/* Render only one position form instance based on viewport */}
         {isCompact ? (
-        <div className="block lg:hidden">
-          <CreatePositionForm />
-        </div>
-      ) : null}
+          <div className="block lg:hidden">
+            <CreatePositionForm />
+          </div>
+        ) : null}
 
-      {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
-        {/* Featured Parlays section */}
-        <ExampleCombos className="mt-4 md:mt-0" />
+        {/* Main Content */}
+        <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
+          {/* Featured Parlays section */}
+          <ExampleCombos className="mt-4 md:mt-0" />
 
-        {/* Results area - always table view */}
-        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
-          <motion.div
-            key="table-view"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            <MarketsDataTable
-              conditionGroups={conditionGroups}
-              ungroupedConditions={ungroupedConditions}
-              isLoading={isLoadingData}
-              searchTerm={searchTerm}
-              onSearchChange={handleSearchChange}
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              categories={categoryOptions}
-            />
-          </motion.div>
-        </div>
-      </div>
-
-      {/* Desktop/Tablet sticky position form sidebar */}
-      {!isMobile ? (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
-          <div
-            className="rounded-none shadow-lg overflow-hidden"
-            style={{
-              height: 'calc(100dvh - var(--page-top-offset, 0px))',
-            }}
-          >
-            <div className="h-full overflow-y-auto">
-              <CreatePositionForm variant="panel" />
-            </div>
+          {/* Results area - always table view */}
+          <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
+            <motion.div
+              key="table-view"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+            >
+              <MarketsDataTable
+                conditionGroups={conditionGroups}
+                ungroupedConditions={ungroupedConditions}
+                isLoading={isLoadingData}
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                filters={filters}
+                onFiltersChange={handleFiltersChange}
+                categories={categoryOptions}
+              />
+            </motion.div>
           </div>
         </div>
-      ) : null}
-    </div>
+
+        {/* Desktop/Tablet sticky position form sidebar */}
+        {!isMobile ? (
+          <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
+            <div
+              className="rounded-none shadow-lg overflow-hidden"
+              style={{
+                height: 'calc(100dvh - var(--page-top-offset, 0px))',
+              }}
+            >
+              <div className="h-full overflow-y-auto">
+                <CreatePositionForm variant="panel" />
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </>
   );
 };
