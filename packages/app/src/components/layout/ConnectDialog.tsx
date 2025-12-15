@@ -75,7 +75,9 @@ export default function ConnectDialog({
   const [connectingId, setConnectingId] = useState<string | null>(null);
 
   // EIP-6963 wallet discovery (Privy disables wagmi's built-in discovery)
-  const [discoveredWallets, setDiscoveredWallets] = useState<EIP6963ProviderDetail[]>([]);
+  const [discoveredWallets, setDiscoveredWallets] = useState<
+    EIP6963ProviderDetail[]
+  >([]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -96,7 +98,10 @@ export default function ConnectDialog({
     window.dispatchEvent(new Event('eip6963:requestProvider'));
 
     return () => {
-      window.removeEventListener('eip6963:announceProvider', handleAnnouncement);
+      window.removeEventListener(
+        'eip6963:announceProvider',
+        handleAnnouncement
+      );
     };
   }, []);
 
@@ -143,7 +148,11 @@ export default function ConnectDialog({
   );
 
   const handleWalletClick = useCallback(
-    (wallet: { eip6963Provider?: EIP6963ProviderDetail; downloadUrl?: string; id: string }) => {
+    (wallet: {
+      eip6963Provider?: EIP6963ProviderDetail;
+      downloadUrl?: string;
+      id: string;
+    }) => {
       if (wallet.eip6963Provider) {
         handleEIP6963Connect(wallet.eip6963Provider);
       } else if (wallet.downloadUrl) {

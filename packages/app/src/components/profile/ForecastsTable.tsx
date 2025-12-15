@@ -22,7 +22,6 @@ import { ArrowUpDown, ArrowUp, ArrowDown, Copy } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
-
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
