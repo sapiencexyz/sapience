@@ -152,7 +152,6 @@ export class PositionResolver {
       };
       return {
         conditionId: p.conditionId,
-        resolver: p.resolver,
         outcomeYes: p.outcomeYes,
         chainId: p.chainId ?? null,
         condition: condition ?? null,
