@@ -17,7 +17,7 @@ interface ShareDialogProps {
   trigger?: React.ReactNode;
   imagePath?: string; // defaults to OG position path for now
   title?: string; // dialog title
-  legs?: { question: string; choice: 'Yes' | 'No' }[];
+  legs?: { question: string; choice: string }[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -76,9 +76,9 @@ export default function ShareDialog(props: ShareDialogProps) {
     if (owner) sp.set('addr', owner);
     if (props.legs && Array.isArray(props.legs)) {
       for (const leg of props.legs) {
-        const q = (leg?.question ?? '').toString();
-        const c = leg?.choice === 'Yes' ? 'Yes' : 'No';
-        if (q) sp.append('leg', `${q}|${c}`);
+        const q = (leg?.question ?? '').toString().replace(/\|/g, ' ').trim();
+        const c = (leg?.choice ?? '').toString().replace(/\|/g, ' ').trim();
+        if (q && c) sp.append('leg', `${q}|${c}`);
       }
     }
     if (extraParams) {

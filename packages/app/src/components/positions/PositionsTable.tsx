@@ -26,7 +26,7 @@ import { useReadContracts, useAccount } from 'wagmi';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 // Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
 const UMA_RESOLVER_MIN_ABI = [
   {
@@ -53,6 +53,7 @@ import StackedPredictions, {
   type Pick,
 } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import { formatPythPriceDecimalFromInt } from '~/lib/auction/decodePredictedOutcomes';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import {
   useUserParlays,
@@ -77,11 +78,10 @@ function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
   if (isPast) {
     return <AwaitingSettlementBadge />;
   }
-  const msLeft = Math.max(0, endsAtMs - nowMs);
-  const daysLeft = Math.ceil(msLeft / (24 * 60 * 60 * 1000));
-  const label =
-    daysLeft >= 1 ? `${daysLeft} day${daysLeft === 1 ? '' : 's'}` : '<1 day';
   const settlesAt = new Date(endsAtMs);
+  const label = formatDistanceToNowStrict(settlesAt, {
+    roundingMethod: 'round',
+  });
   const settlesAtLocalDisplay = settlesAt.toLocaleString(undefined, {
     year: 'numeric',
     month: 'short',
@@ -145,11 +145,12 @@ export default function PositionsTable({
   });
   type UILeg = {
     question: string;
-    choice: 'Yes' | 'No';
+    choice: string;
     conditionId?: string;
     categorySlug?: string | null;
     endTime?: number | null;
     description?: string | null;
+    source?: 'uma' | 'pyth';
   };
   type UIPosition = {
     uniqueRowKey: string;
@@ -247,15 +248,64 @@ export default function PositionsTable({
   );
   const rows: UIPosition[] = React.useMemo(() => {
     const positionRows = (data || []).map((p: any) => {
-      const legs: UILeg[] = (p.predictions || []).map((o: any) => ({
-        question:
-          o?.condition?.shortName || o?.condition?.question || o.conditionId,
-        choice: o.outcomeYes ? ('Yes' as const) : ('No' as const),
-        conditionId: o?.conditionId,
-        categorySlug: o?.condition?.category?.slug ?? null,
-        endTime: o?.condition?.endTime ?? null,
-        description: o?.condition?.description ?? null,
-      }));
+      const parsePythDescriptor = (
+        desc: string | null | undefined
+      ): { strikePrice: bigint; strikeExpo: number } | null => {
+        const s = (desc ?? '').trim();
+        if (!s.startsWith('PYTH_LAZER|')) return null;
+        const firstLine = s.split('\n')[0] ?? s;
+        const parts = firstLine.split('|');
+        const kv = new Map<string, string>();
+        for (const part of parts.slice(1)) {
+          const i = part.indexOf('=');
+          if (i <= 0) continue;
+          kv.set(part.slice(0, i), part.slice(i + 1));
+        }
+        const strikePriceStr = kv.get('strikePrice');
+        const strikeExpoStr = kv.get('strikeExpo');
+        if (!strikePriceStr || !strikeExpoStr) return null;
+        try {
+          const strikePrice = BigInt(strikePriceStr);
+          const strikeExpo = Number(strikeExpoStr);
+          if (!Number.isFinite(strikeExpo)) return null;
+          return { strikePrice, strikeExpo };
+        } catch {
+          return null;
+        }
+      };
+
+      const legs: UILeg[] = (p.predictions || []).map((o: any) => {
+        const question =
+          o?.condition?.shortName || o?.condition?.question || o.conditionId;
+        const desc = o?.condition?.description ?? null;
+        const pythMeta = parsePythDescriptor(desc);
+        if (pythMeta) {
+          const strikeStr = formatPythPriceDecimalFromInt(
+            pythMeta.strikePrice,
+            pythMeta.strikeExpo
+          );
+          const dir = o.outcomeYes ? 'OVER' : 'UNDER';
+          return {
+            question,
+            choice: `${dir} $${strikeStr}`,
+            conditionId: o?.conditionId,
+            categorySlug: null,
+            endTime: o?.condition?.endTime ?? null,
+            description: desc,
+            source: 'pyth' as const,
+          };
+        }
+
+        return {
+          question,
+          choice: o.outcomeYes ? 'YES' : 'NO',
+          conditionId: o?.conditionId,
+          categorySlug: o?.condition?.category?.slug ?? null,
+          endTime: o?.condition?.endTime ?? null,
+          description: desc,
+          source: 'uma' as const,
+        };
+      });
       const endsAtSec =
         p.endsAt ||
         Math.max(
@@ -724,6 +774,7 @@ export default function PositionsTable({
                       categorySlug: leg.categorySlug ?? null,
                       endTime: leg.endTime ?? null,
                       description: leg.description ?? null,
+                      source: leg.source,
                     })
                   ) ?? []
                 }

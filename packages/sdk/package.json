@@ -70,7 +70,8 @@
     "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts relayer/auctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "settle:pyth": "tsx scripts/settlePythMarkets.ts"
   },
   "dependencies": {
     "abitype": "1.0.8",
@@ -110,6 +111,7 @@
     "react-hook-form": "7.53.0",
     "standard-version": "9.5.0",
     "tsup": "8.5.0",
+    "tsx": "4.19.2",
     "typescript": "5.8.3",
     "typescript-eslint": "8.21.0",
     "viem": "2.23.5",

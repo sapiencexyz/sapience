@@ -719,8 +719,7 @@ export function CreatePythPredictionForm({
             e instanceof Error ? e.message : 'Failed to load latest price'
           );
         } finally {
-          if (ac.signal.aborted) return;
-          setIsLoadingLatestPrice(false);
+          if (!ac.signal.aborted) setIsLoadingLatestPrice(false);
         }
       })();
     },
@@ -776,8 +775,7 @@ export function CreatePythPredictionForm({
         setLazerFeeds([]);
         setLazerFeedsError(e instanceof Error ? e.message : 'Failed to load feeds');
       } finally {
-        if (ac.signal.aborted) return;
-        setIsLoadingLazerFeeds(false);
+        if (!ac.signal.aborted) setIsLoadingLazerFeeds(false);
       }
     })();
 

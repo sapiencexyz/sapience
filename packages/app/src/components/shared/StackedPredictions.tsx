@@ -15,7 +15,7 @@ export type PickChoice = 'Yes' | 'No' | 'Over' | 'Under';
 
 export interface Pick {
   question: string;
-  choice: PickChoice;
+  choice: string;
   conditionId?: string;
   categorySlug?: string | null;
   endTime?: number | null;

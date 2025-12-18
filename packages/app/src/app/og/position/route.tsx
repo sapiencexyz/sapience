@@ -198,10 +198,31 @@ export async function GET(req: Request) {
     const legs = rawLegs
       .slice(0, 12) // safety cap
       .map((entry) => entry.split('|'))
-      .map(([text, choice]) => ({
-        text: normalizeText(text || '', 120),
-        choice: (choice || '').toLowerCase() === 'yes' ? 'Yes' : 'No',
-      }))
+      .map(([text, choice]) => {
+        const label = normalizeText(choice || '', 48) || '—';
+        const upper = label.toUpperCase();
+        const normalized =
+          upper === 'YES' || upper.startsWith('YES')
+            ? 'YES'
+            : upper === 'NO' || upper.startsWith('NO')
+              ? 'NO'
+              : upper === 'OVER' || upper.startsWith('OVER')
+                ? 'OVER'
+                : upper === 'UNDER' || upper.startsWith('UNDER')
+                  ? 'UNDER'
+                  : null;
+        const tone =
+          normalized === 'YES' || normalized === 'OVER'
+            ? ('success' as const)
+            : normalized === 'NO' || normalized === 'UNDER'
+              ? ('danger' as const)
+              : ('neutral' as const);
+        return {
+          text: normalizeText(text || '', 120),
+          choice: label,
+          tone,
+        };
+      })
       .filter((l) => l.text);
 
     const fonts = await loadFontData(req);
@@ -280,7 +301,6 @@ export async function GET(req: Request) {
                               </div>
                             );
                           }
-                          const isYes = leg.choice === 'Yes';
                           return (
                             <div
                               key={idx}
@@ -312,7 +332,7 @@ export async function GET(req: Request) {
                               >
                                 <Pill
                                   text={leg.choice}
-                                  tone={isYes ? 'success' : 'danger'}
+                                  tone={leg.tone}
                                   scale={scale}
                                 />
                               </div>

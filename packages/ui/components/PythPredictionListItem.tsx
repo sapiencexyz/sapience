@@ -41,6 +41,44 @@ export function PythPredictionListItem({
       )}`
     : null;
 
+  const extractLazerIdMaybe = (value: string): number | null => {
+    const s = value.trim();
+    if (!s) return null;
+    try {
+      // base-10 uint32
+      if (/^\d+$/.test(s)) {
+        const v = BigInt(s);
+        if (v > 0xffff_ffffn) return null;
+        return Number(v);
+      }
+
+      // bytes32 hex padded (on-chain encoding)
+      const hex64 = s.startsWith('0x') ? s : `0x${s}`;
+      if (/^0x[0-9a-fA-F]{64}$/.test(hex64)) {
+        const v = BigInt(hex64);
+        if (v > 0xffff_ffffn) return null;
+        return Number(v);
+      }
+
+      // short hex uint32 (0x... or bare)
+      const hex = s.startsWith('0x') ? s : `0x${s}`;
+      if (/^0x[0-9a-fA-F]{1,8}$/.test(hex)) {
+        const v = BigInt(hex);
+        if (v > 0xffff_ffffn) return null;
+        return Number(v);
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const lazerId = extractLazerIdMaybe(prediction.priceId);
+
+  const labelText =
+    (prediction.priceFeedLabel ?? '').trim() ||
+    (typeof lazerId === 'number' ? `Pyth Pro #${lazerId}` : prediction.priceId);
+
   const parseLocalDateTime = (value: string): Date | null => {
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
     if (!m) return null;
@@ -165,11 +203,11 @@ export function PythPredictionListItem({
                     rel="noopener noreferrer"
                     className="block max-w-full p-0 m-0 bg-transparent font-mono text-brand-white transition-colors whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate"
                   >
-                    {prediction.priceFeedLabel}
+                    {labelText}
                   </a>
                 ) : (
                   <div className="truncate text-brand-white font-mono">
-                    {prediction.priceFeedLabel || prediction.priceId}
+                    {labelText}
                   </div>
                 )}
               </div>
@@ -212,11 +250,11 @@ export function PythPredictionListItem({
                     rel="noopener noreferrer"
                     className="block max-w-full p-0 m-0 bg-transparent font-mono text-brand-white transition-colors whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate"
                   >
-                    {prediction.priceFeedLabel}
+                    {labelText}
                   </a>
                 ) : (
                   <div className="truncate text-brand-white font-mono">
-                    {prediction.priceFeedLabel || prediction.priceId}
+                    {labelText}
                   </div>
                 )}
                 <div className="mt-0.5 truncate text-xs text-muted-foreground font-mono uppercase">

@@ -17,6 +17,174 @@ import { IIndexer } from '../../interfaces';
 const BLOCK_BATCH_SIZE = 100;
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
 
+/**
+ * Pyth markets are synthetic placeholders created from on-chain Pyth outcomes.
+ * We want them to display like the old Hermes-wired UX (human label, not bytes32).
+ *
+ * On-chain PythResolver encodes a **Lazer uint32 feed id** in the low bits of a bytes32.
+ * We resolve that id to a symbol using the Lazer symbols endpoint and cache in-memory.
+ */
+type PythLazerSymbolRow = {
+  pyth_lazer_id?: unknown;
+  symbol?: unknown;
+  description?: unknown;
+};
+
+let cachedPythLazerSymbolMap: Map<number, string> | null = null;
+let inflightPythLazerSymbolMap: Promise<Map<number, string>> | null = null;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getArrayProp(
+  obj: Record<string, unknown>,
+  key: string
+): unknown[] | null {
+  const v = obj[key];
+  return Array.isArray(v) ? v : null;
+}
+
+function tryParseUint32(value: unknown): number | null {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) return null;
+    if (value < 0 || value > 0xffff_ffff) return null;
+    return value;
+  }
+  if (typeof value !== 'string') return null;
+  const s = value.trim();
+  if (!s) return null;
+  try {
+    if (/^\d+$/.test(s)) {
+      const v = BigInt(s);
+      if (v > 0xffff_ffffn) return null;
+      return Number(v);
+    }
+    const hex = s.startsWith('0x') ? s : `0x${s}`;
+    if (/^0x[0-9a-fA-F]{1,8}$/.test(hex)) {
+      const v = BigInt(hex);
+      if (v > 0xffff_ffffn) return null;
+      return Number(v);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function decodePythLazerIdFromBytes32(priceId: string): number | null {
+  const s = String(priceId ?? '').trim();
+  if (!s) return null;
+  // priceId is usually bytes32 hex. If it isn't, allow parsing decimal/short-hex as a convenience.
+  if (!/^0x[0-9a-fA-F]{64}$/.test(s)) return tryParseUint32(s);
+  try {
+    const v = BigInt(s);
+    if (v > 0xffff_ffffn) return null;
+    return Number(v);
+  } catch {
+    return null;
+  }
+}
+
+function tryExtractPythLazerRows(json: unknown): PythLazerSymbolRow[] {
+  const candidates: unknown[] = Array.isArray(json)
+    ? json
+    : isRecord(json)
+      ? (getArrayProp(json, 'data') ?? getArrayProp(json, 'symbols') ?? [])
+      : [];
+  const out: PythLazerSymbolRow[] = [];
+  for (const item of candidates) {
+    out.push({
+      pyth_lazer_id: isRecord(item) ? item['pyth_lazer_id'] : undefined,
+      symbol: isRecord(item) ? item['symbol'] : undefined,
+      description: isRecord(item) ? item['description'] : undefined,
+    });
+  }
+  return out;
+}
+
+async function loadPythLazerSymbolMap(): Promise<Map<number, string>> {
+  if (cachedPythLazerSymbolMap) return cachedPythLazerSymbolMap;
+  if (inflightPythLazerSymbolMap) return inflightPythLazerSymbolMap;
+
+  inflightPythLazerSymbolMap = (async () => {
+    const res = await fetch(
+      'https://history.pyth-lazer.dourolabs.app/history/v1/symbols'
+    );
+    if (!res.ok) throw new Error(`Pyth Lazer symbols failed (${res.status})`);
+    const json = (await res.json()) as unknown;
+    const rows = tryExtractPythLazerRows(json);
+    const map = new Map<number, string>();
+    for (const r of rows) {
+      const id = tryParseUint32(r.pyth_lazer_id);
+      if (typeof id !== 'number') continue;
+      const sym = typeof r.symbol === 'string' ? r.symbol.trim() : '';
+      const desc =
+        typeof r.description === 'string' ? r.description.trim() : '';
+      const label = sym.length > 0 ? sym : desc.length > 0 ? desc : null;
+      if (label) map.set(id, label);
+    }
+    cachedPythLazerSymbolMap = map;
+    return map;
+  })();
+
+  try {
+    return await inflightPythLazerSymbolMap;
+  } finally {
+    inflightPythLazerSymbolMap = null;
+  }
+}
+
+async function resolvePythSyntheticQuestion(priceId: string): Promise<string> {
+  const lazerId = decodePythLazerIdFromBytes32(priceId);
+  if (typeof lazerId !== 'number') return `Pyth market ${priceId}`;
+  try {
+    const map = await loadPythLazerSymbolMap();
+    return map.get(lazerId) ?? `Pyth Pro #${lazerId}`;
+  } catch {
+    return `Pyth Pro #${lazerId}`;
+  }
+}
+
+function formatPythDecimalFromInt(priceInt: bigint, expo: number): string {
+  const sign = priceInt < 0n ? '-' : '';
+  const digits = (priceInt < 0n ? -priceInt : priceInt).toString(10);
+  if (!digits || /^0+$/.test(digits)) return '0';
+
+  if (expo >= 0) return `${sign}${digits}${'0'.repeat(expo)}`;
+
+  const places = Math.abs(expo);
+  let out: string;
+  if (digits.length <= places) {
+    out = `0.${'0'.repeat(places - digits.length)}${digits}`;
+  } else {
+    const i = digits.length - places;
+    out = `${digits.slice(0, i)}.${digits.slice(i)}`;
+  }
+  out = out.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return sign + out;
+}
+
+function buildPythLegDescriptor(params: {
+  priceId: string;
+  endTimeSec: number;
+  strikePrice: bigint;
+  strikeExpo: number;
+  overWinsOnTie: boolean;
+}): string {
+  // Keep a stable machine-readable prefix so the app can render OVER/UNDER $X like before.
+  // Note: strikePrice is the on-chain int64 with strikeExpo (int32).
+  return [
+    'PYTH_LAZER',
+    `priceId=${String(params.priceId).toLowerCase()}`,
+    `endTime=${Math.floor(params.endTimeSec)}`,
+    `strikePrice=${params.strikePrice.toString()}`,
+    `strikeExpo=${Number(params.strikeExpo)}`,
+    `overWinsOnTie=${params.overWinsOnTie ? '1' : '0'}`,
+    `strikeDecimal=${formatPythDecimalFromInt(params.strikePrice, params.strikeExpo)}`,
+  ].join('|');
+}
+
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
   {
@@ -114,6 +282,36 @@ const PREDICTION_MARKET_ABI = [
       { name: 'encodedPredictedOutcomes', type: 'bytes', indexed: false },
       { name: 'makerCollateral', type: 'uint256', indexed: false },
       { name: 'takerCollateral', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
+
+// Minimal ABI for reading the canonical resolver address from on-chain storage.
+// NOTE: The PredictionMinted event does NOT include resolver, so we must read it.
+const PREDICTION_MARKET_READ_ABI = [
+  {
+    type: 'function',
+    name: 'getPrediction',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [
+      {
+        name: 'predictionData',
+        type: 'tuple',
+        components: [
+          { name: 'predictionId', type: 'uint256' },
+          { name: 'makerNftTokenId', type: 'uint256' },
+          { name: 'takerNftTokenId', type: 'uint256' },
+          { name: 'makerCollateral', type: 'uint256' },
+          { name: 'takerCollateral', type: 'uint256' },
+          { name: 'encodedPredictedOutcomes', type: 'bytes' },
+          { name: 'resolver', type: 'address' },
+          { name: 'maker', type: 'address' },
+          { name: 'taker', type: 'address' },
+          { name: 'settled', type: 'bool' },
+          { name: 'makerWon', type: 'bool' },
+        ],
+      },
     ],
   },
 ] as const;
@@ -558,8 +756,33 @@ class PredictionMarketIndexer implements IIndexer {
       const encodedPredictedOutcomes = decodedAny.args
         .encodedPredictedOutcomes as `0x${string}`;
 
-      const predictionResolver =
+      // IMPORTANT: PredictionMinted does NOT include the resolver address. The indexer used to
+      // fall back to a chain-level default (lzPMResolver/lzUmaResolver), which makes Condition.resolver
+      // incorrect for Pyth markets. Instead, read the resolver from on-chain storage at the log's block.
+      let predictionResolver =
         this.resolverAddress?.toLowerCase() ?? log.address.toLowerCase();
+      try {
+        const tokenId = decodedAny.args.makerNftTokenId as bigint;
+        const pred = (await this.client.readContract({
+          address: log.address as `0x${string}`,
+          abi: PREDICTION_MARKET_READ_ABI,
+          functionName: 'getPrediction',
+          args: [tokenId],
+          blockNumber: log.blockNumber ?? undefined,
+        })) as unknown;
+        const resolverMaybe = (pred as { resolver?: unknown } | null)?.resolver;
+        if (
+          typeof resolverMaybe === 'string' &&
+          resolverMaybe.startsWith('0x')
+        ) {
+          predictionResolver = resolverMaybe.toLowerCase();
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed to read getPrediction().resolver; falling back to configured resolver:',
+          e
+        );
+      }
 
       let predictedOutcomes: Array<{
         conditionId: string;
@@ -676,6 +899,7 @@ class PredictionMarketIndexer implements IIndexer {
         // Ensure referenced Conditions exist so Prediction rows can be created (FK constraint).
         // These are synthetic placeholders for Pyth markets; keep them non-public so they
         // don't pollute the "Markets" list.
+        const pythQuestionByPriceId = new Map<string, string>();
         for (const l of legs) {
           const id = String(l.marketId).toLowerCase();
           const endTimeInt =
@@ -683,25 +907,48 @@ class PredictionMarketIndexer implements IIndexer {
               ? Math.floor(l.endTimeSec)
               : null;
           if (!endTimeInt) continue;
+          const priceIdLower = String(l.priceId).toLowerCase();
+          const q =
+            pythQuestionByPriceId.get(priceIdLower) ??
+            (await resolvePythSyntheticQuestion(String(l.priceId)));
+          pythQuestionByPriceId.set(priceIdLower, q);
+
+          // Re-decode the full leg tuple so we can persist strike info for UI rendering.
+          // This is safe because it's sourced from the same encoded payload.
+          const match = outcomes.find(
+            (o) => String(o[0]).toLowerCase() === priceIdLower
+          );
+          const strikePrice = match ? (match[2] as bigint) : 0n;
+          const strikeExpoNum = match ? Number(match[3] as bigint) : 0;
+          const overWinsOnTie = match ? Boolean(match[4] as boolean) : true;
+          const pythDescriptor = buildPythLegDescriptor({
+            priceId: String(l.priceId),
+            endTimeSec: l.endTimeSec,
+            strikePrice,
+            strikeExpo: strikeExpoNum,
+            overWinsOnTie,
+          });
 
           await prisma.condition.upsert({
             where: { id },
             create: {
               id,
-              question: `Pyth market ${l.priceId}`,
+              question: q,
               shortName: null,
               categoryId: null,
               endTime: endTimeInt,
               public: false,
               claimStatement: `PYTH:${String(l.priceId).toLowerCase()}`,
-              description:
-                'Synthetic Pyth market (generated by predictionMarketIndexer)',
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
               similarMarkets: [],
               chainId: this.chainId,
             },
             update: {
               // Keep endTime aligned (should be stable)
               endTime: endTimeInt,
+              // Keep question aligned so historical rows can be upgraded from the old placeholder.
+              question: q,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
               chainId: this.chainId,
             },
           });
@@ -1155,6 +1402,7 @@ class PredictionMarketIndexer implements IIndexer {
         }));
 
         // Ensure referenced Conditions exist so Prediction rows can be created (FK constraint).
+        const pythQuestionByPriceId = new Map<string, string>();
         for (const l of legs) {
           const id = String(l.marketId).toLowerCase();
           const endTimeInt =
@@ -1162,24 +1410,46 @@ class PredictionMarketIndexer implements IIndexer {
               ? Math.floor(l.endTimeSec)
               : null;
           if (!endTimeInt) continue;
+          const priceIdLower = String(l.priceId).toLowerCase();
+          const q =
+            pythQuestionByPriceId.get(priceIdLower) ??
+            (await resolvePythSyntheticQuestion(String(l.priceId)));
+          pythQuestionByPriceId.set(priceIdLower, q);
+
+          // Re-decode the full leg tuple so we can persist strike info for UI rendering.
+          const match = outcomes.find(
+            (o) => String(o[0]).toLowerCase() === priceIdLower
+          );
+          const strikePrice = match ? (match[2] as bigint) : 0n;
+          const strikeExpoNum = match ? Number(match[3] as bigint) : 0;
+          const overWinsOnTie = match ? Boolean(match[4] as boolean) : true;
+          const pythDescriptor = buildPythLegDescriptor({
+            priceId: String(l.priceId),
+            endTimeSec: l.endTimeSec,
+            strikePrice,
+            strikeExpo: strikeExpoNum,
+            overWinsOnTie,
+          });
 
           await prisma.condition.upsert({
             where: { id },
             create: {
               id,
-              question: `Pyth market ${l.priceId}`,
+              question: q,
               shortName: null,
               categoryId: null,
               endTime: endTimeInt,
               public: false,
               claimStatement: `PYTH:${String(l.priceId).toLowerCase()}`,
-              description:
-                'Synthetic Pyth market (generated by predictionMarketIndexer)',
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
               similarMarkets: [],
               chainId: this.chainId,
             },
             update: {
               endTime: endTimeInt,
+              // Keep question aligned so historical rows can be upgraded from the old placeholder.
+              question: q,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
               chainId: this.chainId,
             },
           });

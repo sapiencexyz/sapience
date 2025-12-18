@@ -22,7 +22,7 @@ export function createAuctionProxyMiddleware() {
   const target = getAuctionServiceUrl();
   console.log('[Auction Proxy] Auction service URL:', target);
 
-  return createProxyMiddleware({
+  return createProxyMiddleware<Request, Response>({
     target,
     changeOrigin: true,
     ws: false, // We handle WebSocket upgrades separately
@@ -41,7 +41,7 @@ export function createAuctionProxyMiddleware() {
           proxyReq.setHeader('X-Forwarded-Host', req.headers.host);
         }
       },
-      proxyRes: (proxyRes, req) => {
+      proxyRes: (proxyRes: http.IncomingMessage, req: Request) => {
         // Log all responses for monitoring
         if (proxyRes.statusCode) {
           if (proxyRes.statusCode >= 200 && proxyRes.statusCode < 300) {
