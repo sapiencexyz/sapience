@@ -48,6 +48,19 @@ export default function ShareDialog(props: ShareDialogProps) {
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
+    
+    // If positionId is provided and we're using /og/position, use positionId parameter
+    // This allows the edge endpoint to query the API for position data
+    if (positionId !== null && imagePath === '/og/position') {
+      sp.set('positionId', String(positionId));
+      // Add chainId if available in extraParams
+      if (extraParams?.chainId) {
+        sp.set('chainId', String(extraParams.chainId));
+      }
+      return sp.toString();
+    }
+    
+    // Otherwise, build query string from all parameters (backward compatibility)
     if (groupAddress && marketId != null) {
       sp.set('group', groupAddress);
       sp.set('mid', String(marketId));
@@ -86,6 +99,7 @@ export default function ShareDialog(props: ShareDialogProps) {
     owner,
     extraParams,
     props.legs,
+    imagePath,
   ]);
 
   const imageSrc = `${imagePath}?${queryString}&t=${Date.now()}`;

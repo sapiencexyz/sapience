@@ -86,7 +86,29 @@ export default function ShareAfterMarketsRedirect() {
     }
   }, []);
 
-  // Build OG url from betslip data
+  // Build OG url from position ID (preferred method)
+  const buildOgUrlFromPositionId = useCallback(
+    (positionId: number, chainId?: number): string | null => {
+      try {
+        const qp = new URLSearchParams();
+        qp.set('positionId', String(positionId));
+        if (chainId) {
+          qp.set('chainId', String(chainId));
+        }
+        const ogUrl = `/og/position?${qp.toString()}`;
+        return ogUrl;
+      } catch (e) {
+        console.error(
+          '[ShareAfterMarketsRedirect] Error building OG URL from positionId:',
+          e
+        );
+        return null;
+      }
+    },
+    []
+  );
+
+  // Build OG url from betslip data (fallback)
   const buildOgUrlFromBetslip = useCallback(
     (betslip: ShareIntentStored['betslip']): string | null => {
       if (!lowerAddress || !betslip) {
@@ -134,16 +156,25 @@ export default function ShareAfterMarketsRedirect() {
   );
 
   // Build minimal OG url from resolved parlay (fallback)
+  // Uses positionId when available, otherwise falls back to query params
   const toOgUrl = useCallback(
     (entity: Parlay): string | null => {
       if (!lowerAddress) {
         return null;
       }
-      const qp = new URLSearchParams();
-      qp.set('addr', lowerAddress);
       try {
-        // Encode all legs with question and prediction choice
         const position = entity;
+        
+        // Prefer positionId-based URL (same as buildOgUrlFromPositionId)
+        if (position?.id) {
+          return buildOgUrlFromPositionId(position.id, position.chainId);
+        }
+
+        // Fallback to query params if positionId is not available
+        const qp = new URLSearchParams();
+        qp.set('addr', lowerAddress);
+        
+        // Encode all legs with question and prediction choice
         const legs = (position?.predictions || [])
           .map((o) => {
             const question =
@@ -186,7 +217,7 @@ export default function ShareAfterMarketsRedirect() {
         return null;
       }
     },
-    [lowerAddress]
+    [lowerAddress, buildOgUrlFromPositionId]
   );
 
   // Handle intent detection and open dialog with betslip data
@@ -306,56 +337,113 @@ export default function ShareAfterMarketsRedirect() {
         }
       }
 
-      // Path 2: build OG URL from betslip data
-      if (intent.betslip) {
-        // Store expected legs in state so they persist after intent is cleared
-        if (intent.betslip.legs) {
-          setStoredExpectedLegs(intent.betslip.legs);
+      // Path 2: Wait for position to be indexed, then use positionId
+      refetchPositionsWrapper();
+
+      const list: Parlay[] = positions || [];
+      const ts = Number(intent.clientTimestamp || 0);
+      const windowMs = 2 * 60 * 1000; // 2 minutes
+      const minTs = ts - windowMs;
+
+      // Find positions minted after the intent timestamp
+      const candidatePositions = list.filter(
+        (p: Parlay) => Number(p.mintedAt) * 1000 >= minTs
+      );
+
+      // Filter by NFT ID if lastNftId is provided
+      let filteredByNftId = candidatePositions;
+      const lastNftIdToCheck = intent.lastNftId || intent.betslip?.lastNftId;
+      if (lastNftIdToCheck && candidatePositions.length > 0) {
+        try {
+          const lastNftIdBigInt = BigInt(lastNftIdToCheck);
+          filteredByNftId = candidatePositions.filter((p: Parlay) => {
+            try {
+              const currentNftId = BigInt(p.predictorNftTokenId || '0');
+              return currentNftId > lastNftIdBigInt;
+            } catch {
+              return false;
+            }
+          });
+        } catch (e) {
+          console.error('[ShareAfterMarketsRedirect] Error comparing NFT IDs:', e);
+          // Error comparing NFT IDs, use all candidates
         }
-        if (intent.txHash) {
-          setStoredTxHash(intent.txHash);
-        }
-        const src = buildOgUrlFromBetslip(intent.betslip);
+      }
+
+      // If expectedLegs are provided, verify the position matches
+      let resolved: Parlay | null = null;
+      if (intent.betslip?.legs && intent.betslip.legs.length > 0) {
+        resolved = filteredByNftId.find((p: Parlay) => {
+          const positionLegs = (p.predictions || []).map((pred) => {
+            const question =
+              pred.condition?.shortName || pred.condition?.question || '';
+            const choice = pred.outcomeYes ? 'Yes' : 'No';
+            return { question, choice };
+          });
+
+          if (positionLegs.length !== intent.betslip!.legs.length) {
+            return false;
+          }
+
+          const expectedMap = new Map(
+            intent.betslip!.legs.map((leg) => [
+              `${leg.question}|${leg.choice}`,
+              true,
+            ])
+          );
+          const positionMap = new Map(
+            positionLegs.map((leg) => [`${leg.question}|${leg.choice}`, true])
+          );
+
+          for (const leg of intent.betslip!.legs) {
+            const key = `${leg.question}|${leg.choice}`;
+            if (!positionMap.has(key)) {
+              return false;
+            }
+          }
+
+          for (const leg of positionLegs) {
+            const key = `${leg.question}|${leg.choice}`;
+            if (!expectedMap.has(key)) {
+              return false;
+            }
+          }
+
+          return true;
+        }) || null;
+      } else {
+        // Fallback: use first candidate after NFT ID filter
+        resolved =
+          filteredByNftId.sort(
+            (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
+          )[0] || null;
+      }
+
+      if (resolved) {
+        // Use positionId to build OG URL (preferred method)
+        const src = buildOgUrlFromPositionId(resolved.id, resolved.chainId);
         if (src) {
           setImageSrc(src);
           setOpen(true);
           clearIntent();
           return;
         }
-      }
 
-      // Path 3: fallback to position resolution (if betslip data not available)
-      if (intent.txHash) {
-        setStoredTxHash(intent.txHash);
-      }
-      refetchPositionsWrapper();
-
-      const list: Parlay[] = positions || [];
-      if (list.length === 0) {
-        // Will retry when positions load
-        return;
-      }
-
-      const ts = Number(intent.clientTimestamp || 0);
-      const windowMs = 2 * 60 * 1000; // 2 minutes
-      const minTs = ts - windowMs;
-
-      const filtered = list.filter(
-        (p: Parlay) => Number(p.mintedAt) * 1000 >= minTs
-      );
-
-      const resolved =
-        filtered.sort(
-          (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
-        )[0] || null;
-
-      if (resolved) {
-        const src = toOgUrl(resolved);
-        if (src) {
-          setImageSrc(src);
+        // Fallback to old method if positionId method fails
+        const fallbackSrc = toOgUrl(resolved);
+        if (fallbackSrc) {
+          setImageSrc(fallbackSrc);
           setOpen(true);
           clearIntent();
         }
+        return;
+      }
+
+      // Path 3: If position not found yet, wait for indexing
+      // Don't open dialog optimistically - wait for position to be indexed
+      if (list.length === 0) {
+        // Will retry when positions load
+        return;
       }
     };
 
@@ -372,6 +460,7 @@ export default function ShareAfterMarketsRedirect() {
     lowerAddress,
     positions,
     readIntent,
+    buildOgUrlFromPositionId,
     buildOgUrlFromBetslip,
     toOgUrl,
     clearIntent,

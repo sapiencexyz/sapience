@@ -11,7 +11,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { Copy, Share2, Check } from 'lucide-react';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import * as viemChains from 'viem/chains';
@@ -116,7 +116,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       }
 
       const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 30000; // 45 seconds window
+        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000; // 2 minute window
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       // Find positions minted after the dialog opened
@@ -136,8 +136,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           filteredByNftId = candidatePositions.filter((p: Parlay) => {
             try {
               const currentNftId = BigInt(p.predictorNftTokenId || '0');
-              const isGreater = currentNftId > lastNftIdBigInt;
-              return isGreater;
+              return currentNftId > lastNftIdBigInt;
             } catch (_e) {
               return false;
             }
@@ -146,6 +145,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             return false;
           }
         } catch (_e) {
+          console.error('[OgShareDialog] Error comparing NFT IDs:', _e);
           // Error comparing NFT IDs
         }
       }
@@ -281,15 +281,69 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     }
   };
 
+  // Extract positionId and chainId from imageSrc if present
+  const positionShareParams = useMemo(() => {
+    try {
+      if (typeof window === 'undefined') return null;
+      const url = new URL(imageSrc, window.location.origin);
+      const positionId = url.searchParams.get('positionId');
+      const chainIdParam = url.searchParams.get('chainId');
+      if (positionId) {
+        return { positionId, chainId: chainIdParam };
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }, [imageSrc]);
+
+  // Build share URL - use positionId if available, otherwise use token
+  // Returns absolute URL for sharing
+  const buildShareUrl = useCallback(async (): Promise<string> => {
+    let relativeUrl: string;
+    
+    // If positionId is available, use it directly
+    if (positionShareParams?.positionId) {
+      const qp = new URLSearchParams();
+      qp.set('positionId', positionShareParams.positionId);
+      if (positionShareParams.chainId) {
+        qp.set('chainId', positionShareParams.chainId);
+      }
+      relativeUrl = `/share?${qp.toString()}`;
+    } else {
+      // Otherwise, use the token-based approach
+      const payload = {
+        img: imageSrc,
+        title: shareTitle,
+        description: shareText,
+        alt: 'Sapience share image',
+      };
+      try {
+        const res = await fetch('/api/share/encode', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        relativeUrl = data?.shareUrl || '/share';
+      } catch {
+        relativeUrl = '/share';
+      }
+    }
+
+    // Convert to absolute URL
+    if (typeof window !== 'undefined') {
+      return `${window.location.origin}${relativeUrl}`;
+    }
+    return relativeUrl;
+  }, [positionShareParams, imageSrc, shareTitle, shareText]);
+
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {
     if (typeof window !== 'undefined')
       return `${window.location.origin}${imageSrc}`;
     return imageSrc;
   }, [imageSrc]);
-
-  // Canonical share page base; encoded short path becomes /s/<token>
-  const shareHref = useMemo(() => `/share`, []);
 
   const explorerTxUrl = useMemo(() => {
     if (!txHash || !chainId) return null;
@@ -400,46 +454,12 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                   }
 
                   // Fallback: generate compact share URL and copy as text
-                  const payload = {
-                    img: imageSrc,
-                    title: shareTitle,
-                    description: shareText,
-                    alt: 'Sapience share image',
-                  };
-                  let shareUrl = shareHref;
-                  try {
-                    const resp = await fetch('/api/share/encode', {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify(payload),
-                    });
-                    const data = await resp.json();
-                    shareUrl = data?.shareUrl || shareHref;
-                  } catch {
-                    // ignore and use fallback
-                  }
+                  const shareUrl = await buildShareUrl();
                   await navigator.clipboard.writeText(shareUrl);
                   toast({ title: 'Link copied successfully' });
                 } catch {
                   try {
-                    const payload = {
-                      img: imageSrc,
-                      title: shareTitle,
-                      description: shareText,
-                      alt: 'Sapience share image',
-                    };
-                    let shareUrl = shareHref;
-                    try {
-                      const resp = await fetch('/api/share/encode', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify(payload),
-                      });
-                      const data = await resp.json();
-                      shareUrl = data?.shareUrl || shareHref;
-                    } catch {
-                      // ignore and use fallback
-                    }
+                    const shareUrl = await buildShareUrl();
                     await navigator.clipboard.writeText(shareUrl);
                     toast({ title: 'Link copied successfully' });
                   } catch {
@@ -455,29 +475,11 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               size="lg"
               className="w-full"
               type="button"
+              disabled={trackPosition && !positionResolved}
               onClick={async () => {
-                // Request compact share URL from API
-                const payload = {
-                  // send relative path to shorten token further
-                  img: imageSrc,
-                  title: shareTitle,
-                  description: shareText,
-                  alt: 'Sapience share image',
-                };
-                try {
-                  const res = await fetch('/api/share/encode', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload),
-                  });
-                  const data = await res.json();
-                  const shareUrl = data?.shareUrl || shareHref;
-                  const intent = buildXShareUrl(shareUrl);
-                  window.open(intent, '_blank', 'noopener,noreferrer');
-                } catch {
-                  const intent = buildXShareUrl(shareHref);
-                  window.open(intent, '_blank', 'noopener,noreferrer');
-                }
+                const shareUrl = await buildShareUrl();
+                const intent = buildXShareUrl(shareUrl);
+                window.open(intent, '_blank', 'noopener,noreferrer');
               }}
             >
               <Image
@@ -495,25 +497,9 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               className="w-full"
               type="button"
               variant="outline"
+              disabled={trackPosition && !positionResolved}
               onClick={async () => {
-                const payload = {
-                  img: imageSrc,
-                  title: shareTitle,
-                  description: shareText,
-                  alt: 'Sapience share image',
-                };
-                let shareUrl = shareHref;
-                try {
-                  const res = await fetch('/api/share/encode', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload),
-                  });
-                  const data = await res.json();
-                  shareUrl = data?.shareUrl || shareHref;
-                } catch {
-                  // ignore; use fallback
-                }
+                const shareUrl = await buildShareUrl();
                 if ((navigator as any).share) {
                   try {
                     await (navigator as any).share({ url: shareUrl });

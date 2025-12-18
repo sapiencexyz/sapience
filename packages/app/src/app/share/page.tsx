@@ -54,12 +54,24 @@ function extractGroupFromImg(img?: string): string | undefined {
 
 export function generateMetadata({ searchParams }: SharePageProps): Metadata {
   const token = coerceString(searchParams?.t);
+  const positionId = coerceString(searchParams?.positionId);
+  const chainId = coerceString(searchParams?.chainId);
   let img = coerceString(searchParams?.img);
   const title = 'Prediction Markets';
   let description =
     coerceString(searchParams?.description) || 'Sapience Prediction Markets';
   let imageAlt = coerceString(searchParams?.alt) || 'Sapience Share Image';
   let canonical = coerceString(searchParams?.url);
+
+  // If positionId is present, build OG image URL from it
+  if (positionId) {
+    const qp = new URLSearchParams();
+    qp.set('positionId', positionId);
+    if (chainId) {
+      qp.set('chainId', chainId);
+    }
+    img = `/og/position?${qp.toString()}`;
+  }
 
   // If short token is present, decode fields from token
   if (token) {
@@ -142,10 +154,22 @@ export function generateMetadata({ searchParams }: SharePageProps): Metadata {
 
 export default function SharePage({ searchParams }: SharePageProps) {
   const token = coerceString(searchParams?.t);
+  const positionId = coerceString(searchParams?.positionId);
+  const chainId = coerceString(searchParams?.chainId);
   let img = coerceString(searchParams?.img);
   let alt = coerceString(searchParams?.alt) || 'Share image';
   const addrFromQuery = extractAddrFromImg(img);
   const groupFromQuery = extractGroupFromImg(img);
+
+  // If positionId is present, build OG image URL from it
+  if (positionId) {
+    const qp = new URLSearchParams();
+    qp.set('positionId', positionId);
+    if (chainId) {
+      qp.set('chainId', chainId);
+    }
+    img = `/og/position?${qp.toString()}`;
+  }
 
   if (token) {
     try {

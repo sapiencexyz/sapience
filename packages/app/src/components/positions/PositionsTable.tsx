@@ -1330,6 +1330,7 @@ export default function PositionsTable({
       {selectedPosition && (
         <ShareDialog
           question={`Position #${selectedPosition.positionId}`}
+          positionId={selectedPosition.positionId}
           legs={selectedPosition.legs?.map((l) => ({
             question: l.question,
             choice: l.choice,
@@ -1345,11 +1346,12 @@ export default function PositionsTable({
           symbol="USDe"
           owner={String(account)}
           imagePath="/og/position"
-          extraParams={
-            selectedPosition.addressRole === 'counterparty'
+          extraParams={{
+            ...(selectedPosition.addressRole === 'counterparty'
               ? { anti: '1' }
-              : undefined
-          }
+              : {}),
+            ...(chainId ? { chainId: String(chainId) } : {}),
+          }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {
             if (!next) setOpenSharePositionId(null);

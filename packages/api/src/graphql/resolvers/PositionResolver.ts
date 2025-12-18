@@ -112,6 +112,74 @@ export class PositionResolver {
     return prisma.position.count({ where });
   }
 
+  @Query(() => PositionType, { nullable: true })
+  async positionById(
+    @Arg('id', () => Int) id: number,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
+  ): Promise<PositionType | null> {
+    const where: Prisma.PositionWhereInput = { id };
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+
+    const row = await prisma.position.findFirst({ where });
+    if (!row) return null;
+
+    const predictions = await prisma.prediction.findMany({
+      where: { positionId: row.id },
+      include: {
+        condition: {
+          select: {
+            id: true,
+            question: true,
+            shortName: true,
+            endTime: true,
+            settled: true,
+            resolvedToYes: true,
+          },
+        },
+      },
+    });
+
+    const predictionTypes: PredictionType[] = predictions.map((p) => {
+      const condition = p.condition && {
+        id: p.condition.id,
+        question: p.condition.question ?? null,
+        shortName: p.condition.shortName ?? null,
+        endTime: p.condition.endTime ?? null,
+        settled: p.condition.settled,
+        resolvedToYes: p.condition.resolvedToYes,
+      };
+      return {
+        conditionId: p.conditionId,
+        resolver: p.resolver,
+        outcomeYes: p.outcomeYes,
+        chainId: p.chainId ?? null,
+        condition: condition ?? null,
+      };
+    });
+
+    return {
+      id: row.id,
+      chainId: row.chainId,
+      marketAddress: row.marketAddress,
+      predictor: row.predictor,
+      counterparty: row.counterparty,
+      predictorNftTokenId: row.predictorNftTokenId,
+      counterpartyNftTokenId: row.counterpartyNftTokenId,
+      totalCollateral: row.totalCollateral,
+      predictorCollateral: row.predictorCollateral ?? null,
+      counterpartyCollateral: row.counterpartyCollateral ?? null,
+      refCode: row.refCode,
+      status: row.status as unknown as PositionType['status'],
+      predictorWon: row.predictorWon,
+      mintedAt: row.mintedAt,
+      settledAt: row.settledAt ?? null,
+      endsAt: row.endsAt ?? null,
+      predictions: predictionTypes,
+    };
+  }
+
   @Query(() => [PositionType])
   async positions(
     @Arg('address', () => String) address: string,

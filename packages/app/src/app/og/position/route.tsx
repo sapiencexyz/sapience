@@ -20,6 +20,35 @@ import {
 
 export const runtime = 'edge';
 
+// Helper to get GraphQL endpoint URL
+function getGraphQLEndpoint(): string {
+  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  try {
+    const u = new URL(baseUrl);
+    return `${u.origin}/graphql`;
+  } catch {
+    return 'https://api.sapience.xyz/graphql';
+  }
+}
+
+// Helper to format units (18 decimals for collateral)
+function formatUnits(value: string, decimals: number = 18): string {
+  try {
+    const bigIntValue = BigInt(value);
+    const divisor = BigInt(10 ** decimals);
+    const whole = bigIntValue / divisor;
+    const remainder = bigIntValue % divisor;
+    if (remainder === 0n) {
+      return whole.toString();
+    }
+    const remainderStr = remainder.toString().padStart(decimals, '0');
+    const trimmed = remainderStr.replace(/0+$/, '');
+    return `${whole}.${trimmed}`;
+  } catch {
+    return '0';
+  }
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -31,19 +60,134 @@ export async function GET(req: Request) {
       });
     }
 
-    const wagerRaw = normalizeText(searchParams.get('wager'), 32);
-    const payoutRaw = normalizeText(searchParams.get('payout'), 32);
-    const wager = addThousandsSeparators(wagerRaw);
-    const payout = addThousandsSeparators(payoutRaw);
-    const symbol = normalizeText(searchParams.get('symbol'), 16);
+    // Check if positionId is provided - if so, query API for position data
+    const positionIdParam = searchParams.get('positionId');
+    let wagerRaw = normalizeText(searchParams.get('wager'), 32);
+    let payoutRaw = normalizeText(searchParams.get('payout'), 32);
+    let symbol = normalizeText(searchParams.get('symbol'), 16);
+    let rawAddr = (searchParams.get('addr') || '').toString();
+    let rawLegs: string[] = searchParams.getAll('leg');
+    let antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
+
+    if (positionIdParam) {
+      try {
+        const positionId = parseInt(positionIdParam, 10);
+        if (!isNaN(positionId)) {
+          const chainIdParam = searchParams.get('chainId');
+          const chainId = chainIdParam ? parseInt(chainIdParam, 10) : undefined;
+
+          const graphqlEndpoint = getGraphQLEndpoint();
+          const query = `
+            query PositionById($id: Int!, $chainId: Int) {
+              positionById(id: $id, chainId: $chainId) {
+                id
+                chainId
+                predictor
+                counterparty
+                predictorCollateral
+                counterpartyCollateral
+                totalCollateral
+                predictions {
+                  conditionId
+                  outcomeYes
+                  condition {
+                    id
+                    question
+                    shortName
+                  }
+                }
+              }
+            }
+          `;
+
+          const response = await fetch(graphqlEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query,
+              variables: { id: positionId, chainId: chainId ?? null },
+            }),
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const position = result?.data?.positionById;
+
+            if (position) {
+              // Extract data from position
+              rawAddr = position.predictor?.toLowerCase() || rawAddr;
+
+              // Determine if user is counterparty (for anti flag)
+              const userAddr = rawAddr.toLowerCase();
+              const isUserCounterparty =
+                position.counterparty?.toLowerCase() === userAddr;
+              if (isUserCounterparty) {
+                antiParam = '1';
+              }
+
+              // Get wager and payout
+              const collateral = isUserCounterparty
+                ? position.counterpartyCollateral
+                : position.predictorCollateral;
+              const totalCollateral = position.totalCollateral;
+
+              if (collateral) {
+                wagerRaw = formatUnits(collateral);
+              }
+              if (totalCollateral) {
+                payoutRaw = formatUnits(totalCollateral);
+              }
+
+              // Default symbol if not provided
+              if (!symbol) {
+                symbol = 'testUSDe';
+              }
+
+              // Build legs from predictions
+              if (position.predictions && position.predictions.length > 0) {
+                rawLegs = position.predictions.map(
+                  (pred: {
+                    condition?: { shortName?: string | null; question?: string | null } | null;
+                    outcomeYes: boolean;
+                  }) => {
+                    const question =
+                      pred.condition?.shortName || pred.condition?.question || '';
+                    const choice = pred.outcomeYes ? 'Yes' : 'No';
+                    return `${question}|${choice}`;
+                  }
+                );
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // If API query fails, fall back to query params
+        console.error('Failed to fetch position from API:', err);
+      }
+    }
+
+    // Round wager and payout to 2 decimals
+    const roundToTwoDecimals = (value: string): string => {
+      try {
+        const num = parseFloat(value);
+        if (isNaN(num)) return value;
+        return num.toFixed(2);
+      } catch {
+        return value;
+      }
+    };
+
+    const wagerRawRounded = roundToTwoDecimals(wagerRaw);
+    const payoutRawRounded = roundToTwoDecimals(payoutRaw);
+
+    const wager = addThousandsSeparators(wagerRawRounded);
+    const payout = addThousandsSeparators(payoutRawRounded);
     // Counterparty flag (anti param) to change label to "Prediction Against"
-    const antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
     const isCounterparty = ['1', 'true', 'yes', 'anti', 'against'].includes(
       antiParam
     );
 
     // Validate and normalize Ethereum address (optional)
-    const rawAddr = (searchParams.get('addr') || '').toString();
     const cleanedAddr = rawAddr.replace(/\s/g, '').toLowerCase();
     const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
 
@@ -51,8 +195,8 @@ export async function GET(req: Request) {
     const { bgUrl } = commonAssets(req);
 
     // Parse legs passed as repeated `leg` params: text|Yes or text|No
-    const rawLegs = searchParams.getAll('leg').slice(0, 12); // safety cap
     const legs = rawLegs
+      .slice(0, 12) // safety cap
       .map((entry) => entry.split('|'))
       .map(([text, choice]) => ({
         text: normalizeText(text || '', 120),
