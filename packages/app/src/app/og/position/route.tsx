@@ -22,7 +22,8 @@ export const runtime = 'edge';
 
 // Helper to get GraphQL endpoint URL
 function getGraphQLEndpoint(): string {
-  const baseUrl = process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+  const baseUrl =
+    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
   try {
     const u = new URL(baseUrl);
     return `${u.origin}/graphql`;
@@ -147,11 +148,16 @@ export async function GET(req: Request) {
               if (position.predictions && position.predictions.length > 0) {
                 rawLegs = position.predictions.map(
                   (pred: {
-                    condition?: { shortName?: string | null; question?: string | null } | null;
+                    condition?: {
+                      shortName?: string | null;
+                      question?: string | null;
+                    } | null;
                     outcomeYes: boolean;
                   }) => {
                     const question =
-                      pred.condition?.shortName || pred.condition?.question || '';
+                      pred.condition?.shortName ||
+                      pred.condition?.question ||
+                      '';
                     const choice = pred.outcomeYes ? 'Yes' : 'No';
                     return `${question}|${choice}`;
                   }

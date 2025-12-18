@@ -164,7 +164,7 @@ export default function ShareAfterMarketsRedirect() {
       }
       try {
         const position = entity;
-        
+
         // Prefer positionId-based URL (same as buildOgUrlFromPositionId)
         if (position?.id) {
           return buildOgUrlFromPositionId(position.id, position.chainId);
@@ -173,7 +173,7 @@ export default function ShareAfterMarketsRedirect() {
         // Fallback to query params if positionId is not available
         const qp = new URLSearchParams();
         qp.set('addr', lowerAddress);
-        
+
         // Encode all legs with question and prediction choice
         const legs = (position?.predictions || [])
           .map((o) => {
@@ -365,7 +365,10 @@ export default function ShareAfterMarketsRedirect() {
             }
           });
         } catch (e) {
-          console.error('[ShareAfterMarketsRedirect] Error comparing NFT IDs:', e);
+          console.error(
+            '[ShareAfterMarketsRedirect] Error comparing NFT IDs:',
+            e
+          );
           // Error comparing NFT IDs, use all candidates
         }
       }
@@ -373,44 +376,45 @@ export default function ShareAfterMarketsRedirect() {
       // If expectedLegs are provided, verify the position matches
       let resolved: Parlay | null = null;
       if (intent.betslip?.legs && intent.betslip.legs.length > 0) {
-        resolved = filteredByNftId.find((p: Parlay) => {
-          const positionLegs = (p.predictions || []).map((pred) => {
-            const question =
-              pred.condition?.shortName || pred.condition?.question || '';
-            const choice = pred.outcomeYes ? 'Yes' : 'No';
-            return { question, choice };
-          });
+        resolved =
+          filteredByNftId.find((p: Parlay) => {
+            const positionLegs = (p.predictions || []).map((pred) => {
+              const question =
+                pred.condition?.shortName || pred.condition?.question || '';
+              const choice = pred.outcomeYes ? 'Yes' : 'No';
+              return { question, choice };
+            });
 
-          if (positionLegs.length !== intent.betslip!.legs.length) {
-            return false;
-          }
-
-          const expectedMap = new Map(
-            intent.betslip!.legs.map((leg) => [
-              `${leg.question}|${leg.choice}`,
-              true,
-            ])
-          );
-          const positionMap = new Map(
-            positionLegs.map((leg) => [`${leg.question}|${leg.choice}`, true])
-          );
-
-          for (const leg of intent.betslip!.legs) {
-            const key = `${leg.question}|${leg.choice}`;
-            if (!positionMap.has(key)) {
+            if (positionLegs.length !== intent.betslip!.legs.length) {
               return false;
             }
-          }
 
-          for (const leg of positionLegs) {
-            const key = `${leg.question}|${leg.choice}`;
-            if (!expectedMap.has(key)) {
-              return false;
+            const expectedMap = new Map(
+              intent.betslip!.legs.map((leg) => [
+                `${leg.question}|${leg.choice}`,
+                true,
+              ])
+            );
+            const positionMap = new Map(
+              positionLegs.map((leg) => [`${leg.question}|${leg.choice}`, true])
+            );
+
+            for (const leg of intent.betslip!.legs) {
+              const key = `${leg.question}|${leg.choice}`;
+              if (!positionMap.has(key)) {
+                return false;
+              }
             }
-          }
 
-          return true;
-        }) || null;
+            for (const leg of positionLegs) {
+              const key = `${leg.question}|${leg.choice}`;
+              if (!expectedMap.has(key)) {
+                return false;
+              }
+            }
+
+            return true;
+          }) || null;
       } else {
         // Fallback: use first candidate after NFT ID filter
         resolved =

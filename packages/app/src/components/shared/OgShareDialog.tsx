@@ -301,7 +301,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   // Returns absolute URL for sharing
   const buildShareUrl = useCallback(async (): Promise<string> => {
     let relativeUrl: string;
-    
+
     // If positionId is available, use it directly
     if (positionShareParams?.positionId) {
       const qp = new URLSearchParams();
