@@ -182,6 +182,8 @@ model Condition {
   similarMarkets   String[]        @default([])
   chainId          Int             @default(42161)
   openInterest     String          @default("0") @db.VarChar
+  /// Canonical resolver address for this condition (latest observed wins)
+  resolver         String?         @db.VarChar
   
   // Resolution status
   settled          Boolean         @default(false)
@@ -201,6 +203,7 @@ model Condition {
   @@index([categoryId])
   @@index([endTime])
   @@index([conditionGroupId])
+  @@index([resolver], map: "IDX_condition_resolver")
   @@map("condition")
 }
 
@@ -233,17 +236,16 @@ model Prediction {
   limitOrder   LimitOrder?  @relation(fields: [limitOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   // Conceptual prediction data
-  resolver   String  @db.VarChar
   outcomeYes Boolean
 
   // Optional derived / debugging / traceability fields
   chainId Int?
 
   @@index([conditionId], map: "IDX_prediction_condition")
-  @@index([resolver], map: "IDX_prediction_resolver")
   @@index([positionId], map: "IDX_prediction_position")
   @@index([limitOrderId], map: "IDX_prediction_limit_order")
-  @@unique([positionId, conditionId, resolver], map: "UQ_prediction_position_condition_resolver")
+  @@unique([positionId, conditionId], map: "UQ_prediction_position_condition")
+  @@unique([limitOrderId, conditionId], map: "UQ_prediction_limit_order_condition")
   @@map("prediction")
 }
 

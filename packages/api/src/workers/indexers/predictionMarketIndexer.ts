@@ -554,6 +554,41 @@ class PredictionMarketIndexer implements IIndexer {
         timestamp: Number(block.timestamp),
       };
 
+      const [outcomes] = decodeAbiParameters(
+        [
+          {
+            type: 'tuple[]',
+            components: [{ type: 'bytes32' }, { type: 'bool' }],
+          },
+        ],
+        decodedAny.args.encodedPredictedOutcomes
+      ) as unknown as [[`0x${string}`, boolean][]];
+      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+        conditionId: marketId,
+        prediction,
+      }));
+
+      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
+
+      const predictionResolver =
+        this.resolverAddress?.toLowerCase() ?? log.address.toLowerCase();
+
+      // Always update the canonical Condition resolver (latest event wins),
+      // even if we end up skipping writes due to existing events.
+      try {
+        if (conditionIds.length > 0) {
+          await prisma.condition.updateMany({
+            where: { id: { in: conditionIds } },
+            data: { resolver: predictionResolver },
+          });
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed updating Condition.resolver:',
+          e
+        );
+      }
+
       // Skip if this event already exists (avoid double-writing event and transaction)
       const uniqueEventKey = {
         transactionHash: log.transactionHash || '',
@@ -607,24 +642,9 @@ class PredictionMarketIndexer implements IIndexer {
           },
         });
       }
-
-      const [outcomes] = decodeAbiParameters(
-        [
-          {
-            type: 'tuple[]',
-            components: [{ type: 'bytes32' }, { type: 'bool' }],
-          },
-        ],
-        decodedAny.args.encodedPredictedOutcomes
-      ) as unknown as [[`0x${string}`, boolean][]];
-      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
-        conditionId: marketId,
-        prediction,
-      }));
       // Compute endsAt from known conditions (optional)
       let endsAt: number | null = null;
       try {
-        const conditionIds = predictedOutcomes.map((o) => o.conditionId);
         const matched = await prisma.condition.findMany({
           where: { id: { in: conditionIds } },
           select: { id: true, endTime: true },
@@ -642,11 +662,8 @@ class PredictionMarketIndexer implements IIndexer {
         );
       }
 
-      const predictionResolver =
-        this.resolverAddress?.toLowerCase() ?? log.address.toLowerCase();
       const predictionLegsData = predictedOutcomes.map((outcome) => ({
         conditionId: outcome.conditionId,
-        resolver: predictionResolver,
         outcomeYes: outcome.prediction,
         chainId: this.chainId,
       }));
@@ -676,7 +693,6 @@ class PredictionMarketIndexer implements IIndexer {
       });
 
       // Update open interest for all conditions in this position
-      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
       const collateralStr = eventData.totalCollateral;
       for (const conditionId of conditionIds) {
         await prisma.$executeRaw`
@@ -958,9 +974,25 @@ class PredictionMarketIndexer implements IIndexer {
       }));
 
       const predictionResolver = eventData.resolver.toLowerCase();
+      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
+
+      // Keep canonical Condition resolver up to date (latest event wins)
+      try {
+        if (conditionIds.length > 0) {
+          await prisma.condition.updateMany({
+            where: { id: { in: conditionIds } },
+            data: { resolver: predictionResolver },
+          });
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed updating Condition.resolver (OrderPlaced):',
+          e
+        );
+      }
+
       const predictionLegsData = predictedOutcomes.map((outcome) => ({
         conditionId: outcome.conditionId,
-        resolver: predictionResolver,
         outcomeYes: outcome.prediction,
         chainId: this.chainId,
       }));
