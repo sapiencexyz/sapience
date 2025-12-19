@@ -112,73 +112,6 @@ export class PositionResolver {
     return prisma.position.count({ where });
   }
 
-  @Query(() => PositionType, { nullable: true })
-  async positionById(
-    @Arg('id', () => Int) id: number,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
-  ): Promise<PositionType | null> {
-    const where: Prisma.PositionWhereInput = { id };
-    if (chainId !== undefined && chainId !== null) {
-      where.chainId = chainId;
-    }
-
-    const row = await prisma.position.findFirst({ where });
-    if (!row) return null;
-
-    const predictions = await prisma.prediction.findMany({
-      where: { positionId: row.id },
-      include: {
-        condition: {
-          select: {
-            id: true,
-            question: true,
-            shortName: true,
-            endTime: true,
-            settled: true,
-            resolvedToYes: true,
-          },
-        },
-      },
-    });
-
-    const predictionTypes: PredictionType[] = predictions.map((p) => {
-      const condition = p.condition && {
-        id: p.condition.id,
-        question: p.condition.question ?? null,
-        shortName: p.condition.shortName ?? null,
-        endTime: p.condition.endTime ?? null,
-        settled: p.condition.settled,
-        resolvedToYes: p.condition.resolvedToYes,
-      };
-      return {
-        conditionId: p.conditionId,
-        outcomeYes: p.outcomeYes,
-        chainId: p.chainId ?? null,
-        condition: condition ?? null,
-      };
-    });
-
-    return {
-      id: row.id,
-      chainId: row.chainId,
-      marketAddress: row.marketAddress,
-      predictor: row.predictor,
-      counterparty: row.counterparty,
-      predictorNftTokenId: row.predictorNftTokenId,
-      counterpartyNftTokenId: row.counterpartyNftTokenId,
-      totalCollateral: row.totalCollateral,
-      predictorCollateral: row.predictorCollateral ?? null,
-      counterpartyCollateral: row.counterpartyCollateral ?? null,
-      refCode: row.refCode,
-      status: row.status as unknown as PositionType['status'],
-      predictorWon: row.predictorWon,
-      mintedAt: row.mintedAt,
-      settledAt: row.settledAt ?? null,
-      endsAt: row.endsAt ?? null,
-      predictions: predictionTypes,
-    };
-  }
-
   @Query(() => [PositionType])
   async positions(
     @Arg('address', () => String) address: string,
@@ -444,6 +377,115 @@ export class PositionResolver {
     });
 
     return processRows(rows);
+  }
+
+  @Query(() => [PositionType])
+  async positionsByNftAndMarket(
+    @Arg('nftTokenId', () => String) nftTokenId: string,
+    @Arg('marketAddress', () => String) marketAddress: string,
+    @Arg('take', () => Int, { defaultValue: 1 }) take: number
+  ): Promise<PositionType[]> {
+    const buildPredictionMap = async (
+      rows: Position[]
+    ): Promise<Map<number, PredictionType[]>> => {
+      const positionIds = rows.map((r) => r.id);
+      if (positionIds.length === 0) return new Map();
+
+      const predictions = await prisma.prediction.findMany({
+        where: { positionId: { in: positionIds } },
+        include: {
+          condition: {
+            select: {
+              id: true,
+              question: true,
+              shortName: true,
+              endTime: true,
+              resolver: true,
+              settled: true,
+              resolvedToYes: true,
+            },
+          },
+        },
+      });
+
+      const map = new Map<number, PredictionType[]>();
+      for (const p of predictions) {
+        if (!p.positionId) continue;
+        const condition = p.condition && {
+          id: p.condition.id,
+          question: p.condition.question ?? null,
+          shortName: p.condition.shortName ?? null,
+          endTime: p.condition.endTime ?? null,
+          resolver: p.condition.resolver ?? null,
+          settled: p.condition.settled,
+          resolvedToYes: p.condition.resolvedToYes,
+        };
+        const entry: PredictionType = {
+          conditionId: p.conditionId,
+          outcomeYes: p.outcomeYes,
+          chainId: p.chainId ?? null,
+          condition: condition ?? null,
+        };
+        if (!map.has(p.positionId)) {
+          map.set(p.positionId, []);
+        }
+        map.get(p.positionId)!.push(entry);
+      }
+      return map;
+    };
+
+    const processRows = async (rows: Position[]): Promise<PositionType[]> => {
+      const predictionMap = await buildPredictionMap(rows);
+
+      return rows.map((r) => {
+        // Determine if the NFT ID matches the counterparty (needs outcome flip)
+        const isCounterparty = r.counterpartyNftTokenId === nftTokenId;
+        
+        // Get predictions and flip outcomes if this is the counterparty's view
+        const predictions = (predictionMap.get(r.id) ?? []).map((pred) => ({
+          ...pred,
+          outcomeYes: isCounterparty ? !pred.outcomeYes : pred.outcomeYes,
+        }));
+
+        return {
+          id: r.id,
+          chainId: r.chainId,
+          marketAddress: r.marketAddress,
+          predictor: r.predictor,
+          counterparty: r.counterparty,
+          predictorNftTokenId: r.predictorNftTokenId,
+          counterpartyNftTokenId: r.counterpartyNftTokenId,
+          totalCollateral: r.totalCollateral,
+          predictorCollateral: r.predictorCollateral ?? null,
+          counterpartyCollateral: r.counterpartyCollateral ?? null,
+          refCode: r.refCode,
+          status: r.status as unknown as PositionType['status'],
+          predictorWon: r.predictorWon,
+          mintedAt: r.mintedAt,
+          settledAt: r.settledAt ?? null,
+          endsAt: r.endsAt ?? null,
+          predictions,
+        };
+      });
+    };
+
+    const where: Prisma.PositionWhereInput = {
+      marketAddress: marketAddress.toLowerCase(),
+      OR: [
+        { predictorNftTokenId: nftTokenId },
+        { counterpartyNftTokenId: nftTokenId },
+      ],
+    };
+
+    const rows = await prisma.position.findMany({
+      where,
+      take,
+      orderBy: { mintedAt: 'desc' },
+    });
+
+    const result = await processRows(rows);
+    console.log('result', result);
+    return result;
   }
 
   @Query(() => [PositionType])
