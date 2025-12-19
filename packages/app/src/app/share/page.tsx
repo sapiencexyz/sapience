@@ -54,8 +54,8 @@ function extractGroupFromImg(img?: string): string | undefined {
 
 export function generateMetadata({ searchParams }: SharePageProps): Metadata {
   const token = coerceString(searchParams?.t);
-  const positionId = coerceString(searchParams?.positionId);
-  const chainId = coerceString(searchParams?.chainId);
+  const nftId = coerceString(searchParams?.nftId);
+  const marketAddress = coerceString(searchParams?.marketAddress);
   let img = coerceString(searchParams?.img);
   const title = 'Prediction Markets';
   let description =
@@ -63,13 +63,11 @@ export function generateMetadata({ searchParams }: SharePageProps): Metadata {
   let imageAlt = coerceString(searchParams?.alt) || 'Sapience Share Image';
   let canonical = coerceString(searchParams?.url);
 
-  // If positionId is present, build OG image URL from it
-  if (positionId) {
+  // If nftId and marketAddress are present, build OG image URL from them
+  if (nftId && marketAddress) {
     const qp = new URLSearchParams();
-    qp.set('positionId', positionId);
-    if (chainId) {
-      qp.set('chainId', chainId);
-    }
+    qp.set('nftId', nftId);
+    qp.set('marketAddress', marketAddress);
     img = `/og/position?${qp.toString()}`;
   }
 
@@ -154,20 +152,18 @@ export function generateMetadata({ searchParams }: SharePageProps): Metadata {
 
 export default function SharePage({ searchParams }: SharePageProps) {
   const token = coerceString(searchParams?.t);
-  const positionId = coerceString(searchParams?.positionId);
-  const chainId = coerceString(searchParams?.chainId);
+  const nftId = coerceString(searchParams?.nftId);
+  const marketAddress = coerceString(searchParams?.marketAddress);
   let img = coerceString(searchParams?.img);
   let alt = coerceString(searchParams?.alt) || 'Share image';
   const addrFromQuery = extractAddrFromImg(img);
   const groupFromQuery = extractGroupFromImg(img);
 
-  // If positionId is present, build OG image URL from it
-  if (positionId) {
+  // If nftId and marketAddress are present, build OG image URL from them (preferred method)
+  if (nftId && marketAddress) {
     const qp = new URLSearchParams();
-    qp.set('positionId', positionId);
-    if (chainId) {
-      qp.set('chainId', chainId);
-    }
+    qp.set('nftId', nftId);
+    qp.set('marketAddress', marketAddress);
     img = `/og/position?${qp.toString()}`;
   }
 
