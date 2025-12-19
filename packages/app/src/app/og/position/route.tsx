@@ -118,7 +118,8 @@ export async function GET(req: Request) {
         if (response.ok) {
           const result = await response.json();
           const positions = result?.data?.positions;
-          const position = positions && positions.length > 0 ? positions[0] : null;
+          const position =
+            positions && positions.length > 0 ? positions[0] : null;
 
           if (position) {
             // Extract data from position
@@ -163,9 +164,7 @@ export async function GET(req: Request) {
                   outcomeYes: boolean;
                 }) => {
                   const question =
-                    pred.condition?.shortName ||
-                    pred.condition?.question ||
-                    '';
+                    pred.condition?.shortName || pred.condition?.question || '';
                   const choice = pred.outcomeYes ? 'Yes' : 'No';
                   return `${question}|${choice}`;
                 }
@@ -175,7 +174,10 @@ export async function GET(req: Request) {
         }
       } catch (err) {
         // If API query fails, fall back to query params
-        console.error('Failed to fetch position from API by NFT and market:', err);
+        console.error(
+          'Failed to fetch position from API by NFT and market:',
+          err
+        );
       }
     }
 

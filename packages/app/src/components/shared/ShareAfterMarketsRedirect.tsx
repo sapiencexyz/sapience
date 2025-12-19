@@ -88,10 +88,7 @@ export default function ShareAfterMarketsRedirect() {
 
   // Build OG url from NFT ID and market address (preferred method)
   const buildOgUrlFromNftAndMarket = useCallback(
-    (
-      nftTokenId: string,
-      marketAddress: string,
-    ): string | null => {
+    (nftTokenId: string, marketAddress: string): string | null => {
       try {
         const qp = new URLSearchParams();
         qp.set('nftId', String(nftTokenId));
@@ -167,13 +164,10 @@ export default function ShareAfterMarketsRedirect() {
         const position = entity;
 
         // Prefer NFT ID and market address-based URL
-        if (
-          position?.predictorNftTokenId &&
-          position?.marketAddress
-        ) {
+        if (position?.predictorNftTokenId && position?.marketAddress) {
           return buildOgUrlFromNftAndMarket(
             position.predictorNftTokenId,
-            position.marketAddress,
+            position.marketAddress
           );
         }
 
@@ -432,13 +426,10 @@ export default function ShareAfterMarketsRedirect() {
 
       if (resolved) {
         // Use NFT ID and market address to build OG URL (preferred method)
-        if (
-          resolved.predictorNftTokenId &&
-          resolved.marketAddress
-        ) {
+        if (resolved.predictorNftTokenId && resolved.marketAddress) {
           const src = buildOgUrlFromNftAndMarket(
             resolved.predictorNftTokenId,
-            resolved.marketAddress,
+            resolved.marketAddress
           );
           if (src) {
             setImageSrc(src);

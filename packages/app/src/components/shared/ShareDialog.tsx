@@ -55,11 +55,7 @@ export default function ShareDialog(props: ShareDialogProps) {
 
     // If nftId and marketAddress are provided and we're using /og/position, use them
     // This allows the edge endpoint to query the API for position data
-    if (
-      nftId &&
-      marketAddress &&
-      imagePath === '/og/position'
-    ) {
+    if (nftId && marketAddress && imagePath === '/og/position') {
       sp.set('nftId', String(nftId));
       sp.set('marketAddress', String(marketAddress));
       return sp.toString();

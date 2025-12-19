@@ -288,7 +288,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       const url = new URL(imageSrc, window.location.origin);
       const nftId = url.searchParams.get('nftId');
       const marketAddress = url.searchParams.get('marketAddress');
-      
+
       // Use NFT ID and market address
       if (nftId && marketAddress) {
         return { nftId, marketAddress };
