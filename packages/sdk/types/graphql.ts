@@ -2082,9 +2082,9 @@ export type Query = {
   groupByCondition: Array<ConditionGroupBy>;
   groupByConditionGroup: Array<ConditionGroupGroupBy>;
   groupByUser: Array<UserGroupBy>;
-  positionById?: Maybe<PositionType>;
   positions: Array<PositionType>;
   positionsByConditionId: Array<PositionType>;
+  positionsByNftAndMarket: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
   topForecasters: Array<ForecasterScoreType>;
@@ -2389,12 +2389,6 @@ export type QueryGroupByUserArgs = {
 };
 
 
-export type QueryPositionByIdArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  id: Scalars['Int']['input'];
-};
-
-
 export type QueryPositionsArgs = {
   address: Scalars['String']['input'];
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -2413,6 +2407,13 @@ export type QueryPositionsByConditionIdArgs = {
   endsAtGte?: InputMaybe<Scalars['Int']['input']>;
   skip?: Scalars['Int']['input'];
   status?: InputMaybe<Scalars['String']['input']>;
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPositionsByNftAndMarketArgs = {
+  marketAddress: Scalars['String']['input'];
+  nftTokenId: Scalars['String']['input'];
   take?: Scalars['Int']['input'];
 };
 
