@@ -112,87 +112,23 @@ export class PositionResolver {
     return prisma.position.count({ where });
   }
 
-  @Query(() => PositionType, { nullable: true })
-  async positionById(
-    @Arg('id', () => Int) id: number,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
-  ): Promise<PositionType | null> {
-    const where: Prisma.PositionWhereInput = { id };
-    if (chainId !== undefined && chainId !== null) {
-      where.chainId = chainId;
-    }
-
-    const row = await prisma.position.findFirst({ where });
-    if (!row) return null;
-
-    const predictions = await prisma.prediction.findMany({
-      where: { positionId: row.id },
-      include: {
-        condition: {
-          select: {
-            id: true,
-            question: true,
-            shortName: true,
-            endTime: true,
-            settled: true,
-            resolvedToYes: true,
-          },
-        },
-      },
-    });
-
-    const predictionTypes: PredictionType[] = predictions.map((p) => {
-      const condition = p.condition && {
-        id: p.condition.id,
-        question: p.condition.question ?? null,
-        shortName: p.condition.shortName ?? null,
-        endTime: p.condition.endTime ?? null,
-        settled: p.condition.settled,
-        resolvedToYes: p.condition.resolvedToYes,
-      };
-      return {
-        conditionId: p.conditionId,
-        outcomeYes: p.outcomeYes,
-        chainId: p.chainId ?? null,
-        condition: condition ?? null,
-      };
-    });
-
-    return {
-      id: row.id,
-      chainId: row.chainId,
-      marketAddress: row.marketAddress,
-      predictor: row.predictor,
-      counterparty: row.counterparty,
-      predictorNftTokenId: row.predictorNftTokenId,
-      counterpartyNftTokenId: row.counterpartyNftTokenId,
-      totalCollateral: row.totalCollateral,
-      predictorCollateral: row.predictorCollateral ?? null,
-      counterpartyCollateral: row.counterpartyCollateral ?? null,
-      refCode: row.refCode,
-      status: row.status as unknown as PositionType['status'],
-      predictorWon: row.predictorWon,
-      mintedAt: row.mintedAt,
-      settledAt: row.settledAt ?? null,
-      endsAt: row.endsAt ?? null,
-      predictions: predictionTypes,
-    };
-  }
-
   @Query(() => [PositionType])
   async positions(
-    @Arg('address', () => String) address: string,
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true })
     orderDirection?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('status', () => String, { nullable: true })
     status?: 'active' | 'settled' | 'consolidated',
-    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
+    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number,
+    @Arg('nftTokenId', () => String, { nullable: true }) nftTokenId?: string,
+    @Arg('marketAddress', () => String, { nullable: true })
+    marketAddress?: string
   ): Promise<PositionType[]> {
-    const addr = address.toLowerCase();
+    const addr = address?.toLowerCase();
 
     const buildPredictionMap = async (
       rows: Position[]
@@ -267,7 +203,11 @@ export class PositionResolver {
       }));
     };
 
-    if (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl') {
+    // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
+    // and not using NFT filtering
+    const useRawSql = addr && !nftTokenId && !marketAddress;
+    
+    if (useRawSql && (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')) {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
       const validStatuses = ['active', 'settled', 'consolidated'] as const;
@@ -423,9 +363,25 @@ export class PositionResolver {
       orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const where: Prisma.PositionWhereInput = {
-      OR: [{ predictor: addr }, { counterparty: addr }],
-    };
+    const where: Prisma.PositionWhereInput = {};
+    
+    // Filter by NFT ID and market address if provided
+    if (nftTokenId && marketAddress) {
+      where.marketAddress = marketAddress.toLowerCase();
+      where.OR = [
+        { predictorNftTokenId: nftTokenId },
+        { counterpartyNftTokenId: nftTokenId },
+      ];
+    }
+    // Otherwise, filter by address if provided
+    else if (addr) {
+      where.OR = [{ predictor: addr }, { counterparty: addr }];
+    }
+    // If neither address nor NFT filters are provided, return empty array
+    else {
+      return [];
+    }
+    
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }

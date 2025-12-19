@@ -1914,8 +1914,7 @@ type Query {
   groupByCondition(by: [ConditionScalarFieldEnum!]!, having: ConditionScalarWhereWithAggregatesInput, orderBy: [ConditionOrderByWithAggregationInput!], skip: Int, take: Int, where: ConditionWhereInput): [ConditionGroupBy!]!
   groupByConditionGroup(by: [ConditionGroupScalarFieldEnum!]!, having: ConditionGroupScalarWhereWithAggregatesInput, orderBy: [ConditionGroupOrderByWithAggregationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroupGroupBy!]!
   groupByUser(by: [UserScalarFieldEnum!]!, having: UserScalarWhereWithAggregatesInput, orderBy: [UserOrderByWithAggregationInput!], skip: Int, take: Int, where: UserWhereInput): [UserGroupBy!]!
-  positionById(chainId: Int, id: Int!): PositionType
-  positions(address: String!, chainId: Int, endsAtGte: Int, orderBy: String, orderDirection: String, skip: Int! = 0, status: String, take: Int! = 50): [PositionType!]!
+  positions(address: String, chainId: Int, endsAtGte: Int, marketAddress: String, nftTokenId: String, orderBy: String, orderDirection: String, skip: Int! = 0, status: String, take: Int! = 50): [PositionType!]!
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
