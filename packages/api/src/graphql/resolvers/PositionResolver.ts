@@ -114,18 +114,21 @@ export class PositionResolver {
 
   @Query(() => [PositionType])
   async positions(
-    @Arg('address', () => String) address: string,
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true })
     orderDirection?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('status', () => String, { nullable: true })
     status?: 'active' | 'settled' | 'consolidated',
-    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
+    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number,
+    @Arg('nftTokenId', () => String, { nullable: true }) nftTokenId?: string,
+    @Arg('marketAddress', () => String, { nullable: true })
+    marketAddress?: string
   ): Promise<PositionType[]> {
-    const addr = address.toLowerCase();
+    const addr = address?.toLowerCase();
 
     const buildPredictionMap = async (
       rows: Position[]
@@ -200,7 +203,11 @@ export class PositionResolver {
       }));
     };
 
-    if (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl') {
+    // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
+    // and not using NFT filtering
+    const useRawSql = addr && !nftTokenId && !marketAddress;
+    
+    if (useRawSql && (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')) {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
       const validStatuses = ['active', 'settled', 'consolidated'] as const;
@@ -356,9 +363,25 @@ export class PositionResolver {
       orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const where: Prisma.PositionWhereInput = {
-      OR: [{ predictor: addr }, { counterparty: addr }],
-    };
+    const where: Prisma.PositionWhereInput = {};
+    
+    // Filter by NFT ID and market address if provided
+    if (nftTokenId && marketAddress) {
+      where.marketAddress = marketAddress.toLowerCase();
+      where.OR = [
+        { predictorNftTokenId: nftTokenId },
+        { counterpartyNftTokenId: nftTokenId },
+      ];
+    }
+    // Otherwise, filter by address if provided
+    else if (addr) {
+      where.OR = [{ predictor: addr }, { counterparty: addr }];
+    }
+    // If neither address nor NFT filters are provided, return empty array
+    else {
+      return [];
+    }
+    
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
@@ -377,115 +400,6 @@ export class PositionResolver {
     });
 
     return processRows(rows);
-  }
-
-  @Query(() => [PositionType])
-  async positionsByNftAndMarket(
-    @Arg('nftTokenId', () => String) nftTokenId: string,
-    @Arg('marketAddress', () => String) marketAddress: string,
-    @Arg('take', () => Int, { defaultValue: 1 }) take: number
-  ): Promise<PositionType[]> {
-    const buildPredictionMap = async (
-      rows: Position[]
-    ): Promise<Map<number, PredictionType[]>> => {
-      const positionIds = rows.map((r) => r.id);
-      if (positionIds.length === 0) return new Map();
-
-      const predictions = await prisma.prediction.findMany({
-        where: { positionId: { in: positionIds } },
-        include: {
-          condition: {
-            select: {
-              id: true,
-              question: true,
-              shortName: true,
-              endTime: true,
-              resolver: true,
-              settled: true,
-              resolvedToYes: true,
-            },
-          },
-        },
-      });
-
-      const map = new Map<number, PredictionType[]>();
-      for (const p of predictions) {
-        if (!p.positionId) continue;
-        const condition = p.condition && {
-          id: p.condition.id,
-          question: p.condition.question ?? null,
-          shortName: p.condition.shortName ?? null,
-          endTime: p.condition.endTime ?? null,
-          resolver: p.condition.resolver ?? null,
-          settled: p.condition.settled,
-          resolvedToYes: p.condition.resolvedToYes,
-        };
-        const entry: PredictionType = {
-          conditionId: p.conditionId,
-          outcomeYes: p.outcomeYes,
-          chainId: p.chainId ?? null,
-          condition: condition ?? null,
-        };
-        if (!map.has(p.positionId)) {
-          map.set(p.positionId, []);
-        }
-        map.get(p.positionId)!.push(entry);
-      }
-      return map;
-    };
-
-    const processRows = async (rows: Position[]): Promise<PositionType[]> => {
-      const predictionMap = await buildPredictionMap(rows);
-
-      return rows.map((r) => {
-        // Determine if the NFT ID matches the counterparty (needs outcome flip)
-        const isCounterparty = r.counterpartyNftTokenId === nftTokenId;
-        
-        // Get predictions and flip outcomes if this is the counterparty's view
-        const predictions = (predictionMap.get(r.id) ?? []).map((pred) => ({
-          ...pred,
-          outcomeYes: isCounterparty ? !pred.outcomeYes : pred.outcomeYes,
-        }));
-
-        return {
-          id: r.id,
-          chainId: r.chainId,
-          marketAddress: r.marketAddress,
-          predictor: r.predictor,
-          counterparty: r.counterparty,
-          predictorNftTokenId: r.predictorNftTokenId,
-          counterpartyNftTokenId: r.counterpartyNftTokenId,
-          totalCollateral: r.totalCollateral,
-          predictorCollateral: r.predictorCollateral ?? null,
-          counterpartyCollateral: r.counterpartyCollateral ?? null,
-          refCode: r.refCode,
-          status: r.status as unknown as PositionType['status'],
-          predictorWon: r.predictorWon,
-          mintedAt: r.mintedAt,
-          settledAt: r.settledAt ?? null,
-          endsAt: r.endsAt ?? null,
-          predictions,
-        };
-      });
-    };
-
-    const where: Prisma.PositionWhereInput = {
-      marketAddress: marketAddress.toLowerCase(),
-      OR: [
-        { predictorNftTokenId: nftTokenId },
-        { counterpartyNftTokenId: nftTokenId },
-      ],
-    };
-
-    const rows = await prisma.position.findMany({
-      where,
-      take,
-      orderBy: { mintedAt: 'desc' },
-    });
-
-    const result = await processRows(rows);
-    console.log('result', result);
-    return result;
   }
 
   @Query(() => [PositionType])
