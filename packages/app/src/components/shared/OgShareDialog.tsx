@@ -55,7 +55,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     expectedLegs,
     lastNftId,
   } = props;
-
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -75,6 +74,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   const [positionResolved, setPositionResolved] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogOpenTimestampRef = useRef<number | null>(null);
+
 
   // Get user address for position tracking
   const userAddress = address?.toLowerCase();
@@ -120,9 +120,11 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       // Find positions minted after the dialog opened
-      const candidatePositions = positionsToCheck.filter(
-        (p: Parlay) => Number(p.mintedAt) >= minTimestampSeconds
-      );
+      const candidatePositions = positionsToCheck.filter((p: Parlay) => {
+        const mintedAtSeconds = Number(p.mintedAt);
+        const passes = mintedAtSeconds >= minTimestampSeconds;
+        return passes;
+      });
 
       if (candidatePositions.length === 0) {
         return false;
@@ -137,15 +139,29 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             try {
               const currentNftId = BigInt(p.predictorNftTokenId || '0');
               return currentNftId > lastNftIdBigInt;
-            } catch (_e) {
+            } catch (err) {
+              console.error('[OgShareDialog] Position indexing: Error comparing NFT ID for position', {
+                positionId: p.id,
+                nftId: p.predictorNftTokenId,
+                error: err,
+              });
               return false;
             }
           });
+
           if (filteredByNftId.length === 0) {
+            console.warn('[OgShareDialog] Position indexing: No candidates after NFT ID filter', {
+              lastNftId,
+              candidateCount: candidatePositions.length,
+              candidates: candidatePositions.map((p) => ({
+                id: p.id,
+                nftId: p.predictorNftTokenId,
+              })),
+            });
             return false;
           }
         } catch (_e) {
-          console.error('[OgShareDialog] Error comparing NFT IDs:', _e);
+          console.error('[OgShareDialog] Position indexing: Error comparing NFT IDs:', _e);
           // Error comparing NFT IDs
         }
       }
@@ -193,6 +209,14 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
         });
 
         if (foundPosition) {
+          console.log('[OgShareDialog] Position indexed by FE', {
+            positionId: foundPosition.id,
+            nftId: foundPosition.predictorNftTokenId,
+            chainId: foundPosition.chainId,
+            mintedAt: foundPosition.mintedAt,
+            lastNftId,
+            expectedLegsCount: expectedLegs?.length || 0,
+          });
           setPositionResolved(true);
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
@@ -200,12 +224,35 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           }
           return true;
         }
+        console.warn('[OgShareDialog] Position indexing: No position matched expected legs', {
+          expectedLegs,
+          checkedPositions: filteredByNftId.map((p) => ({
+            id: p.id,
+            legs: (p.predictions || []).map((pred) => ({
+              question: pred.condition?.shortName || pred.condition?.question,
+              choice: pred.outcomeYes ? 'Yes' : 'No',
+            })),
+          })),
+        });
         return false;
       }
 
       // Fallback: if no expectedLegs provided, use first candidate after NFT ID filter (backward compatibility)
+      console.warn('[OgShareDialog] Position indexing: Using fallback (no expected legs) - this should be avoided!', {
+        candidates: filteredByNftId.length,
+        candidateIds: filteredByNftId.map((p) => p.id),
+        hasExpectedLegs: !!(expectedLegs && expectedLegs.length > 0),
+      });
       const foundPosition = filteredByNftId[0];
       if (foundPosition) {
+        console.log('[OgShareDialog] Position indexed by FE (fallback)', {
+          positionId: foundPosition.id,
+          nftId: foundPosition.predictorNftTokenId,
+          chainId: foundPosition.chainId,
+          mintedAt: foundPosition.mintedAt,
+          lastNftId,
+          note: 'Using fallback - no expected legs provided',
+        });
         setPositionResolved(true);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -230,7 +277,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           const latestPositions = result.data || [];
           checkPosition(latestPositions);
         } catch (_error) {
-          // Error refetching positions
+          console.error('[OgShareDialog] Position indexing: Error refetching positions', _error);
         }
       }, 1000);
     }
@@ -333,6 +380,10 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
 
     // Convert to absolute URL
     if (typeof window !== 'undefined') {
+      // Check if relativeUrl is already absolute
+      if (relativeUrl.startsWith('http')) {
+        return relativeUrl;
+      }
       return `${window.location.origin}${relativeUrl}`;
     }
     return relativeUrl;

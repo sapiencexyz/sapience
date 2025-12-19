@@ -95,7 +95,7 @@ const CreatePositionForm = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserParlays({
+  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays({
     address: address ? String(address).toLowerCase() : undefined,
     chainId: parlayChainId,
     take: 1, // Only need the latest one
@@ -515,7 +515,22 @@ const CreatePositionForm = ({
   // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
   // Capture betslip data for share intent
-  const getBetslipData = useCallback(() => {
+  // This function will be called right before submission to get fresh lastNftId
+  const getBetslipData = useCallback(async () => {
+    // Refetch positions to ensure we have the latest data before computing lastNftId
+    // This is critical for multiple bid submissions to get the correct lastNftId
+    let freshPositions = userPositions;
+    try {
+      const result = await refetchUserPositions();
+      freshPositions = result.data || userPositions;
+      console.log('[CreatePositionForm] Refetched positions for lastNftId', {
+        previousCount: userPositions?.length || 0,
+        freshCount: freshPositions?.length || 0,
+      });
+    } catch (error) {
+      console.error('[CreatePositionForm] Error refetching positions, using cached data', error);
+      // Fall back to cached data if refetch fails
+    }
     const wagerAmount =
       formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
 
@@ -574,11 +589,11 @@ const CreatePositionForm = ({
       }
     }
 
-    // Get latest NFT ID from positions for tracking
+    // Get latest NFT ID from fresh positions for tracking
     let lastNftId: string | undefined = undefined;
-    if (userPositions && userPositions.length > 0) {
+    if (freshPositions && freshPositions.length > 0) {
       // Get the highest NFT ID from current positions
-      const latestPosition = userPositions.reduce((latest, current) => {
+      const latestPosition = freshPositions.reduce((latest, current) => {
         try {
           const latestNftId = BigInt(latest.predictorNftTokenId || '0');
           const currentNftId = BigInt(current.predictorNftTokenId || '0');
@@ -586,11 +601,18 @@ const CreatePositionForm = ({
         } catch {
           return latest;
         }
-      }, userPositions[0]);
+      }, freshPositions[0]);
 
       if (latestPosition && latestPosition.predictorNftTokenId) {
         lastNftId = latestPosition.predictorNftTokenId;
+        console.log('[CreatePositionForm] Computed lastNftId from fresh positions', {
+          lastNftId,
+          positionId: latestPosition.id,
+          totalPositions: freshPositions.length,
+        });
       }
+    } else {
+      console.log('[CreatePositionForm] No positions available for lastNftId computation');
     }
 
     return {
@@ -607,9 +629,11 @@ const CreatePositionForm = ({
     bids,
     collateralDecimals,
     userPositions,
+    refetchUserPositions,
   ]);
 
   // Use the parlay submission hook
+  // Note: betslipData is passed as a function to ensure lastNftId is captured right before submission
   const {
     submitPosition,
     isSubmitting: isPositionSubmitting,
@@ -620,7 +644,7 @@ const CreatePositionForm = ({
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
-    betslipData: getBetslipData(),
+    betslipData: getBetslipData, // Pass function instead of calling it
     onSuccess: () => {
       // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();

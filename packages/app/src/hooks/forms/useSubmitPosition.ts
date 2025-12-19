@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useMemo } from 'react';
 import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -27,13 +27,28 @@ interface UseSubmitPositionProps {
     takerNftId: bigint,
     txHash?: string
   ) => void;
-  betslipData?: {
-    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-    wager: string;
-    payout?: string;
-    symbol: string;
-    lastNftId?: string; // Last NFT ID before this parlay was submitted
-  };
+  betslipData?:
+    | {
+        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+        wager: string;
+        payout?: string;
+        symbol: string;
+        lastNftId?: string; // Last NFT ID before this parlay was submitted
+      }
+    | (() => {
+        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+        wager: string;
+        payout?: string;
+        symbol: string;
+        lastNftId?: string; // Last NFT ID before this parlay was submitted
+      })
+    | (() => Promise<{
+        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+        wager: string;
+        payout?: string;
+        symbol: string;
+        lastNftId?: string; // Last NFT ID before this parlay was submitted
+      }>); // Can be a function (sync or async) to compute fresh data right before submission
 }
 
 export function useSubmitPosition({
@@ -95,23 +110,40 @@ export function useSubmitPosition({
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
+  // Memoize initial share intent to prevent infinite re-renders
+  // Note: This will be updated with fresh data right before submission
+  // For async functions, we'll use undefined initially and update before submission
+  const initialShareIntent = useMemo(() => {
+    if (!betslipData) return undefined;
+    if (typeof betslipData === 'function') {
+      // For functions, we'll update before submission, so use undefined here
+      // to avoid calling the function during render
+      return undefined;
+    }
+    return {
+      betslip: betslipData,
+    };
+  }, [betslipData]);
+
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
-  const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
-    onSuccess: () => {
-      setSuccess('Position prediction minted successfully');
-      setError(null);
-      onSuccess?.();
-    },
-    onError: (err) => {
-      const message = err?.message || 'Transaction failed';
-      setError(message);
-    },
-    successMessage: 'Position prediction was successful',
-    fallbackErrorMessage: 'Failed to submit position prediction',
-    redirectPage: 'markets',
-    // Include betslip data in share intent if provided
-    shareIntent: betslipData ? { betslip: betslipData } : {},
-  });
+  // Note: shareIntent will be updated right before submission to get fresh lastNftId
+  const { sendCalls, isPending: isSubmitting, updateShareIntent } =
+    useSapienceWriteContract({
+      onSuccess: () => {
+        setSuccess('Position prediction minted successfully');
+        setError(null);
+        onSuccess?.();
+      },
+      onError: (err) => {
+        const message = err?.message || 'Transaction failed';
+        setError(message);
+      },
+      successMessage: 'Position prediction was successful',
+      fallbackErrorMessage: 'Failed to submit position prediction',
+      redirectPage: 'markets',
+      // Include initial betslip data in share intent (will be updated with fresh data before submission)
+      shareIntent: initialShareIntent,
+    });
 
   // Prepare calls for sendCalls
   const prepareCalls = useCallback(
@@ -231,6 +263,21 @@ export function useSubmitPosition({
       setError(null);
       setSuccess(null);
 
+      // Compute fresh betslip data right before submission to get latest lastNftId
+      // Handle both sync and async functions
+      let freshBetslipData;
+      if (typeof betslipData === 'function') {
+        const result = betslipData();
+        freshBetslipData = result instanceof Promise ? await result : result;
+      } else {
+        freshBetslipData = betslipData;
+      }
+
+      // Update share intent with fresh betslip data if available
+      if (freshBetslipData && updateShareIntent) {
+        updateShareIntent({ betslip: freshBetslipData });
+      }
+
       const attempt = async (forceRefetch: boolean) => {
         // Ensure we have a fresh nonce when requested
         const nonceValue = forceRefetch
@@ -300,6 +347,8 @@ export function useSubmitPosition({
       makerNonce,
       refetchMakerNonce,
       isProcessing,
+      betslipData,
+      updateShareIntent,
     ]
   );
 
