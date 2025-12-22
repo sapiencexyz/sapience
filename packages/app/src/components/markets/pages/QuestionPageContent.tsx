@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tabs,
@@ -26,7 +27,7 @@ import {
   lzUmaResolver,
 } from '@sapience/sdk/contracts/addresses';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatEther } from 'viem';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
@@ -42,6 +43,7 @@ import { usePositionsByConditionId } from '~/hooks/graphql/usePositionsByConditi
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
+import { getQuestionHref } from '~/lib/utils/questionHref';
 import {
   type PredictionData,
   type ForecastData,
@@ -59,12 +61,15 @@ const Loader = dynamic(() => import('~/components/shared/Loader'), {
 
 interface QuestionPageContentProps {
   conditionId: string;
+  resolverAddressFromUrl?: string;
 }
 
 export default function QuestionPageContent({
   conditionId,
+  resolverAddressFromUrl,
 }: QuestionPageContentProps) {
   const [refetchTrigger, setRefetchTrigger] = React.useState(0);
+  const router = useRouter();
 
   // Fetch condition data
   const { data, isLoading, isError } = useQuery<
@@ -78,6 +83,7 @@ export default function QuestionPageContent({
       description?: string | null;
       category?: { slug: string } | null;
       chainId?: number | null;
+      resolver?: string | null;
       openInterest?: string | null;
     } | null,
     Error
@@ -97,6 +103,7 @@ export default function QuestionPageContent({
             resolvedToYes
             description
             chainId
+            resolver
             openInterest
             category {
               slug
@@ -115,6 +122,7 @@ export default function QuestionPageContent({
           description?: string | null;
           category?: { slug: string } | null;
           chainId?: number | null;
+          resolver?: string | null;
           openInterest?: string | null;
         }>;
       }>(QUERY, { ids: [conditionId] });
@@ -130,14 +138,27 @@ export default function QuestionPageContent({
     setRefetchTrigger((prev) => prev + 1);
   }, []);
 
-  // Determine chain ID from condition data or default
-  const chainId = data?.chainId ?? DEFAULT_CHAIN_ID;
-
-  // Get resolver address for this chain
+  // Use chain/resolver from the condition when available; fall back to Ethereal defaults.
+  const chainId = data?.chainId ?? CHAIN_ID_ETHEREAL;
   const resolverAddress =
+    data?.resolver ??
     lzPMResolver[chainId]?.address ??
     lzUmaResolver[chainId]?.address ??
     umaResolver[chainId]?.address;
+
+  // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
+  React.useEffect(() => {
+    if (!resolverAddressFromUrl) return;
+    if (!resolverAddress) return;
+    if (
+      resolverAddressFromUrl.toLowerCase() === resolverAddress.toLowerCase()
+    ) {
+      return;
+    }
+    router.replace(
+      getQuestionHref({ conditionId, resolverAddress: resolverAddress })
+    );
+  }, [router, conditionId, resolverAddress, resolverAddressFromUrl]);
 
   // Fetch positions for this condition
   const { data: positions, isLoading: isLoadingPositions } =
@@ -156,24 +177,6 @@ export default function QuestionPageContent({
       enabled: Boolean(conditionId),
     },
   });
-
-  // Debug: Log forecasts data
-  React.useEffect(() => {
-    if (forecasts) {
-      console.log('[QuestionPageContent] Forecasts fetched:', {
-        count: forecasts.length,
-        conditionId,
-        forecasts: forecasts.map((f) => ({
-          id: f.id,
-          attester: f.attester,
-          value: f.value,
-          rawTime: f.rawTime,
-          comment: f.comment,
-          questionId: f.questionId,
-        })),
-      });
-    }
-  }, [forecasts, conditionId]);
 
   // Transform position data for scatter plot
   // x = time (unix timestamp), y = prediction probability (0-100), wager = amount wagered
@@ -320,11 +323,6 @@ export default function QuestionPageContent({
       return [];
     }
 
-    console.log('[QuestionPageContent] Transforming forecasts:', {
-      count: forecasts.length,
-      rawForecasts: forecasts,
-    });
-
     const transformed = forecasts
       .map(
         (forecast: {
@@ -348,15 +346,8 @@ export default function QuestionPageContent({
                   0,
                   Math.min(100, predictionPercent)
                 );
-              } catch (error) {
-                console.warn(
-                  '[QuestionPageContent] Error converting D18 to percentage:',
-                  {
-                    value: predictionValue,
-                    error,
-                    forecast,
-                  }
-                );
+              } catch (_error) {
+                // Ignore conversion errors and fall back to default.
               }
             }
 
@@ -372,28 +363,13 @@ export default function QuestionPageContent({
               comment: forecast.comment || '',
             };
 
-            console.log('[QuestionPageContent] Transformed forecast:', {
-              original: forecast,
-              transformed: result,
-            });
-
             return result;
-          } catch (error) {
-            console.error(
-              '[QuestionPageContent] Error processing forecast:',
-              error,
-              forecast
-            );
+          } catch (_error) {
             return null;
           }
         }
       )
       .filter(Boolean) as ForecastData[];
-
-    console.log('[QuestionPageContent] Final forecastScatterData:', {
-      count: transformed.length,
-      data: transformed,
-    });
 
     return transformed;
   }, [forecasts]);
@@ -637,7 +613,7 @@ export default function QuestionPageContent({
           <div className="p-4 border-b border-border/60">
             <ConditionForecastForm
               conditionId={conditionId}
-              resolver={resolverAddress ?? UMA_RESOLVER_ARBITRUM}
+              resolver={UMA_RESOLVER_ARBITRUM}
               question={data.shortName || data.question || ''}
               endTime={data.endTime ?? undefined}
               categorySlug={data.category?.slug}
@@ -744,7 +720,7 @@ export default function QuestionPageContent({
           <div className="p-4 border-b border-border/60">
             <ConditionForecastForm
               conditionId={conditionId}
-              resolver={resolverAddress ?? UMA_RESOLVER_ARBITRUM}
+              resolver={UMA_RESOLVER_ARBITRUM}
               question={data.shortName || data.question || ''}
               endTime={data.endTime ?? undefined}
               categorySlug={data.category?.slug}

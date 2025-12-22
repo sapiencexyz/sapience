@@ -39,6 +39,8 @@ type ConditionData = {
   description?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  conditionId?: string;
+  conditionGroupId?: string;
 };
 
 const renderSubmittedCell = ({
@@ -123,13 +125,13 @@ const renderQuestionCell = ({
     return <span className="text-muted-foreground">Loading question...</span>;
   }
 
-  const questionId = row.original.questionId;
+  const conditionId = row.original.conditionId;
   let questionText: string | null = null;
   let conditionData: ConditionData | null = null;
 
-  // Look up condition by questionId
-  if (questionId && conditionsMap) {
-    const condition = conditionsMap[questionId.toLowerCase()];
+  // Look up condition by conditionId
+  if (conditionId && conditionsMap) {
+    const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
       questionText = condition.shortName || condition.question;
       conditionData = condition;
@@ -141,17 +143,17 @@ const renderQuestionCell = ({
   if (conditionData && questionText) {
     content = (
       <ConditionTitleLink
-        conditionId={conditionData.id}
+        conditionId={conditionData.conditionId}
         title={questionText}
         endTime={conditionData.endTime}
         description={conditionData.description}
         clampLines={null}
       />
     );
-  } else if (questionId) {
+  } else if (conditionId) {
     content = (
       <span className="text-muted-foreground">
-        Condition: {questionId.slice(0, 10)}...
+        Condition: {conditionId.slice(0, 10)}...
       </span>
     );
   } else {
@@ -186,14 +188,14 @@ const renderActionsCell = ({
   conditionsMap?: Record<string, ConditionData>;
 }) => {
   const createdAt = new Date(Number(row.original.rawTime) * 1000);
-  const questionId = row.original.questionId;
+  const conditionId = row.original.conditionId;
 
   let questionText: string = 'Forecast on Sapience';
   let resolutionDate: Date | null = null;
 
   // Look up condition for question text and end time
-  if (questionId && conditionsMap) {
-    const condition = conditionsMap[questionId.toLowerCase()];
+  if (conditionId && conditionsMap) {
+    const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
       questionText = condition.shortName || condition.question;
       if (condition.endTime) {
@@ -248,11 +250,11 @@ const renderResolutionCell = ({
   row: { original: FormattedAttestation };
   conditionsMap?: Record<string, ConditionData>;
 }) => {
-  const questionId = row.original.questionId;
+  const conditionId = row.original.conditionId;
 
   // Look up condition for settlement status
-  if (questionId && conditionsMap) {
-    const condition = conditionsMap[questionId.toLowerCase()];
+  if (conditionId && conditionsMap) {
+    const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
       if (condition.settled) {
         const isYes = condition.resolvedToYes === true;
@@ -277,18 +279,18 @@ const renderResolutionCell = ({
 };
 
 const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
-  // Collect conditionIds (questionIds) from attestations for batch fetching
+  // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
     for (const att of attestations || []) {
       if (
-        att.questionId &&
-        typeof att.questionId === 'string' &&
-        att.questionId.startsWith('0x') &&
-        att.questionId !==
+        att.conditionId &&
+        typeof att.conditionId === 'string' &&
+        att.conditionId.startsWith('0x') &&
+        att.conditionId !==
           '0x0000000000000000000000000000000000000000000000000000000000000000'
       ) {
-        set.add(att.questionId.toLowerCase());
+        set.add(att.conditionId.toLowerCase());
       }
     }
     return Array.from(set);
@@ -368,7 +370,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
         id: 'question',
         accessorFn: (row) => {
           const comment = (row.comment || '').trim();
-          return comment.length > 0 ? comment : row.questionId || '';
+          return comment.length > 0 ? comment : row.conditionId || '';
         },
         header: ({ column }) => (
           <Button
@@ -438,9 +440,9 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
       {
         id: 'resolution',
         accessorFn: (row) => {
-          const questionId = row.questionId;
-          if (questionId && conditionsMap) {
-            const condition = conditionsMap[questionId.toLowerCase()];
+          const conditionId = row.conditionId;
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
             if (condition?.settled) {
               return condition.resolvedToYes ? 'Yes' : 'No';
             }

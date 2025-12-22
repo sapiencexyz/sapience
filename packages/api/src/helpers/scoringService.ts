@@ -9,18 +9,23 @@ export async function upsertAttestationScoreFromAttestation(
 ) {
   const att = await prisma.attestation.findUnique({
     where: { id: attestationId },
+    include: { condition: true },
   });
   if (!att) return;
 
   const normalized = normalizePredictionToProbability(att.prediction);
+
+  // Get marketAddress from the condition's resolver field
+  const marketAddress = att.condition?.resolver?.toLowerCase() ?? null;
 
   await prisma.attestationScore.upsert({
     where: { attestationId: att.id },
     create: {
       attestationId: att.id,
       attester: att.attester.toLowerCase(),
-      marketAddress: att.marketAddress?.toLowerCase() ?? null,
-      marketId: att.marketId ?? null,
+      marketAddress,
+      marketId: att.conditionId ?? null,
+      questionId: att.conditionId ?? null,
       resolver: att.resolver,
       madeAt: att.time,
       used: false,

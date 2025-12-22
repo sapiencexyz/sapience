@@ -42,11 +42,13 @@ export function useCollateralBalance({
   chainId,
   enabled = true,
 }: UseCollateralBalanceProps): UseCollateralBalanceResult {
+  // If callers omit chainId, follow the SDK default chain.
+  const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
+
   const isEtherealChain =
-    chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const collateralSymbol = chainId
-    ? COLLATERAL_SYMBOLS[chainId] || 'testUSDe'
-    : 'testUSDe';
+    effectiveChainId === CHAIN_ID_ETHEREAL ||
+    effectiveChainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const collateralSymbol = COLLATERAL_SYMBOLS[effectiveChainId] || 'testUSDe';
 
   const {
     data: nativeBalance,
@@ -54,7 +56,7 @@ export function useCollateralBalance({
     refetch: refetchNative,
   } = useBalance({
     address,
-    chainId,
+    chainId: effectiveChainId,
     query: { enabled: enabled && Boolean(address) && isEtherealChain },
   });
 
@@ -63,7 +65,7 @@ export function useCollateralBalance({
       abi: erc20Abi,
       address: WUSDE_ADDRESS,
       functionName: 'decimals',
-      chainId,
+      chainId: effectiveChainId,
       query: { enabled: enabled && Boolean(address) && isEtherealChain },
     });
 
@@ -76,18 +78,18 @@ export function useCollateralBalance({
     address: WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId,
+    chainId: effectiveChainId,
     query: { enabled: enabled && Boolean(address) && isEtherealChain },
   });
 
-  const collateralAssetAddress = collateralToken[DEFAULT_CHAIN_ID]?.address;
+  const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
 
   const { data: usdeDecimals, isLoading: isLoadingUsdeDecimals } =
     useReadContract({
       abi: erc20Abi,
       address: collateralAssetAddress,
       functionName: 'decimals',
-      chainId,
+      chainId: effectiveChainId,
       query: { enabled: enabled && Boolean(address) && !isEtherealChain },
     });
 
@@ -100,7 +102,7 @@ export function useCollateralBalance({
     address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    chainId,
+    chainId: effectiveChainId,
     query: { enabled: enabled && Boolean(address) && !isEtherealChain },
   });
 

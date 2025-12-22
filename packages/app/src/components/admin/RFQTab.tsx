@@ -48,11 +48,7 @@ import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract, useReadContracts } from 'wagmi';
 import { keccak256, concatHex, toHex } from 'viem';
 import { lzUmaResolver, lzPMResolver } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  CHAIN_ID_ARBITRUM,
-  CHAIN_ID_ETHEREAL,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
@@ -74,6 +70,7 @@ type RFQRow = {
   description: string;
   similarMarketUrls?: string[];
   chainId?: number;
+  resolver?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
   assertionId?: string;
@@ -699,13 +696,14 @@ const RFQTab = ({
                 claim={original.claimStatement}
                 assertionId={original.assertionId}
                 assertionTimestamp={original.assertionTimestamp}
+                resolver={original.resolver ?? null}
               />
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
                   setEditingId(id);
-                  setEditingChainId(original.chainId ?? CHAIN_ID_ARBITRUM);
+                  setEditingChainId(original.chainId ?? DEFAULT_CHAIN_ID);
                   setQuestion(original.question || '');
                   setShortName(original.shortName || '');
                   setCategorySlug(original.category?.slug || '');
@@ -764,6 +762,7 @@ const RFQTab = ({
         description: c.description,
         similarMarketUrls: c.similarMarkets,
         chainId: c.chainId,
+        resolver: c.resolver ?? null,
         resolvedToYes,
         assertionId: c.assertionId,
         assertionTimestamp: c.assertionTimestamp,

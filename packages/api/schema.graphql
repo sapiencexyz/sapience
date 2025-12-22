@@ -60,15 +60,13 @@ type Attestation {
   attester: String!
   blockNumber: Int!
   comment: String
-  condition: String
+  condition(where: ConditionWhereInput): Condition
+  conditionId: String
   createdAt: DateTimeISO!
   data: String!
   decodedDataJson: String!
   id: Int!
-  marketAddress: String
-  marketId: String
   prediction: String!
-  questionId: String
   recipient: String!
   resolver: String
   schemaId: String!
@@ -94,15 +92,12 @@ type AttestationCountAggregate {
   attester: Int!
   blockNumber: Int!
   comment: Int!
-  condition: Int!
+  conditionId: Int!
   createdAt: Int!
   data: Int!
   decodedDataJson: Int!
   id: Int!
-  marketAddress: Int!
-  marketId: Int!
   prediction: Int!
-  questionId: Int!
   recipient: Int!
   resolver: Int!
   schemaId: Int!
@@ -115,15 +110,12 @@ input AttestationCountOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
-  condition: SortOrder
+  conditionId: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
   prediction: SortOrder
-  questionId: SortOrder
   recipient: SortOrder
   resolver: SortOrder
   schemaId: SortOrder
@@ -141,15 +133,12 @@ type AttestationGroupBy {
   attester: String!
   blockNumber: Int!
   comment: String
-  condition: String
+  conditionId: String
   createdAt: DateTimeISO!
   data: String!
   decodedDataJson: String!
   id: Int!
-  marketAddress: String
-  marketId: String
   prediction: String!
-  questionId: String
   recipient: String!
   resolver: String
   schemaId: String!
@@ -158,19 +147,22 @@ type AttestationGroupBy {
   uid: String!
 }
 
+input AttestationListRelationFilter {
+  every: AttestationWhereInput
+  none: AttestationWhereInput
+  some: AttestationWhereInput
+}
+
 type AttestationMaxAggregate {
   attester: String
   blockNumber: Int
   comment: String
-  condition: String
+  conditionId: String
   createdAt: DateTimeISO
   data: String
   decodedDataJson: String
   id: Int
-  marketAddress: String
-  marketId: String
   prediction: String
-  questionId: String
   recipient: String
   resolver: String
   schemaId: String
@@ -183,15 +175,12 @@ input AttestationMaxOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
-  condition: SortOrder
+  conditionId: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
   prediction: SortOrder
-  questionId: SortOrder
   recipient: SortOrder
   resolver: SortOrder
   schemaId: SortOrder
@@ -204,15 +193,12 @@ type AttestationMinAggregate {
   attester: String
   blockNumber: Int
   comment: String
-  condition: String
+  conditionId: String
   createdAt: DateTimeISO
   data: String
   decodedDataJson: String
   id: Int
-  marketAddress: String
-  marketId: String
   prediction: String
-  questionId: String
   recipient: String
   resolver: String
   schemaId: String
@@ -225,21 +211,22 @@ input AttestationMinOrderByAggregateInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrder
-  condition: SortOrder
+  conditionId: SortOrder
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrder
-  marketId: SortOrder
   prediction: SortOrder
-  questionId: SortOrder
   recipient: SortOrder
   resolver: SortOrder
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
   uid: SortOrder
+}
+
+input AttestationOrderByRelationAggregateInput {
+  _count: SortOrder
 }
 
 input AttestationOrderByWithAggregationInput {
@@ -251,15 +238,12 @@ input AttestationOrderByWithAggregationInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
-  condition: SortOrderInput
+  conditionId: SortOrderInput
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrderInput
-  marketId: SortOrderInput
   prediction: SortOrder
-  questionId: SortOrderInput
   recipient: SortOrder
   resolver: SortOrderInput
   schemaId: SortOrder
@@ -273,15 +257,13 @@ input AttestationOrderByWithRelationInput {
   attester: SortOrder
   blockNumber: SortOrder
   comment: SortOrderInput
-  condition: SortOrderInput
+  condition: ConditionOrderByWithRelationInput
+  conditionId: SortOrderInput
   createdAt: SortOrder
   data: SortOrder
   decodedDataJson: SortOrder
   id: SortOrder
-  marketAddress: SortOrderInput
-  marketId: SortOrderInput
   prediction: SortOrder
-  questionId: SortOrderInput
   recipient: SortOrder
   resolver: SortOrderInput
   schemaId: SortOrder
@@ -299,15 +281,12 @@ enum AttestationScalarFieldEnum {
   attester
   blockNumber
   comment
-  condition
+  conditionId
   createdAt
   data
   decodedDataJson
   id
-  marketAddress
-  marketId
   prediction
-  questionId
   recipient
   resolver
   schemaId
@@ -323,15 +302,12 @@ input AttestationScalarWhereWithAggregatesInput {
   attester: StringWithAggregatesFilter
   blockNumber: IntWithAggregatesFilter
   comment: StringNullableWithAggregatesFilter
-  condition: StringNullableWithAggregatesFilter
+  conditionId: StringNullableWithAggregatesFilter
   createdAt: DateTimeWithAggregatesFilter
   data: StringWithAggregatesFilter
   decodedDataJson: StringWithAggregatesFilter
   id: IntWithAggregatesFilter
-  marketAddress: StringNullableWithAggregatesFilter
-  marketId: StringNullableWithAggregatesFilter
   prediction: StringWithAggregatesFilter
-  questionId: StringNullableWithAggregatesFilter
   recipient: StringWithAggregatesFilter
   resolver: StringNullableWithAggregatesFilter
   schemaId: StringWithAggregatesFilter
@@ -425,15 +401,13 @@ input AttestationWhereInput {
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
-  condition: StringNullableFilter
+  condition: ConditionNullableRelationFilter
+  conditionId: StringNullableFilter
   createdAt: DateTimeFilter
   data: StringFilter
   decodedDataJson: StringFilter
   id: IntFilter
-  marketAddress: StringNullableFilter
-  marketId: StringNullableFilter
   prediction: StringFilter
-  questionId: StringNullableFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -450,15 +424,13 @@ input AttestationWhereUniqueInput {
   attester: StringFilter
   blockNumber: IntFilter
   comment: StringNullableFilter
-  condition: StringNullableFilter
+  condition: ConditionNullableRelationFilter
+  conditionId: StringNullableFilter
   createdAt: DateTimeFilter
   data: StringFilter
   decodedDataJson: StringFilter
   id: Int
-  marketAddress: StringNullableFilter
-  marketId: StringNullableFilter
   prediction: StringFilter
-  questionId: StringNullableFilter
   recipient: StringFilter
   resolver: StringNullableFilter
   schemaId: StringFilter
@@ -642,6 +614,7 @@ type Condition {
   _count: ConditionCount
   assertionId: String
   assertionTimestamp: Int
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
@@ -688,6 +661,7 @@ input ConditionAvgOrderByAggregateInput {
 }
 
 type ConditionCount {
+  attestations(where: AttestationWhereInput): Int!
   predictions(where: PredictionWhereInput): Int!
 }
 
@@ -1026,6 +1000,11 @@ input ConditionMinOrderByAggregateInput {
   shortName: SortOrder
 }
 
+input ConditionNullableRelationFilter {
+  is: ConditionWhereInput
+  isNot: ConditionWhereInput
+}
+
 input ConditionOrderByRelationAggregateInput {
   _count: SortOrder
 }
@@ -1061,6 +1040,7 @@ input ConditionOrderByWithAggregationInput {
 input ConditionOrderByWithRelationInput {
   assertionId: SortOrderInput
   assertionTimestamp: SortOrderInput
+  attestations: AttestationOrderByRelationAggregateInput
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
@@ -1174,6 +1154,7 @@ input ConditionWhereInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
+  attestations: AttestationListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
@@ -1203,6 +1184,7 @@ input ConditionWhereUniqueInput {
   OR: [ConditionWhereInput!]
   assertionId: StringNullableFilter
   assertionTimestamp: IntNullableFilter
+  attestations: AttestationListRelationFilter
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter

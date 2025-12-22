@@ -128,6 +128,16 @@ export default function PositionsTable({
   showHeaderText?: boolean;
   chainId?: number;
 }) {
+  const pythSideForRole = (
+    makerPrediction: boolean,
+    role: UIPosition['addressRole']
+  ): { choice: 'OVER' | 'UNDER'; direction: 'over' | 'under' } => {
+    const displayPrediction =
+      role === 'counterparty' ? !makerPrediction : makerPrediction;
+    return displayPrediction
+      ? { choice: 'OVER', direction: 'over' }
+      : { choice: 'UNDER', direction: 'under' };
+  };
   // ---
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
@@ -156,6 +166,9 @@ export default function PositionsTable({
     description?: string | null;
     source?: 'uma' | 'pyth';
     pythPrediction?: PythPrediction;
+    // For Pyth legs only: maker-side prediction (true=Over, false=Under).
+    // Used to render the correct side for counterparty rows (which take the opposite side).
+    pythMakerPrediction?: boolean;
   };
   type UIPosition = {
     uniqueRowKey: string;
@@ -294,10 +307,6 @@ export default function PositionsTable({
             pythMeta.strikePrice,
             pythMeta.strikeExpo
           );
-          const dir = o.outcomeYes ? 'OVER' : 'UNDER';
-          const direction = o.outcomeYes
-            ? ('over' as const)
-            : ('under' as const);
           const priceNum = Number(strikeStr);
           const endTimeSec: number | null =
             typeof o?.condition?.endTime === 'number'
@@ -311,11 +320,14 @@ export default function PositionsTable({
             o?.condition?.shortName || o?.condition?.question || question || ''
           );
 
+          // Note: `o.outcomeYes` is stored as the maker/predictor-side prediction for Pyth.
+          // We keep it here and compute display direction per-role later.
+          const makerPrediction = Boolean(o.outcomeYes);
           const pythPrediction: PythPrediction = {
             id: `${o?.conditionId ?? 'pyth'}:${strikeStr}:${pythMeta.strikeExpo}:${endTimeSec ?? 'no-end'}`,
             priceId: pythMeta.priceId || o?.conditionId || feedLabel || 'pyth',
             priceFeedLabel: feedLabel || undefined,
-            direction,
+            direction: makerPrediction ? ('over' as const) : ('under' as const),
             targetPrice: Number.isFinite(priceNum) ? priceNum : 0,
             targetPriceRaw: strikeStr,
             targetPriceFullPrecision: strikeStr,
@@ -326,13 +338,14 @@ export default function PositionsTable({
             question,
             // For display we render structured Pyth legs (not a choice badge).
             // Keep a simple string for any fallback renderers.
-            choice: dir,
+            choice: makerPrediction ? 'OVER' : 'UNDER',
             conditionId: o?.conditionId,
             categorySlug: null,
             endTime: o?.condition?.endTime ?? null,
             description: desc,
             source: 'pyth' as const,
             pythPrediction,
+            pythMakerPrediction: makerPrediction,
           };
         }
 
@@ -466,7 +479,45 @@ export default function PositionsTable({
         return {
           uniqueRowKey,
           positionId,
-          legs,
+          legs: legs.map((leg) => {
+            // Flip display sides for counterparty rows:
+            // - Pyth: maker prediction is stored; counterparty is opposite
+            // - UMA: counterparty is opposite of the predictor's YES/NO
+            if (role === 'counterparty') {
+              if (leg.source === 'pyth' && leg.pythPrediction) {
+                const makerPrediction = Boolean(leg.pythMakerPrediction);
+                const side = pythSideForRole(makerPrediction, role);
+                return {
+                  ...leg,
+                  choice: side.choice,
+                  pythPrediction: {
+                    ...leg.pythPrediction,
+                    direction: side.direction,
+                  },
+                };
+              }
+
+              const upper = String(leg.choice || '').toUpperCase();
+              if (upper === 'YES') return { ...leg, choice: 'NO' };
+              if (upper === 'NO') return { ...leg, choice: 'YES' };
+            }
+
+            if (leg.source === 'pyth' && leg.pythPrediction) {
+              // Predictor row (or unknown): ensure Pyth direction matches maker side.
+              const makerPrediction = Boolean(leg.pythMakerPrediction);
+              const side = pythSideForRole(makerPrediction, role);
+              return {
+                ...leg,
+                choice: side.choice,
+                pythPrediction: {
+                  ...leg.pythPrediction,
+                  direction: side.direction,
+                },
+              };
+            }
+
+            return leg;
+          }),
           direction: 'Long' as const,
           endsAt: endsAtSec ? endsAtSec * 1000 : Date.now(),
           status,
@@ -831,35 +882,43 @@ export default function PositionsTable({
         size: 400,
         minSize: 300,
         header: () => <span>Predictions</span>,
-        cell: ({ row }) => (
-          <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Predictions
+        cell: ({ row }) => {
+          const hasPythLeg = (row.original.legs || []).some(
+            (leg) => leg.source === 'pyth'
+          );
+          return (
+            <div className="text-sm">
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Predictions
+              </div>
+              <div className="flex flex-col xl:flex-row xl:items-center gap-2">
+                {row.original.addressRole === 'counterparty' && (
+                  <>
+                    {/* Counterparty badge is only shown for UMA (non-Pyth) positions */}
+                    {!hasPythLeg ? <CounterpartyBadge /> : null}
+                  </>
+                )}
+                <StackedPredictions
+                  legs={
+                    row.original.legs.map(
+                      (leg): Pick => ({
+                        question: leg.question,
+                        choice: leg.choice,
+                        conditionId: leg.conditionId,
+                        categorySlug: leg.categorySlug ?? null,
+                        endTime: leg.endTime ?? null,
+                        description: leg.description ?? null,
+                        source: leg.source,
+                        pythPrediction: leg.pythPrediction,
+                      })
+                    ) ?? []
+                  }
+                  className="max-w-full flex-1 min-w-0"
+                />
+              </div>
             </div>
-            <div className="flex flex-col xl:flex-row xl:items-center gap-2">
-              {row.original.addressRole === 'counterparty' && (
-                <CounterpartyBadge />
-              )}
-              <StackedPredictions
-                legs={
-                  row.original.legs.map(
-                    (leg): Pick => ({
-                      question: leg.question,
-                      choice: leg.choice,
-                      conditionId: leg.conditionId,
-                      categorySlug: leg.categorySlug ?? null,
-                      endTime: leg.endTime ?? null,
-                      description: leg.description ?? null,
-                      source: leg.source,
-                      pythPrediction: leg.pythPrediction,
-                    })
-                  ) ?? []
-                }
-                className="max-w-full flex-1 min-w-0"
-              />
-            </div>
-          </div>
-        ),
+          );
+        },
       },
 
       {

@@ -206,8 +206,11 @@ export class PositionResolver {
     // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
     // and not using NFT filtering
     const useRawSql = addr && !nftTokenId && !marketAddress;
-    
-    if (useRawSql && (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')) {
+
+    if (
+      useRawSql &&
+      (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')
+    ) {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
       const validStatuses = ['active', 'settled', 'consolidated'] as const;
@@ -364,7 +367,7 @@ export class PositionResolver {
     }
 
     const where: Prisma.PositionWhereInput = {};
-    
+
     // Filter by NFT ID and market address if provided
     if (nftTokenId && marketAddress) {
       where.marketAddress = marketAddress.toLowerCase();
@@ -381,7 +384,7 @@ export class PositionResolver {
     else {
       return [];
     }
-    
+
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }

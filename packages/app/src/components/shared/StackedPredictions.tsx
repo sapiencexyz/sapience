@@ -11,7 +11,6 @@ import {
   PythPredictionListItem,
   type PythPrediction,
 } from '@sapience/ui';
-import Link from 'next/link';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -142,12 +141,12 @@ export function StackedPredictionsTitle({
             className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
           >
             {firstLeg.conditionId ? (
-              <Link
-                href={`/questions/${firstLeg.conditionId}`}
-                className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white transition-colors underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40"
-              >
-                {firstLeg.question}
-              </Link>
+              <ConditionTitleLink
+                conditionId={firstLeg.conditionId}
+                title={firstLeg.question}
+                clampLines={1}
+                className="text-sm min-w-0 flex-1"
+              />
             ) : (
               <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
                 {firstLeg.question}

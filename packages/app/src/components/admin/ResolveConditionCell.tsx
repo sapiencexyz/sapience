@@ -5,10 +5,10 @@ import { useWallets } from '@privy-io/react-auth';
 import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex, keccak256, concatHex } from 'viem';
 import { useReadContract, useWriteContract, useSwitchChain } from 'wagmi';
-import { lzUmaResolver } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import { getAdminSettlementTarget } from '~/lib/resolvers/conditionResolver';
 
 type ResolveConditionCellProps = {
   marketId?: `0x${string}`;
@@ -17,6 +17,7 @@ type ResolveConditionCellProps = {
   className?: string;
   assertionId?: string;
   assertionTimestamp?: number;
+  resolver?: string | null;
 };
 
 const umaResolverAbi = [
@@ -73,14 +74,17 @@ const ResolveConditionCell = ({
   className,
   assertionId: propAssertionId,
   assertionTimestamp,
+  resolver,
 }: ResolveConditionCellProps) => {
   const { wallets } = useWallets();
   const connectedAddress = (wallets?.[0]?.address || undefined) as
     | `0x${string}`
     | undefined;
 
-  const UMA_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const UMA_RESOLVER_ADDRESS = lzUmaResolver[DEFAULT_CHAIN_ID]?.address;
+  const adminTarget =
+    getAdminSettlementTarget({ conditionResolver: resolver }) ?? null;
+  const UMA_CHAIN_ID = adminTarget?.chainId ?? DEFAULT_CHAIN_ID;
+  const UMA_RESOLVER_ADDRESS = adminTarget?.resolverAddress;
 
   const nowSec = Math.floor(Date.now() / 1000);
   const pastEnd = !!endTime && nowSec >= endTime;

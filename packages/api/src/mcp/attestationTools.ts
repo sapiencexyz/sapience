@@ -8,10 +8,12 @@ import prisma from '../db';
  */
 export const getAttestationsByMarket = {
   name: 'get_attestations_by_market',
-  description: 'Get all attestations for a specific market ID.',
+  description: 'Get all attestations for a specific condition/market ID.',
   parameters: {
     properties: {
-      marketId: z.string().describe('The market ID to query attestations for'),
+      marketId: z
+        .string()
+        .describe('The condition/market ID to query attestations for'),
     },
   },
   function: async ({
@@ -22,7 +24,7 @@ export const getAttestationsByMarket = {
     try {
       const attestations = await prisma.attestation.findMany({
         where: {
-          marketId: marketId,
+          conditionId: marketId,
         },
         orderBy: {
           time: 'desc',
@@ -144,7 +146,7 @@ export const getRecentAttestations = {
       marketId: z
         .string()
         .optional()
-        .describe('Optional market ID to filter attestations'),
+        .describe('Optional condition/market ID to filter attestations'),
     },
   },
   function: async ({
@@ -156,11 +158,11 @@ export const getRecentAttestations = {
   }): Promise<CallToolResult> => {
     try {
       const where: {
-        marketId?: string;
+        conditionId?: string;
       } = {};
 
       if (marketId) {
-        where.marketId = marketId;
+        where.conditionId = marketId;
       }
 
       const attestations = await prisma.attestation.findMany({
