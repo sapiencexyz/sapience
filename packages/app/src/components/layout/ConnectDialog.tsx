@@ -43,7 +43,7 @@ const FEATURED_WALLETS = [
     id: 'rabby',
     name: 'Rabby Wallet',
     matchIds: ['io.rabby', 'rabby'],
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzhBOTdGRiIvPgo8cGF0aCBkPSJNMjQuNSAxMy41QzI0LjUgMTAuNSAyMiA4IDE5IDhIMTNDMTAgOCA3LjUgMTAuNSA3LjUgMTMuNUM3LjUgMTUuNSA4LjUgMTcuMiAxMCAxOEw4IDI0SDEyTDE0IDIwSDE4TDIwIDI0SDI0TDIyIDE4QzIzLjUgMTcuMiAyNC41IDE1LjUgMjQuNSAxMy41WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+    icon: '/wallet-icons/rabby.svg',
   },
   {
     id: 'metamask',
