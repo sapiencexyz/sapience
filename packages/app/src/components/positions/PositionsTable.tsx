@@ -787,6 +787,23 @@ export default function PositionsTable({
     if (openSharePositionId === null) return null;
     return rows.find((r) => r.positionId === openSharePositionId) || null;
   }, [rows, openSharePositionId]);
+
+  // Find the original Parlay data to get predictorNftTokenId for sharing
+  const selectedParlay = React.useMemo(() => {
+    if (!selectedPosition) return null;
+    // Find the original parlay by matching marketAddress and chainId
+    // The positionId in the row might be the NFT ID, so we need to find the parlay
+    return (
+      data.find(
+        (p: any) =>
+          p.marketAddress?.toLowerCase() ===
+            selectedPosition.marketAddress?.toLowerCase() &&
+          p.chainId === selectedPosition.chainId &&
+          (p.predictorNftTokenId === String(selectedPosition.positionId) ||
+            p.counterpartyNftTokenId === String(selectedPosition.positionId))
+      ) || null
+    );
+  }, [selectedPosition, data]);
   // ---
 
   const columns = React.useMemo<ColumnDef<UIPosition>[]>(
@@ -1500,7 +1517,13 @@ export default function PositionsTable({
       {selectedPosition && (
         <ShareDialog
           question={`Position #${selectedPosition.positionId}`}
-          positionId={selectedPosition.positionId}
+          nftId={
+            selectedPosition.addressRole === 'counterparty'
+              ? selectedParlay?.counterpartyNftTokenId
+              : selectedParlay?.predictorNftTokenId ||
+                String(selectedPosition.positionId)
+          }
+          marketAddress={selectedPosition.marketAddress}
           legs={selectedPosition.legs?.map((l) => ({
             question: l.question,
             choice: l.choice,
@@ -1520,7 +1543,6 @@ export default function PositionsTable({
             ...(selectedPosition.addressRole === 'counterparty'
               ? { anti: '1' }
               : {}),
-            ...(chainId ? { chainId: String(chainId) } : {}),
           }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {

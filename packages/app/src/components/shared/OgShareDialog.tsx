@@ -42,8 +42,8 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     imageSrc,
     title = 'Share',
     trigger,
-    shareTitle = 'Share',
-    shareText,
+    shareTitle: _shareTitle = 'Share',
+    shareText: _shareText,
     open: controlledOpen,
     onOpenChange,
     loaderSizePx = 20,
@@ -281,15 +281,17 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     }
   };
 
-  // Extract positionId and chainId from imageSrc if present
+  // Extract nftId and marketAddress from imageSrc if present
   const positionShareParams = useMemo(() => {
     try {
       if (typeof window === 'undefined') return null;
       const url = new URL(imageSrc, window.location.origin);
-      const positionId = url.searchParams.get('positionId');
-      const chainIdParam = url.searchParams.get('chainId');
-      if (positionId) {
-        return { positionId, chainId: chainIdParam };
+      const nftId = url.searchParams.get('nftId');
+      const marketAddress = url.searchParams.get('marketAddress');
+
+      // Use NFT ID and market address
+      if (nftId && marketAddress) {
+        return { nftId, marketAddress };
       }
     } catch {
       // ignore
@@ -297,38 +299,20 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     return null;
   }, [imageSrc]);
 
-  // Build share URL - use positionId if available, otherwise use token
+  // Build share URL - use nftId and marketAddress if available
   // Returns absolute URL for sharing
-  const buildShareUrl = useCallback(async (): Promise<string> => {
+  const buildShareUrl = useCallback((): string => {
     let relativeUrl: string;
 
-    // If positionId is available, use it directly
-    if (positionShareParams?.positionId) {
+    // If nftId and marketAddress are available, use them
+    if (positionShareParams?.nftId && positionShareParams?.marketAddress) {
       const qp = new URLSearchParams();
-      qp.set('positionId', positionShareParams.positionId);
-      if (positionShareParams.chainId) {
-        qp.set('chainId', positionShareParams.chainId);
-      }
+      qp.set('nftId', positionShareParams.nftId);
+      qp.set('marketAddress', positionShareParams.marketAddress);
       relativeUrl = `/share?${qp.toString()}`;
     } else {
-      // Otherwise, use the token-based approach
-      const payload = {
-        img: imageSrc,
-        title: shareTitle,
-        description: shareText,
-        alt: 'Sapience share image',
-      };
-      try {
-        const res = await fetch('/api/share/encode', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        relativeUrl = data?.shareUrl || '/share';
-      } catch {
-        relativeUrl = '/share';
-      }
+      // If no position parameters are available, fall back to share page without params
+      relativeUrl = '/share';
     }
 
     // Convert to absolute URL
@@ -336,7 +320,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       return `${window.location.origin}${relativeUrl}`;
     }
     return relativeUrl;
-  }, [positionShareParams, imageSrc, shareTitle, shareText]);
+  }, [positionShareParams]);
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {
@@ -454,12 +438,12 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                   }
 
                   // Fallback: generate compact share URL and copy as text
-                  const shareUrl = await buildShareUrl();
+                  const shareUrl = buildShareUrl();
                   await navigator.clipboard.writeText(shareUrl);
                   toast({ title: 'Link copied successfully' });
                 } catch {
                   try {
-                    const shareUrl = await buildShareUrl();
+                    const shareUrl = buildShareUrl();
                     await navigator.clipboard.writeText(shareUrl);
                     toast({ title: 'Link copied successfully' });
                   } catch {
@@ -476,8 +460,8 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               className="w-full"
               type="button"
               disabled={trackPosition && !positionResolved}
-              onClick={async () => {
-                const shareUrl = await buildShareUrl();
+              onClick={() => {
+                const shareUrl = buildShareUrl();
                 const intent = buildXShareUrl(shareUrl);
                 window.open(intent, '_blank', 'noopener,noreferrer');
               }}
@@ -499,7 +483,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               variant="outline"
               disabled={trackPosition && !positionResolved}
               onClick={async () => {
-                const shareUrl = await buildShareUrl();
+                const shareUrl = buildShareUrl();
                 if ((navigator as any).share) {
                   try {
                     await (navigator as any).share({ url: shareUrl });

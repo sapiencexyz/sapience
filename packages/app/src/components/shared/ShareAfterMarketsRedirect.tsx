@@ -86,20 +86,18 @@ export default function ShareAfterMarketsRedirect() {
     }
   }, []);
 
-  // Build OG url from position ID (preferred method)
-  const buildOgUrlFromPositionId = useCallback(
-    (positionId: number, chainId?: number): string | null => {
+  // Build OG url from NFT ID and market address (preferred method)
+  const buildOgUrlFromNftAndMarket = useCallback(
+    (nftTokenId: string, marketAddress: string): string | null => {
       try {
         const qp = new URLSearchParams();
-        qp.set('positionId', String(positionId));
-        if (chainId) {
-          qp.set('chainId', String(chainId));
-        }
+        qp.set('nftId', String(nftTokenId));
+        qp.set('marketAddress', String(marketAddress));
         const ogUrl = `/og/position?${qp.toString()}`;
         return ogUrl;
       } catch (e) {
         console.error(
-          '[ShareAfterMarketsRedirect] Error building OG URL from positionId:',
+          '[ShareAfterMarketsRedirect] Error building OG URL from NFT and market:',
           e
         );
         return null;
@@ -156,7 +154,7 @@ export default function ShareAfterMarketsRedirect() {
   );
 
   // Build minimal OG url from resolved parlay (fallback)
-  // Uses positionId when available, otherwise falls back to query params
+  // Uses NFT ID and market address when available, otherwise falls back to query params
   const toOgUrl = useCallback(
     (entity: Parlay): string | null => {
       if (!lowerAddress) {
@@ -165,9 +163,12 @@ export default function ShareAfterMarketsRedirect() {
       try {
         const position = entity;
 
-        // Prefer positionId-based URL (same as buildOgUrlFromPositionId)
-        if (position?.id) {
-          return buildOgUrlFromPositionId(position.id, position.chainId);
+        // Prefer NFT ID and market address-based URL
+        if (position?.predictorNftTokenId && position?.marketAddress) {
+          return buildOgUrlFromNftAndMarket(
+            position.predictorNftTokenId,
+            position.marketAddress
+          );
         }
 
         // Fallback to query params if positionId is not available
@@ -217,7 +218,7 @@ export default function ShareAfterMarketsRedirect() {
         return null;
       }
     },
-    [lowerAddress, buildOgUrlFromPositionId]
+    [lowerAddress, buildOgUrlFromNftAndMarket]
   );
 
   // Handle intent detection and open dialog with betslip data
@@ -424,13 +425,18 @@ export default function ShareAfterMarketsRedirect() {
       }
 
       if (resolved) {
-        // Use positionId to build OG URL (preferred method)
-        const src = buildOgUrlFromPositionId(resolved.id, resolved.chainId);
-        if (src) {
-          setImageSrc(src);
-          setOpen(true);
-          clearIntent();
-          return;
+        // Use NFT ID and market address to build OG URL (preferred method)
+        if (resolved.predictorNftTokenId && resolved.marketAddress) {
+          const src = buildOgUrlFromNftAndMarket(
+            resolved.predictorNftTokenId,
+            resolved.marketAddress
+          );
+          if (src) {
+            setImageSrc(src);
+            setOpen(true);
+            clearIntent();
+            return;
+          }
         }
 
         // Fallback to old method if positionId method fails
@@ -464,7 +470,7 @@ export default function ShareAfterMarketsRedirect() {
     lowerAddress,
     positions,
     readIntent,
-    buildOgUrlFromPositionId,
+    buildOgUrlFromNftAndMarket,
     buildOgUrlFromBetslip,
     toOgUrl,
     clearIntent,

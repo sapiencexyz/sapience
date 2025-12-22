@@ -50,6 +50,9 @@ function formatUnits(value: string, decimals: number = 18): string {
   }
 }
 
+// marketAdress, counterparty bool, positionId.
+// for a given share card, this will be everything that we need to generate it
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -61,8 +64,9 @@ export async function GET(req: Request) {
       });
     }
 
-    // Check if positionId is provided - if so, query API for position data
-    const positionIdParam = searchParams.get('positionId');
+    // Check if nftId and marketAddress are provided - if so, query API for position data
+    const nftIdParam = searchParams.get('nftId');
+    const marketAddressParam = searchParams.get('marketAddress');
     let wagerRaw = normalizeText(searchParams.get('wager'), 32);
     let payoutRaw = normalizeText(searchParams.get('payout'), 32);
     let symbol = normalizeText(searchParams.get('symbol'), 16);
@@ -70,105 +74,110 @@ export async function GET(req: Request) {
     let rawLegs: string[] = searchParams.getAll('leg');
     let antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
 
-    if (positionIdParam) {
+    // Try NFT ID and market address first (preferred method)
+    if (nftIdParam && marketAddressParam) {
       try {
-        const positionId = parseInt(positionIdParam, 10);
-        if (!isNaN(positionId)) {
-          const chainIdParam = searchParams.get('chainId');
-          const chainId = chainIdParam ? parseInt(chainIdParam, 10) : undefined;
-
-          const graphqlEndpoint = getGraphQLEndpoint();
-          const query = `
-            query PositionById($id: Int!, $chainId: Int) {
-              positionById(id: $id, chainId: $chainId) {
-                id
-                chainId
-                predictor
-                counterparty
-                predictorCollateral
-                counterpartyCollateral
-                totalCollateral
-                predictions {
-                  conditionId
-                  outcomeYes
-                  condition {
-                    id
-                    question
-                    shortName
-                  }
+        const graphqlEndpoint = getGraphQLEndpoint();
+        const query = `
+          query PositionsByNftAndMarket($nftTokenId: String, $marketAddress: String) {
+            positions(nftTokenId: $nftTokenId, marketAddress: $marketAddress, take: 1) {
+              id
+              chainId
+              predictor
+              counterparty
+              predictorNftTokenId
+              counterpartyNftTokenId
+              predictorCollateral
+              counterpartyCollateral
+              totalCollateral
+              predictions {
+                conditionId
+                outcomeYes
+                condition {
+                  id
+                  question
+                  shortName
                 }
               }
             }
-          `;
+          }
+        `;
 
-          const response = await fetch(graphqlEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query,
-              variables: { id: positionId, chainId: chainId ?? null },
-            }),
-          });
+        const response = await fetch(graphqlEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            variables: {
+              nftTokenId: nftIdParam,
+              marketAddress: marketAddressParam,
+            },
+          }),
+        });
 
-          if (response.ok) {
-            const result = await response.json();
-            const position = result?.data?.positionById;
+        if (response.ok) {
+          const result = await response.json();
+          const positions = result?.data?.positions;
+          const position =
+            positions && positions.length > 0 ? positions[0] : null;
 
-            if (position) {
-              // Extract data from position
-              rawAddr = position.predictor?.toLowerCase() || rawAddr;
+          if (position) {
+            // Extract data from position
+            rawAddr = position.predictor?.toLowerCase() || rawAddr;
 
-              // Determine if user is counterparty (for anti flag)
-              const userAddr = rawAddr.toLowerCase();
-              const isUserCounterparty =
-                position.counterparty?.toLowerCase() === userAddr;
-              if (isUserCounterparty) {
-                antiParam = '1';
-              }
+            // Determine if queried NFT is counterparty's NFT (for anti flag and wager display)
+            const isCounterpartyNft =
+              position.counterpartyNftTokenId === nftIdParam;
+            if (isCounterpartyNft) {
+              antiParam = '1';
+              // Use counterparty's address for display
+              rawAddr = position.counterparty?.toLowerCase() || rawAddr;
+            }
 
-              // Get wager and payout
-              const collateral = isUserCounterparty
-                ? position.counterpartyCollateral
-                : position.predictorCollateral;
-              const totalCollateral = position.totalCollateral;
+            // Get wager and payout
+            // If the queried NFT is the counterparty's, show counterparty's wager
+            const collateral = isCounterpartyNft
+              ? position.counterpartyCollateral
+              : position.predictorCollateral;
+            const totalCollateral = position.totalCollateral;
 
-              if (collateral) {
-                wagerRaw = formatUnits(collateral);
-              }
-              if (totalCollateral) {
-                payoutRaw = formatUnits(totalCollateral);
-              }
+            if (collateral) {
+              wagerRaw = formatUnits(collateral);
+            }
+            if (totalCollateral) {
+              payoutRaw = formatUnits(totalCollateral);
+            }
 
-              // Default symbol if not provided
-              if (!symbol) {
-                symbol = 'testUSDe';
-              }
+            // Default symbol if not provided
+            if (!symbol) {
+              symbol = 'testUSDe';
+            }
 
-              // Build legs from predictions
-              if (position.predictions && position.predictions.length > 0) {
-                rawLegs = position.predictions.map(
-                  (pred: {
-                    condition?: {
-                      shortName?: string | null;
-                      question?: string | null;
-                    } | null;
-                    outcomeYes: boolean;
-                  }) => {
-                    const question =
-                      pred.condition?.shortName ||
-                      pred.condition?.question ||
-                      '';
-                    const choice = pred.outcomeYes ? 'Yes' : 'No';
-                    return `${question}|${choice}`;
-                  }
-                );
-              }
+            // Build legs from predictions
+            if (position.predictions && position.predictions.length > 0) {
+              rawLegs = position.predictions.map(
+                (pred: {
+                  condition?: {
+                    shortName?: string | null;
+                    question?: string | null;
+                  } | null;
+                  outcomeYes: boolean;
+                }) => {
+                  const question =
+                    pred.condition?.shortName || pred.condition?.question || '';
+                  const choice = pred.outcomeYes ? 'Yes' : 'No';
+                  return `${question}|${choice}`;
+                }
+              );
             }
           }
         }
       } catch (err) {
         // If API query fails, fall back to query params
-        console.error('Failed to fetch position from API:', err);
+        console.error(
+          'Failed to fetch position from API by NFT and market:',
+          err
+        );
       }
     }
 
