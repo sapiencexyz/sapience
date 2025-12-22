@@ -176,7 +176,7 @@ export default function ConnectDialog({
       options.push({
         id: featured.id,
         name: featured.name,
-        icon: detectedWallet?.info.icon || featured.icon,
+        icon: featured.icon || detectedWallet?.info.icon,
         eip6963Provider: detectedWallet,
       });
     }
