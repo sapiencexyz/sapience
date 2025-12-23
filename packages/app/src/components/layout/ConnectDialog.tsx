@@ -12,7 +12,6 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Mail, Wallet } from 'lucide-react';
-
 import { useAuth } from '~/lib/context/AuthContext';
 
 // EIP-6963 types
@@ -52,10 +51,10 @@ const FEATURED_WALLETS = [
     icon: '/wallet-icons/metamask.svg',
   },
   {
-    id: 'phantom',
-    name: 'Phantom',
-    matchIds: ['app.phantom', 'phantom'],
-    icon: '/wallet-icons/phantom.ico',
+    id: 'coinbase',
+    name: 'Coinbase Wallet',
+    matchIds: ['com.coinbase.wallet', 'com.coinbase.cbwallet', 'coinbase'],
+    icon: '/wallet-icons/coinbase-wallet.png', // Will use detected wallet icon or fallback
   },
 ] as const;
 
@@ -144,6 +143,7 @@ export default function ConnectDialog({
     [connect, clearLoggedOut]
   );
 
+
   const handleWalletClick = useCallback(
     (wallet: { eip6963Provider?: EIP6963ProviderDetail; id: string }) => {
       if (wallet.eip6963Provider) {
@@ -176,7 +176,7 @@ export default function ConnectDialog({
       options.push({
         id: featured.id,
         name: featured.name,
-        icon: featured.icon || detectedWallet?.info.icon,
+        icon: featured.icon || detectedWallet?.info.icon, // always use featured icon first
         eip6963Provider: detectedWallet,
       });
     }
@@ -186,8 +186,8 @@ export default function ConnectDialog({
       const rdns = wallet.info.rdns.toLowerCase();
       const name = wallet.info.name.toLowerCase();
 
-      // Skip WalletConnect
-      if (rdns.includes('walletconnect') || name.includes('walletconnect')) {
+      // Skip Phantom
+      if (name.includes('phantom') || rdns.includes('walletconnect') || name.includes('walletconnect')) {
         continue;
       }
 
