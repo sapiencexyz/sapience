@@ -50,12 +50,6 @@ const FEATURED_WALLETS = [
     matchIds: ['io.metamask', 'metamask'],
     icon: '/wallet-icons/metamask.svg',
   },
-  {
-    id: 'coinbase',
-    name: 'Coinbase Wallet',
-    matchIds: ['com.coinbase.wallet', 'com.coinbase.cbwallet', 'coinbase'],
-    icon: '/wallet-icons/coinbase-wallet.png', // Will use detected wallet icon or fallback
-  },
 ] as const;
 
 export default function ConnectDialog({

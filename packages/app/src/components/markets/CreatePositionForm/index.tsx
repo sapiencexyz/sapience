@@ -17,7 +17,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DollarSign } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, type CSSProperties } from 'react';
@@ -84,7 +84,7 @@ const CreatePositionForm = ({
   const isPositionMode = true;
   const isCompact = useIsBelow(1024);
   const { hasConnectedWallet } = useConnectedWallet();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
@@ -642,11 +642,7 @@ const CreatePositionForm = ({
 
   const handlePositionSubmit = () => {
     if (!hasConnectedWallet) {
-      try {
-        connectOrCreateWallet();
-      } catch (_error) {
-        // connectOrCreateWallet failed
-      }
+      openConnectDialog();
       return;
     }
 
