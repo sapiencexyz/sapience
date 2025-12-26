@@ -11,7 +11,9 @@ interface ShareDialogProps {
   symbol?: string;
   groupAddress?: string;
   marketId?: number | string;
-  positionId?: number | string;
+  positionId?: number | string; // Deprecated: use nftId and marketAddress instead
+  nftId?: string; // NFT token ID (predictorNftTokenId)
+  marketAddress?: string; // Prediction market address
   owner?: string;
   extraParams?: Record<string, string>;
   trigger?: React.ReactNode;
@@ -32,6 +34,8 @@ export default function ShareDialog(props: ShareDialogProps) {
     groupAddress,
     marketId,
     positionId,
+    nftId,
+    marketAddress,
     owner,
     extraParams,
     trigger,
@@ -49,14 +53,11 @@ export default function ShareDialog(props: ShareDialogProps) {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
 
-    // If positionId is provided and we're using /og/position, use positionId parameter
+    // If nftId and marketAddress are provided and we're using /og/position, use them
     // This allows the edge endpoint to query the API for position data
-    if (positionId !== null && imagePath === '/og/position') {
-      sp.set('positionId', String(positionId));
-      // Add chainId if available in extraParams
-      if (extraParams?.chainId) {
-        sp.set('chainId', String(extraParams.chainId));
-      }
+    if (nftId && marketAddress && imagePath === '/og/position') {
+      sp.set('nftId', String(nftId));
+      sp.set('marketAddress', String(marketAddress));
       return sp.toString();
     }
 
@@ -83,7 +84,10 @@ export default function ShareDialog(props: ShareDialogProps) {
     }
     if (extraParams) {
       Object.entries(extraParams).forEach(([k, v]) => {
-        if (typeof v === 'string') sp.set(k, v);
+        // Exclude chainId from query string
+        if (typeof v === 'string') {
+          sp.set(k, v);
+        }
       });
     }
     return sp.toString();
@@ -96,6 +100,8 @@ export default function ShareDialog(props: ShareDialogProps) {
     groupAddress,
     marketId,
     positionId,
+    nftId,
+    marketAddress,
     owner,
     extraParams,
     props.legs,

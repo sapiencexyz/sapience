@@ -89,10 +89,10 @@ function attestationToComment(
 ): Comment {
   const { prediction, commentText } = getDecodedDataFromAttestation(att);
 
-  // Extract questionId from the attestation
-  const questionId = att.questionId;
+  // Extract conditionId from the attestation
+  const conditionId = att.conditionId;
 
-  // Find the condition data using questionId
+  // Find the condition data using conditionId
   let category: string | undefined = undefined;
   let question: string = isConditionsLoading
     ? 'Loading question...'
@@ -100,14 +100,14 @@ function attestationToComment(
   let endTime: number | null | undefined = undefined;
   let description: string | null | undefined = undefined;
 
-  // Look up condition by questionId
-  const isZeroQuestionId =
-    !questionId ||
-    questionId ===
+  // Look up condition by conditionId
+  const isZeroConditionId =
+    !conditionId ||
+    conditionId ===
       '0x0000000000000000000000000000000000000000000000000000000000000000';
 
-  if (!isZeroQuestionId && conditionsMap && questionId) {
-    const condition = conditionsMap[questionId.toLowerCase()];
+  if (!isZeroConditionId && conditionsMap && conditionId) {
+    const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
       question = condition.shortName || condition.question;
       category = condition.category?.slug || undefined;
@@ -137,7 +137,7 @@ function attestationToComment(
     answer: Answer.Yes,
     question,
     category,
-    conditionId: isZeroQuestionId ? undefined : questionId,
+    conditionId: isZeroConditionId ? undefined : conditionId,
     endTime,
     description,
   };
@@ -184,15 +184,15 @@ const Comments = ({
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
     for (const att of easAttestations || []) {
-      const questionId = att.questionId;
+      const conditionId = att.conditionId;
       if (
-        questionId &&
-        typeof questionId === 'string' &&
-        questionId.startsWith('0x') &&
-        questionId !==
+        conditionId &&
+        typeof conditionId === 'string' &&
+        conditionId.startsWith('0x') &&
+        conditionId !==
           '0x0000000000000000000000000000000000000000000000000000000000000000'
       ) {
-        set.add(questionId.toLowerCase());
+        set.add(conditionId.toLowerCase());
       }
     }
     return Array.from(set);

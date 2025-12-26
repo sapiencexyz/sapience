@@ -3,7 +3,7 @@ import {
   umaResolver,
   lzPMResolver,
 } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   encodePythBinaryOptionOutcomes,
   encodeUmaPredictedOutcomes,
@@ -170,7 +170,7 @@ export function buildAuctionStartPayload(
   chainId?: number
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
   // Select the correct resolver based on chain ID
-  const targetChainId = chainId || CHAIN_ID_ARBITRUM;
+  const targetChainId = chainId || DEFAULT_CHAIN_ID;
   let resolverAddress: `0x${string}` | undefined;
 
   if (targetChainId === CHAIN_ID_ETHEREAL) {
@@ -196,7 +196,7 @@ export function buildPythAuctionStartPayload(
   outcomes: PythOutcomeInputStub[],
   chainId?: number
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
-  const targetChainId = chainId || CHAIN_ID_ARBITRUM;
+  const targetChainId = chainId || DEFAULT_CHAIN_ID;
   const resolverAddress = pythResolver[targetChainId]?.address as
     | `0x${string}`
     | undefined;

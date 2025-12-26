@@ -24,6 +24,9 @@ packages/protocol/deployments/outputs/test
 dump.sql
 *storybook.log
 storybook-static
+**/storybook-static/**
+
+**/*.tsbuildinfo
 
 # docker-compose volume data files
 /data/

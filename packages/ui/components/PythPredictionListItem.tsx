@@ -121,6 +121,7 @@ export function PythPredictionListItem({
   };
 
   const dt = parseLocalDateTime(prediction.dateTimeLocal);
+  const isFuture = !!dt && dt.getTime() > Date.now();
   const timeLabel = dt ? formatRelative(dt) : prediction.dateTimeLocal;
   const timeLabelNoIn = timeLabel.replace(/^in\s+/i, '');
   const timeTooltip = (() => {
@@ -230,7 +231,11 @@ export function PythPredictionListItem({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>{' '}
-                in{' '}
+                {isFuture ? (
+                  <>
+                    in{' '}
+                  </>
+                ) : null}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -276,7 +281,11 @@ export function PythPredictionListItem({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>{' '}
-                  in{' '}
+                  {isFuture ? (
+                    <>
+                      in{' '}
+                    </>
+                  ) : null}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>

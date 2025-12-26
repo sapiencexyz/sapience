@@ -2,13 +2,11 @@ import {
   Block,
   PublicClient,
   createPublicClient,
-  formatUnits,
   http,
   webSocket,
   type Transport,
 } from 'viem';
 import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
-import { TOKEN_PRECISION } from '../constants';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
@@ -51,15 +49,6 @@ export const chains: viem.Chain[] = [
   convergeChain,
   etherealChain,
 ];
-
-export function getChainById(id: number): viem.Chain | undefined {
-  const chain = viem.extractChain({
-    chains,
-    id,
-  });
-
-  if (chain) return chain;
-}
 
 // Load environment variables
 dotenv.config({ path: fromRoot('.env') });
@@ -175,57 +164,6 @@ export function getProviderForChain(chainId: number): PublicClient {
  * @param value - a string representation of a BigInt value
  * @returns a string representation of the value with 3 decimal places
  */
-export const formatDbBigInt = (value: string) => {
-  if (Number(value) === 0) {
-    return '0';
-  }
-  const formatted = formatUnits(BigInt(value), TOKEN_PRECISION);
-  return formatted;
-};
-
-export const bigintReplacer = (key: string, value: unknown) => {
-  if (typeof value === 'bigint') {
-    return value.toString(); // Convert BigInt to string
-  }
-  return value;
-};
-
-export async function getBlockRanges(
-  startTimestamp: number,
-  endTimestamp: number,
-  publicClient: PublicClient
-) {
-  console.log('Getting gas start...');
-  const gasStart = await getBlockByTimestamp(
-    mainnetPublicClient,
-    startTimestamp
-  );
-  console.log(`Got gas start: ${gasStart.number}. Getting gas end...`);
-
-  const gasEnd =
-    (await getBlockByTimestamp(mainnetPublicClient, endTimestamp)) ||
-    (await mainnetPublicClient.getBlock());
-  console.log(`Got gas end:  ${gasEnd.number}.  Getting market start....`);
-
-  const marketStart = await getBlockByTimestamp(publicClient, startTimestamp);
-  console.log(
-    `Got market start: ${marketStart.number}. Getting market end....`
-  );
-
-  const marketEnd =
-    (await getBlockByTimestamp(publicClient, endTimestamp)) ||
-    (await publicClient.getBlock());
-  console.log(
-    `Got market end: ${marketEnd.number}. Finished getting block ranges.`
-  );
-
-  return {
-    gasStart: gasStart.number,
-    gasEnd: gasEnd.number,
-    marketStart: marketStart.number,
-    marketEnd: marketEnd.number,
-  };
-}
 
 export async function getBlockByTimestamp(
   client: PublicClient,
@@ -277,85 +215,6 @@ export async function getBlockByTimestamp(
   return closestBlock!;
 }
 
-export async function getBlockBeforeTimestamp(
-  client: PublicClient,
-  timestamp: number
-): Promise<Block> {
-  const latestBlockNumber = await client.getBlockNumber();
-  const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-
-  let low = 0n;
-  let high = latestBlock.number;
-  let closestBlock: Block | null = null;
-
-  // Binary search for the block with the closest timestamp
-  while (low <= high) {
-    const mid = (low + high) / 2n;
-    const block = await client.getBlock({ blockNumber: mid });
-
-    if (block.timestamp <= timestamp) {
-      // If this block is before or at our target time,
-      // it's a candidate for closest block
-      closestBlock = block;
-      low = mid + 1n; // Look in upper half for a closer block
-    } else {
-      // If this block is after our target time,
-      // look in the lower half
-      high = mid - 1n;
-    }
-  }
-
-  if (!closestBlock) {
-    throw new Error('No block found before timestamp');
-  }
-
-  return closestBlock;
-}
-
-/**
- * Converts settlementSqrtPriceX96 to settlementPriceD18
- * @param settlementSqrtPriceX96 sqrt price in X96 format as bigint
- * @returns bigint price with 18 decimals
- */
-export function sqrtPriceX96ToSettlementPriceD18(
-  settlementSqrtPriceX96: bigint
-): bigint {
-  // Correct conversion:
-  // price = (sqrtPriceX96 ^ 2) / 2^192
-  // priceD18 = price * 1e18 = (sqrtPriceX96 ^ 2 * 1e18) / 2^192
-  const Q96 = 1n << 96n;
-  const Q192 = Q96 * Q96;
-  const numerator =
-    settlementSqrtPriceX96 * settlementSqrtPriceX96 * 10n ** 18n;
-  return numerator / Q192;
-}
-
-export const convertGasToGgas = (value: string) => {
-  const integerPart: string = (BigInt(value) / BigInt(1e9)).toString();
-  // decimal part = prefix of zeros if gas is < 10^9, then the useful decimals
-  if (BigInt(value) % BigInt(1e9) !== BigInt(0)) {
-    const decimalPart: string =
-      '0'.repeat(
-        Math.max(9 - (BigInt(value) % BigInt(1e9)).toString().length, 0)
-      ) + (BigInt(value) % BigInt(1e9)).toString().replace(/0+$/, '');
-    return `${integerPart}.${decimalPart}`;
-  }
-  return integerPart;
-};
-
-export const convertGgasToGas = (value: string) => {
-  // case when we have decimals
-  if (value.indexOf('.') > -1) {
-    const [integerPart, decimalPart]: string[] = value.split('.');
-    // console.log(`Integer part: ${integerPart}, decimal part: ${decimalPart}`);
-    return (
-      BigInt(integerPart) * BigInt(1e9) +
-      BigInt(decimalPart) * BigInt(10 ** (9 - decimalPart.length))
-    ).toString();
-  } // else if the whole number is an integer
-  return (BigInt(value) * BigInt(1e9)).toString();
-};
-
 export async function fetchRenderServices() {
   const RENDER_API_KEY = process.env.RENDER_API_KEY;
   if (!RENDER_API_KEY) {
@@ -400,95 +259,7 @@ export async function createRenderJob(serviceId: string, startCommand: string) {
   return await response.json();
 }
 
-export const sleep = async (ms: number) => {
-  return await new Promise((resolve) => setTimeout(resolve, ms));
-};
-
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;
-
-/**
- * Get the block and timestamp when a contract was created
- * @param client - The viem PublicClient to use for blockchain queries
- * @param contractAddress - The address of the contract to find creation info for
- * @returns An object containing the block and timestamp when the contract was created
- */
-export async function getContractCreationBlock(
-  client: PublicClient,
-  contractAddress: string
-): Promise<{ block: Block; timestamp: number }> {
-  // Get the contract code at the latest block
-  const latestBlockNumber = await client.getBlockNumber();
-  const latestBlock = await client.getBlock({ blockNumber: latestBlockNumber });
-
-  // Check if the contract exists at the latest block
-  const code = await client.getBytecode({
-    address: contractAddress as `0x${string}`,
-  });
-
-  if (!code) {
-    throw new Error(
-      `Contract at address ${contractAddress} not found at the latest block`
-    );
-  }
-
-  // Initialize the binary search range
-  let low = 0n;
-  let high = latestBlockNumber;
-  let creationBlock: Block | null = null;
-
-  // Binary search to find the earliest block where the contract exists
-  while (low <= high) {
-    const mid = (low + high) / 2n;
-    const block = await client.getBlock({ blockNumber: mid });
-
-    try {
-      // Check if the contract exists at this block
-      const codeAtBlock = await client.getBytecode({
-        address: contractAddress as `0x${string}`,
-        blockNumber: mid,
-      });
-
-      if (codeAtBlock) {
-        // Contract exists at this block, so it was created before or at this block
-        creationBlock = block;
-        high = mid - 1n; // Look in lower half for earlier creation
-      } else {
-        // Contract doesn't exist at this block, so it was created after this block
-        low = mid + 1n; // Look in upper half
-      }
-    } catch (error) {
-      // If there's an error (e.g., node not synced to this block), try a different approach
-      console.warn(`Error checking block ${mid}: ${error}`);
-      // Fall back to a more conservative approach
-      high = mid - 1n;
-    }
-  }
-
-  // If we found a block where the contract exists, get the next block to find the exact creation block
-  if (creationBlock) {
-    // The contract was created in the block after the one we found
-    if (creationBlock.number !== undefined && creationBlock.number !== null) {
-      const creationBlockNumber = creationBlock.number + 1n;
-
-      // Make sure we don't go beyond the latest block
-      if (creationBlockNumber <= latestBlockNumber) {
-        const exactCreationBlock = await client.getBlock({
-          blockNumber: creationBlockNumber,
-        });
-        return {
-          block: exactCreationBlock,
-          timestamp: Number(exactCreationBlock.timestamp),
-        };
-      }
-    }
-  }
-
-  // If we couldn't find the creation block, return the latest block as a fallback
-  return {
-    block: latestBlock,
-    timestamp: Number(latestBlock.timestamp),
-  };
-}
 
 const MAX_RETRIES = Infinity;
 const RETRY_DELAY = 5000; // 5 seconds
@@ -554,25 +325,3 @@ export function createResilientProcess<T>(
     }
   };
 }
-
-export const truncateAddress = (address: string) => {
-  return address.slice(0, 6) + '...' + address.slice(-4);
-};
-
-export const formatToFirstSignificantDecimal = (value: number): string => {
-  if (value === 0) return '0';
-  if (Math.abs(value) >= 1) {
-    return value.toLocaleString('en-US', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    });
-  }
-
-  const absValue = Math.abs(value);
-  const decimalPlaces = Math.max(1, Math.ceil(-Math.log10(absValue)) + 1);
-
-  return value.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: Math.min(decimalPlaces, 18),
-  });
-};

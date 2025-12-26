@@ -21,7 +21,7 @@ import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest
 
 // Interface for featured conditions in the homepage carousel
 interface FeaturedCondition {
-  id: string;
+  conditionId: string;
   question: string;
   shortName?: string | null;
   endTime: number;
@@ -84,7 +84,7 @@ export default function FeaturedMarketGroupCards() {
       const styleInfo = getCategoryStyle(slug);
       const color = styleInfo?.color || 'hsl(var(--muted-foreground))';
       return {
-        id: c.id,
+        conditionId: c.id,
         question: c.question,
         shortName: c.shortName,
         endTime: c.endTime,
@@ -126,8 +126,10 @@ export default function FeaturedMarketGroupCards() {
 
     const randomized = shuffle(onePerCategory);
 
-    const selectedIds = new Set(randomized.map((c) => c.id));
-    const remaining = shuffle(mapped.filter((c) => !selectedIds.has(c.id)));
+    const selectedIds = new Set(randomized.map((c) => c.conditionId));
+    const remaining = shuffle(
+      mapped.filter((c) => !selectedIds.has(c.conditionId))
+    );
 
     const filled: FeaturedCondition[] = [...randomized];
     for (const c of remaining) {
@@ -187,7 +189,10 @@ function MobileAndDesktopLists({
   const minSlidesForScroll = 6;
   const memoItems = React.useMemo(() => items, [items]);
   const readyItems = React.useMemo(
-    () => memoItems.filter((item) => item.id && predictionMap[item.id] != null),
+    () =>
+      memoItems.filter(
+        (item) => item.conditionId && predictionMap[item.conditionId] != null
+      ),
     [memoItems, predictionMap]
   );
   const loopItems = React.useMemo(() => {
@@ -207,7 +212,10 @@ function MobileAndDesktopLists({
     }
   }, [canAutoScroll, hasShown]);
   const pendingItems = React.useMemo(
-    () => memoItems.filter((item) => item.id && predictionMap[item.id] == null),
+    () =>
+      memoItems.filter(
+        (item) => item.conditionId && predictionMap[item.conditionId] == null
+      ),
     [memoItems, predictionMap]
   );
 
@@ -279,11 +287,11 @@ function MobileAndDesktopLists({
       >
         {pendingItems.map((c) => (
           <MarketPredictionRequest
-            key={`prefetch-${c.id}-${c.categorySlug}`}
-            conditionId={c.id}
+            key={`prefetch-${c.conditionId}-${c.categorySlug}`}
+            conditionId={c.conditionId}
             suppressLoadingPlaceholder
             skipViewportCheck
-            onPrediction={(prob) => onPredictionReady(c.id, prob)}
+            onPrediction={(prob) => onPredictionReady(c.conditionId, prob)}
           />
         ))}
       </div>
@@ -307,11 +315,11 @@ function MobileAndDesktopLists({
             >
               <CarouselContent className="items-stretch py-0">
                 {loopItems.map((c, idx) => (
-                  <React.Fragment key={`${c.id}-${idx}`}>
+                  <React.Fragment key={`${c.conditionId}-${idx}`}>
                     <CarouselItem className="pl-0 w-auto flex-none">
                       <TickerMarketCard
                         condition={{
-                          id: c.id,
+                          id: c.conditionId,
                           question: c.question,
                           shortName: c.shortName,
                           endTime: c.endTime,
@@ -320,7 +328,9 @@ function MobileAndDesktopLists({
                         }}
                         color={c.color}
                         predictionProbability={
-                          c.id ? (predictionMap[c.id] ?? null) : null
+                          c.conditionId
+                            ? (predictionMap[c.conditionId] ?? null)
+                            : null
                         }
                       />
                     </CarouselItem>
@@ -343,11 +353,11 @@ function MobileAndDesktopLists({
             >
               <CarouselContent className="items-stretch py-0">
                 {loopItems.map((c, idx) => (
-                  <React.Fragment key={`${c.id}-${idx}`}>
+                  <React.Fragment key={`${c.conditionId}-${idx}`}>
                     <CarouselItem className={`${desktopItemClass}`}>
                       <TickerMarketCard
                         condition={{
-                          id: c.id,
+                          id: c.conditionId,
                           question: c.question,
                           shortName: c.shortName,
                           endTime: c.endTime,
@@ -356,7 +366,9 @@ function MobileAndDesktopLists({
                         }}
                         color={c.color}
                         predictionProbability={
-                          c.id ? (predictionMap[c.id] ?? null) : null
+                          c.conditionId
+                            ? (predictionMap[c.conditionId] ?? null)
+                            : null
                         }
                       />
                     </CarouselItem>

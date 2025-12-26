@@ -1,7 +1,7 @@
 import { encodeAbiParameters, encodeFunctionData, parseAbiParameters } from 'viem';
 import type { Address } from 'viem';
 import { contracts } from '../contracts/addresses';
-import { DEFAULT_CHAIN_ID } from '../constants/chain';
+import { CHAIN_ID_ARBITRUM } from '../constants/chain';
 
 type Hex = `0x${string}`;
 
@@ -66,7 +66,7 @@ export function decodeProbabilityFromD18(value: string): number | null {
 
 export async function buildAttestationCalldata(
   prediction: { probability: number; reasoning: string; confidence: number },
-  chainId: number = DEFAULT_CHAIN_ID,
+  chainId: number = CHAIN_ID_ARBITRUM,
   resolver?: Address,
   condition?: Hex,
 ): Promise<AttestationCalldata | null> {

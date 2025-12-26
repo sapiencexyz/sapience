@@ -12,7 +12,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -86,7 +86,7 @@ export default function PositionForm({
   const { selections, removeSelection } = useCreatePositionContext();
   const { address: takerAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
   const { toast } = useToast();
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
@@ -414,15 +414,11 @@ export default function PositionForm({
   // Handler for "Initiate Auction" button - requires login first
   const handleRequestBids = useCallback(() => {
     if (!hasConnectedWallet) {
-      try {
-        connectOrCreateWallet();
-      } catch (err) {
-        console.error('connectOrCreateWallet failed', err);
-      }
+      openConnectDialog();
       return;
     }
     triggerAuctionRequest({ forceRefresh: true });
-  }, [hasConnectedWallet, connectOrCreateWallet, triggerAuctionRequest]);
+  }, [hasConnectedWallet, openConnectDialog, triggerAuctionRequest]);
 
   // Show "Request Bids" button when:
   // 1. No valid bids exist (never received or all expired)

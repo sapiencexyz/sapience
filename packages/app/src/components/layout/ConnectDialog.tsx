@@ -12,7 +12,6 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Mail, Wallet } from 'lucide-react';
-
 import { useAuth } from '~/lib/context/AuthContext';
 
 // EIP-6963 types
@@ -43,19 +42,13 @@ const FEATURED_WALLETS = [
     id: 'rabby',
     name: 'Rabby Wallet',
     matchIds: ['io.rabby', 'rabby'],
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzhBOTdGRiIvPgo8cGF0aCBkPSJNMjQuNSAxMy41QzI0LjUgMTAuNSAyMiA4IDE5IDhIMTNDMTAgOCA3LjUgMTAuNSA3LjUgMTMuNUM3LjUgMTUuNSA4LjUgMTcuMiAxMCAxOEw4IDI0SDEyTDE0IDIwSDE4TDIwIDI0SDI0TDIyIDE4QzIzLjUgMTcuMiAyNC41IDE1LjUgMjQuNSAxMy41WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+    icon: '/wallet-icons/rabby.svg',
   },
   {
     id: 'metamask',
     name: 'MetaMask',
     matchIds: ['io.metamask', 'metamask'],
     icon: '/wallet-icons/metamask.svg',
-  },
-  {
-    id: 'phantom',
-    name: 'Phantom',
-    matchIds: ['app.phantom', 'phantom'],
-    icon: '/wallet-icons/phantom.ico',
   },
 ] as const;
 
@@ -144,6 +137,7 @@ export default function ConnectDialog({
     [connect, clearLoggedOut]
   );
 
+
   const handleWalletClick = useCallback(
     (wallet: { eip6963Provider?: EIP6963ProviderDetail; id: string }) => {
       if (wallet.eip6963Provider) {
@@ -176,7 +170,7 @@ export default function ConnectDialog({
       options.push({
         id: featured.id,
         name: featured.name,
-        icon: detectedWallet?.info.icon || featured.icon,
+        icon: featured.icon || detectedWallet?.info.icon, // always use featured icon first
         eip6963Provider: detectedWallet,
       });
     }
@@ -186,8 +180,8 @@ export default function ConnectDialog({
       const rdns = wallet.info.rdns.toLowerCase();
       const name = wallet.info.name.toLowerCase();
 
-      // Skip WalletConnect
-      if (rdns.includes('walletconnect') || name.includes('walletconnect')) {
+      // Skip Phantom
+      if (name.includes('phantom') || rdns.includes('walletconnect') || name.includes('walletconnect')) {
         continue;
       }
 

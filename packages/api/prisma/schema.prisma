@@ -85,11 +85,9 @@ model Attestation {
   decodedDataJson String   @db.VarChar @default("")
 
   // Prediction market schema data
-  marketAddress   String?  @db.VarChar
-  marketId        String?  @db.VarChar
-  questionId      String?  @db.VarChar
   resolver        String?  @db.VarChar
-  condition       String?  @db.Text
+  conditionId      String?  @db.VarChar
+  condition        Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   prediction      String   @db.VarChar
   comment         String?  @db.Text
 
@@ -100,9 +98,6 @@ model Attestation {
   @@index([attester], map: "IDX_attestation_attester")
   @@index([recipient], map: "IDX_attestation_recipient")
   @@index([time], map: "IDX_attestation_time")
-  @@index([marketAddress], map: "IDX_attestation_market_address")
-  @@index([marketId], map: "IDX_attestation_market_id")
-  @@index([questionId], map: "IDX_attestation_question_id")
   @@index([resolver], map: "IDX_attestation_resolver")
   @@map("attestation")
 }
@@ -199,6 +194,9 @@ model Condition {
 
   // Normalized predictions
   predictions    Prediction[]
+
+  // Attestations referencing this condition
+  attestations   Attestation[]
 
   @@index([categoryId])
   @@index([endTime])

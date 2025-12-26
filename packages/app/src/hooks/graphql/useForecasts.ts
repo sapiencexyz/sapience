@@ -14,7 +14,7 @@ interface RawAttestation {
   time: number; // API returns time as a number (Unix timestamp)
   prediction: string;
   comment: string;
-  questionId?: string;
+  conditionId?: string;
 }
 
 // Parameterized version of the query
@@ -27,7 +27,7 @@ const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
       time
       prediction
       comment
-      questionId
+      conditionId
     }
   }
 `;
@@ -54,7 +54,7 @@ const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
       time
       prediction
       comment
-      questionId
+      conditionId
     }
   }
 `;
@@ -74,7 +74,7 @@ export type FormattedAttestation = {
   comment: string;
   time: string; // Formatted time string
   rawTime: number; // Original timestamp
-  questionId?: string; // conditionId from EAS schema
+  conditionId?: string; // conditionId from database
 };
 
 // Format raw attestation data into a displayable format
@@ -97,7 +97,7 @@ const formatAttestationData = (
     time: formattedTime,
     rawTime: attestation.time,
     comment: attestation.comment,
-    questionId: attestation.questionId, // questionId from EAS schema
+    conditionId: attestation.conditionId, // conditionId from database
   };
 };
 
@@ -151,7 +151,7 @@ const getForecasts = async ({
     filters.push({ attester: { equals: normalizedAttesterAddress } });
   }
   if (conditionId) {
-    filters.push({ questionId: { equals: conditionId } as any });
+    filters.push({ conditionId: { equals: conditionId } });
   }
 
   const variables = {
@@ -260,7 +260,7 @@ const getForecastsPage = async (
     filters.push({ attester: { equals: normalizedAttesterAddress } });
   }
   if (conditionId) {
-    filters.push({ questionId: { equals: conditionId } as any });
+    filters.push({ conditionId: { equals: conditionId } });
   }
 
   const variables: Record<string, any> = {

@@ -489,6 +489,7 @@ function createColumns(
             />
             <ConditionTitleLink
               conditionId={condition.id}
+              chainId={condition.chainId}
               title={displayQ}
               clampLines={1}
               className="text-sm min-w-0"
@@ -682,6 +683,7 @@ function ChildConditionRow({
           />
           <ConditionTitleLink
             conditionId={condition.id}
+            chainId={condition.chainId}
             title={displayQ}
             clampLines={1}
             className="text-sm min-w-0"

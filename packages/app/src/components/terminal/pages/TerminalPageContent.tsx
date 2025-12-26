@@ -985,6 +985,20 @@ const TerminalPageContent: React.FC = () => {
 
 export default TerminalPageContent;
 
+function pythSideFromMakerPrediction(params: {
+  makerPrediction: boolean; // true=Over, false=Under
+  perspective: 'maker' | 'taker';
+}): { direction: 'over' | 'under'; choice: 'OVER' | 'UNDER' } {
+  // For Pyth, the counterparty/taker is always the opposite side of the maker.
+  const displayPrediction =
+    params.perspective === 'taker'
+      ? !params.makerPrediction
+      : params.makerPrediction;
+  return displayPrediction
+    ? { direction: 'over', choice: 'OVER' }
+    : { direction: 'under', choice: 'UNDER' };
+}
+
 function PythPredictionsCell({
   first,
 }: {
@@ -999,9 +1013,11 @@ function PythPredictionsCell({
 }) {
   const feedLabel = usePythFeedLabel(first.priceId);
   // In the auction/taker view we show what the TAKER needs to win.
-  // The taker wins if the maker is wrong on at least one leg, so we invert
-  // the maker's predicted bool here for display only.
-  const inverted = !first.prediction;
+  // maker Over -> taker Under, maker Under -> taker Over.
+  const side = pythSideFromMakerPrediction({
+    makerPrediction: first.prediction,
+    perspective: 'taker',
+  });
   const priceStr = formatPythPriceDecimalFromInt(
     first.strikePrice,
     first.strikeExpo
@@ -1012,7 +1028,7 @@ function PythPredictionsCell({
     id: `${first.priceId}:${first.endTime.toString()}:${first.strikePrice.toString()}:${first.strikeExpo}`,
     priceId: first.priceId,
     priceFeedLabel: feedLabel ?? undefined,
-    direction: inverted ? 'over' : 'under',
+    direction: side.direction,
     targetPrice: Number.isFinite(priceNum) ? priceNum : 0,
     targetPriceRaw: priceStr,
     targetPriceFullPrecision: priceStr,
