@@ -137,7 +137,6 @@ export default function ConnectDialog({
     [connect, clearLoggedOut]
   );
 
-
   const handleWalletClick = useCallback(
     (wallet: { eip6963Provider?: EIP6963ProviderDetail; id: string }) => {
       if (wallet.eip6963Provider) {
@@ -181,7 +180,11 @@ export default function ConnectDialog({
       const name = wallet.info.name.toLowerCase();
 
       // Skip Phantom
-      if (name.includes('phantom') || rdns.includes('walletconnect') || name.includes('walletconnect')) {
+      if (
+        name.includes('phantom') ||
+        rdns.includes('walletconnect') ||
+        name.includes('walletconnect')
+      ) {
         continue;
       }
 

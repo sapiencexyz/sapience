@@ -127,23 +127,26 @@ export function useSubmitPosition({
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   // Note: shareIntent will be updated right before submission to get fresh lastNftId
-  const { sendCalls, isPending: isSubmitting, updateShareIntent } =
-    useSapienceWriteContract({
-      onSuccess: () => {
-        setSuccess('Position prediction minted successfully');
-        setError(null);
-        onSuccess?.();
-      },
-      onError: (err) => {
-        const message = err?.message || 'Transaction failed';
-        setError(message);
-      },
-      successMessage: 'Position prediction was successful',
-      fallbackErrorMessage: 'Failed to submit position prediction',
-      redirectPage: 'markets',
-      // Include initial betslip data in share intent (will be updated with fresh data before submission)
-      shareIntent: initialShareIntent,
-    });
+  const {
+    sendCalls,
+    isPending: isSubmitting,
+    updateShareIntent,
+  } = useSapienceWriteContract({
+    onSuccess: () => {
+      setSuccess('Position prediction minted successfully');
+      setError(null);
+      onSuccess?.();
+    },
+    onError: (err) => {
+      const message = err?.message || 'Transaction failed';
+      setError(message);
+    },
+    fallbackErrorMessage: 'Failed to submit position prediction',
+    redirectPage: 'markets',
+    disableSuccessToast: true,
+    // Include initial betslip data in share intent (will be updated with fresh data before submission)
+    shareIntent: initialShareIntent,
+  });
 
   // Prepare calls for sendCalls
   const prepareCalls = useCallback(

@@ -95,13 +95,15 @@ const CreatePositionForm = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays({
-    address: address ? String(address).toLowerCase() : undefined,
-    chainId: parlayChainId,
-    take: 1, // Only need the latest one
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
+  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays(
+    {
+      address: address ? String(address).toLowerCase() : undefined,
+      chainId: parlayChainId,
+      take: 1, // Only need the latest one
+      orderBy: 'mintedAt',
+      orderDirection: 'desc',
+    }
+  );
 
   const {
     auctionId,
@@ -528,7 +530,10 @@ const CreatePositionForm = ({
         freshCount: freshPositions?.length || 0,
       });
     } catch (error) {
-      console.error('[CreatePositionForm] Error refetching positions, using cached data', error);
+      console.error(
+        '[CreatePositionForm] Error refetching positions, using cached data',
+        error
+      );
       // Fall back to cached data if refetch fails
     }
     const wagerAmount =
@@ -605,14 +610,19 @@ const CreatePositionForm = ({
 
       if (latestPosition && latestPosition.predictorNftTokenId) {
         lastNftId = latestPosition.predictorNftTokenId;
-        console.log('[CreatePositionForm] Computed lastNftId from fresh positions', {
-          lastNftId,
-          positionId: latestPosition.id,
-          totalPositions: freshPositions.length,
-        });
+        console.log(
+          '[CreatePositionForm] Computed lastNftId from fresh positions',
+          {
+            lastNftId,
+            positionId: latestPosition.id,
+            totalPositions: freshPositions.length,
+          }
+        );
       }
     } else {
-      console.log('[CreatePositionForm] No positions available for lastNftId computation');
+      console.log(
+        '[CreatePositionForm] No positions available for lastNftId computation'
+      );
     }
 
     return {
