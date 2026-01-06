@@ -157,7 +157,7 @@ router.post('/', async (req: Request, res: Response) => {
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
           public: Boolean(isPublic),
-          claimStatement: claimStatement || question, // Use question as fallback if claimStatement not provided
+          claimStatement: claimStatement || '', // Empty string if not provided (for external conditions like Polymarket)
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided

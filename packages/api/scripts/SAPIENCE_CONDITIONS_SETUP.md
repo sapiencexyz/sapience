@@ -1,4 +1,4 @@
-# Sapience Conditions Setup
+# Sapience Polymarket Conditions Setup
 
 This guide shows how to populate your Sapience database with Polymarket prediction markets.
 
@@ -336,14 +336,13 @@ Condition.id = "0x2ca58175..."  // Perfect match ✅
 
 **No mapping needed!** The condition ID in your database will be **identical** to Polymarket's `conditionId`, making resolution via LayerZero straightforward.
 
-**Note on claimStatement:** The API still supports the legacy `claimStatement` field for UMA resolvers. If `conditionHash` is provided, it takes precedence. The `claimStatement` field is populated with the `conditionHash` value for backward compatibility.
+**Note on claimStatement:** The API still supports the `claimStatement` field for UMA resolvers (where it's used to compute the condition ID). When `conditionHash` is provided (for external conditions like Polymarket), the `claimStatement` field is optional and can be left empty since the ID is already determined.
 
 ### 2. **Resolver Field**
 
-The `Condition` model has an optional `resolver` field that stores the resolver contract address. The script currently doesn't populate this field, but you can add it by:
+The `Condition` model has an optional `resolver` field that stores the resolver contract address. The script includes `resolver: RESOLVER_ADDRESS` in the API submission, which is currently set to a placeholder address (`0x0000000000000000000000000000000000000000`).
 
-1. Adding `resolver: RESOLVER_ADDRESS` to the API submission body
-2. Or updating conditions later with the resolver address
+**Action Required**: Update the `RESOLVER_ADDRESS` constant in `scripts/generate-sapience-conditions.ts` with your deployed `PredictionMarketLZConditionalTokensResolver` contract address before running the script in production.
 
 The `resolver` field is also tracked in the `Prediction` model when creating predictions.
 

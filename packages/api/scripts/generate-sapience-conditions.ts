@@ -422,6 +422,7 @@ async function submitCondition(
         similarMarkets: condition.similarMarkets,
         chainId: condition.chainId,
         groupName: condition.groupTitle, // API will find or create the group
+        resolver: RESOLVER_ADDRESS, // Polymarket LZ ConditionalTokens resolver
         public: true,
       }),
     });
@@ -648,14 +649,19 @@ async function main() {
     console.log('     - conditionHash: Polymarket conditionId (bytes32)');
     console.log('     - question, endDate, description');
     console.log('     - similarMarkets: [Polymarket URLs]');
+    console.log('     - resolver: PredictionMarketLZConditionalTokensResolver address');
     console.log('     - groupTitle: parent group name (for grouped conditions)');
+    console.log('     - claimStatement: empty (not used for external conditions)');
     console.log('     - All conditions are binary (Yes/No)\n');
     
     console.log('⚠️  IMPORTANT NOTES:\n');
-    console.log('   - Resolver address is currently set to: ' + RESOLVER_ADDRESS);
-    console.log('   - Update RESOLVER_ADDRESS constant with actual resolver contract');
+    console.log('   - Resolver address: ' + RESOLVER_ADDRESS);
+    if (RESOLVER_ADDRESS === '0x0000000000000000000000000000000000000000') {
+      console.log('     ⚠️  PLACEHOLDER ADDRESS - Update RESOLVER_ADDRESS before production!');
+    }
     console.log('   - Chain ID: ' + CHAIN_ID_ETHEREAL + ' (Ethereal)');
     console.log('   - conditionHash (Polymarket conditionId) is used directly as condition ID');
+    console.log('   - claimStatement is left empty (not needed for external conditions)');
     console.log('   - shortName is set to question (Polymarket doesn\'t provide shortName)');
     console.log('   - Duplicate submissions are handled gracefully (skipped)\n');
     
