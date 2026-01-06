@@ -1,14 +1,13 @@
 {
   "metadata": {
-    "generatedAt": "2026-01-06T22:50:22.185Z",
+    "generatedAt": "2026-01-06T23:05:18.906Z",
     "source": "Polymarket Gamma API",
     "totalConditions": 100,
-    "totalGroups": 64,
+    "totalGroups": 65,
     "binaryConditions": 100
   },
   "groups": [
     {
-      "id": "2026-fifa-world-cup",
       "title": "2026 FIFA World Cup",
       "description": "This market will resolve according to the national team that wins the 2026 FIFA World Cup.",
       "categorySlug": "sports",
@@ -24,7 +23,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         },
         {
@@ -38,7 +36,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         },
         {
@@ -52,7 +49,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         },
         {
@@ -66,7 +62,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         },
         {
@@ -80,7 +75,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         },
         {
@@ -94,13 +88,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-fifa-world-cup",
           "groupTitle": "2026 FIFA World Cup"
         }
       ]
     },
     {
-      "id": "january",
       "title": "January",
       "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for BTC/USDT during the month specified in the title (from 00:00 AM ET on the first day to 11:59 PM ET on the last), has a final High price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No.\"",
       "categorySlug": "crypto",
@@ -116,7 +108,6 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "january",
           "groupTitle": "January"
         },
         {
@@ -130,7 +121,6 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "january",
           "groupTitle": "January"
         },
         {
@@ -144,7 +134,6 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "january",
           "groupTitle": "January"
         },
         {
@@ -158,7 +147,6 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "january",
           "groupTitle": "January"
         },
         {
@@ -172,13 +160,11 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "january",
           "groupTitle": "January"
         }
       ]
     },
     {
-      "id": "2026-brazilian-presidential-election",
       "title": "2026 Brazilian presidential election",
       "description": "A presidential election is scheduled to take place in Brazil on October 4, 2026.",
       "categorySlug": "geopolitics",
@@ -194,7 +180,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-brazilian-presidential-election",
           "groupTitle": "2026 Brazilian presidential election"
         },
         {
@@ -208,7 +193,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-brazilian-presidential-election",
           "groupTitle": "2026 Brazilian presidential election"
         },
         {
@@ -222,13 +206,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-brazilian-presidential-election",
           "groupTitle": "2026 Brazilian presidential election"
         }
       ]
     },
     {
-      "id": "2025-2026-nba-defensive-player-of-the-year",
       "title": "2025–2026 NBA Defensive Player of the Year",
       "description": "This market will resolve according to the player who is awarded the 2025–26 NBA Defensive Player of the Year.",
       "categorySlug": "sports",
@@ -244,7 +226,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-2026-nba-defensive-player-of-the-year",
           "groupTitle": "2025–2026 NBA Defensive Player of the Year"
         },
         {
@@ -258,7 +239,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-2026-nba-defensive-player-of-the-year",
           "groupTitle": "2025–2026 NBA Defensive Player of the Year"
         },
         {
@@ -272,13 +252,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-2026-nba-defensive-player-of-the-year",
           "groupTitle": "2025–2026 NBA Defensive Player of the Year"
         }
       ]
     },
     {
-      "id": "2026",
       "title": "2026",
       "description": "This market will resolve according to the exact amount of cuts of 25 basis points in 2026 by the Fed (including any cuts made during the December meeting).",
       "categorySlug": "economy-finance",
@@ -294,7 +272,6 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "2026",
           "groupTitle": "2026"
         },
         {
@@ -308,7 +285,6 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "2026",
           "groupTitle": "2026"
         },
         {
@@ -322,13 +298,11 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "2026",
           "groupTitle": "2026"
         }
       ]
     },
     {
-      "id": "2025-26-english-premier-league",
       "title": "2025–26 English Premier League",
       "description": "This is a polymarket on whether the listed club will win the 2025–26 English Premier League.",
       "categorySlug": "sports",
@@ -344,7 +318,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-26-english-premier-league",
           "groupTitle": "2025–26 English Premier League"
         },
         {
@@ -358,13 +331,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-26-english-premier-league",
           "groupTitle": "2025–26 English Premier League"
         }
       ]
     },
     {
-      "id": "2028-democratic-presidential-nomination",
       "title": "2028 Democratic presidential nomination",
       "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Democratic Party for U.S. president. Otherwise, this market will resolve to “No”.",
       "categorySlug": "geopolitics",
@@ -380,7 +351,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2028-democratic-presidential-nomination",
           "groupTitle": "2028 Democratic presidential nomination"
         },
         {
@@ -394,13 +364,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2028-democratic-presidential-nomination",
           "groupTitle": "2028 Democratic presidential nomination"
         }
       ]
     },
     {
-      "id": "2028-republican-presidential-nomination",
       "title": "2028 Republican presidential nomination",
       "description": "This market will resolve to “Yes” if the named individual wins and accepts the 2028 nomination of the Republican Party for U.S. president. Otherwise, this market will resolve to “No”.",
       "categorySlug": "geopolitics",
@@ -416,7 +384,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2028-republican-presidential-nomination",
           "groupTitle": "2028 Republican presidential nomination"
         },
         {
@@ -430,13 +397,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2028-republican-presidential-nomination",
           "groupTitle": "2028 Republican presidential nomination"
         }
       ]
     },
     {
-      "id": "2026-portugal-presidential-election",
       "title": "2026 Portugal presidential election",
       "description": "Presidential elections are scheduled to be held in Portugal on 18 or 25 January 2026, with a possible second round on 8 or 15 February 2026. A second round will be held if no candidate secures more than 50% of the valid votes in the first round.",
       "categorySlug": "geopolitics",
@@ -452,7 +417,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-portugal-presidential-election",
           "groupTitle": "2026 Portugal presidential election"
         },
         {
@@ -466,13 +430,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-portugal-presidential-election",
           "groupTitle": "2026 Portugal presidential election"
         }
       ]
     },
     {
-      "id": "2025-2026-nfl-offensive-rookie-of-the-year",
       "title": "2025-2026 NFL Offensive Rookie of the Year",
       "description": "This market will resolve according to the player who wins 2025-2026 NFL Offensive Rookie of the Year Award. ",
       "categorySlug": "sports",
@@ -488,7 +450,6 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-2026-nfl-offensive-rookie-of-the-year",
           "groupTitle": "2025-2026 NFL Offensive Rookie of the Year"
         },
         {
@@ -502,13 +463,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-2026-nfl-offensive-rookie-of-the-year",
           "groupTitle": "2025-2026 NFL Offensive Rookie of the Year"
         }
       ]
     },
     {
-      "id": "first-to-leave-the-trump-cabinet-before-2027",
       "title": "first to leave the Trump Cabinet before 2027",
       "description": "This market will resolve based on the next individual announced to leave the Trump Cabinet, or who otherwise ceases to be a member of the administration. If no one leaves by December 31, 2026, 11:59 PM ET, this market will resolve to “None before 2027”.",
       "categorySlug": "geopolitics",
@@ -524,7 +483,6 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "first-to-leave-the-trump-cabinet-before-2027",
           "groupTitle": "first to leave the Trump Cabinet before 2027"
         },
         {
@@ -538,13 +496,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "first-to-leave-the-trump-cabinet-before-2027",
           "groupTitle": "first to leave the Trump Cabinet before 2027"
         }
       ]
     },
     {
-      "id": "2028-us-presidential-election",
       "title": "2028 US Presidential Election",
       "description": "The 2028 US Presidential Election is scheduled to take place on November 7, 2028.",
       "categorySlug": "geopolitics",
@@ -560,13 +516,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2028-us-presidential-election",
           "groupTitle": "2028 US Presidential Election"
         }
       ]
     },
     {
-      "id": "super-bowl-2026",
       "title": "Super Bowl 2026",
       "description": "This market will resolve to \"Yes\" if the Tampa Bay Buccaneers win Super Bowl LX. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "sports",
@@ -582,13 +536,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "super-bowl-2026",
           "groupTitle": "Super Bowl 2026"
         }
       ]
     },
     {
-      "id": "trump-nominate-as-the-next-fed-chair",
       "title": "Trump nominate  as the next Fed chair",
       "description": "This market will resolve according to the next individual Donald Trump, as President of the United States, formally nominates to be Chair of the Federal Reserve by December 31, 2026, 11:59 PM ET. ",
       "categorySlug": "economy-finance",
@@ -604,13 +556,11 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "trump-nominate-as-the-next-fed-chair",
           "groupTitle": "Trump nominate  as the next Fed chair"
         }
       ]
     },
     {
-      "id": "2025-26-champions-league",
       "title": "2025–26 Champions League",
       "description": "This is a polymarket on whether the listed team will win the 2025–26 UEFA Champions League.",
       "categorySlug": "sports",
@@ -626,13 +576,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-26-champions-league",
           "groupTitle": "2025–26 Champions League"
         }
       ]
     },
     {
-      "id": "best-picture-at-the-98th-academy-awards",
       "title": "Best Picture at the 98th Academy Awards",
       "description": "The Academy Awards are presented annually by the Academy of Motion Picture Arts and Sciences (AMPAS) to honor outstanding artistic and technical achievements in film. For the 98th Academy Awards in 2026, nominations are scheduled to be announced on January 22, followed by the ceremony on March 15, 2026.",
       "categorySlug": "geopolitics",
@@ -648,13 +596,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "best-picture-at-the-98th-academy-awards",
           "groupTitle": "Best Picture at the 98th Academy Awards"
         }
       ]
     },
     {
-      "id": "2026-nba-finals",
       "title": "2026 NBA Finals",
       "description": "This market will resolve to “Yes” if the Houston Rockets win the 2026 NBA Finals. Otherwise, this market will resolve to “No”.",
       "categorySlug": "sports",
@@ -670,13 +616,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2026-nba-finals",
           "groupTitle": "2026 NBA Finals"
         }
       ]
     },
     {
-      "id": "before-gta-vi",
       "title": "before GTA VI",
       "description": "This market will resolve to \"Yes\" if China commences a military offensive intended to establish control over any portion of the Republic of China (Taiwan) before Grand Theft Auto VI is officially released in the US. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "geopolitics",
@@ -692,13 +636,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "before-gta-vi",
           "groupTitle": "before GTA VI"
         }
       ]
     },
     {
-      "id": "nicol-s-maduro-released-from-custody-by-2026",
       "title": "Nicolás Maduro released from custody by , 2026",
       "description": "This market will resolve to \"Yes\" if Nicolás Maduro is released from custody by the listed date, 11:59 PM ET. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "geopolitics",
@@ -714,13 +656,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "nicol-s-maduro-released-from-custody-by-2026",
           "groupTitle": "Nicolás Maduro released from custody by , 2026"
         }
       ]
     },
     {
-      "id": "trump-deport-less-than-250-000",
       "title": "Trump deport less than 250,000",
       "description": "During the 2024 FY ICE removed 271,484 non citizens (see: https://www.ice.gov/doclib/eoy/iceAnnualReportFY2024.pdf).",
       "categorySlug": "geopolitics",
@@ -736,13 +676,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "trump-deport-less-than-250-000",
           "groupTitle": "Trump deport less than 250,000"
         }
       ]
     },
     {
-      "id": "pvv-cda",
       "title": "PVV + CDA",
       "description": "The 2025 Dutch general election is scheduled to take place on October 29, 2025.",
       "categorySlug": "geopolitics",
@@ -757,13 +695,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "pvv-cda",
           "groupTitle": "PVV + CDA"
         }
       ]
     },
     {
-      "id": "andr-ventura-qualify-for-the-second-round-of-the-2026-portugal-presidential-election",
       "title": "André Ventura qualify for the second round of the 2026 Portugal presidential election",
       "description": "Presidential elections are scheduled to be held in Portugal on 18 or 25 January 2026, with a possible second round on 8 or 15 February 2026. A second round will be held if no candidate secures more than 50% of the valid votes in the first round. The two candidates with the greatest number of votes in the first round will advance to the second round.",
       "categorySlug": "geopolitics",
@@ -779,13 +715,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "andr-ventura-qualify-for-the-second-round-of-the-2026-portugal-presidential-election",
           "groupTitle": "André Ventura qualify for the second round of the 2026 Portugal presidential election"
         }
       ]
     },
     {
-      "id": "the-make-the-nba-playoffs",
       "title": "the  make the NBA Playoffs",
       "description": "This market will resolve to “Yes” if the listed team makes the 2025-26 NBA Playoffs. Otherwise, this market will resolve to “No”.",
       "categorySlug": "sports",
@@ -801,13 +735,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "the-make-the-nba-playoffs",
           "groupTitle": "the  make the NBA Playoffs"
         }
       ]
     },
     {
-      "id": "the-next-three-decisions-oct-dec-jan",
       "title": "the next three decisions (Oct–Dec–Jan)",
       "description": "The FED interest rates are defined in this market by the upper bound of the target federal funds range. The decisions on the target federal funds range are made by the Federal Open Market Committee (FOMC) meetings.",
       "categorySlug": "economy-finance",
@@ -823,13 +755,11 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "the-next-three-decisions-oct-dec-jan",
           "groupTitle": "the next three decisions (Oct–Dec–Jan)"
         }
       ]
     },
     {
-      "id": "atlantic-division",
       "title": "Atlantic Division",
       "description": "This market will resolve according to the team that wins the listed division during the 2025-26 NHL regular season.",
       "categorySlug": "geopolitics",
@@ -845,13 +775,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "atlantic-division",
           "groupTitle": "Atlantic Division"
         }
       ]
     },
     {
-      "id": "next-prime-minister-of-israel",
       "title": "next Prime Minister of Israel",
       "description": "Legislative elections are schedule to be held in Israel on October 27, 2026. ",
       "categorySlug": "geopolitics",
@@ -867,13 +795,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "next-prime-minister-of-israel",
           "groupTitle": "next Prime Minister of Israel"
         }
       ]
     },
     {
-      "id": "between-92-000-and-94-000-on-january-7",
       "title": "between $92,000 and $94,000 on January 7",
       "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "crypto",
@@ -889,13 +815,11 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "between-92-000-and-94-000-on-january-7",
           "groupTitle": "between $92,000 and $94,000 on January 7"
         }
       ]
     },
     {
-      "id": "another-us-strike-on-venezuela-by",
       "title": "Another US strike on Venezuela by",
       "description": "This market will resolve to \"Yes\" if a US-initiated drone, missile, or air strike on Venezuelan soil is announced or credibly reported to have occurred by the listed date ET. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "geopolitics",
@@ -911,13 +835,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "another-us-strike-on-venezuela-by",
           "groupTitle": "Another US strike on Venezuela by"
         }
       ]
     },
     {
-      "id": "best-new-artist-at-the-68th-annual-grammy-awards",
       "title": "Best New Artist at the 68th Annual GRAMMY Awards",
       "description": "The GRAMMY Awards are presented annually by the Recording Academy. For the 68th Annual GRAMMY Awards, nominations are scheduled for November 7, 2025, and the ceremony for February 1, 2026.",
       "categorySlug": "culture",
@@ -933,13 +855,11 @@
           ],
           "categorySlug": "culture",
           "chainId": 5064014,
-          "groupId": "best-new-artist-at-the-68th-annual-grammy-awards",
           "groupTitle": "Best New Artist at the 68th Annual GRAMMY Awards"
         }
       ]
     },
     {
-      "id": "google-gemini-3-score-at-least-70-on-the-frontiermath-benchmark",
       "title": "Google Gemini 3 score at least 70% on the FrontierMath Benchmark",
       "description": "This market will resolve to \"Yes\" if any Google Gemini 3 model achieves the listed score or greater on the FrontierMath Exam by January 31, 2026, 11:59 PM ET. Otherwise, the market will resolve to \"No\".",
       "categorySlug": "tech-science",
@@ -955,13 +875,11 @@
           ],
           "categorySlug": "tech-science",
           "chainId": 5064014,
-          "groupId": "google-gemini-3-score-at-least-70-on-the-frontiermath-benchmark",
           "groupTitle": "Google Gemini 3 score at least 70% on the FrontierMath Benchmark"
         }
       ]
     },
     {
-      "id": "spread-spurs-6-5",
       "title": "Spread: Spurs (-6.5)",
       "description": "In the upcoming NBA game, scheduled for January 6 at 8:00 PM ET:",
       "categorySlug": "sports",
@@ -977,78 +895,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "spread-spurs-6-5",
           "groupTitle": "Spread: Spurs (-6.5)"
         }
       ]
     },
     {
-      "id": "december-2025",
-      "title": "December 2025",
-      "description": "This market will resolve according to the value reported by the Global Land-Ocean Temperature Index for December 2025 when it is released.",
-      "categorySlug": "weather",
-      "conditions": [
-        {
-          "conditionHash": "0x1cc27f57987618e93038800681456348e48fe0c384b2e57d0f54453ae499c096",
-          "question": "Will global temperature increase by less than 1.00ºC in December 2025?",
-          "shortName": "Will global temperature increase by less than 1.00ºC in December 2025?",
-          "endDate": "2026-01-10T00:00:00Z",
-          "description": "This market will resolve according to the value reported by the Global Land-Ocean Temperature Index for December 2025 when it is released.\n\nAn anomaly within a named bracket for December 2025 is necessary and sufficient to resolve this market immediately once the data becomes available, regardless of whether the figure for December 2025 is later revised.\n\nThe primary resolution source for this market will be the figure found in the table titled \"GLOBAL Land-Ocean Temperature Index in 0.01 degrees Celsius\" under the column \"Dec\" in the row \"2025\" (https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.txt).\n\nIf NASA’s “Global Temperature Index” is rendered permanently unavailable, other information from NASA may be used.\nIf no information for December 2025 is provided by NASA by February 1, 2026, 11:59 PM ET, this market will resolve to the lowest range bracket.",
-          "similarMarkets": [
-            "https://polymarket.com#will-global-temperature-increase-by-less-than-1pt00c-in-december-2025"
-          ],
-          "categorySlug": "weather",
-          "chainId": 5064014,
-          "groupId": "december-2025",
-          "groupTitle": "December 2025"
-        }
-      ]
-    },
-    {
-      "id": "michigan-governor-race-in-2026",
-      "title": "Michigan governor race in 2026",
-      "description": "This market will resolve according to the winner of the 2026 Michigan gubernatorial election.",
-      "categorySlug": "geopolitics",
-      "conditions": [
-        {
-          "conditionHash": "0xeee75e18b53425c67035084fb8be5414331614ab4e5ec59574bc73e11817be93",
-          "question": "Will the Republicans win the Michigan governor race in 2026?",
-          "shortName": "Will the Republicans win the Michigan governor race in 2026?",
-          "description": "This market will resolve according to the winner of the 2026 Michigan gubernatorial election.\n\nA candidate shall be considered to represent a party in the event that he or she is the nominee of the party in question. Candidates other than the Democratic or Republican nominee (e.g., Greens, Libertarian, independent) may be added at a later date.\n\nCandidates who run as independents will not be encompassed by the “Democrat” or “Republican” options regardless of any affiliation they may have with the party.\n\nThe resolution source for this market is the Associated Press, Fox News, and NBC. This market will resolve once all three sources call the race for the same candidate. If all three sources haven’t called the race in this state for the same candidate, this market will resolve based on the official certification.",
-          "similarMarkets": [
-            "https://polymarket.com#will-the-republicans-win-the-michigan-governor-race-in-2026"
-          ],
-          "categorySlug": "geopolitics",
-          "chainId": 5064014,
-          "groupId": "michigan-governor-race-in-2026",
-          "groupTitle": "Michigan governor race in 2026"
-        }
-      ]
-    },
-    {
-      "id": "2025-26-serie-a-league",
-      "title": "2025–26 Serie A league",
-      "description": "This is a polymarket on whether the listed club will win the 2025–26 Serie A.",
-      "categorySlug": "sports",
-      "conditions": [
-        {
-          "conditionHash": "0x6956a94cc63efdd5bccae33b4cf8a0880df301116ccf1f329cad25683392044e",
-          "question": "Will Udinese win the 2025–26 Serie A league?",
-          "shortName": "Will Udinese win the 2025–26 Serie A league?",
-          "endDate": "2026-05-28T00:00:00Z",
-          "description": "This is a polymarket on whether the listed club will win the 2025–26 Serie A.\n\nThis market will resolve to \"Yes\" if the listed club is officially crowned the winner of the 2025–26 Serie A. Otherwise, it will resolve to \"No\".\n\nIf at any point it becomes impossible for the listed club to win the league (e.g. they are mathematically eliminated), the market will resolve to \"No\".\n\nIf the 2025–26 Serie A season is canceled or not completed by October 1, 2026, this market will resolve to \"Other\".\n\nThe primary resolution source will be official information from Serie A. A consensus of credible reporting may also be used.",
-          "similarMarkets": [
-            "https://polymarket.com#will-udinese-win-the-202526-serie-a-league"
-          ],
-          "categorySlug": "sports",
-          "chainId": 5064014,
-          "groupId": "2025-26-serie-a-league",
-          "groupTitle": "2025–26 Serie A league"
-        }
-      ]
-    },
-    {
-      "id": "january-6-to-january-13-2026",
       "title": "January 6 to January 13, 2026",
       "description": "This market will resolve according to the number of times Elon Musk (@elonmusk), posts on X from January 6 12:00 PM ET to January 13, 2026 12:00 PM ET.",
       "categorySlug": "geopolitics",
@@ -1064,13 +915,70 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "january-6-to-january-13-2026",
           "groupTitle": "January 6 to January 13, 2026"
         }
       ]
     },
     {
-      "id": "bitcoin-dip-to-90-000-january-5-11",
+      "title": "December 2025",
+      "description": "This market will resolve according to the value reported by the Global Land-Ocean Temperature Index for December 2025 when it is released.",
+      "categorySlug": "weather",
+      "conditions": [
+        {
+          "conditionHash": "0x1cc27f57987618e93038800681456348e48fe0c384b2e57d0f54453ae499c096",
+          "question": "Will global temperature increase by less than 1.00ºC in December 2025?",
+          "shortName": "Will global temperature increase by less than 1.00ºC in December 2025?",
+          "endDate": "2026-01-10T00:00:00Z",
+          "description": "This market will resolve according to the value reported by the Global Land-Ocean Temperature Index for December 2025 when it is released.\n\nAn anomaly within a named bracket for December 2025 is necessary and sufficient to resolve this market immediately once the data becomes available, regardless of whether the figure for December 2025 is later revised.\n\nThe primary resolution source for this market will be the figure found in the table titled \"GLOBAL Land-Ocean Temperature Index in 0.01 degrees Celsius\" under the column \"Dec\" in the row \"2025\" (https://data.giss.nasa.gov/gistemp/tabledata_v4/GLB.Ts+dSST.txt).\n\nIf NASA’s “Global Temperature Index” is rendered permanently unavailable, other information from NASA may be used.\nIf no information for December 2025 is provided by NASA by February 1, 2026, 11:59 PM ET, this market will resolve to the lowest range bracket.",
+          "similarMarkets": [
+            "https://polymarket.com#will-global-temperature-increase-by-less-than-1pt00c-in-december-2025"
+          ],
+          "categorySlug": "weather",
+          "chainId": 5064014,
+          "groupTitle": "December 2025"
+        }
+      ]
+    },
+    {
+      "title": "Michigan governor race in 2026",
+      "description": "This market will resolve according to the winner of the 2026 Michigan gubernatorial election.",
+      "categorySlug": "geopolitics",
+      "conditions": [
+        {
+          "conditionHash": "0xeee75e18b53425c67035084fb8be5414331614ab4e5ec59574bc73e11817be93",
+          "question": "Will the Republicans win the Michigan governor race in 2026?",
+          "shortName": "Will the Republicans win the Michigan governor race in 2026?",
+          "description": "This market will resolve according to the winner of the 2026 Michigan gubernatorial election.\n\nA candidate shall be considered to represent a party in the event that he or she is the nominee of the party in question. Candidates other than the Democratic or Republican nominee (e.g., Greens, Libertarian, independent) may be added at a later date.\n\nCandidates who run as independents will not be encompassed by the “Democrat” or “Republican” options regardless of any affiliation they may have with the party.\n\nThe resolution source for this market is the Associated Press, Fox News, and NBC. This market will resolve once all three sources call the race for the same candidate. If all three sources haven’t called the race in this state for the same candidate, this market will resolve based on the official certification.",
+          "similarMarkets": [
+            "https://polymarket.com#will-the-republicans-win-the-michigan-governor-race-in-2026"
+          ],
+          "categorySlug": "geopolitics",
+          "chainId": 5064014,
+          "groupTitle": "Michigan governor race in 2026"
+        }
+      ]
+    },
+    {
+      "title": "2025–26 Serie A league",
+      "description": "This is a polymarket on whether the listed club will win the 2025–26 Serie A.",
+      "categorySlug": "sports",
+      "conditions": [
+        {
+          "conditionHash": "0x6956a94cc63efdd5bccae33b4cf8a0880df301116ccf1f329cad25683392044e",
+          "question": "Will Udinese win the 2025–26 Serie A league?",
+          "shortName": "Will Udinese win the 2025–26 Serie A league?",
+          "endDate": "2026-05-28T00:00:00Z",
+          "description": "This is a polymarket on whether the listed club will win the 2025–26 Serie A.\n\nThis market will resolve to \"Yes\" if the listed club is officially crowned the winner of the 2025–26 Serie A. Otherwise, it will resolve to \"No\".\n\nIf at any point it becomes impossible for the listed club to win the league (e.g. they are mathematically eliminated), the market will resolve to \"No\".\n\nIf the 2025–26 Serie A season is canceled or not completed by October 1, 2026, this market will resolve to \"Other\".\n\nThe primary resolution source will be official information from Serie A. A consensus of credible reporting may also be used.",
+          "similarMarkets": [
+            "https://polymarket.com#will-udinese-win-the-202526-serie-a-league"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "2025–26 Serie A league"
+        }
+      ]
+    },
+    {
       "title": "Bitcoin dip to $90,000 January 5-11",
       "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Bitcoin (BTC/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"",
       "categorySlug": "crypto",
@@ -1086,13 +994,11 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "bitcoin-dip-to-90-000-january-5-11",
           "groupTitle": "Bitcoin dip to $90,000 January 5-11"
         }
       ]
     },
     {
-      "id": "part-of-the-next-government-of-the-netherlands",
       "title": "part of the next Government of the Netherlands",
       "description": "This market will resolve to \"Yes\" if the listed party is a part of the first Dutch government formed after the 2025 general election scheduled to take place October 29. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "geopolitics",
@@ -1108,13 +1014,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "part-of-the-next-government-of-the-netherlands",
           "groupTitle": "part of the next Government of the Netherlands"
         }
       ]
     },
     {
-      "id": "2025-26-french-ligue-1",
       "title": "2025–26 French Ligue 1",
       "description": "This is a polymarket on whether the listed club will win the 2025–26 French Ligue 1.",
       "categorySlug": "sports",
@@ -1130,13 +1034,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-26-french-ligue-1",
           "groupTitle": "2025–26 French Ligue 1"
         }
       ]
     },
     {
-      "id": "nominated-for-best-actress-at-the-98th-academy-awards",
       "title": "nominated for Best Actress at the 98th Academy Awards",
       "description": "The Academy Awards are presented annually by the Academy of Motion Picture Arts and Sciences (AMPAS) to honor outstanding artistic and technical achievements in film. For the 98th Academy Awards in 2026, nominations are scheduled to be announced on January 22, followed by the ceremony on March 15, 2026.",
       "categorySlug": "culture",
@@ -1152,13 +1054,11 @@
           ],
           "categorySlug": "culture",
           "chainId": 5064014,
-          "groupId": "nominated-for-best-actress-at-the-98th-academy-awards",
           "groupTitle": "nominated for Best Actress at the 98th Academy Awards"
         }
       ]
     },
     {
-      "id": "january-2026",
       "title": "January 2026",
       "description": "This market will resolve according to the number of tornadoes recorded in the United States during the specified month, based on the monthly count published on the National Centers for Environmental Information U.S. Tornadoes Time Series page (see: https://www.ncei.noaa.gov/access/monitoring/tornadoes/time-series).",
       "categorySlug": "geopolitics",
@@ -1174,13 +1074,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "january-2026",
           "groupTitle": "January 2026"
         }
       ]
     },
     {
-      "id": "lighter-dip-to-1-5-before-2027",
       "title": "Lighter dip to $1.5 before 2027",
       "description": "This market will immediately resolve to “Yes” if any Lighter 1-minute candle for Lighter (LIT/USDC) between December 30, 2025, 14:25 and December 31, 2026, 23:59 ET has a final “Low” price equal to or lower than the price specified in the title. Otherwise, the market will resolve to “No.”",
       "categorySlug": "geopolitics",
@@ -1196,13 +1094,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "lighter-dip-to-1-5-before-2027",
           "groupTitle": "Lighter dip to $1.5 before 2027"
         }
       ]
     },
     {
-      "id": "metamask-fdv-above-one-day-after-launch",
       "title": "Metamask FDV above  one day after launch",
       "description": "This market will resolve to \"Yes\" if the Fully Diluted Valuation of Metamask's token is greater than the value specified in the title 1 day after launch. Otherwise, the market will resolve to \"No.\"",
       "categorySlug": "geopolitics",
@@ -1218,13 +1114,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "metamask-fdv-above-one-day-after-launch",
           "groupTitle": "Metamask FDV above  one day after launch"
         }
       ]
     },
     {
-      "id": "bitcoin-reach-170-000-by-december-31-2026",
       "title": "Bitcoin reach $170,000 by December 31, 2026",
       "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Bitcoin (BTC/USDT) between November 24, 2025, 14:00 and December 31, 2026, 23:59 in the ET timezone has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No.\"",
       "categorySlug": "crypto",
@@ -1240,57 +1134,11 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "bitcoin-reach-170-000-by-december-31-2026",
           "groupTitle": "Bitcoin reach $170,000 by December 31, 2026"
         }
       ]
     },
     {
-      "id": "new-stranger-things-episode-released-by",
-      "title": "New \"Stranger Things\" episode released by ?",
-      "description": "This market will resolve to \"Yes\" if Netflix officially releases a new episode of Stranger Things (i.e., an episode that was not previously available to stream on Netflix) between market creation and January 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".",
-      "categorySlug": "geopolitics",
-      "conditions": [
-        {
-          "conditionHash": "0x3d109c1fe77572356951368f363ea16c6d8fd0fe78bd0ef2a51af572ae9a4c67",
-          "question": "New \"Stranger Things\" episode released by January 31? ",
-          "shortName": "New \"Stranger Things\" episode released by January 31? ",
-          "endDate": "2026-01-07T00:00:00Z",
-          "description": "This market will resolve to \"Yes\" if Netflix officially releases a new episode of Stranger Things (i.e., an episode that was not previously available to stream on Netflix) between market creation and January 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nFor the purposes of this market, an “episode” must be listed as a distinct episode of Stranger Things on Netflix and be playable for general subscribers in the United States. A behind-the-scenes featurette, documentary, trailer, recap, cast interview, deleted scenes compilation, or other bonus content will not count unless it is clearly presented by Netflix as an official numbered or titled episode of the series.\n\nIf Netflix releases an alternate cut, extended cut, or “secret” version of an already-released episode, it will not count unless it is listed as a separate episode entry on Netflix.\n\nThe primary resolution source for this market will be the Stranger Things title page on Netflix (episode list and availability), however a consensus of credible reporting may also be used.",
-          "similarMarkets": [
-            "https://polymarket.com#new-stranger-things-episode-released-by-january-31"
-          ],
-          "categorySlug": "geopolitics",
-          "chainId": 5064014,
-          "groupId": "new-stranger-things-episode-released-by",
-          "groupTitle": "New \"Stranger Things\" episode released by ?"
-        }
-      ]
-    },
-    {
-      "id": "2026-nhl-stanley-cup",
-      "title": "2026 NHL Stanley Cup",
-      "description": "This market will resolve to “Yes” if the Minnesota Wild win the 2026 NHL Stanley Cup. Otherwise, this market will resolve to “No”.",
-      "categorySlug": "sports",
-      "conditions": [
-        {
-          "conditionHash": "0x0d082a85f48a5226b1205acdb6e95ead2fe373acabcf6c471f5895f86f42a276",
-          "question": "Will the Minnesota Wild win the 2026 NHL Stanley Cup?",
-          "shortName": "Will the Minnesota Wild win the 2026 NHL Stanley Cup?",
-          "endDate": "2026-06-30T00:00:00Z",
-          "description": "This market will resolve to “Yes” if the Minnesota Wild win the 2026 NHL Stanley Cup. Otherwise, this market will resolve to “No”.\n\nThis market will resolve to “No” if it becomes impossible for this team to win the 2026 NHL Stanley Cup based off the rules of the NHL.\n\nThe resolution source for this market will be information from the NHL.\n",
-          "similarMarkets": [
-            "https://polymarket.com#will-the-minnesota-wild-win-the-2026-nhl-stanley-cup"
-          ],
-          "categorySlug": "sports",
-          "chainId": 5064014,
-          "groupId": "2026-nhl-stanley-cup",
-          "groupTitle": "2026 NHL Stanley Cup"
-        }
-      ]
-    },
-    {
-      "id": "bitcoin-reach-96-000-january-5-11",
       "title": "Bitcoin reach $96,000 January 5-11",
       "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "crypto",
@@ -1306,13 +1154,31 @@
           ],
           "categorySlug": "crypto",
           "chainId": 5064014,
-          "groupId": "bitcoin-reach-96-000-january-5-11",
           "groupTitle": "Bitcoin reach $96,000 January 5-11"
         }
       ]
     },
     {
-      "id": "2025-26-nfl-mvp-award",
+      "title": "2026 NHL Stanley Cup",
+      "description": "This market will resolve to “Yes” if the Minnesota Wild win the 2026 NHL Stanley Cup. Otherwise, this market will resolve to “No”.",
+      "categorySlug": "sports",
+      "conditions": [
+        {
+          "conditionHash": "0x0d082a85f48a5226b1205acdb6e95ead2fe373acabcf6c471f5895f86f42a276",
+          "question": "Will the Minnesota Wild win the 2026 NHL Stanley Cup?",
+          "shortName": "Will the Minnesota Wild win the 2026 NHL Stanley Cup?",
+          "endDate": "2026-06-30T00:00:00Z",
+          "description": "This market will resolve to “Yes” if the Minnesota Wild win the 2026 NHL Stanley Cup. Otherwise, this market will resolve to “No”.\n\nThis market will resolve to “No” if it becomes impossible for this team to win the 2026 NHL Stanley Cup based off the rules of the NHL.\n\nThe resolution source for this market will be information from the NHL.\n",
+          "similarMarkets": [
+            "https://polymarket.com#will-the-minnesota-wild-win-the-2026-nhl-stanley-cup"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "2026 NHL Stanley Cup"
+        }
+      ]
+    },
+    {
       "title": "2025–26 NFL MVP award",
       "description": "This polymarket will resolve to \"Yes\" if the listed player is named the 2025–26 NFL regular season MVP. Otherwise, it will resolve to \"No\".",
       "categorySlug": "sports",
@@ -1328,13 +1194,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "2025-26-nfl-mvp-award",
           "groupTitle": "2025–26 NFL MVP award"
         }
       ]
     },
     {
-      "id": "ukraine",
       "title": "Ukraine",
       "description": "This market will resolve according to the location of the next meeting between Donald Trump and Vladimir Putin between September 30 and June 30, 2026, 11:59 PM ET.",
       "categorySlug": "geopolitics",
@@ -1350,13 +1214,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "ukraine",
           "groupTitle": "Ukraine"
         }
       ]
     },
     {
-      "id": "largest-company-in-the-world-by-market-cap-on-june-30",
       "title": "largest company in the world by market cap on June 30",
       "description": "This market will resolve to the largest company in the world by market cap on June 30, 2026, as of market close.",
       "categorySlug": "tech-science",
@@ -1372,13 +1234,11 @@
           ],
           "categorySlug": "tech-science",
           "chainId": 5064014,
-          "groupId": "largest-company-in-the-world-by-market-cap-on-june-30",
           "groupTitle": "largest company in the world by market cap on June 30"
         }
       ]
     },
     {
-      "id": "november",
       "title": "November",
       "description": "This is a market about the one-month percent change in the seasonally adjusted Consumer Price Index for All Urban Consumers (CPI-U) published by the Bureau of Labor Statistics (BLS).",
       "categorySlug": "economy-finance",
@@ -1394,35 +1254,11 @@
           ],
           "categorySlug": "economy-finance",
           "chainId": 5064014,
-          "groupId": "november",
           "groupTitle": "November"
         }
       ]
     },
     {
-      "id": "sworn-in-by-march-31-2026",
-      "title": "sworn in by March 31, 2026",
-      "description": "This market will resolve to \"Yes\" if a new Cabinet of the Netherlands is officially sworn in by the specified date, 11:59 PM ET. Otherwise, this market will resolve to “No.”",
-      "categorySlug": "geopolitics",
-      "conditions": [
-        {
-          "conditionHash": "0x19035a3555f59282472c6b04b21508700af75c6bd7d57d6b130d722af1e02e97",
-          "question": "Will a new Cabinet of the Netherlands be sworn in by March 31, 2026?",
-          "shortName": "Will a new Cabinet of the Netherlands be sworn in by March 31, 2026?",
-          "endDate": "2026-07-31T00:00:00Z",
-          "description": "This market will resolve to \"Yes\" if a new Cabinet of the Netherlands is officially sworn in by the specified date, 11:59 PM ET. Otherwise, this market will resolve to “No.”\n\nTo qualify, a newly formed government, headed by a Prime Minister and composed of appointed ministers must be sworn in before the monarch within this markets timeframe.\n\nThe primary resolution source for this market will be official information from the Government of the Netherlands, the Staatscourant, or the Royal House (koninklijkhuis.nl); however, a consensus of credible reporting may also be used.",
-          "similarMarkets": [
-            "https://polymarket.com#will-a-new-cabinet-of-the-netherlands-be-sworn-in-by-march-31-2026-268"
-          ],
-          "categorySlug": "geopolitics",
-          "chainId": 5064014,
-          "groupId": "sworn-in-by-march-31-2026",
-          "groupTitle": "sworn in by March 31, 2026"
-        }
-      ]
-    },
-    {
-      "id": "assists-during-the-2025-26-nba-season",
       "title": "assists during the 2025–26 NBA season",
       "description": "This market will resolve according to the player that finishes the 2025–26 NBA regular season with the highest assists per-game average of any qualified player.",
       "categorySlug": "sports",
@@ -1438,13 +1274,31 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "assists-during-the-2025-26-nba-season",
           "groupTitle": "assists during the 2025–26 NBA season"
         }
       ]
     },
     {
-      "id": "dota-2-yakult-brothers-tearlaments-vs-game-master",
+      "title": "sworn in by March 31, 2026",
+      "description": "This market will resolve to \"Yes\" if a new Cabinet of the Netherlands is officially sworn in by the specified date, 11:59 PM ET. Otherwise, this market will resolve to “No.”",
+      "categorySlug": "geopolitics",
+      "conditions": [
+        {
+          "conditionHash": "0x19035a3555f59282472c6b04b21508700af75c6bd7d57d6b130d722af1e02e97",
+          "question": "Will a new Cabinet of the Netherlands be sworn in by March 31, 2026?",
+          "shortName": "Will a new Cabinet of the Netherlands be sworn in by March 31, 2026?",
+          "endDate": "2026-07-31T00:00:00Z",
+          "description": "This market will resolve to \"Yes\" if a new Cabinet of the Netherlands is officially sworn in by the specified date, 11:59 PM ET. Otherwise, this market will resolve to “No.”\n\nTo qualify, a newly formed government, headed by a Prime Minister and composed of appointed ministers must be sworn in before the monarch within this markets timeframe.\n\nThe primary resolution source for this market will be official information from the Government of the Netherlands, the Staatscourant, or the Royal House (koninklijkhuis.nl); however, a consensus of credible reporting may also be used.",
+          "similarMarkets": [
+            "https://polymarket.com#will-a-new-cabinet-of-the-netherlands-be-sworn-in-by-march-31-2026-268"
+          ],
+          "categorySlug": "geopolitics",
+          "chainId": 5064014,
+          "groupTitle": "sworn in by March 31, 2026"
+        }
+      ]
+    },
+    {
       "title": "Dota 2: Yakult Brothers.Tearlaments vs Game Master -",
       "description": "This market will resolve to \"Yakult Brothers.Tearlaments\" if Yakult Brothers.Tearlaments win Game 2 against Game Master in this match in the ESL Challenger China Open Qualifier 1 Playoffs, scheduled for January 4 at 5:00AM ET.",
       "categorySlug": "sports",
@@ -1460,13 +1314,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "dota-2-yakult-brothers-tearlaments-vs-game-master",
           "groupTitle": "Dota 2: Yakult Brothers.Tearlaments vs Game Master -"
         }
       ]
     },
     {
-      "id": "traded",
       "title": "traded",
       "description": "This market will resolve to the NBA team that officially acquires Giannis Antetokounmpo in a trade from the Milwaukee Bucks before the 2025-2026 NBA season trade deadline.",
       "categorySlug": "geopolitics",
@@ -1482,13 +1334,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "traded",
           "groupTitle": "traded"
         }
       ]
     },
     {
-      "id": "u-s-anti-cartel-strike-operation-on-foreign-soil-by-2026",
       "title": "U.S. anti-cartel strike/operation on foreign soil by , 2026",
       "description": "This market will resolve to \"Yes\" if U.S. government personnel (military, DEA, CIA, or any other agency) directly participate on the ground in an anti-cartel operation or conduct a kinetic strike directed against a cartel on foreign soil by the specified date, 11:59 PM ET. Otherwise, this market will resolve to “No”.",
       "categorySlug": "geopolitics",
@@ -1504,13 +1354,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "u-s-anti-cartel-strike-operation-on-foreign-soil-by-2026",
           "groupTitle": "U.S. anti-cartel strike/operation on foreign soil by , 2026"
         }
       ]
     },
     {
-      "id": "brevis-fdv-above-one-day-after-launch",
       "title": "Brevis FDV above  one day after launch",
       "description": "This market will resolve to \"Yes\" if the Fully Diluted Valuation of Brevis's governance token is greater than the value specified in the title 1 day after launch. Otherwise, the market will resolve to \"No.\"",
       "categorySlug": "geopolitics",
@@ -1526,13 +1374,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "brevis-fdv-above-one-day-after-launch",
           "groupTitle": "Brevis FDV above  one day after launch"
         }
       ]
     },
     {
-      "id": "based-fdv-above-one-day-after-launch",
       "title": "Based FDV above  one day after launch",
       "description": "This market will resolve to \"Yes\" if the Fully Diluted Valuation of Based's token is greater than the value specified in the title 1 day after launch. Otherwise, the market will resolve to \"No.\"",
       "categorySlug": "geopolitics",
@@ -1548,13 +1394,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "based-fdv-above-one-day-after-launch",
           "groupTitle": "Based FDV above  one day after launch"
         }
       ]
     },
     {
-      "id": "polymarket-mindshare-hit",
       "title": "Polymarket mindshare hit",
       "description": "This market will resolve to \"Yes\" if Polymarket has at least the specified daily mindshare, as shown on the Kaito Information Markets Arena page (https://yaps.kaito.ai/infomarkets) at any point between November 20, 2025, and March 31, 2026 ET. Otherwise, this market will resolve to \"No\".",
       "categorySlug": "geopolitics",
@@ -1570,13 +1414,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "polymarket-mindshare-hit",
           "groupTitle": "Polymarket mindshare hit"
         }
       ]
     },
     {
-      "id": "2026-australian-open",
       "title": "2026 Australian Open",
       "description": "The 2026 Australian Open is set to take place from January 18 - February 1, 2026.",
       "categorySlug": "geopolitics",
@@ -1592,13 +1434,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-australian-open",
           "groupTitle": "2026 Australian Open"
         }
       ]
     },
     {
-      "id": "ipo-before-2027",
       "title": "IPO before 2027",
       "description": "This market will resolve to \"Yes\" if the listed company completes an Initial Public Offering (IPO) by December 31, 2026, 11:59 PM ET, as confirmed by official company announcements or credible news sources. The IPO refers to the first sale of stock by the listed company to the public on any recognized stock exchange.",
       "categorySlug": "tech-science",
@@ -1614,35 +1454,11 @@
           ],
           "categorySlug": "tech-science",
           "chainId": 5064014,
-          "groupId": "ipo-before-2027",
           "groupTitle": "IPO before 2027"
         }
       ]
     },
     {
-      "id": "above-160-on-january-7",
-      "title": "above $160 on January 7",
-      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".",
-      "categorySlug": "crypto",
-      "conditions": [
-        {
-          "conditionHash": "0x0f081421ce894e2acc5bab6c384d88f45056a230f402b9d4d24f4dc0224a0180",
-          "question": "Will the price of Solana be above $160 on January 7?",
-          "shortName": "Will the price of Solana be above $160 on January 7?",
-          "endDate": "2026-01-07T17:00:00Z",
-          "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the SOL/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/SOL_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance SOL/USDT, not according to other sources or spot markets.\n\nPrice precision is determined by the number of decimal places in the source.",
-          "similarMarkets": [
-            "https://polymarket.com#solana-above-160-on-january-7"
-          ],
-          "categorySlug": "crypto",
-          "chainId": 5064014,
-          "groupId": "above-160-on-january-7",
-          "groupTitle": "above $160 on January 7"
-        }
-      ]
-    },
-    {
-      "id": "points-during-the-2025-26-nba-season",
       "title": "points during the 2025–26 NBA season",
       "description": "This market will resolve according to the player that finishes the 2025–26 NBA regular season with the highest points per-game average of any qualified player.",
       "categorySlug": "sports",
@@ -1658,13 +1474,11 @@
           ],
           "categorySlug": "sports",
           "chainId": 5064014,
-          "groupId": "points-during-the-2025-26-nba-season",
           "groupTitle": "points during the 2025–26 NBA season"
         }
       ]
     },
     {
-      "id": "2026-ncaa-tournament",
       "title": "2026 NCAA Tournament",
       "description": "This market will resolve according to the team that wins the 2026 NCAA Men’s Basketball Tournament.",
       "categorySlug": "geopolitics",
@@ -1680,13 +1494,11 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "2026-ncaa-tournament",
           "groupTitle": "2026 NCAA Tournament"
         }
       ]
     },
     {
-      "id": "most-seats-in-the-2026-costa-rican-legislative-assembly-election",
       "title": "most seats in the 2026 Costa Rican Legislative Assembly election",
       "description": "Parliamentary elections are scheduled to be held in Costa Rica on 1 February 2026.",
       "categorySlug": "geopolitics",
@@ -1702,25 +1514,72 @@
           ],
           "categorySlug": "geopolitics",
           "chainId": 5064014,
-          "groupId": "most-seats-in-the-2026-costa-rican-legislative-assembly-election",
           "groupTitle": "most seats in the 2026 Costa Rican Legislative Assembly election"
+        }
+      ]
+    },
+    {
+      "title": "most seats in the 2025 Central African Republic National Assembly election",
+      "description": "The 2025 Central African Republic general election is scheduled to be held on December 28, 2025, to elect the 140 members of the National Assembly (CAR’s unicameral parliament).",
+      "categorySlug": "geopolitics",
+      "conditions": [
+        {
+          "conditionHash": "0x7e35149073a17a77b5fd6fc6200ccffbf947bdfeeddf5b85a8ca8896fe3313dc",
+          "question": "Will the National Union for Democracy and Progress win the most seats in the 2025 Central African Republic National Assembly election?",
+          "shortName": "Will the National Union for Democracy and Progress win the most seats in the 2025 Central African Republic National Assembly election?",
+          "endDate": "2025-12-28T00:00:00Z",
+          "description": "The 2025 Central African Republic general election is scheduled to be held on December 28, 2025, to elect the 140 members of the National Assembly (CAR’s unicameral parliament).\n\nThis market will resolve according to the party that controls the most seats in the Central African Republic National Assembly as a result of the next Central African parliamentary election.\n\nIf initial voting in the next Central African parliamentary election does not occur by June 30, 2026, 11:59 PM ET, this market will resolve to \"Other\".\n\nThis market may remain open to consider any second-round votes held to determine winners in individual single-member constituencies, as long as the remaining undecided seats can still change which party wins the most seats overall, or maximally until December 31, 2026, 11:59 PM ET, after which the market will resolve based on the results available at that time.\n\nIn the case of a tie between this party and any other for the most seats held, this market will resolve in favor of the party whose listed abbreviation comes first in alphabetical order.\n\nThis market’s resolution will be based solely on the number of seats won by this party, not any coalition of which it may be a part.\n\nThis market will resolve based on the result of the election as indicated by a consensus of credible reporting. If there is ambiguity, this market will resolve based solely on the official results as reported by the Government of the Central African Republic, specifically the National Elections Authority (https://www.ane-rca.org/).",
+          "similarMarkets": [
+            "https://polymarket.com#will-the-national-union-for-democracy-and-progress-win-the-most-seats-in-the-2025-central-african-republic-national-assembly-election"
+          ],
+          "categorySlug": "geopolitics",
+          "chainId": 5064014,
+          "groupTitle": "most seats in the 2025 Central African Republic National Assembly election"
+        }
+      ]
+    },
+    {
+      "title": "Oro launch a token by",
+      "description": "This market will resolve to “Yes” if Oro (https://x.com/orogoldapp) officially launches a governance token by 11:59 PM ET on the date specified in the title. Otherwise, this market will resolve to “No”.",
+      "categorySlug": "crypto",
+      "conditions": [
+        {
+          "conditionHash": "0xc42d2ae59827c2d522d6bf067687aa8892c05ca15e734e5cd03faa10fbb1d5eb",
+          "question": "Will Oro launch a token by March 31, 2026?",
+          "shortName": "Will Oro launch a token by March 31, 2026?",
+          "endDate": "2027-01-01T05:00:00Z",
+          "description": "This market will resolve to “Yes” if Oro (https://x.com/orogoldapp) officially launches a governance token by 11:59 PM ET on the date specified in the title. Otherwise, this market will resolve to “No”.\n\nThe token must be actively and publicly transferable and tradable. Announcements alone do not qualify.\n\nThe primary resolution source for this market will be information from Oro, however a consensus of credible reporting will also be used.",
+          "similarMarkets": [
+            "https://polymarket.com#will-oro-launch-a-token-by-march-31-2026"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Oro launch a token by"
+        }
+      ]
+    },
+    {
+      "title": "above $70 on January 8",
+      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".",
+      "categorySlug": "crypto",
+      "conditions": [
+        {
+          "conditionHash": "0xd0131ea3911cfd1a63cac6aa293acf0a08b16af60fd6099c9ca91cc28daee1fa",
+          "question": "Will the price of Solana be above $70 on January 8?",
+          "shortName": "Will the price of Solana be above $70 on January 8?",
+          "endDate": "2026-01-08T17:00:00Z",
+          "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the SOL/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/SOL_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance SOL/USDT, not according to other sources or spot markets.\n\nPrice precision is determined by the number of decimal places in the source.",
+          "similarMarkets": [
+            "https://polymarket.com#solana-above-70-on-january-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "above $70 on January 8"
         }
       ]
     }
   ],
   "ungroupedConditions": [
-    {
-      "conditionHash": "0xfc9ee9c25abd5b966088767214c22dcf3ad1c72548e9a1dbef9d4328c170e5b5",
-      "question": "Trump out as President by March 31?",
-      "shortName": "Trump out as President by March 31?",
-      "endDate": "2026-03-31T00:00:00Z",
-      "description": "This market will resolve to “Yes” if Donald Trump resigns or is removed as President or otherwise ceases to be the President of the United States for any period of time by March 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.\n\nAn announcement of Donald Trump's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nOnly permanent removal from office will qualify. Temporary removal (e.g. temporary invocation of the 25th Amendment under Section 3 or a Section 4 invocation not sustained by both Houses of Congress) or impeachment without removal will not count.\n\nA sustained invocation of the Twenty-Fifth Amendment, Section 4 (i.e., if both Houses of Congress, by two-thirds vote, uphold the Vice President and Cabinet’s determination of presidential inability) will qualify for a \"Yes\" resolution. \n\nThe resolution source for this market will be a consensus of credible reporting.",
-      "similarMarkets": [
-        "https://polymarket.com#trump-out-as-president-by-march-31"
-      ],
-      "categorySlug": "geopolitics",
-      "chainId": 5064014
-    },
     {
       "conditionHash": "0xb4d3ad42615b0051af94558c42f07eed577a018e60136f6e2e38bf28a84ae678",
       "question": "Cavaliers vs. Pacers",
@@ -1734,15 +1593,15 @@
       "chainId": 5064014
     },
     {
-      "conditionHash": "0x2b40914f66cf5195d84f5934b3c297919342ebb3c032fabb709b7d87ae67e14e",
-      "question": "Negative GDP growth in 2025?",
-      "shortName": "Negative GDP growth in 2025?",
-      "endDate": "2026-01-30T12:00:00Z",
-      "description": "This market will resolve to 'Yes' if the seasonally adjusted and annualized GDP growth rate for the full year 2025, as derived from the 'Advance Estimate' for Q4 2025, scheduled for release by the U.S. Bureau of Economic Analysis (BEA) on January 30, 2026, reports a growth rate below 0. Otherwise, this market will resolve to 'No'.\n\nThe GDP release will be available at: https://www.bea.gov/data/gdp/gross-domestic-product.\n\nOnly the first available GDP report labeled as the 'Advance Estimate' for Q4 2025, which provides the initial full-year 2025 GDP growth rate, will be used for resolution. Any subsequent revisions or updates to the data will not be considered.",
+      "conditionHash": "0xfc9ee9c25abd5b966088767214c22dcf3ad1c72548e9a1dbef9d4328c170e5b5",
+      "question": "Trump out as President by March 31?",
+      "shortName": "Trump out as President by March 31?",
+      "endDate": "2026-03-31T00:00:00Z",
+      "description": "This market will resolve to “Yes” if Donald Trump resigns or is removed as President or otherwise ceases to be the President of the United States for any period of time by March 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to “No”.\n\nAn announcement of Donald Trump's resignation/removal before this market's end date will immediately resolve this market to \"Yes\", regardless of when the announced resignation/removal goes into effect.\n\nOnly permanent removal from office will qualify. Temporary removal (e.g. temporary invocation of the 25th Amendment under Section 3 or a Section 4 invocation not sustained by both Houses of Congress) or impeachment without removal will not count.\n\nA sustained invocation of the Twenty-Fifth Amendment, Section 4 (i.e., if both Houses of Congress, by two-thirds vote, uphold the Vice President and Cabinet’s determination of presidential inability) will qualify for a \"Yes\" resolution. \n\nThe resolution source for this market will be a consensus of credible reporting.",
       "similarMarkets": [
-        "https://polymarket.com#negative-gdp-growth-in-2025"
+        "https://polymarket.com#trump-out-as-president-by-march-31"
       ],
-      "categorySlug": "economy-finance",
+      "categorySlug": "geopolitics",
       "chainId": 5064014
     },
     {
@@ -1755,6 +1614,18 @@
         "https://polymarket.com#will-the-us-invade-greenland-in-2026"
       ],
       "categorySlug": "geopolitics",
+      "chainId": 5064014
+    },
+    {
+      "conditionHash": "0x2b40914f66cf5195d84f5934b3c297919342ebb3c032fabb709b7d87ae67e14e",
+      "question": "Negative GDP growth in 2025?",
+      "shortName": "Negative GDP growth in 2025?",
+      "endDate": "2026-01-30T12:00:00Z",
+      "description": "This market will resolve to 'Yes' if the seasonally adjusted and annualized GDP growth rate for the full year 2025, as derived from the 'Advance Estimate' for Q4 2025, scheduled for release by the U.S. Bureau of Economic Analysis (BEA) on January 30, 2026, reports a growth rate below 0. Otherwise, this market will resolve to 'No'.\n\nThe GDP release will be available at: https://www.bea.gov/data/gdp/gross-domestic-product.\n\nOnly the first available GDP report labeled as the 'Advance Estimate' for Q4 2025, which provides the initial full-year 2025 GDP growth rate, will be used for resolution. Any subsequent revisions or updates to the data will not be considered.",
+      "similarMarkets": [
+        "https://polymarket.com#negative-gdp-growth-in-2025"
+      ],
+      "categorySlug": "economy-finance",
       "chainId": 5064014
     },
     {
@@ -1818,18 +1689,6 @@
       "chainId": 5064014
     },
     {
-      "conditionHash": "0xf5b3982c3f29bf4b445f698da9fa18f21160af1cead042c11385ffd477eac809",
-      "question": "Bitcoin Up or Down - January 6, 5PM ET",
-      "shortName": "Bitcoin Up or Down - January 6, 5PM ET",
-      "endDate": "2026-01-06T23:00:00Z",
-      "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the BTC/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".\n\nThe resolution source for this market is information from Binance, specifically the BTC/USDT pair (https://www.binance.com/en/trade/BTC_USDT). The close « C » and open « O » displayed at the top of the graph for the relevant \"1H\" candle will be used once the data for that candle is finalized.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other sources or spot markets.",
-      "similarMarkets": [
-        "https://polymarket.com#bitcoin-up-or-down-january-6-5pm-et"
-      ],
-      "categorySlug": "crypto",
-      "chainId": 5064014
-    },
-    {
       "conditionHash": "0x15d2e66dcf1d63c5695d6d0e9e2f8e06dd246d00fd5dfc254f2b22baa33bfa1b",
       "question": "Will Mitch McConnell step down from the Senate before his term ends?",
       "shortName": "Will Mitch McConnell step down from the Senate before his term ends?",
@@ -1842,15 +1701,15 @@
       "chainId": 5064014
     },
     {
-      "conditionHash": "0x124030560ccc656a379a7eadf65fa8cf0a44120cbc3e80eaba7f8e65195e674c",
-      "question": "Weed rescheduled by March 31?",
-      "shortName": "Weed rescheduled by March 31?",
-      "endDate": "2026-03-31T00:00:00Z",
-      "description": "This market will resolve to \"Yes\" if marijuana is rescheduled down from I to any other level (or is unscheduled completely) by the Drug Enforcement Agency of the United States (https://www.dea.gov/drug-information/drug-scheduling), by March 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nThe primary resolution source for this market will be official information from the US government, however a consensus of credible reporting will also be used.",
+      "conditionHash": "0xbfa2065aca0ad40d731bb8d249e14bbffd54a57fe5bbeb6b438f714bf7a564eb",
+      "question": "Texans vs. Steelers",
+      "shortName": "Texans vs. Steelers",
+      "endDate": "2026-01-13T01:15:00Z",
+      "description": "In the upcoming NFL game, scheduled for January 12 at 8:15PM ET:\nIf Texans wins, the market will resolve to \"Texans\".\nIf Steelers wins, the market will resolve to \"Steelers\".\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely or ends in a tie, with no make-up game, this market will resolve 50-50.",
       "similarMarkets": [
-        "https://polymarket.com#weed-rescheduled-by-march-31"
+        "https://polymarket.com#nfl-hou-pit-2026-01-12"
       ],
-      "categorySlug": "geopolitics",
+      "categorySlug": "sports",
       "chainId": 5064014
     },
     {
@@ -1866,15 +1725,15 @@
       "chainId": 5064014
     },
     {
-      "conditionHash": "0xbfa2065aca0ad40d731bb8d249e14bbffd54a57fe5bbeb6b438f714bf7a564eb",
-      "question": "Texans vs. Steelers",
-      "shortName": "Texans vs. Steelers",
-      "endDate": "2026-01-13T01:15:00Z",
-      "description": "In the upcoming NFL game, scheduled for January 12 at 8:15PM ET:\nIf Texans wins, the market will resolve to \"Texans\".\nIf Steelers wins, the market will resolve to \"Steelers\".\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely or ends in a tie, with no make-up game, this market will resolve 50-50.",
+      "conditionHash": "0x124030560ccc656a379a7eadf65fa8cf0a44120cbc3e80eaba7f8e65195e674c",
+      "question": "Weed rescheduled by March 31?",
+      "shortName": "Weed rescheduled by March 31?",
+      "endDate": "2026-03-31T00:00:00Z",
+      "description": "This market will resolve to \"Yes\" if marijuana is rescheduled down from I to any other level (or is unscheduled completely) by the Drug Enforcement Agency of the United States (https://www.dea.gov/drug-information/drug-scheduling), by March 31, 2026, 11:59 PM ET. Otherwise, this market will resolve to \"No\".\n\nThe primary resolution source for this market will be official information from the US government, however a consensus of credible reporting will also be used.",
       "similarMarkets": [
-        "https://polymarket.com#nfl-hou-pit-2026-01-12"
+        "https://polymarket.com#weed-rescheduled-by-march-31"
       ],
-      "categorySlug": "sports",
+      "categorySlug": "geopolitics",
       "chainId": 5064014
     },
     {

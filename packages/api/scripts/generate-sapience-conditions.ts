@@ -74,12 +74,10 @@ interface SapienceCondition {
   description: string;
   similarMarkets: string[];  // Polymarket URLs (slug is in the URL)
   chainId: number;  // Chain ID where condition will be deployed (Ethereal: 5064014)
-  groupId?: string;  // References ConditionGroup if grouped
-  groupTitle?: string;  // Group title for API submission
+  groupTitle?: string;  // Group title for API submission (API will find-or-create group by name)
 }
 
 interface SapienceConditionGroup {
-  id: string;  // Auto-generated or derived from group title
   title: string;
   categorySlug: SapienceCategorySlug;
   description: string;
@@ -168,13 +166,6 @@ function parseOutcomes(outcomes: string[] | string): string[] {
   return [];
 }
 
-function generateGroupId(groupTitle: string): string {
-  return groupTitle
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 function getPolymarketUrl(market: PolymarketMarket): string {
   // Simple reference URL with slug
   // Note: Polymarket URLs vary by market type (event, sports, etc.)
@@ -240,7 +231,7 @@ function computeGroupCategory(conditions: SapienceCondition[]): SapienceCategory
   return majorityCategory;
 }
 
-function transformToSapienceCondition(market: PolymarketMarket, groupId?: string, groupTitle?: string): SapienceCondition {
+function transformToSapienceCondition(market: PolymarketMarket, groupTitle?: string): SapienceCondition {
   return {
     conditionHash: market.conditionId,  // Use Polymarket's conditionId directly
     question: market.question,
@@ -250,7 +241,6 @@ function transformToSapienceCondition(market: PolymarketMarket, groupId?: string
     similarMarkets: [getPolymarketUrl(market)],
     categorySlug: inferSapienceCategorySlug(market),
     chainId: CHAIN_ID_ETHEREAL,
-    groupId,
     groupTitle,
   };
 }
@@ -279,9 +269,7 @@ function groupMarkets(markets: PolymarketMarket[]): SapienceOutput {
   const groups: SapienceConditionGroup[] = [];
   
   for (const [groupTitle, groupMarkets] of groupsMap) {
-    const groupId = generateGroupId(groupTitle);
-    
-    const conditions = groupMarkets.map(m => transformToSapienceCondition(m, groupId, groupTitle));
+    const conditions = groupMarkets.map(m => transformToSapienceCondition(m, groupTitle));
     
     // Generate group description from first market
     const sampleDescription = groupMarkets[0]?.description || '';
@@ -291,7 +279,6 @@ function groupMarkets(markets: PolymarketMarket[]): SapienceOutput {
     const categorySlug = computeGroupCategory(conditions);
     
     groups.push({
-      id: groupId,
       title: groupTitle,
       description: groupDescription,
       categorySlug,
@@ -565,7 +552,7 @@ function displaySummary(data: SapienceOutput): void {
     data.groups.slice(0, 10).forEach((group, i) => {
       console.log(`   ${i + 1}. ${group.title}`);
       console.log(`      Conditions: ${group.conditions.length}`);
-      console.log(`      Group ID: ${group.id}`);
+      console.log(`      Category: ${group.categorySlug}`);
       console.log('');
     });
   }
@@ -581,8 +568,8 @@ function displaySummary(data: SapienceOutput): void {
     console.log(`      Condition Hash: ${condition.conditionHash}`);
     console.log(`      End Date: ${new Date(condition.endDate).toLocaleDateString()}`);
     console.log(`      Similar Market: ${condition.similarMarkets[0]}`);
-    if (condition.groupId) {
-      console.log(`      Group: ${condition.groupId}`);
+    if (condition.groupTitle) {
+      console.log(`      Group: ${condition.groupTitle}`);
     }
     console.log('');
   });
@@ -649,8 +636,9 @@ async function main() {
     console.log('     metadata: { totalConditions, totalGroups, ... },');
     console.log('     groups: [');
     console.log('       {');
-    console.log('         id: "group-slug",');
     console.log('         title: "Group Title",');
+    console.log('         categorySlug: "sports",');
+    console.log('         description: "...",');
     console.log('         conditions: [ {...}, {...} ]');
     console.log('       }');
     console.log('     ],');
@@ -660,7 +648,7 @@ async function main() {
     console.log('     - conditionHash: Polymarket conditionId (bytes32)');
     console.log('     - question, endDate, description');
     console.log('     - similarMarkets: [Polymarket URLs]');
-    console.log('     - groupId: references parent group');
+    console.log('     - groupTitle: parent group name (for grouped conditions)');
     console.log('     - All conditions are binary (Yes/No)\n');
     
     console.log('⚠️  IMPORTANT NOTES:\n');
