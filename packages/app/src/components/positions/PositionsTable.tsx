@@ -27,20 +27,6 @@ import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
-// Minimal ABI for PredictionMarketUmaResolver.resolvePrediction(bytes)
-const UMA_RESOLVER_MIN_ABI = [
-  {
-    type: 'function',
-    name: 'resolvePrediction',
-    stateMutability: 'view',
-    inputs: [{ name: 'encodedPredictedOutcomes', type: 'bytes' }],
-    outputs: [
-      { name: 'isValid', type: 'bool' },
-      { name: 'error', type: 'uint8' },
-      { name: 'predictorWon', type: 'bool' },
-    ],
-  },
-] as const;
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -169,6 +155,10 @@ export default function PositionsTable({
     // For Pyth legs only: maker-side prediction (true=Over, false=Under).
     // Used to render the correct side for counterparty rows (which take the opposite side).
     pythMakerPrediction?: boolean;
+    settled?: boolean;
+    resolvedToYes?: boolean;
+
+    predictorBetYes?: boolean;
   };
   type UIPosition = {
     uniqueRowKey: string;
@@ -187,6 +177,8 @@ export default function PositionsTable({
     counterpartyAddress?: Address | null;
     chainId: number;
     marketAddress: Address;
+    allConditionsSettled?: boolean;
+    predictorWonFromDb?: boolean;
   };
 
   // Infinite scroll state
@@ -346,6 +338,9 @@ export default function PositionsTable({
             source: 'pyth' as const,
             pythPrediction,
             pythMakerPrediction: makerPrediction,
+            settled: o?.condition?.settled,
+            resolvedToYes: o?.condition?.resolvedToYes,
+            predictorBetYes: makerPrediction,
           };
         }
 
@@ -357,6 +352,9 @@ export default function PositionsTable({
           endTime: o?.condition?.endTime ?? null,
           description: desc,
           source: 'uma' as const,
+          settled: o?.condition?.settled,
+          resolvedToYes: o?.condition?.resolvedToYes,
+          predictorBetYes: o.outcomeYes,
         };
       });
       const endsAtSec =
@@ -476,9 +474,24 @@ export default function PositionsTable({
         // Create unique row key combining prediction id, role, and token id (stable + unique).
         const uniqueRowKey = `${p.id}-${role}-${positionId}`;
 
+        // Compute settlement status from database conditions
+        const allConditionsSettled =
+          legs.length > 0 && legs.every((leg) => leg.settled === true);
+
+        const predictorWonFromDb = allConditionsSettled
+          ? legs.every((leg) => {
+              const predictorBet = leg.predictorBetYes;
+              const resolved = leg.resolvedToYes;
+
+              return predictorBet === resolved;
+            })
+          : undefined;
+
         return {
           uniqueRowKey,
           positionId,
+          allConditionsSettled,
+          predictorWonFromDb,
           legs: legs.map((leg) => {
             // Flip display sides for counterparty rows:
             // - Pyth: maker prediction is stored; counterparty is opposite
@@ -586,198 +599,6 @@ export default function PositionsTable({
     });
     return set;
   }, [ownersResult?.data, tokenIdsToCheck, account]);
-
-  // On-chain resolution for active rows that have passed end time
-  type ChainResolutionState =
-    | { state: 'awaiting' }
-    | { state: 'claim'; tokenId: bigint }
-    | { state: 'lost' }
-    | { state: 'claimed' };
-
-  const nowMs = Date.now();
-  const rowsNeedingResolution = React.useMemo(() => {
-    return rows.filter(
-      (r) =>
-        r.status === 'active' &&
-        r.endsAt <= nowMs &&
-        r.addressRole !== 'unknown'
-    );
-  }, [rows, nowMs]);
-
-  const viewerTokenInfo = React.useMemo(() => {
-    return rowsNeedingResolution.map((r) => ({
-      rowKey: r.positionId,
-      tokenId:
-        r.addressRole === 'predictor'
-          ? BigInt(r.positionId) // positionId chosen from predictor/counterparty id earlier
-          : BigInt(r.positionId),
-      // Note: positionId was set to the viewer-relevant NFT id earlier
-      marketAddress: r.marketAddress,
-      chainId: r.chainId,
-    }));
-  }, [rowsNeedingResolution]);
-
-  // Phase 1: ownerOf(viewerTokenId)
-  const activeOwnerReads = React.useMemo(
-    () =>
-      viewerTokenInfo.map((info) => ({
-        address: info.marketAddress,
-        abi: predictionMarketAbi as unknown as Abi,
-        functionName: 'ownerOf',
-        args: [info.tokenId],
-        chainId: info.chainId,
-      })),
-    [viewerTokenInfo]
-  );
-  const activeOwners = useReadContracts({
-    contracts: activeOwnerReads,
-    query: { enabled: !isLoading && activeOwnerReads.length > 0 },
-  });
-
-  // Derive which rows are still owned by the viewer
-  const ownedRowEntries = React.useMemo(() => {
-    const out: {
-      rowKey: number;
-      tokenId: bigint;
-      marketAddress: Address;
-      chainId: number;
-    }[] = [];
-    const items = activeOwners?.data || [];
-    const viewerAddr = viewer;
-
-    items.forEach((item, idx) => {
-      const info = viewerTokenInfo[idx];
-      if (!info) return;
-
-      if (!item) return;
-
-      if (item.status === 'success') {
-        const owner = String(item.result || '').toLowerCase();
-        if (owner && owner === viewerAddr) {
-          out.push({
-            rowKey: info.rowKey,
-            tokenId: info.tokenId,
-            marketAddress: info.marketAddress,
-            chainId: info.chainId,
-          });
-        }
-      }
-    });
-
-    return out;
-  }, [activeOwners?.data, viewer, viewerTokenInfo]);
-
-  // Phase 2: getPrediction(tokenId) to obtain resolver + encodedPredictedOutcomes
-  const getPredictionReads = React.useMemo(
-    () =>
-      ownedRowEntries.map((e) => ({
-        address: e.marketAddress,
-        abi: predictionMarketAbi as unknown as Abi,
-        functionName: 'getPrediction',
-        args: [e.tokenId],
-        chainId: e.chainId,
-      })),
-    [ownedRowEntries]
-  );
-  const predictionDatas = useReadContracts({
-    contracts: getPredictionReads,
-    query: { enabled: !isLoading && getPredictionReads.length > 0 },
-  });
-
-  // Phase 3: resolver.resolvePrediction(encodedPredictedOutcomes)
-  const resolverReads = React.useMemo(() => {
-    const calls: any[] = [];
-    const preds = predictionDatas?.data || [];
-
-    preds.forEach((item: any, idx: number) => {
-      const base = ownedRowEntries[idx];
-
-      if (!item || item.status !== 'success') return;
-
-      try {
-        const result = item.result;
-        const resolver: Address = result.resolver as Address;
-        const encoded = result.encodedPredictedOutcomes as `0x${string}`;
-
-        if (!resolver || !encoded || !base) return;
-
-        calls.push({
-          address: resolver,
-          abi: UMA_RESOLVER_MIN_ABI as unknown as Abi,
-          functionName: 'resolvePrediction',
-          args: [encoded],
-          chainId: base.chainId,
-        });
-      } catch {
-        // ignore mis-shaped result
-      }
-    });
-
-    return calls;
-  }, [predictionDatas?.data, ownedRowEntries]);
-  const resolverResults = useReadContracts({
-    contracts: resolverReads,
-    query: { enabled: !isLoading && resolverReads.length > 0 },
-  });
-
-  // Build a map from rowKey -> ChainResolutionState
-  const rowKeyToResolution = React.useMemo(() => {
-    const map = new Map<number, ChainResolutionState>();
-    // default: if we attempted ownerOf but do not own, consider 'claimed'
-    viewerTokenInfo.forEach((info, idx) => {
-      const ownerItem = activeOwners?.data?.[idx];
-      if (!ownerItem || ownerItem.status !== 'success') return;
-      const owner = String(ownerItem.result || '').toLowerCase();
-      if (!owner || owner !== viewer) {
-        map.set(info.rowKey, { state: 'claimed' });
-      }
-    });
-
-    const res = resolverResults?.data || [];
-
-    for (let i = 0; i < res.length; i++) {
-      const base = ownedRowEntries[i];
-      const resItem = res[i];
-      if (!base || !resItem) continue;
-      const rowKey = base.rowKey;
-      if (resItem.status !== 'success') {
-        // couldn't resolve yet → awaiting
-        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
-        continue;
-      }
-      try {
-        const tuple = resItem.result as any; // [isValid, error, predictorWon]
-        const isValid = Boolean(tuple?.[0]);
-        const predictorWon = Boolean(tuple?.[2]);
-        if (!isValid) {
-          map.set(rowKey, { state: 'awaiting' });
-          continue;
-        }
-        // Determine if viewer is winner
-        const row = rows.find((r) => r.positionId === rowKey);
-        if (!row) continue;
-        const viewerIsPredictor = row.addressRole === 'predictor';
-        const viewerWon = viewerIsPredictor ? predictorWon : !predictorWon;
-        map.set(
-          rowKey,
-          viewerWon
-            ? { state: 'claim', tokenId: base.tokenId }
-            : { state: 'lost' }
-        );
-      } catch {
-        if (!map.has(rowKey)) map.set(rowKey, { state: 'awaiting' });
-      }
-    }
-
-    return map;
-  }, [
-    viewerTokenInfo,
-    activeOwners?.data,
-    resolverResults?.data,
-    predictionDatas?.data,
-    rows,
-    viewer,
-  ]);
 
   // Keep Share dialog open state outside of row to survive re-renders
   const [openSharePositionId, setOpenSharePositionId] = React.useState<
@@ -1066,10 +887,14 @@ export default function PositionsTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          if (
-            row.original.status === 'lost' ||
-            rowKeyToResolution.get(row.original.positionId)?.state === 'lost'
-          ) {
+          const viewerLostFromDb =
+            row.original.allConditionsSettled &&
+            (row.original.addressRole === 'predictor'
+              ? row.original.predictorWonFromDb === false
+              : row.original.addressRole === 'counterparty'
+                ? row.original.predictorWonFromDb === true
+                : false);
+          if (row.original.status === 'lost' || viewerLostFromDb) {
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
@@ -1133,9 +958,16 @@ export default function PositionsTable({
         cell: ({ row }) => {
           const symbol = collateralSymbol;
           const isClosed = row.original.status !== 'active';
+
+          const viewerLostFromDb =
+            row.original.allConditionsSettled &&
+            (row.original.addressRole === 'predictor'
+              ? row.original.predictorWonFromDb === false
+              : row.original.addressRole === 'counterparty'
+                ? row.original.predictorWonFromDb === true
+                : false);
           const lostPositionUnclaimed =
-            row.original.status === 'active' &&
-            rowKeyToResolution.get(row.original.positionId)?.state === 'lost';
+            row.original.status === 'active' && viewerLostFromDb;
 
           if (!isClosed && !lostPositionUnclaimed) {
             return (
@@ -1211,29 +1043,44 @@ export default function PositionsTable({
                 row.original.endsAt <= Date.now() &&
                 row.original.addressRole !== 'unknown' &&
                 (() => {
-                  const positionId = row.original.positionId;
-                  const res = rowKeyToResolution.get(positionId);
+                  const {
+                    allConditionsSettled,
+                    predictorWonFromDb,
+                    addressRole,
+                    positionId,
+                  } = row.original;
 
-                  if (!res) {
+                  // If conditions are not all settled, show awaiting badge
+                  if (!allConditionsSettled) {
                     return <AwaitingSettlementBadge />;
                   }
-                  if (res.state === 'awaiting') {
-                    return <AwaitingSettlementBadge />;
-                  }
-                  if (res.state === 'claim') {
+
+                  const viewerWon =
+                    addressRole === 'predictor'
+                      ? predictorWonFromDb === true
+                      : addressRole === 'counterparty'
+                        ? predictorWonFromDb === false
+                        : false;
+
+                  if (viewerWon) {
+                    const tokenIdToClaim =
+                      addressRole === 'predictor'
+                        ? BigInt(positionId)
+                        : BigInt(positionId);
+
                     const isOwnerConnected =
                       connectedAddress &&
                       connectedAddress.toLowerCase() ===
                         String(account || '').toLowerCase();
                     const isThisTokenClaiming =
-                      isClaimPending && claimingTokenId === res.tokenId;
+                      isClaimPending && claimingTokenId === tokenIdToClaim;
 
                     return isOwnerConnected ? (
                       <Button
                         size="sm"
                         onClick={() => {
-                          setClaimingTokenId(res.tokenId);
-                          burn(res.tokenId, ZERO_REF_CODE);
+                          setClaimingTokenId(tokenIdToClaim);
+                          burn(tokenIdToClaim, ZERO_REF_CODE);
                         }}
                         disabled={isClaimPending}
                       >
@@ -1260,16 +1107,11 @@ export default function PositionsTable({
                       </TooltipProvider>
                     );
                   }
-                  if (res.state === 'lost') {
-                    return (
-                      <Button size="sm" variant="outline" disabled>
-                        Wager Lost
-                      </Button>
-                    );
-                  }
+
+                  // Viewer lost
                   return (
                     <Button size="sm" variant="outline" disabled>
-                      Claimed
+                      Wager Lost
                     </Button>
                   );
                 })()}
@@ -1332,9 +1174,15 @@ export default function PositionsTable({
               )}
               {(() => {
                 // Hide Share button when a lost state is displayed
-                const res = rowKeyToResolution.get(row.original.positionId);
+                const viewerLostFromDb =
+                  row.original.allConditionsSettled &&
+                  (row.original.addressRole === 'predictor'
+                    ? row.original.predictorWonFromDb === false
+                    : row.original.addressRole === 'counterparty'
+                      ? row.original.predictorWonFromDb === true
+                      : false);
                 const isLostDisplayed =
-                  row.original.status === 'lost' || res?.state === 'lost';
+                  row.original.status === 'lost' || viewerLostFromDb;
                 if (isLostDisplayed) return null;
                 return (
                   <button
@@ -1357,10 +1205,10 @@ export default function PositionsTable({
       isClaimPending,
       burn,
       account,
-      rowKeyToResolution,
       claimableTokenIds,
       connectedAddress,
       hasWallet,
+      collateralSymbol,
     ]
   );
 

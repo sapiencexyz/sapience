@@ -62,7 +62,8 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType | null> {
     const a = attester.toLowerCase();
 
-    // Aggregate TW error across markets for this attester
+    // Aggregate accuracy scores across markets for this attester
+    // twError now stores accuracy scores directly (higher is better)
     const rows = await prisma.attesterMarketTwError.findMany({
       where: { attester: a },
       select: { twError: true },
@@ -74,10 +75,9 @@ export class ScoreResolver {
       (acc, r) => acc + (r.twError || 0),
       0
     );
-    const mean = sumTimeWeightedError / numTimeWeighted;
-    const accuracyScore = mean > 0 ? 1 / mean : 0;
+    // twError now stores (1 - brierScore) * tau, so mean is the accuracy score
+    const accuracyScore = sumTimeWeightedError / numTimeWeighted;
 
-    // Legacy fields retained for schema compatibility
     return {
       attester: a,
       numScored: 0,
@@ -95,15 +95,15 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // Compute 1/avg(tw_error) using SQL aggregation
+    // twError now stores accuracy scores directly (higher is better)
     const agg = await prisma.attesterMarketTwError.groupBy({
       by: ['attester'],
       _avg: { twError: true },
     });
 
     const results = agg.map((row) => {
-      const mean = (row._avg.twError as number | null) ?? null;
-      const score = mean && mean > 0 ? 1 / mean : 0;
+      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
+      const score = (row._avg.twError as number | null) ?? 0;
       return {
         attester: (row.attester as string).toLowerCase(),
         numScored: 0,
@@ -125,14 +125,15 @@ export class ScoreResolver {
   ): Promise<AccuracyRankType> {
     const target = attester.toLowerCase();
 
+    // twError now stores accuracy scores directly (higher is better)
     const agg = await prisma.attesterMarketTwError.groupBy({
       by: ['attester'],
       _avg: { twError: true },
     });
 
     const scores = agg.map((row) => {
-      const mean = (row._avg.twError as number | null) ?? null;
-      const accuracyScore = mean && mean > 0 ? 1 / mean : 0;
+      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
+      const accuracyScore = (row._avg.twError as number | null) ?? 0;
       return {
         attester: (row.attester as string).toLowerCase(),
         accuracyScore,

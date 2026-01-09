@@ -967,7 +967,8 @@ const RFQTab = ({
                 question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets,group,resolver
               </code>
               <span className="block mt-1 text-xs">
-                group is optional - finds or creates a condition group by name. resolver is required - must be a valid Ethereum address (0x...)
+                group is optional - finds or creates a condition group by name.
+                resolver is required - must be a valid Ethereum address (0x...)
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -1242,7 +1243,8 @@ const RFQTab = ({
             </div>
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">
-                Resolver Address {!editingId && <span className="text-red-500">*</span>}
+                Resolver Address{' '}
+                {!editingId && <span className="text-red-500">*</span>}
               </label>
               <Input
                 placeholder="0x..."

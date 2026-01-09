@@ -140,7 +140,7 @@ model AttesterMarketTwError {
   createdAt     DateTime @default(now()) @db.Timestamp(6)
   attester      String   @db.VarChar
   marketAddress String   @db.VarChar
-  marketId      Int
+  marketId      String   @db.VarChar
   twError       Float
   computedAt    DateTime @updatedAt @db.Timestamp(6)
 

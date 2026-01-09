@@ -143,7 +143,7 @@ const renderQuestionCell = ({
   if (conditionData && questionText) {
     content = (
       <ConditionTitleLink
-        conditionId={conditionData.conditionId}
+        conditionId={conditionData.id}
         title={questionText}
         endTime={conditionData.endTime}
         description={conditionData.description}

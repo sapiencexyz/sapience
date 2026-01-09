@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useMemo, useCallback, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Label } from '@sapience/ui/components/ui/label';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import { formatUnits } from 'viem';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useSingleConditionAuction } from '~/hooks/forms/useSingleConditionAuction';
@@ -32,6 +33,12 @@ interface PredictionFormProps {
   ) => void;
   /** Optional className for the container */
   className?: string;
+  /** Whether the market is settled */
+  settled?: boolean | null;
+  /** The resolution outcome (true = YES, false = NO) */
+  resolvedToYes?: boolean | null;
+  /** End time of the market (Unix timestamp in seconds) */
+  endTime?: number | null;
 }
 
 export default function PredictionForm({
@@ -44,6 +51,9 @@ export default function PredictionForm({
   bids,
   requestQuotes,
   className,
+  settled,
+  resolvedToYes,
+  endTime,
 }: PredictionFormProps) {
   const [selectedPrediction] = React.useState<boolean | null>(true);
   const wagerAmount = '1'; // Fixed wager for forecast calculation
@@ -175,56 +185,94 @@ export default function PredictionForm({
     triggerQuoteRequest({ forceRefresh: true, requireSignature: false });
   }, [triggerQuoteRequest]);
 
+  // Check if we're past the end time
+  const isPastEndTime = React.useMemo(() => {
+    if (!endTime) return false;
+    const nowSec = Math.floor(Date.now() / 1000);
+    return endTime <= nowSec;
+  }, [endTime]);
+
   return (
     <div className={`flex flex-col gap-4 ${className ?? ''}`}>
-      {/* Current Forecast Display */}
+      {/* Current Forecast, Resolved, or Pending Display */}
       <div className="border border-border rounded-lg bg-brand-black p-4">
         <div className="flex flex-col items-start gap-1">
-          <Label className="text-foreground font-normal text-lg -mt-0.5">
-            Current Forecast
-          </Label>
-          <span className="font-mono text-ethena text-3xl">
-            {currentForecast !== null ? (
-              `${currentForecast}% chance`
-            ) : isWaitingForBids ? (
-              <span className="text-muted-foreground/60 animate-pulse">
-                Requesting...
+          {settled || isPastEndTime ? (
+            <div className="flex items-center gap-2">
+              <Label className="text-foreground font-normal text-lg -mt-0.5">
+                {settled ? 'Resolved' : 'Resolution Pending'}
+              </Label>
+              {settled ? (
+                <Badge
+                  variant="outline"
+                  className={`px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono ${
+                    resolvedToYes
+                      ? 'border-yes/40 bg-yes/10 text-yes'
+                      : 'border-no/40 bg-no/10 text-no'
+                  }`}
+                >
+                  {resolvedToYes ? 'YES' : 'NO'}
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+                >
+                  PENDING
+                </Badge>
+              )}
+            </div>
+          ) : (
+            <>
+              <Label className="text-foreground font-normal text-lg -mt-0.5">
+                Current Forecast
+              </Label>
+              <span className="font-mono text-ethena text-3xl">
+                {currentForecast !== null ? (
+                  `${currentForecast}% chance`
+                ) : isWaitingForBids ? (
+                  <span className="text-muted-foreground/60 animate-pulse">
+                    Requesting...
+                  </span>
+                ) : showRequestBidsButton ? (
+                  <button
+                    type="button"
+                    onClick={handleRequestBids}
+                    className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
+                  >
+                    Request
+                  </button>
+                ) : (
+                  '\u00A0'
+                )}
               </span>
-            ) : showRequestBidsButton ? (
-              <button
-                type="button"
-                onClick={handleRequestBids}
-                className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
-              >
-                Request
-              </button>
-            ) : (
-              '\u00A0'
-            )}
-          </span>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Make a Prediction */}
-      <div className="border border-border rounded-lg bg-brand-black p-4 pb-5">
-        <div className="flex flex-col items-start gap-1">
-          <Label className="text-foreground font-normal text-lg -mt-0.5">
-            Make a Prediction
-          </Label>
-          <div className="font-mono w-full mt-1.5">
-            <YesNoSplitButton
-              onYes={handleYes}
-              onNo={handleNo}
-              selectedYes={selectionState.selectedYes}
-              selectedNo={selectionState.selectedNo}
-              size="lg"
-              yesLabel="PREDICT YES"
-              noLabel="PREDICT NO"
-              labelClassName="text-sm tracking-wider"
-            />
+      {/* Make a Prediction - Only show if not past end time */}
+      {!isPastEndTime && (
+        <div className="border border-border rounded-lg bg-brand-black p-4 pb-5">
+          <div className="flex flex-col items-start gap-1">
+            <Label className="text-foreground font-normal text-lg -mt-0.5">
+              Make a Prediction
+            </Label>
+            <div className="font-mono w-full mt-1.5">
+              <YesNoSplitButton
+                onYes={handleYes}
+                onNo={handleNo}
+                selectedYes={selectionState.selectedYes}
+                selectedNo={selectionState.selectedNo}
+                size="lg"
+                yesLabel="PREDICT YES"
+                noLabel="PREDICT NO"
+                labelClassName="text-sm tracking-wider"
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

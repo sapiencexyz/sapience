@@ -12,6 +12,10 @@ import {
 } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
+import {
+  scoreSelectedForecastsForSettledMarket,
+  computeAndStoreMarketTwErrors,
+} from '../../helpers/scoringService';
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
@@ -1801,6 +1805,26 @@ class PredictionMarketIndexer implements IIndexer {
           console.log(
             `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} to settled`
           );
+
+          // Score forecasts and compute TW errors for the accuracy leaderboard
+          const marketAddress = condition.resolver?.toLowerCase();
+          if (marketAddress) {
+            try {
+              await scoreSelectedForecastsForSettledMarket(
+                marketAddress,
+                condition.id
+              );
+              await computeAndStoreMarketTwErrors(marketAddress, condition.id);
+              console.log(
+                `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${eventData.marketId}`
+              );
+            } catch (scoringError) {
+              console.error(
+                `[PredictionMarketIndexer] Error scoring forecasts for ${eventData.marketId}:`,
+                scoringError
+              );
+            }
+          }
         } else {
           console.warn(
             `[PredictionMarketIndexer] MarketResolved but no matching Condition found for marketId=${eventData.marketId}`

@@ -31,3 +31,5 @@ title: "Glossary of Terms"
 - **Resolution** - The prediction market contract determining whether the answer to a question is *Yes* or *No*. Synonymous with "Settlement".
 
 - **Verification** - Used in relation to signed payloads (i.e. signature verification), not market resolution.
+
+- **Accuracy Score** - An inverted horizon-weighted Brier score. For each forecast: `score = (1 - brierScore) × τ`, where `brierScore = (prediction - outcome)²` and `τ` is seconds from forecast to resolution. Scores are averaged per market, then across all markets. Higher is better—rewarding accurate, early predictions.

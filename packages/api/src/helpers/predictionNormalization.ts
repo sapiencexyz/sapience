@@ -40,15 +40,29 @@ export function normalizePredictionToProbability(
     return { probabilityFloat: p, probabilityD18: d18 };
   }
 
-  // Numeric-only string: treat as D18 integer if value <= 1e18
+  // Numeric-only string: treat as D18 integer
   if (/^\d+$/.test(trimmed)) {
     try {
       const n = BigInt(trimmed);
       const oneD18 = 10n ** 18n;
+      const hundredD18 = 100n * oneD18; // 100 * 1e18 for percentage format
+
+      // Standard D18: value between 0 and 1e18 represents 0-100%
       if (n <= oneD18) {
         const p = Number(n) / 1e18;
         if (Number.isFinite(p)) {
           return { probabilityFloat: clamp01(p), probabilityD18: n.toString() };
+        }
+      }
+
+      // Percentage D18 format: value between 1e18 and 100*1e18
+      // Treat as percentage (e.g., 50*1e18 = 50% = 0.5)
+      if (n > oneD18 && n <= hundredD18) {
+        const p = Number(n) / Number(hundredD18);
+        if (Number.isFinite(p)) {
+          // Convert to standard D18 format for storage
+          const standardD18 = BigInt(Math.round(p * 1e18)).toString();
+          return { probabilityFloat: clamp01(p), probabilityD18: standardD18 };
         }
       }
     } catch {

@@ -714,7 +714,7 @@ export function PredictionScatterChart({
             fill="hsl(var(--brand-white))"
             shape={(props: any) => {
               const { cx, cy, payload } = props;
-              const radius = 2.5;
+              const radius = 2;
               const isHovered =
                 hoveredForecast?.x === payload?.x &&
                 hoveredForecast?.attester === payload?.attester;
@@ -724,7 +724,7 @@ export function PredictionScatterChart({
                   cy={cy}
                   r={radius}
                   fill="hsl(var(--brand-white))"
-                  opacity={isHovered ? 0.8 : 1}
+                  opacity={isHovered ? 0.8 : 0.6}
                   className="cursor-pointer"
                   onMouseEnter={() => {
                     if (tooltipTimeoutRef.current) {

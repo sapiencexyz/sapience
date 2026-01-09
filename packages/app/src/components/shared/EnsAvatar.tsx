@@ -32,9 +32,9 @@ export default function EnsAvatar({
   }, [avatarUrl, address]);
 
   const wrapperClass = cn(
-    'relative inline-block overflow-hidden',
+    'relative inline-block overflow-hidden bg-background',
     rounded ? 'rounded-sm' : '',
-    'ring-1 ring-border/20',
+    'ring-1 ring-border',
     className
   );
 
@@ -42,13 +42,6 @@ export default function EnsAvatar({
 
   return (
     <div className={wrapperClass} style={{ width, height }}>
-      <Image
-        alt={alt || address}
-        src={blockieSrc}
-        fill
-        className={cn('object-cover')}
-        unoptimized
-      />
       {avatarUrl ? (
         <Image
           alt={alt || address}
@@ -61,7 +54,15 @@ export default function EnsAvatar({
           onLoadingComplete={() => setIsLoaded(true)}
           unoptimized
         />
-      ) : null}
+      ) : (
+        <Image
+          alt={alt || address}
+          src={blockieSrc}
+          fill
+          className={cn('object-cover')}
+          unoptimized
+        />
+      )}
     </div>
   );
 }

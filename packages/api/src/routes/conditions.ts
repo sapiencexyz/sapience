@@ -53,7 +53,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (conditionHash && !/^0x[0-9a-fA-F]{64}$/.test(conditionHash)) {
       return res.status(400).json({ message: 'conditionHash must be a 0x-prefixed 32-byte hex string' });
     }
-
+    
     if (!question || !endTime || !description) {
       return res.status(400).json({ message: `Missing required fields: ${!question ? 'question' : ''}${!endTime ? ' endTime ' : ''}${!description ? ' description' : ''}` });
     }

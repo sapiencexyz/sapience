@@ -83,7 +83,7 @@ const ResolveConditionCell = ({
 
   const adminTarget =
     getAdminSettlementTarget({ conditionResolver: resolver }) ?? null;
-  
+
   const UMA_CHAIN_ID = adminTarget?.chainId ?? DEFAULT_CHAIN_ID;
   const UMA_RESOLVER_ADDRESS = adminTarget?.resolverAddress;
 

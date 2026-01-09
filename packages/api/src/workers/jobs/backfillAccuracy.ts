@@ -3,6 +3,7 @@ import { initializeDataSource } from '../../db';
 import {
   scoreSelectedForecastsForSettledMarket,
   upsertAttestationScoreFromAttestation,
+  computeAndStoreMarketTwErrors,
 } from '../../helpers/scoringService';
 
 const BATCH_SIZE = 1000;
@@ -37,11 +38,17 @@ export async function backfillAccuracy(): Promise<void> {
 
   // Score forecasts for each settled condition
   for (const c of settledConditions) {
-    // Use the condition's resolver as the market address
     const marketAddress = c.resolver?.toLowerCase();
-
     if (marketAddress) {
       await scoreSelectedForecastsForSettledMarket(marketAddress, c.id);
+    }
+  }
+
+  // 3) Compute and store time-weighted errors for the accuracy leaderboard
+  for (const c of settledConditions) {
+    const marketAddress = c.resolver?.toLowerCase();
+    if (marketAddress) {
+      await computeAndStoreMarketTwErrors(marketAddress, c.id);
     }
   }
 }

@@ -46,6 +46,7 @@ const ZERO_ADDRESS =
 const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
+const DISPLAY_TIMEOUT_MS = 3000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = useChainIdFromLocalStorage();
@@ -78,12 +79,28 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const [comboQuotes, setComboQuotes] = React.useState<ComboWithQuote[]>([]);
   const [hubTick, setHubTick] = React.useState(0);
 
+  // State for locking displayed combos (fade in once, never change)
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [lockedCombos, setLockedCombos] = React.useState<ComboWithQuote[]>([]);
+  const [timeoutPassed, setTimeoutPassed] = React.useState(false);
+
   // Subscribe to hub updates
   React.useEffect(() => {
     if (wsUrl) hub.setUrl(wsUrl);
     const off = hub.addListener(() => setHubTick((t) => (t + 1) % 1_000_000));
     return () => off();
   }, [wsUrl]);
+
+  // Start timeout timer when quotes are requested
+  React.useEffect(() => {
+    if (comboQuotes.length > 0 && !isLocked) {
+      const timer = setTimeout(
+        () => setTimeoutPassed(true),
+        DISPLAY_TIMEOUT_MS
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [comboQuotes.length, isLocked]);
 
   // Convert ComboPick[] to Pick[] for the shared component
   const comboToLegs = React.useCallback(
@@ -176,6 +193,11 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     }));
 
     setComboQuotes(newQuotes);
+
+    // Reset lock state so new combos can be displayed
+    setIsLocked(false);
+    setLockedCombos([]);
+    setTimeoutPassed(false);
 
     // Request quotes with jittered timing
     for (let i = 0; i < combos.length; i++) {
@@ -286,26 +308,35 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     );
   }, [hubTick]);
 
-  // Get top 3 by highest payout (largest payout first)
-  const topCombos = React.useMemo(() => {
-    const withProbs = comboQuotes.filter(
+  // Lock combos when all received OR (timeout passed AND at least 1 received)
+  React.useEffect(() => {
+    if (isLocked) return; // Already locked, don't update
+
+    const quotesWithProb = comboQuotes.filter(
       (q) => q.probability !== null && q.status === 'received'
     );
+    const allReceived = quotesWithProb.length >= NUM_QUOTES_TO_REQUEST;
+    const hasAtLeastOne = quotesWithProb.length >= 1;
 
-    // Sort descending by probability (highest = largest payout)
-    const sorted = [...withProbs].sort(
-      (a, b) => (b.probability ?? 0) - (a.probability ?? 0)
-    );
-
-    // Take top 3, or fall back to pending/requesting if not enough received
-    if (sorted.length >= NUM_TO_DISPLAY) {
-      return sorted.slice(0, NUM_TO_DISPLAY);
+    // Lock when: all 9 received OR (timeout passed AND at least 1 received)
+    if (allReceived || (timeoutPassed && hasAtLeastOne)) {
+      // Sort by highest probability (highest payout)
+      const sorted = [...quotesWithProb].sort(
+        (a, b) => (b.probability ?? 0) - (a.probability ?? 0)
+      );
+      setLockedCombos(sorted.slice(0, NUM_TO_DISPLAY));
+      setIsLocked(true);
     }
+  }, [comboQuotes, timeoutPassed, isLocked]);
 
-    // Fill with combos that haven't received quotes yet
-    const pending = comboQuotes.filter((q) => q.status !== 'received');
-    return [...sorted, ...pending].slice(0, NUM_TO_DISPLAY);
-  }, [comboQuotes]);
+  // Get top 3 - use locked combos once locked, otherwise empty (shows skeleton)
+  const topCombos = React.useMemo(() => {
+    if (isLocked) {
+      return lockedCombos;
+    }
+    // Return empty array while waiting (keeps skeleton visible)
+    return [];
+  }, [isLocked, lockedCombos]);
 
   const handlePickCombo = React.useCallback(
     (combo: ComboPick[]) => {
@@ -325,7 +356,22 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   return (
     <div className={'w-full ' + (className ?? '')}>
       <div className="flex items-center justify-between mb-1 px-1">
-        <h2 className="sc-heading text-foreground">Example combos</h2>
+        <h2 className="sc-heading text-foreground">
+          Example combo
+          <AnimatePresence mode="wait">
+            {!(isLocked && lockedCombos.length === 1) && (
+              <motion.span
+                key="plural-s"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                s
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </h2>
         <button
           type="button"
           onClick={requestAllQuotes}

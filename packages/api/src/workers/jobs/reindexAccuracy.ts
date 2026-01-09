@@ -3,6 +3,7 @@ import { initializeDataSource } from '../../db';
 import {
   upsertAttestationScoreFromAttestation,
   scoreSelectedForecastsForSettledMarket,
+  computeAndStoreMarketTwErrors,
 } from '../../helpers/scoringService';
 import { backfillAccuracy } from './backfillAccuracy';
 
@@ -47,5 +48,8 @@ export async function reindexAccuracy(
 
     // 2) If settled, score (no selection step; we score all pre-end forecasts)
     await scoreSelectedForecastsForSettledMarket(normalizedAddress, condId);
+
+    // 3) Compute and store time-weighted errors for the accuracy leaderboard
+    await computeAndStoreMarketTwErrors(normalizedAddress, condId);
   }
 }

@@ -561,8 +561,19 @@ function createColumns(
         const etherValue = parseFloat(formatEther(openInterestWei));
         const formattedValue = etherValue.toFixed(2);
 
+        // Check if market has ended
+        const endTime = getRowEndTime(row.original);
+        const nowMs = Date.now();
+        const endMs = endTime * 1000;
+        const isPast = endMs <= nowMs;
+
         return (
           <div className="text-sm whitespace-nowrap text-right">
+            {isPast && (
+              <span className="text-muted-foreground tabular-nums mr-1">
+                Peak
+              </span>
+            )}
             <span className="tabular-nums text-foreground">
               {formattedValue}
             </span>
@@ -702,6 +713,11 @@ function ChildConditionRow({
       </TableCell>
       <TableCell className="py-2 text-right">
         <div className="text-sm whitespace-nowrap text-right">
+          {condition.endTime && condition.endTime * 1000 <= Date.now() && (
+            <span className="text-muted-foreground tabular-nums mr-1">
+              Peak
+            </span>
+          )}
           <span className="tabular-nums text-foreground">{formattedValue}</span>
           <span className="ml-1 text-foreground">USDe</span>
         </div>

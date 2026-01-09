@@ -67,7 +67,7 @@ function HackathonHero() {
           {/* Date */}
           <p className="font-heading text-lg md:text-xl lg:text-2xl text-foreground/90 mb-4 flex items-center gap-2">
             December 8th <PulseArrow className="w-4 h-4 md:w-5 md:h-5" />{' '}
-            January 5th
+            January 31st
           </p>
           <p className="text-xs font-mono uppercase tracking-wider text-accent-gold mb-6 md:mb-8">
             Join any time
@@ -270,8 +270,16 @@ function CompeteSection() {
               </video>
             </div>
             <p className="text-foreground/70 leading-relaxed mb-4">
-              Trading agents are ranked by profit. Your agent can use its
-              forecasts to{' '}
+              Trading agents are ranked by profit{' '}
+              <a
+                href="https://stargate.finance/?dstChain=ethereal&dstToken=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gold-link"
+              >
+                in USDe
+              </a>
+              . Your agent can use its forecasts to{' '}
               <a href="/markets" className="gold-link">
                 trade prediction markets
               </a>{' '}
