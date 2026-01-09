@@ -9,16 +9,64 @@
  * - Adds Polymarket URLs to similarMarkets field
  * - Optionally submits to Sapience API if SAPIENCE_API_URL and ADMIN_PRIVATE_KEY are set
  * 
- * Usage: tsx packages/api/scripts/generate-sapience-conditions.ts
+ * Usage: 
+ *   tsx packages/api/scripts/generate-sapience-conditions.ts
+ *   tsx packages/api/scripts/generate-sapience-conditions.ts --ending-soon
+ * 
+ * Options:
+ *   --ending-soon  Fetch 10 markets ending soonest and push to API (requires API credentials)
+ *   --help         Show this help message
  */
 
 import { writeFileSync } from 'fs';
 import { join } from 'path';
+import { privateKeyToAccount } from 'viem/accounts';
+import { ADMIN_AUTHENTICATE_MSG } from '../src/middleware';
+
+// ============ CLI Arguments ============
+
+interface CLIOptions {
+  endingSoon: boolean;
+  help: boolean;
+}
+
+function parseArgs(): CLIOptions {
+  const args = process.argv.slice(2);
+  return {
+    endingSoon: args.includes('--ending-soon'),
+    help: args.includes('--help') || args.includes('-h'),
+  };
+}
+
+function showHelp(): void {
+  console.log(`
+Usage: tsx packages/api/scripts/generate-sapience-conditions.ts [options]
+
+Options:
+  --ending-soon  Fetch 10 markets ending soonest (ordered by end date)
+  --help, -h     Show this help message
+
+Environment Variables (optional):
+  SAPIENCE_API_URL     API URL to submit conditions (e.g., http://localhost:3001)
+  ADMIN_PRIVATE_KEY    64-char hex private key for signing admin requests
+
+Examples:
+  # Generate JSON file only (default: top 100 by volume)
+  tsx packages/api/scripts/generate-sapience-conditions.ts
+
+  # Generate JSON with 10 soonest-ending markets
+  tsx packages/api/scripts/generate-sapience-conditions.ts --ending-soon
+
+  # Fetch and push to API
+  SAPIENCE_API_URL=http://localhost:3001 ADMIN_PRIVATE_KEY=abc123... \\
+    tsx packages/api/scripts/generate-sapience-conditions.ts --ending-soon
+`);
+}
 
 // ============ Constants ============
 
 // Placeholder resolver address - update this with actual resolver contract address
-const RESOLVER_ADDRESS = '0x0000000000000000000000000000000000000000' as const;
+const RESOLVER_ADDRESS = '0x04aD4e8AE0F828E4BeA2C86165a7800Db499e0F5' as const;
 
 // Ethereal chain ID (from @sapience/sdk/constants/chain.ts)
 const CHAIN_ID_ETHEREAL = 5064014 as const;
@@ -205,6 +253,43 @@ async function fetchPolymarketMarkets(limit: number = 100): Promise<PolymarketMa
   }
 }
 
+/**
+ * Fetch markets that end soonest (for --ending-soon mode)
+ * Orders by endDate ascending, no volume sorting
+ * Uses end_date_min API parameter to filter for markets ending in the future
+ */
+async function fetchEndingSoonestMarkets(limit: number = 10): Promise<PolymarketMarket[]> {
+  try {
+    console.log('📥 Fetching markets ending soonest from Polymarket...');
+    
+    // Minimum end time: current time + 1 minute (ISO format for API)
+    const minEndDate = new Date(Date.now() + 60 * 1000).toISOString();
+    
+    const response = await fetch(
+      `https://gamma-api.polymarket.com/markets?limit=500&closed=false&order=endDate&ascending=true&end_date_min=${minEndDate}`,
+      { headers: { 'Accept': 'application/json' } }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+    }
+
+    const markets: PolymarketMarket[] = await response.json();
+    
+    // Filter for binary markets only, preserve end date ordering (no re-sort)
+    const binaryMarkets = markets
+      .filter(m => parseOutcomes(m.outcomes).length === 2)
+      .slice(0, limit);
+    
+    console.log(`✅ Found ${binaryMarkets.length} binary markets ending soonest (from ${markets.length} total, end_date_min=${minEndDate})`);
+    
+    return binaryMarkets;
+  } catch (error) {
+    console.error('❌ Error fetching markets:', error);
+    throw error;
+  }
+}
+
 // ============ Data Transformation ============
 
 /**
@@ -358,19 +443,41 @@ function toUnixTimestamp(isoDate: string): number {
 }
 
 /**
+ * Get admin auth headers by signing the authentication message
+ * The API expects signature-based auth, not Bearer tokens
+ */
+async function getAdminAuthHeaders(privateKey: `0x${string}`): Promise<{
+  'x-admin-signature': string;
+  'x-admin-signature-timestamp': string;
+}> {
+  const account = privateKeyToAccount(privateKey);
+  const timestampSeconds = Math.floor(Date.now() / 1000);
+  const messageToSign = `${ADMIN_AUTHENTICATE_MSG}:${timestampSeconds}`;
+  
+  const signature = await account.signMessage({ message: messageToSign });
+  
+  return {
+    'x-admin-signature': signature,
+    'x-admin-signature-timestamp': String(timestampSeconds),
+  };
+}
+
+/**
  * Submit a condition group to the API
  */
 async function submitConditionGroup(
   apiUrl: string,
-  adminToken: string,
+  privateKey: `0x${string}`,
   group: SapienceConditionGroup
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const authHeaders = await getAdminAuthHeaders(privateKey);
+    
     const response = await fetch(`${apiUrl}/admin/conditionGroups`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`,
+        ...authHeaders,
       },
       body: JSON.stringify({
         name: group.title, // API uses 'name' field
@@ -402,15 +509,17 @@ async function submitConditionGroup(
  */
 async function submitCondition(
   apiUrl: string,
-  adminToken: string,
+  privateKey: `0x${string}`,
   condition: SapienceCondition
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const authHeaders = await getAdminAuthHeaders(privateKey);
+    
     const response = await fetch(`${apiUrl}/admin/conditions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${adminToken}`,
+        ...authHeaders,
       },
       body: JSON.stringify({
         conditionHash: condition.conditionHash, // Use Polymarket's conditionId directly as the condition ID
@@ -451,7 +560,7 @@ async function submitCondition(
  */
 async function submitToAPI(
   apiUrl: string,
-  adminToken: string,
+  privateKey: `0x${string}`,
   data: SapienceOutput
 ): Promise<void> {
   console.log('\n' + '='.repeat(80));
@@ -473,7 +582,7 @@ async function submitToAPI(
     console.log(`\n📦 Group: ${group.title}`);
     
     // Submit the group
-    const groupResult = await submitConditionGroup(apiUrl, adminToken, group);
+    const groupResult = await submitConditionGroup(apiUrl, privateKey, group);
     if (groupResult.success) {
       if (groupResult.error) {
         console.log(`   ⏭️  Group: ${groupResult.error}`);
@@ -490,7 +599,7 @@ async function submitToAPI(
     // Submit conditions in the group
     console.log(`   Submitting ${group.conditions.length} conditions...`);
     for (const condition of group.conditions) {
-      const conditionResult = await submitCondition(apiUrl, adminToken, condition);
+      const conditionResult = await submitCondition(apiUrl, privateKey, condition);
       if (conditionResult.success) {
         if (conditionResult.error) {
           conditionsSkipped++;
@@ -509,7 +618,7 @@ async function submitToAPI(
   if (data.ungroupedConditions.length > 0) {
     console.log(`\n📋 Ungrouped Conditions (${data.ungroupedConditions.length})`);
     for (const condition of data.ungroupedConditions) {
-      const conditionResult = await submitCondition(apiUrl, adminToken, condition);
+      const conditionResult = await submitCondition(apiUrl, privateKey, condition);
       if (conditionResult.success) {
         if (conditionResult.error) {
           conditionsSkipped++;
@@ -579,25 +688,58 @@ function displaySummary(data: SapienceOutput): void {
 // ============ Main ============
 
 async function main() {
+  // Parse CLI arguments
+  const options = parseArgs();
+  
+  // Show help if requested
+  if (options.help) {
+    showHelp();
+    process.exit(0);
+  }
+  
   console.log('🚀 Generating Sapience Conditions from Polymarket\n');
   
   // Check for API submission environment variables
   const apiUrl = process.env.SAPIENCE_API_URL;
-  const adminToken = process.env.ADMIN_PRIVATE_KEY;
-  const shouldSubmitToAPI = apiUrl && adminToken;
+  const rawPrivateKey = process.env.ADMIN_PRIVATE_KEY;
   
-  if (shouldSubmitToAPI) {
+  // Validate and format private key (must be 0x-prefixed hex string)
+  let privateKey: `0x${string}` | undefined;
+  if (rawPrivateKey) {
+    const formattedKey = rawPrivateKey.startsWith('0x') 
+      ? rawPrivateKey 
+      : `0x${rawPrivateKey}`;
+    if (/^0x[0-9a-fA-F]{64}$/.test(formattedKey)) {
+      privateKey = formattedKey as `0x${string}`;
+    } else {
+      console.warn('⚠️  ADMIN_PRIVATE_KEY is invalid (must be 64 hex chars, optionally 0x-prefixed)');
+    }
+  }
+  
+  const hasAPICredentials = apiUrl && privateKey;
+  
+  // Show mode info
+  if (options.endingSoon) {
+    console.log('🚨 ENDING-SOON MODE: Fetching 10 markets ending soonest\n');
+  }
+  
+  // Show API credentials status
+  if (hasAPICredentials) {
     console.log('✅ API credentials detected - will submit to API');
     console.log(`   API URL: ${apiUrl}`);
+    console.log(`   Auth: Wallet signature (address derived from private key)`);
     console.log(`   Resolver: ${RESOLVER_ADDRESS}\n`);
   } else {
     console.log('ℹ️  No API credentials - will only generate JSON file');
-    console.log('   Set SAPIENCE_API_URL and ADMIN_PRIVATE_KEY to submit to API\n');
+    console.log('   Set SAPIENCE_API_URL and ADMIN_PRIVATE_KEY to submit to API');
+    console.log('   (ADMIN_PRIVATE_KEY should be a 64-char hex string, 0x prefix optional)\n');
   }
   
   try {
-    // Fetch Polymarket markets
-    const markets = await fetchPolymarketMarkets(100);
+    // Fetch Polymarket markets based on mode
+    const markets = options.endingSoon
+      ? await fetchEndingSoonestMarkets(10)
+      : await fetchPolymarketMarkets(100);
     
     // Transform to Sapience structure
     console.log('\n🔄 Transforming to Sapience structure...');
@@ -611,14 +753,14 @@ async function main() {
     exportJSON(sapienceData);
     
     // Submit to API if credentials are available
-    if (shouldSubmitToAPI && apiUrl && adminToken) {
-      await submitToAPI(apiUrl, adminToken, sapienceData);
+    if (hasAPICredentials && apiUrl && privateKey) {
+      await submitToAPI(apiUrl, privateKey, sapienceData);
     }
     
     console.log('\n' + '='.repeat(80));
     console.log('\n✨ NEXT STEPS:\n');
     
-    if (shouldSubmitToAPI) {
+    if (hasAPICredentials) {
       console.log('   ✅ Data submitted to Sapience API');
       console.log('   1. Check API logs for any errors');
       console.log('   2. Verify conditions in the database');
@@ -656,9 +798,6 @@ async function main() {
     
     console.log('⚠️  IMPORTANT NOTES:\n');
     console.log('   - Resolver address: ' + RESOLVER_ADDRESS);
-    if (RESOLVER_ADDRESS === '0x0000000000000000000000000000000000000000') {
-      console.log('     ⚠️  PLACEHOLDER ADDRESS - Update RESOLVER_ADDRESS before production!');
-    }
     console.log('   - Chain ID: ' + CHAIN_ID_ETHEREAL + ' (Ethereal)');
     console.log('   - conditionHash (Polymarket conditionId) is used directly as condition ID');
     console.log('   - claimStatement is left empty (not needed for external conditions)');

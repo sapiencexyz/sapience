@@ -55,7 +55,7 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     if (!question || !endTime || !description) {
-      return res.status(400).json({ message: 'Missing required fields' });
+      return res.status(400).json({ message: `Missing required fields: ${!question ? 'question' : ''}${!endTime ? ' endTime ' : ''}${!description ? ' description' : ''}` });
     }
 
     // When conditionHash is provided, claimStatement and resolver are optional
@@ -118,7 +118,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (endTimeInt <= nowSeconds) {
       return res
         .status(400)
-        .json({ message: 'endTime must be a future Unix timestamp (seconds)' });
+        .json({ message: `endTime must be a future Unix timestamp (seconds), endTime: ${endTimeInt}, nowSeconds: ${nowSeconds}` });
     }
 
     // Validate similarMarkets URLs if provided
