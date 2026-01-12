@@ -11,7 +11,7 @@ import { computeSmartAccountAddress } from './smartAccount';
  * Extracts the session key address from ZeroDev's validatorData.
  *
  * ZeroDev encodes validatorData as ABI-encoded bytes[] where the last element
- * contains: flag (1 byte) + signerContractAddress (20 bytes) + signerData
+ * contains: flag (2 bytes) + signerContractAddress (20 bytes) + signerData
  * For ECDSA signers, signerData is the session key address (20 bytes).
  *
  * @param validatorData - The hex-encoded validatorData from the Enable typed data
@@ -30,19 +30,19 @@ export function extractSessionKeyFromValidatorData(validatorData: Hex): Address 
       return null;
     }
 
-    // Last element contains signer info: flag (1) + signerContractAddress (20) + signerData
+    // Last element contains signer info: flag (2 bytes) + signerContractAddress (20 bytes) + signerData
     const signerPart = policyAndSignerData[policyAndSignerData.length - 1];
 
-    // For ECDSA signers, structure is: flag (1 byte) + signerContract (20 bytes) + address (20 bytes)
-    // Total minimum length: 41 bytes (0x prefix + 82 hex chars)
-    if (signerPart.length < 84) { // '0x' + 82 hex chars
+    // For ECDSA signers, structure is: flag (2 bytes) + signerContract (20 bytes) + address (20 bytes)
+    // Total minimum length: 42 bytes (0x prefix + 84 hex chars)
+    if (signerPart.length < 86) { // '0x' + 84 hex chars
       console.warn('[SessionAuth] Signer part too short to contain session key');
       return null;
     }
 
-    // Extract session key address: skip flag (1 byte = 2 hex) + signerContract (20 bytes = 40 hex)
-    // Session key starts at position 2 (0x) + 2 (flag) + 40 (signerContract) = 44
-    const sessionKeyHex = '0x' + signerPart.slice(44, 84);
+    // Extract session key address: skip flag (2 bytes = 4 hex) + signerContract (20 bytes = 40 hex)
+    // Session key starts at position 2 (0x) + 4 (flag) + 40 (signerContract) = 46
+    const sessionKeyHex = '0x' + signerPart.slice(46, 86);
 
     return sessionKeyHex.toLowerCase() as Address;
   } catch (error) {
