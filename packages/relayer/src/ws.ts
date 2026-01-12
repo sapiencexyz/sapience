@@ -4,7 +4,6 @@ import { verifyMessage, type Abi } from 'viem';
 import { getProviderForChain } from './utils/getProviderForChain';
 import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
-import { verifyMakerBidStrict } from './helpers';
 import {
   activeConnections,
   connectionsTotal,
@@ -817,27 +816,6 @@ export function createAuctionWebSocketServer() {
           trackDuration(msgType, startTime);
           return;
         }
-        // Optional strict EIP-712 verification when address is configured
-        (async () => {
-          try {
-            const strict = await verifyMakerBidStrict({
-              auction: rec.auction,
-              bid,
-              chainId: PREDICTION_MARKET_CHAIN_ID_ARB1,
-              verifyingContract: PREDICTION_MARKET_ADDRESS_ARB1,
-            });
-            if (!strict.ok) {
-              console.warn(
-                `[Relayer] bid.submit strict verification failed auctionId=${bid.auctionId} reason=${strict.reason}`
-              );
-            }
-          } catch (err) {
-            console.warn(
-              '[Relayer] Strict verification threw; continuing:',
-              err
-            );
-          }
-        })().catch(() => undefined);
         const validated = addBid(bid.auctionId, bid);
         if (!validated) {
           bidsSubmitted.inc({ status: 'error' });

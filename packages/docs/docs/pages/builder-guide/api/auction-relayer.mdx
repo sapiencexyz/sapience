@@ -168,14 +168,16 @@ ws.onmessage = (ev) => {
   type: 'auction.start',
   id?: string,                   // Optional request ID for correlation
   payload: {
-    taker: string,              // Requester's address (0x...)
+    taker: string,              // Requester's address (0x...) - EOA or smart account
     wager: string,              // Wager amount in wei
     resolver: string,           // Resolver contract address
     predictedOutcomes: string[], // Encoded picks (bytes strings)
     takerNonce: number,
     chainId: number,
     takerSignature?: string,    // Optional: EIP-191 signature of the taker (SIWE format)
-    takerSignedAt?: string      // Optional: ISO timestamp when signature was created (required if takerSignature is provided)
+    takerSignedAt?: string,     // Optional: ISO timestamp when signature was created (required if takerSignature is provided)
+    sessionApproval?: string,   // ZeroDev session approval (base64) for smart account auth
+    sessionTypedData?: object   // EIP-712 typed data (required when sessionApproval is provided)
   }
 }
 ```
@@ -189,6 +191,14 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
 - When provided, the relayer verifies the signature to ensure the requester authorized the auction request
 - Use the SDK's `createAuctionStartSiweMessage` and `extractSiweDomainAndUri` helpers to generate the signature
 
+**Smart Account Authentication:**
+- For smart account users (ZeroDev Kernel accounts), the `sessionApproval` and `sessionTypedData` fields enable session-based authentication
+- **Both fields are required together** - `sessionTypedData` must be provided when using `sessionApproval`
+- The `sessionApproval` is a base64-encoded ZeroDev permission account (with private key stripped for security)
+- The `sessionTypedData` contains the EIP-712 typed data that was signed during session creation
+- This allows the relayer to verify smart account ownership without on-chain RPC calls
+- The relayer recovers the owner from the enable signature and verifies the smart account address matches
+
 ### `bid.submit`
 
 ```ts
@@ -196,7 +206,7 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
   type: 'bid.submit',
   payload: {
     auctionId: string,
-    maker: string,              // Responder's address
+    maker: string,              // Responder's address - EOA or smart account
     makerWager: string,         // Responder's wager in wei
     makerDeadline: number,      // Unix timestamp (must be future)
     makerSignature: string,     // EIP-712 signature
@@ -204,6 +214,8 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
   }
 }
 ```
+
+**Note:** The `makerSignature` is verified on-chain when the taker accepts the bid and calls `mint()`. The relayer performs structural validation only.
 
 ### `auction.bids`
 
@@ -245,6 +257,75 @@ Streamed to auction subscribers:
 - `makerDeadline` is in the future
 - `makerSignature` is valid hex format
 
+## Smart Account Authentication
+
+The relayer supports ZeroDev Kernel smart accounts with session-based authentication for **auction requesters** (takers). This allows requesters to create a session once and submit multiple auction requests without signing each one individually with their wallet.
+
+**Note:** Bid signatures (`makerSignature`) are not verified by the relayer. They are verified on-chain when the taker accepts a bid.
+
+### Authentication Flow
+
+The relayer uses a 3-path verification strategy:
+
+1. **Session Approval Path** (for `auction.start` only): If `sessionApproval` and `sessionTypedData` are provided:
+   - Parse the base64-encoded approval to extract the enable signature
+   - Use the provided typed data to recover the owner who authorized the session
+   - Compute the expected smart account address from the recovered owner
+   - Verify it matches the claimed `taker` address
+   - Extract the authorized session key from the signed `validatorData`
+   - Verify the request signature (`takerSignature`) was signed by that authorized session key
+
+2. **EOA Path**: Try direct signature verification against the address (works for EOAs)
+
+3. **Smart Account Owner Path**: If EOA verification fails:
+   - Recover the signer from the signature
+   - Compute their smart account address
+   - Verify it matches the claimed address
+
+### Security Properties
+
+- **No RPC calls**: All verification is deterministic using CREATE2 address computation
+- **One-time session signature**: Users sign once during session creation; the enable signature proves ownership
+- **Counterfactual accounts**: Works even for smart accounts that haven't been deployed yet
+- **Unspoofable**: The smart account address is deterministically derived from the owner's EOA
+- **Session key extraction**: The authorized session key is extracted from the cryptographically signed `validatorData`, not from client-provided data. This prevents attackers from claiming authorization for arbitrary session keys
+
+### Session Typed Data Structure
+
+The `sessionTypedData` object has the following structure:
+
+```ts
+{
+  domain: {
+    name: 'Kernel',
+    version: '0.3.1',
+    chainId: number,
+    verifyingContract: string  // Smart account address
+  },
+  types: {
+    Enable: [
+      { name: 'validationId', type: 'bytes21' },
+      { name: 'nonce', type: 'uint32' },
+      { name: 'hook', type: 'address' },
+      { name: 'validatorData', type: 'bytes' },
+      { name: 'hookData', type: 'bytes' },
+      { name: 'selectorData', type: 'bytes' }
+    ]
+  },
+  primaryType: 'Enable',
+  message: {
+    validationId: string,  // Hex
+    nonce: number,
+    hook: string,         // Address
+    validatorData: string, // Hex
+    hookData: string,      // Hex
+    selectorData: string   // Hex
+  }
+}
+```
+
+This typed data is captured during session creation and must be included with requests for reliable verification.
+
 ## Additional Messages
 
 ### auction.subscribe
@@ -274,6 +355,13 @@ Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 **Auction errors:**
 - `invalid_signature` – Taker signature verification failed
 - `signature_verification_failed` – Error during signature verification process
+
+**Session authentication errors:**
+- `typed_data_required` – `sessionTypedData` must be provided when using `sessionApproval`
+- `chain_id_mismatch` – Chain ID in payload doesn't match typed data domain
+- `verifying_contract_mismatch` – Typed data verifyingContract doesn't match claimed address
+- `account_mismatch` – Account address in approval doesn't match claimed address
+- `owner_mismatch` – Recovered owner's smart account doesn't match claimed address
 
 **Bid errors:**
 - `invalid_payload` – Malformed message structure
