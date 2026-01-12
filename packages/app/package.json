@@ -20,9 +20,7 @@
     "up-latest": "pnpm up-interactive -L",
     "release": "cross-env HUSKY=0 standard-version",
     "push-release": "git push --follow-tags origin main",
-    "prepare": "echo 'Skipping husky install'",
-    "test:ethereal-bundler": "pnpm dlx tsx scripts/test-ethereal-bundler.ts",
-    "test:ethereal-session": "pnpm dlx tsx scripts/test-ethereal-session.ts"
+    "prepare": "echo 'Skipping husky install'"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.0",
