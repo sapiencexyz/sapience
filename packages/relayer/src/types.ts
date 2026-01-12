@@ -33,7 +33,7 @@ export interface AuctionRequestPayload {
   takerSignature?: string; // EIP-191 signature of the taker (optional for price discovery)
   takerSignedAt?: string; // ISO timestamp when the signature was created (required if takerSignature is provided)
   sessionApproval?: string; // ZeroDev session approval (base64) for smart account session authentication
-  sessionTypedData?: EnableTypedData; // EIP-712 typed data for enable signature verification
+  sessionTypedData?: EnableTypedData; // EIP-712 typed data for enable signature verification (session key is extracted from validatorData)
 }
 
 export interface BidQuote {
@@ -75,8 +75,6 @@ export interface BidPayload {
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's signature authorizing this specific bid over the typed payload
   makerNonce: number; // nonce for the maker (bidding party)
-  sessionApproval?: string; // ZeroDev session approval (base64) for smart account session authentication
-  sessionTypedData?: EnableTypedData; // EIP-712 typed data for enable signature verification
 }
 
 export type ValidatedBid = BidPayload;

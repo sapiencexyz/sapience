@@ -72,11 +72,25 @@ export async function verifyAuctionSignature(
         takerAddress
       );
 
-      if (sessionResult.valid) {
-        // Session approval is valid - the session key signed the request
-        // The session approval proves the owner authorized this session for this account
+      if (sessionResult.valid && sessionResult.sessionKeyAddress) {
+        // Session approval is valid - now verify the request signature was signed by the session key
+        // The session key is extracted from the cryptographically signed validatorData
+        // This prevents attacks where someone intercepts session approval but doesn't have the session private key
+        const recoveredSigner = await recoverMessageAddress({
+          message: reconstructedMessage,
+          signature,
+        });
+
+        if (recoveredSigner.toLowerCase() !== sessionResult.sessionKeyAddress.toLowerCase()) {
+          console.warn('[Auction-Sig] Request signature not from session key:', {
+            expected: sessionResult.sessionKeyAddress,
+            recovered: recoveredSigner,
+          });
+          return false;
+        }
+
         if (process.env.NODE_ENV !== 'production') {
-          console.debug('[Auction-Sig] Valid session approval for account:', takerAddress);
+          console.debug('[Auction-Sig] Valid session approval and signature for account:', takerAddress);
         }
         return true;
       } else {

@@ -1,10 +1,55 @@
 import {
   recoverTypedDataAddress,
+  decodeAbiParameters,
   zeroAddress,
   type Address,
   type Hex,
 } from 'viem';
 import { computeSmartAccountAddress } from './smartAccount';
+
+/**
+ * Extracts the session key address from ZeroDev's validatorData.
+ *
+ * ZeroDev encodes validatorData as ABI-encoded bytes[] where the last element
+ * contains: flag (1 byte) + signerContractAddress (20 bytes) + signerData
+ * For ECDSA signers, signerData is the session key address (20 bytes).
+ *
+ * @param validatorData - The hex-encoded validatorData from the Enable typed data
+ * @returns The session key address, or null if extraction fails
+ */
+export function extractSessionKeyFromValidatorData(validatorData: Hex): Address | null {
+  try {
+    // Decode the ABI-encoded bytes[] array
+    const [policyAndSignerData] = decodeAbiParameters(
+      [{ name: 'policyAndSignerData', type: 'bytes[]' }],
+      validatorData
+    );
+
+    if (!policyAndSignerData || policyAndSignerData.length === 0) {
+      console.warn('[SessionAuth] Empty policyAndSignerData in validatorData');
+      return null;
+    }
+
+    // Last element contains signer info: flag (1) + signerContractAddress (20) + signerData
+    const signerPart = policyAndSignerData[policyAndSignerData.length - 1];
+
+    // For ECDSA signers, structure is: flag (1 byte) + signerContract (20 bytes) + address (20 bytes)
+    // Total minimum length: 41 bytes (0x prefix + 82 hex chars)
+    if (signerPart.length < 84) { // '0x' + 82 hex chars
+      console.warn('[SessionAuth] Signer part too short to contain session key');
+      return null;
+    }
+
+    // Extract session key address: skip flag (1 byte = 2 hex) + signerContract (20 bytes = 40 hex)
+    // Session key starts at position 2 (0x) + 2 (flag) + 40 (signerContract) = 44
+    const sessionKeyHex = '0x' + signerPart.slice(44, 84);
+
+    return sessionKeyHex.toLowerCase() as Address;
+  } catch (error) {
+    console.error('[SessionAuth] Failed to extract session key from validatorData:', error);
+    return null;
+  }
+}
 
 /**
  * Parsed ZeroDev approval data for verification.
@@ -103,20 +148,22 @@ export interface SessionApprovalPayload {
  * 3. Recover the owner from the signature using provided or reconstructed typed data
  * 4. Compute the smart account from the owner
  * 5. Verify it matches the claimed accountAddress
+ * 6. Extract the authorized session key from the signed validatorData
  *
  * This ensures:
  * - The signature is bound to the specific accountAddress (EIP-712 domain)
  * - Only the owner could have created this signature
  * - The accountAddress is legitimately controlled by the recovered owner
+ * - The session key is extracted from cryptographically signed data (not client-provided)
  *
  * @param approval - The session approval payload (includes optional typedData)
  * @param claimedAccountAddress - The taker/maker address claimed in the request
- * @returns Verification result with owner address if valid
+ * @returns Verification result with owner address and session key address if valid
  */
 export async function verifySessionApproval(
   approval: SessionApprovalPayload,
   claimedAccountAddress: Address
-): Promise<{ valid: boolean; ownerAddress?: Address; error?: string }> {
+): Promise<{ valid: boolean; ownerAddress?: Address; sessionKeyAddress?: Address; error?: string }> {
   try {
     // Parse the ZeroDev approval
     const parsed = parseZeroDevApproval(approval.approval);
@@ -206,11 +253,22 @@ export async function verifySessionApproval(
         return { valid: false, error: 'owner_mismatch' };
       }
 
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner);
+      // Extract the authorized session key from the signed validatorData
+      // This is cryptographically bound to the enable signature, so we trust it
+      const sessionKeyAddress = extractSessionKeyFromValidatorData(
+        approval.typedData.message.validatorData as Hex
+      );
+
+      if (!sessionKeyAddress) {
+        console.warn('[SessionAuth] Failed to extract session key from validatorData');
+        return { valid: false, error: 'invalid_validator_data' };
       }
 
-      return { valid: true, ownerAddress: recoveredOwner };
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner, 'sessionKey:', sessionKeyAddress);
+      }
+
+      return { valid: true, ownerAddress: recoveredOwner, sessionKeyAddress };
     } catch (sigError) {
       // SECURITY: Always fail closed on signature verification errors.
       // Never fall back to accepting unverified approvals.

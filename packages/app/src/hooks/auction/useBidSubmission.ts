@@ -82,7 +82,7 @@ export function useBidSubmission(
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = useChainIdFromLocalStorage();
   const { apiBaseUrl } = useSettings();
-  const { isSessionActive, smartAccountAddress, etherealSessionApproval } = useSession();
+  const { isSessionActive, smartAccountAddress } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -251,19 +251,6 @@ export function useBidSubmission(
         makerWager: makerWager.toString(),
       };
 
-      // Add session approval data for smart account authentication
-      // This allows the relayer to verify ownership without additional RPC calls
-      if (isSessionActive && etherealSessionApproval) {
-        payload = {
-          ...payload,
-          sessionApproval: etherealSessionApproval.approval,
-          sessionTypedData: etherealSessionApproval.typedData,
-        };
-        if (process.env.NODE_ENV !== 'production') {
-          console.debug('[BidSubmission] Including session approval for smart account auth');
-        }
-      }
-
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
       client.send({ type: 'bid.submit', payload });
@@ -291,7 +278,6 @@ export function useBidSubmission(
       onSignatureRejected,
       isSessionActive,
       smartAccountAddress,
-      etherealSessionApproval,
     ]
   );
 

@@ -258,6 +258,7 @@ export function useAuctionStart() {
 
         // Add session approval data for smart account authentication
         // This allows the relayer to verify ownership without additional RPC calls
+        // Note: The session key is extracted from validatorData in the typed data (cryptographically signed by owner)
         if (isSessionActive && etherealSessionApproval) {
           payloadWithSignature = {
             ...payloadWithSignature,

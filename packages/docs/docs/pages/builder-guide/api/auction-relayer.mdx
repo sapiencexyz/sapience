@@ -210,16 +210,12 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
     makerWager: string,         // Responder's wager in wei
     makerDeadline: number,      // Unix timestamp (must be future)
     makerSignature: string,     // EIP-712 signature
-    makerNonce: number,
-    sessionApproval?: string,   // ZeroDev session approval (base64) for smart account auth
-    sessionTypedData?: object   // EIP-712 typed data (required when sessionApproval is provided)
+    makerNonce: number
   }
 }
 ```
 
-**Smart Account Authentication:**
-- Similar to `auction.start`, smart account users must include both `sessionApproval` and `sessionTypedData` for session-based authentication
-- This proves the bid was submitted by the legitimate owner of the smart account
+**Note:** The `makerSignature` is verified on-chain when the taker accepts the bid and calls `mint()`. The relayer performs structural validation only.
 
 ### `auction.bids`
 
@@ -263,17 +259,21 @@ Streamed to auction subscribers:
 
 ## Smart Account Authentication
 
-The relayer supports ZeroDev Kernel smart accounts with session-based authentication. This allows users to create a session once and submit multiple requests without signing each one individually.
+The relayer supports ZeroDev Kernel smart accounts with session-based authentication for **auction requesters** (takers). This allows requesters to create a session once and submit multiple auction requests without signing each one individually with their wallet.
+
+**Note:** Bid signatures (`makerSignature`) are not verified by the relayer. They are verified on-chain when the taker accepts a bid.
 
 ### Authentication Flow
 
 The relayer uses a 3-path verification strategy:
 
-1. **Session Approval Path**: If `sessionApproval` and `sessionTypedData` are provided:
+1. **Session Approval Path** (for `auction.start` only): If `sessionApproval` and `sessionTypedData` are provided:
    - Parse the base64-encoded approval to extract the enable signature
-   - Use the provided typed data (or reconstruct it as fallback) to recover the signer
+   - Use the provided typed data to recover the owner who authorized the session
    - Compute the expected smart account address from the recovered owner
-   - Verify it matches the claimed `taker` or `maker` address
+   - Verify it matches the claimed `taker` address
+   - Extract the authorized session key from the signed `validatorData`
+   - Verify the request signature (`takerSignature`) was signed by that authorized session key
 
 2. **EOA Path**: Try direct signature verification against the address (works for EOAs)
 
@@ -288,6 +288,7 @@ The relayer uses a 3-path verification strategy:
 - **One-time session signature**: Users sign once during session creation; the enable signature proves ownership
 - **Counterfactual accounts**: Works even for smart accounts that haven't been deployed yet
 - **Unspoofable**: The smart account address is deterministically derived from the owner's EOA
+- **Session key extraction**: The authorized session key is extracted from the cryptographically signed `validatorData`, not from client-provided data. This prevents attackers from claiming authorization for arbitrary session keys
 
 ### Session Typed Data Structure
 
