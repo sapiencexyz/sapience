@@ -10,8 +10,6 @@ import {
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-// Note: Owner's wallet signs auction requests (not session key) so relayer can verify
-// smart account ownership by computing the smart account address from the recovered signer.
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 export interface AuctionParams {
@@ -77,7 +75,7 @@ export function useAuctionStart() {
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
-  const { isSessionActive, smartAccountAddress, arbitrumSessionApproval } = useSession();
+  const { isSessionActive, smartAccountAddress, etherealSessionApproval, signMessage: sessionSignMessage } = useSession();
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
@@ -224,11 +222,18 @@ export function useAuctionStart() {
               issuedAt
             );
 
-            // Always use owner's wallet for signing (even when session is active)
-            // Relayer verifies ownership by computing smart account from recovered signer
-            takerSignature = await signMessageAsync({ message });
-            if (process.env.NODE_ENV !== 'production') {
-              console.debug('[AuctionStart] Generated SIWE signature with wallet');
+            // Use session key signing when session is active (no wallet popup)
+            // Otherwise fall back to owner's wallet signing
+            if (isSessionActive && sessionSignMessage) {
+              takerSignature = await sessionSignMessage(message);
+              if (process.env.NODE_ENV !== 'production') {
+                console.debug('[AuctionStart] Generated SIWE signature with session key');
+              }
+            } else {
+              takerSignature = await signMessageAsync({ message });
+              if (process.env.NODE_ENV !== 'production') {
+                console.debug('[AuctionStart] Generated SIWE signature with wallet');
+              }
             }
             takerSignedAt = issuedAt;
           } catch (signError) {
@@ -253,11 +258,11 @@ export function useAuctionStart() {
 
         // Add session approval data for smart account authentication
         // This allows the relayer to verify ownership without additional RPC calls
-        if (isSessionActive && arbitrumSessionApproval) {
+        if (isSessionActive && etherealSessionApproval) {
           payloadWithSignature = {
             ...payloadWithSignature,
-            sessionApproval: arbitrumSessionApproval.approval,
-            sessionTypedData: arbitrumSessionApproval.typedData,
+            sessionApproval: etherealSessionApproval.approval,
+            sessionTypedData: etherealSessionApproval.typedData,
           };
           if (process.env.NODE_ENV !== 'production') {
             console.debug('[AuctionStart] Including session approval for smart account auth');
@@ -292,7 +297,7 @@ export function useAuctionStart() {
         }
       }, 400);
     },
-    [wsUrl, signMessageAsync, isSessionActive, smartAccountAddress, arbitrumSessionApproval]
+    [wsUrl, signMessageAsync, isSessionActive, smartAccountAddress, etherealSessionApproval, sessionSignMessage]
   );
 
   const acceptBid = useCallback(

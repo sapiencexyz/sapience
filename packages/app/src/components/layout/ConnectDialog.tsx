@@ -328,7 +328,7 @@ export default function ConnectDialog({
             'Creating session...'
           ) : (
             <>
-              Session approved for{' '}
+              Log in for the next{' '}
               <Popover>
                 <PopoverTrigger asChild>
                   <button

@@ -82,7 +82,7 @@ export function useBidSubmission(
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = useChainIdFromLocalStorage();
   const { apiBaseUrl } = useSettings();
-  const { isSessionActive, smartAccountAddress, arbitrumSessionApproval } = useSession();
+  const { isSessionActive, smartAccountAddress, etherealSessionApproval } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -253,11 +253,11 @@ export function useBidSubmission(
 
       // Add session approval data for smart account authentication
       // This allows the relayer to verify ownership without additional RPC calls
-      if (isSessionActive && arbitrumSessionApproval) {
+      if (isSessionActive && etherealSessionApproval) {
         payload = {
           ...payload,
-          sessionApproval: arbitrumSessionApproval.approval,
-          sessionTypedData: arbitrumSessionApproval.typedData,
+          sessionApproval: etherealSessionApproval.approval,
+          sessionTypedData: etherealSessionApproval.typedData,
         };
         if (process.env.NODE_ENV !== 'production') {
           console.debug('[BidSubmission] Including session approval for smart account auth');
@@ -291,7 +291,7 @@ export function useBidSubmission(
       onSignatureRejected,
       isSessionActive,
       smartAccountAddress,
-      arbitrumSessionApproval,
+      etherealSessionApproval,
     ]
   );
 

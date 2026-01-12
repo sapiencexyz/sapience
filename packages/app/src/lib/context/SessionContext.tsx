@@ -15,13 +15,13 @@ import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
 import {
   createSession,
+  createArbitrumSession,
   restoreSession,
   getSmartAccountAddress,
   saveSession,
   loadSession,
   clearSession,
   type SessionConfig,
-  type SessionResult,
   type OwnerSigner,
   type EnableTypedData,
   type SerializedSession,
@@ -111,9 +111,15 @@ interface SessionContextValue {
   sessionKeyAddress: Address | null;
 
   // Session approval data for relayer authentication (per chain)
-  // Use Arbitrum for most relayer requests
-  arbitrumSessionApproval: SessionApprovalData | null;
+  // Use Ethereal for auction auth (signed on login)
   etherealSessionApproval: SessionApprovalData | null;
+  // Arbitrum is created lazily on first EAS attestation
+  arbitrumSessionApproval: SessionApprovalData | null;
+
+  // Lazy Arbitrum session creation
+  hasArbitrumSession: boolean;
+  isCreatingArbitrumSession: boolean;
+  createArbitrumSessionIfNeeded: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -155,6 +161,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Session approval data for relayer authentication (per chain)
   const [arbitrumSessionApproval, setArbitrumSessionApproval] = useState<SessionApprovalData | null>(null);
   const [etherealSessionApproval, setEtherealSessionApproval] = useState<SessionApprovalData | null>(null);
+
+  // Lazy Arbitrum session creation state
+  const [isCreatingArbitrumSession, setIsCreatingArbitrumSession] = useState(false);
+  // Store serialized session for lazy Arbitrum creation
+  const [serializedSession, setSerializedSession] = useState<SerializedSession | null>(null);
 
   // Helper to extract session approval data from serialized session
   const extractSessionApprovalData = useCallback((serialized: SerializedSession): {
@@ -271,6 +282,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         });
         setSessionPrivateKey(stored.sessionPrivateKey);
         setSessionKeyAddress(stored.sessionKeyAddress);
+        setSerializedSession(stored);
         // Extract session approval data for relayer authentication
         const approvalData = extractSessionApprovalData(stored);
         setArbitrumSessionApproval(approvalData.arbitrum);
@@ -315,6 +327,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setChainClients({ ethereal: null, arbitrum: null });
     setSessionPrivateKey(null);
     setSessionKeyAddress(null);
+    setSerializedSession(null);
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
     setTimeRemainingMs(0);
@@ -378,6 +391,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         });
         setSessionPrivateKey(result.serialized.sessionPrivateKey);
         setSessionKeyAddress(result.serialized.sessionKeyAddress);
+        setSerializedSession(result.serialized);
         // Extract session approval data for relayer authentication
         const approvalData = extractSessionApprovalData(result.serialized);
         setArbitrumSessionApproval(approvalData.arbitrum);
@@ -401,12 +415,112 @@ export function SessionProvider({ children }: SessionProviderProps) {
     endSessionInternal();
   }, [endSessionInternal]);
 
+  // Create Arbitrum session lazily (on first EAS attestation)
+  const createArbitrumSessionIfNeeded = useCallback(async () => {
+    // Already has Arbitrum session
+    if (arbitrumSessionApproval || chainClients.arbitrum) {
+      console.debug('[SessionContext] Arbitrum session already exists');
+      return;
+    }
+
+    // No active session
+    if (!isSessionActive || !sessionConfig || !serializedSession) {
+      throw new Error('No active session');
+    }
+
+    // No wallet connected
+    if (!walletAddress || !connector) {
+      throw new Error('No wallet connected');
+    }
+
+    setIsCreatingArbitrumSession(true);
+    try {
+      console.debug('[SessionContext] Creating Arbitrum session lazily...');
+
+      // Get the Ethereum provider from the connected wallet's connector
+      const provider = await connector.getProvider();
+
+      // Create a chain switcher function
+      const switchChain = async (chainId: number) => {
+        try {
+          await switchChainAsync({ chainId });
+        } catch (error: unknown) {
+          const err = error as { code?: number; message?: string };
+          if (err?.code === 4902 || err?.message?.includes('Unrecognized chain')) {
+            throw new Error(`Please add chain ${chainId} to your wallet first`);
+          }
+          throw error;
+        }
+      };
+
+      const ownerSigner: OwnerSigner = {
+        address: walletAddress,
+        provider,
+        switchChain,
+      };
+
+      // Create Arbitrum session using existing session key
+      const arbitrumResult = await createArbitrumSession(
+        ownerSigner,
+        serializedSession.sessionPrivateKey,
+        sessionConfig.expiresAt
+      );
+
+      // Update serialized session with Arbitrum data
+      const updatedSerialized: SerializedSession = {
+        ...serializedSession,
+        arbitrumApproval: arbitrumResult.arbitrumApproval,
+        arbitrumEnableTypedData: arbitrumResult.arbitrumEnableTypedData,
+      };
+
+      // Save to localStorage
+      saveSession(updatedSerialized);
+      setSerializedSession(updatedSerialized);
+
+      // Update chain clients
+      setChainClients((prev) => ({
+        ...prev,
+        arbitrum: arbitrumResult.arbitrumClient,
+      }));
+
+      // Extract and set Arbitrum approval data
+      if (arbitrumResult.arbitrumApproval && arbitrumResult.arbitrumEnableTypedData) {
+        const safeApproval = extractApprovalForTransport(arbitrumResult.arbitrumApproval);
+        if (safeApproval) {
+          setArbitrumSessionApproval({
+            approval: safeApproval,
+            typedData: arbitrumResult.arbitrumEnableTypedData,
+          });
+        }
+      }
+
+      console.debug('[SessionContext] Arbitrum session created successfully');
+    } catch (error) {
+      console.error('[SessionContext] Failed to create Arbitrum session:', error);
+      throw error;
+    } finally {
+      setIsCreatingArbitrumSession(false);
+    }
+  }, [
+    arbitrumSessionApproval,
+    chainClients.arbitrum,
+    isSessionActive,
+    sessionConfig,
+    serializedSession,
+    walletAddress,
+    connector,
+    switchChainAsync,
+  ]);
+
   // Clear session when wallet disconnects
   useEffect(() => {
     if (!walletAddress && isSessionActive) {
       endSessionInternal();
     }
   }, [walletAddress, isSessionActive, endSessionInternal]);
+
+  // Compute hasArbitrumSession from state
+  const hasArbitrumSession = Boolean(arbitrumSessionApproval || chainClients.arbitrum);
 
   const value = useMemo(
     () => ({
@@ -424,8 +538,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       signMessage: sessionPrivateKey ? signMessage : null,
       signTypedData: sessionPrivateKey ? signTypedData : null,
       sessionKeyAddress,
-      arbitrumSessionApproval,
       etherealSessionApproval,
+      arbitrumSessionApproval,
+      hasArbitrumSession,
+      isCreatingArbitrumSession,
+      createArbitrumSessionIfNeeded,
     }),
     [
       isSessionActive,
@@ -443,8 +560,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       signMessage,
       signTypedData,
       sessionKeyAddress,
-      arbitrumSessionApproval,
       etherealSessionApproval,
+      arbitrumSessionApproval,
+      hasArbitrumSession,
+      isCreatingArbitrumSession,
+      createArbitrumSessionIfNeeded,
     ]
   );
 

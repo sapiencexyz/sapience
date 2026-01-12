@@ -330,7 +330,7 @@ export default function CollateralBalanceButton({
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
               <span className="relative top-[1px] md:top-0 text-sm font-normal">
-                {formattedBalance}
+                {smartAccountBalance.toFixed(2)} {symbol}
               </span>
             </div>
             <div className="inline-flex items-center ml-1 w-fit -mr-1">
@@ -348,8 +348,8 @@ export default function CollateralBalanceButton({
             {/* Left section - Get USDe */}
             <div className="flex flex-col items-center justify-center min-w-[120px] space-y-3">
               <div className="space-y-2 text-center">
-                <p className="font-medium text-sm">Ethereal Predict<br />Account Balance</p>
-                <p className="text-lg font-mono">{formattedBalance}</p>
+                <p className="font-medium text-sm">Sapience<br />Account Balance</p>
+                <p className="text-lg font-mono">{smartAccountBalance.toFixed(2)} {symbol}</p>
               </div>
               <Button
                 size="sm"
@@ -407,7 +407,7 @@ export default function CollateralBalanceButton({
               >
                 USDe on Ethereal
               </a>{' '}
-              to your Ethereal Predict account to get started.
+              to your Sapience account to get started.
             </p>
 
             {/* Two Account Cards */}
@@ -443,11 +443,11 @@ export default function CollateralBalanceButton({
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground">Native USDe</span>
-                          <span className="font-mono">{formatDollarLikeBalance(eoaNativeBalance)}</span>
+                          <span className="font-mono">{eoaNativeBalance.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground">Wrapped USDe</span>
-                          <span className="font-mono">{formatDollarLikeBalance(eoaWrappedBalance)}</span>
+                          <span className="font-mono">{eoaWrappedBalance.toFixed(2)}</span>
                         </div>
                       </div>
                     </HoverCardContent>
@@ -460,10 +460,10 @@ export default function CollateralBalanceButton({
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              {/* Ethereal Predict Account Card */}
+              {/* Sapience Account Card */}
               <div className="flex-1 rounded-lg border border-ethena/40 bg-brand-black p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.15)]">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Ethereal Predict Account</p>
+                  <p className="text-xs text-muted-foreground mb-1">Sapience Account</p>
                   {isCalculatingAddress ? (
                     <span className="font-mono text-sm text-muted-foreground">Calculating...</span>
                   ) : smartAccountAddress ? (
@@ -493,11 +493,11 @@ export default function CollateralBalanceButton({
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground">Native USDe</span>
-                          <span className="font-mono">{formatDollarLikeBalance(smartAccountNativeBalance)}</span>
+                          <span className="font-mono">{smartAccountNativeBalance.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between gap-4">
                           <span className="text-muted-foreground">Wrapped USDe</span>
-                          <span className="font-mono">{formatDollarLikeBalance(smartAccountWrappedBalance)}</span>
+                          <span className="font-mono">{smartAccountWrappedBalance.toFixed(2)}</span>
                         </div>
                       </div>
                     </HoverCardContent>
@@ -532,13 +532,13 @@ export default function CollateralBalanceButton({
                         {fromWrapped > 0 && (
                           <div className="flex justify-between gap-4">
                             <span className="text-muted-foreground">Wrapped USDe</span>
-                            <span className="font-mono">{formatDollarLikeBalance(fromWrapped)}</span>
+                            <span className="font-mono">{fromWrapped.toFixed(2)}</span>
                           </div>
                         )}
                         {fromNative > 0 && (
                           <div className="flex justify-between gap-4">
                             <span className="text-muted-foreground">Native USDe (to wrap)</span>
-                            <span className="font-mono">{formatDollarLikeBalance(fromNative)}</span>
+                            <span className="font-mono">{fromNative.toFixed(2)}</span>
                           </div>
                         )}
                       </div>

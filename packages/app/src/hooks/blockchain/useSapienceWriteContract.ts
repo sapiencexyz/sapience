@@ -98,18 +98,37 @@ export function useSapienceWriteContract({
   const { data: client } = useConnectorClient();
 
   // Session key support for gasless transactions
-  const { isSessionActive, chainClients, sessionConfig } = useSession();
+  const {
+    isSessionActive,
+    chainClients,
+    sessionConfig,
+    hasArbitrumSession,
+    createArbitrumSessionIfNeeded,
+    isCreatingArbitrumSession,
+  } = useSession();
 
   // Check if session can handle a specific chain
+  // For Arbitrum, returns true even if session doesn't exist yet (will be created lazily)
   const canUseSessionForChain = useCallback(
     (chainId: number): boolean => {
       if (!isSessionActive || !sessionConfig) return false;
       if (Date.now() > sessionConfig.expiresAt) return false;
       if (chainId === ethereal.id && chainClients.ethereal) return true;
-      if (chainId === arbitrum.id && chainClients.arbitrum) return true;
+      // For Arbitrum, we can use session even if it doesn't exist yet (lazy creation)
+      if (chainId === arbitrum.id) return true;
       return false;
     },
     [isSessionActive, sessionConfig, chainClients]
+  );
+
+  // Check if Arbitrum session needs to be created
+  const needsArbitrumSession = useCallback(
+    (chainId: number): boolean => {
+      if (!isSessionActive || !sessionConfig) return false;
+      if (chainId !== arbitrum.id) return false;
+      return !hasArbitrumSession;
+    },
+    [isSessionActive, sessionConfig, hasArbitrumSession]
   );
 
   // Get the session client for a chain
@@ -523,27 +542,41 @@ export function useSapienceWriteContract({
         didShowSuccessToastRef.current = false;
 
         // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
-        const sessionClient = canUseSessionForChain(_chainId)
-          ? getSessionClient(_chainId)
-          : null;
+        if (canUseSessionForChain(_chainId)) {
+          // Check if we need to create Arbitrum session first (lazy creation)
+          if (needsArbitrumSession(_chainId)) {
+            console.debug('[Session] Creating Arbitrum session lazily before transaction...');
+            setIsSubmitting(true);
+            try {
+              await createArbitrumSessionIfNeeded();
+              console.debug('[Session] Arbitrum session created successfully');
+            } catch (sessionCreateError) {
+              console.error('[Session] Failed to create Arbitrum session:', sessionCreateError);
+              setIsSubmitting(false);
+              throw new Error('Please approve the Arbitrum session to continue');
+            }
+          }
 
-        if (sessionClient) {
-          setIsSubmitting(true);
-          const params = args[0];
-          const {
-            address,
-            abi,
-            functionName,
-            args: fnArgs,
-            value,
-          } = params as any;
+          const sessionClient = getSessionClient(_chainId);
 
-          console.debug('[Session] Using session key for gasless transaction on chain', _chainId);
-          console.debug('[Session] Target contract:', address);
-          console.debug('[Session] Function:', functionName);
-          console.debug('[Session] Smart account:', sessionClient.account.address);
+          // After lazy creation, sessionClient should be available
+          if (sessionClient) {
+            setIsSubmitting(true);
+            const params = args[0];
+            const {
+              address,
+              abi,
+              functionName,
+              args: fnArgs,
+              value,
+            } = params as any;
 
-          try {
+            console.debug('[Session] Using session key for gasless transaction on chain', _chainId);
+            console.debug('[Session] Target contract:', address);
+            console.debug('[Session] Function:', functionName);
+            console.debug('[Session] Smart account:', sessionClient.account.address);
+
+            try {
             // Encode the function call
             const calldata = encodeFunctionData({
               abi,
@@ -592,7 +625,9 @@ export function useSapienceWriteContract({
             // Re-throw with more context
             const errorMessage = sessionError?.shortMessage || sessionError?.message || 'Session transaction failed';
             throw new Error(`Session key transaction failed: ${errorMessage}`);
+            }
           }
+          // If sessionClient is null after lazy creation attempt, fall through to non-session path
         }
 
         // Validate and switch chain if needed (only for non-session paths)
@@ -731,6 +766,8 @@ export function useSapienceWriteContract({
       pickFinalTransactionHash,
       canUseSessionForChain,
       getSessionClient,
+      needsArbitrumSession,
+      createArbitrumSessionIfNeeded,
     ]
   );
 
@@ -751,23 +788,37 @@ export function useSapienceWriteContract({
         didShowSuccessToastRef.current = false;
 
         // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
-        const sessionClient = canUseSessionForChain(_chainId)
-          ? getSessionClient(_chainId)
-          : null;
-
-        if (sessionClient) {
-          setIsSubmitting(true);
-          const body = (args[0] as any) ?? {};
-          const calls = Array.isArray(body?.calls) ? body.calls : [];
-
-          if (calls.length === 0) {
-            throw new Error('No calls to execute');
+        if (canUseSessionForChain(_chainId)) {
+          // Check if we need to create Arbitrum session first (lazy creation)
+          if (needsArbitrumSession(_chainId)) {
+            console.debug('[Session] Creating Arbitrum session lazily before batch transaction...');
+            setIsSubmitting(true);
+            try {
+              await createArbitrumSessionIfNeeded();
+              console.debug('[Session] Arbitrum session created successfully');
+            } catch (sessionCreateError) {
+              console.error('[Session] Failed to create Arbitrum session:', sessionCreateError);
+              setIsSubmitting(false);
+              throw new Error('Please approve the Arbitrum session to continue');
+            }
           }
 
-          console.debug('[Session] Using session key for gasless batch transaction on chain', _chainId, 'with', calls.length, 'calls');
-          console.debug('[Session] Smart account:', sessionClient.account.address);
+          const sessionClient = getSessionClient(_chainId);
 
-          try {
+          // After lazy creation, sessionClient should be available
+          if (sessionClient) {
+            setIsSubmitting(true);
+            const body = (args[0] as any) ?? {};
+            const calls = Array.isArray(body?.calls) ? body.calls : [];
+
+            if (calls.length === 0) {
+              throw new Error('No calls to execute');
+            }
+
+            console.debug('[Session] Using session key for gasless batch transaction on chain', _chainId, 'with', calls.length, 'calls');
+            console.debug('[Session] Smart account:', sessionClient.account.address);
+
+            try {
             // Convert calls to format expected by encodeCalls
             const formattedCalls = calls.map((call: any) => ({
               to: call.to as `0x${string}`,
@@ -822,7 +873,9 @@ export function useSapienceWriteContract({
             // Re-throw with more context
             const errorMessage = sessionError?.shortMessage || sessionError?.message || 'Session transaction failed';
             throw new Error(`Session key transaction failed: ${errorMessage}`);
+            }
           }
+          // If sessionClient is null after lazy creation attempt, fall through to non-session path
         }
 
         // Validate and switch chain if needed (only for non-session paths)
@@ -960,6 +1013,8 @@ export function useSapienceWriteContract({
       disableSuccessToast,
       canUseSessionForChain,
       getSessionClient,
+      needsArbitrumSession,
+      createArbitrumSessionIfNeeded,
     ]
   );
 
