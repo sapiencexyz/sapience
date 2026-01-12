@@ -110,14 +110,18 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { isSessionActive } = useSession();
+  const { isSessionActive, smartAccountAddress } = useSession();
 
   // Use zero address as the guest taker address when the user is logged out
   const guestTakerAddress: `0x${string}` =
     '0x0000000000000000000000000000000000000000';
 
-  // Prefer connected wallet address; fall back to zero address
-  const selectedTakerAddress = takerAddress ?? guestTakerAddress;
+  // Use smart account address when session is active, otherwise use EOA
+  // This ensures the correct nonce is fetched for the address that will execute the transaction
+  const selectedTakerAddress =
+    isSessionActive && smartAccountAddress
+      ? smartAccountAddress
+      : (takerAddress ?? guestTakerAddress);
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({

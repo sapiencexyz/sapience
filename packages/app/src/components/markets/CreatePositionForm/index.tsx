@@ -35,6 +35,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
+import { useSession } from '~/lib/context/SessionContext';
 import {
   wagerAmountSchema,
   createWagerAmountSchema,
@@ -86,6 +87,7 @@ const CreatePositionForm = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
   const parlayChainId = useMemo(
@@ -93,11 +95,17 @@ const CreatePositionForm = ({
     [chainId, createPositionEntries]
   );
 
+  // Use smart account address when session is active for position queries
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
   const { data: userPositions, refetch: refetchUserPositions } = useUserParlays(
     {
-      address: address ? String(address).toLowerCase() : undefined,
+      address: effectiveAddress
+        ? String(effectiveAddress).toLowerCase()
+        : undefined,
       chainId: parlayChainId,
       take: 1, // Only need the latest one
       orderBy: 'mintedAt',
@@ -727,7 +735,7 @@ const CreatePositionForm = ({
         variant: 'destructive',
         duration: 5000,
       });
-    } catch (_error) {
+    } catch {
       toast({
         title: 'Submission error',
         description: 'An error occurred while submitting your prediction.',

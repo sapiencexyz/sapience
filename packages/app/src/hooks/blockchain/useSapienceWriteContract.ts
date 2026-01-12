@@ -529,33 +529,33 @@ export function useSapienceWriteContract({
     async (
       sessionClient: NonNullable<typeof chainClients.ethereal>,
       calls: Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }>,
-      chainId: number
+      _chainId: number
     ): Promise<Hash> => {
-      console.debug(
-        '[Session] Using session key for gasless transaction on chain',
-        chainId
-      );
-      console.debug('[Session] Smart account:', sessionClient.account.address);
+      // Check session expiration before attempting transaction
+      if (sessionConfig) {
+        const nowMs = Date.now();
+        const msRemaining = sessionConfig.expiresAt - nowMs;
 
-      console.debug('[Session] Encoding calls...');
+        if (nowMs > sessionConfig.expiresAt) {
+          throw new Error(
+            `Session expired ${Math.abs(msRemaining / 1000 / 60).toFixed(0)} minutes ago. Please end the current session and start a new one.`
+          );
+        }
+      }
+
       const encodedCalls = await sessionClient.account.encodeCalls(calls);
 
-      console.debug('[Session] Sending UserOperation...');
       const userOpHash = await sessionClient.sendUserOperation({
         callData: encodedCalls,
       });
-      console.debug('[Session] UserOperation hash:', userOpHash);
 
-      console.debug('[Session] Waiting for receipt...');
       const receipt = await sessionClient.waitForUserOperationReceipt({
         hash: userOpHash,
       });
 
-      const txHash = receipt.receipt.transactionHash;
-      console.debug('[Session] Transaction hash:', txHash);
-      return txHash;
+      return receipt.receipt.transactionHash;
     },
-    [chainClients.ethereal]
+    [sessionConfig]
   );
 
   // Custom write contract function that handles chain validation

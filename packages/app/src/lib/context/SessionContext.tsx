@@ -27,7 +27,8 @@ import {
   type SerializedSession,
 } from '~/lib/session/sessionKeyManager';
 
-// Helper to strip private key from approval for safe transport
+// Helper to strip private key and ABIs from approval for safe transport
+// ABIs are embedded in permission policies but not needed for relayer signature verification
 function extractApprovalForTransport(
   serializedApproval: string
 ): string | null {
@@ -35,11 +36,38 @@ function extractApprovalForTransport(
     const jsonString = atob(serializedApproval);
     const params = JSON.parse(jsonString);
 
-    // Remove the private key before transport
+    // Strip ABIs from permission policies (not needed for relayer verification)
+    // ABIs bloat the payload significantly and cause "message too large" errors
+    let strippedPermissionParams = params.permissionParams;
+    if (params.permissionParams?.policies) {
+      strippedPermissionParams = {
+        ...params.permissionParams,
+        policies: params.permissionParams.policies.map((policy: any) => {
+          if (policy.policyParams?.permissions) {
+            return {
+              ...policy,
+              policyParams: {
+                ...policy.policyParams,
+                permissions: policy.policyParams.permissions.map(
+                  (perm: any) => {
+                    // Remove abi field from each permission
+                    const { abi: _abi, ...permWithoutAbi } = perm;
+                    return permWithoutAbi;
+                  }
+                ),
+              },
+            };
+          }
+          return policy;
+        }),
+      };
+    }
+
+    // Remove the private key and ABIs before transport
     const safeParams = {
       enableSignature: params.enableSignature,
       accountParams: params.accountParams,
-      permissionParams: params.permissionParams,
+      permissionParams: strippedPermissionParams,
       action: params.action,
       kernelVersion: params.kernelVersion,
       validatorData: params.validatorData,
@@ -291,11 +319,13 @@ export function SessionProvider({ children }: SessionProviderProps) {
   useEffect(() => {
     const restore = async () => {
       const stored = loadSession();
-      console.debug(
-        '[SessionContext] Checking for stored session:',
-        stored ? 'found' : 'none'
-      );
       if (!stored) return;
+
+      // Don't restore expired sessions
+      if (Date.now() > stored.config.expiresAt) {
+        clearSession();
+        return;
+      }
 
       // Check if the stored session matches the current wallet
       if (
