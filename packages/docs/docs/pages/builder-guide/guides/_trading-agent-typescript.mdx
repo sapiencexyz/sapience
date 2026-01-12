@@ -18,6 +18,10 @@ Check your local regulations. Start with small amounts and monitor performance. 
 
 You'll need Node.js >= 20.14, an [OpenRouter API key](/builder-guide/getting-started/get-started#openrouter-setup) (or another LLM provider), and an [Ethereum private key](/builder-guide/getting-started/get-started#ethereum-account-setup) with USDe tokens on [Ethereal](https://ethereal.trade) (chain ID `5064014`) for trading.
 
+:::note[Collateral]
+On Ethereal, prediction market contracts use WUSDe (Wrapped USDe). The SDK's `prepareForTrade` helper handles wrapping and approval automatically.
+:::
+
 ### Environment Variables
 
 Create a `.env` file in your project directory:
@@ -43,7 +47,7 @@ Create `index.ts`:
 ```typescript
 import 'dotenv/config';
 import { gql } from 'graphql-request';
-import { encodeAbiParameters, encodeFunctionData, erc20Abi, type Hex, type Address } from 'viem';
+import { encodeAbiParameters, encodeFunctionData, parseEther, type Hex, type Address } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   graphqlRequest,
@@ -51,6 +55,7 @@ import {
   createAuctionWs,
   submitTransaction,
   contracts,
+  prepareForTrade,
 } from '@sapience/sdk';
 
 // Configuration - Ethereal chain (5064014)
@@ -58,8 +63,7 @@ const RPC_URL = 'https://rpc.ethereal.trade';
 const WS_URL = 'wss://relayer.sapience.xyz/auction';
 const RESOLVER = contracts.lzPMResolver[CHAIN_ID_ETHEREAL].address;
 const PREDICTION_MARKET = contracts.predictionMarket[CHAIN_ID_ETHEREAL].address;
-const USDE_TOKEN = contracts.collateralToken[CHAIN_ID_ETHEREAL].address;
-const WAGER = '1000000000000000000'; // 1 USDe (18 decimals)
+const WAGER = '1000000000000000000'; // 1 WUSDe (18 decimals)
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
 
@@ -130,33 +134,27 @@ function encodePrediction(marketId: string, probability: number) {
   );
 }
 
-// 4. Approve USDe tokens for trading
-async function approveTokens() {
-  const { hash } = await submitTransaction({
-    rpc: RPC_URL,
+// 4. Wrap USDe to WUSDe and approve for trading
+async function prepareCollateral() {
+  const { wrapTxHash, approvalTxHash } = await prepareForTrade({
     privateKey: process.env.PRIVATE_KEY as Hex,
-    tx: {
-      to: USDE_TOKEN,
-      data: encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [PREDICTION_MARKET, BigInt(WAGER) * 1000n],
-      }),
-    },
+    collateralAmount: parseEther('10'), // Prepare 10 WUSDe
   });
-  console.log(`Token approval tx: ${hash}`);
+  if (wrapTxHash) console.log(`Wrap tx: ${wrapTxHash}`);
+  if (approvalTxHash) console.log(`Approval tx: ${approvalTxHash}`);
 }
 
 // 5. Execute trade by calling mint() on PredictionMarket contract
-async function executeTrade(bid: any) {
+// NOTE: Contract maker/taker naming is inverted from API (will be aligned in a future version)
+async function executeTrade(bid: any, encodedOutcomes: Hex, auctionTakerNonce: number) {
   const mintRequest = {
-    encodedPredictedOutcomes: bid.encodedPredictedOutcomes,
-    resolver: bid.resolver || RESOLVER,
-    makerCollateral: BigInt(bid.makerWager),
-    takerCollateral: BigInt(bid.takerCollateral || WAGER),
-    maker: bid.maker as Address,
-    taker: account.address,
-    makerNonce: BigInt(bid.makerNonce),
+    encodedPredictedOutcomes: encodedOutcomes,
+    resolver: RESOLVER,
+    makerCollateral: BigInt(WAGER),
+    takerCollateral: BigInt(bid.makerWager),
+    maker: account.address,
+    taker: bid.maker as Address,
+    makerNonce: BigInt(auctionTakerNonce),
     takerSignature: bid.makerSignature as Hex,
     takerDeadline: BigInt(bid.makerDeadline),
     refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
@@ -208,9 +206,9 @@ async function main() {
   console.log(`Forecast: ${forecast.probability}% - ${forecast.reasoning}`);
   console.log(`Trading: ${position}\n`);
 
-  // 3. Approve tokens
-  console.log('Approving USDe tokens...');
-  await approveTokens();
+  // 3. Prepare collateral (wrap USDe to WUSDe and approve)
+  console.log('Preparing collateral...');
+  await prepareCollateral();
 
   // 4. Start auction
   const encodedOutcomes = encodePrediction(condition.id, forecast.probability);
@@ -282,7 +280,7 @@ async function main() {
           const bestBid = actionableBids[0];
           console.log(`Accepting actionable bid from ${bestBid.maker}`);
           
-          const txHash = await executeTrade(bestBid);
+          const txHash = await executeTrade(bestBid, encodedOutcomes, takerNonce);
           console.log(`Trade executed! TX: ${txHash}`);
           ws.close();
         }

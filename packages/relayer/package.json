@@ -13,6 +13,9 @@
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src",
     "bot": "tsx src/botExample.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:proxy": "node test-proxy.js",
     "test:proxy:direct": "node test-proxy.js --direct",
     "load-test": "tsx load-test.ts",
@@ -34,12 +37,14 @@
     "@eslint/js": "9.18.0",
     "@types/node": "20.17.10",
     "@types/ws": "8.18.1",
+    "@vitest/coverage-v8": "2.1.8",
     "eslint": "9.15.0",
-    "globals": "^15.11.0",
+    "globals": "15.11.0",
     "prettier": "3.3.3",
     "tsx": "4.19.2",
     "typescript": "5.8.3",
-    "typescript-eslint": "8.21.0"
+    "typescript-eslint": "8.21.0",
+    "vitest": "2.1.8"
   },
   "engines": {
     "node": ">=24.11.0 <25.0.0",

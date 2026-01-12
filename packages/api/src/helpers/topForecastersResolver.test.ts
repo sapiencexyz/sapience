@@ -43,10 +43,11 @@ describe('ScoreResolver.topForecasters', () => {
   };
 
   it('returns top N by descending accuracyScore', async () => {
-    // Provide averages so B has higher accuracy (1/mean)
+    // twError now stores accuracy scores directly (higher is better)
+    // B has higher score so should rank first
     prisma.attesterMarketTwError.groupBy.mockResolvedValue([
-      { attester: 'B', _avg: { twError: 0.3 } },
-      { attester: 'A', _avg: { twError: 0.5 } },
+      { attester: 'B', _avg: { twError: 1000 } },
+      { attester: 'A', _avg: { twError: 500 } },
     ]);
 
     const resolver = new ScoreResolver();

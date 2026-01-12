@@ -63,14 +63,36 @@ function safeParse<T = unknown>(data: RawData): T | null {
   }
 }
 
-function send(ws: WebSocket, message: ServerToClientMessage) {
+// Structured timing log for observability
+// Format: [TIMING] auction=<id> step=<step> ts=<timestamp> delta=<ms>ms [extra]
+function logTiming(
+  auctionId: string,
+  step: string,
+  startTime: number,
+  extra?: Record<string, string | number>
+) {
+  const now = Date.now();
+  const delta = now - startTime;
+  const extraStr = extra
+    ? ' ' + Object.entries(extra).map(([k, v]) => `${k}=${v}`).join(' ')
+    : '';
+  console.log(
+    `[TIMING] auction=${auctionId.slice(0, 8)} step=${step} ts=${now} delta=${delta}ms${extraStr}`
+  );
+}
+
+function send(ws: WebSocket, message: ServerToClientMessage): void {
   try {
     ws.send(JSON.stringify(message));
     messagesSent.inc({ type: message.type });
   } catch (err) {
-    // Error sending message - connection may be closed
     console.error('[Relayer] Failed to send message:', err);
   }
+}
+
+function trackDuration(msgType: string, startTime: number): void {
+  const duration = (Date.now() - startTime) / 1000;
+  messageProcessingDuration.observe({ type: msgType }, duration);
 }
 
 function subscribeToAuction(
@@ -223,24 +245,38 @@ export function createAuctionWebSocketServer() {
     return count;
   }
 
-  function addVaultObserver(ws: WebSocket) {
+  function addVaultObserver(ws: WebSocket): void {
     vaultObservers.add(ws);
   }
-  function removeVaultObserver(ws: WebSocket) {
+
+  function removeVaultObserver(ws: WebSocket): void {
     vaultObservers.delete(ws);
+  }
+
+  function sendVaultAck(
+    ws: WebSocket,
+    payload: { ok?: boolean; error?: string },
+    context: string
+  ): void {
+    try {
+      ws.send(JSON.stringify({ type: 'vault_quote.ack', payload }));
+      if (payload.ok || payload.error) {
+        messagesSent.inc({ type: 'vault_quote.ack' });
+      }
+    } catch (err) {
+      console.error(`[Relayer] Failed to send vault_quote.ack (${context}):`, err);
+    }
   }
   function broadcastToVaultObservers(message: unknown): number {
     if (vaultObservers.size === 0) return 0;
-    const str = (() => {
-      try {
-        return JSON.stringify(message);
-      } catch {
-        return '';
-      }
-    })();
-    if (!str) return 0;
+    let str: string;
+    try {
+      str = JSON.stringify(message);
+    } catch {
+      return 0;
+    }
     let count = 0;
-    vaultObservers.forEach((client) => {
+    for (const client of vaultObservers) {
       if (client.readyState === WebSocket.OPEN) {
         try {
           client.send(str);
@@ -251,7 +287,7 @@ export function createAuctionWebSocketServer() {
       } else {
         vaultObservers.delete(client);
       }
-    });
+    }
     return count;
   }
 
@@ -439,9 +475,7 @@ export function createAuctionWebSocketServer() {
         } catch (err) {
           console.error('[Relayer] Failed to send pong response:', err);
         }
-        // Track processing duration
-        const duration = (Date.now() - startTime) / 1000;
-        messageProcessingDuration.observe({ type: msgType }, duration);
+        trackDuration(msgType, startTime);
         return;
       }
 
@@ -450,30 +484,12 @@ export function createAuctionWebSocketServer() {
         const type = (msg as { type?: string }).type as string;
         if (type === 'vault_quote.observe') {
           addVaultObserver(ws);
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-            );
-          } catch (err) {
-            console.error(
-              '[Relayer] Failed to send vault_quote.ack (observe):',
-              err
-            );
-          }
+          sendVaultAck(ws, { ok: true }, 'observe');
           return;
         }
         if (type === 'vault_quote.unobserve') {
           removeVaultObserver(ws);
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-            );
-          } catch (err) {
-            console.error(
-              '[Relayer] Failed to send vault_quote.ack (unobserve):',
-              err
-            );
-          }
+          sendVaultAck(ws, { ok: true }, 'unobserve');
           return;
         }
         if (type === 'vault_quote.subscribe') {
@@ -481,19 +497,7 @@ export function createAuctionWebSocketServer() {
             (msg as unknown as { payload?: SubscribePayload })?.payload ||
             ({} as SubscribePayload);
           if (!chainId || !vaultAddress) {
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { error: 'invalid_subscribe' },
-                })
-              );
-            } catch (err) {
-              console.error(
-                '[Relayer] Failed to send vault_quote.ack (invalid_subscribe):',
-                err
-              );
-            }
+            sendVaultAck(ws, { error: 'invalid_subscribe' }, 'invalid_subscribe');
             return;
           }
           const key = makeVaultKey(chainId, vaultAddress);
@@ -515,32 +519,15 @@ export function createAuctionWebSocketServer() {
               );
             }
           }
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-            );
-          } catch (err) {
-            console.error(
-              '[Relayer] Failed to send vault_quote.ack (subscribe):',
-              err
-            );
-          }
-          // Public broadcast so relayer feeds can display the request
-          try {
-            broadcastToVaultObservers({
-              type: 'vault_quote.requested',
-              payload: {
-                chainId,
-                vaultAddress: vaultAddress.toLowerCase(),
-                channel: key,
-              },
-            });
-          } catch (err) {
-            console.error(
-              '[Relayer] Failed to broadcast to vault observers (requested):',
-              err
-            );
-          }
+          sendVaultAck(ws, { ok: true }, 'subscribe');
+          broadcastToVaultObservers({
+            type: 'vault_quote.requested',
+            payload: {
+              chainId,
+              vaultAddress: vaultAddress.toLowerCase(),
+              channel: key,
+            },
+          });
           return;
         }
         if (type === 'vault_quote.unsubscribe') {
@@ -554,16 +541,7 @@ export function createAuctionWebSocketServer() {
           if (hadSubscription) {
             subscriptionsActive.dec({ subscription_type: 'vault' });
           }
-          try {
-            ws.send(
-              JSON.stringify({ type: 'vault_quote.ack', payload: { ok: true } })
-            );
-          } catch (err) {
-            console.error(
-              '[Relayer] Failed to send vault_quote.ack (unsubscribe):',
-              err
-            );
-          }
+          sendVaultAck(ws, { ok: true }, 'unsubscribe');
           return;
         }
         if (type === 'vault_quote.publish' || type === 'vault_quote.submit') {
@@ -581,48 +559,16 @@ export function createAuctionWebSocketServer() {
             ) {
               vaultQuotesPublished.inc({ status: 'error' });
               errorsTotal.inc({ type: 'validation', message_type: 'vault_quote.publish' });
-              try {
-                ws.send(
-                  JSON.stringify({
-                    type: 'vault_quote.ack',
-                    payload: { error: 'invalid_payload' },
-                  })
-                );
-                messagesSent.inc({ type: 'vault_quote.ack' });
-              } catch (err) {
-                console.error(
-                  '[Relayer] Failed to send vault_quote.ack (invalid_payload):',
-                  err
-                );
-              }
-              
-              // Track processing duration
-              const duration = (Date.now() - startTime) / 1000;
-              messageProcessingDuration.observe({ type: msgType }, duration);
+              sendVaultAck(ws, { error: 'invalid_payload' }, 'invalid_payload');
+              trackDuration(msgType, startTime);
               return;
             }
             // anti-replay window (5 minutes)
             if (Math.abs(Date.now() - p.timestamp) > 5 * 60 * 1000) {
               vaultQuotesPublished.inc({ status: 'error' });
               errorsTotal.inc({ type: 'validation', message_type: 'vault_quote.publish' });
-              try {
-                ws.send(
-                  JSON.stringify({
-                    type: 'vault_quote.ack',
-                    payload: { error: 'stale_timestamp' },
-                  })
-                );
-                messagesSent.inc({ type: 'vault_quote.ack' });
-              } catch (err) {
-                console.error(
-                  '[Relayer] Failed to send vault_quote.ack (stale_timestamp):',
-                  err
-                );
-              }
-              
-              // Track processing duration
-              const duration = (Date.now() - startTime) / 1000;
-              messageProcessingDuration.observe({ type: msgType }, duration);
+              sendVaultAck(ws, { error: 'stale_timestamp' }, 'stale_timestamp');
+              trackDuration(msgType, startTime);
               return;
             }
             const key = makeVaultKey(p.chainId, p.vaultAddress);
@@ -644,42 +590,14 @@ export function createAuctionWebSocketServer() {
               signature: p.signature as `0x${string}`,
             });
             if (!ok) {
-              try {
-                ws.send(
-                  JSON.stringify({
-                    type: 'vault_quote.ack',
-                    payload: { error: 'bad_signature' },
-                  })
-                );
-              } catch (err) {
-                console.error(
-                  '[Relayer] Failed to send vault_quote.ack (bad_signature):',
-                  err
-                );
-              }
+              sendVaultAck(ws, { error: 'bad_signature' }, 'bad_signature');
               return;
             }
             if (!allowed!.signers.has(p.signedBy.toLowerCase())) {
               vaultQuotesPublished.inc({ status: 'unauthorized' });
               errorsTotal.inc({ type: 'authorization', message_type: 'vault_quote.publish' });
-              try {
-                ws.send(
-                  JSON.stringify({
-                    type: 'vault_quote.ack',
-                    payload: { error: 'unauthorized_signer' },
-                  })
-                );
-                messagesSent.inc({ type: 'vault_quote.ack' });
-              } catch (err) {
-                console.error(
-                  '[Relayer] Failed to send vault_quote.ack (unauthorized_signer):',
-                  err
-                );
-              }
-              
-              // Track processing duration
-              const duration = (Date.now() - startTime) / 1000;
-              messageProcessingDuration.observe({ type: msgType }, duration);
+              sendVaultAck(ws, { error: 'unauthorized_signer' }, 'unauthorized_signer');
+              trackDuration(msgType, startTime);
               return;
             }
             const normalized: PublishVaultQuotePayload = {
@@ -696,56 +614,22 @@ export function createAuctionWebSocketServer() {
               type: 'vault_quote.update',
               payload: normalized,
             });
-            try {
-              ws.send(
-                JSON.stringify({
-                  type: 'vault_quote.ack',
-                  payload: { ok: true },
-                })
-              );
-              messagesSent.inc({ type: 'vault_quote.ack' });
-            } catch (err) {
-              console.error(
-                '[Relayer] Failed to send vault_quote.ack (ok after publish):',
-                err
-              );
-            }
-            // Also emit a public broadcast of the update so passive feeds can display it
-            try {
-              broadcastToVaultObservers({
-                type: 'vault_quote.update',
-                payload: normalized,
-              });
-            } catch (err) {
-              console.error(
-                '[Relayer] Failed to broadcast to vault observers (update):',
-                err
-              );
-            }
-            } catch (err) {
-              vaultQuotesPublished.inc({ status: 'error' });
-              errorsTotal.inc({ type: 'internal_error', message_type: 'vault_quote.publish' });
-              try {
-                ws.send(
-                  JSON.stringify({
-                    type: 'vault_quote.ack',
-                    payload: {
-                      error: (err as Error).message || 'internal_error',
-                    },
-                  })
-                );
-                messagesSent.inc({ type: 'vault_quote.ack' });
-              } catch (err2) {
-                console.error(
-                  '[Relayer] Failed to send vault_quote.ack (internal_error):',
-                  err2
-                );
-              }
-            }
+            sendVaultAck(ws, { ok: true }, 'publish_success');
+            broadcastToVaultObservers({
+              type: 'vault_quote.update',
+              payload: normalized,
+            });
+          } catch (err) {
+            vaultQuotesPublished.inc({ status: 'error' });
+            errorsTotal.inc({ type: 'internal_error', message_type: 'vault_quote.publish' });
+            sendVaultAck(
+              ws,
+              { error: (err as Error).message || 'internal_error' },
+              'internal_error'
+            );
+          }
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
       }
@@ -754,6 +638,13 @@ export function createAuctionWebSocketServer() {
       if (isClientMessage(msg)) {
         if (msg.type === 'auction.start') {
           const payload = msg.payload as AuctionRequestPayload;
+          const auctionStartTime = startTime; // Capture for timing logs
+          let pendingAuctionId = 'pending'; // Will be set after upsert
+
+          logTiming(pendingAuctionId, 'received', auctionStartTime, {
+            taker: payload.taker?.slice(0, 10) || 'unknown',
+            hasSig: payload.takerSignature ? 1 : 0,
+          });
 
           // Verify signature if provided
           if (payload.takerSignature) {
@@ -774,11 +665,10 @@ export function createAuctionWebSocketServer() {
                   payload: { auctionId: '', error: 'invalid_signature' },
                 });
                 
-                // Track processing duration
-                const duration = (Date.now() - startTime) / 1000;
-                messageProcessingDuration.observe({ type: msgType }, duration);
+                trackDuration(msgType, startTime);
                 return;
               }
+              logTiming(pendingAuctionId, 'sig_verified', auctionStartTime);
               console.log(
                 `[Relayer] Valid signature verified for taker=${payload.taker}`
               );
@@ -793,14 +683,15 @@ export function createAuctionWebSocketServer() {
                 },
               });
               
-              // Track processing duration
-              const duration = (Date.now() - startTime) / 1000;
-              messageProcessingDuration.observe({ type: msgType }, duration);
+              trackDuration(msgType, startTime);
               return;
             }
           }
 
           const auctionId = upsertAuction(payload);
+          pendingAuctionId = auctionId; // Update for subsequent timing logs
+          logTiming(auctionId, 'created', auctionStartTime);
+
           auctionsStarted.inc();
           // Subscribe this client to the auction channel
           subscribeToAuction(auctionId, ws, auctionSubscriptions);
@@ -813,15 +704,18 @@ export function createAuctionWebSocketServer() {
             type: 'auction.ack',
             payload: requestId ? { auctionId, id: requestId } : { auctionId },
           });
+          logTiming(auctionId, 'ack_sent', auctionStartTime);
 
           // Broadcast the auction.started to bots/listeners (all clients for now)
           const requested = JSON.stringify({
             type: 'auction.started',
             payload: { ...payload, auctionId },
           });
+          const botCount = wss.clients.size;
           wss.clients.forEach((client) => {
             if (client.readyState === WebSocket.OPEN) client.send(requested);
           });
+          logTiming(auctionId, 'broadcast', auctionStartTime, { bots: botCount });
 
           // Immediately stream current bids for this auction if any
           const bids = getBids(auctionId);
@@ -832,9 +726,7 @@ export function createAuctionWebSocketServer() {
             });
           }
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
         if (msg.type === 'auction.subscribe') {
@@ -862,9 +754,7 @@ export function createAuctionWebSocketServer() {
             });
           }
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
         if (msg.type === 'auction.unsubscribe') {
@@ -884,9 +774,7 @@ export function createAuctionWebSocketServer() {
             });
           }
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
       }
@@ -894,6 +782,11 @@ export function createAuctionWebSocketServer() {
       // Handle bot bid messages
       if (isBotMessage(msg)) {
         const bid = msg.payload as BidPayload;
+        const bidStartTime = startTime;
+        logTiming(bid.auctionId || 'unknown', 'bid_received', bidStartTime, {
+          maker: bid.maker?.slice(0, 10) || 'unknown',
+        });
+
         const rec = getAuction(bid.auctionId);
         if (!rec) {
           bidsSubmitted.inc({ status: 'rejected' });
@@ -906,9 +799,7 @@ export function createAuctionWebSocketServer() {
             `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
           );
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
         const sim = basicValidateBid(rec.auction, bid);
@@ -923,9 +814,7 @@ export function createAuctionWebSocketServer() {
             `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${sim.reason || 'invalid_bid'}`
           );
           
-          // Track processing duration
-          const duration = (Date.now() - startTime) / 1000;
-          messageProcessingDuration.observe({ type: msgType }, duration);
+          trackDuration(msgType, startTime);
           return;
         }
         // Optional strict EIP-712 verification when address is configured
@@ -962,29 +851,33 @@ export function createAuctionWebSocketServer() {
           );
           return;
         }
+        logTiming(bid.auctionId, 'bid_validated', bidStartTime);
+
         bidsSubmitted.inc({ status: 'success' });
         send(ws, { type: 'bid.ack', payload: {} });
 
-          // Broadcast updated top bids only to auction subscribers
+        // Broadcast updated top bids only to auction subscribers
+        const currentBids = getBids(bid.auctionId);
         const payload: ServerToClientMessage = {
           type: 'auction.bids',
-          payload: { auctionId: bid.auctionId, bids: getBids(bid.auctionId) },
+          payload: { auctionId: bid.auctionId, bids: currentBids },
         };
+        const subscriberCount = auctionSubscriptions.get(bid.auctionId)?.size || 0;
         broadcastToAuctionSubscribers(
           bid.auctionId,
           payload,
           auctionSubscriptions
         );
+        logTiming(bid.auctionId, 'bid_broadcast', bidStartTime, {
+          bidCount: currentBids.length,
+          subscribers: subscriberCount,
+        });
         
-        // Track processing duration
-        const duration = (Date.now() - startTime) / 1000;
-        messageProcessingDuration.observe({ type: msgType }, duration);
+        trackDuration(msgType, startTime);
         return;
       }
 
-      // Track processing duration for unhandled messages
-      const duration = (Date.now() - startTime) / 1000;
-      messageProcessingDuration.observe({ type: msgType }, duration);
+      trackDuration(msgType, startTime);
       errorsTotal.inc({ type: 'unhandled_message', message_type: msgType });
 
       console.warn(
@@ -1014,13 +907,7 @@ export function createAuctionWebSocketServer() {
       activeConnectionCount--;
       // Metrics: Track connection closed
       activeConnections.dec();
-      const reasonStr = (() => {
-        try {
-          return reason ? reason.toString() : '';
-        } catch {
-          return '';
-        }
-      })();
+      const reasonStr = reason?.toString() ?? '';
       connectionsClosed.inc({ reason: reasonStr || `code_${code}` });
 
       console.log(

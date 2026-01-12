@@ -20,6 +20,7 @@ function isHttpUrl(value: unknown): boolean {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const {
+      conditionHash,
       question,
       shortName,
       categoryId,
@@ -33,6 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
       groupName,
       resolver,
     } = req.body as {
+      conditionHash?: string;
       question?: string;
       shortName?: string;
       categoryId?: number;
@@ -47,15 +49,30 @@ router.post('/', async (req: Request, res: Response) => {
       resolver?: string;
     };
 
-    if (!question || !endTime || !claimStatement || !description || !resolver) {
-      return res.status(400).json({ message: 'Missing required fields' });
+    // Validate conditionHash if provided (must be 0x-prefixed 32-byte hex)
+    if (conditionHash && !/^0x[0-9a-fA-F]{64}$/.test(conditionHash)) {
+      return res.status(400).json({ message: 'conditionHash must be a 0x-prefixed 32-byte hex string' });
+    }
+    
+    if (!question || !endTime || !description) {
+      return res.status(400).json({ message: `Missing required fields: ${!question ? 'question' : ''}${!endTime ? ' endTime ' : ''}${!description ? ' description' : ''}` });
     }
 
-    // Validate resolver is a valid Ethereum address
-    if (typeof resolver !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(resolver)) {
-      return res
-        .status(400)
-        .json({ message: 'Resolver must be a valid Ethereum address (0x...)' });
+    // When conditionHash is provided, claimStatement and resolver are optional
+    // Otherwise, both are required for computing the condition ID
+    if (!conditionHash) {
+      if (!claimStatement || !resolver) {
+        return res.status(400).json({ message: 'claimStatement and resolver are required when conditionHash is not provided' });
+      }
+      // Validate resolver is a valid Ethereum address
+      if (typeof resolver !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(resolver)) {
+        return res.status(400).json({ message: 'Resolver must be a valid Ethereum address (0x...)' });
+      }
+    } else if (resolver) {
+      // If resolver is provided with conditionHash, still validate it
+      if (typeof resolver !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(resolver)) {
+        return res.status(400).json({ message: 'Resolver must be a valid Ethereum address (0x...)' });
+      }
     }
 
     let resolvedCategoryId: number | null = null;
@@ -101,7 +118,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (endTimeInt <= nowSeconds) {
       return res
         .status(400)
-        .json({ message: 'endTime must be a future Unix timestamp (seconds)' });
+        .json({ message: `endTime must be a future Unix timestamp (seconds), endTime: ${endTimeInt}, nowSeconds: ${nowSeconds}` });
     }
 
     // Validate similarMarkets URLs if provided
@@ -115,12 +132,18 @@ router.post('/', async (req: Request, res: Response) => {
         .json({ message: 'similarMarkets must be HTTP(S) URLs' });
     }
 
-    // Solidity equivalent: keccak256(abi.encodePacked(claimStatement, ":", uint256(endTime)))
-    const claimHex = toHex(claimStatement);
-    const colonHex = toHex(':');
-    const endTimeHex = toHex(BigInt(endTimeInt), { size: 32 });
-    const packed = concatHex([claimHex, colonHex, endTimeHex]);
-    const id = keccak256(packed);
+    // Use provided conditionHash or compute from claimStatement and endTime
+    let id: string;
+    if (conditionHash) {
+      id = conditionHash;
+    } else {
+      // Solidity equivalent: keccak256(abi.encodePacked(claimStatement, ":", uint256(endTime)))
+      const claimHex = toHex(claimStatement!);
+      const colonHex = toHex(':');
+      const endTimeHex = toHex(BigInt(endTimeInt), { size: 32 });
+      const packed = concatHex([claimHex, colonHex, endTimeHex]);
+      id = keccak256(packed);
+    }
 
     try {
       const condition = await prisma.condition.create({
@@ -134,13 +157,13 @@ router.post('/', async (req: Request, res: Response) => {
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
           public: Boolean(isPublic),
-          claimStatement,
+          claimStatement: claimStatement || '', // Empty string if not provided (for external conditions like Polymarket)
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
-          resolver: resolver.toLowerCase(),
+          resolver: resolver ? resolver.toLowerCase() : undefined,
         },
         include: { category: true, conditionGroup: true },
       });
@@ -152,7 +175,7 @@ router.post('/', async (req: Request, res: Response) => {
         message.includes('Unique constraint')
       ) {
         return res.status(409).json({
-          message: 'Condition already exists for claimStatement:endTime',
+          message: 'Condition already exists',
         });
       }
       console.error('Error creating condition:', e);
