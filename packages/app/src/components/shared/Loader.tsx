@@ -15,4 +15,3 @@ const Loader = ({ className = '', size = 12 }: LoaderProps) => {
 };
 
 export default Loader;
-

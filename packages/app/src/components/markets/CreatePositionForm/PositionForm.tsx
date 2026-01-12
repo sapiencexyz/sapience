@@ -452,7 +452,14 @@ export default function PositionForm({
         window.clearTimeout(autoAuctionDebounceRef.current);
       }
     };
-  }, [isSessionActive, predictionsKey, parlayWagerAmount, triggerAuctionRequest, selections.length, pythPredictions.length]);
+  }, [
+    isSessionActive,
+    predictionsKey,
+    parlayWagerAmount,
+    triggerAuctionRequest,
+    selections.length,
+    pythPredictions.length,
+  ]);
 
   // Show "Request Bids" button when:
   // 1. No valid bids exist (never received or all expired)

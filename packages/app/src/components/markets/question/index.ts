@@ -5,4 +5,3 @@ export {
   PredictionScatterChart,
   scatterChartStyles,
 } from './PredictionScatterChart';
-

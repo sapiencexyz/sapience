@@ -3,7 +3,12 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex, keccak256, concatHex } from 'viem';
-import { useAccount, useReadContract, useWriteContract, useSwitchChain } from 'wagmi';
+import {
+  useAccount,
+  useReadContract,
+  useWriteContract,
+  useSwitchChain,
+} from 'wagmi';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useToast } from '@sapience/ui/hooks/use-toast';

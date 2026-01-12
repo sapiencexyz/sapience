@@ -104,7 +104,6 @@ export function useSapienceWriteContract({
     sessionConfig,
     hasArbitrumSession,
     createArbitrumSessionIfNeeded,
-    isCreatingArbitrumSession,
   } = useSession();
 
   // Check if session can handle a specific chain
@@ -525,6 +524,40 @@ export function useSapienceWriteContract({
     return txHash;
   }, []);
 
+  // Helper to execute transaction via session key (shared by writeContract and sendCalls)
+  const executeViaSessionKey = useCallback(
+    async (
+      sessionClient: NonNullable<typeof chainClients.ethereal>,
+      calls: Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }>,
+      chainId: number
+    ): Promise<Hash> => {
+      console.debug(
+        '[Session] Using session key for gasless transaction on chain',
+        chainId
+      );
+      console.debug('[Session] Smart account:', sessionClient.account.address);
+
+      console.debug('[Session] Encoding calls...');
+      const encodedCalls = await sessionClient.account.encodeCalls(calls);
+
+      console.debug('[Session] Sending UserOperation...');
+      const userOpHash = await sessionClient.sendUserOperation({
+        callData: encodedCalls,
+      });
+      console.debug('[Session] UserOperation hash:', userOpHash);
+
+      console.debug('[Session] Waiting for receipt...');
+      const receipt = await sessionClient.waitForUserOperationReceipt({
+        hash: userOpHash,
+      });
+
+      const txHash = receipt.receipt.transactionHash;
+      console.debug('[Session] Transaction hash:', txHash);
+      return txHash;
+    },
+    [chainClients.ethereal]
+  );
+
   // Custom write contract function that handles chain validation
   const sapienceWriteContract = useCallback(
     async (...args: Parameters<typeof writeContractAsync>) => {
@@ -543,23 +576,30 @@ export function useSapienceWriteContract({
 
         // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
         if (canUseSessionForChain(_chainId)) {
-          // Check if we need to create Arbitrum session first (lazy creation)
+          // Get session client, creating Arbitrum session lazily if needed
+          let sessionClient = getSessionClient(_chainId);
+
           if (needsArbitrumSession(_chainId)) {
-            console.debug('[Session] Creating Arbitrum session lazily before transaction...');
+            console.debug(
+              '[Session] Creating Arbitrum session lazily before transaction...'
+            );
             setIsSubmitting(true);
             try {
-              await createArbitrumSessionIfNeeded();
+              // Use returned client directly to avoid race condition with state updates
+              sessionClient = await createArbitrumSessionIfNeeded();
               console.debug('[Session] Arbitrum session created successfully');
             } catch (sessionCreateError) {
-              console.error('[Session] Failed to create Arbitrum session:', sessionCreateError);
+              console.error(
+                '[Session] Failed to create Arbitrum session:',
+                sessionCreateError
+              );
               setIsSubmitting(false);
-              throw new Error('Please approve the Arbitrum session to continue');
+              throw new Error(
+                'Please approve the Arbitrum session to continue'
+              );
             }
           }
 
-          const sessionClient = getSessionClient(_chainId);
-
-          // After lazy creation, sessionClient should be available
           if (sessionClient) {
             setIsSubmitting(true);
             const params = args[0];
@@ -571,60 +611,45 @@ export function useSapienceWriteContract({
               value,
             } = params as any;
 
-            console.debug('[Session] Using session key for gasless transaction on chain', _chainId);
             console.debug('[Session] Target contract:', address);
             console.debug('[Session] Function:', functionName);
-            console.debug('[Session] Smart account:', sessionClient.account.address);
 
             try {
-            // Encode the function call
-            const calldata = encodeFunctionData({
-              abi,
-              functionName,
-              args: fnArgs,
-            });
+              const calldata = encodeFunctionData({
+                abi,
+                functionName,
+                args: fnArgs,
+              });
+              const calls = [
+                {
+                  to: address as `0x${string}`,
+                  data: calldata,
+                  value: value ? BigInt(value) : BigInt(0),
+                },
+              ];
 
-            // Build calls array - session keys don't need wrapping on Ethereal
-            // since the smart account handles token interactions directly
-            const calls = [
-              {
-                to: address as `0x${string}`,
-                data: calldata,
-                value: value ? BigInt(value) : BigInt(0),
-              },
-            ];
-
-            // Encode and send via ZeroDev bundler (gasless, no wallet signature)
-            console.debug('[Session] Encoding calls...');
-            const encodedCalls = await sessionClient.account.encodeCalls(calls);
-
-            console.debug('[Session] Sending UserOperation...');
-            const userOpHash = await sessionClient.sendUserOperation({
-              callData: encodedCalls,
-            });
-            console.debug('[Session] UserOperation hash:', userOpHash);
-
-            // Wait for the UserOperation receipt
-            console.debug('[Session] Waiting for receipt...');
-            const receipt = await sessionClient.waitForUserOperationReceipt({
-              hash: userOpHash,
-            });
-
-            const txHashFromSession = receipt.receipt.transactionHash;
-            console.debug('[Session] Transaction hash:', txHashFromSession);
-            handleTransactionSuccess(txHashFromSession);
-            return;
-          } catch (sessionError: any) {
-            console.error('[Session] UserOperation failed:', sessionError);
-            console.error('[Session] Error details:', {
-              message: sessionError?.message,
-              cause: sessionError?.cause,
-              details: sessionError?.details,
-              shortMessage: sessionError?.shortMessage,
-            });
-            // Re-throw with more context
-            const errorMessage = sessionError?.shortMessage || sessionError?.message || 'Session transaction failed';
-            throw new Error(`Session key transaction failed: ${errorMessage}`);
+              const txHashFromSession = await executeViaSessionKey(
+                sessionClient,
+                calls,
+                _chainId
+              );
+              handleTransactionSuccess(txHashFromSession);
+              return;
+            } catch (sessionError: any) {
+              console.error('[Session] UserOperation failed:', sessionError);
+              console.error('[Session] Error details:', {
+                message: sessionError?.message,
+                cause: sessionError?.cause,
+                details: sessionError?.details,
+                shortMessage: sessionError?.shortMessage,
+              });
+              const errorMessage =
+                sessionError?.shortMessage ||
+                sessionError?.message ||
+                'Session transaction failed';
+              throw new Error(
+                `Session key transaction failed: ${errorMessage}`
+              );
             }
           }
           // If sessionClient is null after lazy creation attempt, fall through to non-session path
@@ -635,96 +660,72 @@ export function useSapienceWriteContract({
 
         // For external wallets, use sendCalls if on Ethereal and wrapping is needed
         if (isEtherealChain(_chainId)) {
-            const params = args[0];
-            const { value } = params as any;
+          const params = args[0];
+          const { value } = params as any;
 
-            if (value && BigInt(value) > 0n) {
-              // Check if we need unwrapping for this operation
-              const needsUnwrap = shouldAutoUnwrap(
-                (params as any).functionName
-              );
+          if (value && BigInt(value) > 0n) {
+            // Check if we need unwrapping for this operation
+            const needsUnwrap = shouldAutoUnwrap((params as any).functionName);
 
-              // Get balance before transaction if unwrapping might be needed
-              let balanceBeforeTransaction = 0n;
+            // Get balance before transaction if unwrapping might be needed
+            let balanceBeforeTransaction = 0n;
+            if (needsUnwrap) {
+              balanceBeforeTransaction = await getUserWUSDEBalance();
+            }
+
+            // Check existing WUSDe balance and only wrap the difference
+            const requiredAmount = BigInt(value);
+            const currentBalance = needsUnwrap
+              ? balanceBeforeTransaction
+              : await getUserWUSDEBalance();
+            const amountToWrap =
+              requiredAmount > currentBalance
+                ? requiredAmount - currentBalance
+                : 0n;
+
+            if (amountToWrap > 0n) {
+              // Need to wrap USDe first, then execute main transaction
+              const wrapTx = createWrapTransaction(amountToWrap);
+
+              const mainCalldata = encodeFunctionData({
+                abi: (params as any).abi,
+                functionName: (params as any).functionName,
+                args: (params as any).args,
+              });
+
+              const calls = [
+                wrapTx,
+                {
+                  to: (params as any).address as `0x${string}`,
+                  data: mainCalldata,
+                  value: 0n, // No value for main tx since we wrapped
+                },
+              ];
+
+              const result = await sendCallsAsync({
+                chainId: _chainId,
+                calls,
+                experimental_fallback: true,
+              });
+
+              // Type assertion needed because sendCallsAsync can return different shapes
+              // depending on EIP-5792 support vs fallback mode
+              const resultWithHash = result as
+                | {
+                    receipts?: Array<{ transactionHash?: string }>;
+                    transactionHash?: string;
+                    txHash?: string;
+                  }
+                | undefined;
+              const transactionHash = pickFinalTransactionHash(resultWithHash);
+              handleTransactionSuccess(transactionHash as Hash | undefined);
+
+              // Execute auto-unwrap if this is a withdrawal operation
               if (needsUnwrap) {
-                balanceBeforeTransaction = await getUserWUSDEBalance();
-              }
-
-              // Check existing WUSDe balance and only wrap the difference
-              const requiredAmount = BigInt(value);
-              const currentBalance = needsUnwrap
-                ? balanceBeforeTransaction
-                : await getUserWUSDEBalance();
-              const amountToWrap =
-                requiredAmount > currentBalance
-                  ? requiredAmount - currentBalance
-                  : 0n;
-
-              if (amountToWrap > 0n) {
-                // Need to wrap USDe first, then execute main transaction
-                const wrapTx = createWrapTransaction(amountToWrap);
-
-                const mainCalldata = encodeFunctionData({
-                  abi: (params as any).abi,
-                  functionName: (params as any).functionName,
-                  args: (params as any).args,
-                });
-
-                const calls = [
-                  wrapTx,
-                  {
-                    to: (params as any).address as `0x${string}`,
-                    data: mainCalldata,
-                    value: 0n, // No value for main tx since we wrapped
-                  },
-                ];
-
-                const result = await sendCallsAsync({
-                  chainId: _chainId,
-                  calls,
-                  experimental_fallback: true,
-                });
-
-                // Type assertion needed because sendCallsAsync can return different shapes
-                // depending on EIP-5792 support vs fallback mode
-                const resultWithHash = result as
-                  | {
-                      receipts?: Array<{ transactionHash?: string }>;
-                      transactionHash?: string;
-                      txHash?: string;
-                    }
-                  | undefined;
-                const transactionHash =
-                  pickFinalTransactionHash(resultWithHash);
-                handleTransactionSuccess(transactionHash as Hash | undefined);
-
-                // Execute auto-unwrap if this is a withdrawal operation
-                if (needsUnwrap) {
-                  executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
-                }
-              } else {
-                // No wrapping needed, user has sufficient WUSDe balance
-                const hash = await writeContractAsync(...args);
-                handleTransactionSuccess(hash);
-
-                // Execute auto-unwrap if this is a withdrawal operation
-                if (needsUnwrap) {
-                  executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
-                }
+                executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
               }
             } else {
-              // No wrapping needed, check if unwrapping is needed
-              const needsUnwrap = shouldAutoUnwrap(
-                (args[0] as any).functionName
-              );
-
-              // Get balance before transaction if unwrapping might be needed
-              let balanceBeforeTransaction = 0n;
-              if (needsUnwrap) {
-                balanceBeforeTransaction = await getUserWUSDEBalance();
-              }
-
-              // Execute main transaction
+              // No wrapping needed, user has sufficient WUSDe balance
               const hash = await writeContractAsync(...args);
               handleTransactionSuccess(hash);
 
@@ -734,6 +735,25 @@ export function useSapienceWriteContract({
               }
             }
           } else {
+            // No wrapping needed, check if unwrapping is needed
+            const needsUnwrap = shouldAutoUnwrap((args[0] as any).functionName);
+
+            // Get balance before transaction if unwrapping might be needed
+            let balanceBeforeTransaction = 0n;
+            if (needsUnwrap) {
+              balanceBeforeTransaction = await getUserWUSDEBalance();
+            }
+
+            // Execute main transaction
+            const hash = await writeContractAsync(...args);
+            handleTransactionSuccess(hash);
+
+            // Execute auto-unwrap if this is a withdrawal operation
+            if (needsUnwrap) {
+              executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
+            }
+          }
+        } else {
           // Execute the transaction normally for non-Ethereal chains
           const hash = await writeContractAsync(...args);
           handleTransactionSuccess(hash);
@@ -768,6 +788,7 @@ export function useSapienceWriteContract({
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
+      executeViaSessionKey,
     ]
   );
 
@@ -789,23 +810,30 @@ export function useSapienceWriteContract({
 
         // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
         if (canUseSessionForChain(_chainId)) {
-          // Check if we need to create Arbitrum session first (lazy creation)
+          // Get session client, creating Arbitrum session lazily if needed
+          let sessionClient = getSessionClient(_chainId);
+
           if (needsArbitrumSession(_chainId)) {
-            console.debug('[Session] Creating Arbitrum session lazily before batch transaction...');
+            console.debug(
+              '[Session] Creating Arbitrum session lazily before batch transaction...'
+            );
             setIsSubmitting(true);
             try {
-              await createArbitrumSessionIfNeeded();
+              // Use returned client directly to avoid race condition with state updates
+              sessionClient = await createArbitrumSessionIfNeeded();
               console.debug('[Session] Arbitrum session created successfully');
             } catch (sessionCreateError) {
-              console.error('[Session] Failed to create Arbitrum session:', sessionCreateError);
+              console.error(
+                '[Session] Failed to create Arbitrum session:',
+                sessionCreateError
+              );
               setIsSubmitting(false);
-              throw new Error('Please approve the Arbitrum session to continue');
+              throw new Error(
+                'Please approve the Arbitrum session to continue'
+              );
             }
           }
 
-          const sessionClient = getSessionClient(_chainId);
-
-          // After lazy creation, sessionClient should be available
           if (sessionClient) {
             setIsSubmitting(true);
             const body = (args[0] as any) ?? {};
@@ -815,64 +843,57 @@ export function useSapienceWriteContract({
               throw new Error('No calls to execute');
             }
 
-            console.debug('[Session] Using session key for gasless batch transaction on chain', _chainId, 'with', calls.length, 'calls');
-            console.debug('[Session] Smart account:', sessionClient.account.address);
+            console.debug(
+              '[Session] Batch transaction with',
+              calls.length,
+              'calls'
+            );
 
             try {
-            // Convert calls to format expected by encodeCalls
-            const formattedCalls = calls.map((call: any) => ({
-              to: call.to as `0x${string}`,
-              data: call.data as `0x${string}`,
-              value: call.value ? BigInt(call.value) : BigInt(0),
-            }));
+              const formattedCalls = calls.map((call: any) => ({
+                to: call.to as `0x${string}`,
+                data: call.data as `0x${string}`,
+                value: call.value ? BigInt(call.value) : BigInt(0),
+              }));
 
-            // Encode and send via ZeroDev bundler (gasless, no wallet signature)
-            console.debug('[Session] Encoding calls...');
-            const encodedCalls = await sessionClient.account.encodeCalls(formattedCalls);
+              const txHashFromSession = await executeViaSessionKey(
+                sessionClient,
+                formattedCalls,
+                _chainId
+              );
 
-            console.debug('[Session] Sending UserOperation...');
-            const userOpHash = await sessionClient.sendUserOperation({
-              callData: encodedCalls,
-            });
-            console.debug('[Session] UserOperation hash:', userOpHash);
+              // Write share intent and redirect
+              writeShareIntent(txHashFromSession);
+              maybeRedirect();
 
-            // Wait for the UserOperation receipt
-            console.debug('[Session] Waiting for receipt...');
-            const receipt = await sessionClient.waitForUserOperationReceipt({
-              hash: userOpHash,
-            });
+              if (!disableSuccessToast) {
+                toast({
+                  title: successTitle,
+                  description: formatSuccessDescription(successMessage),
+                  duration: 5000,
+                });
+                didShowSuccessToastRef.current = true;
+              }
 
-            const txHashFromSession = receipt.receipt.transactionHash;
-            console.debug('[Session] Transaction hash:', txHashFromSession);
-
-            // Write share intent and redirect
-            writeShareIntent(txHashFromSession);
-            maybeRedirect();
-
-            if (!disableSuccessToast) {
-              toast({
-                title: successTitle,
-                description: formatSuccessDescription(successMessage),
-                duration: 5000,
+              onTxHash?.(txHashFromSession);
+              setTxHash(txHashFromSession);
+              setIsSubmitting(false);
+              return;
+            } catch (sessionError: any) {
+              console.error('[Session] UserOperation failed:', sessionError);
+              console.error('[Session] Error details:', {
+                message: sessionError?.message,
+                cause: sessionError?.cause,
+                details: sessionError?.details,
+                shortMessage: sessionError?.shortMessage,
               });
-              didShowSuccessToastRef.current = true;
-            }
-
-            onTxHash?.(txHashFromSession);
-            setTxHash(txHashFromSession);
-            setIsSubmitting(false);
-            return;
-          } catch (sessionError: any) {
-            console.error('[Session] UserOperation failed:', sessionError);
-            console.error('[Session] Error details:', {
-              message: sessionError?.message,
-              cause: sessionError?.cause,
-              details: sessionError?.details,
-              shortMessage: sessionError?.shortMessage,
-            });
-            // Re-throw with more context
-            const errorMessage = sessionError?.shortMessage || sessionError?.message || 'Session transaction failed';
-            throw new Error(`Session key transaction failed: ${errorMessage}`);
+              const errorMessage =
+                sessionError?.shortMessage ||
+                sessionError?.message ||
+                'Session transaction failed';
+              throw new Error(
+                `Session key transaction failed: ${errorMessage}`
+              );
             }
           }
           // If sessionClient is null after lazy creation attempt, fall through to non-session path
@@ -1015,6 +1036,7 @@ export function useSapienceWriteContract({
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
+      executeViaSessionKey,
     ]
   );
 

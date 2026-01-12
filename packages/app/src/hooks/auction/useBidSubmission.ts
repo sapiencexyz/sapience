@@ -130,9 +130,8 @@ export function useBidSubmission(
       } = params;
 
       // Use smart account address as maker when session is active
-      const signerAddress = isSessionActive && smartAccountAddress
-        ? smartAccountAddress
-        : address;
+      const signerAddress =
+        isSessionActive && smartAccountAddress ? smartAccountAddress : address;
 
       // Validate required data
       if (!signerAddress) {
@@ -242,7 +241,7 @@ export function useBidSubmission(
       }
 
       // Build bid payload
-      let payload: Record<string, unknown> = {
+      const payload: Record<string, unknown> = {
         auctionId,
         maker: signerAddress,
         makerDeadline,

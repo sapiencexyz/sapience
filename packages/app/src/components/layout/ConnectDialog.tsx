@@ -133,7 +133,9 @@ export default function ConnectDialog({
 
     // Detect fresh wallet connection (went from disconnected to connected while dialog is open)
     if (isConnected && !wasConnected && open) {
-      console.debug('[ConnectDialog] Fresh wallet connection detected, creating session...');
+      console.debug(
+        '[ConnectDialog] Fresh wallet connection detected, creating session...'
+      );
       setIsCreatingSession(true);
       clearLoggedOut();
 
@@ -141,11 +143,16 @@ export default function ConnectDialog({
         try {
           const durationHours = parseInt(duration || '24', 10);
 
-          console.debug('[ConnectDialog] Starting session with:', { durationHours });
+          console.debug('[ConnectDialog] Starting session with:', {
+            durationHours,
+          });
           await startSession({ durationHours });
           console.debug('[ConnectDialog] Session created successfully');
         } catch (error) {
-          console.error('[ConnectDialog] Failed to auto-create session:', error);
+          console.error(
+            '[ConnectDialog] Failed to auto-create session:',
+            error
+          );
           // Still close the dialog even if session creation fails
         } finally {
           setIsCreatingSession(false);
@@ -291,7 +298,8 @@ export default function ConnectDialog({
             walletOptions.map((wallet) => {
               const isThisConnecting = connectingId === wallet.id;
               const isWalletConnect = wallet.id === 'walletconnect';
-              const isInstalled = isWalletConnect || Boolean(wallet.eip6963Provider);
+              const isInstalled =
+                isWalletConnect || Boolean(wallet.eip6963Provider);
 
               return (
                 <Button

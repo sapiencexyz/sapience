@@ -26,6 +26,7 @@ import { ethereal } from '~/lib/session/sessionKeyManager';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 
@@ -123,8 +124,9 @@ export default function CollateralBalanceButton({
     enabled: Boolean(smartAccountAddress),
   });
 
-  const formattedBalance = `${formatDollarLikeBalance(smartAccountBalance)} ${symbol}`;
-  const [nextDistribution, setNextDistribution] = useState(getNextDistributionCountdown());
+  const [nextDistribution, setNextDistribution] = useState(
+    getNextDistributionCountdown()
+  );
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isTransferLoading, setIsTransferLoading] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
@@ -141,7 +143,8 @@ export default function CollateralBalanceButton({
     Math.max(0, transferAmountNum - eoaWrappedBalance),
     eoaNativeBalance
   );
-  const isValidTransfer = transferAmountNum > 0 && transferAmountNum <= maxTransferable;
+  const isValidTransfer =
+    transferAmountNum > 0 && transferAmountNum <= maxTransferable;
 
   // Set max amount when dialog opens
   useEffect(() => {
@@ -191,24 +194,35 @@ export default function CollateralBalanceButton({
     try {
       // Get the wallet provider from the connector
       const provider = (await connector.getProvider()) as {
-        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+        request: (args: {
+          method: string;
+          params?: unknown[];
+        }) => Promise<unknown>;
       };
 
       // Add Ethereal chain to wallet and switch to it
-      console.log('[Transfer] Adding/switching to Ethereal chain:', CHAIN_ID_ETHEREAL);
+      console.log(
+        '[Transfer] Adding/switching to Ethereal chain:',
+        CHAIN_ID_ETHEREAL
+      );
       try {
         await provider.request({
           method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: toHex(CHAIN_ID_ETHEREAL),
-            chainName: ethereal.name,
-            nativeCurrency: ethereal.nativeCurrency,
-            rpcUrls: [ethereal.rpcUrls.default.http[0]],
-          }],
+          params: [
+            {
+              chainId: toHex(CHAIN_ID_ETHEREAL),
+              chainName: ethereal.name,
+              nativeCurrency: ethereal.nativeCurrency,
+              rpcUrls: [ethereal.rpcUrls.default.http[0]],
+            },
+          ],
         });
       } catch (addError: unknown) {
         // Ignore "already exists" errors
-        console.log('[Transfer] Add chain result:', (addError as Error)?.message || 'success');
+        console.log(
+          '[Transfer] Add chain result:',
+          (addError as Error)?.message || 'success'
+        );
       }
 
       try {
@@ -219,7 +233,9 @@ export default function CollateralBalanceButton({
         console.log('[Transfer] Chain switch successful');
       } catch (switchError: unknown) {
         console.error('[Transfer] Switch chain error:', switchError);
-        throw new Error(`Failed to switch to Ethereal chain: ${(switchError as Error)?.message || 'Unknown error'}`);
+        throw new Error(
+          `Failed to switch to Ethereal chain: ${(switchError as Error)?.message || 'Unknown error'}`
+        );
       }
 
       // Step 1: Wrap native USDe if needed
@@ -239,18 +255,24 @@ export default function CollateralBalanceButton({
 
         const wrapTxHash = await provider.request({
           method: 'eth_sendTransaction',
-          params: [{
-            from: eoaAddress,
-            to: WUSDE_ADDRESS,
-            data: wrapData,
-            value: toHex(wrapAmount),
-          }],
+          params: [
+            {
+              from: eoaAddress,
+              to: WUSDE_ADDRESS,
+              data: wrapData,
+              value: toHex(wrapAmount),
+            },
+          ],
         });
         console.log('[Transfer] Wrap transaction hash:', wrapTxHash);
 
         // Wait for wrap transaction to be mined
         setTransferStatus('Waiting for wrap confirmation...');
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        const publicClient = getPublicClientForChainId(CHAIN_ID_ETHEREAL);
+        await publicClient.waitForTransactionReceipt({
+          hash: wrapTxHash as `0x${string}`,
+          timeout: 60_000, // 60 second timeout
+        });
       }
 
       // Step 2: Transfer wUSDe to Predict account
@@ -271,11 +293,13 @@ export default function CollateralBalanceButton({
 
       const transferTxHash = await provider.request({
         method: 'eth_sendTransaction',
-        params: [{
-          from: eoaAddress,
-          to: WUSDE_ADDRESS,
-          data: transferData,
-        }],
+        params: [
+          {
+            from: eoaAddress,
+            to: WUSDE_ADDRESS,
+            data: transferData,
+          },
+        ],
       });
       console.log('[Transfer] Transfer transaction hash:', transferTxHash);
 
@@ -291,7 +315,6 @@ export default function CollateralBalanceButton({
         refetchEoaBalance();
         refetchSmartAccountBalance();
       }, 5000);
-
     } catch (error: unknown) {
       console.error('Transfer failed:', error);
       setTransferStatus('');
@@ -348,8 +371,14 @@ export default function CollateralBalanceButton({
             {/* Left section - Get USDe */}
             <div className="flex flex-col items-center justify-center min-w-[120px] space-y-3">
               <div className="space-y-2 text-center">
-                <p className="font-medium text-sm">Sapience<br />Account Balance</p>
-                <p className="text-lg font-mono">{smartAccountBalance.toFixed(2)} {symbol}</p>
+                <p className="font-medium text-sm">
+                  Sapience
+                  <br />
+                  Account Balance
+                </p>
+                <p className="text-lg font-mono">
+                  {smartAccountBalance.toFixed(2)} {symbol}
+                </p>
               </div>
               <Button
                 size="sm"
@@ -373,16 +402,18 @@ export default function CollateralBalanceButton({
             {/* Right section - Distribution info */}
             <div className="space-y-3 text-center min-w-[160px]">
               <div className="space-y-2">
-                <p className="font-medium text-sm">Automatic Reward<br />Distributions Weekly</p>
+                <p className="font-medium text-sm">
+                  Automatic Reward
+                  <br />
+                  Distributions Weekly
+                </p>
                 <p className="text-muted-foreground text-xs font-mono uppercase">
-                  Next distribution in<br />{nextDistribution}
+                  Next distribution in
+                  <br />
+                  {nextDistribution}
                 </p>
               </div>
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-              >
+              <Button size="sm" variant="outline" className="w-full">
                 Claim Rewards
               </Button>
             </div>
@@ -415,17 +446,18 @@ export default function CollateralBalanceButton({
               {/* Ethereum Account Card */}
               <div className="flex-1 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Ethereum Account</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Ethereum Account
+                  </p>
                   {eoaAddress ? (
                     <div className="flex items-center gap-2">
                       <EnsAvatar address={eoaAddress} width={16} height={16} />
-                      <AddressDisplay
-                        address={eoaAddress}
-                        compact
-                      />
+                      <AddressDisplay address={eoaAddress} compact />
                     </div>
                   ) : (
-                    <span className="font-mono text-sm text-muted-foreground">Not connected</span>
+                    <span className="font-mono text-sm text-muted-foreground">
+                      Not connected
+                    </span>
                   )}
                 </div>
                 <div className="pt-3 border-t border-border/30">
@@ -436,18 +468,28 @@ export default function CollateralBalanceButton({
                         <span className="font-mono text-lg font-medium">
                           {formatDollarLikeBalance(eoaBalance)}
                         </span>
-                        <span className="text-sm text-muted-foreground">{symbol}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {symbol}
+                        </span>
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-auto p-3">
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Native USDe</span>
-                          <span className="font-mono">{eoaNativeBalance.toFixed(2)}</span>
+                          <span className="text-muted-foreground">
+                            Native USDe
+                          </span>
+                          <span className="font-mono">
+                            {eoaNativeBalance.toFixed(2)}
+                          </span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Wrapped USDe</span>
-                          <span className="font-mono">{eoaWrappedBalance.toFixed(2)}</span>
+                          <span className="text-muted-foreground">
+                            Wrapped USDe
+                          </span>
+                          <span className="font-mono">
+                            {eoaWrappedBalance.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </HoverCardContent>
@@ -463,19 +505,26 @@ export default function CollateralBalanceButton({
               {/* Sapience Account Card */}
               <div className="flex-1 rounded-lg border border-ethena/40 bg-brand-black p-4 space-y-3 shadow-[0_0_12px_rgba(136,180,245,0.15)]">
                 <div>
-                  <p className="text-xs text-muted-foreground mb-1">Sapience Account</p>
+                  <p className="text-xs text-muted-foreground mb-1">
+                    Sapience Account
+                  </p>
                   {isCalculatingAddress ? (
-                    <span className="font-mono text-sm text-muted-foreground">Calculating...</span>
+                    <span className="font-mono text-sm text-muted-foreground">
+                      Calculating...
+                    </span>
                   ) : smartAccountAddress ? (
                     <div className="flex items-center gap-2">
-                      <EnsAvatar address={smartAccountAddress} width={16} height={16} />
-                      <AddressDisplay
+                      <EnsAvatar
                         address={smartAccountAddress}
-                        compact
+                        width={16}
+                        height={16}
                       />
+                      <AddressDisplay address={smartAccountAddress} compact />
                     </div>
                   ) : (
-                    <span className="font-mono text-sm text-muted-foreground">Not available</span>
+                    <span className="font-mono text-sm text-muted-foreground">
+                      Not available
+                    </span>
                   )}
                 </div>
                 <div className="pt-3 border-t border-border/30">
@@ -486,18 +535,28 @@ export default function CollateralBalanceButton({
                         <span className="font-mono text-lg font-medium text-brand-white">
                           {formatDollarLikeBalance(smartAccountBalance)}
                         </span>
-                        <span className="text-sm text-muted-foreground">{symbol}</span>
+                        <span className="text-sm text-muted-foreground">
+                          {symbol}
+                        </span>
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent side="top" className="w-auto p-3">
                       <div className="space-y-1.5 text-sm">
                         <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Native USDe</span>
-                          <span className="font-mono">{smartAccountNativeBalance.toFixed(2)}</span>
+                          <span className="text-muted-foreground">
+                            Native USDe
+                          </span>
+                          <span className="font-mono">
+                            {smartAccountNativeBalance.toFixed(2)}
+                          </span>
                         </div>
                         <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Wrapped USDe</span>
-                          <span className="font-mono">{smartAccountWrappedBalance.toFixed(2)}</span>
+                          <span className="text-muted-foreground">
+                            Wrapped USDe
+                          </span>
+                          <span className="font-mono">
+                            {smartAccountWrappedBalance.toFixed(2)}
+                          </span>
                         </div>
                       </div>
                     </HoverCardContent>
@@ -517,41 +576,54 @@ export default function CollateralBalanceButton({
                   className="h-11 text-lg font-mono pr-10"
                   disabled={isTransferLoading}
                 />
-                {transferAmountNum > 0 && (fromWrapped > 0 || fromNative > 0) && (
-                  <HoverCard openDelay={100} closeDelay={100}>
-                    <HoverCardTrigger asChild>
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </HoverCardTrigger>
-                    <HoverCardContent side="top" className="w-auto p-3">
-                      <div className="space-y-1.5 text-sm">
-                        {fromWrapped > 0 && (
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">Wrapped USDe</span>
-                            <span className="font-mono">{fromWrapped.toFixed(2)}</span>
-                          </div>
-                        )}
-                        {fromNative > 0 && (
-                          <div className="flex justify-between gap-4">
-                            <span className="text-muted-foreground">Native USDe (to wrap)</span>
-                            <span className="font-mono">{fromNative.toFixed(2)}</span>
-                          </div>
-                        )}
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                )}
+                {transferAmountNum > 0 &&
+                  (fromWrapped > 0 || fromNative > 0) && (
+                    <HoverCard openDelay={100} closeDelay={100}>
+                      <HoverCardTrigger asChild>
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent side="top" className="w-auto p-3">
+                        <div className="space-y-1.5 text-sm">
+                          {fromWrapped > 0 && (
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                Wrapped USDe
+                              </span>
+                              <span className="font-mono">
+                                {fromWrapped.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                          {fromNative > 0 && (
+                            <div className="flex justify-between gap-4">
+                              <span className="text-muted-foreground">
+                                Native USDe (to wrap)
+                              </span>
+                              <span className="font-mono">
+                                {fromNative.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  )}
               </div>
               <Button
                 className="h-11 px-4"
                 onClick={handleTransferFromWallet}
-                disabled={isTransferLoading || !smartAccountAddress || !isValidTransfer}
+                disabled={
+                  isTransferLoading || !smartAccountAddress || !isValidTransfer
+                }
               >
-                {isTransferLoading ? (transferStatus || 'Processing...') : 'Transfer'}
+                {isTransferLoading
+                  ? transferStatus || 'Processing...'
+                  : 'Transfer'}
               </Button>
             </div>
           </div>

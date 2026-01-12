@@ -28,10 +28,7 @@ import {
   ParamCondition,
 } from '@zerodev/permissions/policies';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
-import {
-  predictionMarketAbi,
-  collateralTokenAbi,
-} from '@sapience/sdk/abis';
+import { predictionMarketAbi, collateralTokenAbi } from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
   collateralToken as collateralTokenAddresses,
@@ -50,9 +47,10 @@ export const ethereal: Chain = {
   },
 };
 
-const WUSDE_ADDRESS_ETHEREAL = collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
-const PREDICTION_MARKET_ETHEREAL = predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
-const EAS_ETHEREAL = easAddresses[CHAIN_ID_ETHEREAL].address;
+const WUSDE_ADDRESS_ETHEREAL =
+  collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
+const PREDICTION_MARKET_ETHEREAL =
+  predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
 const VAULT_ETHEREAL = vaultAddresses[CHAIN_ID_ETHEREAL].address;
 const EAS_ARBITRUM = easAddresses[CHAIN_ID_ARBITRUM].address;
 
@@ -72,7 +70,9 @@ const KERNEL_VERSION = KERNEL_V3_1;
 
 // Get bundler/paymaster URLs from environment
 // ZeroDev v3 API format: https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}
-const getZeroDevUrls = (chainId: number): { bundlerUrl: string; paymasterUrl: string } | null => {
+const getZeroDevUrls = (
+  chainId: number
+): { bundlerUrl: string; paymasterUrl: string } | null => {
   const projectId = process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID;
   if (!projectId) {
     throw new Error('NEXT_PUBLIC_ZERODEV_PROJECT_ID is not set');
@@ -83,15 +83,19 @@ const getZeroDevUrls = (chainId: number): { bundlerUrl: string; paymasterUrl: st
 
   if (chainId === ethereal.id) {
     return {
-      bundlerUrl: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL || baseUrl,
-      paymasterUrl: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL || baseUrl,
+      bundlerUrl:
+        process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL || baseUrl,
+      paymasterUrl:
+        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL || baseUrl,
     };
   }
 
   if (chainId === arbitrum.id) {
     return {
-      bundlerUrl: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM || baseUrl,
-      paymasterUrl: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM || baseUrl,
+      bundlerUrl:
+        process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM || baseUrl,
+      paymasterUrl:
+        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM || baseUrl,
     };
   }
 
@@ -169,9 +173,13 @@ export interface OwnerSigner {
  * Calculate the smart account address for a given owner address.
  * This doesn't require any signatures - just computes the counterfactual address.
  */
-export async function getSmartAccountAddress(ownerAddress: Address): Promise<Address> {
+export async function getSmartAccountAddress(
+  ownerAddress: Address
+): Promise<Address> {
   const publicClient = createPublicClient({
-    transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'),
+    transport: http(
+      process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
+    ),
     chain: arbitrum,
   });
 
@@ -201,7 +209,9 @@ function getPublicClients() {
   });
 
   const arbitrumPublicClient = createPublicClient({
-    transport: http(process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'),
+    transport: http(
+      process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
+    ),
     chain: arbitrum,
   });
 
@@ -312,19 +322,25 @@ export async function createSession(
   await ownerSigner.switchChain(ethereal.id);
 
   // Create ECDSA validator for owner on Ethereal
-  const etherealOwnerValidator = await signerToEcdsaValidator(etherealPublicClient, {
-    signer: ownerSigner.provider,
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
+  const etherealOwnerValidator = await signerToEcdsaValidator(
+    etherealPublicClient,
+    {
+      signer: ownerSigner.provider,
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    }
+  );
 
   // Create permission plugin for Ethereal with call policy and timestamp policy
-  const etherealPermissionPlugin = await toPermissionValidator(etherealPublicClient, {
-    entryPoint: ENTRY_POINT,
-    signer: sessionKeySigner,
-    policies: [etherealCallPolicy, timestampPolicy],
-    kernelVersion: KERNEL_VERSION,
-  });
+  const etherealPermissionPlugin = await toPermissionValidator(
+    etherealPublicClient,
+    {
+      entryPoint: ENTRY_POINT,
+      signer: sessionKeySigner,
+      policies: [etherealCallPolicy, timestampPolicy],
+      kernelVersion: KERNEL_VERSION,
+    }
+  );
 
   // Create Ethereal kernel account
   const etherealAccount = await createKernelAccount(etherealPublicClient, {
@@ -337,31 +353,42 @@ export async function createSession(
   });
 
   const smartAccountAddress = etherealAccount.address;
-  console.debug('[SessionKeyManager] Smart account address:', smartAccountAddress);
+  console.debug(
+    '[SessionKeyManager] Smart account address:',
+    smartAccountAddress
+  );
 
   // Capture typed data BEFORE serialization (needed for relayer verification)
   try {
-    const typedData = await etherealAccount.kernelPluginManager.getPluginsEnableTypedData(
-      etherealAccount.address
-    );
+    const typedData =
+      await etherealAccount.kernelPluginManager.getPluginsEnableTypedData(
+        etherealAccount.address
+      );
     etherealEnableTypedData = typedData as EnableTypedData;
     console.debug('[SessionKeyManager] Captured Ethereal enable typed data');
   } catch (e) {
-    console.warn('[SessionKeyManager] Failed to capture Ethereal typed data:', e);
+    console.warn(
+      '[SessionKeyManager] Failed to capture Ethereal typed data:',
+      e
+    );
   }
 
   // Serialize Ethereal account (triggers EIP-712 signature)
-  console.debug('[SessionKeyManager] Requesting owner approval for Ethereal session key...');
+  console.debug(
+    '[SessionKeyManager] Requesting owner approval for Ethereal session key...'
+  );
   const etherealApproval = await serializePermissionAccount(
     etherealAccount,
     sessionPrivateKey
   );
 
   // Create Ethereal client
-  const etherealClient = await createChainClient(ethereal, etherealAccount);
+  const etherealClient = createChainClient(ethereal, etherealAccount);
 
   console.debug('[SessionKeyManager] Owner approval obtained, session created');
-  console.debug('[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation');
+  console.debug(
+    '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
+  );
 
   const config: SessionConfig = {
     durationHours,
@@ -446,18 +473,24 @@ export async function createArbitrumSession(
   await ownerSigner.switchChain(arbitrum.id);
 
   // Create ECDSA validator for owner on Arbitrum
-  const arbitrumOwnerValidator = await signerToEcdsaValidator(arbitrumPublicClient, {
-    signer: ownerSigner.provider,
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
+  const arbitrumOwnerValidator = await signerToEcdsaValidator(
+    arbitrumPublicClient,
+    {
+      signer: ownerSigner.provider,
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    }
+  );
 
-  const arbitrumPermissionPlugin = await toPermissionValidator(arbitrumPublicClient, {
-    entryPoint: ENTRY_POINT,
-    signer: sessionKeySigner,
-    policies: [arbitrumCallPolicy, timestampPolicy],
-    kernelVersion: KERNEL_VERSION,
-  });
+  const arbitrumPermissionPlugin = await toPermissionValidator(
+    arbitrumPublicClient,
+    {
+      entryPoint: ENTRY_POINT,
+      signer: sessionKeySigner,
+      policies: [arbitrumCallPolicy, timestampPolicy],
+      kernelVersion: KERNEL_VERSION,
+    }
+  );
 
   // Create Arbitrum kernel account
   const arbitrumAccount = await createKernelAccount(arbitrumPublicClient, {
@@ -472,25 +505,31 @@ export async function createArbitrumSession(
   // Capture typed data BEFORE serialization
   let arbitrumEnableTypedData: EnableTypedData | undefined;
   try {
-    const typedData = await arbitrumAccount.kernelPluginManager.getPluginsEnableTypedData(
-      arbitrumAccount.address
-    );
+    const typedData =
+      await arbitrumAccount.kernelPluginManager.getPluginsEnableTypedData(
+        arbitrumAccount.address
+      );
     arbitrumEnableTypedData = typedData as EnableTypedData;
     console.debug('[SessionKeyManager] Captured Arbitrum enable typed data');
   } catch (e) {
-    console.warn('[SessionKeyManager] Failed to capture Arbitrum typed data:', e);
+    console.warn(
+      '[SessionKeyManager] Failed to capture Arbitrum typed data:',
+      e
+    );
   }
 
   // Import serialization function and serialize
   const { serializePermissionAccount } = await import('@zerodev/permissions');
-  console.debug('[SessionKeyManager] Requesting owner approval for Arbitrum session key...');
+  console.debug(
+    '[SessionKeyManager] Requesting owner approval for Arbitrum session key...'
+  );
   const arbitrumApproval = await serializePermissionAccount(
     arbitrumAccount,
     existingSessionPrivateKey
   );
 
   // Create Arbitrum client
-  const arbitrumClient = await createChainClient(arbitrum, arbitrumAccount);
+  const arbitrumClient = createChainClient(arbitrum, arbitrumAccount);
 
   console.debug('[SessionKeyManager] Arbitrum session created');
 
@@ -505,7 +544,9 @@ export async function createArbitrumSession(
  * Restore a session from serialized data.
  * Uses ZeroDev's deserializePermissionAccount to restore accounts from approval strings.
  */
-export async function restoreSession(serialized: SerializedSession): Promise<SessionResult> {
+export async function restoreSession(
+  serialized: SerializedSession
+): Promise<SessionResult> {
   // Check if session has expired
   if (Date.now() > serialized.config.expiresAt) {
     throw new Error('Session has expired');
@@ -536,7 +577,7 @@ export async function restoreSession(serialized: SerializedSession): Promise<Ses
     serialized.etherealApproval,
     sessionKeySigner
   );
-  const etherealClient = await createChainClient(ethereal, etherealAccount);
+  const etherealClient = createChainClient(ethereal, etherealAccount);
   console.debug('[SessionKeyManager] Ethereal session restored');
 
   // Restore Arbitrum session (optional - may not exist yet)
@@ -551,11 +592,13 @@ export async function restoreSession(serialized: SerializedSession): Promise<Ses
         serialized.arbitrumApproval,
         sessionKeySigner
       );
-      arbitrumClient = await createChainClient(arbitrum, arbitrumAccount);
+      arbitrumClient = createChainClient(arbitrum, arbitrumAccount);
       console.debug('[SessionKeyManager] Arbitrum session restored');
     }
   } else {
-    console.debug('[SessionKeyManager] No Arbitrum session to restore (will be created lazily)');
+    console.debug(
+      '[SessionKeyManager] No Arbitrum session to restore (will be created lazily)'
+    );
   }
 
   console.debug('[SessionKeyManager] Session restoration complete');
@@ -571,17 +614,21 @@ export async function restoreSession(serialized: SerializedSession): Promise<Ses
 /**
  * Create a kernel client for a specific chain.
  */
-async function createChainClient(
+function createChainClient(
   chain: Chain,
   account: Awaited<ReturnType<typeof createKernelAccount>>
-): Promise<KernelAccountClient<any, any, any>> {
+): KernelAccountClient<any, any, any> {
   const urls = getZeroDevUrls(chain.id);
   if (!urls) {
-    throw new Error(`No bundler/paymaster URLs configured for chain ${chain.id}`);
+    throw new Error(
+      `No bundler/paymaster URLs configured for chain ${chain.id}`
+    );
   }
   const { bundlerUrl, paymasterUrl } = urls;
 
-  console.debug(`[SessionKeyManager] Creating client for chain ${chain.id} (${chain.name})`);
+  console.debug(
+    `[SessionKeyManager] Creating client for chain ${chain.id} (${chain.name})`
+  );
   console.debug(`[SessionKeyManager] Bundler URL: ${bundlerUrl}`);
   console.debug(`[SessionKeyManager] Paymaster URL: ${paymasterUrl}`);
 
@@ -596,13 +643,20 @@ async function createChainClient(
     bundlerTransport: http(bundlerUrl),
     paymaster: {
       getPaymasterData: async (userOperation) => {
-        console.debug(`[SessionKeyManager] Requesting paymaster sponsorship for chain ${chain.id}...`);
+        console.debug(
+          `[SessionKeyManager] Requesting paymaster sponsorship for chain ${chain.id}...`
+        );
         try {
-          const result = await paymasterClient.sponsorUserOperation({ userOperation });
+          const result = await paymasterClient.sponsorUserOperation({
+            userOperation,
+          });
           console.debug(`[SessionKeyManager] Paymaster sponsorship received`);
           return result;
         } catch (error: any) {
-          console.error(`[SessionKeyManager] Paymaster error:`, error?.message || error);
+          console.error(
+            `[SessionKeyManager] Paymaster error:`,
+            error?.message || error
+          );
           throw error;
         }
       },
@@ -644,7 +698,9 @@ export function loadSession(): SerializedSession | null {
     // Migration: Clear old sessions without Ethereal approval
     // Old sessions had Arbitrum required, new sessions have Ethereal required
     if (!parsed.etherealApproval) {
-      console.debug('[SessionKeyManager] Clearing old session format (missing Ethereal approval)');
+      console.debug(
+        '[SessionKeyManager] Clearing old session format (missing Ethereal approval)'
+      );
       clearSession();
       return null;
     }

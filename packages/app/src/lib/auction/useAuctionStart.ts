@@ -75,7 +75,12 @@ export function useAuctionStart() {
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
-  const { isSessionActive, smartAccountAddress, etherealSessionApproval, signMessage: sessionSignMessage } = useSession();
+  const {
+    isSessionActive,
+    smartAccountAddress,
+    etherealSessionApproval,
+    signMessage: sessionSignMessage,
+  } = useSession();
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
@@ -171,9 +176,10 @@ export function useAuctionStart() {
       if (!params || !wsUrl) return;
 
       // Use smart account address as taker when session is active
-      const effectiveTaker = isSessionActive && smartAccountAddress
-        ? smartAccountAddress
-        : params.taker;
+      const effectiveTaker =
+        isSessionActive && smartAccountAddress
+          ? smartAccountAddress
+          : params.taker;
 
       const requestPayload = {
         wager: params.wager,
@@ -227,12 +233,16 @@ export function useAuctionStart() {
             if (isSessionActive && sessionSignMessage) {
               takerSignature = await sessionSignMessage(message);
               if (process.env.NODE_ENV !== 'production') {
-                console.debug('[AuctionStart] Generated SIWE signature with session key');
+                console.debug(
+                  '[AuctionStart] Generated SIWE signature with session key'
+                );
               }
             } else {
               takerSignature = await signMessageAsync({ message });
               if (process.env.NODE_ENV !== 'production') {
-                console.debug('[AuctionStart] Generated SIWE signature with wallet');
+                console.debug(
+                  '[AuctionStart] Generated SIWE signature with wallet'
+                );
               }
             }
             takerSignedAt = issuedAt;
@@ -266,7 +276,9 @@ export function useAuctionStart() {
             sessionTypedData: etherealSessionApproval.typedData,
           };
           if (process.env.NODE_ENV !== 'production') {
-            console.debug('[AuctionStart] Including session approval for smart account auth');
+            console.debug(
+              '[AuctionStart] Including session approval for smart account auth'
+            );
           }
         }
 
@@ -298,7 +310,14 @@ export function useAuctionStart() {
         }
       }, 400);
     },
-    [wsUrl, signMessageAsync, isSessionActive, smartAccountAddress, etherealSessionApproval, sessionSignMessage]
+    [
+      wsUrl,
+      signMessageAsync,
+      isSessionActive,
+      smartAccountAddress,
+      etherealSessionApproval,
+      sessionSignMessage,
+    ]
   );
 
   const acceptBid = useCallback(

@@ -45,8 +45,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useDisconnect } from 'wagmi';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import CollateralBalanceButton from './CollateralBalanceButton';
-import { shortenAddress } from '~/lib/utils/util';
-import { useEnsName } from '~/components/shared/AddressDisplay';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
@@ -195,7 +193,6 @@ const Header = () => {
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { setLoggedOut } = useAuth();
-  const { data: ensName } = useEnsName(connectedWallet?.address || '');
   const { disconnect } = useDisconnect();
   const { toast } = useToast();
   const [isScrolled, setIsScrolled] = useState(false);
@@ -562,9 +559,14 @@ const Header = () => {
                         variant="outline"
                         className="rounded-md h-9 w-9 p-0 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90"
                       >
-                        {(isSessionActive && smartAccountAddress) || connectedWallet?.address ? (
+                        {(isSessionActive && smartAccountAddress) ||
+                        connectedWallet?.address ? (
                           <EnsAvatar
-                            address={(isSessionActive && smartAccountAddress) ? smartAccountAddress : connectedWallet!.address}
+                            address={
+                              isSessionActive && smartAccountAddress
+                                ? smartAccountAddress
+                                : connectedWallet!.address
+                            }
                             className="h-9 w-9 rounded-md"
                             width={36}
                             height={36}
@@ -609,25 +611,33 @@ const Header = () => {
                     onOpenChange={setIsReferralsOpen}
                     walletAddress={connectedWallet?.address}
                   />
-                  <Dialog open={isStartSessionOpen} onOpenChange={setIsStartSessionOpen}>
+                  <Dialog
+                    open={isStartSessionOpen}
+                    onOpenChange={setIsStartSessionOpen}
+                  >
                     <DialogContent className="sm:max-w-[480px]">
                       <DialogHeader>
                         <DialogTitle>Log in</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-6">
                         <p className="text-base text-foreground/90 leading-relaxed">
-                          You will sign one transaction to start a session in this browser. Then you will be able to use the app with no further authentication/signing required.
+                          You will sign one transaction to start a session in
+                          this browser. Then you will be able to use the app
+                          with no further authentication/signing required.
                         </p>
 
                         <hr className="gold-hr" />
 
                         <div className="space-y-3">
                           <p className="text-base text-foreground/90 leading-relaxed">
-                            To start a session, you will use a smart account owned by your wallet deployed at:
+                            To start a session, you will use a smart account
+                            owned by your wallet deployed at:
                           </p>
                           <div className="flex items-center gap-2 py-3 px-4 rounded-md bg-brand-black border border-border/50">
                             <span className="font-mono text-sm flex-1 break-all text-brand-white">
-                              {isCalculatingAddress ? 'Calculating...' : (smartAccountAddress || 'Connect wallet')}
+                              {isCalculatingAddress
+                                ? 'Calculating...'
+                                : smartAccountAddress || 'Connect wallet'}
                             </span>
                             {smartAccountAddress && (
                               <button
@@ -641,7 +651,8 @@ const Header = () => {
                             )}
                           </div>
                           <p className="text-base text-foreground/90 leading-relaxed">
-                            This will need to be funded with USDe for use in the markets.
+                            This will need to be funded with USDe for use in the
+                            markets.
                           </p>
                         </div>
 
@@ -652,7 +663,9 @@ const Header = () => {
                               id="duration"
                               type="number"
                               value={sessionDuration}
-                              onChange={(e) => setSessionDuration(e.target.value)}
+                              onChange={(e) =>
+                                setSessionDuration(e.target.value)
+                              }
                               className="pr-16"
                               placeholder="24"
                             />
@@ -667,7 +680,9 @@ const Header = () => {
                           onClick={handleStartSession}
                           disabled={isStartingSession || !smartAccountAddress}
                         >
-                          {isStartingSession ? 'Starting Session...' : 'Start Session'}
+                          {isStartingSession
+                            ? 'Starting Session...'
+                            : 'Start Session'}
                         </Button>
                       </div>
                     </DialogContent>

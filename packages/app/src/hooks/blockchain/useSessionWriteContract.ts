@@ -20,7 +20,9 @@ interface UseSessionWriteContractResult {
    * Execute a contract write via session key if active, otherwise returns null.
    * Returns the transaction hash on success.
    */
-  writeContractViaSession: (params: WriteContractParams) => Promise<Hash | null>;
+  writeContractViaSession: (
+    params: WriteContractParams
+  ) => Promise<Hash | null>;
 
   /**
    * Check if a session is active and can handle the given chain.
@@ -119,7 +121,8 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
 
         return receipt.receipt.transactionHash;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Transaction failed');
+        const error =
+          err instanceof Error ? err : new Error('Transaction failed');
         setError(error);
         throw error;
       } finally {
@@ -203,7 +206,8 @@ export function useSessionSendCalls() {
 
         return receipt.receipt.transactionHash;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error('Transaction failed');
+        const error =
+          err instanceof Error ? err : new Error('Transaction failed');
         setError(error);
         throw error;
       } finally {
