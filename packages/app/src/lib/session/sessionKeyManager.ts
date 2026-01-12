@@ -81,16 +81,11 @@ const getZeroDevUrls = (chainId: number): { bundlerUrl: string; paymasterUrl: st
   // ZeroDev v3 uses a unified RPC endpoint for both bundler and paymaster
   const baseUrl = `https://rpc.zerodev.app/api/v3/${projectId}/chain/${chainId}`;
 
-  // Ethereal requires custom bundler/paymaster URLs (not supported by ZeroDev by default)
   if (chainId === ethereal.id) {
-    const bundlerUrl = process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL;
-    const paymasterUrl = process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL;
-    // Return null if Ethereal URLs not configured - Ethereal session will be skipped
-    if (!bundlerUrl || !paymasterUrl) {
-      console.debug('[SessionKeyManager] Ethereal bundler/paymaster URLs not configured, skipping Ethereal session');
-      return null;
-    }
-    return { bundlerUrl, paymasterUrl };
+    return {
+      bundlerUrl: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL || baseUrl,
+      paymasterUrl: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL || baseUrl,
+    };
   }
 
   if (chainId === arbitrum.id) {

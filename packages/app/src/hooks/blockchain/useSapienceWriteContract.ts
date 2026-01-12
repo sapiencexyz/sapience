@@ -577,7 +577,7 @@ export function useSapienceWriteContract({
               hash: userOpHash,
             });
 
-            const txHashFromSession = receipt.receipt.transactionHash as Hash;
+            const txHashFromSession = receipt.receipt.transactionHash;
             console.debug('[Session] Transaction hash:', txHashFromSession);
             handleTransactionSuccess(txHashFromSession);
             return;
@@ -791,7 +791,7 @@ export function useSapienceWriteContract({
               hash: userOpHash,
             });
 
-            const txHashFromSession = receipt.receipt.transactionHash as Hash;
+            const txHashFromSession = receipt.receipt.transactionHash;
             console.debug('[Session] Transaction hash:', txHashFromSession);
 
             // Write share intent and redirect

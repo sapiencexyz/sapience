@@ -117,7 +117,7 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
           hash: userOpHash,
         });
 
-        return receipt.receipt.transactionHash as Hash;
+        return receipt.receipt.transactionHash;
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Transaction failed');
         setError(error);
@@ -201,7 +201,7 @@ export function useSessionSendCalls() {
           hash: userOpHash,
         });
 
-        return receipt.receipt.transactionHash as Hash;
+        return receipt.receipt.transactionHash;
       } catch (err) {
         const error = err instanceof Error ? err : new Error('Transaction failed');
         setError(error);

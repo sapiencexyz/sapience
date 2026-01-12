@@ -322,42 +322,41 @@ export default function ConnectDialog({
             })}
         </div>
 
-        {/* Session creating overlay */}
-        {isCreatingSession && (
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            Creating session...
-          </div>
-        )}
-
-        {/* Session duration - at the bottom */}
+        {/* Session duration / Creating session status */}
         <p className="text-xs text-muted-foreground text-center mt-6">
-          Session approved for{' '}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-              >
-                {duration} hours
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2">
-              <div className="space-y-2">
-                <label className="text-xs font-medium">Duration</label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={duration}
-                    onChange={(e) => setDuration(e.target.value)}
-                    className="w-full pr-16"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    hours
-                  </span>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {isCreatingSession ? (
+            'Creating session...'
+          ) : (
+            <>
+              Session approved for{' '}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="underline decoration-dotted underline-offset-2 hover:opacity-80"
+                  >
+                    {duration} hours
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Duration</label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value)}
+                        className="w-full pr-16"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        hours
+                      </span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
         </p>
       </DialogContent>
     </Dialog>

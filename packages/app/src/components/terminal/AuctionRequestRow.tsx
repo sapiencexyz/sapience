@@ -355,7 +355,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           return;
         }
         // Ensure connected wallet FIRST
-        let maker = address;
+        const maker = address;
         if (!maker) {
           openConnectDialog();
           return;

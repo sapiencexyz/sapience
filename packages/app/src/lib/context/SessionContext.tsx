@@ -325,7 +325,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Start a new session
   const startSession = useCallback(
     async (params: { durationHours: number }) => {
-      if (!connectedWallet?.address) {
+      if (!walletAddress || !connector) {
         throw new Error('No wallet connected');
       }
 
@@ -341,9 +341,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const switchChain = async (chainId: number) => {
           try {
             await switchChainAsync({ chainId });
-          } catch (error: any) {
+          } catch (error: unknown) {
             // If chain doesn't exist, try to add it first (for Ethereal)
-            if (error?.code === 4902 || error?.message?.includes('Unrecognized chain')) {
+            const err = error as { code?: number; message?: string };
+            if (err?.code === 4902 || err?.message?.includes('Unrecognized chain')) {
               // Chain not added to wallet, need to add it
               // For now, just re-throw - user needs to add the chain manually
               throw new Error(`Please add chain ${chainId} to your wallet first`);

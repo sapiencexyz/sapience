@@ -16,8 +16,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { ArrowRight, ArrowUpRight } from 'lucide-react';
-import { parseEther, toHex } from 'viem';
+import { ArrowRight, Info } from 'lucide-react';
+import { parseEther, toHex, encodeFunctionData, parseAbi } from 'viem';
+import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
@@ -27,6 +28,12 @@ import { useSession } from '~/lib/context/SessionContext';
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
+
+const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+const WUSDE_ABI = parseAbi([
+  'function deposit() payable',
+  'function transfer(address to, uint256 amount) returns (bool)',
+]);
 
 /**
  * Calculate time until next weekly distribution (every Monday at 00:00 UTC)
@@ -93,13 +100,24 @@ export default function CollateralBalanceButton({
   const { smartAccountAddress, isCalculatingAddress } = useSession();
 
   // Get EOA balance (connected wallet)
-  const { balance: eoaBalance, symbol, refetch: refetchEoaBalance } = useCollateralBalance({
+  const {
+    balance: eoaBalance,
+    nativeBalance: eoaNativeBalance,
+    wrappedBalance: eoaWrappedBalance,
+    symbol,
+    refetch: refetchEoaBalance,
+  } = useCollateralBalance({
     address: eoaAddress,
     chainId,
   });
 
   // Get smart account balance
-  const { balance: smartAccountBalance, refetch: refetchSmartAccountBalance } = useCollateralBalance({
+  const {
+    balance: smartAccountBalance,
+    nativeBalance: smartAccountNativeBalance,
+    wrappedBalance: smartAccountWrappedBalance,
+    refetch: refetchSmartAccountBalance,
+  } = useCollateralBalance({
     address: smartAccountAddress as `0x${string}` | undefined,
     chainId,
     enabled: Boolean(smartAccountAddress),
@@ -109,24 +127,47 @@ export default function CollateralBalanceButton({
   const [nextDistribution, setNextDistribution] = useState(getNextDistributionCountdown());
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isTransferLoading, setIsTransferLoading] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferStatus, setTransferStatus] = useState('');
   const { toast } = useToast();
+
+  // Calculate max transferable amount (wrapped + native)
+  const maxTransferable = eoaWrappedBalance + eoaNativeBalance;
+
+  // Parse transfer amount and calculate allocation (use wrapped first, then native)
+  const transferAmountNum = parseFloat(transferAmount) || 0;
+  const fromWrapped = Math.min(transferAmountNum, eoaWrappedBalance);
+  const fromNative = Math.min(
+    Math.max(0, transferAmountNum - eoaWrappedBalance),
+    eoaNativeBalance
+  );
+  const isValidTransfer = transferAmountNum > 0 && transferAmountNum <= maxTransferable;
+
+  // Set max amount when dialog opens
+  useEffect(() => {
+    if (isGetUsdeOpen && maxTransferable > 0) {
+      setTransferAmount(formatDollarLikeBalance(maxTransferable));
+    }
+  }, [isGetUsdeOpen, maxTransferable]);
 
   // Handle transfer from wallet using the wallet provider directly
   const handleTransferFromWallet = async () => {
     console.log('[Transfer] handleTransferFromWallet called', {
       smartAccountAddress,
       eoaAddress,
-      eoaBalance,
+      transferAmountNum,
+      fromWrapped,
+      fromNative,
       connector: !!connector,
     });
 
-    if (!smartAccountAddress || !eoaAddress || eoaBalance <= 0) {
+    if (!smartAccountAddress || !eoaAddress || !isValidTransfer) {
       toast({
         title: 'Cannot transfer',
         description: !smartAccountAddress
           ? 'Smart account address not available'
-          : eoaBalance <= 0
-            ? 'No USDe balance in your wallet'
+          : !isValidTransfer
+            ? 'Invalid transfer amount'
             : 'Wallet not connected',
         variant: 'destructive',
         duration: 5000,
@@ -145,6 +186,7 @@ export default function CollateralBalanceButton({
     }
 
     setIsTransferLoading(true);
+    setTransferStatus('');
 
     try {
       // Get the wallet provider from the connector
@@ -155,7 +197,6 @@ export default function CollateralBalanceButton({
       // Add Ethereal chain to wallet and switch to it
       console.log('[Transfer] Adding/switching to Ethereal chain:', CHAIN_ID_ETHEREAL);
       try {
-        // Always try to add the chain first (will be ignored if already exists)
         await provider.request({
           method: 'wallet_addEthereumChain',
           params: [{
@@ -165,66 +206,98 @@ export default function CollateralBalanceButton({
             rpcUrls: [ethereal.rpcUrls.default.http[0]],
           }],
         });
-        console.log('[Transfer] Chain added/confirmed');
-      } catch (addError: any) {
+      } catch (addError: unknown) {
         // Ignore "already exists" errors
-        console.log('[Transfer] Add chain result:', addError?.message || 'success');
+        console.log('[Transfer] Add chain result:', (addError as Error)?.message || 'success');
       }
 
-      // Now switch to the chain
       try {
         await provider.request({
           method: 'wallet_switchEthereumChain',
           params: [{ chainId: toHex(CHAIN_ID_ETHEREAL) }],
         });
         console.log('[Transfer] Chain switch successful');
-      } catch (switchError: any) {
+      } catch (switchError: unknown) {
         console.error('[Transfer] Switch chain error:', switchError);
-        throw new Error(`Failed to switch to Ethereal chain: ${switchError?.message || 'Unknown error'}`);
+        throw new Error(`Failed to switch to Ethereal chain: ${(switchError as Error)?.message || 'Unknown error'}`);
       }
 
-      // Transfer the EOA balance (which already has GAS_RESERVE subtracted)
-      const amountToTransfer = parseEther(eoaBalance.toString());
-      console.log('[Transfer] Sending transaction:', {
-        from: eoaAddress,
+      // Step 1: Wrap native USDe if needed
+      if (fromNative > 0) {
+        setTransferStatus('Wrapping native USDe...');
+        const wrapAmount = parseEther(fromNative.toString());
+
+        console.log('[Transfer] Wrapping native USDe:', {
+          amount: fromNative,
+          wrapAmount: wrapAmount.toString(),
+        });
+
+        const wrapData = encodeFunctionData({
+          abi: WUSDE_ABI,
+          functionName: 'deposit',
+        });
+
+        const wrapTxHash = await provider.request({
+          method: 'eth_sendTransaction',
+          params: [{
+            from: eoaAddress,
+            to: WUSDE_ADDRESS,
+            data: wrapData,
+            value: toHex(wrapAmount),
+          }],
+        });
+        console.log('[Transfer] Wrap transaction hash:', wrapTxHash);
+
+        // Wait for wrap transaction to be mined
+        setTransferStatus('Waiting for wrap confirmation...');
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+
+      // Step 2: Transfer wUSDe to Predict account
+      setTransferStatus('Transferring wUSDe...');
+      const totalWusdeToTransfer = parseEther(transferAmountNum.toString());
+
+      console.log('[Transfer] Transferring wUSDe:', {
+        amount: transferAmountNum,
+        totalWusdeToTransfer: totalWusdeToTransfer.toString(),
         to: smartAccountAddress,
-        value: amountToTransfer.toString(),
       });
 
-      // Send transaction using the wallet provider
-      const txHash = await provider.request({
+      const transferData = encodeFunctionData({
+        abi: WUSDE_ABI,
+        functionName: 'transfer',
+        args: [smartAccountAddress, totalWusdeToTransfer],
+      });
+
+      const transferTxHash = await provider.request({
         method: 'eth_sendTransaction',
         params: [{
           from: eoaAddress,
-          to: smartAccountAddress,
-          value: toHex(amountToTransfer),
+          to: WUSDE_ADDRESS,
+          data: transferData,
         }],
       });
-      console.log('[Transfer] Transaction hash:', txHash);
+      console.log('[Transfer] Transfer transaction hash:', transferTxHash);
 
+      setTransferStatus('');
       toast({
-        title: 'Transfer submitted',
-        description: 'Your transfer is being processed...',
-        duration: 3000,
+        title: 'Transfer successful',
+        description: `${formatDollarLikeBalance(transferAmountNum)} wUSDe transferred to your Predict account.`,
+        duration: 5000,
       });
 
-      // Wait a bit for the transaction to be mined, then refetch balances
+      // Refetch balances after a delay
       setTimeout(() => {
         refetchEoaBalance();
         refetchSmartAccountBalance();
       }, 5000);
 
-      toast({
-        title: 'Transfer successful',
-        description: 'USDe has been transferred to your Ethereal Predict account.',
-        duration: 5000,
-      });
-
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Transfer failed:', error);
+      setTransferStatus('');
       toast({
         title: 'Transfer failed',
-        description: error?.message || 'Failed to transfer USDe',
+        description: (error as Error)?.message || 'Failed to transfer USDe',
         variant: 'destructive',
         duration: 5000,
       });
@@ -325,37 +398,17 @@ export default function CollateralBalanceButton({
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Transfer USDe on Ethereal to your Ethereal Predict account to get started.
+              Transfer{' '}
+              <a
+                href={STARGATE_DEPOSIT_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gold-link"
+              >
+                USDe on Ethereal
+              </a>{' '}
+              to your Ethereal Predict account to get started.
             </p>
-
-            <div className="flex items-stretch gap-3">
-              <Button
-                className="flex-1 h-11 text-sm"
-                onClick={() => window.open(STARGATE_DEPOSIT_URL, '_blank')}
-              >
-                <Image
-                  src="/usde.svg"
-                  alt="USDe"
-                  width={16}
-                  height={16}
-                  className="opacity-90"
-                />
-                Bridge via Stargate
-              </Button>
-
-              {/* Spacer to match the arrow gap */}
-              <div className="px-1 shrink-0" style={{ width: '28px' }} />
-
-              <Button
-                variant="outline"
-                className="flex-1 h-11 text-sm"
-                onClick={handleTransferFromWallet}
-                disabled={isTransferLoading || !smartAccountAddress || eoaBalance <= 0}
-              >
-                <ArrowUpRight className="h-4 w-4" />
-                {isTransferLoading ? 'Transferring...' : 'Transfer to Predict'}
-              </Button>
-            </div>
 
             {/* Two Account Cards */}
             <div className="flex items-stretch gap-3">
@@ -377,12 +430,28 @@ export default function CollateralBalanceButton({
                 </div>
                 <div className="pt-3 border-t border-border/30">
                   <p className="text-xs text-muted-foreground">Balance</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-mono text-lg font-medium">
-                      {formatDollarLikeBalance(eoaBalance)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{symbol}</span>
-                  </div>
+                  <HoverCard openDelay={100} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-baseline gap-1.5 cursor-default">
+                        <span className="font-mono text-lg font-medium">
+                          {formatDollarLikeBalance(eoaBalance)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">{symbol}</span>
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="top" className="w-auto p-3">
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Native USDe</span>
+                          <span className="font-mono">{formatDollarLikeBalance(eoaNativeBalance)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Wrapped USDe</span>
+                          <span className="font-mono">{formatDollarLikeBalance(eoaWrappedBalance)}</span>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </div>
               </div>
 
@@ -411,14 +480,79 @@ export default function CollateralBalanceButton({
                 </div>
                 <div className="pt-3 border-t border-border/30">
                   <p className="text-xs text-muted-foreground">Balance</p>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="font-mono text-lg font-medium text-brand-white">
-                      {formatDollarLikeBalance(smartAccountBalance)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">{symbol}</span>
-                  </div>
+                  <HoverCard openDelay={100} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <div className="flex items-baseline gap-1.5 cursor-default">
+                        <span className="font-mono text-lg font-medium text-brand-white">
+                          {formatDollarLikeBalance(smartAccountBalance)}
+                        </span>
+                        <span className="text-sm text-muted-foreground">{symbol}</span>
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="top" className="w-auto p-3">
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Native USDe</span>
+                          <span className="font-mono">{formatDollarLikeBalance(smartAccountNativeBalance)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Wrapped USDe</span>
+                          <span className="font-mono">{formatDollarLikeBalance(smartAccountWrappedBalance)}</span>
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 </div>
               </div>
+            </div>
+
+            {/* Transfer Input Section */}
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+                <Input
+                  type="number"
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="h-11 text-lg font-mono pr-10"
+                  disabled={isTransferLoading}
+                />
+                {transferAmountNum > 0 && (fromWrapped > 0 || fromNative > 0) && (
+                  <HoverCard openDelay={100} closeDelay={100}>
+                    <HoverCardTrigger asChild>
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </HoverCardTrigger>
+                    <HoverCardContent side="top" className="w-auto p-3">
+                      <div className="space-y-1.5 text-sm">
+                        {fromWrapped > 0 && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Wrapped USDe</span>
+                            <span className="font-mono">{formatDollarLikeBalance(fromWrapped)}</span>
+                          </div>
+                        )}
+                        {fromNative > 0 && (
+                          <div className="flex justify-between gap-4">
+                            <span className="text-muted-foreground">Native USDe (to wrap)</span>
+                            <span className="font-mono">{formatDollarLikeBalance(fromNative)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
+                )}
+              </div>
+              <Button
+                className="h-11 px-4"
+                onClick={handleTransferFromWallet}
+                disabled={isTransferLoading || !smartAccountAddress || !isValidTransfer}
+              >
+                {isTransferLoading ? (transferStatus || 'Processing...') : 'Transfer'}
+              </Button>
             </div>
           </div>
         </DialogContent>
