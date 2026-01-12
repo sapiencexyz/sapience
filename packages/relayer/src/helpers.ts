@@ -1,10 +1,4 @@
-import type { AuctionRequestPayload, BidPayload } from './types';
-import {
-  encodeAbiParameters,
-  keccak256,
-  verifyTypedData,
-  getAddress,
-} from 'viem';
+import type { AuctionRequestPayload } from './types';
 
 /**
  * Helper function to create MintParlayRequestData for the ParlayPool.mint() function
@@ -143,26 +137,6 @@ export function createValidationError(
 }
 
 /**
- * Extracts taker address from takerSignature (deprecated helper)
- * The signature should be signed by the taker's private key
- * This is a simplified implementation - in production you'd want proper signature recovery
- */
-export function extractTakerFromSignature(): string | null {
-  // Deprecated: taker is not derivable from a signature alone. Use verifyMakerBid instead.
-  return null;
-}
-
-/**
- * Extracts takerWager from takerSignature (deprecated helper)
- * The signature should sign a message containing the takerWager amount
- * This is a simplified implementation - in production you'd want proper EIP-712 verification
- */
-export function extractTakerWagerFromSignature(): string | null {
-  // Deprecated: wager is not derivable from a signature alone. Use verifyMakerBid instead.
-  return null;
-}
-
-/**
  * Verifies a maker bid using a typed payload scheme (e.g., EIP-712 or personal_sign preimage).
  * This function currently does structural checks only; wire in real signature recovery for production.
  */
@@ -207,78 +181,3 @@ export function verifyMakerBid(params: {
     return { ok: false, reason: 'verification_failed' };
   }
 }
-
-export async function verifyMakerBidStrict(params: {
-  auction: AuctionRequestPayload;
-  bid: BidPayload;
-  chainId: number;
-  verifyingContract: `0x${string}`;
-}): Promise<{ ok: boolean; reason?: string }> {
-  try {
-    const { auction, bid, chainId, verifyingContract } = params;
-
-    // Basic guards
-    if (!auction || !bid) return { ok: false, reason: 'invalid_payload' };
-    if (!auction.predictedOutcomes?.length)
-      return { ok: false, reason: 'invalid_auction_outcomes' };
-
-    const encodedPredictedOutcomes = auction
-      .predictedOutcomes[0] as `0x${string}`;
-
-    // Hash the inner message per contract
-    const inner = encodeAbiParameters(
-      [
-        { type: 'bytes' },
-        { type: 'uint256' },
-        { type: 'uint256' },
-        { type: 'address' },
-        { type: 'address' },
-        { type: 'uint256' },
-      ],
-      [
-        encodedPredictedOutcomes,
-        BigInt(bid.makerWager),
-        BigInt(auction.wager),
-        auction.resolver as `0x${string}`,
-        auction.taker as `0x${string}`,
-        BigInt(bid.makerDeadline),
-      ]
-    );
-
-    const messageHash = keccak256(inner);
-
-    // EIP-712 domain and types must match SignatureProcessor
-    const domain = {
-      name: 'SignatureProcessor',
-      version: '1',
-      chainId,
-      verifyingContract,
-    } as const;
-
-    const types = {
-      Approve: [
-        { name: 'messageHash', type: 'bytes32' },
-        { name: 'owner', type: 'address' },
-      ],
-    } as const;
-
-    const message = {
-      messageHash,
-      owner: getAddress(bid.maker),
-    } as const;
-
-    const ok = await verifyTypedData({
-      address: getAddress(bid.maker),
-      domain,
-      primaryType: 'Approve',
-      types,
-      message,
-      signature: bid.makerSignature as `0x${string}`,
-    });
-
-    return ok ? { ok: true } : { ok: false, reason: 'invalid_signature' };
-  } catch {
-    return { ok: false, reason: 'verification_failed' };
-  }
-}
-
