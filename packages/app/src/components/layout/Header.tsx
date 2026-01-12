@@ -54,7 +54,6 @@ import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCode
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { parseEther } from 'viem';
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
@@ -206,7 +205,6 @@ const Header = () => {
   const [isReferralRequiredOpen, setIsReferralRequiredOpen] = useState(false);
   const [isStartSessionOpen, setIsStartSessionOpen] = useState(false);
   const [sessionDuration, setSessionDuration] = useState('24');
-  const [approvedSpend, setApprovedSpend] = useState('1000');
   const lastWalletAddressRef = useRef<string | null>(null);
 
   // Session context for smart account sessions
@@ -363,7 +361,6 @@ const Header = () => {
     try {
       await startSession({
         durationHours: parseInt(sessionDuration, 10) || 24,
-        maxSpendUSDe: parseEther(approvedSpend || '1000'),
       });
       setIsStartSessionOpen(false);
       toast({
@@ -648,39 +645,20 @@ const Header = () => {
                           </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="duration">Maximum Duration</Label>
-                            <div className="relative">
-                              <Input
-                                id="duration"
-                                type="number"
-                                value={sessionDuration}
-                                onChange={(e) => setSessionDuration(e.target.value)}
-                                className="pr-16"
-                                placeholder="24"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                hours
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2">
-                            <Label htmlFor="approvedSpend">Maximum Spend</Label>
-                            <div className="relative">
-                              <Input
-                                id="approvedSpend"
-                                type="number"
-                                value={approvedSpend}
-                                onChange={(e) => setApprovedSpend(e.target.value)}
-                                className="pr-16"
-                                placeholder="1000"
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                USDe
-                              </span>
-                            </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="duration">Session Duration</Label>
+                          <div className="relative">
+                            <Input
+                              id="duration"
+                              type="number"
+                              value={sessionDuration}
+                              onChange={(e) => setSessionDuration(e.target.value)}
+                              className="pr-16"
+                              placeholder="24"
+                            />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                              hours
+                            </span>
                           </div>
                         </div>
 

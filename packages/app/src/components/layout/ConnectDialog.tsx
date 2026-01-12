@@ -19,7 +19,6 @@ import {
 import { Wallet } from 'lucide-react';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { parseUnits } from 'viem';
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -80,8 +79,7 @@ export default function ConnectDialog({
   const { clearLoggedOut } = useAuth();
   const { startSession } = useSession();
 
-  // Spending limit state
-  const [spendingLimit, setSpendingLimit] = useState('1000');
+  // Session duration state
   const [duration, setDuration] = useState('24');
 
   // Track if we just connected a wallet (to trigger auto-session)
@@ -141,12 +139,10 @@ export default function ConnectDialog({
 
       const createSessionAsync = async () => {
         try {
-          // Parse spending limit and create session
-          const maxSpendUSDe = parseUnits(spendingLimit || '1000', 18);
           const durationHours = parseInt(duration || '24', 10);
 
-          console.debug('[ConnectDialog] Starting session with:', { durationHours, maxSpendUSDe: maxSpendUSDe.toString() });
-          await startSession({ durationHours, maxSpendUSDe });
+          console.debug('[ConnectDialog] Starting session with:', { durationHours });
+          await startSession({ durationHours });
           console.debug('[ConnectDialog] Session created successfully');
         } catch (error) {
           console.error('[ConnectDialog] Failed to auto-create session:', error);
@@ -159,7 +155,7 @@ export default function ConnectDialog({
 
       void createSessionAsync();
     }
-  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, spendingLimit, duration]);
+  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, duration]);
 
   const handleEIP6963Connect = useCallback(
     (wallet: EIP6963ProviderDetail) => {
@@ -333,36 +329,9 @@ export default function ConnectDialog({
           </div>
         )}
 
-        {/* Spending limit - at the bottom */}
+        {/* Session duration - at the bottom */}
         <p className="text-xs text-muted-foreground text-center mt-6">
-          Spend maximum{' '}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-              >
-                {spendingLimit} USDe
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2">
-              <div className="space-y-2">
-                <label className="text-xs font-medium">Spending Limit</label>
-                <div className="relative">
-                  <Input
-                    type="number"
-                    value={spendingLimit}
-                    onChange={(e) => setSpendingLimit(e.target.value)}
-                    className="w-full pr-16"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                    USDe
-                  </span>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>{' '}
-          for{' '}
+          Session approved for{' '}
           <Popover>
             <PopoverTrigger asChild>
               <button

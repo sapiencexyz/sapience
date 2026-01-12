@@ -87,7 +87,7 @@ interface SessionContextValue {
   chainClients: ChainClients;
 
   // Session actions
-  startSession: (params: { durationHours: number; maxSpendUSDe: bigint }) => Promise<void>;
+  startSession: (params: { durationHours: number }) => Promise<void>;
   endSession: () => void;
 
   // Status
@@ -324,8 +324,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Start a new session
   const startSession = useCallback(
-    async (params: { durationHours: number; maxSpendUSDe: bigint }) => {
-      if (!walletAddress || !connector) {
+    async (params: { durationHours: number }) => {
+      if (!connectedWallet?.address) {
         throw new Error('No wallet connected');
       }
 
@@ -362,8 +362,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
         const result = await createSession(
           ownerSigner,
-          params.durationHours,
-          params.maxSpendUSDe
+          params.durationHours
         );
 
         // Save to localStorage

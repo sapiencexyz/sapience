@@ -23,10 +23,10 @@ import {
 import { toECDSASigner } from '@zerodev/permissions/signers';
 import {
   toCallPolicy,
+  toTimestampPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from '@zerodev/permissions/policies';
-import { toSpendingLimitHook } from '@zerodev/hooks';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketAbi,
@@ -106,7 +106,6 @@ const getZeroDevUrls = (chainId: number): { bundlerUrl: string; paymasterUrl: st
 // Session configuration
 export interface SessionConfig {
   durationHours: number;
-  maxSpendUSDe: bigint;
   expiresAt: number;
   ownerAddress: Address;
   smartAccountAddress: Address;
@@ -138,7 +137,7 @@ export interface EnableTypedData {
 // Serialized session for localStorage
 // We store ZeroDev approval strings which embed owner's EIP-712 signature
 export interface SerializedSession {
-  config: Omit<SessionConfig, 'maxSpendUSDe'> & { maxSpendUSDe: string };
+  config: SessionConfig;
   sessionPrivateKey: Hex;
   sessionKeyAddress: Address; // Public address of the session key
   createdAt: number;
@@ -214,14 +213,13 @@ function getPublicClients() {
 }
 
 /**
- * Create a new session with spending limits.
+ * Create a new session with time-limited permissions.
  * Uses ZeroDev's serializePermissionAccount to capture owner's EIP-712 approval.
  * The owner will be prompted to sign EIP-712 typed data messages for each chain.
  */
 export async function createSession(
   ownerSigner: OwnerSigner,
-  durationHours: number,
-  maxSpendUSDe: bigint
+  durationHours: number
 ): Promise<SessionResult> {
   console.debug('[SessionKeyManager] Creating new session...');
 
@@ -236,6 +234,16 @@ export async function createSession(
 
   // Calculate expiration
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
+
+  // Time 
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  const validUntilInSeconds = nowInSeconds + durationHours * 60 * 60;
+  
+  const timestampPolicy = toTimestampPolicy({
+    validAfter: nowInSeconds,
+    validUntil: validUntilInSeconds,
+  });
+
 
   // Get public clients
   const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
@@ -288,11 +296,6 @@ export async function createSession(
         abi: predictionMarketAbi,
         functionName: 'consolidatePrediction',
       },
-      {
-        target: EAS_ETHEREAL,
-        abi: EAS_ABI,
-        functionName: 'attest',
-      },
     ],
   });
 
@@ -326,16 +329,6 @@ export async function createSession(
   if (etherealUrls) {
     console.debug('[SessionKeyManager] Setting up Ethereal session...');
 
-    // Create spending limit hook for WUSDe on Ethereal
-    const spendingLimitHook = await toSpendingLimitHook({
-      limits: [
-        {
-          token: WUSDE_ADDRESS_ETHEREAL,
-          allowance: maxSpendUSDe,
-        },
-      ],
-    });
-
     // Switch to Ethereal chain
     console.debug('[SessionKeyManager] Switching to Ethereal chain...');
     await ownerSigner.switchChain(ethereal.id);
@@ -347,11 +340,11 @@ export async function createSession(
       kernelVersion: KERNEL_VERSION,
     });
 
-    // Create permission plugin for Ethereal with call policy
+    // Create permission plugin for Ethereal with call policy and timestamp policy
     const etherealPermissionPlugin = await toPermissionValidator(etherealPublicClient, {
       entryPoint: ENTRY_POINT,
       signer: sessionKeySigner,
-      policies: [etherealCallPolicy],
+      policies: [etherealCallPolicy, timestampPolicy],
       kernelVersion: KERNEL_VERSION,
     });
 
@@ -361,7 +354,6 @@ export async function createSession(
       plugins: {
         sudo: etherealOwnerValidator,
         regular: etherealPermissionPlugin,
-        hook: spendingLimitHook,
       },
       kernelVersion: KERNEL_VERSION,
     });
@@ -412,7 +404,7 @@ export async function createSession(
   const arbitrumPermissionPlugin = await toPermissionValidator(arbitrumPublicClient, {
     entryPoint: ENTRY_POINT,
     signer: sessionKeySigner,
-    policies: [arbitrumCallPolicy],
+    policies: [arbitrumCallPolicy, timestampPolicy],
     kernelVersion: KERNEL_VERSION,
   });
 
@@ -457,17 +449,13 @@ export async function createSession(
 
   const config: SessionConfig = {
     durationHours,
-    maxSpendUSDe,
     expiresAt,
     ownerAddress: ownerSigner.address,
     smartAccountAddress,
   };
 
   const serialized: SerializedSession = {
-    config: {
-      ...config,
-      maxSpendUSDe: maxSpendUSDe.toString(),
-    },
+    config,
     sessionPrivateKey,
     sessionKeyAddress: sessionKeyAccount.address,
     createdAt: Date.now(),
@@ -498,10 +486,7 @@ export async function restoreSession(serialized: SerializedSession): Promise<Ses
 
   console.debug('[SessionKeyManager] Restoring session...');
 
-  const config: SessionConfig = {
-    ...serialized.config,
-    maxSpendUSDe: BigInt(serialized.config.maxSpendUSDe),
-  };
+  const config: SessionConfig = serialized.config;
 
   // Get public clients
   const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
