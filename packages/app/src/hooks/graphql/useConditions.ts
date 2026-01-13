@@ -143,7 +143,7 @@ export const useConditions = (opts?: {
   chainId?: number;
   filters?: ConditionFilters;
 }) => {
-  const take = opts?.take ?? 50;
+  const take = opts?.take;
   const skip = opts?.skip ?? 0;
   const chainId = opts?.chainId;
   const filters = opts?.filters;

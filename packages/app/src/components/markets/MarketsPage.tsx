@@ -162,7 +162,6 @@ const MarketsPage = () => {
   // Fetch condition groups with their conditions
   const { data: conditionGroups = [], isLoading: isLoadingGroups } =
     useConditionGroups({
-      take: 200,
       chainId,
       filters: backendGroupFilters,
     });
@@ -170,7 +169,6 @@ const MarketsPage = () => {
   // Fetch ungrouped conditions via GraphQL with backend filtering
   const { data: ungroupedConditions = [], isLoading: isLoadingConditions } =
     useConditions({
-      take: 200,
       chainId,
       filters: backendConditionFilters,
     });

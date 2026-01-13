@@ -177,7 +177,7 @@ export const useConditionGroups = (opts?: {
   filters?: ConditionGroupFilters;
   includeEmptyGroups?: boolean;
 }) => {
-  const take = opts?.take ?? 100;
+  const take = opts?.take;
   const skip = opts?.skip ?? 0;
   const chainId = opts?.chainId;
   const filters = opts?.filters;
