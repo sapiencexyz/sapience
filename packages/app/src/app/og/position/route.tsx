@@ -101,12 +101,16 @@ export async function GET(req: Request) {
       }
 
       return new Response(
-        JSON.stringify({
-          endpoint: graphqlEndpoint,
-          nftId,
-          marketAddress: marketAddr,
-          apiResult: apiResult,
-        }, null, 2),
+        JSON.stringify(
+          {
+            endpoint: graphqlEndpoint,
+            nftId,
+            marketAddress: marketAddr,
+            apiResult: apiResult,
+          },
+          null,
+          2
+        ),
         {
           status: 200,
           headers: { 'content-type': 'application/json' },

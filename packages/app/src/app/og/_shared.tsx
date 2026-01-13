@@ -164,7 +164,7 @@ export function Background({
           height: '100%',
           objectFit: 'cover',
           objectPosition: 'center',
-          opacity: 0.75,
+          opacity: 0.6,
         }}
       />
     </div>

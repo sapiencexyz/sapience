@@ -465,7 +465,9 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               priority
               unoptimized
               className={`transition-opacity duration-500 ${
-                imgLoading || (trackPosition && !positionResolved) ? 'opacity-0' : 'opacity-100'
+                imgLoading || (trackPosition && !positionResolved)
+                  ? 'opacity-0'
+                  : 'opacity-100'
               }`}
             />
           </div>
