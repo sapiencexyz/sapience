@@ -59,8 +59,6 @@ export function useSubmitPrediction({
       setTxHash(undefined);
     },
     redirectProfileAnchor: 'forecasts',
-    // Minimal share intent; UI may provide OG immediately if known
-    shareIntent: {},
   });
 
   const encodeSchemaData = useCallback(

@@ -50,6 +50,9 @@ export interface MintPredictionRequestData {
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
+  // For validation: the nonce the bidder (contract taker) claimed when signing
+  // This is embedded in their signature and must match their on-chain nonce
+  takerClaimedNonce?: number;
 }
 
 function jsonStableStringify(value: unknown) {
@@ -360,11 +363,33 @@ export function useAuctionStart() {
     }): MintPredictionRequestData | null => {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
+
       try {
         const zeroBytes32 = `0x${'0'.repeat(64)}`;
         const resolver = auction.resolver as `0x${string}`;
         const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
         if (!resolver || predictedOutcomes.length === 0) return null;
+
+        // Validate bid is from the current auction to avoid stale nonce errors
+        if (args.selectedBid.auctionId !== auctionId) {
+          console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
+            bidAuctionId: args.selectedBid.auctionId,
+            currentAuctionId: auctionId,
+          });
+          return null;
+        }
+
+        console.debug('[useAuctionStart] buildMintRequestDataFromBid:', {
+          selectedBidMaker: args.selectedBid.maker,
+          selectedBidMakerWager: args.selectedBid.makerWager,
+          selectedBidMakerSignature: args.selectedBid.makerSignature?.slice(0, 20) + '...',
+          selectedBidMakerDeadline: args.selectedBid.makerDeadline,
+          selectedBidMakerNonce: args.selectedBid.makerNonce,
+          selectedBidAuctionId: args.selectedBid.auctionId,
+          auctionTaker: auction.taker,
+          auctionWager: auction.wager,
+          auctionTakerNonce: auction.takerNonce,
+        });
 
         // Contract field names haven't changed - map BID (API) roles to contract roles:
         // Contract "maker" = API "taker" (auction creator)
@@ -380,12 +405,13 @@ export function useAuctionStart() {
           takerDeadline: String(args.selectedBid.makerDeadline), // Contract taker = API maker (bidder's deadline)
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
           makerNonce: String(auction.takerNonce), // Contract maker = API taker (auction creator's nonce)
+          takerClaimedNonce: args.selectedBid.makerNonce, // Bidder's claimed nonce for validation
         };
       } catch {
         return null;
       }
     },
-    []
+    [auctionId]
   );
 
   return {

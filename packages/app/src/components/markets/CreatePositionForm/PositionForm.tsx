@@ -10,7 +10,7 @@ import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { parseUnits } from 'viem';
+import { parseUnits, createPublicClient, http } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -66,6 +66,8 @@ interface PositionFormProps {
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
+  // Callback to notify parent of the currently displayed best bid (for submission)
+  onBestBidChange?: (bid: QuoteBid | null) => void;
 }
 
 export default function PositionForm({
@@ -83,6 +85,7 @@ export default function PositionForm({
   predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
+  onBestBidChange,
 }: PositionFormProps) {
   const { selections, removeSelection } = useCreatePositionContext();
   const { address: takerAddress } = useAccount();
@@ -124,7 +127,8 @@ export default function PositionForm({
       : (takerAddress ?? guestTakerAddress);
 
   // Fetch taker nonce from PredictionMarket contract
-  const { data: takerNonce } = useReadContract({
+  // Use refetch to get fresh nonce before auction requests
+  const { refetch: refetchTakerNonce } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketAbi,
     functionName: 'nonces',
@@ -279,6 +283,11 @@ export default function PositionForm({
     return { bestBid: best, estimateBid: null };
   }, [validBids, parlayWagerAmount, nowMs]);
 
+  // Notify parent of the current best bid for submission
+  useEffect(() => {
+    onBestBidChange?.(bestBid);
+  }, [bestBid, onBestBidChange]);
+
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
     if (bestBid) {
@@ -319,7 +328,7 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    (options?: { forceRefresh?: boolean }) => {
+    async (options?: { forceRefresh?: boolean }) => {
       if (!requestQuotes) return;
       if (!selectedTakerAddress) return;
       const hasUma = !!selections && selections.length > 0;
@@ -337,7 +346,6 @@ export default function PositionForm({
         return;
       }
       if (!hasUma && !hasPyth) return;
-      if (takerAddress && takerNonce === undefined) return;
       if (hasFormErrors) return;
 
       const wagerStr = parlayWagerAmount || '0';
@@ -346,6 +354,34 @@ export default function PositionForm({
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
         setValidBids([]);
         setStickyEstimateBid(null);
+
+        // Fetch nonce via direct RPC call to bypass wagmi cache
+        let freshNonce: bigint | undefined;
+        try {
+          const rpcUrl = chainId === CHAIN_ID_ETHEREAL
+            ? 'https://rpc.ethereal.trade'
+            : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
+          const publicClient = createPublicClient({
+            transport: http(rpcUrl),
+          });
+
+          if (selectedTakerAddress && predictionMarketAddress) {
+            freshNonce = await publicClient.readContract({
+              address: predictionMarketAddress,
+              abi: predictionMarketAbi,
+              functionName: 'nonces',
+              args: [selectedTakerAddress],
+            }) as bigint;
+          }
+        } catch {
+          // Fall back to wagmi cached value
+          const refetchResult = await refetchTakerNonce();
+          freshNonce = refetchResult.data as bigint | undefined;
+        }
+
+        if (freshNonce === undefined && takerAddress) {
+          return;
+        }
 
         const decimals = Number.isFinite(collateralDecimals as number)
           ? (collateralDecimals as number)
@@ -377,7 +413,7 @@ export default function PositionForm({
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,
-          takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+          takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
 
@@ -408,11 +444,12 @@ export default function PositionForm({
       pythPredictions,
       toast,
       takerAddress,
-      takerNonce,
+      refetchTakerNonce,
       hasFormErrors,
       parlayWagerAmount,
       collateralDecimals,
       chainId,
+      predictionMarketAddress,
       predictionsKey,
     ]
   );

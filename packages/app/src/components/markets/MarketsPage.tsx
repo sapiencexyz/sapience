@@ -20,7 +20,6 @@ import MarketsDataTable from '~/components/markets/MarketsDataTable';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
-import ShareAfterMarketsRedirect from '~/components/shared/ShareAfterMarketsRedirect';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import {
   CreatePythPredictionForm,
@@ -252,9 +251,7 @@ const MarketsPage = () => {
 
   // Render content once loaded
   return (
-    <>
-      <ShareAfterMarketsRedirect />
-      <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
+    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
         {/* Render only one position form instance based on viewport */}
         {isCompact ? (
           <div className="block lg:hidden">
@@ -324,8 +321,7 @@ const MarketsPage = () => {
             </div>
           </div>
         ) : null}
-      </div>
-    </>
+    </div>
   );
 };
 

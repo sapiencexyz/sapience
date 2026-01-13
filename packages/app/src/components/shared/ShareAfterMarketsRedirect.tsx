@@ -5,6 +5,7 @@ import { formatUnits } from 'viem';
 import { useAccount } from 'wagmi';
 
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
+import { useSession } from '~/lib/context/SessionContext';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
 
 type Anchor = 'forecasts' | 'positions';
@@ -49,8 +50,13 @@ export default function ShareAfterMarketsRedirect() {
   const storedLastNftIdRef = useRef<string | undefined>(undefined);
   const positionsRef = useRef<Parlay[]>([]);
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
 
-  const lowerAddress = address ? String(address).toLowerCase() : null;
+  // Use smart account address when session is active, otherwise use EOA
+  const effectiveAddress = isSessionActive && smartAccountAddress
+    ? smartAccountAddress
+    : address;
+  const lowerAddress = effectiveAddress ? String(effectiveAddress).toLowerCase() : null;
 
   // Data hooks for position resolution
   const { data: positions, refetch: refetchPositions } = useUserParlays({
@@ -502,7 +508,7 @@ export default function ShareAfterMarketsRedirect() {
       onOpenChange={(newOpen) => {
         setOpen(newOpen);
       }}
-      title="Share"
+      title="Trade Submitted"
       shareTitle="Share"
       trackPosition={true}
       txHash={txHash}

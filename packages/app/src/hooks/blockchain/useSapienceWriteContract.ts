@@ -1,7 +1,6 @@
 'use client';
 import {
   useCallback,
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -38,24 +37,6 @@ const WUSDE_ABI = parseAbi([
   'function balanceOf(address account) view returns (uint256)',
 ]);
 
-interface ShareIntentOg {
-  imagePath: string;
-  params?: Record<string, string | number | boolean | null | undefined>;
-}
-
-interface ShareIntentPartial {
-  positionId?: string | number;
-  og?: ShareIntentOg;
-  betslip?: {
-    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-    wager: string;
-    payout?: string;
-    symbol: string;
-    lastNftId?: string; // Last NFT ID before this parlay was submitted
-  };
-  // Additional optional hints can be added over time
-}
-
 interface useSapienceWriteContractProps {
   onSuccess?: (
     receipt: ReturnType<typeof useTransactionReceipt>['data']
@@ -72,16 +53,14 @@ interface useSapienceWriteContractProps {
    */
   redirectPage?: 'profile' | 'markets';
   /**
-   * Optional share intent hints. When provided, a durable record will be written
-   * to sessionStorage as soon as a tx hash is known (or immediately if not available),
-   * before redirecting to the profile page. This enables the profile page to
-   * automatically open a share dialog with the correct OG image.
-   */
-  shareIntent?: ShareIntentPartial;
-  /**
    * If true, disables the success toast notification.
    */
   disableSuccessToast?: boolean;
+  /**
+   * If true, disables automatic redirect after transaction success.
+   * Use `triggerRedirect()` returned from the hook to manually trigger redirect.
+   */
+  disableAutoRedirect?: boolean;
 }
 
 export function useSapienceWriteContract({
@@ -92,8 +71,8 @@ export function useSapienceWriteContract({
   fallbackErrorMessage = 'Transaction failed',
   redirectProfileAnchor,
   redirectPage = 'profile',
-  shareIntent,
   disableSuccessToast = false,
+  disableAutoRedirect = false,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
 
@@ -143,31 +122,6 @@ export function useSapienceWriteContract({
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  // Store share intent in state so it can be updated dynamically
-  const [currentShareIntent, setCurrentShareIntent] = useState<
-    ShareIntentPartial | undefined
-  >(shareIntent);
-  // Use a ref to store the latest intent for synchronous access in writeShareIntent
-  // This ensures we always have the freshest data even if state hasn't updated yet
-  const currentShareIntentRef = useRef<ShareIntentPartial | undefined>(
-    shareIntent
-  );
-
-  // Sync shareIntent prop to state when it changes (but allow dynamic updates via updateShareIntent)
-  // Use a ref to track the previous value to avoid infinite loops
-  const prevShareIntentRef = useRef<ShareIntentPartial | undefined>(
-    shareIntent
-  );
-  useEffect(() => {
-    // Only update if shareIntent actually changed (deep comparison)
-    const prevStr = JSON.stringify(prevShareIntentRef.current);
-    const newStr = JSON.stringify(shareIntent);
-    if (prevStr !== newStr && shareIntent !== undefined) {
-      prevShareIntentRef.current = shareIntent;
-      setCurrentShareIntent(shareIntent);
-      currentShareIntentRef.current = shareIntent;
-    }
-  }, [shareIntent]);
   const { address: wagmiAddress } = useAccount();
   const router = useRouter();
   const didRedirectRef = useRef(false);
@@ -224,87 +178,6 @@ export function useSapienceWriteContract({
       return 0n;
     }
   }, [wagmiAddress, chainId, isEtherealChain]);
-
-  // Update share intent dynamically (e.g., to get fresh lastNftId before submission)
-  const updateShareIntent = useCallback((newIntent: ShareIntentPartial) => {
-    setCurrentShareIntent((prev) => {
-      const updated = {
-        ...prev,
-        ...newIntent,
-        // Merge betslip data if both exist
-        betslip: newIntent.betslip
-          ? { ...prev?.betslip, ...newIntent.betslip }
-          : prev?.betslip,
-      };
-      // Update ref synchronously so writeShareIntent can read fresh data immediately
-      currentShareIntentRef.current = updated;
-      return updated;
-    });
-  }, []);
-
-  // Write durable share intent to sessionStorage
-  const writeShareIntent = useCallback(
-    (maybeHash?: string) => {
-      try {
-        if (typeof window === 'undefined') return;
-        // Write intent if redirecting to profile (with anchor) or to markets
-        const shouldWriteForProfile =
-          redirectPage === 'profile' && redirectProfileAnchor;
-        const shouldWriteForMarkets = redirectPage === 'markets';
-        if (!shouldWriteForProfile && !shouldWriteForMarkets) return;
-        // Use ref for synchronous access to latest intent (avoids stale state from async updates)
-        // Fall back to state if ref is not set
-        console.log(
-          'currentShareIntentRef.current, currentShareIntent, writing:',
-          currentShareIntentRef.current,
-          currentShareIntent,
-          currentShareIntentRef.current ? 'first' : 'second'
-        );
-        const latestIntent =
-          currentShareIntentRef.current ?? currentShareIntent;
-        if (latestIntent === undefined) return; // only write when caller explicitly opts-in
-
-        const connectedAddress = (wagmiAddress || '').toString().toLowerCase();
-        if (!connectedAddress) return;
-
-        // Determine anchor: use redirectProfileAnchor for profile, 'positions' for markets
-        const anchor =
-          redirectPage === 'markets' ? 'positions' : redirectProfileAnchor;
-
-        const intent = {
-          address: connectedAddress,
-          anchor: anchor,
-          clientTimestamp: Date.now(),
-          txHash: maybeHash || undefined,
-          // Spread all latestIntent properties to allow custom data (uses ref for fresh data)
-          ...latestIntent,
-        } as Record<string, any>;
-
-        window.sessionStorage.setItem(
-          'sapience:share-intent',
-          JSON.stringify(intent)
-        );
-        console.log(
-          '[useSapienceWriteContract] Share intent written to sessionStorage',
-          {
-            address: connectedAddress,
-            anchor,
-            clientTimestamp: intent.clientTimestamp,
-            txHash: intent.txHash,
-            lastNftId: intent.lastNftId,
-            betslipLastNftId: intent.betslip?.lastNftId,
-            hasBetslip: !!intent.betslip,
-            betslipLegsCount: intent.betslip?.legs?.length || 0,
-            hasOg: !!intent.og,
-          }
-        );
-      } catch (e) {
-        // best-effort only
-        console.error(e);
-      }
-    },
-    [redirectPage, redirectProfileAnchor, currentShareIntent, wagmiAddress]
-  );
 
   // Helper to detect if this is a withdrawal operation that should trigger unwrapping
   const shouldAutoUnwrap = useCallback(
@@ -378,10 +251,8 @@ export function useSapienceWriteContract({
       didRedirectRef.current = true;
 
       if (shouldRedirectToMarkets) {
-        // Note: betslip clearing is now done AFTER shareIntent is written
-        // This ensures betslip data is available for image generation
         router.push(`/${redirectPage}`);
-        // Clear betslip after redirect (shareIntent already written)
+        // Clear betslip after redirect
         if (createPositionContext) {
           createPositionContext.clearPositionForm();
           createPositionContext.clearSelections();
@@ -415,15 +286,16 @@ export function useSapienceWriteContract({
   const handleTransactionSuccess = useCallback(
     (hash?: Hash) => {
       if (hash) {
-        writeShareIntent(hash);
         onTxHash?.(hash);
         setTxHash(hash);
       } else {
-        writeShareIntent(undefined);
         onSuccess?.(undefined as any);
       }
 
-      maybeRedirect();
+      // Only redirect automatically if not disabled
+      if (!disableAutoRedirect) {
+        maybeRedirect();
+      }
 
       if (!disableSuccessToast) {
         try {
@@ -441,7 +313,6 @@ export function useSapienceWriteContract({
       setIsSubmitting(false);
     },
     [
-      writeShareIntent,
       onTxHash,
       setTxHash,
       onSuccess,
@@ -449,6 +320,7 @@ export function useSapienceWriteContract({
       toast,
       successMessage,
       disableSuccessToast,
+      disableAutoRedirect,
     ]
   );
 
@@ -861,8 +733,7 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              // Write share intent and redirect
-              writeShareIntent(txHashFromSession);
+              // Redirect after successful transaction
               maybeRedirect();
 
               if (!disableSuccessToast) {
@@ -912,8 +783,6 @@ export function useSapienceWriteContract({
             const result = await waitForCallsStatus(client!, { id: data.id });
             const transactionHash = pickFinalTransactionHash(result);
             if (transactionHash) {
-              // Persist share intent before redirect
-              writeShareIntent(transactionHash);
               // Redirect as soon as a tx hash is known
               maybeRedirect();
               // Show success toast after navigation so it appears on profile
@@ -935,7 +804,6 @@ export function useSapienceWriteContract({
             } else {
               // No tx hash available from aggregator; consider operation successful.
               // Redirect before showing success toast
-              writeShareIntent(undefined);
               maybeRedirect();
               if (!disableSuccessToast) {
                 toast({
@@ -951,8 +819,6 @@ export function useSapienceWriteContract({
             // Fallback path without aggregator id.
             const transactionHash = pickFinalTransactionHash(data);
             if (transactionHash) {
-              // Persist share intent before redirect
-              writeShareIntent(transactionHash);
               // Redirect as soon as a tx hash is known
               maybeRedirect();
               // Show success toast after navigation so it appears on profile
@@ -975,7 +841,6 @@ export function useSapienceWriteContract({
             }
             // Fallback path without aggregator id.
             // Redirect before showing success toast
-            writeShareIntent(undefined);
             maybeRedirect();
             if (!disableSuccessToast) {
               toast({
@@ -992,7 +857,6 @@ export function useSapienceWriteContract({
           console.error(e);
           // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
           // Redirect before showing success toast
-          writeShareIntent(undefined);
           maybeRedirect();
           if (!disableSuccessToast) {
             toast({
@@ -1026,7 +890,6 @@ export function useSapienceWriteContract({
       onError,
       onTxHash,
       maybeRedirect,
-      writeShareIntent,
       onSuccess,
       successMessage,
       pickFinalTransactionHash,
@@ -1094,7 +957,7 @@ export function useSapienceWriteContract({
         isWritingContract || isSendingCalls || isMining || isSubmitting,
       reset: resetWrite,
       resetCalls,
-      updateShareIntent,
+      triggerRedirect: maybeRedirect,
     }),
     [
       sapienceWriteContract,
@@ -1105,7 +968,7 @@ export function useSapienceWriteContract({
       isSubmitting,
       resetWrite,
       resetCalls,
-      updateShareIntent,
+      maybeRedirect,
     ]
   );
 }
