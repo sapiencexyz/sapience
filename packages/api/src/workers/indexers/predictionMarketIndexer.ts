@@ -19,7 +19,13 @@ import {
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
-import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
+import {
+  predictionMarket,
+  lzPMResolver,
+  lzUmaResolver,
+  predictionMarketLZConditionalTokensResolver,
+  lzConditionalTokenResolverAbi,
+} from '@sapience/sdk';
 
 /**
  * Pyth markets are synthetic placeholders created from on-chain Pyth outcomes.
@@ -188,6 +194,23 @@ function buildPythLegDescriptor(params: {
     `strikeDecimal=${formatPythDecimalFromInt(params.strikePrice, params.strikeExpo)}`,
   ].join('|');
 }
+
+// ConditionResolved event ABI for type-safe decoding (full ABI imported from SDK for watching)
+const CONDITION_RESOLVED_EVENT_ABI = [
+  {
+    type: 'event',
+    name: 'ConditionResolved',
+    inputs: [
+      { name: 'conditionId', type: 'bytes32', indexed: true },
+      { name: 'resolvedToYes', type: 'bool', indexed: false },
+      { name: 'invalid', type: 'bool', indexed: false },
+      { name: 'payoutDenominator', type: 'uint256', indexed: false },
+      { name: 'noPayout', type: 'uint256', indexed: false },
+      { name: 'yesPayout', type: 'uint256', indexed: false },
+      { name: 'timestamp', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
@@ -396,12 +419,23 @@ interface MarketSubmittedToUMAEvent {
   resolvedToYes: boolean;
 }
 
+interface ConditionResolvedEvent {
+  conditionId: string;
+  resolvedToYes: boolean;
+  invalid: boolean;
+  payoutDenominator: bigint;
+  noPayout: bigint;
+  yesPayout: bigint;
+  timestamp: bigint;
+}
+
 class PredictionMarketIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private chainId: number;
   private contractAddress: `0x${string}`;
   private resolverAddress: `0x${string}` | undefined;
+  private lzConditionalTokenResolverAddress: `0x${string}` | undefined;
   private sigintHandler: (() => void) | null = null;
   private currentUnwatch: (() => void) | null = null;
 
@@ -432,6 +466,19 @@ class PredictionMarketIndexer implements IIndexer {
       this.resolverAddress = umaResolverEntry.address as `0x${string}`;
       console.log(
         `[PredictionMarketIndexer] Found UMA resolver address for chain ${chainId}: ${this.resolverAddress}`
+      );
+    }
+
+    // Get the LZ Conditional Token Resolver address if available
+    const lzConditionalTokenResolverEntry =
+      predictionMarketLZConditionalTokensResolver[
+        chainId as keyof typeof predictionMarketLZConditionalTokensResolver
+      ];
+    if (lzConditionalTokenResolverEntry?.address) {
+      this.lzConditionalTokenResolverAddress =
+        lzConditionalTokenResolverEntry.address as `0x${string}`;
+      console.log(
+        `[PredictionMarketIndexer] Found LZ Conditional Token Resolver address for chain ${chainId}: ${this.lzConditionalTokenResolverAddress}`
       );
     }
   }
@@ -551,6 +598,9 @@ class PredictionMarketIndexer implements IIndexer {
           if (this.resolverAddress) {
             addresses.push(this.resolverAddress as `0x${string}`);
           }
+          if (this.lzConditionalTokenResolverAddress) {
+            addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
+          }
           const logs = await this.client.getLogs({
             address: addresses,
             fromBlock: BigInt(fromBlock),
@@ -627,6 +677,9 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.resolverAddress) {
         addresses.push(this.resolverAddress as `0x${string}`);
       }
+      if (this.lzConditionalTokenResolverAddress) {
+        addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
+      }
       const logs = await this.client.getLogs({
         address: addresses,
         fromBlock: BigInt(blockNumber),
@@ -663,6 +716,9 @@ class PredictionMarketIndexer implements IIndexer {
       const addressesToCheck = [this.contractAddress];
       if (this.resolverAddress) {
         addressesToCheck.push(this.resolverAddress);
+      }
+      if (this.lzConditionalTokenResolverAddress) {
+        addressesToCheck.push(this.lzConditionalTokenResolverAddress);
       }
 
       if (
@@ -709,6 +765,9 @@ class PredictionMarketIndexer implements IIndexer {
       const marketSubmittedToUMATopic = keccak256(
         toHex('MarketSubmittedToUMA(bytes32,bytes32,address,bytes,bool)')
       );
+      const conditionResolvedTopic = keccak256(
+        toHex('ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)')
+      );
 
       if (log.topics[0] === predictionMintedTopic) {
         await this.processPredictionMinted(log, block);
@@ -726,6 +785,8 @@ class PredictionMarketIndexer implements IIndexer {
         await this.processMarketResolved(log, block);
       } else if (log.topics[0] === marketSubmittedToUMATopic) {
         await this.processMarketSubmittedToUMA(log, block);
+      } else if (log.topics[0] === conditionResolvedTopic) {
+        await this.processConditionResolved(log, block);
       }
     } catch (error) {
       console.error('[PredictionMarketIndexer] Error processing log:', error);
@@ -1949,6 +2010,105 @@ class PredictionMarketIndexer implements IIndexer {
     }
   }
 
+  private async processConditionResolved(log: Log, block: Block): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: CONDITION_RESOLVED_EVENT_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: ConditionResolvedEvent };
+
+      const conditionId = decoded.args.conditionId.toLowerCase();
+
+      const eventData = {
+        eventType: 'ConditionResolved',
+        conditionId,
+        resolvedToYes: decoded.args.resolvedToYes,
+        invalid: decoded.args.invalid,
+        payoutDenominator: decoded.args.payoutDenominator.toString(),
+        noPayout: decoded.args.noPayout.toString(),
+        yesPayout: decoded.args.yesPayout.toString(),
+        timestamp: decoded.args.timestamp.toString(),
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        blockTimestamp: Number(block.timestamp),
+      };
+
+      // Skip duplicates
+      const eventKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingEvent = await prisma.event.findFirst({
+        where: {
+          transactionHash: eventKey.transactionHash,
+          blockNumber: eventKey.blockNumber,
+          logIndex: eventKey.logIndex,
+        },
+      });
+
+      if (existingEvent) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate ConditionResolved event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+        },
+      });
+
+      // Update Condition status
+      try {
+        const condition = await prisma.condition.findUnique({
+          where: { id: conditionId },
+        });
+
+        if (condition) {
+          await prisma.condition.update({
+            where: { id: condition.id },
+            data: {
+              settled: true,
+              resolvedToYes: eventData.resolvedToYes,
+              settledAt: Number(decoded.args.timestamp),
+            },
+          });
+          console.log(
+            `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
+          );
+        } else {
+          console.warn(
+            `[PredictionMarketIndexer] ConditionResolved but no matching Condition found for conditionId=${conditionId}`
+          );
+        }
+      } catch (conditionError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to update Condition on ConditionResolved:',
+          conditionError
+        );
+      }
+
+      console.log(
+        `[PredictionMarketIndexer] Processed ConditionResolved: conditionId=${conditionId}, resolvedToYes=${eventData.resolvedToYes}, invalid=${eventData.invalid}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing ConditionResolved:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
       console.log(
@@ -1990,11 +2150,20 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.resolverAddress) {
         addresses.push(this.resolverAddress);
       }
+      if (this.lzConditionalTokenResolverAddress) {
+        addresses.push(this.lzConditionalTokenResolverAddress);
+      }
+
+      // Combined ABI for watching all relevant events
+      const combinedAbi = [
+        ...PREDICTION_MARKET_ABI,
+        ...lzConditionalTokenResolverAbi,
+      ];
 
       // Watch for all PredictionMarket events in a single watcher
       this.currentUnwatch = this.client.watchContractEvent({
         address: addresses,
-        abi: PREDICTION_MARKET_ABI,
+        abi: combinedAbi,
         onLogs: async (logs) => {
           for (const log of logs) {
             try {
