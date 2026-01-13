@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSendCalls } from 'wagmi';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import {
@@ -17,16 +17,14 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { ArrowRight, Info } from 'lucide-react';
-import { parseEther, toHex, encodeFunctionData, parseAbi } from 'viem';
+import { parseEther, encodeFunctionData, parseAbi } from 'viem';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { ethereal } from '~/lib/session/sessionKeyManager';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
-import { getPublicClientForChainId } from '~/lib/utils/util';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 
@@ -34,6 +32,7 @@ const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
   'function transfer(address to, uint256 amount) returns (bool)',
+  'function balanceOf(address owner) view returns (uint256)',
 ]);
 
 /**
@@ -94,7 +93,7 @@ export default function CollateralBalanceButton({
   className,
   buttonClassName,
 }: CollateralBalanceButtonProps) {
-  const { address: eoaAddress, connector } = useAccount();
+  const { address: eoaAddress } = useAccount();
   const chainId = useChainIdFromLocalStorage();
 
   // Get smart account address from session context
@@ -133,6 +132,9 @@ export default function CollateralBalanceButton({
   const [transferStatus, setTransferStatus] = useState('');
   const { toast } = useToast();
 
+  // useSendCalls for batching wrap + transfer (with fallback for wallets like Rabby)
+  const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
+
   // Calculate max transferable amount (wrapped + native)
   const maxTransferable = eoaWrappedBalance + eoaNativeBalance;
 
@@ -146,14 +148,16 @@ export default function CollateralBalanceButton({
   const isValidTransfer =
     transferAmountNum > 0 && transferAmountNum <= maxTransferable;
 
-  // Set max amount when dialog opens
+  // Set max amount when dialog opens (use floor to avoid exceeding balance)
   useEffect(() => {
     if (isGetUsdeOpen && maxTransferable > 0) {
-      setTransferAmount(formatDollarLikeBalance(maxTransferable));
+      // Floor to 2 decimals to ensure we never transfer more than available
+      const floored = Math.floor(maxTransferable * 100) / 100;
+      setTransferAmount(floored > 0 ? floored.toString() : '');
     }
   }, [isGetUsdeOpen, maxTransferable]);
 
-  // Handle transfer from wallet using the wallet provider directly
+  // Handle transfer from wallet using sendCalls for batched wrap + transfer
   const handleTransferFromWallet = async () => {
     console.log('[Transfer] handleTransferFromWallet called', {
       smartAccountAddress,
@@ -161,7 +165,6 @@ export default function CollateralBalanceButton({
       transferAmountNum,
       fromWrapped,
       fromNative,
-      connector: !!connector,
     });
 
     if (!smartAccountAddress || !eoaAddress || !isValidTransfer) {
@@ -178,135 +181,70 @@ export default function CollateralBalanceButton({
       return;
     }
 
-    if (!connector) {
-      toast({
-        title: 'Cannot transfer',
-        description: 'No wallet connected',
-        variant: 'destructive',
-        duration: 5000,
-      });
-      return;
-    }
-
     setIsTransferLoading(true);
     setTransferStatus('');
 
     try {
-      // Get the wallet provider from the connector
-      const provider = (await connector.getProvider()) as {
-        request: (args: {
-          method: string;
-          params?: unknown[];
-        }) => Promise<unknown>;
-      };
+      // Build the calls array for batched execution
+      const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
+        [];
 
-      // Add Ethereal chain to wallet and switch to it
-      console.log(
-        '[Transfer] Adding/switching to Ethereal chain:',
-        CHAIN_ID_ETHEREAL
-      );
-      try {
-        await provider.request({
-          method: 'wallet_addEthereumChain',
-          params: [
-            {
-              chainId: toHex(CHAIN_ID_ETHEREAL),
-              chainName: ethereal.name,
-              nativeCurrency: ethereal.nativeCurrency,
-              rpcUrls: [ethereal.rpcUrls.default.http[0]],
-            },
-          ],
-        });
-      } catch (addError: unknown) {
-        // Ignore "already exists" errors
-        console.log(
-          '[Transfer] Add chain result:',
-          (addError as Error)?.message || 'success'
-        );
-      }
-
-      try {
-        await provider.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: toHex(CHAIN_ID_ETHEREAL) }],
-        });
-        console.log('[Transfer] Chain switch successful');
-      } catch (switchError: unknown) {
-        console.error('[Transfer] Switch chain error:', switchError);
-        throw new Error(
-          `Failed to switch to Ethereal chain: ${(switchError as Error)?.message || 'Unknown error'}`
-        );
-      }
-
-      // Step 1: Wrap native USDe if needed
+      // If we need to wrap native USDe, add wrap call first
       if (fromNative > 0) {
-        setTransferStatus('Wrapping native USDe...');
         const wrapAmount = parseEther(fromNative.toString());
-
-        console.log('[Transfer] Wrapping native USDe:', {
-          amount: fromNative,
-          wrapAmount: wrapAmount.toString(),
-        });
-
         const wrapData = encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',
         });
 
-        const wrapTxHash = await provider.request({
-          method: 'eth_sendTransaction',
-          params: [
-            {
-              from: eoaAddress,
-              to: WUSDE_ADDRESS,
-              data: wrapData,
-              value: toHex(wrapAmount),
-            },
-          ],
+        calls.push({
+          to: WUSDE_ADDRESS as `0x${string}`,
+          data: wrapData,
+          value: wrapAmount,
         });
-        console.log('[Transfer] Wrap transaction hash:', wrapTxHash);
 
-        // Wait for wrap transaction to be mined
-        setTransferStatus('Waiting for wrap confirmation...');
-        const publicClient = getPublicClientForChainId(CHAIN_ID_ETHEREAL);
-        await publicClient.waitForTransactionReceipt({
-          hash: wrapTxHash as `0x${string}`,
-          timeout: 60_000, // 60 second timeout
+        console.log('[Transfer] Adding wrap call:', {
+          amount: fromNative,
+          wrapAmount: wrapAmount.toString(),
         });
       }
 
-      // Step 2: Transfer wUSDe to Predict account
-      setTransferStatus('Transferring wUSDe...');
-      const totalWusdeToTransfer = parseEther(transferAmountNum.toString());
-
-      console.log('[Transfer] Transferring wUSDe:', {
-        amount: transferAmountNum,
-        totalWusdeToTransfer: totalWusdeToTransfer.toString(),
-        to: smartAccountAddress,
-      });
-
+      // Add transfer call (transfer the full requested amount as wUSDe)
+      const transferAmount = parseEther(transferAmountNum.toString());
       const transferData = encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'transfer',
-        args: [smartAccountAddress, totalWusdeToTransfer],
+        args: [smartAccountAddress, transferAmount],
       });
 
-      const transferTxHash = await provider.request({
-        method: 'eth_sendTransaction',
-        params: [
-          {
-            from: eoaAddress,
-            to: WUSDE_ADDRESS,
-            data: transferData,
-          },
-        ],
+      calls.push({
+        to: WUSDE_ADDRESS as `0x${string}`,
+        data: transferData,
+        value: 0n,
       });
-      console.log('[Transfer] Transfer transaction hash:', transferTxHash);
+
+      console.log('[Transfer] Adding transfer call:', {
+        amount: transferAmountNum,
+        transferAmount: transferAmount.toString(),
+        to: smartAccountAddress,
+      });
+
+      setTransferStatus(
+        fromNative > 0 ? 'Wrapping & transferring...' : 'Transferring...'
+      );
+
+      // Execute batched calls with experimental fallback for wallets like Rabby
+      await sendCallsAsync({
+        chainId: CHAIN_ID_ETHEREAL,
+        calls,
+        // Enable fallback for wallets that don't support EIP-5792
+        experimental_fallback: true,
+      } as Parameters<typeof sendCallsAsync>[0]);
 
       setTransferStatus('');
       toast({
         title: 'Transfer successful',
-        description: `${formatDollarLikeBalance(transferAmountNum)} wUSDe transferred to your Predict account.`,
+        description: `${formatDollarLikeBalance(transferAmountNum)} wUSDe transferred to your Sapience account.`,
         duration: 5000,
       });
 
@@ -574,7 +512,7 @@ export default function CollateralBalanceButton({
                   onChange={(e) => setTransferAmount(e.target.value)}
                   placeholder="0.00"
                   className="h-11 text-lg font-mono pr-10"
-                  disabled={isTransferLoading}
+                  disabled={isTransferLoading || isSendingCalls}
                 />
                 {transferAmountNum > 0 &&
                   (fromWrapped > 0 || fromNative > 0) && (
@@ -618,10 +556,13 @@ export default function CollateralBalanceButton({
                 className="h-11 px-4"
                 onClick={handleTransferFromWallet}
                 disabled={
-                  isTransferLoading || !smartAccountAddress || !isValidTransfer
+                  isTransferLoading ||
+                  isSendingCalls ||
+                  !smartAccountAddress ||
+                  !isValidTransfer
                 }
               >
-                {isTransferLoading
+                {isTransferLoading || isSendingCalls
                   ? transferStatus || 'Processing...'
                   : 'Transfer'}
               </Button>
