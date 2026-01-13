@@ -14,6 +14,9 @@ library Encoder {
     // Prediction Market Resolver commands
     uint16 constant CMD_FROM_UMA_MARKET_RESOLVED = 8;
     uint16 constant CMD_FROM_UMA_MARKET_DISPUTED = 9;
+    
+    // ConditionalTokens Resolver commands
+    uint16 constant CMD_FROM_CONDITIONAL_TOKEN_READER_RESOLUTION_RESPONSE = 10;
 
     function decodeType(bytes memory data) internal pure returns (uint16, bytes memory) {
         return abi.decode(data, (uint16, bytes));
@@ -92,5 +95,23 @@ library Encoder {
 
     function decodeFromUMAMarketDisputed(bytes memory data) internal pure returns (bytes32) {
         return abi.decode(data, (bytes32));
+    }
+
+    // ConditionalTokens Resolver commands
+    function encodeFromConditionalTokenReaderResolutionResponse(
+        bytes32 conditionId,
+        uint256 payoutDenominator,
+        uint256 noPayout,
+        uint256 yesPayout
+    ) internal pure returns (bytes memory) {
+        return abi.encode(conditionId, payoutDenominator, noPayout, yesPayout);
+    }
+
+    function decodeFromConditionalTokenReaderResolutionResponse(bytes memory data)
+        internal
+        pure
+        returns (bytes32, uint256, uint256, uint256)
+    {
+        return abi.decode(data, (bytes32, uint256, uint256, uint256));
     }
 }

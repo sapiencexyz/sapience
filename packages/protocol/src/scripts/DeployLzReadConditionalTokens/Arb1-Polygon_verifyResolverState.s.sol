@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {PredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/PredictionMarketLZConditionalTokensResolver.sol";
+import {IPredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/interfaces/IPredictionMarketLZConditionalTokensResolver.sol";
 import {IPredictionMarketResolver} from "../../predictionMarket/interfaces/IPredictionMarketResolver.sol";
 
 /**
@@ -62,9 +63,9 @@ contract VerifyResolverStateScript is Script {
         console.log("--- Testing getPredictionResolution ---");
         
         // Test YES prediction
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomesYes =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
-        outcomesYes[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomesYes =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
+        outcomesYes[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: conditionYes,
             prediction: true // Predicting YES
         });
@@ -78,9 +79,9 @@ contract VerifyResolverStateScript is Script {
         console.log("  parlaySuccess:", parlaySuccessYes);
 
         // Test NO prediction
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomesNo =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
-        outcomesNo[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomesNo =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
+        outcomesNo[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: conditionNo,
             prediction: false // Predicting NO
         });

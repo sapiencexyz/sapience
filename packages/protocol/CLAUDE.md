@@ -35,6 +35,32 @@ forge test --match-path test/market/modules/LiquidityModule/CreateLiquidityPosit
 forge test --match-test test_revertWhen_invalidEpoch -vvv
 ```
 
+### Contract Verification
+
+**Polygon (Polygonscan):**
+```bash
+forge verify-contract \
+  $CONTRACT_ADDRESS \
+  $CONTRACT_PATH \
+  --chain-id 137 \
+  --constructor-args $CONSTRUCTOR_ARGS \
+  --etherscan-api-key $POLYGONSCAN_API_KEY
+```
+
+**Ethereal (Blockscout):**
+```bash
+# IMPORTANT: Ethereal uses Blockscout - always include these flags
+forge verify-contract \
+  $CONTRACT_ADDRESS \
+  $CONTRACT_PATH \
+  --chain-id 5066318 \
+  --constructor-args $CONSTRUCTOR_ARGS \
+  --verifier blockscout \
+  --verifier-url https://explorer.ethereal.trade/api/
+```
+
+**Note**: For Ethereal, you must always use `--verifier blockscout --verifier-url https://explorer.ethereal.trade/api/` when using `forge verify-contract` or `forge script` with `--verify`.
+
 ## Architecture
 
 ### Module System

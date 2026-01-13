@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {PredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/PredictionMarketLZConditionalTokensResolver.sol";
+import {IPredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/interfaces/IPredictionMarketLZConditionalTokensResolver.sol";
 
 /**
  * @title DeployLzReadConditionalTokensResolver
@@ -53,14 +54,8 @@ contract DeployLzReadConditionalTokensResolver is Script {
         PredictionMarketLZConditionalTokensResolver resolver = new PredictionMarketLZConditionalTokensResolver(
             endpoint,
             owner,
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: maxMarkets,
-                readChannelEid: readChannelEid,
-                targetEid: polygonEid,
-                conditionalTokens: polygonCtf,
-                confirmations: confirmations,
-                lzReadGasLimit: lzReadGas,
-                lzReadResultSize: lzReadResultSize
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: maxMarkets
             })
         );
 

@@ -3,6 +3,8 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
 import {PredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/PredictionMarketLZConditionalTokensResolver.sol";
+import {IPredictionMarketLZConditionalTokensResolver} from "../../predictionMarket/resolvers/interfaces/IPredictionMarketLZConditionalTokensResolver.sol";
+import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
 
 /**
  * @title ConfigureResolverScript
@@ -45,32 +47,31 @@ contract ConfigureResolverScript is Script {
 
         vm.startBroadcast(vm.envUint("ARB_PRIVATE_KEY"));
 
-        // Update config to ensure readChannelEid is correct (in case it was wrong at deployment)
-        resolver.setConfig(PredictionMarketLZConditionalTokensResolver.Settings({
-            maxPredictionMarkets: maxMarkets,
-            readChannelEid: readChannelEid,
-            targetEid: polygonEid,
-            conditionalTokens: polygonCtf,
-            confirmations: confirmations,
-            lzReadGasLimit: lzReadGas,
-            lzReadResultSize: lzReadResultSize
+        // Update config
+        resolver.setConfig(IPredictionMarketLZConditionalTokensResolver.Settings({
+            maxPredictionMarkets: maxMarkets
         }));
         console.log("Config updated");
 
-        // Set peer for read channel - for lzRead, peer is the resolver itself
-        bytes32 peerResolver = bytes32(uint256(uint160(resolverAddr)));
-        resolver.setPeer(readChannelEid, peerResolver);
-        console.log("Peer set for read channel:", vm.toString(peerResolver));
+        // Set bridge config for receiving messages from ConditionalTokensReader
+        // Note: conditionalTokensReader address should be set here
+        address conditionalTokensReader = address(0); // TODO: Set actual ConditionalTokensReader address
+        resolver.setBridgeConfig(BridgeTypes.BridgeConfig({
+            remoteEid: polygonEid,
+            remoteBridge: conditionalTokensReader
+        }));
+        console.log("Bridge config updated");
 
-        // Enable the read channel
-        resolver.setReadChannel(readChannelEid, true);
-        console.log("Read channel enabled");
+        // Set peer for receiving messages from Polygon
+        bytes32 peerReader = bytes32(uint256(uint160(conditionalTokensReader)));
+        resolver.setPeer(polygonEid, peerReader);
+        console.log("Peer set for Polygon:", vm.toString(peerReader));
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Configuration Complete ===");
-        console.log("Resolver is now ready for lzRead requests.");
+        console.log("Resolver is now ready to receive resolution messages from ConditionalTokensReader.");
     }
 }
 

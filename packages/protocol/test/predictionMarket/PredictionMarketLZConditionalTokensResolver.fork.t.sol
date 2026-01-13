@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {Test} from "forge-std/Test.sol";
 import {PredictionMarketLZConditionalTokensResolver} from "../../src/predictionMarket/resolvers/PredictionMarketLZConditionalTokensResolver.sol";
+import {IPredictionMarketLZConditionalTokensResolver} from "../../src/predictionMarket/resolvers/interfaces/IPredictionMarketLZConditionalTokensResolver.sol";
 import {IPredictionMarketResolver} from "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 
 /// @notice Minimal interface for querying Gnosis ConditionalTokens
@@ -149,31 +150,15 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         PredictionMarketLZConditionalTokensResolver resolver = new PredictionMarketLZConditionalTokensResolver(
             address(mockEndpoint),
             owner,
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: 10,
-                readChannelEid: 109, // Polygon EID for read channel
-                targetEid: 109,      // Polygon EID for target
-                conditionalTokens: CTF,
-                confirmations: 15,
-                lzReadGasLimit: 200_000,
-                lzReadResultSize: 32
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: 10
             })
         );
 
         // Verify config was set correctly
-        (
-            uint256 maxPredictionMarkets,
-            uint32 readChannelEid,
-            uint32 targetEid,
-            address conditionalTokens,
-            ,
-            ,
-        ) = resolver.config();
+        uint256 maxPredictionMarkets = resolver.config();
         
         assertEq(maxPredictionMarkets, 10, "Max prediction markets should be 10");
-        assertEq(readChannelEid, 109, "Read channel EID should be Polygon");
-        assertEq(targetEid, 109, "Target EID should be Polygon");
-        assertEq(conditionalTokens, CTF, "ConditionalTokens should be CTF");
     }
 
     // ============ Full Resolver Integration with Test Wrapper ============
@@ -186,14 +171,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         ResolverTestWrapper resolver = new ResolverTestWrapper(
             address(mockEndpoint),
             address(this),
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: 10,
-                readChannelEid: 109,
-                targetEid: 109,
-                conditionalTokens: CTF,
-                confirmations: 15,
-                lzReadGasLimit: 200_000,
-                lzReadResultSize: 32
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: 10
             })
         );
 
@@ -206,7 +185,7 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         resolver.exposed_finalizeResolution(CONDITION_YES, denom, noPayout, yesPayout);
 
         // Verify state
-        PredictionMarketLZConditionalTokensResolver.ConditionState memory state =
+        IPredictionMarketLZConditionalTokensResolver.ConditionState memory state =
             resolver.getCondition(CONDITION_YES);
 
         assertTrue(state.settled, "Should be settled");
@@ -217,9 +196,9 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         assertEq(state.yesPayout, yesPayout, "Yes payout should match");
 
         // Verify via getPredictionResolution
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
+        outcomes[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: CONDITION_YES,
             prediction: true // Predicting YES
         });
@@ -238,14 +217,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         ResolverTestWrapper resolver = new ResolverTestWrapper(
             address(mockEndpoint),
             address(this),
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: 10,
-                readChannelEid: 109,
-                targetEid: 109,
-                conditionalTokens: CTF,
-                confirmations: 15,
-                lzReadGasLimit: 200_000,
-                lzReadResultSize: 32
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: 10
             })
         );
 
@@ -258,7 +231,7 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         resolver.exposed_finalizeResolution(CONDITION_NO, denom, noPayout, yesPayout);
 
         // Verify state
-        PredictionMarketLZConditionalTokensResolver.ConditionState memory state =
+        IPredictionMarketLZConditionalTokensResolver.ConditionState memory state =
             resolver.getCondition(CONDITION_NO);
 
         assertTrue(state.settled, "Should be settled");
@@ -266,9 +239,9 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         assertFalse(state.resolvedToYes, "Should resolve to NO");
 
         // Verify via getPredictionResolution - predicting NO should succeed
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
+        outcomes[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: CONDITION_NO,
             prediction: false // Predicting NO
         });
@@ -287,14 +260,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         ResolverTestWrapper resolver = new ResolverTestWrapper(
             address(mockEndpoint),
             address(this),
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: 10,
-                readChannelEid: 109,
-                targetEid: 109,
-                conditionalTokens: CTF,
-                confirmations: 15,
-                lzReadGasLimit: 200_000,
-                lzReadResultSize: 32
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: 10
             })
         );
 
@@ -307,9 +274,9 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         resolver.exposed_finalizeResolution(CONDITION_YES, denom, noPayout, yesPayout);
 
         // Predict NO when actual outcome was YES - should fail
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](1);
+        outcomes[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: CONDITION_YES,
             prediction: false // Wrong prediction
         });
@@ -329,14 +296,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         ResolverTestWrapper resolver = new ResolverTestWrapper(
             address(mockEndpoint),
             address(this),
-            PredictionMarketLZConditionalTokensResolver.Settings({
-                maxPredictionMarkets: 10,
-                readChannelEid: 109,
-                targetEid: 109,
-                conditionalTokens: CTF,
-                confirmations: 15,
-                lzReadGasLimit: 200_000,
-                lzReadResultSize: 32
+            IPredictionMarketLZConditionalTokensResolver.Settings({
+                maxPredictionMarkets: 10
             })
         );
 
@@ -356,13 +317,13 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         }
 
         // Create parlay with both conditions - correct predictions
-        PredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
-            new PredictionMarketLZConditionalTokensResolver.PredictedOutcome[](2);
-        outcomes[0] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[] memory outcomes =
+            new IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[](2);
+        outcomes[0] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: CONDITION_YES,
             prediction: true // Correct
         });
-        outcomes[1] = PredictionMarketLZConditionalTokensResolver.PredictedOutcome({
+        outcomes[1] = IPredictionMarketLZConditionalTokensResolver.PredictedOutcome({
             marketId: CONDITION_NO,
             prediction: false // Correct
         });

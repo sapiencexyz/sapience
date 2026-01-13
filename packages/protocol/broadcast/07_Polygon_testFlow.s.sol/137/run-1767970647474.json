@@ -1,0 +1,32 @@
+{
+  "transactions": [
+    {
+      "hash": null,
+      "transactionType": "CALL",
+      "contractName": "ConditionalTokensReader",
+      "contractAddress": "0xe94a1978f725cefa53487adbc588fdddf01e20ff",
+      "function": "requestResolution(bytes32)",
+      "arguments": [
+        "0x75c829b5c5b88f6f0e60ece1483b2317a92c39d41362b5e44abe5233cea8ca87"
+      ],
+      "transaction": {
+        "from": "0xdb5af497a73620d881561edb508012a5f84e9ba2",
+        "to": "0xe94a1978f725cefa53487adbc588fdddf01e20ff",
+        "gas": "0x660b6",
+        "value": "0xa050b42a1c151b5",
+        "input": "0x5717192a75c829b5c5b88f6f0e60ece1483b2317a92c39d41362b5e44abe5233cea8ca87",
+        "nonce": "0xf",
+        "chainId": "0x89"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    }
+  ],
+  "receipts": [],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1767970647474,
+  "chain": 137,
+  "commit": "968fa6650"
+}
