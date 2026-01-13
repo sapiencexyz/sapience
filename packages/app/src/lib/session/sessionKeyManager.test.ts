@@ -186,6 +186,20 @@ jest.mock('@sapience/sdk/contracts', () => ({
 jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ARBITRUM: 42161,
+  etherealChain: {
+    id: 5064014,
+    name: 'Ethereal',
+    nativeCurrency: { decimals: 18, name: 'USDe', symbol: 'USDe' },
+    rpcUrls: {
+      default: { http: ['https://rpc.ethereal.trade'] },
+    },
+    blockExplorers: {
+      default: {
+        name: 'Ethereal Explorer',
+        url: 'https://explorer.ethereal.trade',
+      },
+    },
+  },
 }));
 
 // Import after mocks are set up

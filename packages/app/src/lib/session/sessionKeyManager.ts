@@ -37,17 +37,14 @@ import {
   eas as easAddresses,
   passiveLiquidityVault as vaultAddresses,
 } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ARBITRUM,
+  etherealChain,
+} from '@sapience/sdk/constants';
 
-// Ethereal chain definition
-export const ethereal: Chain = {
-  id: 5064014,
-  name: 'Ethereal',
-  nativeCurrency: { decimals: 18, name: 'USDe', symbol: 'USDe' },
-  rpcUrls: {
-    default: { http: ['https://rpc.ethereal.trade'] },
-  },
-};
+// Re-export etherealChain as 'ethereal' for backward compatibility
+export { etherealChain as ethereal };
 
 const WUSDE_ADDRESS_ETHEREAL =
   collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
@@ -86,7 +83,7 @@ function getZeroDevUrls(chainId: number): {
   const baseUrl = `https://rpc.zerodev.app/api/v3/${projectId}/chain/${chainId}`;
 
   const envUrls: Record<number, { bundler?: string; paymaster?: string }> = {
-    [ethereal.id]: {
+    [etherealChain.id]: {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL,
     },
@@ -209,8 +206,8 @@ export async function getSmartAccountAddress(
 // Public clients are created once and reused
 function getPublicClients() {
   const etherealPublicClient = createPublicClient({
-    transport: http(ethereal.rpcUrls.default.http[0]),
-    chain: ethereal,
+    transport: http(etherealChain.rpcUrls.default.http[0]),
+    chain: etherealChain,
   });
 
   const arbitrumPublicClient = createPublicClient({
@@ -313,7 +310,7 @@ export async function createSession(
   const { serializePermissionAccount } = await import('@zerodev/permissions');
 
   // Validate Ethereal bundler/paymaster URLs (will throw if not configured)
-  getZeroDevUrls(ethereal.id);
+  getZeroDevUrls(etherealChain.id);
 
   let etherealEnableTypedData: EnableTypedData | undefined;
 
@@ -322,7 +319,7 @@ export async function createSession(
 
   // Switch to Ethereal chain
   console.debug('[SessionKeyManager] Switching to Ethereal chain...');
-  await ownerSigner.switchChain(ethereal.id);
+  await ownerSigner.switchChain(etherealChain.id);
 
   // Create ECDSA validator for owner on Ethereal
   const etherealOwnerValidator = await signerToEcdsaValidator(
@@ -411,7 +408,7 @@ export async function createSession(
   );
 
   // Create Ethereal client
-  const etherealClient = createChainClient(ethereal, etherealAccount);
+  const etherealClient = createChainClient(etherealChain, etherealAccount);
 
   console.debug('[SessionKeyManager] Owner approval obtained, session created');
   console.debug(
@@ -607,7 +604,7 @@ export async function restoreSession(
   });
 
   // Restore Ethereal session (required)
-  getZeroDevUrls(ethereal.id); // Will throw if not configured
+  getZeroDevUrls(etherealChain.id); // Will throw if not configured
   const etherealAccount = await deserializePermissionAccount(
     etherealPublicClient,
     ENTRY_POINT,
@@ -615,7 +612,7 @@ export async function restoreSession(
     serialized.etherealApproval,
     sessionKeySigner
   );
-  const etherealClient = createChainClient(ethereal, etherealAccount);
+  const etherealClient = createChainClient(etherealChain, etherealAccount);
   console.debug('[SessionKeyManager] Ethereal session restored');
 
   // Restore Arbitrum session (optional - may not exist yet)
