@@ -200,7 +200,7 @@ export default function PredictionForm({
           {settled || isPastEndTime ? (
             <div className="flex items-center gap-2">
               <Label className="text-foreground font-normal text-lg -mt-0.5">
-                {settled ? 'Resolved' : 'Resolution Pending'}
+                {settled ? 'Resolved' : 'Resolution'}
               </Label>
               {settled ? (
                 <Badge

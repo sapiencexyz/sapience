@@ -9,7 +9,10 @@ import {
   lzUmaResolver,
 } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
-import { UMA_RESOLVER_ADDRESSES } from '~/lib/constants';
+import {
+  UMA_RESOLVER_ADDRESSES,
+  POLYMARKET_RESOLVER_ADDRESSES,
+} from '~/lib/constants';
 
 interface TechSpecTableProps {
   conditionId: string;
@@ -17,6 +20,7 @@ interface TechSpecTableProps {
   endTime?: number | null;
   settled?: boolean | null;
   resolvedToYes?: boolean | null;
+  resolverAddress?: string | null;
 }
 
 export function TechSpecTable({
@@ -25,9 +29,12 @@ export function TechSpecTable({
   endTime,
   settled,
   resolvedToYes,
+  resolverAddress: resolverAddressProp,
 }: TechSpecTableProps) {
   const marketAddress = predictionMarket[chainId]?.address;
+  // Use prop if provided, otherwise fall back to contract lookups
   const resolverAddress =
+    resolverAddressProp ??
     lzPMResolver[chainId]?.address ??
     lzUmaResolver[chainId]?.address ??
     umaResolver[chainId]?.address;
@@ -35,6 +42,10 @@ export function TechSpecTable({
   const isUmaResolver =
     resolverAddress &&
     UMA_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+
+  const isPolymarketResolver =
+    resolverAddress &&
+    POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -101,6 +112,23 @@ export function TechSpecTable({
                     <Image
                       src="/uma-logomark.png"
                       alt="UMA"
+                      width={24}
+                      height={24}
+                      className="h-[18px] w-[18px]"
+                    />
+                  </a>
+                )}
+                {isPolymarketResolver && (
+                  <a
+                    href="https://polymarket.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center hover:opacity-90 transition-opacity"
+                    aria-label="Visit Polymarket website"
+                  >
+                    <Image
+                      src="/polymarket-logomark.png"
+                      alt="Polymarket"
                       width={24}
                       height={24}
                       className="h-[18px] w-[18px]"
