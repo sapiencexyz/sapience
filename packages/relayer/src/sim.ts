@@ -59,7 +59,7 @@ export function basicValidateBid(
   }
 
   // Note: Collateral transfer now relies on standard ERC20 approvals, not permits.
-  // Bots should ensure the maker has approved the Parlay contract prior to bid submission.
+  // Bots should ensure the maker has approved the PredictionMarket contract prior to bid submission.
   // TODO: verify resolver address and market validation
 
   return { ok: true };

@@ -15,7 +15,7 @@ import { createWalletClient, custom, http, keccak256, stringToHex } from 'viem';
 import { mainnet } from 'viem/chains';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useUserParlays } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
@@ -38,7 +38,7 @@ const ReferralVolumeCell = ({ address }: { address: string }) => {
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
   const lowerAddress = address.toLowerCase();
 
-  const { data: positions, isLoading: positionsLoading } = useUserParlays({
+  const { data: positions, isLoading: positionsLoading } = useUserPositions({
     address: lowerAddress,
     chainId,
   });

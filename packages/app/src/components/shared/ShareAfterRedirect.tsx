@@ -9,7 +9,7 @@ import {
   useForecasts,
   type FormattedAttestation,
 } from '~/hooks/graphql/useForecasts';
-import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 
 type Anchor = 'forecasts' | 'positions';
@@ -33,7 +33,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
     attesterAddress: lowerAddress,
     schemaId: SCHEMA_UID,
   });
-  const { data: positions } = useUserParlays({ address: lowerAddress });
+  const { data: positions } = useUserPositions({ address: lowerAddress });
 
   const clearIntent = useCallback(() => {
     try {
@@ -81,7 +81,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
 
   // Build minimal OG url from resolved entities
   const toOgUrl = useCallback(
-    (anchor: Anchor, entity: FormattedAttestation | Parlay): string | null => {
+    (anchor: Anchor, entity: FormattedAttestation | Position): string | null => {
       const qp = new URLSearchParams();
       qp.set('addr', lowerAddress);
       try {
@@ -92,7 +92,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
         }
         if (anchor === 'positions' && entity) {
           // Encode all legs with question and prediction choice
-          const position = entity as Parlay;
+          const position = entity as Position;
           const legs = (position?.predictions || [])
             .map((o) => {
               const question =
@@ -186,7 +186,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
       const ts = Number(intent.clientTimestamp || 0);
       const minTs = ts - windowMs;
 
-      let resolved: FormattedAttestation | Parlay | null = null;
+      let resolved: FormattedAttestation | Position | null = null;
 
       if (intent.anchor === 'forecasts') {
         const list: FormattedAttestation[] = forecasts || [];
@@ -195,13 +195,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
             (f: FormattedAttestation) => Number(f.rawTime) * 1000 >= minTs
           ) || null;
       } else if (intent.anchor === 'positions') {
-        const list: Parlay[] = positions || [];
+        const list: Position[] = positions || [];
         const filtered = list.filter(
-          (p: Parlay) => Number(p.mintedAt) * 1000 >= minTs
+          (p: Position) => Number(p.mintedAt) * 1000 >= minTs
         );
         resolved =
           filtered.sort(
-            (a: Parlay, b: Parlay) => Number(b.mintedAt) - Number(a.mintedAt)
+            (a: Position, b: Position) => Number(b.mintedAt) - Number(a.mintedAt)
           )[0] || null;
       }
 

@@ -140,20 +140,20 @@ export default function PositionForm({
   });
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
-  const parlayWagerAmount = useWatch({
+  const wagerAmount = useWatch({
     control: methods.control,
     name: 'wagerAmount',
   });
-  const prevWagerAmountRef = useRef<string>(parlayWagerAmount || '');
+  const prevWagerAmountRef = useRef<string>(wagerAmount || '');
   // Track the request configuration to ignore stale bids
   const currentRequestKeyRef = useRef<string | null>(null);
 
   // Apply rainbow hover effect only for wagers over 1k
   const isRainbowHoverEnabled = useMemo(() => {
-    if (!parlayWagerAmount) return false;
-    const wagerNum = Number(parlayWagerAmount);
+    if (!wagerAmount) return false;
+    const wagerNum = Number(wagerAmount);
     return !Number.isNaN(wagerNum) && wagerNum > 1000;
-  }, [parlayWagerAmount]);
+  }, [wagerAmount]);
 
   // Calculate taker wager in wei for auction chart
   const takerWagerWei = useMemo(() => {
@@ -161,11 +161,11 @@ export default function PositionForm({
       const decimals = Number.isFinite(collateralDecimals as number)
         ? (collateralDecimals as number)
         : 18;
-      return parseUnits(parlayWagerAmount || '0', decimals).toString();
+      return parseUnits(wagerAmount || '0', decimals).toString();
     } catch {
       return '0';
     }
-  }, [parlayWagerAmount, collateralDecimals]);
+  }, [wagerAmount, collateralDecimals]);
 
   // Create a stable key from all prediction legs (UMA + Pyth) to detect changes
   // and ensure we clear/re-key bids correctly when *either* leg set changes.
@@ -187,14 +187,14 @@ export default function PositionForm({
 
   // Clear bids when wager amount changes (for animations)
   useEffect(() => {
-    if (prevWagerAmountRef.current !== (parlayWagerAmount || '')) {
+    if (prevWagerAmountRef.current !== (wagerAmount || '')) {
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when wager changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
-      prevWagerAmountRef.current = parlayWagerAmount || '';
+      prevWagerAmountRef.current = wagerAmount || '';
     }
-  }, [parlayWagerAmount]);
+  }, [wagerAmount]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
@@ -210,7 +210,7 @@ export default function PositionForm({
   // Update valid bids when new bids come in (for animations)
   // Only accept bids if they match the current request configuration
   useEffect(() => {
-    const currentRequestKey = `${predictionsKey}:${parlayWagerAmount || ''}`;
+    const currentRequestKey = `${predictionsKey}:${wagerAmount || ''}`;
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/wager changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
@@ -221,7 +221,7 @@ export default function PositionForm({
     if (currentRequestKeyRef.current === currentRequestKey) {
       setValidBids(bids);
     }
-  }, [bids, predictionsKey, parlayWagerAmount]);
+  }, [bids, predictionsKey, wagerAmount]);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
@@ -333,7 +333,7 @@ export default function PositionForm({
       if (!hasUma && !hasPyth) return;
       if (hasFormErrors) return;
 
-      const wagerStr = parlayWagerAmount || '0';
+      const wagerStr = wagerAmount || '0';
 
       try {
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
@@ -384,7 +384,7 @@ export default function PositionForm({
         requestQuotes(params, options);
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
-        currentRequestKeyRef.current = `${predictionsKey}:${parlayWagerAmount || ''}`;
+        currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
         const msg =
@@ -410,7 +410,7 @@ export default function PositionForm({
       takerAddress,
       refetchTakerNonce,
       hasFormErrors,
-      parlayWagerAmount,
+      wagerAmount,
       collateralDecimals,
       chainId,
       predictionsKey,
@@ -438,7 +438,7 @@ export default function PositionForm({
     if (!hasPredictions) return;
 
     // Must have a valid wager amount
-    const wagerNum = Number(parlayWagerAmount || '0');
+    const wagerNum = Number(wagerAmount || '0');
     if (wagerNum <= 0 || Number.isNaN(wagerNum)) return;
 
     // Clear previous debounce timer
@@ -459,7 +459,7 @@ export default function PositionForm({
   }, [
     isSessionActive,
     predictionsKey,
-    parlayWagerAmount,
+    wagerAmount,
     triggerAuctionRequest,
     selections.length,
     pythPredictions.length,
@@ -635,7 +635,7 @@ export default function PositionForm({
             <BidDisplay
               bestBid={bestBid}
               estimateBid={stickyEstimateBid}
-              wagerAmount={parlayWagerAmount || '0'}
+              wagerAmount={wagerAmount || '0'}
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
               nowMs={nowMs}

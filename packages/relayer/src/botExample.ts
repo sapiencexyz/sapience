@@ -27,12 +27,12 @@ async function ensureApprovalIfConfigured(amount: bigint) {
     const rpcUrl = process.env.BOT_RPC_URL;
     const pk = process.env.BOT_PRIVATE_KEY;
     const collateralToken = process.env.BOT_COLLATERAL_TOKEN;
-    const spender = process.env.BOT_PARLAY_CONTRACT; // contract that will pull maker collateral
+    const spender = process.env.PREDICTION_MARKET_CONTRACT; // contract that will pull maker collateral
     const chainId = Number(process.env.BOT_CHAIN_ID || '8453');
 
     if (!rpcUrl || !pk || !collateralToken || !spender) {
       console.log(
-        '[BOT] Skipping approval (set BOT_RPC_URL, BOT_PRIVATE_KEY, BOT_COLLATERAL_TOKEN, BOT_PARLAY_CONTRACT to enable)'
+        '[BOT] Skipping approval (set BOT_RPC_URL, BOT_PRIVATE_KEY, BOT_COLLATERAL_TOKEN, PREDICTION_MARKET_CONTRACT to enable)'
       );
       return;
     }

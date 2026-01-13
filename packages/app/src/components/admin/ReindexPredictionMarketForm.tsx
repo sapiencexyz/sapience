@@ -171,7 +171,7 @@ const ReindexPredictionMarketForm = () => {
         </label>
       </div>
       <p className="text-sm text-muted-foreground">
-        ⚠️ Warning: This will delete all existing parlays and events for the
+        ⚠️ Warning: This will delete all existing positions and events for the
         selected chain before reindexing.
       </p>
 

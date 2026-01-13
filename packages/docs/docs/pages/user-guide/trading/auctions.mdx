@@ -14,7 +14,7 @@ A **prediction** is one or more picks combined with a wager amount. Each **pick*
 - **Single-pick example:** "Will BTC exceed $100k by July 1?" → Yes
 - **Multi-pick example:** "Team A wins AND turnout ≥ 60%"
 
-Multi-pick predictions (parlays) combine several predictions into one. If *every* pick resolves correctly, you win. If *any* pick is wrong, you lose.
+Multi-pick predictions combine several predictions into one position. If *every* pick resolves correctly, you win. If *any* pick is wrong, you lose.
 
 ### Probability Intuition
 
@@ -26,7 +26,7 @@ When picks are independent, your prediction's implied probability is roughly the
 | Turnout ≥ 60% | 40% |
 | **Combined** | **20%** (0.5 × 0.4) |
 
-Lower combined probability means higher potential payout—this is why parlays are attractive for expressing compound forecasts.
+Lower combined probability means higher potential payout—this is why multi-leg positions are attractive for expressing compound forecasts.
 
 ## How the Auction Works
 
@@ -36,6 +36,6 @@ Lower combined probability means higher potential payout—this is why parlays a
 
 3. **Selection** — You choose the best offer (typically the highest wager, meaning better odds for you). Bids expire quickly, so the auction resolves in seconds.
 
-4. **Settlement** — The smart contract verifies the responder's signature, transfers collateral from both parties, and mints NFTs representing each position: your prediction and the responder's *anti-parlay* (betting that at least one of your picks is wrong).
+4. **Settlement** — The smart contract verifies the responder's signature, transfers collateral from both parties, and mints NFTs representing each position: your prediction and the responder's counterparty position (betting that at least one of your picks is wrong).
 
 5. **Resolution** — When questions resolve, the winner burns their NFT to claim the pooled collateral.

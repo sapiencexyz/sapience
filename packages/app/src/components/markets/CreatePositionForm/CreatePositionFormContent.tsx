@@ -15,7 +15,7 @@ interface CreatePositionFormContentProps {
       { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
     >;
   }>;
-  parlayMethods: UseFormReturn<{
+  formMethods: UseFormReturn<{
     wagerAmount: string;
     limitAmount: string | number;
     positions: Record<
@@ -28,7 +28,7 @@ interface CreatePositionFormContentProps {
   isPositionSubmitting: boolean;
   positionError?: string | null;
   isSubmitting: boolean;
-  parlayChainId?: number;
+  positionChainId?: number;
   // Auction integration (provided by parent to share a single WS connection)
   auctionId?: string | null;
   bids?: QuoteBid[];
@@ -51,11 +51,11 @@ interface CreatePositionFormContentProps {
 }
 
 export const CreatePositionFormContent = ({
-  parlayMethods,
+  formMethods,
   handlePositionSubmit,
   isPositionSubmitting,
   positionError,
-  parlayChainId,
+  positionChainId,
   bids = [],
   requestQuotes,
   collateralToken,
@@ -109,11 +109,11 @@ export const CreatePositionFormContent = ({
             </div>
           ) : (
             <PositionForm
-              methods={parlayMethods}
+              methods={formMethods}
               onSubmit={handlePositionSubmit}
               isSubmitting={isPositionSubmitting}
               error={positionError}
-              chainId={parlayChainId}
+              chainId={positionChainId}
               bids={bids}
               requestQuotes={requestQuotes}
               collateralToken={collateralToken}

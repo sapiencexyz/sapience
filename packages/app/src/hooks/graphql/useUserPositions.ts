@@ -18,7 +18,7 @@ type PredictedOutcome = {
   } | null;
 };
 
-export type Parlay = {
+export type Position = {
   id: number;
   chainId: number;
   marketAddress: string;
@@ -38,7 +38,7 @@ export type Parlay = {
   predictions: PredictedOutcome[];
 };
 
-const USER_PARLAYS_QUERY = /* GraphQL */ `
+const USER_POSITIONS_QUERY = /* GraphQL */ `
   query UserPositions(
     $address: String!
     $take: Int
@@ -84,7 +84,7 @@ const USER_PARLAYS_QUERY = /* GraphQL */ `
   }
 `;
 
-export function useUserParlaysCount(address?: string, chainId?: number) {
+export function useUserPositionsCount(address?: string, chainId?: number) {
   const enabled = Boolean(address);
   const { data } = useQuery({
     queryKey: ['positionsCount', address, chainId],
@@ -108,7 +108,7 @@ export function useUserParlaysCount(address?: string, chainId?: number) {
   return data ?? 0;
 }
 
-export function useUserParlays(params: {
+export function useUserPositions(params: {
   address?: string;
   take?: number;
   skip?: number;
@@ -141,8 +141,8 @@ export function useUserParlays(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ positions: Parlay[] }>(
-        USER_PARLAYS_QUERY,
+      const resp = await graphqlRequest<{ positions: Position[] }>(
+        USER_POSITIONS_QUERY,
         {
           address,
           take,
