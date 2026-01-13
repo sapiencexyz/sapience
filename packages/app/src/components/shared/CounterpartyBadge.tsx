@@ -20,7 +20,7 @@ export default function CounterpartyBadge({
   className,
   labelClassName,
   iconClassName,
-  tooltip = 'This position is that one or more of these conditions will not be met.',
+  tooltip = 'As the counterparty, this user needs only one of these predictions to be correct.',
 }: CounterpartyBadgeProps) {
   return (
     <TooltipProvider>

@@ -12,7 +12,10 @@ import {
 } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
+// Note: Owner's wallet signs bid requests (not session key) so relayer can verify
+// smart account ownership by computing the smart account address from the recovered signer.
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
@@ -79,6 +82,7 @@ export function useBidSubmission(
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = useChainIdFromLocalStorage();
   const { apiBaseUrl } = useSettings();
+  const { isSessionActive, smartAccountAddress } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -125,8 +129,12 @@ export function useBidSubmission(
         maxEndTimeSec,
       } = params;
 
+      // Use smart account address as maker when session is active
+      const signerAddress =
+        isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+
       // Validate required data
-      if (!address) {
+      if (!signerAddress) {
         return { success: false, error: 'Wallet not connected' };
       }
 
@@ -205,10 +213,11 @@ export function useBidSubmission(
 
       const message = {
         messageHash: innerMessageHash,
-        owner: getAddress(address),
+        owner: getAddress(signerAddress),
       } as const;
 
-      // Sign typed data via wagmi/viem
+      // Always use owner's wallet for signing (even when session is active)
+      // Relayer verifies ownership by computing smart account from recovered signer
       let makerSignature: `0x${string}`;
       try {
         makerSignature = await signTypedDataAsync({
@@ -232,9 +241,9 @@ export function useBidSubmission(
       }
 
       // Build bid payload
-      const payload = {
+      const payload: Record<string, unknown> = {
         auctionId,
-        maker: address,
+        maker: signerAddress,
         makerDeadline,
         makerNonce: takerNonce,
         makerSignature,
@@ -266,6 +275,8 @@ export function useBidSubmission(
       wsUrl,
       signTypedDataAsync,
       onSignatureRejected,
+      isSessionActive,
+      smartAccountAddress,
     ]
   );
 

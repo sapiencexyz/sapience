@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import { usePrivy } from '@privy-io/react-auth';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useAccount, useConnect } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import {
@@ -11,9 +10,15 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Mail, Wallet } from 'lucide-react';
-
+import { Input } from '@sapience/ui/components/ui/input';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
+import { Wallet } from 'lucide-react';
 import { useAuth } from '~/lib/context/AuthContext';
+import { useSession } from '~/lib/context/SessionContext';
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -43,22 +48,25 @@ const FEATURED_WALLETS = [
     id: 'rabby',
     name: 'Rabby Wallet',
     matchIds: ['io.rabby', 'rabby'],
-    downloadUrl: 'https://rabby.io/',
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzhBOTdGRiIvPgo8cGF0aCBkPSJNMjQuNSAxMy41QzI0LjUgMTAuNSAyMiA4IDE5IDhIMTNDMTAgOCA3LjUgMTAuNSA3LjUgMTMuNUM3LjUgMTUuNSA4LjUgMTcuMiAxMCAxOEw4IDI0SDEyTDE0IDIwSDE4TDIwIDI0SDI0TDIyIDE4QzIzLjUgMTcuMiAyNC41IDE1LjUgMjQuNSAxMy41WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+    icon: '/wallet-icons/rabby.svg',
   },
   {
     id: 'metamask',
     name: 'MetaMask',
     matchIds: ['io.metamask', 'metamask'],
-    downloadUrl: 'https://metamask.io/download/',
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iI0Y1ODQxRiIvPgo8cGF0aCBkPSJNMjQgOEwxNiAxNEwxOCAxMC41TDI0IDhaIiBmaWxsPSIjRTI3NjFCIi8+CjxwYXRoIGQ9Ik04IDhMMTYgMTRMMTQgMTAuNUw4IDhaIiBmaWxsPSIjRTI3NjFCIi8+CjxwYXRoIGQ9Ik0yMiAyMEwyMCAyNEwxNiAyM0wxMiAyNEwxMCAyMEw2IDE0TDEwIDE2TDEyIDEyTDIwIDEyTDIyIDE2TDI2IDE0TDIyIDIwWiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+',
+    icon: '/wallet-icons/metamask.svg',
   },
   {
-    id: 'phantom',
-    name: 'Phantom',
-    matchIds: ['app.phantom', 'phantom'],
-    downloadUrl: 'https://phantom.app/download',
-    icon: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iOCIgZmlsbD0iIzU0NEFDRiIvPgo8cGF0aCBkPSJNMjQgMTZDMjQgMjAuNCAyMC40IDI0IDE2IDI0QzExLjYgMjQgOCAyMC40IDggMTZDOCAxMS42IDExLjYgOCAxNiA4QzIwLjQgOCAyNCAxMS42IDI0IDE2WiIgZmlsbD0id2hpdGUiLz4KPGNpcmNsZSBjeD0iMTIiIGN5PSIxNCIgcj0iMiIgZmlsbD0iIzU0NEFDRiIvPgo8Y2lyY2xlIGN4PSIyMCIgY3k9IjE0IiByPSIyIiBmaWxsPSIjNTQ0QUNGIi8+Cjwvc3ZnPg==',
+    id: 'coinbase',
+    name: 'Coinbase Wallet',
+    matchIds: ['com.coinbase', 'coinbase'],
+    icon: '/wallet-icons/coinbase-wallet.png',
+  },
+  {
+    id: 'walletconnect',
+    name: 'WalletConnect',
+    matchIds: [],
+    icon: '/wallet-icons/walletconnect.svg',
   },
 ] as const;
 
@@ -66,15 +74,23 @@ export default function ConnectDialog({
   open,
   onOpenChange,
 }: ConnectDialogProps) {
-  const { login } = usePrivy();
   const { isConnected } = useAccount();
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
+  const { startSession } = useSession();
 
-  const { connect, isPending } = useConnect();
+  // Session duration state
+  const [duration, setDuration] = useState('24');
+
+  // Track if we just connected a wallet (to trigger auto-session)
+  // Use a ref to track previous connection state to avoid race conditions
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const prevConnectedRef = useRef(isConnected);
+
+  const { connect, isPending, connectors } = useConnect();
   const [connectingId, setConnectingId] = useState<string | null>(null);
 
-  // EIP-6963 wallet discovery (Privy disables wagmi's built-in discovery)
+  // EIP-6963 wallet discovery
   const [discoveredWallets, setDiscoveredWallets] = useState<
     EIP6963ProviderDetail[]
   >([]);
@@ -110,19 +126,43 @@ export default function ConnectDialog({
     setIsClient(true);
   }, []);
 
-  // Close dialog when connected and clear logged out state
+  // Auto-create session when wallet connects, then close dialog
   useEffect(() => {
-    if (isConnected && open) {
-      clearLoggedOut();
-      onOpenChange(false);
-    }
-  }, [isConnected, open, onOpenChange, clearLoggedOut]);
+    const wasConnected = prevConnectedRef.current;
+    prevConnectedRef.current = isConnected;
 
-  const handleEmailLogin = useCallback(() => {
-    clearLoggedOut();
-    onOpenChange(false);
-    login();
-  }, [login, onOpenChange, clearLoggedOut]);
+    // Detect fresh wallet connection (went from disconnected to connected while dialog is open)
+    if (isConnected && !wasConnected && open) {
+      console.debug(
+        '[ConnectDialog] Fresh wallet connection detected, creating session...'
+      );
+      setIsCreatingSession(true);
+      clearLoggedOut();
+
+      const createSessionAsync = async () => {
+        try {
+          const durationHours = parseInt(duration || '24', 10);
+
+          console.debug('[ConnectDialog] Starting session with:', {
+            durationHours,
+          });
+          await startSession({ durationHours });
+          console.debug('[ConnectDialog] Session created successfully');
+        } catch (error) {
+          console.error(
+            '[ConnectDialog] Failed to auto-create session:',
+            error
+          );
+          // Still close the dialog even if session creation fails
+        } finally {
+          setIsCreatingSession(false);
+          onOpenChange(false);
+        }
+      };
+
+      void createSessionAsync();
+    }
+  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, duration]);
 
   const handleEIP6963Connect = useCallback(
     (wallet: EIP6963ProviderDetail) => {
@@ -147,19 +187,33 @@ export default function ConnectDialog({
     [connect, clearLoggedOut]
   );
 
+  const handleWalletConnectClick = useCallback(() => {
+    clearLoggedOut();
+    setConnectingId('walletconnect');
+
+    const walletConnectConnector = connectors.find(
+      (connector) => connector.id === 'walletConnect'
+    );
+
+    if (walletConnectConnector) {
+      connect(
+        { connector: walletConnectConnector },
+        {
+          onSettled: () => setConnectingId(null),
+        }
+      );
+    }
+  }, [connect, connectors, clearLoggedOut]);
+
   const handleWalletClick = useCallback(
-    (wallet: {
-      eip6963Provider?: EIP6963ProviderDetail;
-      downloadUrl?: string;
-      id: string;
-    }) => {
-      if (wallet.eip6963Provider) {
+    (wallet: { eip6963Provider?: EIP6963ProviderDetail; id: string }) => {
+      if (wallet.id === 'walletconnect') {
+        handleWalletConnectClick();
+      } else if (wallet.eip6963Provider) {
         handleEIP6963Connect(wallet.eip6963Provider);
-      } else if (wallet.downloadUrl) {
-        window.open(wallet.downloadUrl, '_blank');
       }
     },
-    [handleEIP6963Connect]
+    [handleEIP6963Connect, handleWalletConnectClick]
   );
 
   // Build wallet list: featured wallets first, then other detected wallets
@@ -169,7 +223,6 @@ export default function ConnectDialog({
       name: string;
       icon?: string;
       eip6963Provider?: EIP6963ProviderDetail;
-      downloadUrl?: string;
     }> = [];
 
     // Add featured wallets (always shown)
@@ -186,9 +239,8 @@ export default function ConnectDialog({
       options.push({
         id: featured.id,
         name: featured.name,
-        icon: detectedWallet?.info.icon || featured.icon,
+        icon: featured.icon || detectedWallet?.info.icon, // always use featured icon first
         eip6963Provider: detectedWallet,
-        downloadUrl: featured.downloadUrl,
       });
     }
 
@@ -197,8 +249,8 @@ export default function ConnectDialog({
       const rdns = wallet.info.rdns.toLowerCase();
       const name = wallet.info.name.toLowerCase();
 
-      // Skip WalletConnect
-      if (rdns.includes('walletconnect') || name.includes('walletconnect')) {
+      // Skip Phantom
+      if (name.includes('phantom')) {
         continue;
       }
 
@@ -225,36 +277,12 @@ export default function ConnectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[420px] p-6 gap-0 border-border/50 bg-[hsl(var(--background))]">
+      <DialogContent className="top-1/2 translate-y-[-50%] sm:max-w-[420px] p-6 gap-0 border-border/50 bg-[hsl(var(--background))]">
         <DialogHeader className="pb-6">
           <DialogTitle className="text-center text-xl font-normal">
             Log in
           </DialogTitle>
         </DialogHeader>
-
-        {/* Email/SMS Login Button */}
-        <Button
-          variant="outline"
-          className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)]"
-          onClick={handleEmailLogin}
-        >
-          <div className="flex items-center justify-center w-8 h-8 rounded bg-muted/50">
-            <Mail className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <span>Log in with Email or SMS</span>
-        </Button>
-
-        {/* Divider */}
-        <div className="relative my-4">
-          <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border/50" />
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="bg-background px-3 text-muted-foreground uppercase tracking-wide">
-              or
-            </span>
-          </div>
-        </div>
 
         {/* Wallet Options */}
         <div className="flex flex-col gap-3">
@@ -269,7 +297,9 @@ export default function ConnectDialog({
           {isClient &&
             walletOptions.map((wallet) => {
               const isThisConnecting = connectingId === wallet.id;
-              const isInstalled = Boolean(wallet.eip6963Provider);
+              const isWalletConnect = wallet.id === 'walletconnect';
+              const isInstalled =
+                isWalletConnect || Boolean(wallet.eip6963Provider);
 
               return (
                 <Button
@@ -277,7 +307,7 @@ export default function ConnectDialog({
                   variant="outline"
                   className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
                   onClick={() => handleWalletClick(wallet)}
-                  disabled={isPending && isInstalled}
+                  disabled={!isInstalled || (isPending && isInstalled)}
                 >
                   <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
                     {wallet.icon ? (
@@ -295,15 +325,47 @@ export default function ConnectDialog({
                   <span className="flex-1 text-left">
                     {isThisConnecting ? 'Connecting...' : wallet.name}
                   </span>
-                  {!isInstalled && (
-                    <span className="text-xs text-muted-foreground">
-                      Install
-                    </span>
-                  )}
                 </Button>
               );
             })}
         </div>
+
+        {/* Session duration / Creating session status */}
+        <p className="text-xs text-muted-foreground text-center mt-6">
+          {isCreatingSession ? (
+            'Creating session...'
+          ) : (
+            <>
+              Log in for the next{' '}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="underline decoration-dotted underline-offset-2 hover:opacity-80"
+                  >
+                    {duration} hours
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium">Duration</label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value)}
+                        className="w-full pr-16"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                        hours
+                      </span>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </>
+          )}
+        </p>
       </DialogContent>
     </Dialog>
   );

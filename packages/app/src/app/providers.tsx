@@ -1,24 +1,23 @@
 'use client';
 
-import { PrivyProvider } from '@privy-io/react-auth';
-import { WagmiProvider, createConfig } from '@privy-io/wagmi';
+import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
 import { sepolia, base, cannon, type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
-import { injected, coinbaseWallet } from 'wagmi/connectors';
+import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 import type React from 'react';
-import { useMemo } from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
+import { etherealChain } from '@sapience/sdk/constants';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
-import { useSettings } from '~/lib/context/SettingsContext';
 import { ConnectDialogProvider } from '~/lib/context/ConnectDialogContext';
 import { AuthProvider } from '~/lib/context/AuthContext';
+import { SessionProvider } from '~/lib/context/SessionContext';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,131 +55,96 @@ const converge = {
   },
 } as const satisfies Chain;
 
-const ethereal = {
-  id: 5064014,
-  name: 'Ethereal',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'USDe',
-    symbol: 'USDe',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://rpc.ethereal.trade'],
-    },
-    public: {
-      http: ['https://rpc.ethereal.trade'],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: 'Ethereal Explorer',
-      url: 'https://explorer.ethereal.trade',
-    },
-  },
-} as const satisfies Chain;
+// Build chains and transports
+const buildChainsAndTransports = () => {
+  const transports: Record<number, HttpTransport> = {
+    [sepolia.id]: http(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://ethereum-sepolia-rpc.publicnode.com'
+    ),
+    [base.id]: http(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://base-rpc.publicnode.com'
+    ),
+    [arbitrum.id]: http(
+      process.env.NEXT_PUBLIC_INFURA_API_KEY
+        ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
+        : 'https://arbitrum-rpc.publicnode.com'
+    ),
+    [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
+    [etherealChain.id]: http('https://rpc.ethereal.trade'),
+  };
 
-const useWagmiConfig = () => {
-  const { rpcURL: arbitrumRpcUrl } = useSettings();
+  const chains: Chain[] = [arbitrum, base, converge, etherealChain];
 
-  const config = useMemo(() => {
-    const transports: Record<number, HttpTransport> = {
-      [sepolia.id]: http(
-        process.env.NEXT_PUBLIC_INFURA_API_KEY
-          ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-          : 'https://ethereum-sepolia-rpc.publicnode.com'
-      ),
-      [base.id]: http(
-        process.env.NEXT_PUBLIC_INFURA_API_KEY
-          ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-          : 'https://base-rpc.publicnode.com'
-      ),
-      [arbitrum.id]: http(
-        arbitrumRpcUrl ||
-          (process.env.NEXT_PUBLIC_INFURA_API_KEY
-            ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-            : 'https://arbitrum-rpc.publicnode.com')
-      ),
-      [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
-      [ethereal.id]: http('https://rpc.ethereal.trade'),
-    };
+  if (process.env.NODE_ENV !== 'production') {
+    transports[cannonAtLocalhost.id] = http('http://localhost:8545');
+    chains.push(cannonAtLocalhost);
+    chains.push(sepolia);
+  }
 
-    const chains: Chain[] = [arbitrum, base, converge, ethereal];
-
-    if (process.env.NODE_ENV !== 'production') {
-      transports[cannonAtLocalhost.id] = http('http://localhost:8545');
-      chains.push(cannonAtLocalhost);
-      chains.push(sepolia);
-    }
-
-    return createConfig({
-      ssr: true,
-      chains: chains as unknown as readonly [Chain, ...Chain[]],
-      connectors: [
-        injected(),
-        coinbaseWallet({
-          appName: 'Sapience',
-        }),
-      ],
-      transports,
-    });
-  }, [arbitrumRpcUrl]);
-
-  return config;
+  return { chains, transports };
 };
 
-const WagmiRoot = ({ children }: { children: React.ReactNode }) => {
-  const config = useWagmiConfig();
-  return <WagmiProvider config={config}>{children}</WagmiProvider>;
-};
+const { chains, transports } = buildChainsAndTransports();
+
+// Create wagmi config once at module level for stable reference
+// This ensures wallet connections persist across page refreshes
+const wagmiConfig = createConfig({
+  ssr: true,
+  storage: createStorage({
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  }),
+  chains: chains as unknown as readonly [Chain, ...Chain[]],
+  connectors: [
+    injected(),
+    coinbaseWallet({
+      appName: 'Sapience',
+    }),
+    walletConnect({
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
+      metadata: {
+        name: 'Sapience',
+        description: 'Prediction markets on Ethereum',
+        url: 'https://sapience.xyz',
+        icons: ['https://sapience.xyz/logo.svg'],
+      },
+      showQrModal: true,
+    }),
+  ],
+  transports,
+});
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
-    <PrivyProvider
-      appId={process.env.NEXT_PUBLIC_PRIVY_APP_ID!}
-      clientId={process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID}
-      config={{
-        defaultChain: arbitrum,
-        embeddedWallets: {
-          createOnLogin: 'users-without-wallets',
-        },
-        appearance: {
-          walletChainType: 'ethereum-only',
-          walletList: [
-            'rabby_wallet',
-            'metamask',
-            'coinbase_wallet',
-            'rainbow',
-            'safe',
-          ],
-        },
-      }}
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="dark"
+      forcedTheme="dark"
+      disableTransitionOnChange
     >
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="dark"
-        forcedTheme="dark"
-        disableTransitionOnChange
-      >
-        <QueryClientProvider client={queryClient}>
-          {process.env.NEXT_PUBLIC_SHOW_REACT_QUERY_DEVTOOLS === 'true' ? (
-            <ReactQueryDevtools initialIsOpen={false} />
-          ) : null}
+      <QueryClientProvider client={queryClient}>
+        {process.env.NEXT_PUBLIC_SHOW_REACT_QUERY_DEVTOOLS === 'true' ? (
+          <ReactQueryDevtools initialIsOpen={false} />
+        ) : null}
 
-          <SettingsProvider>
-            <AuthProvider>
-              <WagmiRoot>
+        <SettingsProvider>
+          <AuthProvider>
+            <WagmiProvider config={wagmiConfig}>
+              <SessionProvider>
                 <SapienceProvider>
                   <ConnectDialogProvider>
                     <CreatePositionProvider>{children}</CreatePositionProvider>
                   </ConnectDialogProvider>
                 </SapienceProvider>
-              </WagmiRoot>
-            </AuthProvider>
-          </SettingsProvider>
-        </QueryClientProvider>
-      </ThemeProvider>
-    </PrivyProvider>
+              </SessionProvider>
+            </WagmiProvider>
+          </AuthProvider>
+        </SettingsProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 };
 

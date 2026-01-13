@@ -4,6 +4,7 @@ import {
   type PublicClient,
   decodeEventLog,
   decodeAbiParameters,
+  encodeAbiParameters,
   type Log,
   type Block,
   keccak256,
@@ -11,10 +12,205 @@ import {
 } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
+import {
+  scoreSelectedForecastsForSettledMarket,
+  computeAndStoreMarketTwErrors,
+} from '../../helpers/scoringService';
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
-import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
+import {
+  predictionMarket,
+  lzPMResolver,
+  lzUmaResolver,
+  predictionMarketLZConditionalTokensResolver,
+  lzConditionalTokenResolverAbi,
+} from '@sapience/sdk';
+
+/**
+ * Pyth markets are synthetic placeholders created from on-chain Pyth outcomes.
+ * We want them to display like the old Hermes-wired UX (human label, not bytes32).
+ *
+ * On-chain PythResolver encodes a **Lazer uint32 feed id** in the low bits of a bytes32.
+ * We resolve that id to a symbol using the Lazer symbols endpoint and cache in-memory.
+ */
+type PythLazerSymbolRow = {
+  pyth_lazer_id?: unknown;
+  symbol?: unknown;
+  description?: unknown;
+};
+
+let cachedPythLazerSymbolMap: Map<number, string> | null = null;
+let inflightPythLazerSymbolMap: Promise<Map<number, string>> | null = null;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function getArrayProp(
+  obj: Record<string, unknown>,
+  key: string
+): unknown[] | null {
+  const v = obj[key];
+  return Array.isArray(v) ? v : null;
+}
+
+function tryParseUint32(value: unknown): number | null {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || !Number.isInteger(value)) return null;
+    if (value < 0 || value > 0xffff_ffff) return null;
+    return value;
+  }
+  if (typeof value !== 'string') return null;
+  const s = value.trim();
+  if (!s) return null;
+  try {
+    if (/^\d+$/.test(s)) {
+      const v = BigInt(s);
+      if (v > 0xffff_ffffn) return null;
+      return Number(v);
+    }
+    const hex = s.startsWith('0x') ? s : `0x${s}`;
+    if (/^0x[0-9a-fA-F]{1,8}$/.test(hex)) {
+      const v = BigInt(hex);
+      if (v > 0xffff_ffffn) return null;
+      return Number(v);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function decodePythLazerIdFromBytes32(priceId: string): number | null {
+  const s = String(priceId ?? '').trim();
+  if (!s) return null;
+  // priceId is usually bytes32 hex. If it isn't, allow parsing decimal/short-hex as a convenience.
+  if (!/^0x[0-9a-fA-F]{64}$/.test(s)) return tryParseUint32(s);
+  try {
+    const v = BigInt(s);
+    if (v > 0xffff_ffffn) return null;
+    return Number(v);
+  } catch {
+    return null;
+  }
+}
+
+function tryExtractPythLazerRows(json: unknown): PythLazerSymbolRow[] {
+  const candidates: unknown[] = Array.isArray(json)
+    ? json
+    : isRecord(json)
+      ? (getArrayProp(json, 'data') ?? getArrayProp(json, 'symbols') ?? [])
+      : [];
+  const out: PythLazerSymbolRow[] = [];
+  for (const item of candidates) {
+    out.push({
+      pyth_lazer_id: isRecord(item) ? item['pyth_lazer_id'] : undefined,
+      symbol: isRecord(item) ? item['symbol'] : undefined,
+      description: isRecord(item) ? item['description'] : undefined,
+    });
+  }
+  return out;
+}
+
+async function loadPythLazerSymbolMap(): Promise<Map<number, string>> {
+  if (cachedPythLazerSymbolMap) return cachedPythLazerSymbolMap;
+  if (inflightPythLazerSymbolMap) return inflightPythLazerSymbolMap;
+
+  inflightPythLazerSymbolMap = (async () => {
+    const res = await fetch(
+      'https://history.pyth-lazer.dourolabs.app/history/v1/symbols'
+    );
+    if (!res.ok) throw new Error(`Pyth Lazer symbols failed (${res.status})`);
+    const json = (await res.json()) as unknown;
+    const rows = tryExtractPythLazerRows(json);
+    const map = new Map<number, string>();
+    for (const r of rows) {
+      const id = tryParseUint32(r.pyth_lazer_id);
+      if (typeof id !== 'number') continue;
+      const sym = typeof r.symbol === 'string' ? r.symbol.trim() : '';
+      const desc =
+        typeof r.description === 'string' ? r.description.trim() : '';
+      const label = sym.length > 0 ? sym : desc.length > 0 ? desc : null;
+      if (label) map.set(id, label);
+    }
+    cachedPythLazerSymbolMap = map;
+    return map;
+  })();
+
+  try {
+    return await inflightPythLazerSymbolMap;
+  } finally {
+    inflightPythLazerSymbolMap = null;
+  }
+}
+
+async function resolvePythSyntheticQuestion(priceId: string): Promise<string> {
+  const lazerId = decodePythLazerIdFromBytes32(priceId);
+  if (typeof lazerId !== 'number') return `Pyth market ${priceId}`;
+  try {
+    const map = await loadPythLazerSymbolMap();
+    return map.get(lazerId) ?? `Pyth Pro #${lazerId}`;
+  } catch {
+    return `Pyth Pro #${lazerId}`;
+  }
+}
+
+function formatPythDecimalFromInt(priceInt: bigint, expo: number): string {
+  const sign = priceInt < 0n ? '-' : '';
+  const digits = (priceInt < 0n ? -priceInt : priceInt).toString(10);
+  if (!digits || /^0+$/.test(digits)) return '0';
+
+  if (expo >= 0) return `${sign}${digits}${'0'.repeat(expo)}`;
+
+  const places = Math.abs(expo);
+  let out: string;
+  if (digits.length <= places) {
+    out = `0.${'0'.repeat(places - digits.length)}${digits}`;
+  } else {
+    const i = digits.length - places;
+    out = `${digits.slice(0, i)}.${digits.slice(i)}`;
+  }
+  out = out.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  return sign + out;
+}
+
+function buildPythLegDescriptor(params: {
+  priceId: string;
+  endTimeSec: number;
+  strikePrice: bigint;
+  strikeExpo: number;
+  overWinsOnTie: boolean;
+}): string {
+  // Keep a stable machine-readable prefix so the app can render OVER/UNDER $X like before.
+  // Note: strikePrice is the on-chain int64 with strikeExpo (int32).
+  return [
+    'PYTH_LAZER',
+    `priceId=${String(params.priceId).toLowerCase()}`,
+    `endTime=${Math.floor(params.endTimeSec)}`,
+    `strikePrice=${params.strikePrice.toString()}`,
+    `strikeExpo=${Number(params.strikeExpo)}`,
+    `overWinsOnTie=${params.overWinsOnTie ? '1' : '0'}`,
+    `strikeDecimal=${formatPythDecimalFromInt(params.strikePrice, params.strikeExpo)}`,
+  ].join('|');
+}
+
+// ConditionResolved event ABI for type-safe decoding (full ABI imported from SDK for watching)
+const CONDITION_RESOLVED_EVENT_ABI = [
+  {
+    type: 'event',
+    name: 'ConditionResolved',
+    inputs: [
+      { name: 'conditionId', type: 'bytes32', indexed: true },
+      { name: 'resolvedToYes', type: 'bool', indexed: false },
+      { name: 'invalid', type: 'bool', indexed: false },
+      { name: 'payoutDenominator', type: 'uint256', indexed: false },
+      { name: 'noPayout', type: 'uint256', indexed: false },
+      { name: 'yesPayout', type: 'uint256', indexed: false },
+      { name: 'timestamp', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
 
 // PredictionMarket contract ABI for the events we want to index
 const PREDICTION_MARKET_ABI = [
@@ -117,6 +313,36 @@ const PREDICTION_MARKET_ABI = [
   },
 ] as const;
 
+// Minimal ABI for reading the canonical resolver address from on-chain storage.
+// NOTE: The PredictionMinted event does NOT include resolver, so we must read it.
+const PREDICTION_MARKET_READ_ABI = [
+  {
+    type: 'function',
+    name: 'getPrediction',
+    stateMutability: 'view',
+    inputs: [{ name: 'tokenId', type: 'uint256' }],
+    outputs: [
+      {
+        name: 'predictionData',
+        type: 'tuple',
+        components: [
+          { name: 'predictionId', type: 'uint256' },
+          { name: 'makerNftTokenId', type: 'uint256' },
+          { name: 'takerNftTokenId', type: 'uint256' },
+          { name: 'makerCollateral', type: 'uint256' },
+          { name: 'takerCollateral', type: 'uint256' },
+          { name: 'encodedPredictedOutcomes', type: 'bytes' },
+          { name: 'resolver', type: 'address' },
+          { name: 'maker', type: 'address' },
+          { name: 'taker', type: 'address' },
+          { name: 'settled', type: 'bool' },
+          { name: 'makerWon', type: 'bool' },
+        ],
+      },
+    ],
+  },
+] as const;
+
 // (no read ABI needed with on-event decoding)
 
 // Event signatures for filtering - using keccak256 hashes instead
@@ -193,12 +419,23 @@ interface MarketSubmittedToUMAEvent {
   resolvedToYes: boolean;
 }
 
+interface ConditionResolvedEvent {
+  conditionId: string;
+  resolvedToYes: boolean;
+  invalid: boolean;
+  payoutDenominator: bigint;
+  noPayout: bigint;
+  yesPayout: bigint;
+  timestamp: bigint;
+}
+
 class PredictionMarketIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private chainId: number;
   private contractAddress: `0x${string}`;
   private resolverAddress: `0x${string}` | undefined;
+  private lzConditionalTokenResolverAddress: `0x${string}` | undefined;
   private sigintHandler: (() => void) | null = null;
   private currentUnwatch: (() => void) | null = null;
 
@@ -229,6 +466,19 @@ class PredictionMarketIndexer implements IIndexer {
       this.resolverAddress = umaResolverEntry.address as `0x${string}`;
       console.log(
         `[PredictionMarketIndexer] Found UMA resolver address for chain ${chainId}: ${this.resolverAddress}`
+      );
+    }
+
+    // Get the LZ Conditional Token Resolver address if available
+    const lzConditionalTokenResolverEntry =
+      predictionMarketLZConditionalTokensResolver[
+        chainId as keyof typeof predictionMarketLZConditionalTokensResolver
+      ];
+    if (lzConditionalTokenResolverEntry?.address) {
+      this.lzConditionalTokenResolverAddress =
+        lzConditionalTokenResolverEntry.address as `0x${string}`;
+      console.log(
+        `[PredictionMarketIndexer] Found LZ Conditional Token Resolver address for chain ${chainId}: ${this.lzConditionalTokenResolverAddress}`
       );
     }
   }
@@ -348,6 +598,9 @@ class PredictionMarketIndexer implements IIndexer {
           if (this.resolverAddress) {
             addresses.push(this.resolverAddress as `0x${string}`);
           }
+          if (this.lzConditionalTokenResolverAddress) {
+            addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
+          }
           const logs = await this.client.getLogs({
             address: addresses,
             fromBlock: BigInt(fromBlock),
@@ -424,6 +677,9 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.resolverAddress) {
         addresses.push(this.resolverAddress as `0x${string}`);
       }
+      if (this.lzConditionalTokenResolverAddress) {
+        addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
+      }
       const logs = await this.client.getLogs({
         address: addresses,
         fromBlock: BigInt(blockNumber),
@@ -460,6 +716,9 @@ class PredictionMarketIndexer implements IIndexer {
       const addressesToCheck = [this.contractAddress];
       if (this.resolverAddress) {
         addressesToCheck.push(this.resolverAddress);
+      }
+      if (this.lzConditionalTokenResolverAddress) {
+        addressesToCheck.push(this.lzConditionalTokenResolverAddress);
       }
 
       if (
@@ -506,6 +765,9 @@ class PredictionMarketIndexer implements IIndexer {
       const marketSubmittedToUMATopic = keccak256(
         toHex('MarketSubmittedToUMA(bytes32,bytes32,address,bytes,bool)')
       );
+      const conditionResolvedTopic = keccak256(
+        toHex('ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)')
+      );
 
       if (log.topics[0] === predictionMintedTopic) {
         await this.processPredictionMinted(log, block);
@@ -523,6 +785,8 @@ class PredictionMarketIndexer implements IIndexer {
         await this.processMarketResolved(log, block);
       } else if (log.topics[0] === marketSubmittedToUMATopic) {
         await this.processMarketSubmittedToUMA(log, block);
+      } else if (log.topics[0] === conditionResolvedTopic) {
+        await this.processConditionResolved(log, block);
       }
     } catch (error) {
       console.error('[PredictionMarketIndexer] Error processing log:', error);
@@ -553,6 +817,226 @@ class PredictionMarketIndexer implements IIndexer {
         logIndex: log.logIndex,
         timestamp: Number(block.timestamp),
       };
+
+      const encodedPredictedOutcomes = decodedAny.args
+        .encodedPredictedOutcomes as `0x${string}`;
+
+      // IMPORTANT: PredictionMinted does NOT include the resolver address. The indexer used to
+      // fall back to a chain-level default (lzPMResolver/lzUmaResolver), which makes Condition.resolver
+      // incorrect for Pyth markets. Instead, read the resolver from on-chain storage at the log's block.
+      let predictionResolver =
+        this.resolverAddress?.toLowerCase() ?? log.address.toLowerCase();
+      try {
+        const tokenId = decodedAny.args.makerNftTokenId as bigint;
+        const pred = (await this.client.readContract({
+          address: log.address as `0x${string}`,
+          abi: PREDICTION_MARKET_READ_ABI,
+          functionName: 'getPrediction',
+          args: [tokenId],
+          blockNumber: log.blockNumber ?? undefined,
+        })) as unknown;
+        const resolverMaybe = (pred as { resolver?: unknown } | null)?.resolver;
+        if (
+          typeof resolverMaybe === 'string' &&
+          resolverMaybe.startsWith('0x')
+        ) {
+          predictionResolver = resolverMaybe.toLowerCase();
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed to read getPrediction().resolver; falling back to configured resolver:',
+          e
+        );
+      }
+
+      let predictedOutcomes: Array<{
+        conditionId: string;
+        prediction: boolean;
+      }> = [];
+
+      // Compute endsAt from decoded leg(s)
+      let endsAt: number | null = null;
+
+      // Decode outcomes.
+      // - UMA resolver uses: tuple[](bytes32 marketId, bool prediction)
+      // - Pyth resolver uses: tuple[](bytes32 priceId, uint64 endTime, int64 strikePrice, int32 strikeExpo, bool overWinsOnTie, bool prediction)
+      try {
+        const [outcomes] = decodeAbiParameters(
+          [
+            {
+              type: 'tuple[]',
+              components: [{ type: 'bytes32' }, { type: 'bool' }],
+            },
+          ],
+          encodedPredictedOutcomes
+        ) as unknown as [[`0x${string}`, boolean][]];
+
+        predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+          conditionId: String(marketId).toLowerCase(),
+          prediction,
+        }));
+
+        // UMA-style endsAt: compute from existing Condition.endTime values
+        try {
+          const conditionIds = predictedOutcomes.map((o) => o.conditionId);
+          const matched = await prisma.condition.findMany({
+            where: { id: { in: conditionIds } },
+            select: { id: true, endTime: true },
+          });
+          if (matched.length > 0) {
+            endsAt = matched.reduce(
+              (max, c) => (c.endTime > max ? c.endTime : max),
+              matched[0].endTime
+            );
+          }
+        } catch (e) {
+          console.warn(
+            '[PredictionMarketIndexer] Failed computing endsAt from conditions:',
+            e
+          );
+        }
+      } catch {
+        // Pyth-style: compute marketId and endsAt directly from tuple contents.
+        const [outcomes] = decodeAbiParameters(
+          [
+            {
+              type: 'tuple[]',
+              components: [
+                { type: 'bytes32' }, // priceId
+                { type: 'uint64' }, // endTime
+                { type: 'int64' }, // strikePrice
+                { type: 'int32' }, // strikeExpo
+                { type: 'bool' }, // overWinsOnTie
+                { type: 'bool' }, // prediction
+              ],
+            },
+          ],
+          encodedPredictedOutcomes
+        ) as unknown as [
+          Array<[`0x${string}`, bigint, bigint, bigint, boolean, boolean]>,
+        ];
+
+        const legs = outcomes.map(
+          ([
+            priceId,
+            endTime,
+            strikePrice,
+            strikeExpo,
+            overWinsOnTie,
+            pred,
+          ]) => {
+            const strikeExpoNum = Number(strikeExpo);
+            const marketId = keccak256(
+              encodeAbiParameters(
+                [
+                  { type: 'bytes32' },
+                  { type: 'uint64' },
+                  { type: 'int64' },
+                  { type: 'int32' },
+                  { type: 'bool' },
+                ],
+                [priceId, endTime, strikePrice, strikeExpoNum, overWinsOnTie]
+              )
+            );
+
+            return {
+              marketId,
+              priceId,
+              endTimeSec: Number(endTime),
+              prediction: !!pred,
+            };
+          }
+        );
+
+        predictedOutcomes = legs.map((l) => ({
+          conditionId: String(l.marketId).toLowerCase(),
+          prediction: l.prediction,
+        }));
+
+        endsAt =
+          legs.length > 0
+            ? legs.reduce(
+                (max, l) => (l.endTimeSec > max ? l.endTimeSec : max),
+                legs[0].endTimeSec
+              )
+            : null;
+
+        // Ensure referenced Conditions exist so Prediction rows can be created (FK constraint).
+        // These are synthetic placeholders for Pyth markets; keep them non-public so they
+        // don't pollute the "Markets" list.
+        const pythQuestionByPriceId = new Map<string, string>();
+        for (const l of legs) {
+          const id = String(l.marketId).toLowerCase();
+          const endTimeInt =
+            Number.isFinite(l.endTimeSec) && l.endTimeSec > 0
+              ? Math.floor(l.endTimeSec)
+              : null;
+          if (!endTimeInt) continue;
+          const priceIdLower = String(l.priceId).toLowerCase();
+          const q =
+            pythQuestionByPriceId.get(priceIdLower) ??
+            (await resolvePythSyntheticQuestion(String(l.priceId)));
+          pythQuestionByPriceId.set(priceIdLower, q);
+
+          // Re-decode the full leg tuple so we can persist strike info for UI rendering.
+          // This is safe because it's sourced from the same encoded payload.
+          const match = outcomes.find(
+            (o) => String(o[0]).toLowerCase() === priceIdLower
+          );
+          const strikePrice = match ? (match[2] as bigint) : 0n;
+          const strikeExpoNum = match ? Number(match[3] as bigint) : 0;
+          const overWinsOnTie = match ? Boolean(match[4] as boolean) : true;
+          const pythDescriptor = buildPythLegDescriptor({
+            priceId: String(l.priceId),
+            endTimeSec: l.endTimeSec,
+            strikePrice,
+            strikeExpo: strikeExpoNum,
+            overWinsOnTie,
+          });
+
+          await prisma.condition.upsert({
+            where: { id },
+            create: {
+              id,
+              question: q,
+              shortName: null,
+              categoryId: null,
+              endTime: endTimeInt,
+              public: false,
+              claimStatement: `PYTH:${String(l.priceId).toLowerCase()}`,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
+              similarMarkets: [],
+              chainId: this.chainId,
+            },
+            update: {
+              // Keep endTime aligned (should be stable)
+              endTime: endTimeInt,
+              // Keep question aligned so historical rows can be upgraded from the old placeholder.
+              question: q,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
+              chainId: this.chainId,
+            },
+          });
+        }
+      }
+
+      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
+
+      // Always update the canonical Condition resolver (latest observed wins),
+      // even if we end up skipping writes due to existing events.
+      try {
+        if (conditionIds.length > 0) {
+          await prisma.condition.updateMany({
+            where: { id: { in: conditionIds } },
+            data: { resolver: predictionResolver },
+          });
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed updating Condition.resolver:',
+          e
+        );
+      }
 
       // Skip if this event already exists (avoid double-writing event and transaction)
       const uniqueEventKey = {
@@ -607,46 +1091,8 @@ class PredictionMarketIndexer implements IIndexer {
           },
         });
       }
-
-      const [outcomes] = decodeAbiParameters(
-        [
-          {
-            type: 'tuple[]',
-            components: [{ type: 'bytes32' }, { type: 'bool' }],
-          },
-        ],
-        decodedAny.args.encodedPredictedOutcomes
-      ) as unknown as [[`0x${string}`, boolean][]];
-      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
-        conditionId: marketId,
-        prediction,
-      }));
-      // Compute endsAt from known conditions (optional)
-      let endsAt: number | null = null;
-      try {
-        const conditionIds = predictedOutcomes.map((o) => o.conditionId);
-        const matched = await prisma.condition.findMany({
-          where: { id: { in: conditionIds } },
-          select: { id: true, endTime: true },
-        });
-        if (matched.length > 0) {
-          endsAt = matched.reduce(
-            (max, c) => (c.endTime > max ? c.endTime : max),
-            matched[0].endTime
-          );
-        }
-      } catch (e) {
-        console.warn(
-          '[PredictionMarketIndexer] Failed computing endsAt from conditions:',
-          e
-        );
-      }
-
-      const predictionResolver =
-        this.resolverAddress?.toLowerCase() ?? log.address.toLowerCase();
       const predictionLegsData = predictedOutcomes.map((outcome) => ({
         conditionId: outcome.conditionId,
-        resolver: predictionResolver,
         outcomeYes: outcome.prediction,
         chainId: this.chainId,
       }));
@@ -676,7 +1122,6 @@ class PredictionMarketIndexer implements IIndexer {
       });
 
       // Update open interest for all conditions in this position
-      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
       const collateralStr = eventData.totalCollateral;
       for (const conditionId of conditionIds) {
         await prisma.$executeRaw`
@@ -943,24 +1388,159 @@ class PredictionMarketIndexer implements IIndexer {
         },
       });
 
-      const [outcomes] = decodeAbiParameters(
-        [
-          {
-            type: 'tuple[]',
-            components: [{ type: 'bytes32' }, { type: 'bool' }],
-          },
-        ],
-        decoded.args.encodedPredictedOutcomes
-      ) as unknown as [[`0x${string}`, boolean][]];
-      const predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
-        conditionId: marketId,
-        prediction,
-      }));
+      const encodedPredictedOutcomes = decoded.args
+        .encodedPredictedOutcomes as `0x${string}`;
+
+      let predictedOutcomes: Array<{
+        conditionId: `0x${string}`;
+        prediction: boolean;
+      }> = [];
+
+      try {
+        const [outcomes] = decodeAbiParameters(
+          [
+            {
+              type: 'tuple[]',
+              components: [{ type: 'bytes32' }, { type: 'bool' }],
+            },
+          ],
+          encodedPredictedOutcomes
+        ) as unknown as [[`0x${string}`, boolean][]];
+        predictedOutcomes = outcomes.map(([marketId, prediction]) => ({
+          conditionId: String(marketId).toLowerCase() as `0x${string}`,
+          prediction,
+        }));
+      } catch {
+        const [outcomes] = decodeAbiParameters(
+          [
+            {
+              type: 'tuple[]',
+              components: [
+                { type: 'bytes32' }, // priceId
+                { type: 'uint64' }, // endTime
+                { type: 'int64' }, // strikePrice
+                { type: 'int32' }, // strikeExpo
+                { type: 'bool' }, // overWinsOnTie
+                { type: 'bool' }, // prediction
+              ],
+            },
+          ],
+          encodedPredictedOutcomes
+        ) as unknown as [
+          Array<[`0x${string}`, bigint, bigint, bigint, boolean, boolean]>,
+        ];
+
+        const legs = outcomes.map(
+          ([
+            priceId,
+            endTime,
+            strikePrice,
+            strikeExpo,
+            overWinsOnTie,
+            pred,
+          ]) => {
+            const strikeExpoNum = Number(strikeExpo);
+            const marketId = keccak256(
+              encodeAbiParameters(
+                [
+                  { type: 'bytes32' },
+                  { type: 'uint64' },
+                  { type: 'int64' },
+                  { type: 'int32' },
+                  { type: 'bool' },
+                ],
+                [priceId, endTime, strikePrice, strikeExpoNum, overWinsOnTie]
+              )
+            );
+            return {
+              marketId,
+              priceId,
+              endTimeSec: Number(endTime),
+              prediction: !!pred,
+            };
+          }
+        );
+
+        predictedOutcomes = legs.map((l) => ({
+          conditionId: String(l.marketId).toLowerCase() as `0x${string}`,
+          prediction: l.prediction,
+        }));
+
+        // Ensure referenced Conditions exist so Prediction rows can be created (FK constraint).
+        const pythQuestionByPriceId = new Map<string, string>();
+        for (const l of legs) {
+          const id = String(l.marketId).toLowerCase();
+          const endTimeInt =
+            Number.isFinite(l.endTimeSec) && l.endTimeSec > 0
+              ? Math.floor(l.endTimeSec)
+              : null;
+          if (!endTimeInt) continue;
+          const priceIdLower = String(l.priceId).toLowerCase();
+          const q =
+            pythQuestionByPriceId.get(priceIdLower) ??
+            (await resolvePythSyntheticQuestion(String(l.priceId)));
+          pythQuestionByPriceId.set(priceIdLower, q);
+
+          // Re-decode the full leg tuple so we can persist strike info for UI rendering.
+          const match = outcomes.find(
+            (o) => String(o[0]).toLowerCase() === priceIdLower
+          );
+          const strikePrice = match ? (match[2] as bigint) : 0n;
+          const strikeExpoNum = match ? Number(match[3] as bigint) : 0;
+          const overWinsOnTie = match ? Boolean(match[4] as boolean) : true;
+          const pythDescriptor = buildPythLegDescriptor({
+            priceId: String(l.priceId),
+            endTimeSec: l.endTimeSec,
+            strikePrice,
+            strikeExpo: strikeExpoNum,
+            overWinsOnTie,
+          });
+
+          await prisma.condition.upsert({
+            where: { id },
+            create: {
+              id,
+              question: q,
+              shortName: null,
+              categoryId: null,
+              endTime: endTimeInt,
+              public: false,
+              claimStatement: `PYTH:${String(l.priceId).toLowerCase()}`,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
+              similarMarkets: [],
+              chainId: this.chainId,
+            },
+            update: {
+              endTime: endTimeInt,
+              // Keep question aligned so historical rows can be upgraded from the old placeholder.
+              question: q,
+              description: `${pythDescriptor}\nSynthetic Pyth market (generated by predictionMarketIndexer)`,
+              chainId: this.chainId,
+            },
+          });
+        }
+      }
 
       const predictionResolver = eventData.resolver.toLowerCase();
+      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
+
+      // Keep canonical Condition resolver up to date (latest event wins)
+      try {
+        if (conditionIds.length > 0) {
+          await prisma.condition.updateMany({
+            where: { id: { in: conditionIds } },
+            data: { resolver: predictionResolver },
+          });
+        }
+      } catch (e) {
+        console.warn(
+          '[PredictionMarketIndexer] Failed updating Condition.resolver (OrderPlaced):',
+          e
+        );
+      }
+
       const predictionLegsData = predictedOutcomes.map((outcome) => ({
         conditionId: outcome.conditionId,
-        resolver: predictionResolver,
         outcomeYes: outcome.prediction,
         chainId: this.chainId,
       }));
@@ -1286,6 +1866,26 @@ class PredictionMarketIndexer implements IIndexer {
           console.log(
             `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} to settled`
           );
+
+          // Score forecasts and compute TW errors for the accuracy leaderboard
+          const marketAddress = condition.resolver?.toLowerCase();
+          if (marketAddress) {
+            try {
+              await scoreSelectedForecastsForSettledMarket(
+                marketAddress,
+                condition.id
+              );
+              await computeAndStoreMarketTwErrors(marketAddress, condition.id);
+              console.log(
+                `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${eventData.marketId}`
+              );
+            } catch (scoringError) {
+              console.error(
+                `[PredictionMarketIndexer] Error scoring forecasts for ${eventData.marketId}:`,
+                scoringError
+              );
+            }
+          }
         } else {
           console.warn(
             `[PredictionMarketIndexer] MarketResolved but no matching Condition found for marketId=${eventData.marketId}`
@@ -1410,6 +2010,105 @@ class PredictionMarketIndexer implements IIndexer {
     }
   }
 
+  private async processConditionResolved(log: Log, block: Block): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: CONDITION_RESOLVED_EVENT_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: ConditionResolvedEvent };
+
+      const conditionId = decoded.args.conditionId.toLowerCase();
+
+      const eventData = {
+        eventType: 'ConditionResolved',
+        conditionId,
+        resolvedToYes: decoded.args.resolvedToYes,
+        invalid: decoded.args.invalid,
+        payoutDenominator: decoded.args.payoutDenominator.toString(),
+        noPayout: decoded.args.noPayout.toString(),
+        yesPayout: decoded.args.yesPayout.toString(),
+        timestamp: decoded.args.timestamp.toString(),
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        blockTimestamp: Number(block.timestamp),
+      };
+
+      // Skip duplicates
+      const eventKey = {
+        transactionHash: log.transactionHash || '',
+        blockNumber: Number(log.blockNumber || 0),
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingEvent = await prisma.event.findFirst({
+        where: {
+          transactionHash: eventKey.transactionHash,
+          blockNumber: eventKey.blockNumber,
+          logIndex: eventKey.logIndex,
+        },
+      });
+
+      if (existingEvent) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate ConditionResolved event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+        },
+      });
+
+      // Update Condition status
+      try {
+        const condition = await prisma.condition.findUnique({
+          where: { id: conditionId },
+        });
+
+        if (condition) {
+          await prisma.condition.update({
+            where: { id: condition.id },
+            data: {
+              settled: true,
+              resolvedToYes: eventData.resolvedToYes,
+              settledAt: Number(decoded.args.timestamp),
+            },
+          });
+          console.log(
+            `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
+          );
+        } else {
+          console.warn(
+            `[PredictionMarketIndexer] ConditionResolved but no matching Condition found for conditionId=${conditionId}`
+          );
+        }
+      } catch (conditionError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to update Condition on ConditionResolved:',
+          conditionError
+        );
+      }
+
+      console.log(
+        `[PredictionMarketIndexer] Processed ConditionResolved: conditionId=${conditionId}, resolvedToYes=${eventData.resolvedToYes}, invalid=${eventData.invalid}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing ConditionResolved:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
       console.log(
@@ -1451,11 +2150,20 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.resolverAddress) {
         addresses.push(this.resolverAddress);
       }
+      if (this.lzConditionalTokenResolverAddress) {
+        addresses.push(this.lzConditionalTokenResolverAddress);
+      }
+
+      // Combined ABI for watching all relevant events
+      const combinedAbi = [
+        ...PREDICTION_MARKET_ABI,
+        ...lzConditionalTokenResolverAbi,
+      ];
 
       // Watch for all PredictionMarket events in a single watcher
       this.currentUnwatch = this.client.watchContractEvent({
         address: addresses,
-        abi: PREDICTION_MARKET_ABI,
+        abi: combinedAbi,
         onLogs: async (logs) => {
           for (const log of logs) {
             try {

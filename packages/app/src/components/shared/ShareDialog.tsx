@@ -11,13 +11,15 @@ interface ShareDialogProps {
   symbol?: string;
   groupAddress?: string;
   marketId?: number | string;
-  positionId?: number | string;
+  positionId?: number | string; // Deprecated: use nftId and marketAddress instead
+  nftId?: string; // NFT token ID (predictorNftTokenId)
+  marketAddress?: string; // Prediction market address
   owner?: string;
   extraParams?: Record<string, string>;
   trigger?: React.ReactNode;
   imagePath?: string; // defaults to OG position path for now
   title?: string; // dialog title
-  legs?: { question: string; choice: 'Yes' | 'No' }[];
+  legs?: { question: string; choice: string }[];
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -32,6 +34,8 @@ export default function ShareDialog(props: ShareDialogProps) {
     groupAddress,
     marketId,
     positionId,
+    nftId,
+    marketAddress,
     owner,
     extraParams,
     trigger,
@@ -48,6 +52,16 @@ export default function ShareDialog(props: ShareDialogProps) {
 
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
+
+    // If nftId and marketAddress are provided and we're using /og/position, use them
+    // This allows the edge endpoint to query the API for position data
+    if (nftId && marketAddress && imagePath === '/og/position') {
+      sp.set('nftId', String(nftId));
+      sp.set('marketAddress', String(marketAddress));
+      return sp.toString();
+    }
+
+    // Otherwise, build query string from all parameters (backward compatibility)
     if (groupAddress && marketId != null) {
       sp.set('group', groupAddress);
       sp.set('mid', String(marketId));
@@ -63,14 +77,17 @@ export default function ShareDialog(props: ShareDialogProps) {
     if (owner) sp.set('addr', owner);
     if (props.legs && Array.isArray(props.legs)) {
       for (const leg of props.legs) {
-        const q = (leg?.question ?? '').toString();
-        const c = leg?.choice === 'Yes' ? 'Yes' : 'No';
-        if (q) sp.append('leg', `${q}|${c}`);
+        const q = (leg?.question ?? '').toString().replace(/\|/g, ' ').trim();
+        const c = (leg?.choice ?? '').toString().replace(/\|/g, ' ').trim();
+        if (q && c) sp.append('leg', `${q}|${c}`);
       }
     }
     if (extraParams) {
       Object.entries(extraParams).forEach(([k, v]) => {
-        if (typeof v === 'string') sp.set(k, v);
+        // Exclude chainId from query string
+        if (typeof v === 'string') {
+          sp.set(k, v);
+        }
       });
     }
     return sp.toString();
@@ -83,9 +100,12 @@ export default function ShareDialog(props: ShareDialogProps) {
     groupAddress,
     marketId,
     positionId,
+    nftId,
+    marketAddress,
     owner,
     extraParams,
     props.legs,
+    imagePath,
   ]);
 
   const imageSrc = `${imagePath}?${queryString}&t=${Date.now()}`;

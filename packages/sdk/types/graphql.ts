@@ -81,15 +81,13 @@ export type Attestation = {
   attester: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Scalars['String']['output']>;
+  condition?: Maybe<Condition>;
+  conditionId?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   data: Scalars['String']['output'];
   decodedDataJson: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
   prediction: Scalars['String']['output'];
-  questionId?: Maybe<Scalars['String']['output']>;
   recipient: Scalars['String']['output'];
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
@@ -101,6 +99,11 @@ export type Attestation = {
 
 export type AttestationAttestation_ScoreArgs = {
   where?: InputMaybe<AttestationScoreWhereInput>;
+};
+
+
+export type AttestationConditionArgs = {
+  where?: InputMaybe<ConditionWhereInput>;
 };
 
 export type AttestationAvgAggregate = {
@@ -122,15 +125,12 @@ export type AttestationCountAggregate = {
   attester: Scalars['Int']['output'];
   blockNumber: Scalars['Int']['output'];
   comment: Scalars['Int']['output'];
-  condition: Scalars['Int']['output'];
+  conditionId: Scalars['Int']['output'];
   createdAt: Scalars['Int']['output'];
   data: Scalars['Int']['output'];
   decodedDataJson: Scalars['Int']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['Int']['output'];
-  marketId: Scalars['Int']['output'];
   prediction: Scalars['Int']['output'];
-  questionId: Scalars['Int']['output'];
   recipient: Scalars['Int']['output'];
   resolver: Scalars['Int']['output'];
   schemaId: Scalars['Int']['output'];
@@ -143,15 +143,12 @@ export type AttestationCountOrderByAggregateInput = {
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrder>;
-  condition?: InputMaybe<SortOrder>;
+  conditionId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
-  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
@@ -170,15 +167,12 @@ export type AttestationGroupBy = {
   attester: Scalars['String']['output'];
   blockNumber: Scalars['Int']['output'];
   comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Scalars['String']['output']>;
+  conditionId?: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   data: Scalars['String']['output'];
   decodedDataJson: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
   prediction: Scalars['String']['output'];
-  questionId?: Maybe<Scalars['String']['output']>;
   recipient: Scalars['String']['output'];
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId: Scalars['String']['output'];
@@ -187,20 +181,23 @@ export type AttestationGroupBy = {
   uid: Scalars['String']['output'];
 };
 
+export type AttestationListRelationFilter = {
+  every?: InputMaybe<AttestationWhereInput>;
+  none?: InputMaybe<AttestationWhereInput>;
+  some?: InputMaybe<AttestationWhereInput>;
+};
+
 export type AttestationMaxAggregate = {
   __typename?: 'AttestationMaxAggregate';
   attester?: Maybe<Scalars['String']['output']>;
   blockNumber?: Maybe<Scalars['Int']['output']>;
   comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Scalars['String']['output']>;
+  conditionId?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   data?: Maybe<Scalars['String']['output']>;
   decodedDataJson?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
   prediction?: Maybe<Scalars['String']['output']>;
-  questionId?: Maybe<Scalars['String']['output']>;
   recipient?: Maybe<Scalars['String']['output']>;
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId?: Maybe<Scalars['String']['output']>;
@@ -213,15 +210,12 @@ export type AttestationMaxOrderByAggregateInput = {
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrder>;
-  condition?: InputMaybe<SortOrder>;
+  conditionId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
-  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
@@ -235,15 +229,12 @@ export type AttestationMinAggregate = {
   attester?: Maybe<Scalars['String']['output']>;
   blockNumber?: Maybe<Scalars['Int']['output']>;
   comment?: Maybe<Scalars['String']['output']>;
-  condition?: Maybe<Scalars['String']['output']>;
+  conditionId?: Maybe<Scalars['String']['output']>;
   createdAt?: Maybe<Scalars['DateTimeISO']['output']>;
   data?: Maybe<Scalars['String']['output']>;
   decodedDataJson?: Maybe<Scalars['String']['output']>;
   id?: Maybe<Scalars['Int']['output']>;
-  marketAddress?: Maybe<Scalars['String']['output']>;
-  marketId?: Maybe<Scalars['String']['output']>;
   prediction?: Maybe<Scalars['String']['output']>;
-  questionId?: Maybe<Scalars['String']['output']>;
   recipient?: Maybe<Scalars['String']['output']>;
   resolver?: Maybe<Scalars['String']['output']>;
   schemaId?: Maybe<Scalars['String']['output']>;
@@ -256,21 +247,22 @@ export type AttestationMinOrderByAggregateInput = {
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrder>;
-  condition?: InputMaybe<SortOrder>;
+  conditionId?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  marketId?: InputMaybe<SortOrder>;
   prediction?: InputMaybe<SortOrder>;
-  questionId?: InputMaybe<SortOrder>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrder>;
   schemaId?: InputMaybe<SortOrder>;
   time?: InputMaybe<SortOrder>;
   transactionHash?: InputMaybe<SortOrder>;
   uid?: InputMaybe<SortOrder>;
+};
+
+export type AttestationOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
 };
 
 export type AttestationOrderByWithAggregationInput = {
@@ -282,15 +274,12 @@ export type AttestationOrderByWithAggregationInput = {
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<SortOrderInput>;
+  conditionId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrderInput>;
-  marketId?: InputMaybe<SortOrderInput>;
   prediction?: InputMaybe<SortOrder>;
-  questionId?: InputMaybe<SortOrderInput>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrderInput>;
   schemaId?: InputMaybe<SortOrder>;
@@ -304,15 +293,13 @@ export type AttestationOrderByWithRelationInput = {
   attester?: InputMaybe<SortOrder>;
   blockNumber?: InputMaybe<SortOrder>;
   comment?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<SortOrderInput>;
+  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
+  conditionId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
   data?: InputMaybe<SortOrder>;
   decodedDataJson?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrderInput>;
-  marketId?: InputMaybe<SortOrderInput>;
   prediction?: InputMaybe<SortOrder>;
-  questionId?: InputMaybe<SortOrderInput>;
   recipient?: InputMaybe<SortOrder>;
   resolver?: InputMaybe<SortOrderInput>;
   schemaId?: InputMaybe<SortOrder>;
@@ -330,15 +317,12 @@ export type AttestationScalarFieldEnum =
   | 'attester'
   | 'blockNumber'
   | 'comment'
-  | 'condition'
+  | 'conditionId'
   | 'createdAt'
   | 'data'
   | 'decodedDataJson'
   | 'id'
-  | 'marketAddress'
-  | 'marketId'
   | 'prediction'
-  | 'questionId'
   | 'recipient'
   | 'resolver'
   | 'schemaId'
@@ -353,15 +337,12 @@ export type AttestationScalarWhereWithAggregatesInput = {
   attester?: InputMaybe<StringWithAggregatesFilter>;
   blockNumber?: InputMaybe<IntWithAggregatesFilter>;
   comment?: InputMaybe<StringNullableWithAggregatesFilter>;
-  condition?: InputMaybe<StringNullableWithAggregatesFilter>;
+  conditionId?: InputMaybe<StringNullableWithAggregatesFilter>;
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   data?: InputMaybe<StringWithAggregatesFilter>;
   decodedDataJson?: InputMaybe<StringWithAggregatesFilter>;
   id?: InputMaybe<IntWithAggregatesFilter>;
-  marketAddress?: InputMaybe<StringNullableWithAggregatesFilter>;
-  marketId?: InputMaybe<StringNullableWithAggregatesFilter>;
   prediction?: InputMaybe<StringWithAggregatesFilter>;
-  questionId?: InputMaybe<StringNullableWithAggregatesFilter>;
   recipient?: InputMaybe<StringWithAggregatesFilter>;
   resolver?: InputMaybe<StringNullableWithAggregatesFilter>;
   schemaId?: InputMaybe<StringWithAggregatesFilter>;
@@ -457,15 +438,13 @@ export type AttestationWhereInput = {
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<StringNullableFilter>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   data?: InputMaybe<StringFilter>;
   decodedDataJson?: InputMaybe<StringFilter>;
   id?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringNullableFilter>;
-  marketId?: InputMaybe<StringNullableFilter>;
   prediction?: InputMaybe<StringFilter>;
-  questionId?: InputMaybe<StringNullableFilter>;
   recipient?: InputMaybe<StringFilter>;
   resolver?: InputMaybe<StringNullableFilter>;
   schemaId?: InputMaybe<StringFilter>;
@@ -482,15 +461,13 @@ export type AttestationWhereUniqueInput = {
   attester?: InputMaybe<StringFilter>;
   blockNumber?: InputMaybe<IntFilter>;
   comment?: InputMaybe<StringNullableFilter>;
-  condition?: InputMaybe<StringNullableFilter>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   data?: InputMaybe<StringFilter>;
   decodedDataJson?: InputMaybe<StringFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  marketAddress?: InputMaybe<StringNullableFilter>;
-  marketId?: InputMaybe<StringNullableFilter>;
   prediction?: InputMaybe<StringFilter>;
-  questionId?: InputMaybe<StringNullableFilter>;
   recipient?: InputMaybe<StringFilter>;
   resolver?: InputMaybe<StringNullableFilter>;
   schemaId?: InputMaybe<StringFilter>;
@@ -712,6 +689,7 @@ export type Condition = {
   _count?: Maybe<ConditionCount>;
   assertionId?: Maybe<Scalars['String']['output']>;
   assertionTimestamp?: Maybe<Scalars['Int']['output']>;
+  attestations: Array<Attestation>;
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
@@ -728,10 +706,22 @@ export type Condition = {
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
+  /** Canonical resolver address for this condition (latest observed wins) */
+  resolver?: Maybe<Scalars['String']['output']>;
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
+};
+
+
+export type ConditionAttestationsArgs = {
+  cursor?: InputMaybe<AttestationWhereUniqueInput>;
+  distinct?: InputMaybe<Array<AttestationScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<AttestationOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<AttestationWhereInput>;
 };
 
 
@@ -777,7 +767,13 @@ export type ConditionAvgOrderByAggregateInput = {
 
 export type ConditionCount = {
   __typename?: 'ConditionCount';
+  attestations: Scalars['Int']['output'];
   predictions: Scalars['Int']['output'];
+};
+
+
+export type ConditionCountAttestationsArgs = {
+  where?: InputMaybe<AttestationWhereInput>;
 };
 
 
@@ -803,6 +799,7 @@ export type ConditionCountAggregate = {
   public: Scalars['Int']['output'];
   question: Scalars['Int']['output'];
   resolvedToYes: Scalars['Int']['output'];
+  resolver: Scalars['Int']['output'];
   settled: Scalars['Int']['output'];
   settledAt: Scalars['Int']['output'];
   shortName: Scalars['Int']['output'];
@@ -825,6 +822,7 @@ export type ConditionCountOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
@@ -890,6 +888,7 @@ export type ConditionGroupBy = {
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
+  resolver?: Maybe<Scalars['String']['output']>;
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
@@ -1075,6 +1074,7 @@ export type ConditionMaxAggregate = {
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
   resolvedToYes?: Maybe<Scalars['Boolean']['output']>;
+  resolver?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
@@ -1096,6 +1096,7 @@ export type ConditionMaxOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
@@ -1118,6 +1119,7 @@ export type ConditionMinAggregate = {
   public?: Maybe<Scalars['Boolean']['output']>;
   question?: Maybe<Scalars['String']['output']>;
   resolvedToYes?: Maybe<Scalars['Boolean']['output']>;
+  resolver?: Maybe<Scalars['String']['output']>;
   settled?: Maybe<Scalars['Boolean']['output']>;
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
@@ -1139,9 +1141,15 @@ export type ConditionMinOrderByAggregateInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrder>;
   shortName?: InputMaybe<SortOrder>;
+};
+
+export type ConditionNullableRelationFilter = {
+  is?: InputMaybe<ConditionWhereInput>;
+  isNot?: InputMaybe<ConditionWhereInput>;
 };
 
 export type ConditionOrderByRelationAggregateInput = {
@@ -1169,6 +1177,7 @@ export type ConditionOrderByWithAggregationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
@@ -1178,6 +1187,7 @@ export type ConditionOrderByWithAggregationInput = {
 export type ConditionOrderByWithRelationInput = {
   assertionId?: InputMaybe<SortOrderInput>;
   assertionTimestamp?: InputMaybe<SortOrderInput>;
+  attestations?: InputMaybe<AttestationOrderByRelationAggregateInput>;
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
@@ -1194,6 +1204,7 @@ export type ConditionOrderByWithRelationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrderInput>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
@@ -1221,6 +1232,7 @@ export type ConditionScalarFieldEnum =
   | 'public'
   | 'question'
   | 'resolvedToYes'
+  | 'resolver'
   | 'settled'
   | 'settledAt'
   | 'shortName'
@@ -1245,6 +1257,7 @@ export type ConditionScalarWhereWithAggregatesInput = {
   public?: InputMaybe<BoolWithAggregatesFilter>;
   question?: InputMaybe<StringWithAggregatesFilter>;
   resolvedToYes?: InputMaybe<BoolWithAggregatesFilter>;
+  resolver?: InputMaybe<StringNullableWithAggregatesFilter>;
   settled?: InputMaybe<BoolWithAggregatesFilter>;
   settledAt?: InputMaybe<IntNullableWithAggregatesFilter>;
   shortName?: InputMaybe<StringNullableWithAggregatesFilter>;
@@ -1277,6 +1290,9 @@ export type ConditionSummary = {
   endTime?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
   question?: Maybe<Scalars['String']['output']>;
+  resolvedToYes: Scalars['Boolean']['output'];
+  resolver?: Maybe<Scalars['String']['output']>;
+  settled: Scalars['Boolean']['output'];
   shortName?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1286,6 +1302,7 @@ export type ConditionWhereInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
+  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1302,6 +1319,7 @@ export type ConditionWhereInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
@@ -1314,6 +1332,7 @@ export type ConditionWhereUniqueInput = {
   OR?: InputMaybe<Array<ConditionWhereInput>>;
   assertionId?: InputMaybe<StringNullableFilter>;
   assertionTimestamp?: InputMaybe<IntNullableFilter>;
+  attestations?: InputMaybe<AttestationListRelationFilter>;
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
@@ -1330,6 +1349,7 @@ export type ConditionWhereUniqueInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
+  resolver?: InputMaybe<StringNullableFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
@@ -1921,7 +1941,6 @@ export type Prediction = {
   outcomeYes: Scalars['Boolean']['output'];
   position?: Maybe<Position>;
   positionId?: Maybe<Scalars['Int']['output']>;
-  resolver: Scalars['String']['output'];
 };
 
 
@@ -1932,6 +1951,11 @@ export type PredictionLimitOrderArgs = {
 
 export type PredictionPositionArgs = {
   where?: InputMaybe<PositionWhereInput>;
+};
+
+export type PredictionLimitOrderIdConditionIdCompoundUniqueInput = {
+  conditionId: Scalars['String']['input'];
+  limitOrderId: Scalars['Int']['input'];
 };
 
 export type PredictionListRelationFilter = {
@@ -1955,13 +1979,11 @@ export type PredictionOrderByWithRelationInput = {
   outcomeYes?: InputMaybe<SortOrder>;
   position?: InputMaybe<PositionOrderByWithRelationInput>;
   positionId?: InputMaybe<SortOrderInput>;
-  resolver?: InputMaybe<SortOrder>;
 };
 
-export type PredictionPositionIdConditionIdResolverCompoundUniqueInput = {
+export type PredictionPositionIdConditionIdCompoundUniqueInput = {
   conditionId: Scalars['String']['input'];
   positionId: Scalars['Int']['input'];
-  resolver: Scalars['String']['input'];
 };
 
 export type PredictionScalarFieldEnum =
@@ -1971,8 +1993,7 @@ export type PredictionScalarFieldEnum =
   | 'id'
   | 'limitOrderId'
   | 'outcomeYes'
-  | 'positionId'
-  | 'resolver';
+  | 'positionId';
 
 export type PredictionType = {
   __typename?: 'PredictionType';
@@ -1980,7 +2001,6 @@ export type PredictionType = {
   condition?: Maybe<ConditionSummary>;
   conditionId: Scalars['String']['output'];
   outcomeYes: Scalars['Boolean']['output'];
-  resolver: Scalars['String']['output'];
 };
 
 export type PredictionWhereInput = {
@@ -1997,7 +2017,6 @@ export type PredictionWhereInput = {
   outcomeYes?: InputMaybe<BoolFilter>;
   position?: InputMaybe<PositionNullableRelationFilter>;
   positionId?: InputMaybe<IntNullableFilter>;
-  resolver?: InputMaybe<StringFilter>;
 };
 
 export type PredictionWhereUniqueInput = {
@@ -2011,11 +2030,11 @@ export type PredictionWhereUniqueInput = {
   id?: InputMaybe<Scalars['Int']['input']>;
   limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
   limitOrderId?: InputMaybe<IntNullableFilter>;
+  limitOrderId_conditionId?: InputMaybe<PredictionLimitOrderIdConditionIdCompoundUniqueInput>;
   outcomeYes?: InputMaybe<BoolFilter>;
   position?: InputMaybe<PositionNullableRelationFilter>;
   positionId?: InputMaybe<IntNullableFilter>;
-  positionId_conditionId_resolver?: InputMaybe<PredictionPositionIdConditionIdResolverCompoundUniqueInput>;
-  resolver?: InputMaybe<StringFilter>;
+  positionId_conditionId?: InputMaybe<PredictionPositionIdConditionIdCompoundUniqueInput>;
 };
 
 export type ProfitRankType = {
@@ -2372,11 +2391,15 @@ export type QueryGroupByUserArgs = {
 
 
 export type QueryPositionsArgs = {
-  address: Scalars['String']['input'];
+  address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  endsAtGte?: InputMaybe<Scalars['Int']['input']>;
+  marketAddress?: InputMaybe<Scalars['String']['input']>;
+  nftTokenId?: InputMaybe<Scalars['String']['input']>;
   orderBy?: InputMaybe<Scalars['String']['input']>;
   orderDirection?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
 };
 
@@ -2384,7 +2407,9 @@ export type QueryPositionsArgs = {
 export type QueryPositionsByConditionIdArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId: Scalars['String']['input'];
+  endsAtGte?: InputMaybe<Scalars['Int']['input']>;
   skip?: Scalars['Int']['input'];
+  status?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
 };
 

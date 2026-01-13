@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "condition" ADD COLUMN     "chainId" INTEGER NOT NULL DEFAULT 42161;

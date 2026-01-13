@@ -1,7 +1,6 @@
 'use client';
 
 import { Card } from '@sapience/ui/components/ui/card';
-import { usePrivy, useConnectOrCreateWallet } from '@privy-io/react-auth';
 import {
   AnimatePresence,
   motion,
@@ -15,12 +14,12 @@ import { ChatInput } from './chat/ChatInput';
 import { useChatConnection } from './chat/useChatConnection';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
-  const { ready } = usePrivy();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
-  const { connectedWallet, hasConnectedWallet } = useConnectedWallet();
+  const { openConnectDialog } = useConnectDialog();
+  const { ready, connectedWallet, hasConnectedWallet } = useConnectedWallet();
   const addressOverride =
     ready && hasConnectedWallet ? connectedWallet?.address : undefined;
 
@@ -31,8 +30,8 @@ const ChatWidget = () => {
 
   const handleLogin = () => {
     if (ready && !hasConnectedWallet) {
-      // Fire-and-forget wallet connection; errors are handled internally
-      void connectOrCreateWallet();
+      // Open connect dialog for wallet connection
+      openConnectDialog();
       return;
     }
     loginNow();

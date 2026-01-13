@@ -39,6 +39,53 @@ The agent selects 2 high-confidence predictions from different categories for a 
 4. **Receive Bids**: Market makers compete by submitting quotes
 5. **Execute Trade**: Accepts best bid and calls `PredictionMarket.mint()`
 
+:::note
+**Getting Actionable Bids with Signatures**
+
+The default implementation sends unsigned auction requests, which return quote-only bids (for price discovery). To get actionable bids from market makers like the vault, you need to sign the auction request.
+
+In `src/actions/tradingAction.ts`, modify the `socket.onopen` handler to include `takerSignature` and `takerSignedAt`:
+
+```typescript
+import { createAuctionStartSiweMessage, extractSiweDomainAndUri } from '@sapience/sdk';
+import { privateKeyToAccount } from 'viem/accounts';
+
+socket.onopen = async () => {
+  // ... existing code ...
+  
+  const payload = {
+    taker: walletAddress,
+    wager: wagerAmount,
+    resolver: RESOLVER,
+    predictedOutcomes,
+    takerNonce: contractNonce,
+    chainId: CHAIN_ID_ETHEREAL,
+  };
+
+  // Generate SIWE signature for actionable bids
+  // Note: getPrivateKey() returns a hex string (0x...)
+  const account = privateKeyToAccount(getPrivateKey());
+  const { domain, uri } = extractSiweDomainAndUri(sapienceWs);
+  const issuedAt = new Date().toISOString();
+  const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
+  const signature = await account.signMessage({ message });
+
+  const auctionMessage = {
+    type: "auction.start",
+    payload: {
+      ...payload,
+      takerSignature: signature,
+      takerSignedAt: issuedAt,
+    },
+  };
+
+  socket.send(JSON.stringify(auctionMessage));
+};
+```
+
+**Note:** Unsigned requests return quote-only bids (where `maker` is `0x0000...`). Signed requests are required by some market makers (like the vault) to respond with actionable bids that can be executed on-chain.
+:::
+
 **Execution Frequency:**
 - When autonomous mode is enabled, checked every cycle (default: 5 minutes)
 - Can also be triggered manually by saying "trade sapience prediction markets" or "run trade"

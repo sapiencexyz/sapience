@@ -17,17 +17,50 @@ export const UMA_RESOLVER_ADDRESSES = new Set([
 // Display metadata for UMA resolvers keyed by full address
 export const UMA_RESOLVER_DISPLAY: Record<
   string,
-  { name: string; icon?: string; iconAlt?: string }
+  {
+    name: string;
+    icon?: string;
+    badgeIcon?: string;
+    iconAlt?: string;
+    url?: string;
+  }
 > = {
   '0xC873efA9D22A09e39101efB977C03011620bF015': {
     name: 'UMA',
     icon: '/uma.svg',
     iconAlt: 'UMA',
+    url: 'https://uma.xyz/',
   },
   '0xd82F211D0d9bE9A73a829A5F1f0e34b02Bf2FB36': {
     name: 'UMA',
     icon: '/uma.svg',
     iconAlt: 'UMA',
+    url: 'https://uma.xyz/',
+  },
+};
+
+// Known Polymarket resolver addresses (case-insensitive checks should normalize)
+export const POLYMARKET_RESOLVER_ADDRESSES = new Set([
+  '0x04ad4e8ae0f828e4bea2c86165a7800db499e0f5'.toLowerCase(),
+]);
+
+// Display metadata for Polymarket resolvers keyed by full address
+export const POLYMARKET_RESOLVER_DISPLAY: Record<
+  string,
+  {
+    name: string;
+    icon?: string;
+    badgeIcon?: string;
+    iconAlt?: string;
+    url?: string;
+  }
+> = {
+  '0x04ad4e8ae0f828e4bea2c86165a7800db499e0f5': {
+    name: 'Polymarket',
+    icon: '/polymarket-logomark.png',
+    badgeIcon: '/polymarket-badge.png',
+    iconAlt: 'Polymarket',
+    url: 'https://polymarket.com/',
   },
 };
 

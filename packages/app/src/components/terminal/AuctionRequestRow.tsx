@@ -3,20 +3,15 @@
 import type React from 'react';
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  parseUnits,
-  decodeAbiParameters,
-  formatEther,
-  formatUnits,
-} from 'viem';
+import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -27,6 +22,7 @@ import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
 import { useBidPreflight, useBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
+import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 
 type Props = {
   uiTx: UiTransaction;
@@ -61,7 +57,7 @@ const AuctionRequestRow: React.FC<Props> = ({
 }) => {
   const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
   const chainId = useChainIdFromLocalStorage();
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
@@ -302,43 +298,36 @@ const AuctionRequestRow: React.FC<Props> = ({
   }, []);
 
   // Decode predicted outcomes to extract condition IDs
+  const decodedOutcomes = useMemo(() => {
+    return decodeAuctionPredictedOutcomes({
+      resolver,
+      predictedOutcomes,
+    });
+  }, [resolver, predictedOutcomes]);
+
   const conditionIds = useMemo(() => {
     try {
-      const arr = Array.isArray(predictedOutcomes)
-        ? (predictedOutcomes as `0x${string}`[])
-        : [];
-      if (arr.length === 0) return [] as string[];
-      const decodedUnknown = decodeAbiParameters(
-        [
-          {
-            type: 'tuple[]',
-            components: [
-              { name: 'marketId', type: 'bytes32' },
-              { name: 'prediction', type: 'bool' },
-            ],
-          },
-        ] as const,
-        arr[0]
-      ) as unknown;
-      const decodedArr = Array.isArray(decodedUnknown)
-        ? (decodedUnknown as any)[0]
-        : [];
-      const ids = [] as string[];
-      for (const o of decodedArr || []) {
-        const id = o?.marketId as string | undefined;
-        if (id && typeof id === 'string') ids.push(id);
-      }
-      return ids;
+      if (decodedOutcomes.kind !== 'uma') return [] as string[];
+      return decodedOutcomes.outcomes
+        .map((o) => (o?.marketId ? String(o.marketId) : ''))
+        .filter(Boolean);
     } catch {
       return [] as string[];
     }
-  }, [predictedOutcomes]);
+  }, [decodedOutcomes]);
 
   // Fetch conditions by IDs to get endTime values
   const { list: conditionEnds = [] } = useConditionsByIds(conditionIds);
 
   const maxEndTimeSec = useMemo(() => {
     try {
+      if (decodedOutcomes.kind === 'pyth') {
+        const ends = decodedOutcomes.outcomes
+          .map((o) => Number(o?.endTime ?? 0n))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        if (ends.length === 0) return null;
+        return Math.max(...ends);
+      }
       if (!Array.isArray(conditionEnds) || conditionEnds.length === 0)
         return null;
       const ends = conditionEnds
@@ -349,7 +338,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [conditionEnds]);
+  }, [conditionEnds, decodedOutcomes]);
 
   const submitBid = useCallback(
     async (data: {
@@ -365,18 +354,10 @@ const AuctionRequestRow: React.FC<Props> = ({
           });
           return;
         }
-        // Ensure connected wallet FIRST so Privy opens immediately if needed
-        let maker = address;
+        // Ensure connected wallet FIRST
+        const maker = address;
         if (!maker) {
-          // eslint-disable-next-line @typescript-eslint/await-thenable
-          await connectOrCreateWallet();
-          // try to read again (wagmi state updates asynchronously)
-          maker = (window as any)?.wagmi?.state?.address as
-            | `0x${string}`
-            | undefined;
-        }
-        if (!maker) {
-          openApproval(String(data.amount || ''));
+          openConnectDialog();
           return;
         }
 
@@ -564,7 +545,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       takerWager,
       takerNonce,
       address,
-      connectOrCreateWallet,
+      openConnectDialog,
       runPreflight,
       submitBidToWs,
       terminalLogs,
@@ -700,6 +681,7 @@ const AuctionRequestRow: React.FC<Props> = ({
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}
               taker={taker}
+              resolver={resolver}
               predictedOutcomes={predictedOutcomes}
             />
           </motion.div>

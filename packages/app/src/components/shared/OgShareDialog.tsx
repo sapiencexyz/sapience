@@ -11,13 +11,14 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { Copy, Share2, Check } from 'lucide-react';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import * as viemChains from 'viem/chains';
 import Loader from '~/components/shared/Loader';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import PacmanEatingDots from '~/components/shared/PacmanEatingDots';
+import { useSession } from '~/lib/context/SessionContext';
 
 interface OgShareDialogBaseProps {
   imageSrc: string; // Relative path with query, e.g. "/og/trade?..."
@@ -31,6 +32,7 @@ interface OgShareDialogBaseProps {
   copyButtonText?: string; // defaults to "Copy Image"
   shareButtonText?: string; // defaults to "Share"
   trackPosition?: boolean; // Enable position tracking
+  txHash?: string; // Optional tx hash for explorer link while pending
   positionTimestamp?: number; // Timestamp when position was placed (ms)
   expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from betslip for validation
   lastNftId?: string; // Last NFT ID before this parlay was submitted (for validation)
@@ -41,19 +43,19 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     imageSrc,
     title = 'Share',
     trigger,
-    shareTitle = 'Share',
-    shareText,
+    shareTitle: _shareTitle = 'Share',
+    shareText: _shareText,
     open: controlledOpen,
     onOpenChange,
     loaderSizePx = 20,
     copyButtonText = 'Copy Image',
     shareButtonText = 'Share',
     trackPosition = false,
+    txHash,
     positionTimestamp,
     expectedLegs,
     lastNftId,
   } = props;
-
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -69,13 +71,16 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const chainId = useChainIdFromLocalStorage();
   const [positionResolved, setPositionResolved] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
-  // Get user address for position tracking
-  const userAddress = address?.toLowerCase();
+  // Get user address for position tracking - use smart account when session is active
+  const userAddress = (
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address
+  )?.toLowerCase();
 
   // Fetch positions for tracking
   const { data: positions, refetch: refetchPositions } = useUserParlays({
@@ -114,13 +119,15 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       }
 
       const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 30000; // 45 seconds window
+        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000; // 2 minute window
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       // Find positions minted after the dialog opened
-      const candidatePositions = positionsToCheck.filter(
-        (p: Parlay) => Number(p.mintedAt) >= minTimestampSeconds
-      );
+      const candidatePositions = positionsToCheck.filter((p: Parlay) => {
+        const mintedAtSeconds = Number(p.mintedAt);
+        const passes = mintedAtSeconds >= minTimestampSeconds;
+        return passes;
+      });
 
       if (candidatePositions.length === 0) {
         return false;
@@ -134,16 +141,39 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           filteredByNftId = candidatePositions.filter((p: Parlay) => {
             try {
               const currentNftId = BigInt(p.predictorNftTokenId || '0');
-              const isGreater = currentNftId > lastNftIdBigInt;
-              return isGreater;
-            } catch (_e) {
+              return currentNftId > lastNftIdBigInt;
+            } catch (err) {
+              console.error(
+                '[OgShareDialog] Position indexing: Error comparing NFT ID for position',
+                {
+                  positionId: p.id,
+                  nftId: p.predictorNftTokenId,
+                  error: err,
+                }
+              );
               return false;
             }
           });
+
           if (filteredByNftId.length === 0) {
+            console.warn(
+              '[OgShareDialog] Position indexing: No candidates after NFT ID filter',
+              {
+                lastNftId,
+                candidateCount: candidatePositions.length,
+                candidates: candidatePositions.map((p) => ({
+                  id: p.id,
+                  nftId: p.predictorNftTokenId,
+                })),
+              }
+            );
             return false;
           }
         } catch (_e) {
+          console.error(
+            '[OgShareDialog] Position indexing: Error comparing NFT IDs:',
+            _e
+          );
           // Error comparing NFT IDs
         }
       }
@@ -191,6 +221,14 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
         });
 
         if (foundPosition) {
+          console.log('[OgShareDialog] Position indexed by FE', {
+            positionId: foundPosition.id,
+            nftId: foundPosition.predictorNftTokenId,
+            chainId: foundPosition.chainId,
+            mintedAt: foundPosition.mintedAt,
+            lastNftId,
+            expectedLegsCount: expectedLegs?.length || 0,
+          });
           setPositionResolved(true);
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
@@ -198,12 +236,41 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           }
           return true;
         }
+        console.warn(
+          '[OgShareDialog] Position indexing: No position matched expected legs',
+          {
+            expectedLegs,
+            checkedPositions: filteredByNftId.map((p) => ({
+              id: p.id,
+              legs: (p.predictions || []).map((pred) => ({
+                question: pred.condition?.shortName || pred.condition?.question,
+                choice: pred.outcomeYes ? 'Yes' : 'No',
+              })),
+            })),
+          }
+        );
         return false;
       }
 
       // Fallback: if no expectedLegs provided, use first candidate after NFT ID filter (backward compatibility)
+      console.warn(
+        '[OgShareDialog] Position indexing: Using fallback (no expected legs) - this should be avoided!',
+        {
+          candidates: filteredByNftId.length,
+          candidateIds: filteredByNftId.map((p) => p.id),
+          hasExpectedLegs: !!(expectedLegs && expectedLegs.length > 0),
+        }
+      );
       const foundPosition = filteredByNftId[0];
       if (foundPosition) {
+        console.log('[OgShareDialog] Position indexed by FE (fallback)', {
+          positionId: foundPosition.id,
+          nftId: foundPosition.predictorNftTokenId,
+          chainId: foundPosition.chainId,
+          mintedAt: foundPosition.mintedAt,
+          lastNftId,
+          note: 'Using fallback - no expected legs provided',
+        });
         setPositionResolved(true);
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -228,7 +295,10 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           const latestPositions = result.data || [];
           checkPosition(latestPositions);
         } catch (_error) {
-          // Error refetching positions
+          console.error(
+            '[OgShareDialog] Position indexing: Error refetching positions',
+            _error
+          );
         }
       }, 1000);
     }
@@ -279,6 +349,51 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     }
   };
 
+  // Extract nftId and marketAddress from imageSrc if present
+  const positionShareParams = useMemo(() => {
+    try {
+      if (typeof window === 'undefined') return null;
+      const url = new URL(imageSrc, window.location.origin);
+      const nftId = url.searchParams.get('nftId');
+      const marketAddress = url.searchParams.get('marketAddress');
+
+      // Use NFT ID and market address
+      if (nftId && marketAddress) {
+        return { nftId, marketAddress };
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }, [imageSrc]);
+
+  // Build share URL - use nftId and marketAddress if available
+  // Returns absolute URL for sharing
+  const buildShareUrl = useCallback((): string => {
+    let relativeUrl: string;
+
+    // If nftId and marketAddress are available, use them
+    if (positionShareParams?.nftId && positionShareParams?.marketAddress) {
+      const qp = new URLSearchParams();
+      qp.set('nftId', positionShareParams.nftId);
+      qp.set('marketAddress', positionShareParams.marketAddress);
+      relativeUrl = `/share?${qp.toString()}`;
+    } else {
+      // If no position parameters are available, fall back to share page without params
+      relativeUrl = '/share';
+    }
+
+    // Convert to absolute URL
+    if (typeof window !== 'undefined') {
+      // Check if relativeUrl is already absolute
+      if (relativeUrl.startsWith('http')) {
+        return relativeUrl;
+      }
+      return `${window.location.origin}${relativeUrl}`;
+    }
+    return relativeUrl;
+  }, [positionShareParams]);
+
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {
     if (typeof window !== 'undefined')
@@ -286,8 +401,20 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     return imageSrc;
   }, [imageSrc]);
 
-  // Canonical share page base; encoded short path becomes /s/<token>
-  const shareHref = useMemo(() => `/share`, []);
+  const _explorerTxUrl = useMemo(() => {
+    if (!txHash || !chainId) return null;
+    const ETHEREAL_CHAIN_ID = 5064014;
+    const etherealExplorer = 'https://explorer.ethereal.trade';
+
+    const baseUrl =
+      chainId === ETHEREAL_CHAIN_ID
+        ? etherealExplorer
+        : (Object.values(viemChains).find((c: any) => c?.id === chainId) as any)
+            ?.blockExplorers?.default?.url;
+
+    if (!baseUrl) return null;
+    return `${String(baseUrl).replace(/\/$/, '')}/tx/${txHash}`;
+  }, [txHash, chainId]);
 
   useEffect(() => {
     if (open) setCacheBust(String(Date.now()));
@@ -307,12 +434,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Position tracking section */}
-          {trackPosition && open && userAddress && !positionResolved && (
-            <div className="w-full p-4 bg-muted/50 rounded-lg border border-border">
-              <PacmanEatingDots />
-            </div>
-          )}
           {trackPosition && positionResolved && (
             <div className="w-full p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
               <p className="text-sm text-green-600 dark:text-green-400 text-center flex items-center justify-center gap-2">
@@ -370,46 +491,12 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                   }
 
                   // Fallback: generate compact share URL and copy as text
-                  const payload = {
-                    img: imageSrc,
-                    title: shareTitle,
-                    description: shareText,
-                    alt: 'Sapience share image',
-                  };
-                  let shareUrl = shareHref;
-                  try {
-                    const resp = await fetch('/api/share/encode', {
-                      method: 'POST',
-                      headers: { 'content-type': 'application/json' },
-                      body: JSON.stringify(payload),
-                    });
-                    const data = await resp.json();
-                    shareUrl = data?.shareUrl || shareHref;
-                  } catch {
-                    // ignore and use fallback
-                  }
+                  const shareUrl = buildShareUrl();
                   await navigator.clipboard.writeText(shareUrl);
                   toast({ title: 'Link copied successfully' });
                 } catch {
                   try {
-                    const payload = {
-                      img: imageSrc,
-                      title: shareTitle,
-                      description: shareText,
-                      alt: 'Sapience share image',
-                    };
-                    let shareUrl = shareHref;
-                    try {
-                      const resp = await fetch('/api/share/encode', {
-                        method: 'POST',
-                        headers: { 'content-type': 'application/json' },
-                        body: JSON.stringify(payload),
-                      });
-                      const data = await resp.json();
-                      shareUrl = data?.shareUrl || shareHref;
-                    } catch {
-                      // ignore and use fallback
-                    }
+                    const shareUrl = buildShareUrl();
                     await navigator.clipboard.writeText(shareUrl);
                     toast({ title: 'Link copied successfully' });
                   } catch {
@@ -425,29 +512,10 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               size="lg"
               className="w-full"
               type="button"
-              onClick={async () => {
-                // Request compact share URL from API
-                const payload = {
-                  // send relative path to shorten token further
-                  img: imageSrc,
-                  title: shareTitle,
-                  description: shareText,
-                  alt: 'Sapience share image',
-                };
-                try {
-                  const res = await fetch('/api/share/encode', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload),
-                  });
-                  const data = await res.json();
-                  const shareUrl = data?.shareUrl || shareHref;
-                  const intent = buildXShareUrl(shareUrl);
-                  window.open(intent, '_blank', 'noopener,noreferrer');
-                } catch {
-                  const intent = buildXShareUrl(shareHref);
-                  window.open(intent, '_blank', 'noopener,noreferrer');
-                }
+              onClick={() => {
+                const shareUrl = buildShareUrl();
+                const intent = buildXShareUrl(shareUrl);
+                window.open(intent, '_blank', 'noopener,noreferrer');
               }}
             >
               <Image
@@ -466,24 +534,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               type="button"
               variant="outline"
               onClick={async () => {
-                const payload = {
-                  img: imageSrc,
-                  title: shareTitle,
-                  description: shareText,
-                  alt: 'Sapience share image',
-                };
-                let shareUrl = shareHref;
-                try {
-                  const res = await fetch('/api/share/encode', {
-                    method: 'POST',
-                    headers: { 'content-type': 'application/json' },
-                    body: JSON.stringify(payload),
-                  });
-                  const data = await res.json();
-                  shareUrl = data?.shareUrl || shareHref;
-                } catch {
-                  // ignore; use fallback
-                }
+                const shareUrl = buildShareUrl();
                 if ((navigator as any).share) {
                   try {
                     await (navigator as any).share({ url: shareUrl });

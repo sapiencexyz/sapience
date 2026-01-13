@@ -36,9 +36,15 @@ Starts a new auction to receive bids from makers.
     predictedOutcomes: string[],      // Array of bytes strings that the resolver validates/understands
     takerNonce: number,               // Nonce for taker-side binding/deduplication
     chainId: number,                  // Chain ID where the market executes
+    takerSignature?: string,          // Optional: EIP-191 signature of the taker (SIWE format)
+    takerSignedAt?: string            // Optional: ISO timestamp when signature was created (required if takerSignature is provided)
   }
 }
 ```
+
+**Note:** `takerSignature` and `takerSignedAt` are optional fields. 
+- **Unsigned requests**: Used for price discovery/quoting only. Market makers may respond with quote-only bids (where `maker` is `0x0000...` and `makerSignature` is `0x0000...`).
+- **Signed requests**: Required by some market makers (like the vault) to respond with actionable, signed bids that can be executed on-chain. When provided, the relayer verifies the signature to ensure the requester authorized the auction request.
 
 ### 2. Response (auction.ack)
 
@@ -125,6 +131,10 @@ Broadcasts current bids for an Auction to subscribed takers only. Takers are aut
 }
 ```
 
+**Quote-only vs Actionable Bids:**
+- **Quote-only bids**: When `maker` is `0x0000000000000000000000000000000000000000` and `makerSignature` is `0x00000000...`, this indicates a price quote only, not an actionable bid that can be executed on-chain. These are typically returned in response to unsigned auction requests.
+- **Actionable bids**: When `maker` is a valid address and `makerSignature` is a real signature, the bid can be accepted and executed on-chain. These are returned in response to signed auction requests (required by some market makers like the vault).
+
 ## Connection Management
 
 ### Rate Limiting
@@ -175,6 +185,8 @@ Both parties must perform standard ERC-20 approvals in their own wallets:
 
 ### 1. Taker Creates Auction
 
+**Basic example (without signature):**
+
 ```javascript
 ws.send(
   JSON.stringify({
@@ -189,6 +201,40 @@ ws.send(
       resolver: '0x...',
       takerNonce: 1,
       chainId: 42161,
+    },
+  })
+);
+```
+
+**With signature (required by some market makers like the vault to respond with actionable bids):**
+
+```javascript
+import { createAuctionStartSiweMessage, extractSiweDomainAndUri } from '@sapience/sdk';
+import { privateKeyToAccount } from 'viem/accounts';
+
+const account = privateKeyToAccount('0xYourPrivateKey...');
+const payload = {
+  taker: account.address,
+  wager: '1000000000000000000',
+  predictedOutcomes: ['0x...', '0x...'],
+  resolver: '0x...',
+  takerNonce: 1,
+  chainId: 42161,
+};
+
+// Generate SIWE signature
+const { domain, uri } = extractSiweDomainAndUri('wss://relayer.sapience.xyz/auction');
+const issuedAt = new Date().toISOString();
+const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
+const signature = await account.signMessage({ message });
+
+ws.send(
+  JSON.stringify({
+    type: 'auction.start',
+    payload: {
+      ...payload,
+      takerSignature: signature,
+      takerSignedAt: issuedAt,
     },
   })
 );

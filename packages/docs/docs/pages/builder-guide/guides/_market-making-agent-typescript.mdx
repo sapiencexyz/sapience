@@ -15,6 +15,10 @@ The [market-maker starter](https://github.com/sapiencexyz/sapience/tree/main/sta
 Check your local regulations. Start with small amounts and monitor performance. Use a dedicated wallet for your agent and never commit your private key to source control.
 :::
 
+:::note[Collateral]
+On Ethereal, prediction market contracts use WUSDe (Wrapped USDe). The SDK's `prepareForTrade` helper handles wrapping and approval automatically.
+:::
+
 ### What It Does
 
 - Connects to the Auction Relayer WebSocket
@@ -84,8 +88,6 @@ import { parseEther } from 'viem';
 const { ready, wrapTxHash, approvalTxHash, wusdBalance } = await prepareForTrade({
   privateKey: PRIVATE_KEY,
   collateralAmount: parseEther(BID_AMOUNT),
-  spender: PREDICTION_MARKET_ADDRESS,  // Optional, defaults to SDK's address
-  rpcUrl: RPC_URL,                      // Optional, defaults to Ethereal RPC
 });
 
 if (ready) {

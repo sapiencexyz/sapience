@@ -3,6 +3,7 @@ import { initializeDataSource } from '../../db';
 import {
   upsertAttestationScoreFromAttestation,
   scoreSelectedForecastsForSettledMarket,
+  computeAndStoreMarketTwErrors,
 } from '../../helpers/scoringService';
 import { backfillAccuracy } from './backfillAccuracy';
 
@@ -24,8 +25,8 @@ export async function reindexAccuracy(
   if (marketId) {
     conditionIds = [marketId];
   } else {
-    // Get all distinct condition IDs from attestations for this market address
-    const distinctConditions = await prisma.attestation.findMany({
+    // Get all distinct condition IDs from attestation_score for this market address
+    const distinctConditions = await prisma.attestationScore.findMany({
       where: { marketAddress: normalizedAddress },
       select: { questionId: true },
       distinct: ['questionId'],
@@ -36,9 +37,9 @@ export async function reindexAccuracy(
   }
 
   for (const condId of conditionIds) {
-    // 1) Upsert scores for attestations in scope
+    // 1) Upsert scores for attestations in scope (by conditionId)
     const atts = await prisma.attestation.findMany({
-      where: { marketAddress: normalizedAddress, questionId: condId },
+      where: { conditionId: condId },
       select: { id: true },
     });
     for (const att of atts) {
@@ -47,5 +48,8 @@ export async function reindexAccuracy(
 
     // 2) If settled, score (no selection step; we score all pre-end forecasts)
     await scoreSelectedForecastsForSettledMarket(normalizedAddress, condId);
+
+    // 3) Compute and store time-weighted errors for the accuracy leaderboard
+    await computeAndStoreMarketTwErrors(normalizedAddress, condId);
   }
 }

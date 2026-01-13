@@ -12,6 +12,7 @@ import {
   Tv,
   TagIcon,
 } from 'lucide-react';
+import { PythOracleMark } from '@sapience/ui';
 
 // Map category slugs to Lucide icons. Extend as new categories are added.
 const categoryIconMap: Record<string, LucideIcon> = {
@@ -31,5 +32,6 @@ type IconComponentType = React.ComponentType<{
 
 export const getCategoryIcon = (slug?: string | null): IconComponentType => {
   if (!slug) return TagIcon;
+  if (slug === 'prices') return PythOracleMark;
   return categoryIconMap[slug] || TagIcon;
 };

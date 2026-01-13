@@ -92,6 +92,22 @@ const PlaceBidForm: React.FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialAmountDisplay]);
 
+  // If there are no bids, default the input to +1 (so it's "1" instead of 0/empty).
+  // This only runs when the user hasn't typed anything yet, and won't override
+  // an explicit initialAmountDisplay.
+  useEffect(() => {
+    if (amount !== '') return;
+    const init = Number(initialAmountDisplay);
+    if (Number.isFinite(init) && init > 0) return;
+    const base = Number(bestBidDisplay);
+    if (Number.isFinite(base) && base > 0) return; // bids exist; handled by anchoring logic below
+    const next = Number.isFinite(increment) && increment > 0 ? increment : 1;
+    // anchor at 0 so later bid updates (base > 0) can still replace it safely
+    if (anchorAmount == null) setAnchorAmount(0);
+    setAmount(String(next));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bestBidDisplay, increment, initialAmountDisplay]);
+
   // One-time anchor to the best bid on mount/init
   useEffect(() => {
     if (anchorAmount != null) return;

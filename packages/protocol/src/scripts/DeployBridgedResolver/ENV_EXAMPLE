@@ -24,3 +24,7 @@ UMA_ASSERTER=0xdb5Af497A73620d881561eDb508012A5f84e9BA2
 
 # Optional PM settings
 PM_MAX_MARKETS=20
+
+# PythResolver (Ethereal)
+# Deployed PythLazer verifier on Ethereal (override if needed)
+ETHEREAL_PYTH_LAZER_VERIFIER=0x486908B534E34D1Ca04d12F01b5Bf47aC62A68F5

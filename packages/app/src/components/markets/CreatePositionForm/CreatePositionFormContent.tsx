@@ -1,6 +1,6 @@
 'use client';
 import { type UseFormReturn } from 'react-hook-form';
-import { Button } from '@sapience/ui';
+import { Button, type PythPrediction } from '@sapience/ui';
 
 import PositionForm from './PositionForm';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -43,6 +43,9 @@ interface CreatePositionFormContentProps {
   minWager?: string;
   // PredictionMarket contract address for fetching maker nonce
   predictionMarketAddress?: `0x${string}`;
+  pythPredictions?: PythPrediction[];
+  onRemovePythPrediction?: (id: string) => void;
+  onClearPythPredictions?: () => void;
 }
 
 export const CreatePositionFormContent = ({
@@ -58,9 +61,12 @@ export const CreatePositionFormContent = ({
   collateralDecimals,
   minWager,
   predictionMarketAddress,
+  pythPredictions = [],
+  onRemovePythPrediction,
+  onClearPythPredictions,
 }: CreatePositionFormContentProps) => {
   const { selections, clearSelections } = useCreatePositionContext();
-  const hasItems = selections.length > 0;
+  const hasItems = selections.length > 0 || pythPredictions.length > 0;
 
   return (
     <>
@@ -75,7 +81,10 @@ export const CreatePositionFormContent = ({
                 variant="ghost"
                 size="xs"
                 className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 relative -top-0.5"
-                onClick={clearSelections}
+                onClick={() => {
+                  clearSelections();
+                  onClearPythPredictions?.();
+                }}
                 title="Reset"
               >
                 CLEAR
@@ -87,7 +96,7 @@ export const CreatePositionFormContent = ({
         <div
           className={`flex-1 min-h-0 ${hasItems ? 'overflow-y-auto pb-4' : ''}`}
         >
-          {selections.length === 0 ? (
+          {selections.length === 0 && pythPredictions.length === 0 ? (
             <div className="w-full h-full flex items-center justify-center text-center">
               <div className="flex flex-col items-center gap-2 py-20">
                 <p className="text-sm font-mono uppercase text-accent-gold max-w-[260px] mx-auto bg-transparent tracking-wide">
@@ -109,6 +118,8 @@ export const CreatePositionFormContent = ({
               collateralDecimals={collateralDecimals}
               minWager={minWager}
               predictionMarketAddress={predictionMarketAddress}
+              pythPredictions={pythPredictions}
+              onRemovePythPrediction={onRemovePythPrediction}
             />
           )}
         </div>

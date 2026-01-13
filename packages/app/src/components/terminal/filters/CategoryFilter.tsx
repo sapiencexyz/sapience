@@ -55,10 +55,17 @@ const CategoryFilter: React.FC<Props> = ({ items, selected, onChange }) => {
                 height: 22,
                 minWidth: 22,
                 minHeight: 22,
-                backgroundColor: withAlpha(color || 'hsl(var(--muted))', 0.14),
+                backgroundColor:
+                  slug === 'prices'
+                    ? 'hsl(var(--brand-white) / 0.1)'
+                    : withAlpha(color || 'hsl(var(--muted))', 0.14),
               }}
             >
-              <Icon className="h-3 w-3" style={{ strokeWidth: 1, color }} />
+              {slug === 'prices' ? (
+                <Icon className="h-3 w-3 text-foreground" />
+              ) : (
+                <Icon className="h-3 w-3" style={{ strokeWidth: 1, color }} />
+              )}
             </span>
             <span>{item.label}</span>
           </>
@@ -80,16 +87,20 @@ const CategoryFilter: React.FC<Props> = ({ items, selected, onChange }) => {
                     height: 18,
                     minWidth: 18,
                     minHeight: 18,
-                    backgroundColor: withAlpha(
-                      color || 'hsl(var(--muted))',
-                      0.14
-                    ),
+                    backgroundColor:
+                      slug === 'prices'
+                        ? 'hsl(var(--brand-white) / 0.1)'
+                        : withAlpha(color || 'hsl(var(--muted))', 0.14),
                   }}
                 >
-                  <Icon
-                    className="h-2.5 w-2.5"
-                    style={{ strokeWidth: 1, color }}
-                  />
+                  {slug === 'prices' ? (
+                    <Icon className="h-2.5 w-2.5 text-foreground" />
+                  ) : (
+                    <Icon
+                      className="h-2.5 w-2.5"
+                      style={{ strokeWidth: 1, color }}
+                    />
+                  )}
                 </span>
               );
             })}

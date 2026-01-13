@@ -16,6 +16,9 @@ class ConditionSummary {
   @Field(() => Int, { nullable: true })
   endTime?: number | null;
 
+  @Field(() => String, { nullable: true })
+  resolver?: string | null;
+
   @Field(() => Boolean)
   settled!: boolean;
 
@@ -27,9 +30,6 @@ class ConditionSummary {
 class PredictionType {
   @Field(() => String)
   conditionId!: string;
-
-  @Field(() => String)
-  resolver!: string;
 
   @Field(() => Boolean)
   outcomeYes!: boolean;
@@ -114,18 +114,21 @@ export class PositionResolver {
 
   @Query(() => [PositionType])
   async positions(
-    @Arg('address', () => String) address: string,
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true })
     orderDirection?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('status', () => String, { nullable: true })
     status?: 'active' | 'settled' | 'consolidated',
-    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
+    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number,
+    @Arg('nftTokenId', () => String, { nullable: true }) nftTokenId?: string,
+    @Arg('marketAddress', () => String, { nullable: true })
+    marketAddress?: string
   ): Promise<PositionType[]> {
-    const addr = address.toLowerCase();
+    const addr = address?.toLowerCase();
 
     const buildPredictionMap = async (
       rows: Position[]
@@ -142,6 +145,7 @@ export class PositionResolver {
               question: true,
               shortName: true,
               endTime: true,
+              resolver: true,
               settled: true,
               resolvedToYes: true,
             },
@@ -157,12 +161,12 @@ export class PositionResolver {
           question: p.condition.question ?? null,
           shortName: p.condition.shortName ?? null,
           endTime: p.condition.endTime ?? null,
+          resolver: p.condition.resolver ?? null,
           settled: p.condition.settled,
           resolvedToYes: p.condition.resolvedToYes,
         };
         const entry: PredictionType = {
           conditionId: p.conditionId,
-          resolver: p.resolver,
           outcomeYes: p.outcomeYes,
           chainId: p.chainId ?? null,
           condition: condition ?? null,
@@ -199,7 +203,14 @@ export class PositionResolver {
       }));
     };
 
-    if (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl') {
+    // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
+    // and not using NFT filtering
+    const useRawSql = addr && !nftTokenId && !marketAddress;
+
+    if (
+      useRawSql &&
+      (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')
+    ) {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
       const validStatuses = ['active', 'settled', 'consolidated'] as const;
@@ -209,7 +220,6 @@ export class PositionResolver {
         ? `AND status = '${sanitizedStatus}'`
         : '';
 
-  
       const sanitizedEndsAtGte =
         endsAtGte !== undefined &&
         endsAtGte !== null &&
@@ -356,9 +366,25 @@ export class PositionResolver {
       orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const where: Prisma.PositionWhereInput = {
-      OR: [{ predictor: addr }, { counterparty: addr }],
-    };
+    const where: Prisma.PositionWhereInput = {};
+
+    // Filter by NFT ID and market address if provided
+    if (nftTokenId && marketAddress) {
+      where.marketAddress = marketAddress.toLowerCase();
+      where.OR = [
+        { predictorNftTokenId: nftTokenId },
+        { counterpartyNftTokenId: nftTokenId },
+      ];
+    }
+    // Otherwise, filter by address if provided
+    else if (addr) {
+      where.OR = [{ predictor: addr }, { counterparty: addr }];
+    }
+    // If neither address nor NFT filters are provided, return empty array
+    else {
+      return [];
+    }
+
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
@@ -435,6 +461,7 @@ export class PositionResolver {
             question: true,
             shortName: true,
             endTime: true,
+            resolver: true,
             settled: true,
             resolvedToYes: true,
           },
@@ -450,12 +477,12 @@ export class PositionResolver {
         question: p.condition.question ?? null,
         shortName: p.condition.shortName ?? null,
         endTime: p.condition.endTime ?? null,
+        resolver: p.condition.resolver ?? null,
         settled: p.condition.settled,
         resolvedToYes: p.condition.resolvedToYes,
       };
       const entry: PredictionType = {
         conditionId: p.conditionId,
-        resolver: p.resolver,
         outcomeYes: p.outcomeYes,
         chainId: p.chainId ?? null,
         condition: condition ?? null,

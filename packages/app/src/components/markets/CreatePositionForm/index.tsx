@@ -17,7 +17,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DollarSign } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, type CSSProperties } from 'react';
@@ -35,6 +35,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
+import { useSession } from '~/lib/context/SessionContext';
 import {
   wagerAmountSchema,
   createWagerAmountSchema,
@@ -55,13 +56,20 @@ import {
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import type { PythPrediction } from '@sapience/ui';
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
+  pythPredictions?: PythPrediction[];
+  onRemovePythPrediction?: (id: string) => void;
+  onClearPythPredictions?: () => void;
 }
 
 const CreatePositionForm = ({
   variant = 'triggered',
+  pythPredictions = [],
+  onRemovePythPrediction,
+  onClearPythPredictions,
 }: CreatePositionFormProps) => {
   const {
     createPositionEntries,
@@ -77,8 +85,9 @@ const CreatePositionForm = ({
   const isPositionMode = true;
   const isCompact = useIsBelow(1024);
   const { hasConnectedWallet } = useConnectedWallet();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
   const parlayChainId = useMemo(
@@ -86,15 +95,23 @@ const CreatePositionForm = ({
     [chainId, createPositionEntries]
   );
 
+  // Use smart account address when session is active for position queries
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserParlays({
-    address: address ? String(address).toLowerCase() : undefined,
-    chainId: parlayChainId,
-    take: 1, // Only need the latest one
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
+  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays(
+    {
+      address: effectiveAddress
+        ? String(effectiveAddress).toLowerCase()
+        : undefined,
+      chainId: parlayChainId,
+      take: 1, // Only need the latest one
+      orderBy: 'mintedAt',
+      orderDirection: 'desc',
+    }
+  );
 
   const {
     auctionId,
@@ -508,7 +525,25 @@ const CreatePositionForm = ({
   // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
   // Capture betslip data for share intent
-  const getBetslipData = useCallback(() => {
+  // This function will be called right before submission to get fresh lastNftId
+  const getBetslipData = useCallback(async () => {
+    // Refetch positions to ensure we have the latest data before computing lastNftId
+    // This is critical for multiple bid submissions to get the correct lastNftId
+    let freshPositions = userPositions;
+    try {
+      const result = await refetchUserPositions();
+      freshPositions = result.data || userPositions;
+      console.log('[CreatePositionForm] Refetched positions for lastNftId', {
+        previousCount: userPositions?.length || 0,
+        freshCount: freshPositions?.length || 0,
+      });
+    } catch (error) {
+      console.error(
+        '[CreatePositionForm] Error refetching positions, using cached data',
+        error
+      );
+      // Fall back to cached data if refetch fails
+    }
     const wagerAmount =
       formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
 
@@ -567,11 +602,11 @@ const CreatePositionForm = ({
       }
     }
 
-    // Get latest NFT ID from positions for tracking
+    // Get latest NFT ID from fresh positions for tracking
     let lastNftId: string | undefined = undefined;
-    if (userPositions && userPositions.length > 0) {
+    if (freshPositions && freshPositions.length > 0) {
       // Get the highest NFT ID from current positions
-      const latestPosition = userPositions.reduce((latest, current) => {
+      const latestPosition = freshPositions.reduce((latest, current) => {
         try {
           const latestNftId = BigInt(latest.predictorNftTokenId || '0');
           const currentNftId = BigInt(current.predictorNftTokenId || '0');
@@ -579,11 +614,23 @@ const CreatePositionForm = ({
         } catch {
           return latest;
         }
-      }, userPositions[0]);
+      }, freshPositions[0]);
 
       if (latestPosition && latestPosition.predictorNftTokenId) {
         lastNftId = latestPosition.predictorNftTokenId;
+        console.log(
+          '[CreatePositionForm] Computed lastNftId from fresh positions',
+          {
+            lastNftId,
+            positionId: latestPosition.id,
+            totalPositions: freshPositions.length,
+          }
+        );
       }
+    } else {
+      console.log(
+        '[CreatePositionForm] No positions available for lastNftId computation'
+      );
     }
 
     return {
@@ -600,9 +647,11 @@ const CreatePositionForm = ({
     bids,
     collateralDecimals,
     userPositions,
+    refetchUserPositions,
   ]);
 
   // Use the parlay submission hook
+  // Note: betslipData is passed as a function to ensure lastNftId is captured right before submission
   const {
     submitPosition,
     isSubmitting: isPositionSubmitting,
@@ -613,7 +662,7 @@ const CreatePositionForm = ({
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
-    betslipData: getBetslipData(),
+    betslipData: getBetslipData, // Pass function instead of calling it
     onSuccess: () => {
       // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();
@@ -635,11 +684,7 @@ const CreatePositionForm = ({
 
   const handlePositionSubmit = () => {
     if (!hasConnectedWallet) {
-      try {
-        connectOrCreateWallet();
-      } catch (_error) {
-        // connectOrCreateWallet failed
-      }
+      openConnectDialog();
       return;
     }
 
@@ -690,7 +735,7 @@ const CreatePositionForm = ({
         variant: 'destructive',
         duration: 5000,
       });
-    } catch (_error) {
+    } catch {
       toast({
         title: 'Submission error',
         description: 'An error occurred while submitting your prediction.',
@@ -732,6 +777,9 @@ const CreatePositionForm = ({
     minWager,
     // PredictionMarket contract address for fetching maker nonce
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    pythPredictions,
+    onRemovePythPrediction,
+    onClearPythPredictions,
   };
 
   if (isCompact) {
@@ -773,18 +821,25 @@ const CreatePositionForm = ({
 
   if (variant === 'panel') {
     const hasItems = isPositionMode
-      ? selections.length > 0
+      ? selections.length > 0 || pythPredictions.length > 0
       : createPositionEntries.length > 0;
 
     return (
       <div className="w-full h-full flex flex-col position-form">
         <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
-          <h2 className="sc-heading text-foreground">Take a position</h2>
+          <h2 className="sc-heading text-foreground">Your Position</h2>
           <Button
             variant="ghost"
             size="xs"
             className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={isPositionMode ? clearSelections : clearPositionForm}
+            onClick={() => {
+              if (isPositionMode) {
+                clearSelections();
+                onClearPythPredictions?.();
+              } else {
+                clearPositionForm();
+              }
+            }}
             title="Reset"
           >
             CLEAR
@@ -814,7 +869,7 @@ const CreatePositionForm = ({
   }
 
   const hasTriggeredItems = isPositionMode
-    ? selections.length > 0
+    ? selections.length > 0 || pythPredictions.length > 0
     : createPositionEntries.length > 0;
 
   return (
@@ -836,13 +891,20 @@ const CreatePositionForm = ({
         >
           <div className="flex-1 min-h-0">
             <div className="flex items-center justify-between mb-1 px-1">
-              <h2 className="sc-heading text-foreground">Take a position</h2>
+              <h2 className="sc-heading text-foreground">Your Position</h2>
               {hasTriggeredItems && (
                 <Button
                   variant="ghost"
                   size="xs"
                   className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0"
-                  onClick={isPositionMode ? clearSelections : clearPositionForm}
+                  onClick={() => {
+                    if (isPositionMode) {
+                      clearSelections();
+                      onClearPythPredictions?.();
+                    } else {
+                      clearPositionForm();
+                    }
+                  }}
                   title="Reset"
                 >
                   CLEAR

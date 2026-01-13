@@ -3,7 +3,7 @@ import { recoverMessageAddress } from 'viem';
 import { config } from './config';
 
 // TODO: Update monorepo structure so that we can import this from packages/app/src/lib/constants/constants.ts
-const ADMIN_AUTHENTICATE_MSG =
+export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 const ALLOWED_ADDRESSES =
   process.env.ALLOWED_ADDRESSES?.split(',').map((a) => a.toLowerCase()) || [];

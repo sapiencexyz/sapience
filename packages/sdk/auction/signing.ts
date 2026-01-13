@@ -133,6 +133,23 @@ export interface AuctionStartSigningPayload {
 }
 
 /**
+ * Auction request payload sent to the relayer WebSocket server.
+ * This matches the relayer's AuctionRequestPayload type.
+ * The takerSignature and takerSignedAt fields are optional for price discovery,
+ * but required when submitting a quote request that needs signature verification.
+ */
+export interface AuctionRequestPayload {
+  wager: string; // wei string
+  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
+  resolver: string; // contract address for market validation
+  taker: string; // EOA address of the taker initiating the auction
+  takerNonce: number; // nonce for the taker
+  chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
+  takerSignature?: string; // EIP-191 signature of the taker (optional for price discovery)
+  takerSignedAt?: string; // ISO timestamp when the signature was created (required if takerSignature is provided)
+}
+
+/**
  * Creates a SIWE-formatted message for auction request signing (EIP-191)
  * This follows EIP-4361 format and includes all auction parameters in the signature
  * @param payload - Auction parameters to sign

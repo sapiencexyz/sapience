@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+} from 'react';
 import {
   useReadContract,
   useReadContracts,
@@ -48,6 +54,8 @@ const WUSDE_ABI = parseAbi([
   'function balanceOf(address account) view returns (uint256)',
 ]);
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
   const chainId = useChainIdFromLocalStorage();
@@ -86,12 +94,17 @@ const ApprovalDialog: React.FC = () => {
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
+  // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
+  const collateralAddress = useMemo(() => {
+    return isEtherealChain ? WUSDE_ADDRESS : COLLATERAL_ADDRESS;
+  }, [isEtherealChain, COLLATERAL_ADDRESS]);
+
   const { data: decimals } = useReadContract({
     abi: erc20AbiLocal,
-    address: COLLATERAL_ADDRESS,
+    address: collateralAddress,
     functionName: 'decimals',
     chainId: chainId,
-    query: { enabled: Boolean(COLLATERAL_ADDRESS) },
+    query: { enabled: Boolean(collateralAddress) },
   });
 
   // Read native USDe balance (for Ethereal chain)
@@ -114,16 +127,18 @@ const ApprovalDialog: React.FC = () => {
   // Read ERC20 collateral balance (for non-Ethereal chains)
   const { data: erc20Balance, refetch: refetchErc20 } = useReadContract({
     abi: erc20Abi,
-    address: COLLATERAL_ADDRESS,
+    address: collateralAddress,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId,
     query: {
-      enabled: Boolean(address && COLLATERAL_ADDRESS) && !isEtherealChain,
+      enabled: Boolean(address && collateralAddress) && !isEtherealChain,
     },
   });
 
   const [approveAmount, setApproveAmount] = useState<string>('');
+  const [isWaitingForAllowance, setIsWaitingForAllowance] = useState(false);
+  const allowanceWaitIdRef = useRef(0);
 
   useEffect(() => {
     if (
@@ -142,42 +157,60 @@ const ApprovalDialog: React.FC = () => {
     }
   }, [decimals]);
 
-  // Calculate effective balance (native + wrapped - gas reserve for Ethereal)
-  const { effectiveBalance, nativeValue, wusdeValue } = useMemo(() => {
-    if (isEtherealChain) {
-      const nativeNum = nativeBalance ? Number(nativeBalance.formatted) : 0;
-      const wusdeNum = wusdeBalance
-        ? Number(formatUnits(wusdeBalance, tokenDecimals))
-        : 0;
-      const total = nativeNum + wusdeNum;
-      const effective = Math.max(0, total - GAS_RESERVE);
-      return {
-        effectiveBalance: effective,
-        nativeValue: nativeNum,
-        wusdeValue: wusdeNum,
-      };
-    } else {
-      const balance = erc20Balance
-        ? Number(formatUnits(erc20Balance, tokenDecimals))
-        : 0;
-      const effective = Math.max(0, balance - GAS_RESERVE);
-      return {
-        effectiveBalance: effective,
-        nativeValue: 0,
-        wusdeValue: balance,
-      };
+  const gasReserveWei = useMemo(() => {
+    try {
+      return parseUnits(String(GAS_RESERVE), tokenDecimals);
+    } catch {
+      // Fallback: treat reserve as 0 if decimals aren't ready yet
+      return 0n;
     }
-  }, [
-    isEtherealChain,
-    nativeBalance,
-    wusdeBalance,
-    erc20Balance,
-    tokenDecimals,
-  ]);
+  }, [tokenDecimals]);
+
+  const approveAmountWei = useMemo(() => {
+    try {
+      if (!approveAmount) return 0n;
+      return parseUnits(approveAmount, tokenDecimals);
+    } catch {
+      return 0n;
+    }
+  }, [approveAmount, tokenDecimals]);
+
+  const requiredAmountWei = useMemo(() => {
+    try {
+      if (!requiredAmount) return null;
+      return parseUnits(requiredAmount, tokenDecimals);
+    } catch {
+      return null;
+    }
+  }, [requiredAmount, tokenDecimals]);
+
+  const nativeWei = useMemo(() => {
+    // useBalance returns { value: bigint, formatted: string }
+    return nativeBalance?.value ?? 0n;
+  }, [nativeBalance?.value]);
+
+  const wusdeWei = useMemo(() => {
+    return wusdeBalance ?? 0n;
+  }, [wusdeBalance]);
+
+  const erc20Wei = useMemo(() => {
+    return erc20Balance ?? 0n;
+  }, [erc20Balance]);
+
+  const effectiveBalanceWei = useMemo(() => {
+    const totalWei = isEtherealChain ? nativeWei + wusdeWei : erc20Wei;
+    if (totalWei <= gasReserveWei) return 0n;
+    return totalWei - gasReserveWei;
+  }, [isEtherealChain, nativeWei, wusdeWei, erc20Wei, gasReserveWei]);
 
   const effectiveBalanceDisplay = useMemo(() => {
-    return formatFiveSigFigs(effectiveBalance);
-  }, [effectiveBalance]);
+    try {
+      const human = Number(formatUnits(effectiveBalanceWei, tokenDecimals));
+      return formatFiveSigFigs(human);
+    } catch {
+      return '0';
+    }
+  }, [effectiveBalanceWei, tokenDecimals]);
 
   const {
     allowance,
@@ -186,12 +219,12 @@ const ApprovalDialog: React.FC = () => {
     isApproving,
     refetchAllowance,
   } = useTokenApproval({
-    tokenAddress: COLLATERAL_ADDRESS,
+    tokenAddress: collateralAddress,
     spenderAddress: SPENDER_ADDRESS,
     amount: approveAmount,
     chainId: chainId,
     decimals: tokenDecimals,
-    enabled: Boolean(COLLATERAL_ADDRESS && SPENDER_ADDRESS),
+    enabled: Boolean(collateralAddress && SPENDER_ADDRESS),
   });
 
   const allowanceDisplay = useMemo(() => {
@@ -206,47 +239,52 @@ const ApprovalDialog: React.FC = () => {
     }
   }, [allowance, tokenDecimals]);
 
-  // Calculate how much wrapping is needed
-  const { needsWrapping, wrapAmount } = useMemo(() => {
+  // Calculate how much wrapping is needed (USDe -> wUSDe) for Ethereal chains.
+  // Important: do all math in wei to avoid floating-point rounding issues.
+  const { needsWrapping, wrapAmount, canFullyWrap } = useMemo(() => {
     if (!isEtherealChain) {
-      return { needsWrapping: false, wrapAmount: 0n };
+      return { needsWrapping: false, wrapAmount: 0n, canFullyWrap: true };
     }
 
-    const approveNum = Number(approveAmount || '0');
-    if (!Number.isFinite(approveNum) || approveNum <= 0) {
-      return { needsWrapping: false, wrapAmount: 0n };
+    if (approveAmountWei <= 0n) {
+      return { needsWrapping: false, wrapAmount: 0n, canFullyWrap: true };
     }
 
-    // How much more wUSDe do we need beyond current wUSDe balance?
-    const neededWusde = approveNum - wusdeValue;
-    if (neededWusde <= 0) {
-      return { needsWrapping: false, wrapAmount: 0n };
+    const neededWrapWei =
+      approveAmountWei > wusdeWei ? approveAmountWei - wusdeWei : 0n;
+    if (neededWrapWei <= 0n) {
+      return { needsWrapping: false, wrapAmount: 0n, canFullyWrap: true };
     }
 
-    // Check if we have enough native balance to wrap (leaving gas reserve)
-    const availableNative = Math.max(0, nativeValue - GAS_RESERVE);
-    if (availableNative <= 0) {
-      return { needsWrapping: false, wrapAmount: 0n };
-    }
-
-    // Wrap the minimum needed or max available
-    const toWrap = Math.min(neededWusde, availableNative);
-    const wrapAmountWei = parseUnits(String(toWrap), tokenDecimals);
+    // Leave a gas reserve in native USDe.
+    const availableNativeWei =
+      nativeWei > gasReserveWei ? nativeWei - gasReserveWei : 0n;
+    const ok = availableNativeWei >= neededWrapWei;
 
     return {
-      needsWrapping: toWrap > 0,
-      wrapAmount: wrapAmountWei,
+      needsWrapping: true,
+      // Wrap the full missing amount so we end up with wUSDe >= approveAmountWei before approval
+      wrapAmount: neededWrapWei,
+      canFullyWrap: ok,
     };
-  }, [isEtherealChain, approveAmount, wusdeValue, nativeValue, tokenDecimals]);
+  }, [isEtherealChain, approveAmountWei, wusdeWei, nativeWei, gasReserveWei]);
 
   // useSendCalls for batching wrap + approve
   const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Cancel any outstanding allowance wait when dialog closes
+  useEffect(() => {
+    if (!isOpen) {
+      allowanceWaitIdRef.current += 1;
+      setIsWaitingForAllowance(false);
+    }
+  }, [isOpen]);
+
   const handleSubmit = useCallback(async () => {
-    if (!COLLATERAL_ADDRESS || !SPENDER_ADDRESS || !approveAmount) {
+    if (!collateralAddress || !SPENDER_ADDRESS || !approveAmount) {
       console.error('Missing required parameters:', {
-        COLLATERAL_ADDRESS,
+        COLLATERAL_ADDRESS: collateralAddress,
         SPENDER_ADDRESS,
         approveAmount,
       });
@@ -262,7 +300,18 @@ const ApprovalDialog: React.FC = () => {
 
     try {
       setIsSubmitting(true);
-      const approveAmountWei = parseUnits(approveAmount, tokenDecimals);
+      if (approveAmountWei <= 0n) {
+        throw new Error('Invalid approval amount');
+      }
+      const waitId = ++allowanceWaitIdRef.current;
+
+      if (isEtherealChain && needsWrapping) {
+        if (!canFullyWrap) {
+          throw new Error(
+            'Insufficient native USDe to wrap into wUSDe (after gas reserve)'
+          );
+        }
+      }
 
       if (isEtherealChain && needsWrapping && wrapAmount > 0n) {
         // Batch: wrap USDe to wUSDe, then approve
@@ -286,7 +335,7 @@ const ApprovalDialog: React.FC = () => {
               value: wrapAmount,
             },
             {
-              to: COLLATERAL_ADDRESS,
+              to: collateralAddress,
               data: approveCalldata,
               value: 0n,
             },
@@ -299,19 +348,61 @@ const ApprovalDialog: React.FC = () => {
         await approve();
       }
 
-      // Close the dialog after successful submission
-      setOpen(false);
+      // Wait/poll until allowance reflects the new approval amount, then close.
+      // This prevents the dialog from closing before the UI can observe the updated allowance.
+      setIsWaitingForAllowance(true);
+      void (async () => {
+        try {
+          const timeoutMs = 45_000;
+          const intervalMs = 1_500;
+          const startedAt = Date.now();
 
-      // Refetch balances and allowance
-      setTimeout(() => {
-        refetchAllowance();
-        if (isEtherealChain) {
-          refetchNative();
-          refetchWusde();
-        } else {
-          refetchErc20();
+          while (Date.now() - startedAt < timeoutMs) {
+            if (allowanceWaitIdRef.current !== waitId) return; // cancelled/replaced
+
+            const result = await refetchAllowance();
+            const latest = (result?.data ?? allowance) as unknown as
+              | bigint
+              | undefined;
+
+            if (latest != null && latest >= approveAmountWei) {
+              // Best-effort: refresh balances once the allowance is updated
+              if (isEtherealChain) {
+                refetchNative();
+                refetchWusde();
+              } else {
+                refetchErc20();
+              }
+
+              setIsWaitingForAllowance(false);
+              setOpen(false);
+              return;
+            }
+
+            await sleep(intervalMs);
+          }
+
+          if (allowanceWaitIdRef.current !== waitId) return; // cancelled/replaced
+
+          setIsWaitingForAllowance(false);
+          toast({
+            title: 'Approval submitted',
+            description:
+              'Waiting for the updated allowance took longer than expected. Please wait a moment and try again if needed.',
+            duration: 6000,
+          });
+        } catch (e) {
+          if (allowanceWaitIdRef.current !== waitId) return; // cancelled/replaced
+          setIsWaitingForAllowance(false);
+          toast({
+            title: 'Approval submitted',
+            description:
+              'We could not confirm the updated allowance yet. Please wait a moment and try again if needed.',
+            duration: 6000,
+          });
+          console.error('Failed while waiting for allowance update:', e);
         }
-      }, 2000);
+      })();
     } catch (error) {
       // Show error to user - approve() logs but doesn't toast
       console.error('Approval failed:', error);
@@ -326,25 +417,29 @@ const ApprovalDialog: React.FC = () => {
       setIsSubmitting(false);
     }
   }, [
-    COLLATERAL_ADDRESS,
+    collateralAddress,
     SPENDER_ADDRESS,
     approveAmount,
     tokenDecimals,
     isEtherealChain,
     needsWrapping,
     wrapAmount,
+    canFullyWrap,
     chainId,
     sendCallsAsync,
     approve,
     setOpen,
     refetchAllowance,
+    allowance,
     refetchNative,
     refetchWusde,
     refetchErc20,
     toast,
+    approveAmountWei,
   ]);
 
-  const isProcessing = isApproving || isSendingCalls || isSubmitting;
+  const isProcessing =
+    isApproving || isSendingCalls || isSubmitting || isWaitingForAllowance;
 
   useEffect(() => {
     if (!approveAmount && allowance != null) setApproveAmount(allowanceDisplay);
@@ -352,9 +447,14 @@ const ApprovalDialog: React.FC = () => {
 
   // Check if user has enough balance for the requested amount
   const hasInsufficientBalance = useMemo(() => {
-    const approveNum = Number(approveAmount || '0');
-    return Number.isFinite(approveNum) && approveNum > effectiveBalance;
-  }, [approveAmount, effectiveBalance]);
+    if (approveAmountWei <= 0n) return false;
+    return approveAmountWei > effectiveBalanceWei;
+  }, [approveAmountWei, effectiveBalanceWei]);
+
+  const needsMoreWusdeWrap = useMemo(() => {
+    if (!isEtherealChain) return false;
+    return needsWrapping && !canFullyWrap;
+  }, [isEtherealChain, needsWrapping, canFullyWrap]);
 
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
@@ -371,6 +471,7 @@ const ApprovalDialog: React.FC = () => {
               value={approveAmount}
               onChange={(e) => setApproveAmount(e.target.value.trim())}
               className="h-10 pr-20"
+              disabled={isProcessing}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
               USDe
@@ -391,20 +492,23 @@ const ApprovalDialog: React.FC = () => {
             disabled={
               !approveAmount ||
               isProcessing ||
-              !COLLATERAL_ADDRESS ||
+              !collateralAddress ||
               !SPENDER_ADDRESS ||
               hasInsufficientBalance ||
+              needsMoreWusdeWrap ||
               isPermitLoading ||
               isRestricted ||
-              (requiredAmount != null &&
-                Number(approveAmount || '0') < Number(requiredAmount))
+              (requiredAmountWei != null &&
+                approveAmountWei < requiredAmountWei)
             }
           >
             {isProcessing
               ? 'Submitting…'
               : hasInsufficientBalance
                 ? 'Insufficient Balance'
-                : 'Submit'}
+                : needsMoreWusdeWrap
+                  ? 'Insufficient USDe to Wrap'
+                  : 'Submit'}
           </Button>
 
           <RestrictedJurisdictionBanner
@@ -414,15 +518,29 @@ const ApprovalDialog: React.FC = () => {
 
           {requiredAmount &&
           !hasInsufficientBalance &&
-          Number(approveAmount || '0') < Number(requiredAmount) ? (
+          requiredAmountWei != null &&
+          approveAmountWei < requiredAmountWei ? (
             <div className="text-[11px] text-amber-500">
               Enter at least {requiredAmount} USDe
+            </div>
+          ) : null}
+
+          {needsMoreWusdeWrap ? (
+            <div className="text-[11px] text-amber-500">
+              You need to wrap enough native USDe into wUSDe (leaving{' '}
+              {GAS_RESERVE} USDe for gas) before approving this amount.
             </div>
           ) : null}
 
           {isLoadingAllowance ? (
             <div className="text-xs text-muted-foreground">
               Refreshing allowance…
+            </div>
+          ) : null}
+
+          {isWaitingForAllowance ? (
+            <div className="text-xs text-muted-foreground">
+              Waiting for updated allowance…
             </div>
           ) : null}
         </div>

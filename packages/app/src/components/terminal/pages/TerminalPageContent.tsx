@@ -1,10 +1,10 @@
 'use client';
 
 import type React from 'react';
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMobile, useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
-import { decodeAbiParameters, parseUnits, erc20Abi } from 'viem';
+import { parseUnits, erc20Abi } from 'viem';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
@@ -13,11 +13,18 @@ import AutoBid from '~/components/terminal/AutoBid';
 import { ApprovalDialogProvider } from '~/components/terminal/ApprovalDialogContext';
 import ApprovalDialog from '~/components/terminal/ApprovalDialog';
 import { TerminalLogsProvider } from '~/components/terminal/TerminalLogsContext';
-import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useCategories } from '~/hooks/graphql/useCategories';
+import StackedPredictions, {
+  type Pick,
+} from '~/components/shared/StackedPredictions';
+import { PythPredictionListItem, type PythPrediction } from '@sapience/ui';
+import {
+  decodeAuctionPredictedOutcomes,
+  formatPythPriceDecimalFromInt,
+  formatUnixSecondsToLocalInput,
+} from '~/lib/auction/decodePredictedOutcomes';
+import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
-import MarketBadge from '~/components/markets/MarketBadge';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
 import MinBidsFilter from '~/components/terminal/filters/MinBidsFilter';
@@ -30,107 +37,6 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-
-// Horizontal predictions scroller with right gradient (mirrors UserParlaysTable)
-// Extracted as memoized component to prevent recreation on parent renders
-type PredictionsScrollerLeg = {
-  id: `0x${string}`;
-  title: string;
-  categorySlug: string | null;
-  choice: 'Yes' | 'No';
-};
-
-const PredictionsScroller = memo(function PredictionsScroller({
-  legs,
-}: {
-  legs: PredictionsScrollerLeg[];
-}) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [showRightGradient, setShowRightGradient] = useState(false);
-
-  const updateGradientVisibility = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) {
-      setShowRightGradient(false);
-      return;
-    }
-    const canScroll = el.scrollWidth > el.clientWidth + 1;
-    if (!canScroll) {
-      setShowRightGradient(false);
-      return;
-    }
-    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 1;
-    setShowRightGradient(!atEnd);
-  }, []);
-
-  useEffect(() => {
-    updateGradientVisibility();
-    const el = containerRef.current;
-    if (!el) return;
-    const onScroll = () => updateGradientVisibility();
-    el.addEventListener('scroll', onScroll, { passive: true });
-    const onResize = () => updateGradientVisibility();
-    window.addEventListener('resize', onResize);
-    const ro = new ResizeObserver(() => updateGradientVisibility());
-    ro.observe(el);
-    return () => {
-      el.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onResize);
-      ro.disconnect();
-    };
-  }, [updateGradientVisibility]);
-
-  return (
-    <div className="relative w-full max-w-full">
-      <div
-        ref={containerRef}
-        className="overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none]"
-        style={{ WebkitOverflowScrolling: 'touch' }}
-      >
-        <div className="flex items-center gap-3 md:gap-4 pr-16 flex-nowrap">
-          {legs.map((leg, i) => (
-            <div
-              key={i}
-              className="inline-flex h-7 items-center gap-3 shrink-0"
-            >
-              <MarketBadge
-                label={String(leg.title)}
-                size={28}
-                categorySlug={leg.categorySlug || undefined}
-                color={
-                  leg.categorySlug
-                    ? getCategoryStyle(leg.categorySlug)?.color
-                    : undefined
-                }
-              />
-              <ConditionTitleLink
-                conditionId={leg.id}
-                title={String(leg.title)}
-                className="text-sm"
-                clampLines={1}
-              />
-              <span
-                className={
-                  leg.choice === 'Yes'
-                    ? 'px-2 py-1 text-xs font-medium font-mono border border-green-500/40 bg-green-500/10 text-green-600 rounded'
-                    : 'px-2 py-1 text-xs font-medium font-mono border border-red-500/40 bg-red-500/10 text-red-600 rounded'
-                }
-              >
-                {leg.choice}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-      {showRightGradient && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-0 top-0 h-full w-24 bg-gradient-to-l from-brand-black to-transparent"
-        />
-      )}
-    </div>
-  );
-});
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
@@ -201,7 +107,23 @@ const TerminalPageContent: React.FC = () => {
     Map<
       string,
       {
-        data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
+        data:
+          | {
+              kind: 'uma';
+              data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
+            }
+          | {
+              kind: 'pyth';
+              data: Array<{
+                priceId: `0x${string}`;
+                endTime: bigint;
+                strikePrice: bigint;
+                strikeExpo: number;
+                overWinsOnTie: boolean;
+                prediction: boolean;
+              }>;
+            }
+          | { kind: 'unknown'; data: [] };
         accessedAt: number;
       }
     >
@@ -210,9 +132,25 @@ const TerminalPageContent: React.FC = () => {
     (m: {
       type: string;
       data: any;
-    }): Array<{ marketId: `0x${string}`; prediction: boolean }> => {
+    }):
+      | {
+          kind: 'uma';
+          data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
+        }
+      | {
+          kind: 'pyth';
+          data: Array<{
+            priceId: `0x${string}`;
+            endTime: bigint;
+            strikePrice: bigint;
+            strikeExpo: number;
+            overWinsOnTie: boolean;
+            prediction: boolean;
+          }>;
+        }
+      | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started') return [];
+        if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
           m?.data?.makerNonce ?? 'n'
         )}`;
@@ -222,40 +160,40 @@ const TerminalPageContent: React.FC = () => {
           cached.accessedAt = Date.now();
           return cached.data;
         }
-        const arr = Array.isArray(m?.data?.predictedOutcomes)
-          ? (m.data.predictedOutcomes as string[])
-          : [];
-        const encoded = arr[0] as `0x${string}` | undefined;
-        if (!encoded) return [];
-        const decodedUnknown = decodeAbiParameters(
-          [
-            {
-              type: 'tuple[]',
-              components: [
-                { name: 'marketId', type: 'bytes32' },
-                { name: 'prediction', type: 'bool' },
-              ],
-            },
-          ] as const,
-          encoded
-        ) as unknown;
-        const decodedArr = Array.isArray(decodedUnknown)
-          ? ((decodedUnknown as any)[0] as Array<{
-              marketId: `0x${string}`;
-              prediction: boolean;
-            }>)
-          : [];
-        const legs = (decodedArr || []).map((o) => ({
-          marketId: o.marketId,
-          prediction: !!o.prediction,
-        }));
+        const decoded = decodeAuctionPredictedOutcomes({
+          resolver:
+            (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
+          predictedOutcomes: (m as any)?.data?.predictedOutcomes,
+        });
+        const entry =
+          decoded.kind === 'uma'
+            ? {
+                kind: 'uma' as const,
+                data: decoded.outcomes.map((o) => ({
+                  marketId: o.marketId,
+                  prediction: !!o.prediction,
+                })),
+              }
+            : decoded.kind === 'pyth'
+              ? {
+                  kind: 'pyth' as const,
+                  data: decoded.outcomes.map((o) => ({
+                    priceId: o.priceId,
+                    endTime: o.endTime,
+                    strikePrice: o.strikePrice,
+                    strikeExpo: o.strikeExpo,
+                    overWinsOnTie: o.overWinsOnTie,
+                    prediction: !!o.prediction,
+                  })),
+                }
+              : { kind: 'unknown' as const, data: [] as [] };
         decodeCacheRef.current.set(cacheKey, {
-          data: legs,
+          data: entry,
           accessedAt: Date.now(),
         });
-        return legs;
+        return entry;
       } catch {
-        return [];
+        return { kind: 'unknown', data: [] };
       }
     },
     [getAuctionId]
@@ -306,32 +244,15 @@ const TerminalPageContent: React.FC = () => {
     try {
       for (const m of auctionAndBidMessages) {
         if (m.type !== 'auction.started') continue;
-        const arr = Array.isArray((m as any)?.data?.predictedOutcomes)
-          ? ((m as any).data.predictedOutcomes as unknown as string[])
-          : [];
-        if (arr.length === 0) continue;
-        try {
-          const decodedUnknown = decodeAbiParameters(
-            [
-              {
-                type: 'tuple[]',
-                components: [
-                  { name: 'marketId', type: 'bytes32' },
-                  { name: 'prediction', type: 'bool' },
-                ],
-              },
-            ] as const,
-            arr[0] as `0x${string}`
-          ) as unknown;
-          const decodedArr = Array.isArray(decodedUnknown)
-            ? ((decodedUnknown as any)[0] as Array<{ marketId: string }>)
-            : [];
-          for (const o of decodedArr || []) {
-            const id = (o as any)?.marketId as string | undefined;
-            if (id && typeof id === 'string') set.add(id);
-          }
-        } catch {
-          /* noop */
+        const decoded = decodeAuctionPredictedOutcomes({
+          resolver:
+            (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
+          predictedOutcomes: (m as any)?.data?.predictedOutcomes,
+        });
+        if (decoded.kind !== 'uma') continue;
+        for (const o of decoded.outcomes || []) {
+          const id = (o as any)?.marketId as string | undefined;
+          if (id && typeof id === 'string') set.add(id);
         }
       }
     } catch {
@@ -392,7 +313,7 @@ const TerminalPageContent: React.FC = () => {
       const decoded = getDecodedPredictedOutcomes(m as any);
 
       // If we can't decode any legs, show bytecode payload only if request errored or completed
-      if (!decoded || decoded.length === 0) {
+      if (!decoded || decoded.kind === 'unknown' || decoded.data.length === 0) {
         const encodedArr: string[] = Array.isArray(
           (m as any)?.data?.predictedOutcomes
         )
@@ -409,8 +330,14 @@ const TerminalPageContent: React.FC = () => {
         return null;
       }
 
-      // Gate until all condition names are available to avoid flashing raw IDs
-      const allResolved = decoded.every((o) =>
+      if (decoded.kind === 'pyth') {
+        const first = decoded.data[0];
+        if (!first) return null;
+        return <PythPredictionsCell first={first} />;
+      }
+
+      // UMA: Gate until all condition names are available to avoid flashing raw IDs
+      const allResolved = decoded.data.every((o) =>
         renderConditionMap.has(o.marketId)
       );
       if (!allResolved) {
@@ -431,7 +358,7 @@ const TerminalPageContent: React.FC = () => {
         return null;
       }
 
-      const legs = decoded.map((o) => {
+      const legs = decoded.data.map((o) => {
         const cond = renderConditionMap.get(o.marketId);
         return {
           id: o.marketId,
@@ -447,13 +374,21 @@ const TerminalPageContent: React.FC = () => {
 
       // Avoid flashing: wait until at least one conditions request completed
       if (!hasLoadedConditionsOnce) return null;
+      const picks: Pick[] = legs.map(
+        (leg): Pick => ({
+          question: String(leg.title),
+          choice: leg.choice,
+          conditionId: String(leg.id),
+          categorySlug: leg.categorySlug ?? null,
+        })
+      );
       return (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.14, ease: 'easeOut' }}
         >
-          <PredictionsScroller legs={legs} />
+          <StackedPredictions legs={picks} className="max-w-full" />
         </motion.div>
       );
     } catch {
@@ -565,12 +500,20 @@ const TerminalPageContent: React.FC = () => {
       // Pinned rows bypass filters entirely
       if (row.pinned) return true;
 
-      const legs = getDecodedPredictedOutcomes(row.m);
-      const legConditionIds = legs.map((l) => String(l.marketId));
-      const legCategorySlugs = legs.map((l) => {
-        const cond = renderConditionMap.get(String(l.marketId));
-        return cond?.category?.slug ?? null;
-      });
+      const decoded = getDecodedPredictedOutcomes(row.m);
+      const legConditionIds =
+        decoded.kind === 'uma'
+          ? decoded.data.map((l) => String(l.marketId))
+          : [];
+      const legCategorySlugs =
+        decoded.kind === 'uma'
+          ? decoded.data.map((l) => {
+              const cond = renderConditionMap.get(String(l.marketId));
+              return cond?.category?.slug ?? null;
+            })
+          : decoded.kind === 'pyth'
+            ? (['prices'] as const)
+            : [];
 
       const matchesCategory =
         selectedCategorySlugs.length === 0 ||
@@ -823,10 +766,15 @@ const TerminalPageContent: React.FC = () => {
                         <div className="flex flex-col md:col-span-1">
                           <CategoryFilter
                             items={
-                              (categories || []).map((c) => ({
-                                value: c.slug,
-                                label: c.name || c.slug,
-                              })) as MultiSelectItem[]
+                              [
+                                { value: 'prices', label: 'Prices' },
+                                ...(categories || [])
+                                  .filter((c) => c.slug !== 'prices')
+                                  .map((c) => ({
+                                    value: c.slug,
+                                    label: c.name || c.slug,
+                                  })),
+                              ] as MultiSelectItem[]
                             }
                             selected={selectedCategorySlugs}
                             onChange={setSelectedCategorySlugs}
@@ -1036,3 +984,67 @@ const TerminalPageContent: React.FC = () => {
 };
 
 export default TerminalPageContent;
+
+function pythSideFromMakerPrediction(params: {
+  makerPrediction: boolean; // true=Over, false=Under
+  perspective: 'maker' | 'taker';
+}): { direction: 'over' | 'under'; choice: 'OVER' | 'UNDER' } {
+  // For Pyth, the counterparty/taker is always the opposite side of the maker.
+  const displayPrediction =
+    params.perspective === 'taker'
+      ? !params.makerPrediction
+      : params.makerPrediction;
+  return displayPrediction
+    ? { direction: 'over', choice: 'OVER' }
+    : { direction: 'under', choice: 'UNDER' };
+}
+
+function PythPredictionsCell({
+  first,
+}: {
+  first: {
+    priceId: `0x${string}`;
+    endTime: bigint;
+    strikePrice: bigint;
+    strikeExpo: number;
+    overWinsOnTie: boolean;
+    prediction: boolean;
+  };
+}) {
+  const feedLabel = usePythFeedLabel(first.priceId);
+  // In the auction/taker view we show what the TAKER needs to win.
+  // maker Over -> taker Under, maker Under -> taker Over.
+  const side = pythSideFromMakerPrediction({
+    makerPrediction: first.prediction,
+    perspective: 'taker',
+  });
+  const priceStr = formatPythPriceDecimalFromInt(
+    first.strikePrice,
+    first.strikeExpo
+  );
+  const priceNum = Number(priceStr);
+
+  const pythPrediction: PythPrediction = {
+    id: `${first.priceId}:${first.endTime.toString()}:${first.strikePrice.toString()}:${first.strikeExpo}`,
+    priceId: first.priceId,
+    priceFeedLabel: feedLabel ?? undefined,
+    direction: side.direction,
+    targetPrice: Number.isFinite(priceNum) ? priceNum : 0,
+    targetPriceRaw: priceStr,
+    targetPriceFullPrecision: priceStr,
+    priceExpo: first.strikeExpo,
+    dateTimeLocal: formatUnixSecondsToLocalInput(first.endTime),
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.14, ease: 'easeOut' }}
+    >
+      <div className="max-w-full">
+        <PythPredictionListItem prediction={pythPrediction} layout="inline" />
+      </div>
+    </motion.div>
+  );
+}

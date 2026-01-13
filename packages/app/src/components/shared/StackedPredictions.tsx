@@ -1,23 +1,40 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
+import {
+  PredictionChoiceBadge,
+  PythOracleMark,
+  PythPredictionListItem,
+  type PythPrediction,
+} from '@sapience/ui';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
 
+export type PickChoice = 'Yes' | 'No' | 'Over' | 'Under';
+
 export interface Pick {
   question: string;
-  choice: 'Yes' | 'No';
+  choice: string;
   conditionId?: string;
   categorySlug?: string | null;
   endTime?: number | null;
   description?: string | null;
+  /**
+   * When set to 'pyth', stacked icons will render the Pyth mark instead of a category icon.
+   * (Useful when a combo includes a Pyth leg.)
+   */
+  source?: 'uma' | 'pyth';
+  /**
+   * Optional structured Pyth prediction data. When provided, we render with `PythPredictionListItem`
+   * (no "OVER $0.19" badge).
+   */
+  pythPrediction?: PythPrediction;
 }
 
 interface StackedPredictionsProps {
@@ -54,6 +71,7 @@ export function StackedIcons({
   return (
     <div className={`flex items-center -space-x-2 ${className ?? ''}`}>
       {legs.map((leg, i) => {
+        const isPyth = leg.source === 'pyth';
         const CategoryIcon = getCategoryIcon(leg.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';
         return (
@@ -61,11 +79,19 @@ export function StackedIcons({
             key={`icon-${leg.conditionId || i}-${i}`}
             className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background"
             style={{
-              backgroundColor: color,
+              backgroundColor: isPyth ? 'hsl(var(--muted))' : color,
               zIndex: legs.length - i,
             }}
           >
-            <CategoryIcon className="h-3 w-3 text-white/80" />
+            {isPyth ? (
+              <PythOracleMark
+                className="h-3 w-3 text-foreground/80"
+                src="/pyth-network.svg"
+                alt="Pyth"
+              />
+            ) : (
+              <CategoryIcon className="h-3 w-3 text-white/80" />
+            )}
           </div>
         );
       })}
@@ -93,79 +119,110 @@ export function StackedPredictionsTitle({
   const firstLeg = legs[0];
   const remainingLegs = legs.slice(1);
   const remainingCount = remainingLegs.length;
+  const badgeLabel = String(firstLeg.choice).toUpperCase();
+  const firstIsPyth = firstLeg.source === 'pyth' && !!firstLeg.pythPrediction;
 
   return (
-    <div className={`flex items-center gap-2 flex-wrap ${className ?? ''}`}>
-      <span className={`text-sm ${maxWidthClass} truncate`}>
-        <ConditionTitleLink
-          conditionId={firstLeg.conditionId}
-          title={firstLeg.question}
-          clampLines={1}
-        />
-      </span>
-      <Badge
-        variant="outline"
-        className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-          firstLeg.choice === 'Yes'
-            ? 'border-emerald-500 bg-emerald-500/50 dark:bg-emerald-500/70 text-emerald-900 dark:text-white/90'
-            : 'border-rose-500 bg-rose-500/50 dark:bg-rose-500/70 text-rose-900 dark:text-white/90'
-        }`}
-      >
-        {firstLeg.choice === 'Yes' ? 'YES' : 'NO'}
-      </Badge>
-
-      {/* "and N predictions" popover */}
-      {remainingCount > 0 && (
+    <div
+      className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
+    >
+      {firstIsPyth ? (
+        <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
+          <PythPredictionListItem
+            prediction={firstLeg.pythPrediction!}
+            layout="inline"
+            showOracleIcon={false}
+          />
+        </div>
+      ) : (
         <>
-          <span className="text-sm text-muted-foreground shrink-0">and</span>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 shrink-0 transition-colors"
-              >
-                {remainingCount} {remainingCount === 1 ? 'other' : 'others'}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
-              align="start"
-            >
-              <div className="flex flex-col divide-y divide-brand-white/20">
-                {remainingLegs.map((leg, i) => (
-                  <div
-                    key={`${leg.conditionId || i}-${i}`}
-                    className="flex items-center gap-3 px-3 py-2"
-                  >
-                    <MarketBadge
-                      label={leg.question}
-                      size={32}
-                      color={getCategoryColor(leg.categorySlug)}
-                      categorySlug={leg.categorySlug}
-                    />
-                    <ConditionTitleLink
-                      conditionId={leg.conditionId}
-                      title={leg.question}
-                      clampLines={1}
-                      className="text-sm"
-                    />
-                    <Badge
-                      variant="outline"
-                      className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-                        leg.choice === 'Yes'
-                          ? 'border-emerald-500 bg-emerald-500/50 dark:bg-emerald-500/70 text-emerald-900 dark:text-white/90'
-                          : 'border-rose-500 bg-rose-500/50 dark:bg-rose-500/70 text-rose-900 dark:text-white/90'
-                      }`}
-                    >
-                      {leg.choice === 'Yes' ? 'YES' : 'NO'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Question + badge stay together; question truncates but doesn't push badge to far right */}
+          <span
+            className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
+          >
+            {firstLeg.conditionId ? (
+              <ConditionTitleLink
+                conditionId={firstLeg.conditionId}
+                title={firstLeg.question}
+                clampLines={1}
+                className="text-sm min-w-0 flex-1"
+              />
+            ) : (
+              <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
+                {firstLeg.question}
+              </span>
+            )}
+            <span className="shrink-0 whitespace-nowrap">
+              <PredictionChoiceBadge choice={badgeLabel} />
+            </span>
+          </span>
         </>
       )}
+
+      <span className="inline-flex items-center gap-2 whitespace-nowrap basis-full md:basis-auto md:shrink-0">
+        {/* "and N predictions" popover */}
+        {remainingCount > 0 && (
+          <>
+            <span className="text-sm text-muted-foreground shrink-0">and</span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 shrink-0 transition-colors"
+                >
+                  {remainingCount} {remainingCount === 1 ? 'other' : 'others'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
+                align="start"
+              >
+                <div className="flex flex-col divide-y divide-brand-white/20">
+                  {remainingLegs.map((leg, i) => (
+                    <div
+                      key={`${leg.conditionId || i}-${i}`}
+                      className="flex items-center gap-3 px-3 py-2"
+                    >
+                      {leg.source === 'pyth' && leg.pythPrediction ? (
+                        <div className="min-w-0 flex-1">
+                          <PythPredictionListItem
+                            prediction={leg.pythPrediction}
+                            layout="inline"
+                          />
+                        </div>
+                      ) : (
+                        <>
+                          <MarketBadge
+                            label={leg.question}
+                            size={32}
+                            color={getCategoryColor(leg.categorySlug)}
+                            categorySlug={leg.categorySlug}
+                          />
+                          {leg.conditionId ? (
+                            <ConditionTitleLink
+                              conditionId={leg.conditionId}
+                              title={leg.question}
+                              clampLines={1}
+                              className="text-sm"
+                            />
+                          ) : (
+                            <span className="text-sm font-mono text-brand-white">
+                              {leg.question}
+                            </span>
+                          )}
+                          <PredictionChoiceBadge
+                            choice={String(leg.choice).toUpperCase()}
+                          />
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </>
+        )}
+      </span>
     </div>
   );
 }

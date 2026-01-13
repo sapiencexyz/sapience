@@ -46,13 +46,9 @@ import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract, useReadContracts } from 'wagmi';
-import { keccak256, concatHex, toHex } from 'viem';
+import { keccak256, concatHex, toHex, isAddress } from 'viem';
 import { lzUmaResolver, lzPMResolver } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  CHAIN_ID_ARBITRUM,
-  CHAIN_ID_ETHEREAL,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
@@ -74,6 +70,7 @@ type RFQRow = {
   description: string;
   similarMarketUrls?: string[];
   chainId?: number;
+  resolver?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
   assertionId?: string;
@@ -92,6 +89,7 @@ type CSVRow = {
   shortName?: string;
   similarMarkets?: string;
   group?: string;
+  resolver: string;
 };
 
 type ValidatedCSVRow = CSVRow & {
@@ -102,6 +100,7 @@ type ValidatedCSVRow = CSVRow & {
   parsedPublic?: boolean;
   parsedSimilarMarkets?: string[];
   parsedGroup?: string;
+  parsedResolver?: string;
 };
 
 type RFQTabProps = {
@@ -151,6 +150,7 @@ const RFQTab = ({
   const [description, setDescription] = useState('');
   const [similarMarketsText, setSimilarMarketsText] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [resolver, setResolver] = useState('');
   const [editingId, setEditingId] = useState<string | undefined>(undefined);
   const [editingChainId, setEditingChainId] = useState<number | undefined>(
     undefined
@@ -233,6 +233,7 @@ const RFQTab = ({
     setDescription('');
     setSimilarMarketsText('');
     setGroupName('');
+    setResolver('');
     setEditingId(undefined);
     setEditingChainId(undefined);
   };
@@ -243,12 +244,23 @@ const RFQTab = ({
     let parsedEndTime: number | undefined;
     let parsedPublic: boolean | undefined;
     let parsedSimilarMarkets: string[] | undefined;
+    let parsedResolver: string | undefined;
 
     // Validate required fields
     if (!row.question?.trim()) errors.push('Question is required');
     if (!row.endTimeUTC?.trim()) errors.push('End time is required');
     if (!row.claimStatement?.trim()) errors.push('Claim statement is required');
     if (!row.description?.trim()) errors.push('Description is required');
+    if (!row.resolver?.trim()) {
+      errors.push('Resolver address is required');
+    } else {
+      const trimmedResolver = row.resolver.trim();
+      if (!isAddress(trimmedResolver as `0x${string}`)) {
+        errors.push('Resolver must be a valid Ethereum address (0x...)');
+      } else {
+        parsedResolver = trimmedResolver.toLowerCase();
+      }
+    }
 
     // Validate end time
     if (row.endTimeUTC?.trim()) {
@@ -296,6 +308,7 @@ const RFQTab = ({
       parsedPublic,
       parsedSimilarMarkets,
       parsedGroup,
+      parsedResolver,
     };
   };
 
@@ -361,6 +374,7 @@ const RFQTab = ({
               description: row.description.trim(),
               similarMarkets: row.parsedSimilarMarkets || [],
               chainId: currentChainId,
+              resolver: row.parsedResolver!,
               ...(row.parsedGroup ? { groupName: row.parsedGroup } : {}),
             };
 
@@ -699,13 +713,14 @@ const RFQTab = ({
                 claim={original.claimStatement}
                 assertionId={original.assertionId}
                 assertionTimestamp={original.assertionTimestamp}
+                resolver={original.resolver ?? null}
               />
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={() => {
                   setEditingId(id);
-                  setEditingChainId(original.chainId ?? CHAIN_ID_ARBITRUM);
+                  setEditingChainId(original.chainId ?? DEFAULT_CHAIN_ID);
                   setQuestion(original.question || '');
                   setShortName(original.shortName || '');
                   setCategorySlug(original.category?.slug || '');
@@ -717,6 +732,7 @@ const RFQTab = ({
                     (original.similarMarketUrls || []).join(', ')
                   );
                   setGroupName(original.conditionGroup?.name || '');
+                  setResolver(original.resolver || '');
                   setCreateOpen(true);
                 }}
               >
@@ -764,6 +780,7 @@ const RFQTab = ({
         description: c.description,
         similarMarketUrls: c.similarMarkets,
         chainId: c.chainId,
+        resolver: c.resolver ?? null,
         resolvedToYes,
         assertionId: c.assertionId,
         assertionTimestamp: c.assertionTimestamp,
@@ -824,6 +841,23 @@ const RFQTab = ({
         setCreateOpen(false);
         resetForm();
       } else {
+        if (!resolver?.trim()) {
+          toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Resolver address is required',
+          });
+          return;
+        }
+        const trimmedResolver = resolver.trim();
+        if (!isAddress(trimmedResolver as `0x${string}`)) {
+          toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Resolver must be a valid Ethereum address (0x...)',
+          });
+          return;
+        }
         const body = {
           question,
           ...(shortName ? { shortName } : {}),
@@ -834,6 +868,7 @@ const RFQTab = ({
           description,
           similarMarkets,
           chainId: currentChainId,
+          resolver: trimmedResolver.toLowerCase(),
           ...(trimmedGroupName ? { groupName: trimmedGroupName } : {}),
         };
         await postJson<RFQRow>(`/conditions`, body);
@@ -929,10 +964,11 @@ const RFQTab = ({
               Upload a CSV file to bulk import conditions. The file should have
               the following columns:
               <code className="block mt-2 p-2 bg-muted rounded text-sm">
-                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets,group
+                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets,group,resolver
               </code>
               <span className="block mt-1 text-xs">
-                group is optional - finds or creates a condition group by name
+                group is optional - finds or creates a condition group by name.
+                resolver is required - must be a valid Ethereum address (0x...)
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -1204,6 +1240,25 @@ const RFQTab = ({
                 value={groupName}
                 onChange={(e) => setGroupName(e.target.value)}
               />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium">
+                Resolver Address{' '}
+                {!editingId && <span className="text-red-500">*</span>}
+              </label>
+              <Input
+                placeholder="0x..."
+                value={resolver}
+                onChange={(e) => setResolver(e.target.value)}
+                required={!editingId}
+                disabled={Boolean(editingId)}
+                className="font-mono"
+              />
+              {editingId && (
+                <p className="text-xs text-muted-foreground">
+                  Resolver cannot be changed after creation
+                </p>
+              )}
             </div>
             <div className="md:col-span-2 flex justify-end gap-2 mt-2">
               <Button

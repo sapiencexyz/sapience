@@ -6,17 +6,21 @@ module.exports = {
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
       tsconfig: {
-        jsx: 'react',  // Try 'react' instead of 'react-jsx'
+        jsx: 'react-jsx',
+        jsxImportSource: 'react',
       }
     }]
   },
   moduleNameMapper: {
     // Handle CSS imports
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    // Handle path aliases
+    '^~/(.*)$': '<rootDir>/src/$1',
   },
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/.next/',
     '<rootDir>/e2e/',
+    '\\.spec\\.ts$',
   ],
 }; 

@@ -7,6 +7,8 @@ type ConditionById = {
   shortName?: string | null;
   question?: string | null;
   endTime?: number | null;
+  /** Canonical resolver address for this condition (latest observed wins) */
+  resolver?: string | null;
   category?: { slug?: string | null } | null;
 };
 
@@ -32,6 +34,7 @@ export function useConditionsByIds(ids: string[]) {
             shortName
             question
             endTime
+            resolver
             category {
               slug
             }

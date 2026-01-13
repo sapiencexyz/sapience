@@ -4,7 +4,7 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
   useConditions,
@@ -21,6 +21,12 @@ import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLoc
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
 import ShareAfterMarketsRedirect from '~/components/shared/ShareAfterMarketsRedirect';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
+import {
+  CreatePythPredictionForm,
+  type CreatePythPredictionFormValues,
+  type PythPrediction,
+} from '@sapience/ui';
 
 // Dynamically import Loader
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -29,12 +35,75 @@ const Loader = dynamic(() => import('~/components/shared/Loader'), {
   loading: () => <div className="w-8 h-8" />,
 });
 
+const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
+
+function isEnabledFlagValue(raw: string | null): boolean {
+  if (!raw) return false;
+  const v = raw.toLowerCase().trim();
+  return v === '1' || v === 'true';
+}
+
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
 
   // Read chainId from localStorage with event monitoring
   const chainId = useChainIdFromLocalStorage();
+
+  // Get mobile/compact status (needed by callbacks below)
+  const isMobile = useIsMobile();
+  const isCompact = useIsBelow(1024);
+
+  const [showPredictPrices, setShowPredictPrices] = useState(false);
+
+  const { openPopover } = useCreatePositionContext();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const computeFromStorage = () => {
+      try {
+        return isEnabledFlagValue(
+          window.localStorage.getItem(PREDICT_PRICES_FLAG_KEY)
+        );
+      } catch {
+        return false;
+      }
+    };
+
+    try {
+      const url = new URL(window.location.href);
+      const param = url.searchParams.get('predictPrices');
+
+      if (param === '1' || param?.toLowerCase() === 'true') {
+        try {
+          window.localStorage.setItem(PREDICT_PRICES_FLAG_KEY, '1');
+        } catch {
+          /* noop */
+        }
+        url.searchParams.delete('predictPrices');
+        window.history.replaceState({}, '', url.toString());
+        setShowPredictPrices(true);
+        return;
+      }
+
+      if (param === '0' || param?.toLowerCase() === 'false') {
+        try {
+          window.localStorage.removeItem(PREDICT_PRICES_FLAG_KEY);
+        } catch {
+          /* noop */
+        }
+        url.searchParams.delete('predictPrices');
+        window.history.replaceState({}, '', url.toString());
+        setShowPredictPrices(false);
+        return;
+      }
+
+      setShowPredictPrices(computeFromStorage());
+    } catch {
+      setShowPredictPrices(computeFromStorage());
+    }
+  }, []);
 
   // Filter state managed here, passed down to MarketsDataTable
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,6 +112,8 @@ const MarketsPage = () => {
     timeToResolutionRange: [0, 1000], // Default to future markets only
     selectedCategories: [],
   });
+
+  const [pythPredictions, setPythPredictions] = useState<PythPrediction[]>([]);
 
   // Debounce search term for backend queries (300ms)
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
@@ -117,6 +188,43 @@ const MarketsPage = () => {
     setFilters(newFilters);
   }, []);
 
+  const handlePythPick = useCallback(
+    (values: CreatePythPredictionFormValues) => {
+      const id = (() => {
+        try {
+          return crypto.randomUUID();
+        } catch {
+          return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        }
+      })();
+
+      setPythPredictions((prev) => [
+        ...prev,
+        {
+          id,
+          priceId: values.priceId,
+          priceFeedLabel: values.priceFeedLabel,
+          direction: values.direction,
+          targetPrice: values.targetPrice,
+          targetPriceRaw: values.targetPriceRaw,
+          targetPriceFullPrecision: values.targetPriceFullPrecision,
+          priceExpo: values.priceExpo,
+          dateTimeLocal: values.dateTimeLocal,
+        },
+      ]);
+
+      // Mobile UX: after a successful pick, open the bet slip drawer so users can see/use it.
+      if (isCompact) {
+        openPopover();
+      }
+    },
+    [isCompact, openPopover]
+  );
+
+  const handleRemovePythPrediction = useCallback((id: string) => {
+    setPythPredictions((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   // Convert categories to the format expected by TableFilters
   const categoryOptions = useMemo(() => {
     return allCategories
@@ -127,10 +235,6 @@ const MarketsPage = () => {
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allCategories]);
-
-  // Get mobile/compact status
-  const isMobile = useIsMobile();
-  const isCompact = useIsBelow(1024);
 
   // Show loader only on initial load (not when filtering)
   if (isLoadingCategories) {
@@ -154,7 +258,11 @@ const MarketsPage = () => {
         {/* Render only one position form instance based on viewport */}
         {isCompact ? (
           <div className="block lg:hidden">
-            <CreatePositionForm />
+            <CreatePositionForm
+              pythPredictions={pythPredictions}
+              onRemovePythPrediction={handleRemovePythPrediction}
+              onClearPythPredictions={() => setPythPredictions([])}
+            />
           </div>
         ) : null}
 
@@ -162,6 +270,16 @@ const MarketsPage = () => {
         <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
           {/* Featured Parlays section */}
           <ExampleCombos className="mt-4 md:mt-0" />
+
+          {showPredictPrices ? (
+            <div className="w-full mt-2">
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h2 className="sc-heading text-foreground">Predict Prices</h2>
+              </div>
+              <CreatePythPredictionForm onPick={handlePythPick} />
+              <hr className="gold-hr mt-6 -mb-2" />
+            </div>
+          ) : null}
 
           {/* Results area - always table view */}
           <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
@@ -196,7 +314,12 @@ const MarketsPage = () => {
               }}
             >
               <div className="h-full overflow-y-auto">
-                <CreatePositionForm variant="panel" />
+                <CreatePositionForm
+                  variant="panel"
+                  pythPredictions={pythPredictions}
+                  onRemovePythPrediction={handleRemovePythPrediction}
+                  onClearPythPredictions={() => setPythPredictions([])}
+                />
               </div>
             </div>
           </div>

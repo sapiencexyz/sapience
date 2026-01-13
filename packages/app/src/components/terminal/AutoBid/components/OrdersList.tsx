@@ -1,10 +1,10 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import type { Order } from '../types';
 import OrderCard from './OrderCard';
 import { cn } from '~/lib/utils/util';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 
 type OrdersListProps = {
   orders: Order[];
@@ -32,19 +32,15 @@ const OrdersList: React.FC<OrdersListProps> = ({
   const ordersScrollRef = useRef<HTMLDivElement | null>(null);
   const [showOrdersScrollShadow, setShowOrdersScrollShadow] = useState(false);
   const { hasConnectedWallet } = useConnectedWallet();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
 
   const handleCreateOrder = useCallback(() => {
     if (!hasConnectedWallet) {
-      try {
-        connectOrCreateWallet();
-      } catch (error) {
-        console.error('connectOrCreateWallet failed', error);
-      }
+      openConnectDialog();
       return;
     }
     onCreateOrder();
-  }, [hasConnectedWallet, connectOrCreateWallet, onCreateOrder]);
+  }, [hasConnectedWallet, openConnectDialog, onCreateOrder]);
 
   useEffect(() => {
     const node = ordersScrollRef.current;

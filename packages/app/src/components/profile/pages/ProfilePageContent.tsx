@@ -216,7 +216,7 @@ const ProfilePageContent = () => {
                     {shouldShowPositionsTab ? (
                       <TabsTrigger className="justify-center" value="positions">
                         <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
-                        Trades
+                        Positions
                       </TabsTrigger>
                     ) : null}
                     {shouldShowForecastsTab ? (

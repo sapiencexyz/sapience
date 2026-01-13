@@ -10,6 +10,8 @@ type PredictedOutcome = {
     shortName?: string | null;
     endTime?: number | null;
     description?: string | null;
+    settled?: boolean;
+    resolvedToYes?: boolean;
     category?: {
       slug: string;
     } | null;
@@ -161,13 +163,15 @@ export function useUserParlays(params: {
 
       if (conditionIds.length === 0) return base;
 
-      // Fetch shortName, description, category values for these condition IDs and join client-side
+      // Fetch shortName, description, category, settled, resolvedToYes values for these condition IDs and join client-side
       const CONDITIONS_BY_IDS = /* GraphQL */ `
         query ConditionsByIds($ids: [String!]!) {
           conditions(where: { id: { in: $ids } }, take: 1000) {
             id
             shortName
             description
+            settled
+            resolvedToYes
             category {
               slug
             }
@@ -179,6 +183,8 @@ export function useUserParlays(params: {
         id: string;
         shortName?: string | null;
         description?: string | null;
+        settled?: boolean;
+        resolvedToYes?: boolean;
         category?: { slug: string } | null;
       };
       const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
@@ -189,7 +195,7 @@ export function useUserParlays(params: {
         (condResp?.conditions || []).map((c) => [c.id, c])
       );
 
-      // Enrich predictions.condition with shortName, description, category if available
+      // Enrich predictions.condition with shortName, description, category, settled, resolvedToYes if available
       return base.map((p) => ({
         ...p,
         predictions: (p.predictions || []).map((o) => {
@@ -203,6 +209,8 @@ export function useUserParlays(params: {
                   shortName: condData.shortName ?? o.condition.shortName,
                   description: condData.description ?? o.condition.description,
                   category: condData.category ?? o.condition.category,
+                  settled: condData.settled,
+                  resolvedToYes: condData.resolvedToYes,
                 }
               : undefined,
           };

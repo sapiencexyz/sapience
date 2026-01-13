@@ -67,10 +67,12 @@ wscat -c ws://localhost:3001/auction
 wscat -c ws://localhost:3002/auction
 ```
 
-Then send a message:
+Then send a message (basic example without signature):
 ```json
 {"type":"auction.start","payload":{"taker":"0x1234567890123456789012345678901234567890","wager":"1000000000000000000","resolver":"0x0000000000000000000000000000000000000000","predictedOutcomes":["0xdeadbeef"],"takerNonce":1,"chainId":42161}}
 ```
+
+**Note:** For production use or when interacting with market makers that require signatures, include `takerSignature` and `takerSignedAt` fields. See the main README.md for examples using the SDK's `createAuctionStartSiweMessage` helper.
 
 ## Expected Output
 

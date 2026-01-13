@@ -46,6 +46,7 @@ const ZERO_ADDRESS =
 const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
+const DISPLAY_TIMEOUT_MS = 3000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = useChainIdFromLocalStorage();
@@ -78,12 +79,28 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const [comboQuotes, setComboQuotes] = React.useState<ComboWithQuote[]>([]);
   const [hubTick, setHubTick] = React.useState(0);
 
+  // State for locking displayed combos (fade in once, never change)
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [lockedCombos, setLockedCombos] = React.useState<ComboWithQuote[]>([]);
+  const [timeoutPassed, setTimeoutPassed] = React.useState(false);
+
   // Subscribe to hub updates
   React.useEffect(() => {
     if (wsUrl) hub.setUrl(wsUrl);
     const off = hub.addListener(() => setHubTick((t) => (t + 1) % 1_000_000));
     return () => off();
   }, [wsUrl]);
+
+  // Start timeout timer when quotes are requested
+  React.useEffect(() => {
+    if (comboQuotes.length > 0 && !isLocked) {
+      const timer = setTimeout(
+        () => setTimeoutPassed(true),
+        DISPLAY_TIMEOUT_MS
+      );
+      return () => clearTimeout(timer);
+    }
+  }, [comboQuotes.length, isLocked]);
 
   // Convert ComboPick[] to Pick[] for the shared component
   const comboToLegs = React.useCallback(
@@ -176,6 +193,11 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     }));
 
     setComboQuotes(newQuotes);
+
+    // Reset lock state so new combos can be displayed
+    setIsLocked(false);
+    setLockedCombos([]);
+    setTimeoutPassed(false);
 
     // Request quotes with jittered timing
     for (let i = 0; i < combos.length; i++) {
@@ -286,26 +308,35 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     );
   }, [hubTick]);
 
-  // Get top 3 by highest payout (largest payout first)
-  const topCombos = React.useMemo(() => {
-    const withProbs = comboQuotes.filter(
+  // Lock combos when all received OR (timeout passed AND at least 1 received)
+  React.useEffect(() => {
+    if (isLocked) return; // Already locked, don't update
+
+    const quotesWithProb = comboQuotes.filter(
       (q) => q.probability !== null && q.status === 'received'
     );
+    const allReceived = quotesWithProb.length >= NUM_QUOTES_TO_REQUEST;
+    const hasAtLeastOne = quotesWithProb.length >= 1;
 
-    // Sort descending by probability (highest = largest payout)
-    const sorted = [...withProbs].sort(
-      (a, b) => (b.probability ?? 0) - (a.probability ?? 0)
-    );
-
-    // Take top 3, or fall back to pending/requesting if not enough received
-    if (sorted.length >= NUM_TO_DISPLAY) {
-      return sorted.slice(0, NUM_TO_DISPLAY);
+    // Lock when: all 9 received OR (timeout passed AND at least 1 received)
+    if (allReceived || (timeoutPassed && hasAtLeastOne)) {
+      // Sort by highest probability (highest payout)
+      const sorted = [...quotesWithProb].sort(
+        (a, b) => (b.probability ?? 0) - (a.probability ?? 0)
+      );
+      setLockedCombos(sorted.slice(0, NUM_TO_DISPLAY));
+      setIsLocked(true);
     }
+  }, [comboQuotes, timeoutPassed, isLocked]);
 
-    // Fill with combos that haven't received quotes yet
-    const pending = comboQuotes.filter((q) => q.status !== 'received');
-    return [...sorted, ...pending].slice(0, NUM_TO_DISPLAY);
-  }, [comboQuotes]);
+  // Get top 3 - use locked combos once locked, otherwise empty (shows skeleton)
+  const topCombos = React.useMemo(() => {
+    if (isLocked) {
+      return lockedCombos;
+    }
+    // Return empty array while waiting (keeps skeleton visible)
+    return [];
+  }, [isLocked, lockedCombos]);
 
   const handlePickCombo = React.useCallback(
     (combo: ComboPick[]) => {
@@ -325,7 +356,22 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   return (
     <div className={'w-full ' + (className ?? '')}>
       <div className="flex items-center justify-between mb-1 px-1">
-        <h2 className="sc-heading text-foreground">Example combos</h2>
+        <h2 className="sc-heading text-foreground">
+          Example combo
+          <AnimatePresence mode="wait">
+            {!(isLocked && lockedCombos.length === 1) && (
+              <motion.span
+                key="plural-s"
+                initial={{ opacity: 1 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                s
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </h2>
         <button
           type="button"
           onClick={requestAllQuotes}
@@ -336,7 +382,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         </button>
       </div>
       <div className="rounded-md border border-brand-white/20 overflow-hidden bg-brand-black">
-        <Table className="w-full">
+        <Table className="w-full table-fixed">
           <TableBody>
             <AnimatePresence mode="popLayout">
               {isLoading || topCombos.length === 0
@@ -351,17 +397,19 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                       className="border-b border-brand-white/20"
                     >
                       {/* Desktop icons cell - hidden on mobile */}
-                      <TableCell className="hidden md:table-cell py-3 pl-4 pr-3 w-[56px]">
-                        <div
-                          className="w-10 h-6 rounded bg-brand-white/5"
-                          style={{
-                            animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
-                            animationDelay: `${idx * 0.3}s`,
-                          }}
-                        />
+                      <TableCell className="hidden md:table-cell p-0 w-[88px]">
+                        <div className="py-3 pl-4 pr-3">
+                          <div
+                            className="w-10 h-6 rounded bg-brand-white/5"
+                            style={{
+                              animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
+                              animationDelay: `${idx * 0.3}s`,
+                            }}
+                          />
+                        </div>
                       </TableCell>
                       {/* Question cell - includes all content on mobile */}
-                      <TableCell className="py-3 pl-3 md:pl-1 pr-3 md:pr-0">
+                      <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0">
                         <div className="flex flex-col gap-2">
                           {/* Mobile Row 1: Icons skeleton */}
                           <div
@@ -408,14 +456,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                         />
                       </TableCell>
                       {/* Desktop button cell - hidden on mobile */}
-                      <TableCell className="hidden md:table-cell py-3 pr-4 w-[70px]">
-                        <div
-                          className="w-14 h-7 rounded bg-brand-white/5"
-                          style={{
-                            animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
-                            animationDelay: `${idx * 0.3 + 0.15}s`,
-                          }}
-                        />
+                      <TableCell className="hidden md:table-cell p-0 w-[96px]">
+                        <div className="py-3 pr-4 flex justify-end">
+                          <div
+                            className="w-14 h-7 rounded bg-brand-white/5"
+                            style={{
+                              animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
+                              animationDelay: `${idx * 0.3 + 0.15}s`,
+                            }}
+                          />
+                        </div>
                       </TableCell>
                     </motion.tr>
                   ))
@@ -442,11 +492,13 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                         className="border-b border-brand-white/20 hover:bg-transparent"
                       >
                         {/* Desktop icons cell - hidden on mobile */}
-                        <TableCell className="hidden md:table-cell py-3 pl-4 pr-3 w-[56px] shrink-0">
-                          <StackedIcons legs={legs} />
+                        <TableCell className="hidden md:table-cell p-0 w-[88px] shrink-0">
+                          <div className="py-3 pl-4 pr-3">
+                            <StackedIcons legs={legs} />
+                          </div>
                         </TableCell>
                         {/* Question cell - includes all content on mobile */}
-                        <TableCell className="py-3 pl-3 md:pl-1 pr-3 md:pr-0 min-w-0">
+                        <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0 min-w-0">
                           <div className="flex flex-col gap-2 min-w-0">
                             {/* Mobile Row 1: Icons (on their own line) */}
                             <StackedIcons
@@ -457,7 +509,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                             <StackedPredictionsTitle
                               legs={legs}
                               className="md:gap-x-2"
-                              maxWidthClass="max-w-[calc(100%-190px)] md:max-w-[300px]"
+                              maxWidthClass="max-w-full md:max-w-[300px]"
                             />
                             {/* Mobile Row 3/4: Probability + PICK in one row */}
                             <div className="md:hidden mt-0.5 flex items-center gap-3">
@@ -505,9 +557,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           </div>
                         </TableCell>
                         {/* Probability cell - desktop only */}
-                        <TableCell className="hidden md:table-cell py-3 px-4 text-right whitespace-nowrap">
+                        <TableCell className="hidden md:table-cell py-3 px-4 text-right min-w-0 whitespace-normal">
                           {status === 'received' && probability !== null ? (
-                            <span className="text-sm">
+                            <div className="text-sm min-w-0 leading-snug">
                               <PercentChance
                                 probability={1 - probability}
                                 showLabel
@@ -520,7 +572,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                               <span className="text-brand-white font-medium font-mono">
                                 {(1 / (1 - probability)).toFixed(2)} USDe
                               </span>
-                            </span>
+                            </div>
                           ) : status === 'error' ? (
                             <span className="text-muted-foreground">—</span>
                           ) : (
@@ -530,16 +582,18 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           )}
                         </TableCell>
                         {/* Desktop PICK button cell - hidden on mobile */}
-                        <TableCell className="hidden md:table-cell py-3 pr-4 w-[70px]">
-                          <Button
-                            className="tracking-wider font-mono text-xs px-3 h-7 bg-brand-white text-brand-black"
-                            variant="default"
-                            size="sm"
-                            type="button"
-                            onClick={() => handlePickCombo(combo)}
-                          >
-                            PICK
-                          </Button>
+                        <TableCell className="hidden md:table-cell p-0 w-[96px]">
+                          <div className="py-3 pr-4 flex justify-end">
+                            <Button
+                              className="tracking-wider font-mono text-xs px-3 h-7 bg-brand-white text-brand-black"
+                              variant="default"
+                              size="sm"
+                              type="button"
+                              onClick={() => handlePickCombo(combo)}
+                            >
+                              PICK
+                            </Button>
+                          </div>
                         </TableCell>
                       </motion.tr>
                     );
@@ -548,7 +602,6 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           </TableBody>
         </Table>
       </div>
-      <hr className="gold-hr mt-6 -mb-2" />
     </div>
   );
 };

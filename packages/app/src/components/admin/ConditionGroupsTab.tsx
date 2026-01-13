@@ -34,7 +34,10 @@ import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import { useConditionGroups } from '~/hooks/graphql/useConditionGroups';
-import type { ConditionGroupType } from '~/hooks/graphql/useConditionGroups';
+import type {
+  ConditionGroupType,
+  ConditionGroupConditionType,
+} from '~/hooks/graphql/useConditionGroups';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
@@ -62,12 +65,7 @@ type ConditionGroupRow = {
   category?: { id?: number; name?: string; slug?: string };
   conditionsCount: number;
   hasPublicConditions: boolean;
-  conditions: Array<{
-    id: string;
-    question: string;
-    shortName?: string | null;
-    displayOrder?: number | null;
-  }>;
+  conditions: ConditionGroupConditionType[];
 };
 
 type CSVRow = {

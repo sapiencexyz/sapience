@@ -2,18 +2,12 @@
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@sapience/ui/components/ui/select';
 import { Checkbox } from '@sapience/ui/components/ui/checkbox';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAdminApi } from '~/hooks/useAdminApi';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 // Dynamically import Loader
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -24,7 +18,6 @@ const Loader = dynamic(() => import('~/components/shared/Loader'), {
 const ReindexPredictionMarketForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [chainId, setChainId] = useState('42161'); // Default to Arbitrum
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
   const [clearExisting, setClearExisting] = useState(false);
@@ -37,7 +30,7 @@ const ReindexPredictionMarketForm = () => {
       setIsLoading(true);
 
       await postJson(`/reindex/prediction-market`, {
-        chainId: Number(chainId),
+        chainId: CHAIN_ID_ETHEREAL,
         ...(startTimestamp && { startTimestamp: Number(startTimestamp) }),
         ...(endTimestamp && { endTimestamp: Number(endTimestamp) }),
         clearExisting,
@@ -49,7 +42,7 @@ const ReindexPredictionMarketForm = () => {
 
       toast({
         title: 'Reindex started',
-        description: `Prediction market reindexing started on chain ${chainId} ${timeRange}${clearExisting ? ' (clearing existing data)' : ''}`,
+        description: `Prediction market reindexing started on Ethereal (${CHAIN_ID_ETHEREAL}) ${timeRange}${clearExisting ? ' (clearing existing data)' : ''}`,
       });
 
       // Reset form
@@ -79,23 +72,11 @@ const ReindexPredictionMarketForm = () => {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="chainSelect" className="text-sm font-medium">
-          Chain
-        </label>
-        <Select value={chainId} onValueChange={setChainId}>
-          <SelectTrigger id="chainSelect" className="w-full">
-            <SelectValue placeholder="Select chain" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1">Ethereum</SelectItem>
-            <SelectItem value="10">Optimism</SelectItem>
-            <SelectItem value="8453">Base</SelectItem>
-            <SelectItem value="42161">Arbitrum</SelectItem>
-            <SelectItem value="137">Polygon</SelectItem>
-            <SelectItem value="432">Converge</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="space-y-1">
+        <div className="text-sm font-medium">Chain</div>
+        <div className="text-sm text-muted-foreground">
+          Ethereal ({CHAIN_ID_ETHEREAL})
+        </div>
       </div>
 
       <div className="space-y-2">

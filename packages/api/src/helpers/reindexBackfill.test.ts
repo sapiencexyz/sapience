@@ -22,7 +22,7 @@ vi.mock('./scoringService', async () => {
     upsertAttestationScoreFromAttestation: vi.fn(),
     selectLatestPreEndForMarket: vi.fn(),
     scoreSelectedForecastsForSettledMarket: vi.fn(),
-    scoreTimeWeightedForSettledMarket: vi.fn(),
+    computeAndStoreMarketTwErrors: vi.fn(),
   };
 });
 

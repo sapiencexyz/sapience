@@ -6,6 +6,7 @@ import {
   State,
   elizaLogger,
 } from "@elizaos/core";
+import { privateKeyToAccount } from "viem/accounts";
 import { loadSdk } from "../utils/sdk.js";
 import { 
   getPrivateKey, 
@@ -197,15 +198,32 @@ async function startTradingAuction({
         const { RESOLVER } = getTradingContractAddresses();
         const predictedOutcomes = await encodeTradeOutcomes(markets, predictions);
 
+        // Prepare base auction payload
+        const payload = {
+          taker: walletAddress,
+          wager: wagerAmount,
+          resolver: RESOLVER,
+          predictedOutcomes,
+          takerNonce: contractNonce,
+          chainId: CHAIN_ID_ETHEREAL,
+        };
+
+        // Sign the auction request to get actionable bids from market makers (like the vault)
+        // Unsigned requests return quote-only bids (maker = 0x0000..., signature = 0x0000...)
+        const sdk = await loadSdk();
+        const account = privateKeyToAccount(getPrivateKey() as `0x${string}`);
+        const { domain, uri } = sdk.extractSiweDomainAndUri(sapienceWs);
+        const issuedAt = new Date().toISOString();
+        const message = sdk.createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
+        const takerSignature = await account.signMessage({ message });
+        const takerSignedAt = issuedAt;
+
         const auctionMessage = {
           type: "auction.start",
           payload: {
-            taker: walletAddress,
-            wager: wagerAmount,
-            resolver: RESOLVER,
-            predictedOutcomes,
-            takerNonce: contractNonce,
-            chainId: CHAIN_ID_ETHEREAL,
+            ...payload,
+            takerSignature,
+            takerSignedAt,
           },
         };
 

@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { formatEther, decodeAbiParameters } from 'viem';
+import { formatEther } from 'viem';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import PlaceBidForm from '~/components/terminal/PlaceBidForm';
@@ -24,6 +24,7 @@ import { useLastTradeForIntent } from '~/hooks/graphql/useLastTradeForIntent';
 import TradePopoverContent from '~/components/terminal/TradePopoverContent';
 import ExpiresInLabel from '~/components/terminal/ExpiresInLabel';
 import PercentChance from '~/components/shared/PercentChance';
+import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 
 type SubmitData = {
   amount: string;
@@ -39,6 +40,7 @@ type Props = {
   onSubmit: (data: SubmitData) => void | Promise<void>;
   maxEndTimeSec?: number | null;
   taker?: string | null;
+  resolver?: string | null;
   predictedOutcomes?: string[];
 };
 
@@ -271,6 +273,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
   onSubmit,
   maxEndTimeSec,
   taker,
+  resolver,
   predictedOutcomes,
 }) => {
   const [now, setNow] = useState<number>(Date.now());
@@ -317,43 +320,45 @@ const AuctionRequestInfo: React.FC<Props> = ({
   // GraphQL-sourced Last Trade based on maker + predicted outcomes signature
   const outcomesSignature = useMemo(() => {
     try {
-      const arr = Array.isArray(predictedOutcomes)
-        ? (predictedOutcomes as `0x${string}`[])
-        : [];
-      if (arr.length === 0) return null;
-      const decodedUnknown = decodeAbiParameters(
-        [
-          {
-            type: 'tuple[]',
-            components: [
-              { name: 'marketId', type: 'bytes32' },
-              { name: 'prediction', type: 'bool' },
-            ],
-          },
-        ] as const,
-        arr[0]
-      ) as unknown;
-      const decodedArr = Array.isArray(decodedUnknown)
-        ? ((decodedUnknown as any)[0] as Array<{
-            marketId: `0x${string}`;
-            prediction: boolean;
-          }>)
-        : [];
-      const norm = decodedArr
-        .map((o) => ({
-          conditionId: String(o.marketId).toLowerCase(),
-          prediction: !!o.prediction,
-        }))
-        .sort((a, b) =>
-          a.conditionId === b.conditionId
-            ? Number(a.prediction) - Number(b.prediction)
-            : a.conditionId.localeCompare(b.conditionId)
-        );
-      return JSON.stringify(norm);
+      const decoded = decodeAuctionPredictedOutcomes({
+        resolver,
+        predictedOutcomes,
+      });
+      if (decoded.kind === 'uma') {
+        const norm = decoded.outcomes
+          .map((o) => ({
+            conditionId: String(o.marketId).toLowerCase(),
+            prediction: !!o.prediction,
+          }))
+          .sort((a, b) =>
+            a.conditionId === b.conditionId
+              ? Number(a.prediction) - Number(b.prediction)
+              : a.conditionId.localeCompare(b.conditionId)
+          );
+        return JSON.stringify(norm);
+      }
+      if (decoded.kind === 'pyth') {
+        const norm = decoded.outcomes
+          .map((o) => ({
+            priceId: String(o.priceId).toLowerCase(),
+            endTime: o.endTime.toString(),
+            strikePrice: o.strikePrice.toString(),
+            strikeExpo: Number(o.strikeExpo),
+            overWinsOnTie: !!o.overWinsOnTie,
+            prediction: !!o.prediction,
+          }))
+          .sort((a, b) =>
+            a.priceId === b.priceId
+              ? a.endTime.localeCompare(b.endTime)
+              : a.priceId.localeCompare(b.priceId)
+          );
+        return JSON.stringify(norm);
+      }
+      return null;
     } catch {
       return null;
     }
-  }, [predictedOutcomes]);
+  }, [predictedOutcomes, resolver]);
 
   const { data: lastPosition, refetch: refetchLastTrade } =
     useLastTradeForIntent({
