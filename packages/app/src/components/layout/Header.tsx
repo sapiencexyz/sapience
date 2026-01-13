@@ -84,6 +84,7 @@ const NavLinks = ({
   const pathname = usePathname();
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { setOpenMobile, isMobile } = useSidebar();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const linkClass = isMobileProp
     ? 'sc-heading justify-start rounded-full'
     : 'sc-heading justify-start rounded-full';
@@ -172,7 +173,7 @@ const NavLinks = ({
               onClick={handleLinkClick}
             >
               <Link
-                href={`/profile/${connectedWallet.address}`}
+                href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
                 className="flex items-center gap-2"
               >
                 <User className="h-4 w-4" />
@@ -480,7 +481,7 @@ const Header = () => {
               </Link>
               {ready && hasConnectedWallet && connectedWallet?.address && (
                 <Link
-                  href={`/profile/${connectedWallet.address}`}
+                  href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
                   className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
                 >
                   Profile

@@ -2,7 +2,9 @@ import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import {
   createPublicClient,
   http,
+  keccak256,
   parseAbi,
+  slice,
   type Address,
   type Hex,
   type Chain,
@@ -233,6 +235,11 @@ export async function createSession(
   const sessionPrivateKey = generatePrivateKey();
   const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
 
+  console.debug(
+    '[SessionKeyManager] New session key address:',
+    sessionKeyAccount.address
+  );
+
   // Create session key signer for ZeroDev
   const sessionKeySigner = await toECDSASigner({
     signer: sessionKeyAccount,
@@ -241,9 +248,13 @@ export async function createSession(
   // Calculate expiration
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
 
-  // Time
+  // Time bounds for session validity
   const nowInSeconds = Math.floor(Date.now() / 1000);
   const validUntilInSeconds = nowInSeconds + durationHours * 60 * 60;
+
+  console.debug(
+    `[SessionKeyManager] Timestamp policy: validAfter=${nowInSeconds}, validUntil=${validUntilInSeconds}`
+  );
 
   const timestampPolicy = toTimestampPolicy({
     validAfter: nowInSeconds,
@@ -253,6 +264,9 @@ export async function createSession(
   // Get public clients
   const { etherealPublicClient } = getPublicClients();
 
+  // Note: CallPolicy computes permissionHash from (callType, target, selector) only,
+  // NOT including args. So we CANNOT have two permissions for the same target+function.
+  // Use ONE_OF condition to allow multiple approved spenders in a single permission.
   const etherealCallPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_4,
     permissions: [
@@ -262,25 +276,14 @@ export async function createSession(
         functionName: 'deposit',
       },
       {
+        // Single approve permission using ONE_OF to allow both PredictionMarket and Vault
         target: WUSDE_ADDRESS_ETHEREAL,
         abi: collateralTokenAbi,
         functionName: 'approve',
         args: [
           {
-            condition: ParamCondition.EQUAL,
-            value: PREDICTION_MARKET_ETHEREAL,
-          },
-          null,
-        ],
-      },
-      {
-        target: WUSDE_ADDRESS_ETHEREAL,
-        abi: collateralTokenAbi,
-        functionName: 'approve',
-        args: [
-          {
-            condition: ParamCondition.EQUAL,
-            value: VAULT_ETHEREAL,
+            condition: ParamCondition.ONE_OF,
+            value: [PREDICTION_MARKET_ETHEREAL, VAULT_ETHEREAL],
           },
           null,
         ],
@@ -331,6 +334,22 @@ export async function createSession(
     }
   );
 
+  // Generate a unique permissionId based on session key address and timestamp
+  // This ensures each session has a unique ID, preventing "duplicate permissionHash" errors
+  // in the CallPolicy contract which keys stored permissions by (id, permissionHash, sender)
+  const etherealPermissionId = slice(
+    keccak256(
+      `0x${sessionKeyAccount.address.slice(2)}${nowInSeconds.toString(16).padStart(16, '0')}` as Hex
+    ),
+    0,
+    4
+  );
+
+  console.debug(
+    '[SessionKeyManager] Generated unique Ethereal permissionId:',
+    etherealPermissionId
+  );
+
   // Create permission plugin for Ethereal with call policy and timestamp policy
   const etherealPermissionPlugin = await toPermissionValidator(
     etherealPublicClient,
@@ -339,6 +358,7 @@ export async function createSession(
       signer: sessionKeySigner,
       policies: [etherealCallPolicy, timestampPolicy],
       kernelVersion: KERNEL_VERSION,
+      permissionId: etherealPermissionId,
     }
   );
 
@@ -366,6 +386,14 @@ export async function createSession(
       );
     etherealEnableTypedData = typedData as EnableTypedData;
     console.debug('[SessionKeyManager] Captured Ethereal enable typed data');
+    console.debug(
+      '[SessionKeyManager] Enable typed data validationId:',
+      typedData?.message?.validationId
+    );
+    console.debug(
+      '[SessionKeyManager] Enable typed data nonce:',
+      typedData?.message?.nonce
+    );
   } catch (e) {
     console.warn(
       '[SessionKeyManager] Failed to capture Ethereal typed data:',
@@ -468,6 +496,21 @@ export async function createArbitrumSession(
     ],
   });
 
+  // Generate a unique permissionId based on session key address and timestamp
+  // This ensures each session has a unique ID, preventing "duplicate permissionHash" errors
+  const arbitrumPermissionId = slice(
+    keccak256(
+      `0x${sessionKeyAccount.address.slice(2)}${nowInSeconds.toString(16).padStart(16, '0')}arb` as Hex
+    ),
+    0,
+    4
+  );
+
+  console.debug(
+    '[SessionKeyManager] Generated unique Arbitrum permissionId:',
+    arbitrumPermissionId
+  );
+
   // Switch to Arbitrum chain
   console.debug('[SessionKeyManager] Switching to Arbitrum chain...');
   await ownerSigner.switchChain(arbitrum.id);
@@ -489,6 +532,7 @@ export async function createArbitrumSession(
       signer: sessionKeySigner,
       policies: [arbitrumCallPolicy, timestampPolicy],
       kernelVersion: KERNEL_VERSION,
+      permissionId: arbitrumPermissionId,
     }
   );
 
@@ -717,5 +761,6 @@ export function loadSession(): SerializedSession | null {
  */
 export function clearSession(): void {
   if (typeof window === 'undefined') return;
+  console.debug('[SessionKeyManager] Clearing session from localStorage');
   localStorage.removeItem(SESSION_STORAGE_KEY);
 }
