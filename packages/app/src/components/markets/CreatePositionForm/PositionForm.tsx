@@ -10,7 +10,7 @@ import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { parseUnits, createPublicClient, http } from 'viem';
+import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -355,29 +355,8 @@ export default function PositionForm({
         setValidBids([]);
         setStickyEstimateBid(null);
 
-        // Fetch nonce via direct RPC call to bypass wagmi cache
-        let freshNonce: bigint | undefined;
-        try {
-          const rpcUrl = chainId === CHAIN_ID_ETHEREAL
-            ? 'https://rpc.ethereal.trade'
-            : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
-          const publicClient = createPublicClient({
-            transport: http(rpcUrl),
-          });
-
-          if (selectedTakerAddress && predictionMarketAddress) {
-            freshNonce = await publicClient.readContract({
-              address: predictionMarketAddress,
-              abi: predictionMarketAbi,
-              functionName: 'nonces',
-              args: [selectedTakerAddress],
-            }) as bigint;
-          }
-        } catch {
-          // Fall back to wagmi cached value
-          const refetchResult = await refetchTakerNonce();
-          freshNonce = refetchResult.data as bigint | undefined;
-        }
+        // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
+        const { data: freshNonce } = await refetchTakerNonce();
 
         if (freshNonce === undefined && takerAddress) {
           return;
@@ -449,7 +428,6 @@ export default function PositionForm({
       parlayWagerAmount,
       collateralDecimals,
       chainId,
-      predictionMarketAddress,
       predictionsKey,
     ]
   );

@@ -1,5 +1,11 @@
-import { useCallback, useState } from 'react';
-import { encodeFunctionData, erc20Abi, parseAbi, createPublicClient, http } from 'viem';
+import { useCallback, useState, useMemo } from 'react';
+import {
+  encodeFunctionData,
+  erc20Abi,
+  parseAbi,
+  createPublicClient,
+  http,
+} from 'viem';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { useAccount, useReadContract } from 'wagmi';
@@ -71,27 +77,41 @@ export function useSubmitPosition({
   });
 
   // Check current allowance to avoid unnecessary approvals
-  const { data: currentAllowance } = useReadContract({
-    address: collateralTokenAddress,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args:
-      effectiveAddress && predictionMarketAddress
-        ? [effectiveAddress, predictionMarketAddress]
-        : undefined,
-    chainId,
-    query: {
-      enabled:
-        !!effectiveAddress &&
-        !!collateralTokenAddress &&
-        !!predictionMarketAddress &&
-        enabled,
-    },
-  });
+  const { data: currentAllowance, refetch: refetchAllowance } = useReadContract(
+    {
+      address: collateralTokenAddress,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args:
+        effectiveAddress && predictionMarketAddress
+          ? [effectiveAddress, predictionMarketAddress]
+          : undefined,
+      chainId,
+      query: {
+        enabled:
+          !!effectiveAddress &&
+          !!collateralTokenAddress &&
+          !!predictionMarketAddress &&
+          enabled,
+      },
+    }
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  // Memoized public client for third-party validation (market maker checks)
+  // This is used to validate external addresses, not the user's own state
+  const publicClient = useMemo(() => {
+    const rpcUrl =
+      chainId === CHAIN_ID_ETHEREAL
+        ? 'https://rpc.ethereal.trade'
+        : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
+    return createPublicClient({
+      transport: http(rpcUrl),
+    });
+  }, [chainId]);
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   // Note: Share dialog is handled locally in CreatePositionForm, no redirect needed
@@ -153,7 +173,8 @@ export function useSubmitPosition({
       // Use fresh allowance if provided (from direct RPC), otherwise fall back to cached
       const effectiveAllowance = freshAllowance ?? currentAllowance;
       const needsApproval =
-        effectiveAllowance === undefined || effectiveAllowance < makerCollateralWei;
+        effectiveAllowance === undefined ||
+        effectiveAllowance < makerCollateralWei;
 
       console.debug('[useSubmitPosition] Approval check:', {
         freshAllowance: freshAllowance?.toString(),
@@ -256,34 +277,15 @@ export function useSubmitPosition({
           nonceValue = makerNonce as bigint | undefined;
         }
 
-        // Direct RPC call to verify on-chain nonce (bypasses wagmi cache)
-        const rpcUrl = chainId === CHAIN_ID_ETHEREAL
-          ? 'https://rpc.ethereal.trade'
-          : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
-        const publicClient = createPublicClient({
-          transport: http(rpcUrl),
-        });
-
-        let directMakerNonce: bigint | undefined;
-        try {
-          if (mintData.maker && predictionMarketAddress) {
-            directMakerNonce = await publicClient.readContract({
-              address: predictionMarketAddress,
-              abi: predictionMarketAbi,
-              functionName: 'nonces',
-              args: [mintData.maker],
-            }) as bigint;
-          }
-        } catch {
-          // Fall through - will use cached nonce
-        }
+        // Verify on-chain nonce via wagmi refetch (bypasses stale cache)
+        const { data: freshMakerNonce } = await refetchMakerNonce();
 
         if (nonceValue === undefined) {
           throw new Error('Unable to determine maker nonce');
         }
 
         // Verify on-chain nonce matches what we're sending
-        if (directMakerNonce !== undefined && nonceValue !== directMakerNonce) {
+        if (freshMakerNonce !== undefined && nonceValue !== freshMakerNonce) {
           throw new Error('Your nonce has changed. Please request new bids.');
         }
 
@@ -302,20 +304,20 @@ export function useSubmitPosition({
           );
         }
 
-        // Fetch fresh allowance via direct RPC to bypass wagmi cache
+        // Fetch fresh allowance via wagmi refetch (bypasses stale cache)
         let freshAllowance: bigint | undefined;
         try {
-          if (effectiveAddress && collateralTokenAddress && predictionMarketAddress) {
-            freshAllowance = await publicClient.readContract({
-              address: collateralTokenAddress,
-              abi: erc20Abi,
-              functionName: 'allowance',
-              args: [effectiveAddress, predictionMarketAddress],
-            }) as bigint;
-            console.debug('[useSubmitPosition] Fresh allowance from RPC:', freshAllowance.toString());
-          }
+          const { data } = await refetchAllowance();
+          freshAllowance = data;
+          console.debug(
+            '[useSubmitPosition] Fresh allowance from refetch:',
+            freshAllowance?.toString()
+          );
         } catch (e) {
-          console.debug('[useSubmitPosition] Failed to fetch fresh allowance:', e);
+          console.debug(
+            '[useSubmitPosition] Failed to fetch fresh allowance:',
+            e
+          );
           freshAllowance = 0n;
         }
 
@@ -331,16 +333,18 @@ export function useSubmitPosition({
                 abi: erc20Abi,
                 functionName: 'allowance',
                 args: [takerAddress, predictionMarketAddress],
-              }) as Promise<bigint>,
+              }),
               publicClient.readContract({
                 address: collateralTokenAddress,
                 abi: erc20Abi,
                 functionName: 'balanceOf',
                 args: [takerAddress],
-              }) as Promise<bigint>,
+              }),
             ]);
-            const takerHasSufficientAllowance = takerAllowance >= takerCollateralWei;
-            const takerHasSufficientBalance = takerBalance >= takerCollateralWei;
+            const takerHasSufficientAllowance =
+              takerAllowance >= takerCollateralWei;
+            const takerHasSufficientBalance =
+              takerBalance >= takerCollateralWei;
             console.debug('[useSubmitPosition] Bidder (taker) status:', {
               takerAddress,
               takerAllowance: takerAllowance.toString(),
@@ -351,10 +355,14 @@ export function useSubmitPosition({
             });
             if (!takerHasSufficientAllowance || !takerHasSufficientBalance) {
               if (!takerHasSufficientAllowance) {
-                console.error('[useSubmitPosition] BIDDER HAS INSUFFICIENT ALLOWANCE - this will cause 0x13be252b error');
+                console.error(
+                  '[useSubmitPosition] BIDDER HAS INSUFFICIENT ALLOWANCE - this will cause 0x13be252b error'
+                );
               }
               if (!takerHasSufficientBalance) {
-                console.error('[useSubmitPosition] BIDDER HAS INSUFFICIENT BALANCE');
+                console.error(
+                  '[useSubmitPosition] BIDDER HAS INSUFFICIENT BALANCE'
+                );
               }
               throw new Error(
                 'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
@@ -365,7 +373,10 @@ export function useSubmitPosition({
             if (e instanceof Error && e.message.includes('market maker')) {
               throw e;
             }
-            console.debug('[useSubmitPosition] Failed to check bidder status:', e);
+            console.debug(
+              '[useSubmitPosition] Failed to check bidder status:',
+              e
+            );
           }
         }
 
@@ -383,7 +394,7 @@ export function useSubmitPosition({
             value: c.value?.toString(),
           })),
           makerNonce: nonceValue?.toString(),
-          directMakerNonce: directMakerNonce?.toString(),
+          freshMakerNonce: freshMakerNonce?.toString(),
           freshAllowance: freshAllowance?.toString(),
           maker: filled.maker,
           effectiveAddress,
@@ -447,6 +458,8 @@ export function useSubmitPosition({
       sendCalls,
       makerNonce,
       refetchMakerNonce,
+      refetchAllowance,
+      publicClient,
       isProcessing,
       collateralTokenAddress,
       predictionMarketAddress,

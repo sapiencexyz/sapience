@@ -252,75 +252,75 @@ const MarketsPage = () => {
   // Render content once loaded
   return (
     <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
-        {/* Render only one position form instance based on viewport */}
-        {isCompact ? (
-          <div className="block lg:hidden">
-            <CreatePositionForm
-              pythPredictions={pythPredictions}
-              onRemovePythPrediction={handleRemovePythPrediction}
-              onClearPythPredictions={() => setPythPredictions([])}
-            />
+      {/* Render only one position form instance based on viewport */}
+      {isCompact ? (
+        <div className="block lg:hidden">
+          <CreatePositionForm
+            pythPredictions={pythPredictions}
+            onRemovePythPrediction={handleRemovePythPrediction}
+            onClearPythPredictions={() => setPythPredictions([])}
+          />
+        </div>
+      ) : null}
+
+      {/* Main Content */}
+      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
+        {/* Featured Parlays section */}
+        <ExampleCombos className="mt-4 md:mt-0" />
+
+        {showPredictPrices ? (
+          <div className="w-full mt-2">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h2 className="sc-heading text-foreground">Predict Prices</h2>
+            </div>
+            <CreatePythPredictionForm onPick={handlePythPick} />
+            <hr className="gold-hr mt-6 -mb-2" />
           </div>
         ) : null}
 
-        {/* Main Content */}
-        <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
-          {/* Featured Parlays section */}
-          <ExampleCombos className="mt-4 md:mt-0" />
+        {/* Results area - always table view */}
+        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
+          <motion.div
+            key="table-view"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            <MarketsDataTable
+              conditionGroups={conditionGroups}
+              ungroupedConditions={ungroupedConditions}
+              isLoading={isLoadingData}
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              filters={filters}
+              onFiltersChange={handleFiltersChange}
+              categories={categoryOptions}
+            />
+          </motion.div>
+        </div>
+      </div>
 
-          {showPredictPrices ? (
-            <div className="w-full mt-2">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="sc-heading text-foreground">Predict Prices</h2>
-              </div>
-              <CreatePythPredictionForm onPick={handlePythPick} />
-              <hr className="gold-hr mt-6 -mb-2" />
-            </div>
-          ) : null}
-
-          {/* Results area - always table view */}
-          <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
-            <motion.div
-              key="table-view"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
-              <MarketsDataTable
-                conditionGroups={conditionGroups}
-                ungroupedConditions={ungroupedConditions}
-                isLoading={isLoadingData}
-                searchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                filters={filters}
-                onFiltersChange={handleFiltersChange}
-                categories={categoryOptions}
+      {/* Desktop/Tablet sticky position form sidebar */}
+      {!isMobile ? (
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
+          <div
+            className="rounded-none shadow-lg overflow-hidden"
+            style={{
+              height: 'calc(100dvh - var(--page-top-offset, 0px))',
+            }}
+          >
+            <div className="h-full overflow-y-auto">
+              <CreatePositionForm
+                variant="panel"
+                pythPredictions={pythPredictions}
+                onRemovePythPrediction={handleRemovePythPrediction}
+                onClearPythPredictions={() => setPythPredictions([])}
               />
-            </motion.div>
+            </div>
           </div>
         </div>
-
-        {/* Desktop/Tablet sticky position form sidebar */}
-        {!isMobile ? (
-          <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
-            <div
-              className="rounded-none shadow-lg overflow-hidden"
-              style={{
-                height: 'calc(100dvh - var(--page-top-offset, 0px))',
-              }}
-            >
-              <div className="h-full overflow-y-auto">
-                <CreatePositionForm
-                  variant="panel"
-                  pythPredictions={pythPredictions}
-                  onRemovePythPrediction={handleRemovePythPrediction}
-                  onClearPythPredictions={() => setPythPredictions([])}
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
+      ) : null}
     </div>
   );
 };

@@ -1,11 +1,5 @@
 'use client';
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  useContext,
-} from 'react';
+import { useCallback, useMemo, useRef, useState, useContext } from 'react';
 import type { useTransactionReceipt } from 'wagmi';
 import {
   useWriteContract,

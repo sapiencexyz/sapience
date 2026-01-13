@@ -382,7 +382,8 @@ export function useAuctionStart() {
         console.debug('[useAuctionStart] buildMintRequestDataFromBid:', {
           selectedBidMaker: args.selectedBid.maker,
           selectedBidMakerWager: args.selectedBid.makerWager,
-          selectedBidMakerSignature: args.selectedBid.makerSignature?.slice(0, 20) + '...',
+          selectedBidMakerSignature:
+            args.selectedBid.makerSignature?.slice(0, 20) + '...',
           selectedBidMakerDeadline: args.selectedBid.makerDeadline,
           selectedBidMakerNonce: args.selectedBid.makerNonce,
           selectedBidAuctionId: args.selectedBid.auctionId,

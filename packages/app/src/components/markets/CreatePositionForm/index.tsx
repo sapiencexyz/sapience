@@ -21,7 +21,13 @@ import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { DollarSign } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -96,8 +102,11 @@ const CreatePositionForm = ({
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
   // Store the currently displayed best bid from PositionForm for submission
-  // This ensures we submit the exact bid shown to the user
-  const [displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(null);
+  // Note: The value is intentionally unused - we select best bid at submit time
+  // to avoid stale state issues. The setter is passed to child for tracking.
+  const [_displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(
+    null
+  );
   const [shareDialogData, setShareDialogData] = useState<{
     legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
     wager: string;
@@ -117,17 +126,15 @@ const CreatePositionForm = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays(
-    {
-      address: effectiveAddress
-        ? String(effectiveAddress).toLowerCase()
-        : undefined,
-      chainId: parlayChainId,
-      take: 1, // Only need the latest one
-      orderBy: 'mintedAt',
-      orderDirection: 'desc',
-    }
-  );
+  const { data: userPositions } = useUserParlays({
+    address: effectiveAddress
+      ? String(effectiveAddress).toLowerCase()
+      : undefined,
+    chainId: parlayChainId,
+    take: 1, // Only need the latest one
+    orderBy: 'mintedAt',
+    orderDirection: 'desc',
+  });
 
   const {
     auctionId,
@@ -612,7 +619,9 @@ const CreatePositionForm = ({
       // Select the bid with highest payout (makerWager)
       const bestBid = validBids.reduce((acc, current) => {
         try {
-          return BigInt(current.makerWager) > BigInt(acc.makerWager) ? current : acc;
+          return BigInt(current.makerWager) > BigInt(acc.makerWager)
+            ? current
+            : acc;
         } catch {
           return acc;
         }
@@ -626,7 +635,8 @@ const CreatePositionForm = ({
         if (mintReq) {
           // Build share dialog data synchronously from current state
           // (useSubmitPosition will do the async refetch for lastNftId)
-          const wagerAmount = formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+          const wagerAmount =
+            formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
           const limitAmount = formMethods.getValues('limitAmount');
 
           // Calculate payout from best bid
@@ -636,10 +646,14 @@ const CreatePositionForm = ({
               const userWagerWei = parseUnits(wagerAmount, collateralDecimals);
               const bidMakerWagerWei = BigInt(bestBid.makerWager);
               const totalPayoutWei = userWagerWei + bidMakerWagerWei;
-              const totalPayoutHuman = formatUnits(totalPayoutWei, collateralDecimals);
+              const totalPayoutHuman = formatUnits(
+                totalPayoutWei,
+                collateralDecimals
+              );
               payout = parseFloat(totalPayoutHuman).toFixed(2);
             } catch {
-              payout = limitAmount !== undefined ? String(limitAmount) : undefined;
+              payout =
+                limitAmount !== undefined ? String(limitAmount) : undefined;
             }
           }
 
@@ -846,44 +860,44 @@ const CreatePositionForm = ({
       <>
         {shareDialog}
         <div className="w-full h-full flex flex-col position-form">
-        <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
-          <h2 className="sc-heading text-foreground">Your Position</h2>
-          <Button
-            variant="ghost"
-            size="xs"
-            className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => {
-              if (isPositionMode) {
-                clearSelections();
-                onClearPythPredictions?.();
-              } else {
-                clearPositionForm();
-              }
-            }}
-            title="Reset"
-          >
-            CLEAR
-          </Button>
-        </div>
-        <div
-          className={`${createPositionEntries.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
-        >
+          <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
+            <h2 className="sc-heading text-foreground">Your Position</h2>
+            <Button
+              variant="ghost"
+              size="xs"
+              className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              onClick={() => {
+                if (isPositionMode) {
+                  clearSelections();
+                  onClearPythPredictions?.();
+                } else {
+                  clearPositionForm();
+                }
+              }}
+              title="Reset"
+            >
+              CLEAR
+            </Button>
+          </div>
           <div
-            className="relative bg-brand-black border border-brand-white/20 rounded-b-md shadow-sm h-full flex flex-col min-h-0 overflow-hidden position-form"
-            style={
-              {
-                '--position-form-gradient': categoryGradient,
-                '--position-form-gradient-stops': categoryGradientStops,
-              } as CSSProperties
-            }
+            className={`${createPositionEntries.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
           >
             <div
-              className="hidden lg:block absolute top-0 left-0 right-0 h-px"
-              style={{ background: categoryGradient }}
-            />
-            <CreatePositionFormContent {...contentProps} />
+              className="relative bg-brand-black border border-brand-white/20 rounded-b-md shadow-sm h-full flex flex-col min-h-0 overflow-hidden position-form"
+              style={
+                {
+                  '--position-form-gradient': categoryGradient,
+                  '--position-form-gradient-stops': categoryGradientStops,
+                } as CSSProperties
+              }
+            >
+              <div
+                className="hidden lg:block absolute top-0 left-0 right-0 h-px"
+                style={{ background: categoryGradient }}
+              />
+              <CreatePositionFormContent {...contentProps} />
+            </div>
           </div>
-        </div>
         </div>
       </>
     );

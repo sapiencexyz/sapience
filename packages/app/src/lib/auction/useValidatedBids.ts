@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { createPublicClient, http, erc20Abi } from 'viem';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
@@ -27,8 +27,21 @@ export function useValidatedBids({
   enabled = true,
 }: UseValidatedBidsParams): QuoteBid[] {
   const [validatedBids, setValidatedBids] = useState<QuoteBid[]>([]);
-  const validationCacheRef = useRef<Map<string, { valid: boolean; error?: string }>>(new Map());
+  const validationCacheRef = useRef<
+    Map<string, { valid: boolean; error?: string }>
+  >(new Map());
   const pendingValidationsRef = useRef<Set<string>>(new Set());
+
+  // Memoized public client for third-party validation (market maker checks)
+  const publicClient = useMemo(() => {
+    const rpcUrl =
+      chainId === CHAIN_ID_ETHEREAL
+        ? 'https://rpc.ethereal.trade'
+        : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
+    return createPublicClient({
+      transport: http(rpcUrl),
+    });
+  }, [chainId]);
 
   useEffect(() => {
     if (!enabled || !collateralTokenAddress || !predictionMarketAddress) {
@@ -43,14 +56,6 @@ export function useValidatedBids({
     }
 
     const validateBidsAsync = async () => {
-      const rpcUrl = chainId === CHAIN_ID_ETHEREAL
-        ? 'https://rpc.ethereal.trade'
-        : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
-
-      const publicClient = createPublicClient({
-        transport: http(rpcUrl),
-      });
-
       const results: QuoteBid[] = await Promise.all(
         bids.map(async (bid) => {
           // Skip if already marked as invalid from basic validation
@@ -65,7 +70,9 @@ export function useValidatedBids({
           if (cached !== undefined) {
             return {
               ...bid,
-              validationStatus: cached.valid ? 'valid' as const : 'invalid' as const,
+              validationStatus: cached.valid
+                ? ('valid' as const)
+                : ('invalid' as const),
               validationError: cached.error,
             };
           }
@@ -90,17 +97,19 @@ export function useValidatedBids({
                 abi: erc20Abi,
                 functionName: 'allowance',
                 args: [takerAddress, predictionMarketAddress],
-              }) as Promise<bigint>,
+              }),
               publicClient.readContract({
                 address: collateralTokenAddress,
                 abi: erc20Abi,
                 functionName: 'balanceOf',
                 args: [takerAddress],
-              }) as Promise<bigint>,
+              }),
             ]);
 
-            const hasSufficientAllowance = takerAllowance >= takerCollateralRequired;
-            const hasSufficientBalance = takerBalance >= takerCollateralRequired;
+            const hasSufficientAllowance =
+              takerAllowance >= takerCollateralRequired;
+            const hasSufficientBalance =
+              takerBalance >= takerCollateralRequired;
             const isValid = hasSufficientAllowance && hasSufficientBalance;
 
             let errorMessage: string | undefined;
@@ -111,7 +120,10 @@ export function useValidatedBids({
             }
 
             // Cache the result
-            validationCacheRef.current.set(cacheKey, { valid: isValid, error: errorMessage });
+            validationCacheRef.current.set(cacheKey, {
+              valid: isValid,
+              error: errorMessage,
+            });
             pendingValidationsRef.current.delete(cacheKey);
 
             if (!isValid) {
@@ -127,7 +139,9 @@ export function useValidatedBids({
 
             return {
               ...bid,
-              validationStatus: isValid ? 'valid' as const : 'invalid' as const,
+              validationStatus: isValid
+                ? ('valid' as const)
+                : ('invalid' as const),
               validationError: errorMessage,
             };
           } catch (err) {
@@ -147,7 +161,14 @@ export function useValidatedBids({
     };
 
     validateBidsAsync();
-  }, [bids, chainId, collateralTokenAddress, predictionMarketAddress, enabled]);
+  }, [
+    bids,
+    chainId,
+    collateralTokenAddress,
+    predictionMarketAddress,
+    enabled,
+    publicClient,
+  ]);
 
   // Clear cache when chain or contract addresses change
   useEffect(() => {

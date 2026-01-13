@@ -10,7 +10,7 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Copy, Share2, Check, User } from 'lucide-react';
+import { Copy, Share2, User } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -444,7 +444,8 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             {/* Only show pulsing gradient while waiting:
                 - In tracking mode: while waiting for position to be indexed
                 - In non-tracking mode: while image is loading */}
-            {((trackPosition && !positionResolved) || (!trackPosition && imgLoading)) && (
+            {((trackPosition && !positionResolved) ||
+              (!trackPosition && imgLoading)) && (
               <PulsingGradient
                 className="inset-0 z-[1]"
                 durationMs={12000}
@@ -585,7 +586,10 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                 variant="outline"
                 asChild
               >
-                <Link href={`/profile/${userAddress}#positions`} className="whitespace-nowrap">
+                <Link
+                  href={`/profile/${userAddress}#positions`}
+                  className="whitespace-nowrap"
+                >
                   <User className="mr-0.5 h-4 w-4" />
                   View Portfolio
                 </Link>

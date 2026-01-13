@@ -53,10 +53,11 @@ export default function ShareAfterMarketsRedirect() {
   const { isSessionActive, smartAccountAddress } = useSession();
 
   // Use smart account address when session is active, otherwise use EOA
-  const effectiveAddress = isSessionActive && smartAccountAddress
-    ? smartAccountAddress
-    : address;
-  const lowerAddress = effectiveAddress ? String(effectiveAddress).toLowerCase() : null;
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+  const lowerAddress = effectiveAddress
+    ? String(effectiveAddress).toLowerCase()
+    : null;
 
   // Data hooks for position resolution
   const { data: positions, refetch: refetchPositions } = useUserParlays({

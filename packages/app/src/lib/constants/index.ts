@@ -17,7 +17,13 @@ export const UMA_RESOLVER_ADDRESSES = new Set([
 // Display metadata for UMA resolvers keyed by full address
 export const UMA_RESOLVER_DISPLAY: Record<
   string,
-  { name: string; icon?: string; iconAlt?: string; url?: string }
+  {
+    name: string;
+    icon?: string;
+    badgeIcon?: string;
+    iconAlt?: string;
+    url?: string;
+  }
 > = {
   '0xC873efA9D22A09e39101efB977C03011620bF015': {
     name: 'UMA',
