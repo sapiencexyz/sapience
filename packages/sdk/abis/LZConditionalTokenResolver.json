@@ -1,1 +1,592 @@
-[{"inputs":[{"internalType":"address","name":"_endpoint","type":"address"},{"internalType":"address","name":"_owner","type":"address"},{"components":[{"internalType":"uint256","name":"maxPredictionMarkets","type":"uint256"}],"internalType":"struct IPredictionMarketLZConditionalTokensResolver.Settings","name":"_config","type":"tuple"}],"stateMutability":"nonpayable","type":"constructor"},{"inputs":[{"internalType":"uint16","name":"commandType","type":"uint16"}],"name":"InvalidCommandType","type":"error"},{"inputs":[],"name":"InvalidDelegate","type":"error"},{"inputs":[],"name":"InvalidEndpointCall","type":"error"},{"inputs":[{"internalType":"address","name":"expectedBridge","type":"address"},{"internalType":"address","name":"actualSender","type":"address"}],"name":"InvalidSender","type":"error"},{"inputs":[{"internalType":"uint32","name":"expectedEid","type":"uint32"},{"internalType":"uint32","name":"actualEid","type":"uint32"}],"name":"InvalidSourceChain","type":"error"},{"inputs":[],"name":"MustHaveAtLeastOneMarket","type":"error"},{"inputs":[{"internalType":"uint32","name":"eid","type":"uint32"}],"name":"NoPeer","type":"error"},{"inputs":[{"internalType":"address","name":"addr","type":"address"}],"name":"OnlyEndpoint","type":"error"},{"inputs":[{"internalType":"uint32","name":"eid","type":"uint32"},{"internalType":"bytes32","name":"sender","type":"bytes32"}],"name":"OnlyPeer","type":"error"},{"inputs":[{"internalType":"address","name":"owner","type":"address"}],"name":"OwnableInvalidOwner","type":"error"},{"inputs":[{"internalType":"address","name":"account","type":"address"}],"name":"OwnableUnauthorizedAccount","type":"error"},{"inputs":[],"name":"TooManyMarkets","type":"error"},{"anonymous":false,"inputs":[{"components":[{"internalType":"uint32","name":"remoteEid","type":"uint32"},{"internalType":"address","name":"remoteBridge","type":"address"}],"indexed":false,"internalType":"struct BridgeTypes.BridgeConfig","name":"bridgeConfig","type":"tuple"}],"name":"BridgeConfigUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"bytes32","name":"conditionId","type":"bytes32"},{"indexed":false,"internalType":"bool","name":"resolvedToYes","type":"bool"},{"indexed":false,"internalType":"bool","name":"invalid","type":"bool"},{"indexed":false,"internalType":"uint256","name":"payoutDenominator","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"noPayout","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"yesPayout","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"timestamp","type":"uint256"}],"name":"ConditionResolved","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"maxPredictionMarkets","type":"uint256"}],"name":"ConfigUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint32","name":"eid","type":"uint32"},{"indexed":false,"internalType":"bytes32","name":"peer","type":"bytes32"}],"name":"PeerSet","type":"event"},{"inputs":[{"components":[{"internalType":"uint32","name":"srcEid","type":"uint32"},{"internalType":"bytes32","name":"sender","type":"bytes32"},{"internalType":"uint64","name":"nonce","type":"uint64"}],"internalType":"struct Origin","name":"origin","type":"tuple"}],"name":"allowInitializePath","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"conditions","outputs":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"},{"internalType":"bool","name":"settled","type":"bool"},{"internalType":"bool","name":"resolvedToYes","type":"bool"},{"internalType":"bool","name":"invalid","type":"bool"},{"internalType":"uint256","name":"payoutDenominator","type":"uint256"},{"internalType":"uint256","name":"noPayout","type":"uint256"},{"internalType":"uint256","name":"yesPayout","type":"uint256"},{"internalType":"uint64","name":"updatedAt","type":"uint64"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"config","outputs":[{"internalType":"uint256","name":"maxPredictionMarkets","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes","name":"encodedPredictedOutcomes","type":"bytes"}],"name":"decodePredictionOutcomes","outputs":[{"components":[{"internalType":"bytes32","name":"marketId","type":"bytes32"},{"internalType":"bool","name":"prediction","type":"bool"}],"internalType":"struct IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[]","name":"","type":"tuple[]"}],"stateMutability":"pure","type":"function"},{"inputs":[{"components":[{"internalType":"bytes32","name":"marketId","type":"bytes32"},{"internalType":"bool","name":"prediction","type":"bool"}],"internalType":"struct IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[]","name":"predictedOutcomes","type":"tuple[]"}],"name":"encodePredictionOutcomes","outputs":[{"internalType":"bytes","name":"","type":"bytes"}],"stateMutability":"pure","type":"function"},{"inputs":[],"name":"endpoint","outputs":[{"internalType":"contract ILayerZeroEndpointV2","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getBridgeConfig","outputs":[{"components":[{"internalType":"uint32","name":"remoteEid","type":"uint32"},{"internalType":"address","name":"remoteBridge","type":"address"}],"internalType":"struct BridgeTypes.BridgeConfig","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"}],"name":"getCondition","outputs":[{"components":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"},{"internalType":"bool","name":"settled","type":"bool"},{"internalType":"bool","name":"resolvedToYes","type":"bool"},{"internalType":"bool","name":"invalid","type":"bool"},{"internalType":"uint256","name":"payoutDenominator","type":"uint256"},{"internalType":"uint256","name":"noPayout","type":"uint256"},{"internalType":"uint256","name":"yesPayout","type":"uint256"},{"internalType":"uint64","name":"updatedAt","type":"uint64"}],"internalType":"struct IPredictionMarketLZConditionalTokensResolver.ConditionState","name":"","type":"tuple"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"}],"name":"getConditionResolution","outputs":[{"internalType":"bool","name":"resolvedToYes","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes","name":"encodedPredictedOutcomes","type":"bytes"}],"name":"getPredictionResolution","outputs":[{"internalType":"bool","name":"isResolved","type":"bool"},{"internalType":"enum IPredictionMarketResolver.Error","name":"error","type":"uint8"},{"internalType":"bool","name":"parlaySuccess","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"uint32","name":"srcEid","type":"uint32"},{"internalType":"bytes32","name":"sender","type":"bytes32"},{"internalType":"uint64","name":"nonce","type":"uint64"}],"internalType":"struct Origin","name":"","type":"tuple"},{"internalType":"bytes","name":"","type":"bytes"},{"internalType":"address","name":"_sender","type":"address"}],"name":"isComposeMsgSender","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"}],"name":"isConditionInvalid","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"bytes32","name":"conditionId","type":"bytes32"}],"name":"isConditionSettled","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"components":[{"internalType":"uint32","name":"srcEid","type":"uint32"},{"internalType":"bytes32","name":"sender","type":"bytes32"},{"internalType":"uint64","name":"nonce","type":"uint64"}],"internalType":"struct Origin","name":"_origin","type":"tuple"},{"internalType":"bytes32","name":"_guid","type":"bytes32"},{"internalType":"bytes","name":"_message","type":"bytes"},{"internalType":"address","name":"_executor","type":"address"},{"internalType":"bytes","name":"_extraData","type":"bytes"}],"name":"lzReceive","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"uint32","name":"","type":"uint32"},{"internalType":"bytes32","name":"","type":"bytes32"}],"name":"nextNonce","outputs":[{"internalType":"uint64","name":"nonce","type":"uint64"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"oAppVersion","outputs":[{"internalType":"uint64","name":"senderVersion","type":"uint64"},{"internalType":"uint64","name":"receiverVersion","type":"uint64"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint32","name":"eid","type":"uint32"}],"name":"peers","outputs":[{"internalType":"bytes32","name":"peer","type":"bytes32"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint32","name":"remoteEid","type":"uint32"},{"internalType":"address","name":"remoteBridge","type":"address"}],"internalType":"struct BridgeTypes.BridgeConfig","name":"_bridgeConfig","type":"tuple"}],"name":"setBridgeConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"uint256","name":"maxPredictionMarkets","type":"uint256"}],"internalType":"struct IPredictionMarketLZConditionalTokensResolver.Settings","name":"_config","type":"tuple"}],"name":"setConfig","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"_delegate","type":"address"}],"name":"setDelegate","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint32","name":"_eid","type":"uint32"},{"internalType":"bytes32","name":"_peer","type":"bytes32"}],"name":"setPeer","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"bytes","name":"encodedPredictedOutcomes","type":"bytes"}],"name":"validatePredictionMarkets","outputs":[{"internalType":"bool","name":"isValid","type":"bool"},{"internalType":"enum IPredictionMarketResolver.Error","name":"error","type":"uint8"}],"stateMutability":"view","type":"function"}]
+[
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_endpoint", "type": "address" },
+      { "internalType": "address", "name": "_owner", "type": "address" },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxPredictionMarkets",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IPredictionMarketLZConditionalTokensResolver.Settings",
+        "name": "_config",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint16", "name": "commandType", "type": "uint16" }
+    ],
+    "name": "InvalidCommandType",
+    "type": "error"
+  },
+  { "inputs": [], "name": "InvalidDelegate", "type": "error" },
+  { "inputs": [], "name": "InvalidEndpointCall", "type": "error" },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "expectedBridge",
+        "type": "address"
+      },
+      { "internalType": "address", "name": "actualSender", "type": "address" }
+    ],
+    "name": "InvalidSender",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint32", "name": "expectedEid", "type": "uint32" },
+      { "internalType": "uint32", "name": "actualEid", "type": "uint32" }
+    ],
+    "name": "InvalidSourceChain",
+    "type": "error"
+  },
+  { "inputs": [], "name": "MustHaveAtLeastOneMarket", "type": "error" },
+  {
+    "inputs": [{ "internalType": "uint32", "name": "eid", "type": "uint32" }],
+    "name": "NoPeer",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "addr", "type": "address" }
+    ],
+    "name": "OnlyEndpoint",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint32", "name": "eid", "type": "uint32" },
+      { "internalType": "bytes32", "name": "sender", "type": "bytes32" }
+    ],
+    "name": "OnlyPeer",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" }
+    ],
+    "name": "OwnableInvalidOwner",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" }
+    ],
+    "name": "OwnableUnauthorizedAccount",
+    "type": "error"
+  },
+  { "inputs": [], "name": "TooManyMarkets", "type": "error" },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "remoteEid", "type": "uint32" },
+          {
+            "internalType": "address",
+            "name": "remoteBridge",
+            "type": "address"
+          }
+        ],
+        "indexed": false,
+        "internalType": "struct BridgeTypes.BridgeConfig",
+        "name": "bridgeConfig",
+        "type": "tuple"
+      }
+    ],
+    "name": "BridgeConfigUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "conditionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "resolvedToYes",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "invalid",
+        "type": "bool"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "payoutDenominator",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "noPayout",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "yesPayout",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "ConditionResolved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "maxPredictionMarkets",
+        "type": "uint256"
+      }
+    ],
+    "name": "ConfigUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint32",
+        "name": "eid",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "peer",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PeerSet",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "srcEid", "type": "uint32" },
+          { "internalType": "bytes32", "name": "sender", "type": "bytes32" },
+          { "internalType": "uint64", "name": "nonce", "type": "uint64" }
+        ],
+        "internalType": "struct Origin",
+        "name": "origin",
+        "type": "tuple"
+      }
+    ],
+    "name": "allowInitializePath",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "name": "conditions",
+    "outputs": [
+      { "internalType": "bytes32", "name": "conditionId", "type": "bytes32" },
+      { "internalType": "bool", "name": "settled", "type": "bool" },
+      { "internalType": "bool", "name": "resolvedToYes", "type": "bool" },
+      { "internalType": "bool", "name": "invalid", "type": "bool" },
+      {
+        "internalType": "uint256",
+        "name": "payoutDenominator",
+        "type": "uint256"
+      },
+      { "internalType": "uint256", "name": "noPayout", "type": "uint256" },
+      { "internalType": "uint256", "name": "yesPayout", "type": "uint256" },
+      { "internalType": "uint64", "name": "updatedAt", "type": "uint64" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "config",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxPredictionMarkets",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "encodedPredictedOutcomes",
+        "type": "bytes"
+      }
+    ],
+    "name": "decodePredictionOutcomes",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "bytes32", "name": "marketId", "type": "bytes32" },
+          { "internalType": "bool", "name": "prediction", "type": "bool" }
+        ],
+        "internalType": "struct IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "bytes32", "name": "marketId", "type": "bytes32" },
+          { "internalType": "bool", "name": "prediction", "type": "bool" }
+        ],
+        "internalType": "struct IPredictionMarketLZConditionalTokensResolver.PredictedOutcome[]",
+        "name": "predictedOutcomes",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "encodePredictionOutcomes",
+    "outputs": [{ "internalType": "bytes", "name": "", "type": "bytes" }],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "endpoint",
+    "outputs": [
+      {
+        "internalType": "contract ILayerZeroEndpointV2",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getBridgeConfig",
+    "outputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "remoteEid", "type": "uint32" },
+          {
+            "internalType": "address",
+            "name": "remoteBridge",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct BridgeTypes.BridgeConfig",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "conditionId", "type": "bytes32" }
+    ],
+    "name": "getCondition",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "bytes32",
+            "name": "conditionId",
+            "type": "bytes32"
+          },
+          { "internalType": "bool", "name": "settled", "type": "bool" },
+          { "internalType": "bool", "name": "resolvedToYes", "type": "bool" },
+          { "internalType": "bool", "name": "invalid", "type": "bool" },
+          {
+            "internalType": "uint256",
+            "name": "payoutDenominator",
+            "type": "uint256"
+          },
+          { "internalType": "uint256", "name": "noPayout", "type": "uint256" },
+          { "internalType": "uint256", "name": "yesPayout", "type": "uint256" },
+          { "internalType": "uint64", "name": "updatedAt", "type": "uint64" }
+        ],
+        "internalType": "struct IPredictionMarketLZConditionalTokensResolver.ConditionState",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "conditionId", "type": "bytes32" }
+    ],
+    "name": "getConditionResolution",
+    "outputs": [
+      { "internalType": "bool", "name": "resolvedToYes", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "encodedPredictedOutcomes",
+        "type": "bytes"
+      }
+    ],
+    "name": "getPredictionResolution",
+    "outputs": [
+      { "internalType": "bool", "name": "isResolved", "type": "bool" },
+      {
+        "internalType": "enum IPredictionMarketResolver.Error",
+        "name": "error",
+        "type": "uint8"
+      },
+      { "internalType": "bool", "name": "parlaySuccess", "type": "bool" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "srcEid", "type": "uint32" },
+          { "internalType": "bytes32", "name": "sender", "type": "bytes32" },
+          { "internalType": "uint64", "name": "nonce", "type": "uint64" }
+        ],
+        "internalType": "struct Origin",
+        "name": "",
+        "type": "tuple"
+      },
+      { "internalType": "bytes", "name": "", "type": "bytes" },
+      { "internalType": "address", "name": "_sender", "type": "address" }
+    ],
+    "name": "isComposeMsgSender",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "conditionId", "type": "bytes32" }
+    ],
+    "name": "isConditionInvalid",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "bytes32", "name": "conditionId", "type": "bytes32" }
+    ],
+    "name": "isConditionSettled",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "srcEid", "type": "uint32" },
+          { "internalType": "bytes32", "name": "sender", "type": "bytes32" },
+          { "internalType": "uint64", "name": "nonce", "type": "uint64" }
+        ],
+        "internalType": "struct Origin",
+        "name": "_origin",
+        "type": "tuple"
+      },
+      { "internalType": "bytes32", "name": "_guid", "type": "bytes32" },
+      { "internalType": "bytes", "name": "_message", "type": "bytes" },
+      { "internalType": "address", "name": "_executor", "type": "address" },
+      { "internalType": "bytes", "name": "_extraData", "type": "bytes" }
+    ],
+    "name": "lzReceive",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint32", "name": "", "type": "uint32" },
+      { "internalType": "bytes32", "name": "", "type": "bytes32" }
+    ],
+    "name": "nextNonce",
+    "outputs": [
+      { "internalType": "uint64", "name": "nonce", "type": "uint64" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "oAppVersion",
+    "outputs": [
+      { "internalType": "uint64", "name": "senderVersion", "type": "uint64" },
+      { "internalType": "uint64", "name": "receiverVersion", "type": "uint64" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint32", "name": "eid", "type": "uint32" }],
+    "name": "peers",
+    "outputs": [
+      { "internalType": "bytes32", "name": "peer", "type": "bytes32" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          { "internalType": "uint32", "name": "remoteEid", "type": "uint32" },
+          {
+            "internalType": "address",
+            "name": "remoteBridge",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct BridgeTypes.BridgeConfig",
+        "name": "_bridgeConfig",
+        "type": "tuple"
+      }
+    ],
+    "name": "setBridgeConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "maxPredictionMarkets",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct IPredictionMarketLZConditionalTokensResolver.Settings",
+        "name": "_config",
+        "type": "tuple"
+      }
+    ],
+    "name": "setConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "_delegate", "type": "address" }
+    ],
+    "name": "setDelegate",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint32", "name": "_eid", "type": "uint32" },
+      { "internalType": "bytes32", "name": "_peer", "type": "bytes32" }
+    ],
+    "name": "setPeer",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "newOwner", "type": "address" }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes",
+        "name": "encodedPredictedOutcomes",
+        "type": "bytes"
+      }
+    ],
+    "name": "validatePredictionMarkets",
+    "outputs": [
+      { "internalType": "bool", "name": "isValid", "type": "bool" },
+      {
+        "internalType": "enum IPredictionMarketResolver.Error",
+        "name": "error",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

@@ -131,6 +131,7 @@ export const eas: ChainAddressMap = {
 
 export const contracts = {
   predictionMarket,
+  predictionMarketLZConditionalTokensResolver,
   umaResolver,
   lzPMResolver,
   lzUmaResolver,
