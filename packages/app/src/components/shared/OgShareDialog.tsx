@@ -10,12 +10,14 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Copy, Share2, Check } from 'lucide-react';
+import { Copy, Share2, User } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import * as viemChains from 'viem/chains';
 import Loader from '~/components/shared/Loader';
+import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
+import PulsingGradient from '~/components/shared/PulsingGradient';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSession } from '~/lib/context/SessionContext';
@@ -41,7 +43,7 @@ interface OgShareDialogBaseProps {
 export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   const {
     imageSrc,
-    title = 'Share',
+    title = 'Trade Submitted',
     trigger,
     shareTitle: _shareTitle = 'Share',
     shareText: _shareText,
@@ -433,31 +435,40 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
         <DialogHeader className="pb-2">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          {trackPosition && positionResolved && (
-            <div className="w-full p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <p className="text-sm text-green-600 dark:text-green-400 text-center flex items-center justify-center gap-2">
-                <Check className="h-4 w-4 flex-shrink-0" />
-                <span>
-                  Position created.{' '}
-                  {userAddress && (
-                    <Link
-                      href={`/profile/${userAddress}#positions`}
-                      className="underline underline-offset-2 hover:text-green-700 dark:hover:text-green-300 transition-colors"
-                    >
-                      View portfolio
-                    </Link>
-                  )}
-                </span>
-              </p>
+        <div>
+          <div className="w-full aspect-[1200/630] bg-[#0B0B0A] rounded overflow-hidden relative border border-border">
+            {/* Hero background - persists behind the image */}
+            <div className="absolute inset-0 z-0">
+              <HeroBackgroundLines className="opacity-60 !-z-0" />
             </div>
-          )}
-          <div className="w-full aspect-[1200/630] bg-muted rounded overflow-hidden relative border border-border">
-            {imgLoading && (
-              <div className="absolute inset-0 flex items-center justify-center">
+            {/* Only show pulsing gradient while waiting:
+                - In tracking mode: while waiting for position to be indexed
+                - In non-tracking mode: while image is loading */}
+            {((trackPosition && !positionResolved) ||
+              (!trackPosition && imgLoading)) && (
+              <PulsingGradient
+                className="inset-0 z-[1]"
+                durationMs={12000}
+                baseOpacity={0.15}
+                gradient="radial-gradient(ellipse 70% 70% at 50% 30%, hsl(var(--accent-gold)/0.25) 0%, hsl(var(--accent-gold)/0.08) 50%, transparent 80%)"
+              />
+            )}
+            {/* Waiting text - shown while tracking position and not yet resolved */}
+            {trackPosition && !positionResolved && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
+                <span className="font-mono text-[hsl(var(--accent-gold))] text-lg uppercase tracking-wider">
+                  WAITING FOR TRADE TO BE INDEXED
+                </span>
+              </div>
+            )}
+            {/* Loader for non-tracking mode */}
+            {!trackPosition && imgLoading && (
+              <div className="absolute inset-0 flex items-center justify-center z-10">
                 <Loader size={loaderSizePx} />
               </div>
             )}
+            {/* OG Image - fades in over the hero background */}
+            {/* Use unoptimized to avoid double-encoding of URL params */}
             <Image
               src={previewSrc}
               alt="Share preview"
@@ -466,9 +477,19 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               onLoad={() => setImgLoading(false)}
               onError={() => setImgLoading(false)}
               priority
+              unoptimized
+              className={`transition-opacity duration-500 ${
+                trackPosition && !positionResolved ? 'opacity-0' : 'opacity-100'
+              }`}
             />
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div
+            className={`grid grid-cols-3 gap-4 transition-all duration-500 ease-out overflow-hidden ${
+              trackPosition && !positionResolved
+                ? 'max-h-0 opacity-0 pointer-events-none'
+                : 'max-h-24 opacity-100 mt-4'
+            }`}
+          >
             {/* Copy */}
             <Button
               size="lg"
@@ -549,6 +570,32 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               <Share2 className="mr-0.5 h-4 w-4" /> {shareButtonText}
             </Button>
           </div>
+          {/* View Portfolio - slides open when position is resolved */}
+          {trackPosition && userAddress && (
+            <div
+              className={`overflow-hidden transition-all duration-500 ease-out ${
+                positionResolved
+                  ? 'max-h-16 opacity-100 mt-4'
+                  : 'max-h-0 opacity-0'
+              }`}
+            >
+              <Button
+                size="lg"
+                className="w-full"
+                type="button"
+                variant="outline"
+                asChild
+              >
+                <Link
+                  href={`/profile/${userAddress}#positions`}
+                  className="whitespace-nowrap"
+                >
+                  <User className="mr-0.5 h-4 w-4" />
+                  View Portfolio
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

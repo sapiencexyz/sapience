@@ -50,6 +50,9 @@ export interface MintPredictionRequestData {
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
   takerDeadline: string; // unix seconds (uint256 string)
   refCode: `0x${string}`; // bytes32
+  // For validation: the nonce the bidder (contract taker) claimed when signing
+  // This is embedded in their signature and must match their on-chain nonce
+  takerClaimedNonce?: number;
 }
 
 function jsonStableStringify(value: unknown) {
@@ -232,18 +235,8 @@ export function useAuctionStart() {
             // Otherwise fall back to owner's wallet signing
             if (isSessionActive && sessionSignMessage) {
               takerSignature = await sessionSignMessage(message);
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug(
-                  '[AuctionStart] Generated SIWE signature with session key'
-                );
-              }
             } else {
               takerSignature = await signMessageAsync({ message });
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug(
-                  '[AuctionStart] Generated SIWE signature with wallet'
-                );
-              }
             }
             takerSignedAt = issuedAt;
           } catch (signError) {
@@ -275,11 +268,6 @@ export function useAuctionStart() {
             sessionApproval: etherealSessionApproval.approval,
             sessionTypedData: etherealSessionApproval.typedData,
           };
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug(
-              '[AuctionStart] Including session approval for smart account auth'
-            );
-          }
         }
 
         // Clear previous auction state
@@ -303,12 +291,9 @@ export function useAuctionStart() {
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
           setAuctionId(newId);
-        } catch (err) {
+        } catch {
           // On timeout or error, clear inflight but keep params for retry
           inflightRef.current = '';
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('[AuctionStart] sendWithAck failed:', err);
-          }
         }
       }, 400);
     },
@@ -360,11 +345,21 @@ export function useAuctionStart() {
     }): MintPredictionRequestData | null => {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
+
       try {
         const zeroBytes32 = `0x${'0'.repeat(64)}`;
         const resolver = auction.resolver as `0x${string}`;
         const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
         if (!resolver || predictedOutcomes.length === 0) return null;
+
+        // Validate bid is from the current auction to avoid stale nonce errors
+        if (args.selectedBid.auctionId !== auctionId) {
+          console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
+            bidAuctionId: args.selectedBid.auctionId,
+            currentAuctionId: auctionId,
+          });
+          return null;
+        }
 
         // Contract field names haven't changed - map BID (API) roles to contract roles:
         // Contract "maker" = API "taker" (auction creator)
@@ -380,12 +375,13 @@ export function useAuctionStart() {
           takerDeadline: String(args.selectedBid.makerDeadline), // Contract taker = API maker (bidder's deadline)
           refCode: args.refCode || (zeroBytes32 as `0x${string}`),
           makerNonce: String(auction.takerNonce), // Contract maker = API taker (auction creator's nonce)
+          takerClaimedNonce: args.selectedBid.makerNonce, // Bidder's claimed nonce for validation
         };
       } catch {
         return null;
       }
     },
-    []
+    [auctionId]
   );
 
   return {

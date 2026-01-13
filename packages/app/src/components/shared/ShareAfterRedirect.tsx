@@ -234,7 +234,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
       imageSrc={imageSrc}
       open={open}
       onOpenChange={setOpen}
-      title="Share"
+      title="Trade Submitted"
       shareTitle="Share"
     />
   );

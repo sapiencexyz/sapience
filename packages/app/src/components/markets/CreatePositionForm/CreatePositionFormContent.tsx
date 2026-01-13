@@ -46,6 +46,8 @@ interface CreatePositionFormContentProps {
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
   onClearPythPredictions?: () => void;
+  // Callback to notify parent of the currently displayed best bid (for submission)
+  onBestBidChange?: (bid: QuoteBid | null) => void;
 }
 
 export const CreatePositionFormContent = ({
@@ -64,6 +66,7 @@ export const CreatePositionFormContent = ({
   pythPredictions = [],
   onRemovePythPrediction,
   onClearPythPredictions,
+  onBestBidChange,
 }: CreatePositionFormContentProps) => {
   const { selections, clearSelections } = useCreatePositionContext();
   const hasItems = selections.length > 0 || pythPredictions.length > 0;
@@ -120,6 +123,7 @@ export const CreatePositionFormContent = ({
               predictionMarketAddress={predictionMarketAddress}
               pythPredictions={pythPredictions}
               onRemovePythPrediction={onRemovePythPrediction}
+              onBestBidChange={onBestBidChange}
             />
           )}
         </div>

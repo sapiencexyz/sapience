@@ -2,13 +2,12 @@ import { useCallback, useState, useMemo } from 'react';
 import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 
 import { predictionMarketAbi } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
-
-// Ethereal chain configuration
-const CHAIN_ID_ETHEREAL = 5064014;
+import { getPublicClientForChainId } from '~/lib/utils/util';
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 // WUSDe ABI for wrapping
@@ -28,28 +27,6 @@ interface UseSubmitPositionProps {
     takerNftId: bigint,
     txHash?: string
   ) => void;
-  betslipData?:
-    | {
-        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-        wager: string;
-        payout?: string;
-        symbol: string;
-        lastNftId?: string; // Last NFT ID before this parlay was submitted
-      }
-    | (() => {
-        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-        wager: string;
-        payout?: string;
-        symbol: string;
-        lastNftId?: string; // Last NFT ID before this parlay was submitted
-      })
-    | (() => Promise<{
-        legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-        wager: string;
-        payout?: string;
-        symbol: string;
-        lastNftId?: string; // Last NFT ID before this parlay was submitted
-      }>); // Can be a function (sync or async) to compute fresh data right before submission
 }
 
 export function useSubmitPosition({
@@ -58,7 +35,6 @@ export function useSubmitPosition({
   collateralTokenAddress,
   onSuccess,
   enabled = true,
-  betslipData,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
@@ -94,52 +70,40 @@ export function useSubmitPosition({
   });
 
   // Check current allowance to avoid unnecessary approvals
-  const { data: currentAllowance } = useReadContract({
-    address: collateralTokenAddress,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args:
-      effectiveAddress && predictionMarketAddress
-        ? [effectiveAddress, predictionMarketAddress]
-        : undefined,
-    chainId,
-    query: {
-      enabled:
-        !!effectiveAddress &&
-        !!collateralTokenAddress &&
-        !!predictionMarketAddress &&
-        enabled,
-    },
-  });
-
-  // removed debug logging
+  const { data: currentAllowance, refetch: refetchAllowance } = useReadContract(
+    {
+      address: collateralTokenAddress,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args:
+        effectiveAddress && predictionMarketAddress
+          ? [effectiveAddress, predictionMarketAddress]
+          : undefined,
+      chainId,
+      query: {
+        enabled:
+          !!effectiveAddress &&
+          !!collateralTokenAddress &&
+          !!predictionMarketAddress &&
+          enabled,
+      },
+    }
+  );
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Memoize initial share intent to prevent infinite re-renders
-  // Note: This will be updated with fresh data right before submission
-  // For async functions, we'll use undefined initially and update before submission
-  const initialShareIntent = useMemo(() => {
-    if (!betslipData) return undefined;
-    if (typeof betslipData === 'function') {
-      // For functions, we'll update before submission, so use undefined here
-      // to avoid calling the function during render
-      return undefined;
-    }
-    return {
-      betslip: betslipData,
-    };
-  }, [betslipData]);
+  // Memoized public client for third-party validation (market maker checks)
+  // This is used to validate external addresses, not the user's own state
+  const publicClient = useMemo(
+    () => getPublicClientForChainId(chainId),
+    [chainId]
+  );
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
-  // Note: shareIntent will be updated right before submission to get fresh lastNftId
-  const {
-    sendCalls,
-    isPending: isSubmitting,
-    updateShareIntent,
-  } = useSapienceWriteContract({
+  // Note: Share dialog is handled locally in CreatePositionForm, no redirect needed
+  const { sendCalls, isPending: isSubmitting } = useSapienceWriteContract({
     onSuccess: () => {
       setSuccess('Position prediction minted successfully');
       setError(null);
@@ -150,15 +114,12 @@ export function useSubmitPosition({
       setError(message);
     },
     fallbackErrorMessage: 'Failed to submit position prediction',
-    redirectPage: 'markets',
     disableSuccessToast: true,
-    // Include initial betslip data in share intent (will be updated with fresh data before submission)
-    shareIntent: initialShareIntent,
   });
 
-  // Prepare calls for sendCalls
+  // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
-    (mintData: MintPredictionRequestData) => {
+    (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
       const callsArray: {
         to: `0x${string}`;
         data: `0x${string}`;
@@ -197,10 +158,13 @@ export function useSubmitPosition({
         }
       }
 
-      // Only add approval if current allowance is insufficient
+      // Use fresh allowance if provided (from direct RPC), otherwise fall back to cached
+      const effectiveAllowance = freshAllowance ?? currentAllowance;
       const needsApproval =
-        !currentAllowance || currentAllowance < makerCollateralWei;
+        effectiveAllowance === undefined ||
+        effectiveAllowance < makerCollateralWei;
 
+      // Add approval call if needed (batched with mint)
       if (needsApproval) {
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
@@ -274,44 +238,33 @@ export function useSubmitPosition({
       setError(null);
       setSuccess(null);
 
-      // Compute fresh betslip data right before submission to get latest lastNftId
-      // Handle both sync and async functions
-      let freshBetslipData;
-      if (typeof betslipData === 'function') {
-        const result = betslipData();
-        freshBetslipData = result instanceof Promise ? await result : result;
-      } else {
-        freshBetslipData = betslipData;
-      }
-
-      // Update share intent with fresh betslip data if available
-      if (freshBetslipData && updateShareIntent) {
-        updateShareIntent({ betslip: freshBetslipData });
-      }
-
       const attempt = async (forceRefetch: boolean) => {
-        // CRITICAL: Use the nonce from mintData if provided (from auction bid)
+        // Use the nonce from mintData if provided (from auction bid)
         // The bidder signed over this specific nonce - we must not change it
-        // Only fetch from contract if mintData doesn't have a nonce
         let nonceValue: bigint | undefined;
 
         if (mintData.makerNonce !== undefined) {
-          // Use the nonce from auction - this is what the bidder signed over
           nonceValue =
             typeof mintData.makerNonce === 'string'
               ? BigInt(mintData.makerNonce)
               : BigInt(mintData.makerNonce);
         } else if (forceRefetch) {
-          // No nonce in mintData, fetch fresh from contract
-          const refetchResult = await refetchMakerNonce();
-          nonceValue = refetchResult.data as bigint | undefined;
+          const result = await refetchMakerNonce();
+          nonceValue = result.data as bigint | undefined;
         } else {
-          // Use cached contract nonce
           nonceValue = makerNonce as bigint | undefined;
         }
 
+        // Verify on-chain nonce via wagmi refetch (bypasses stale cache)
+        const { data: freshMakerNonce } = await refetchMakerNonce();
+
         if (nonceValue === undefined) {
           throw new Error('Unable to determine maker nonce');
+        }
+
+        // Verify on-chain nonce matches what we're sending
+        if (freshMakerNonce !== undefined && nonceValue !== freshMakerNonce) {
+          throw new Error('Your nonce has changed. Please request new bids.');
         }
 
         const filled: MintPredictionRequestData = {
@@ -319,19 +272,64 @@ export function useSubmitPosition({
           makerNonce: nonceValue,
         };
 
-        // Verify the maker address matches expected smart account when session is active
+        // Verify the maker address matches the current effective address
         // The takerSignature was signed by the bidder referencing the maker address
-        if (
-          isSessionActive &&
-          filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()
-        ) {
+        // This check must be unconditional to catch session state changes between auction start and submission
+        if (filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
           throw new Error(
             'Address mismatch: the auction was started with a different account. ' +
               'Please request new bids.'
           );
         }
 
-        const calls = prepareCalls(filled);
+        // Fetch fresh allowance via wagmi refetch (bypasses stale cache)
+        let freshAllowance: bigint | undefined;
+        try {
+          const { data } = await refetchAllowance();
+          freshAllowance = data;
+        } catch {
+          freshAllowance = 0n;
+        }
+
+        // Safety net: Check bidder's (taker's) allowance and balance
+        // This catches invalid bids that slipped through validation
+        const takerAddress = filled.taker;
+        const takerCollateralWei = BigInt(filled.takerCollateral);
+        if (takerAddress && collateralTokenAddress && predictionMarketAddress) {
+          try {
+            const [takerAllowance, takerBalance] = await Promise.all([
+              publicClient.readContract({
+                address: collateralTokenAddress,
+                abi: erc20Abi,
+                functionName: 'allowance',
+                args: [takerAddress, predictionMarketAddress],
+              }),
+              publicClient.readContract({
+                address: collateralTokenAddress,
+                abi: erc20Abi,
+                functionName: 'balanceOf',
+                args: [takerAddress],
+              }),
+            ]);
+            const takerHasSufficientAllowance =
+              takerAllowance >= takerCollateralWei;
+            const takerHasSufficientBalance =
+              takerBalance >= takerCollateralWei;
+            if (!takerHasSufficientAllowance || !takerHasSufficientBalance) {
+              throw new Error(
+                'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
+              );
+            }
+          } catch (e) {
+            // Re-throw our own error, only catch RPC failures
+            if (e instanceof Error && e.message.includes('market maker')) {
+              throw e;
+            }
+            // Silently continue on RPC failures
+          }
+        }
+
+        const calls = prepareCalls(filled, freshAllowance);
         if (calls.length === 0) {
           throw new Error('No valid calls to execute');
         }
@@ -389,15 +387,16 @@ export function useSubmitPosition({
       enabled,
       address,
       effectiveAddress,
-      isSessionActive,
       chainId,
       prepareCalls,
       sendCalls,
       makerNonce,
       refetchMakerNonce,
+      refetchAllowance,
+      publicClient,
       isProcessing,
-      betslipData,
-      updateShareIntent,
+      collateralTokenAddress,
+      predictionMarketAddress,
     ]
   );
 

@@ -18,9 +18,16 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { DollarSign } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useEffect, useMemo, type CSSProperties } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+} from 'react';
 import { useForm, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -46,8 +53,9 @@ import { CreatePositionFormContent } from '~/components/markets/CreatePositionFo
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { useUserParlays } from '~/hooks/graphql/useUserParlays';
-import { useAuctionStart } from '~/lib/auction/useAuctionStart';
+import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import { validateBids } from '~/lib/auction/validateBids';
+import { useValidatedBids } from '~/lib/auction/useValidatedBids';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
@@ -90,6 +98,21 @@ const CreatePositionForm = ({
   const { isSessionActive, smartAccountAddress } = useSession();
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
+
+  // Share dialog state - shown immediately when trade is submitted
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  // Store the currently displayed best bid from PositionForm for submission
+  const [displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(
+    null
+  );
+  const [shareDialogData, setShareDialogData] = useState<{
+    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    wager: string;
+    payout?: string;
+    symbol: string;
+    lastNftId?: string;
+  } | null>(null);
+
   const parlayChainId = useMemo(
     () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
     [chainId, createPositionEntries]
@@ -101,17 +124,15 @@ const CreatePositionForm = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } = useUserParlays(
-    {
-      address: effectiveAddress
-        ? String(effectiveAddress).toLowerCase()
-        : undefined,
-      chainId: parlayChainId,
-      take: 1, // Only need the latest one
-      orderBy: 'mintedAt',
-      orderDirection: 'desc',
-    }
-  );
+  const { data: userPositions } = useUserParlays({
+    address: effectiveAddress
+      ? String(effectiveAddress).toLowerCase()
+      : undefined,
+    chainId: parlayChainId,
+    take: 1, // Only need the latest one
+    orderBy: 'mintedAt',
+    orderDirection: 'desc',
+  });
 
   const {
     auctionId,
@@ -124,8 +145,8 @@ const CreatePositionForm = ({
   // PredictionMarket address via centralized mapping (use parlayChainId)
   const PREDICTION_MARKET_ADDRESS = predictionMarket[parlayChainId]?.address;
 
-  // Mark bids as "valid" if they have a non-zero maker address
-  const bids = useMemo(() => validateBids(rawBids), [rawBids]);
+  // First pass: basic sync validation (non-zero maker address)
+  const basicValidatedBids = useMemo(() => validateBids(rawBids), [rawBids]);
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
@@ -163,6 +184,16 @@ const CreatePositionForm = ({
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
+
+  // Second pass: async on-chain validation (check bidder allowance/balance)
+  // This filters out bids from market makers who don't have sufficient funds
+  const bids = useValidatedBids({
+    bids: basicValidatedBids,
+    chainId: parlayChainId,
+    collateralTokenAddress: collateralToken,
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    enabled: !!collateralToken && !!PREDICTION_MARKET_ADDRESS,
+  });
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = useMemo(() => {
@@ -524,134 +555,8 @@ const CreatePositionForm = ({
   //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
   // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
-  // Capture betslip data for share intent
-  // This function will be called right before submission to get fresh lastNftId
-  const getBetslipData = useCallback(async () => {
-    // Refetch positions to ensure we have the latest data before computing lastNftId
-    // This is critical for multiple bid submissions to get the correct lastNftId
-    let freshPositions = userPositions;
-    try {
-      const result = await refetchUserPositions();
-      freshPositions = result.data || userPositions;
-      console.log('[CreatePositionForm] Refetched positions for lastNftId', {
-        previousCount: userPositions?.length || 0,
-        freshCount: freshPositions?.length || 0,
-      });
-    } catch (error) {
-      console.error(
-        '[CreatePositionForm] Error refetching positions, using cached data',
-        error
-      );
-      // Fall back to cached data if refetch fails
-    }
-    const wagerAmount =
-      formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
-
-    // Build legs from selections
-    const legs = selections.map((s) => ({
-      question: s.question,
-      choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
-    }));
-
-    // Format wager
-    const wager =
-      typeof wagerAmount === 'string' ? wagerAmount : String(wagerAmount);
-
-    // Calculate actual payout from best bid if available
-    let payout: string | undefined = undefined;
-    if (bids && bids.length > 0 && collateralDecimals) {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter(
-        (b) => b.makerDeadline > nowSec && b.validationStatus === 'valid'
-      );
-
-      if (validBids.length > 0) {
-        // Find best bid (highest makerWager = best payout)
-        const bestBid = validBids.reduce((best, cur) => {
-          try {
-            return BigInt(cur.makerWager) > BigInt(best.makerWager)
-              ? cur
-              : best;
-          } catch {
-            return best;
-          }
-        }, validBids[0]);
-
-        // Calculate total payout: userWager + bidMakerWager
-        try {
-          const userWagerWei = parseUnits(wager, collateralDecimals);
-          const bidMakerWagerWei = BigInt(bestBid.makerWager);
-          const totalPayoutWei = userWagerWei + bidMakerWagerWei;
-          const totalPayoutHuman = formatUnits(
-            totalPayoutWei,
-            collateralDecimals
-          );
-          payout = parseFloat(totalPayoutHuman).toFixed(2);
-        } catch (_e) {
-          // Error calculating payout from bid
-        }
-      }
-    }
-
-    // Fallback to limitAmount if no bid available
-    if (!payout) {
-      const limitAmount = formMethods.getValues('limitAmount');
-      if (limitAmount !== undefined) {
-        payout =
-          typeof limitAmount === 'string' ? limitAmount : String(limitAmount);
-      }
-    }
-
-    // Get latest NFT ID from fresh positions for tracking
-    let lastNftId: string | undefined = undefined;
-    if (freshPositions && freshPositions.length > 0) {
-      // Get the highest NFT ID from current positions
-      const latestPosition = freshPositions.reduce((latest, current) => {
-        try {
-          const latestNftId = BigInt(latest.predictorNftTokenId || '0');
-          const currentNftId = BigInt(current.predictorNftTokenId || '0');
-          return currentNftId > latestNftId ? current : latest;
-        } catch {
-          return latest;
-        }
-      }, freshPositions[0]);
-
-      if (latestPosition && latestPosition.predictorNftTokenId) {
-        lastNftId = latestPosition.predictorNftTokenId;
-        console.log(
-          '[CreatePositionForm] Computed lastNftId from fresh positions',
-          {
-            lastNftId,
-            positionId: latestPosition.id,
-            totalPositions: freshPositions.length,
-          }
-        );
-      }
-    } else {
-      console.log(
-        '[CreatePositionForm] No positions available for lastNftId computation'
-      );
-    }
-
-    return {
-      legs,
-      wager,
-      payout,
-      symbol: collateralSymbol || 'testUSDe',
-      lastNftId,
-    };
-  }, [
-    selections,
-    formMethods,
-    collateralSymbol,
-    bids,
-    collateralDecimals,
-    userPositions,
-    refetchUserPositions,
-  ]);
-
   // Use the parlay submission hook
-  // Note: betslipData is passed as a function to ensure lastNftId is captured right before submission
+  // Note: Share dialog is handled locally in this component
   const {
     submitPosition,
     isSubmitting: isPositionSubmitting,
@@ -662,7 +567,6 @@ const CreatePositionForm = ({
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
-    betslipData: getBetslipData, // Pass function instead of calling it
     onSuccess: () => {
       // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();
@@ -688,40 +592,107 @@ const CreatePositionForm = ({
       return;
     }
 
-    // Find the best bid and submit via PredictionMarket.mint
+    // Use the bid that was actually displayed to the user
+    if (!displayedBestBid) {
+      toast({
+        title: 'No bid available',
+        description: 'Please wait for bids to arrive.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Validate the displayed bid is still usable
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    if (displayedBestBid.makerDeadline <= nowSec) {
+      toast({
+        title: 'Bid expired',
+        description: 'The bid has expired. Please wait for new bids.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+
+    if (displayedBestBid.validationStatus !== 'valid') {
+      toast({
+        title: 'Bid no longer valid',
+        description:
+          'The market maker bid is no longer valid. Please wait for new bids.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Submit exactly what the user saw
     try {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const validBids = bids.filter(
-        (b) => b.makerDeadline > nowSec && b.validationStatus === 'valid'
-      );
-
-      if (validBids.length === 0) {
-        toast({
-          title: 'No valid bids',
-          description:
-            'No valid bids available. Please wait for new bids or try again.',
-          variant: 'destructive',
-          duration: 5000,
-        });
-        return;
-      }
-
-      // Pick highest makerWager (best payout for maker)
-      const bestBid = validBids.reduce((best, cur) => {
-        try {
-          return BigInt(cur.makerWager) > BigInt(best.makerWager) ? cur : best;
-        } catch {
-          return best;
-        }
-      }, validBids[0]);
-
-      if (bestBid && address && buildMintRequestDataFromBid) {
+      if (address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
-          selectedBid: bestBid,
-          // Optional refCode left empty (0x00..00)
+          selectedBid: displayedBestBid,
         });
 
         if (mintReq) {
+          // Build share dialog data using displayedBestBid
+          const wagerAmount =
+            formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+          const limitAmount = formMethods.getValues('limitAmount');
+
+          // Calculate payout from displayed bid
+          let payout: string | undefined = undefined;
+          if (collateralDecimals) {
+            try {
+              const userWagerWei = parseUnits(wagerAmount, collateralDecimals);
+              const bidMakerWagerWei = BigInt(displayedBestBid.makerWager);
+              const totalPayoutWei = userWagerWei + bidMakerWagerWei;
+              const totalPayoutHuman = formatUnits(
+                totalPayoutWei,
+                collateralDecimals
+              );
+              payout = parseFloat(totalPayoutHuman).toFixed(2);
+            } catch {
+              payout =
+                limitAmount !== undefined ? String(limitAmount) : undefined;
+            }
+          }
+
+          // Get lastNftId from current positions (sync)
+          let lastNftId: string | undefined = undefined;
+          if (userPositions && userPositions.length > 0) {
+            const latestPosition = userPositions.reduce((latest, current) => {
+              try {
+                const latestNftId = BigInt(latest.predictorNftTokenId || '0');
+                const currentNftId = BigInt(current.predictorNftTokenId || '0');
+                return currentNftId > latestNftId ? current : latest;
+              } catch {
+                return latest;
+              }
+            }, userPositions[0]);
+            if (latestPosition?.predictorNftTokenId) {
+              lastNftId = latestPosition.predictorNftTokenId;
+            }
+          }
+
+          const dialogData = {
+            legs: selections.map((s) => ({
+              question: s.question,
+              choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
+            })),
+            wager: wagerAmount,
+            payout,
+            symbol: collateralSymbol || 'testUSDe',
+            lastNftId,
+          };
+
+          // Open share dialog immediately with betslip data
+          setShareDialogData(dialogData);
+          setShowShareDialog(true);
+
+          // Close the popover/drawer
+          setIsPopoverOpen(false);
+
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);
           return;
@@ -744,6 +715,53 @@ const CreatePositionForm = ({
       });
     }
   };
+
+  // Build OG image URL from betslip data for the share dialog
+  const shareDialogImageSrc = useMemo(() => {
+    if (!shareDialogData || !effectiveAddress) return null;
+
+    const qp = new URLSearchParams();
+    qp.set('addr', String(effectiveAddress).toLowerCase());
+
+    // Add legs
+    if (shareDialogData.legs && shareDialogData.legs.length > 0) {
+      shareDialogData.legs.forEach((leg) => {
+        if (leg.question) {
+          qp.append('leg', `${leg.question}|${leg.choice}`);
+        }
+      });
+    }
+
+    // Add wager
+    if (shareDialogData.wager) {
+      qp.set('wager', shareDialogData.wager);
+    }
+
+    // Add payout
+    if (shareDialogData.payout) {
+      qp.set('payout', shareDialogData.payout);
+    }
+
+    // Add symbol
+    if (shareDialogData.symbol) {
+      qp.set('symbol', shareDialogData.symbol);
+    }
+
+    return `/og/position?${qp.toString()}`;
+  }, [shareDialogData, effectiveAddress]);
+
+  // Handle share dialog close - clear form and stay on page
+  const handleShareDialogClose = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setShowShareDialog(false);
+        setShareDialogData(null);
+        clearPositionForm();
+        clearSelections();
+      }
+    },
+    [clearPositionForm, clearSelections]
+  );
 
   const contentProps = {
     isPositionMode,
@@ -780,11 +798,26 @@ const CreatePositionForm = ({
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
+    onBestBidChange: setDisplayedBestBid,
   };
+
+  // Share dialog component - rendered independently of layout
+  const shareDialog = showShareDialog && shareDialogImageSrc && (
+    <OgShareDialogBase
+      imageSrc={shareDialogImageSrc}
+      open={showShareDialog}
+      onOpenChange={handleShareDialogClose}
+      title="Trade Submitted"
+      trackPosition={true}
+      expectedLegs={shareDialogData?.legs}
+      lastNftId={shareDialogData?.lastNftId}
+    />
+  );
 
   if (isCompact) {
     return (
       <>
+        {shareDialog}
         {/* Mobile Bet Slip Button (floating bottom-center, circular, icon-only) */}
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
@@ -825,46 +858,49 @@ const CreatePositionForm = ({
       : createPositionEntries.length > 0;
 
     return (
-      <div className="w-full h-full flex flex-col position-form">
-        <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
-          <h2 className="sc-heading text-foreground">Your Position</h2>
-          <Button
-            variant="ghost"
-            size="xs"
-            className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-            onClick={() => {
-              if (isPositionMode) {
-                clearSelections();
-                onClearPythPredictions?.();
-              } else {
-                clearPositionForm();
-              }
-            }}
-            title="Reset"
-          >
-            CLEAR
-          </Button>
-        </div>
-        <div
-          className={`${createPositionEntries.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
-        >
+      <>
+        {shareDialog}
+        <div className="w-full h-full flex flex-col position-form">
+          <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
+            <h2 className="sc-heading text-foreground">Your Position</h2>
+            <Button
+              variant="ghost"
+              size="xs"
+              className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+              onClick={() => {
+                if (isPositionMode) {
+                  clearSelections();
+                  onClearPythPredictions?.();
+                } else {
+                  clearPositionForm();
+                }
+              }}
+              title="Reset"
+            >
+              CLEAR
+            </Button>
+          </div>
           <div
-            className="relative bg-brand-black border border-brand-white/20 rounded-b-md shadow-sm h-full flex flex-col min-h-0 overflow-hidden position-form"
-            style={
-              {
-                '--position-form-gradient': categoryGradient,
-                '--position-form-gradient-stops': categoryGradientStops,
-              } as CSSProperties
-            }
+            className={`${createPositionEntries.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
           >
             <div
-              className="hidden lg:block absolute top-0 left-0 right-0 h-px"
-              style={{ background: categoryGradient }}
-            />
-            <CreatePositionFormContent {...contentProps} />
+              className="relative bg-brand-black border border-brand-white/20 rounded-b-md shadow-sm h-full flex flex-col min-h-0 overflow-hidden position-form"
+              style={
+                {
+                  '--position-form-gradient': categoryGradient,
+                  '--position-form-gradient-stops': categoryGradientStops,
+                } as CSSProperties
+              }
+            >
+              <div
+                className="hidden lg:block absolute top-0 left-0 right-0 h-px"
+                style={{ background: categoryGradient }}
+              />
+              <CreatePositionFormContent {...contentProps} />
+            </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -874,6 +910,7 @@ const CreatePositionForm = ({
 
   return (
     <>
+      {shareDialog}
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
