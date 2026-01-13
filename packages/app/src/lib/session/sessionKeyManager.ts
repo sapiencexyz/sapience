@@ -70,39 +70,42 @@ const EAS_ABI = parseAbi([
 const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 
-// Get bundler/paymaster URLs from environment
-// ZeroDev v3 API format: https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}
-const getZeroDevUrls = (
-  chainId: number
-): { bundlerUrl: string; paymasterUrl: string } | null => {
+/**
+ * Get ZeroDev bundler/paymaster URLs for a chain.
+ * ZeroDev v3 API format: https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}
+ */
+function getZeroDevUrls(chainId: number): {
+  bundlerUrl: string;
+  paymasterUrl: string;
+} {
   const projectId = process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID;
   if (!projectId) {
     throw new Error('NEXT_PUBLIC_ZERODEV_PROJECT_ID is not set');
   }
 
-  // ZeroDev v3 uses a unified RPC endpoint for both bundler and paymaster
   const baseUrl = `https://rpc.zerodev.app/api/v3/${projectId}/chain/${chainId}`;
 
-  if (chainId === ethereal.id) {
-    return {
-      bundlerUrl:
-        process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL || baseUrl,
-      paymasterUrl:
-        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL || baseUrl,
-    };
+  const envUrls: Record<number, { bundler?: string; paymaster?: string }> = {
+    [ethereal.id]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL,
+      paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL,
+    },
+    [arbitrum.id]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM,
+      paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM,
+    },
+  };
+
+  const chainUrls = envUrls[chainId];
+  if (!chainUrls) {
+    throw new Error(`Unsupported chain ID: ${chainId}`);
   }
 
-  if (chainId === arbitrum.id) {
-    return {
-      bundlerUrl:
-        process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM || baseUrl,
-      paymasterUrl:
-        process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM || baseUrl,
-    };
-  }
-
-  throw new Error(`Unsupported chain ID: ${chainId}`);
-};
+  return {
+    bundlerUrl: chainUrls.bundler || baseUrl,
+    paymasterUrl: chainUrls.paymaster || baseUrl,
+  };
+}
 
 // Session configuration
 export interface SessionConfig {
@@ -309,11 +312,8 @@ export async function createSession(
   // Import serialization function
   const { serializePermissionAccount } = await import('@zerodev/permissions');
 
-  // Check Ethereal bundler/paymaster URLs (required)
-  const etherealUrls = getZeroDevUrls(ethereal.id);
-  if (!etherealUrls) {
-    throw new Error('Ethereal bundler/paymaster URLs are required');
-  }
+  // Validate Ethereal bundler/paymaster URLs (will throw if not configured)
+  getZeroDevUrls(ethereal.id);
 
   let etherealEnableTypedData: EnableTypedData | undefined;
 
@@ -479,11 +479,8 @@ export async function createArbitrumSession(
   // Get Arbitrum public client
   const { arbitrumPublicClient } = getPublicClients();
 
-  // Check Arbitrum bundler/paymaster URLs
-  const arbitrumUrls = getZeroDevUrls(arbitrum.id);
-  if (!arbitrumUrls) {
-    throw new Error('Arbitrum bundler/paymaster URLs are required');
-  }
+  // Validate Arbitrum bundler/paymaster URLs (will throw if not configured)
+  getZeroDevUrls(arbitrum.id);
 
   const arbitrumCallPolicy = toCallPolicy({
     policyVersion: CallPolicyVersion.V0_0_4,
@@ -610,10 +607,7 @@ export async function restoreSession(
   });
 
   // Restore Ethereal session (required)
-  const etherealUrls = getZeroDevUrls(ethereal.id);
-  if (!etherealUrls) {
-    throw new Error('Ethereal bundler/paymaster URLs are required');
-  }
+  getZeroDevUrls(ethereal.id); // Will throw if not configured
   const etherealAccount = await deserializePermissionAccount(
     etherealPublicClient,
     ENTRY_POINT,
@@ -627,18 +621,15 @@ export async function restoreSession(
   // Restore Arbitrum session (optional - may not exist yet)
   let arbitrumClient: KernelAccountClient<any, any, any> | null = null;
   if (serialized.arbitrumApproval) {
-    const arbitrumUrls = getZeroDevUrls(arbitrum.id);
-    if (arbitrumUrls) {
-      const arbitrumAccount = await deserializePermissionAccount(
-        arbitrumPublicClient,
-        ENTRY_POINT,
-        KERNEL_VERSION,
-        serialized.arbitrumApproval,
-        sessionKeySigner
-      );
-      arbitrumClient = createChainClient(arbitrum, arbitrumAccount);
-      console.debug('[SessionKeyManager] Arbitrum session restored');
-    }
+    const arbitrumAccount = await deserializePermissionAccount(
+      arbitrumPublicClient,
+      ENTRY_POINT,
+      KERNEL_VERSION,
+      serialized.arbitrumApproval,
+      sessionKeySigner
+    );
+    arbitrumClient = createChainClient(arbitrum, arbitrumAccount);
+    console.debug('[SessionKeyManager] Arbitrum session restored');
   } else {
     console.debug(
       '[SessionKeyManager] No Arbitrum session to restore (will be created lazily)'
@@ -662,13 +653,7 @@ function createChainClient(
   chain: Chain,
   account: Awaited<ReturnType<typeof createKernelAccount>>
 ): KernelAccountClient<any, any, any> {
-  const urls = getZeroDevUrls(chain.id);
-  if (!urls) {
-    throw new Error(
-      `No bundler/paymaster URLs configured for chain ${chain.id}`
-    );
-  }
-  const { bundlerUrl, paymasterUrl } = urls;
+  const { bundlerUrl, paymasterUrl } = getZeroDevUrls(chain.id);
 
   console.debug(
     `[SessionKeyManager] Creating client for chain ${chain.id} (${chain.name})`

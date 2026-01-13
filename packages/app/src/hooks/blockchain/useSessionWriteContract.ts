@@ -16,28 +16,36 @@ interface WriteContractParams {
 }
 
 interface UseSessionWriteContractResult {
-  /**
-   * Execute a contract write via session key if active, otherwise returns null.
-   * Returns the transaction hash on success.
-   */
   writeContractViaSession: (
     params: WriteContractParams
   ) => Promise<Hash | null>;
-
-  /**
-   * Check if a session is active and can handle the given chain.
-   */
   canUseSession: (chainId: number) => boolean;
-
-  /**
-   * Whether a transaction is currently pending.
-   */
   isPending: boolean;
-
-  /**
-   * Any error from the last transaction attempt.
-   */
   error: Error | null;
+}
+
+interface SendCallsParams {
+  chainId: number;
+  calls: Array<{ to: `0x${string}`; data: `0x${string}`; value?: bigint }>;
+}
+
+interface UseSessionSendCallsResult {
+  sendCallsViaSession: (params: SendCallsParams) => Promise<Hash | null>;
+  canUseSession: (chainId: number) => boolean;
+  isPending: boolean;
+  error: Error | null;
+}
+
+/**
+ * Get the session client for a given chain ID.
+ */
+function getClientForChain(
+  chainId: number,
+  chainClients: { ethereal: unknown; arbitrum: unknown }
+) {
+  if (chainId === ethereal.id) return chainClients.ethereal;
+  if (chainId === arbitrum.id) return chainClients.arbitrum;
+  return null;
 }
 
 /**
@@ -55,14 +63,9 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
   const canUseSession = useCallback(
     (chainId: number): boolean => {
       if (!isSessionActive || !sessionConfig) return false;
-
-      // Check if session has expired
       if (Date.now() > sessionConfig.expiresAt) return false;
-
-      // Check if we have a client for this chain
       if (chainId === ethereal.id && chainClients.ethereal) return true;
       if (chainId === arbitrum.id && chainClients.arbitrum) return true;
-
       return false;
     },
     [isSessionActive, sessionConfig, chainClients]
@@ -72,19 +75,11 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
     async (params: WriteContractParams): Promise<Hash | null> => {
       const { chainId, address, abi, functionName, args, value } = params;
 
-      // Check if we can use session for this chain
       if (!canUseSession(chainId)) {
         return null;
       }
 
-      // Get the appropriate client
-      const client =
-        chainId === ethereal.id
-          ? chainClients.ethereal
-          : chainId === arbitrum.id
-            ? chainClients.arbitrum
-            : null;
-
+      const client = getClientForChain(chainId, chainClients) as any;
       if (!client) {
         return null;
       }
@@ -93,38 +88,27 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
       setError(null);
 
       try {
-        // Encode the function call
         const data = encodeFunctionData({
           abi,
           functionName,
           args: args as any,
         });
 
-        // Create the call data for the UserOperation
         const callData = await client.account.encodeCalls([
-          {
-            to: address,
-            data,
-            value: value ?? BigInt(0),
-          },
+          { to: address, data, value: value ?? BigInt(0) },
         ]);
 
-        // Send the UserOperation
-        const userOpHash = await client.sendUserOperation({
-          callData,
-        });
-
-        // Wait for the transaction receipt
+        const userOpHash = await client.sendUserOperation({ callData });
         const receipt = await client.waitForUserOperationReceipt({
           hash: userOpHash,
         });
 
         return receipt.receipt.transactionHash;
       } catch (err) {
-        const error =
+        const sessionError =
           err instanceof Error ? err : new Error('Transaction failed');
-        setError(error);
-        throw error;
+        setError(sessionError);
+        throw sessionError;
       } finally {
         setIsPending(false);
       }
@@ -143,7 +127,7 @@ export function useSessionWriteContract(): UseSessionWriteContractResult {
 /**
  * Send multiple calls in a batch via session key.
  */
-export function useSessionSendCalls() {
+export function useSessionSendCalls(): UseSessionSendCallsResult {
   const { isSessionActive, chainClients, sessionConfig } = useSession();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -160,23 +144,14 @@ export function useSessionSendCalls() {
   );
 
   const sendCallsViaSession = useCallback(
-    async (params: {
-      chainId: number;
-      calls: Array<{ to: `0x${string}`; data: `0x${string}`; value?: bigint }>;
-    }): Promise<Hash | null> => {
+    async (params: SendCallsParams): Promise<Hash | null> => {
       const { chainId, calls } = params;
 
       if (!canUseSession(chainId)) {
         return null;
       }
 
-      const client =
-        chainId === ethereal.id
-          ? chainClients.ethereal
-          : chainId === arbitrum.id
-            ? chainClients.arbitrum
-            : null;
-
+      const client = getClientForChain(chainId, chainClients) as any;
       if (!client) {
         return null;
       }
@@ -185,31 +160,24 @@ export function useSessionSendCalls() {
       setError(null);
 
       try {
-        // Encode all calls
-        const callData = await client.account.encodeCalls(
-          calls.map((call) => ({
-            to: call.to,
-            data: call.data,
-            value: call.value ?? BigInt(0),
-          }))
-        );
+        const formattedCalls = calls.map((call) => ({
+          to: call.to,
+          data: call.data,
+          value: call.value ?? BigInt(0),
+        }));
 
-        // Send the UserOperation
-        const userOpHash = await client.sendUserOperation({
-          callData,
-        });
-
-        // Wait for the transaction receipt
+        const callData = await client.account.encodeCalls(formattedCalls);
+        const userOpHash = await client.sendUserOperation({ callData });
         const receipt = await client.waitForUserOperationReceipt({
           hash: userOpHash,
         });
 
         return receipt.receipt.transactionHash;
       } catch (err) {
-        const error =
+        const sessionError =
           err instanceof Error ? err : new Error('Transaction failed');
-        setError(error);
-        throw error;
+        setError(sessionError);
+        throw sessionError;
       } finally {
         setIsPending(false);
       }

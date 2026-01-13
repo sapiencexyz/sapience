@@ -27,8 +27,10 @@ import {
   type SerializedSession,
 } from '~/lib/session/sessionKeyManager';
 
-// Helper to strip private key and ABIs from approval for safe transport
-// ABIs are embedded in permission policies but not needed for relayer signature verification
+/**
+ * Strip private key and ABIs from approval for safe transport.
+ * ABIs are embedded in permission policies but not needed for relayer signature verification.
+ */
 function extractApprovalForTransport(
   serializedApproval: string
 ): string | null {
@@ -36,34 +38,10 @@ function extractApprovalForTransport(
     const jsonString = atob(serializedApproval);
     const params = JSON.parse(jsonString);
 
-    // Strip ABIs from permission policies (not needed for relayer verification)
-    // ABIs bloat the payload significantly and cause "message too large" errors
-    let strippedPermissionParams = params.permissionParams;
-    if (params.permissionParams?.policies) {
-      strippedPermissionParams = {
-        ...params.permissionParams,
-        policies: params.permissionParams.policies.map((policy: any) => {
-          if (policy.policyParams?.permissions) {
-            return {
-              ...policy,
-              policyParams: {
-                ...policy.policyParams,
-                permissions: policy.policyParams.permissions.map(
-                  (perm: any) => {
-                    // Remove abi field from each permission
-                    const { abi: _abi, ...permWithoutAbi } = perm;
-                    return permWithoutAbi;
-                  }
-                ),
-              },
-            };
-          }
-          return policy;
-        }),
-      };
-    }
+    const strippedPermissionParams = stripAbisFromPolicies(
+      params.permissionParams
+    );
 
-    // Remove the private key and ABIs before transport
     const safeParams = {
       enableSignature: params.enableSignature,
       accountParams: params.accountParams,
@@ -72,14 +50,37 @@ function extractApprovalForTransport(
       kernelVersion: params.kernelVersion,
       validatorData: params.validatorData,
       hookData: params.hookData,
-      // Explicitly exclude: privateKey, eip7702Auth
     };
 
-    const safeJsonString = JSON.stringify(safeParams);
-    return btoa(safeJsonString);
+    return btoa(JSON.stringify(safeParams));
   } catch {
     return null;
   }
+}
+
+function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
+  if (!permissionParams?.policies) {
+    return permissionParams;
+  }
+
+  return {
+    ...permissionParams,
+    policies: permissionParams.policies.map((policy: any) => {
+      if (!policy.policyParams?.permissions) {
+        return policy;
+      }
+      return {
+        ...policy,
+        policyParams: {
+          ...policy.policyParams,
+          permissions: policy.policyParams.permissions.map((perm: any) => {
+            const { abi: _abi, ...permWithoutAbi } = perm;
+            return permWithoutAbi;
+          }),
+        },
+      };
+    }),
+  };
 }
 
 // Chain clients type
@@ -164,6 +165,25 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 
 interface SessionProviderProps {
   children: ReactNode;
+}
+
+/**
+ * Create a chain switcher function that handles unrecognized chain errors.
+ */
+function createChainSwitcher(
+  switchChainAsync: (args: { chainId: number }) => Promise<unknown>
+): (chainId: number) => Promise<void> {
+  return async (chainId: number) => {
+    try {
+      await switchChainAsync({ chainId });
+    } catch (error: unknown) {
+      const err = error as { code?: number; message?: string };
+      if (err?.code === 4902 || err?.message?.includes('Unrecognized chain')) {
+        throw new Error(`Please add chain ${chainId} to your wallet first`);
+      }
+      throw error;
+    }
+  };
 }
 
 export function SessionProvider({ children }: SessionProviderProps) {
@@ -412,37 +432,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionError(null);
 
       try {
-        // Get the Ethereum provider from the connected wallet's connector
-        // ZeroDev will use this provider to request signatures via EIP-1193
         const provider = await connector.getProvider();
-
-        // Create a chain switcher function for multi-chain session creation
-        const switchChain = async (chainId: number) => {
-          try {
-            await switchChainAsync({ chainId });
-          } catch (error: unknown) {
-            // If chain doesn't exist, try to add it first (for Ethereal)
-            const err = error as { code?: number; message?: string };
-            if (
-              err?.code === 4902 ||
-              err?.message?.includes('Unrecognized chain')
-            ) {
-              // Chain not added to wallet, need to add it
-              // For now, just re-throw - user needs to add the chain manually
-              throw new Error(
-                `Please add chain ${chainId} to your wallet first`
-              );
-            }
-            throw error;
-          }
-        };
-
-        // Create owner signer with the EIP-1193 provider and chain switcher
-        // ZeroDev's signerToEcdsaValidator accepts EIP-1193 providers directly
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
-          switchChain,
+          switchChain: createChainSwitcher(switchChainAsync),
         };
 
         const result = await createSession(ownerSigner, params.durationHours);
@@ -516,31 +510,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       try {
         console.debug('[SessionContext] Creating Arbitrum session lazily...');
 
-        // Get the Ethereum provider from the connected wallet's connector
         const provider = await connector.getProvider();
-
-        // Create a chain switcher function
-        const switchChain = async (chainId: number) => {
-          try {
-            await switchChainAsync({ chainId });
-          } catch (error: unknown) {
-            const err = error as { code?: number; message?: string };
-            if (
-              err?.code === 4902 ||
-              err?.message?.includes('Unrecognized chain')
-            ) {
-              throw new Error(
-                `Please add chain ${chainId} to your wallet first`
-              );
-            }
-            throw error;
-          }
-        };
-
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
-          switchChain,
+          switchChain: createChainSwitcher(switchChainAsync),
         };
 
         // Create Arbitrum session using existing session key

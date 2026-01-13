@@ -176,9 +176,8 @@ export function useSapienceWriteContract({
   const createPositionContext = useContext(CreatePositionContext);
 
   // Helper to check if we're on Ethereal chain
-  const isEtherealChain = useCallback((chainId: number) => {
-    return chainId === CHAIN_ID_ETHEREAL;
-  }, []);
+  const isEtherealChain = (chainId: number): boolean =>
+    chainId === CHAIN_ID_ETHEREAL;
 
   // Helper to create WUSDe wrap transaction for Ethereal chain
   const createWrapTransaction = useCallback((amount: bigint) => {
