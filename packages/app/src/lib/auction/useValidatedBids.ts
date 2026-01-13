@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { createPublicClient, http, erc20Abi } from 'viem';
+import { erc20Abi } from 'viem';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 
 interface UseValidatedBidsParams {
   bids: QuoteBid[];
@@ -33,17 +33,15 @@ export function useValidatedBids({
   const pendingValidationsRef = useRef<Set<string>>(new Set());
 
   // Memoized public client for third-party validation (market maker checks)
-  const publicClient = useMemo(() => {
-    const rpcUrl =
-      chainId === CHAIN_ID_ETHEREAL
-        ? 'https://rpc.ethereal.trade'
-        : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
-    return createPublicClient({
-      transport: http(rpcUrl),
-    });
-  }, [chainId]);
+  const publicClient = useMemo(
+    () => getPublicClientForChainId(chainId),
+    [chainId]
+  );
 
   useEffect(() => {
+    // Track whether this effect has been superseded by a newer one
+    let cancelled = false;
+
     if (!enabled || !collateralTokenAddress || !predictionMarketAddress) {
       // Pass through bids as-is if validation is disabled or missing config
       setValidatedBids(bids);
@@ -126,17 +124,6 @@ export function useValidatedBids({
             });
             pendingValidationsRef.current.delete(cacheKey);
 
-            if (!isValid) {
-              console.debug('[useValidatedBids] Bid marked invalid:', {
-                maker: takerAddress,
-                takerAllowance: takerAllowance.toString(),
-                takerBalance: takerBalance.toString(),
-                takerCollateralRequired: takerCollateralRequired.toString(),
-                hasSufficientAllowance,
-                hasSufficientBalance,
-              });
-            }
-
             return {
               ...bid,
               validationStatus: isValid
@@ -144,9 +131,8 @@ export function useValidatedBids({
                 : ('invalid' as const),
               validationError: errorMessage,
             };
-          } catch (err) {
+          } catch {
             pendingValidationsRef.current.delete(cacheKey);
-            console.debug('[useValidatedBids] Failed to validate bid:', err);
             // On RPC error, mark as pending (don't reject bid due to RPC issues)
             return {
               ...bid,
@@ -157,10 +143,18 @@ export function useValidatedBids({
         })
       );
 
-      setValidatedBids(results);
+      // Only update state if this effect hasn't been superseded
+      if (!cancelled) {
+        setValidatedBids(results);
+      }
     };
 
     validateBidsAsync();
+
+    // Cleanup: mark this effect as stale if dependencies change
+    return () => {
+      cancelled = true;
+    };
   }, [
     bids,
     chainId,

@@ -1,20 +1,13 @@
 import { useCallback, useState, useMemo } from 'react';
-import {
-  encodeFunctionData,
-  erc20Abi,
-  parseAbi,
-  createPublicClient,
-  http,
-} from 'viem';
+import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 
 import { predictionMarketAbi } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
-
-// Ethereal chain configuration
-const CHAIN_ID_ETHEREAL = 5064014;
+import { getPublicClientForChainId } from '~/lib/utils/util';
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 // WUSDe ABI for wrapping
@@ -103,15 +96,10 @@ export function useSubmitPosition({
 
   // Memoized public client for third-party validation (market maker checks)
   // This is used to validate external addresses, not the user's own state
-  const publicClient = useMemo(() => {
-    const rpcUrl =
-      chainId === CHAIN_ID_ETHEREAL
-        ? 'https://rpc.ethereal.trade'
-        : `https://arb-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_KEY}`;
-    return createPublicClient({
-      transport: http(rpcUrl),
-    });
-  }, [chainId]);
+  const publicClient = useMemo(
+    () => getPublicClientForChainId(chainId),
+    [chainId]
+  );
 
   // Use unified write/sendCalls wrapper (handles chain validation and tx monitoring)
   // Note: Share dialog is handled locally in CreatePositionForm, no redirect needed
@@ -175,16 +163,6 @@ export function useSubmitPosition({
       const needsApproval =
         effectiveAllowance === undefined ||
         effectiveAllowance < makerCollateralWei;
-
-      console.debug('[useSubmitPosition] Approval check:', {
-        freshAllowance: freshAllowance?.toString(),
-        cachedAllowance: currentAllowance?.toString(),
-        effectiveAllowance: effectiveAllowance?.toString(),
-        makerCollateralWei: makerCollateralWei.toString(),
-        needsApproval,
-        collateralTokenAddress,
-        predictionMarketAddress,
-      });
 
       // Add approval call if needed (batched with mint)
       if (needsApproval) {
@@ -309,15 +287,7 @@ export function useSubmitPosition({
         try {
           const { data } = await refetchAllowance();
           freshAllowance = data;
-          console.debug(
-            '[useSubmitPosition] Fresh allowance from refetch:',
-            freshAllowance?.toString()
-          );
-        } catch (e) {
-          console.debug(
-            '[useSubmitPosition] Failed to fetch fresh allowance:',
-            e
-          );
+        } catch {
           freshAllowance = 0n;
         }
 
@@ -345,25 +315,7 @@ export function useSubmitPosition({
               takerAllowance >= takerCollateralWei;
             const takerHasSufficientBalance =
               takerBalance >= takerCollateralWei;
-            console.debug('[useSubmitPosition] Bidder (taker) status:', {
-              takerAddress,
-              takerAllowance: takerAllowance.toString(),
-              takerBalance: takerBalance.toString(),
-              takerCollateralRequired: takerCollateralWei.toString(),
-              takerHasSufficientAllowance,
-              takerHasSufficientBalance,
-            });
             if (!takerHasSufficientAllowance || !takerHasSufficientBalance) {
-              if (!takerHasSufficientAllowance) {
-                console.error(
-                  '[useSubmitPosition] BIDDER HAS INSUFFICIENT ALLOWANCE - this will cause 0x13be252b error'
-                );
-              }
-              if (!takerHasSufficientBalance) {
-                console.error(
-                  '[useSubmitPosition] BIDDER HAS INSUFFICIENT BALANCE'
-                );
-              }
               throw new Error(
                 'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
               );
@@ -373,10 +325,7 @@ export function useSubmitPosition({
             if (e instanceof Error && e.message.includes('market maker')) {
               throw e;
             }
-            console.debug(
-              '[useSubmitPosition] Failed to check bidder status:',
-              e
-            );
+            // Silently continue on RPC failures
           }
         }
 
@@ -384,21 +333,6 @@ export function useSubmitPosition({
         if (calls.length === 0) {
           throw new Error('No valid calls to execute');
         }
-
-        console.debug('[useSubmitPosition] Submitting calls:', {
-          numCalls: calls.length,
-          calls: calls.map((c, i) => ({
-            index: i,
-            to: c.to,
-            dataLength: c.data?.length,
-            value: c.value?.toString(),
-          })),
-          makerNonce: nonceValue?.toString(),
-          freshMakerNonce: freshMakerNonce?.toString(),
-          freshAllowance: freshAllowance?.toString(),
-          maker: filled.maker,
-          effectiveAddress,
-        });
 
         await sendCalls({
           calls,

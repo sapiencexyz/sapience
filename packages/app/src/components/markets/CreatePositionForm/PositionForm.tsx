@@ -253,35 +253,20 @@ export default function PositionForm({
     if (validFilteredBids.length === 0) {
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
-    const makerWagerStr = parlayWagerAmount || '0';
-    let makerWager: bigint;
-    try {
-      makerWager = BigInt(makerWagerStr);
-    } catch {
-      makerWager = 0n;
-    }
 
+    // Select the bid with highest makerWager (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
-      const bestPayout = (() => {
-        try {
-          return makerWager + BigInt(acc.makerWager);
-        } catch {
-          return 0n;
-        }
-      })();
-      const currentPayout = (() => {
-        try {
-          return makerWager + BigInt(current.makerWager);
-        } catch {
-          return 0n;
-        }
-      })();
-
-      return currentPayout > bestPayout ? current : acc;
+      try {
+        return BigInt(current.makerWager) > BigInt(acc.makerWager)
+          ? current
+          : acc;
+      } catch {
+        return acc;
+      }
     });
 
     return { bestBid: best, estimateBid: null };
-  }, [validBids, parlayWagerAmount, nowMs]);
+  }, [validBids, nowMs]);
 
   // Notify parent of the current best bid for submission
   useEffect(() => {

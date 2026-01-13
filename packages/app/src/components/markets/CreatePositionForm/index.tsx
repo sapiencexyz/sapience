@@ -102,9 +102,7 @@ const CreatePositionForm = ({
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
   // Store the currently displayed best bid from PositionForm for submission
-  // Note: The value is intentionally unused - we select best bid at submit time
-  // to avoid stale state issues. The setter is passed to child for tracking.
-  const [_displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(
+  const [displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(
     null
   );
   const [shareDialogData, setShareDialogData] = useState<{
@@ -594,57 +592,60 @@ const CreatePositionForm = ({
       return;
     }
 
-    // Select best bid synchronously from bids array at submit time
-    // This ensures we use a fresh bid with valid nonce, avoiding InvalidMakerNonce errors
-    // that can occur when displayedBestBid becomes stale due to React's async update chain
-    try {
-      const nowSec = Math.floor(Date.now() / 1000);
-
-      // Filter to valid, non-expired bids
-      const validBids = bids.filter(
-        (b) => b.makerDeadline > nowSec && b.validationStatus === 'valid'
-      );
-
-      if (validBids.length === 0) {
-        toast({
-          title: 'No valid bids',
-          description:
-            'No valid bids available. Please wait for new bids or try again.',
-          variant: 'destructive',
-          duration: 5000,
-        });
-        return;
-      }
-
-      // Select the bid with highest payout (makerWager)
-      const bestBid = validBids.reduce((acc, current) => {
-        try {
-          return BigInt(current.makerWager) > BigInt(acc.makerWager)
-            ? current
-            : acc;
-        } catch {
-          return acc;
-        }
+    // Use the bid that was actually displayed to the user
+    if (!displayedBestBid) {
+      toast({
+        title: 'No bid available',
+        description: 'Please wait for bids to arrive.',
+        variant: 'destructive',
+        duration: 5000,
       });
+      return;
+    }
 
-      if (bestBid && address && buildMintRequestDataFromBid) {
+    // Validate the displayed bid is still usable
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    if (displayedBestBid.makerDeadline <= nowSec) {
+      toast({
+        title: 'Bid expired',
+        description: 'The bid has expired. Please wait for new bids.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+
+    if (displayedBestBid.validationStatus !== 'valid') {
+      toast({
+        title: 'Bid no longer valid',
+        description:
+          'The market maker bid is no longer valid. Please wait for new bids.',
+        variant: 'destructive',
+        duration: 5000,
+      });
+      return;
+    }
+
+    // Submit exactly what the user saw
+    try {
+      if (address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
-          selectedBid: bestBid,
+          selectedBid: displayedBestBid,
         });
 
         if (mintReq) {
-          // Build share dialog data synchronously from current state
-          // (useSubmitPosition will do the async refetch for lastNftId)
+          // Build share dialog data using displayedBestBid
           const wagerAmount =
             formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
           const limitAmount = formMethods.getValues('limitAmount');
 
-          // Calculate payout from best bid
+          // Calculate payout from displayed bid
           let payout: string | undefined = undefined;
           if (collateralDecimals) {
             try {
               const userWagerWei = parseUnits(wagerAmount, collateralDecimals);
-              const bidMakerWagerWei = BigInt(bestBid.makerWager);
+              const bidMakerWagerWei = BigInt(displayedBestBid.makerWager);
               const totalPayoutWei = userWagerWei + bidMakerWagerWei;
               const totalPayoutHuman = formatUnits(
                 totalPayoutWei,

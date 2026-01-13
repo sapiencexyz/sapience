@@ -235,18 +235,8 @@ export function useAuctionStart() {
             // Otherwise fall back to owner's wallet signing
             if (isSessionActive && sessionSignMessage) {
               takerSignature = await sessionSignMessage(message);
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug(
-                  '[AuctionStart] Generated SIWE signature with session key'
-                );
-              }
             } else {
               takerSignature = await signMessageAsync({ message });
-              if (process.env.NODE_ENV !== 'production') {
-                console.debug(
-                  '[AuctionStart] Generated SIWE signature with wallet'
-                );
-              }
             }
             takerSignedAt = issuedAt;
           } catch (signError) {
@@ -278,11 +268,6 @@ export function useAuctionStart() {
             sessionApproval: etherealSessionApproval.approval,
             sessionTypedData: etherealSessionApproval.typedData,
           };
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug(
-              '[AuctionStart] Including session approval for smart account auth'
-            );
-          }
         }
 
         // Clear previous auction state
@@ -306,12 +291,9 @@ export function useAuctionStart() {
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
           setAuctionId(newId);
-        } catch (err) {
+        } catch {
           // On timeout or error, clear inflight but keep params for retry
           inflightRef.current = '';
-          if (process.env.NODE_ENV !== 'production') {
-            console.debug('[AuctionStart] sendWithAck failed:', err);
-          }
         }
       }, 400);
     },
@@ -378,19 +360,6 @@ export function useAuctionStart() {
           });
           return null;
         }
-
-        console.debug('[useAuctionStart] buildMintRequestDataFromBid:', {
-          selectedBidMaker: args.selectedBid.maker,
-          selectedBidMakerWager: args.selectedBid.makerWager,
-          selectedBidMakerSignature:
-            args.selectedBid.makerSignature?.slice(0, 20) + '...',
-          selectedBidMakerDeadline: args.selectedBid.makerDeadline,
-          selectedBidMakerNonce: args.selectedBid.makerNonce,
-          selectedBidAuctionId: args.selectedBid.auctionId,
-          auctionTaker: auction.taker,
-          auctionWager: auction.wager,
-          auctionTakerNonce: auction.takerNonce,
-        });
 
         // Contract field names haven't changed - map BID (API) roles to contract roles:
         // Contract "maker" = API "taker" (auction creator)
