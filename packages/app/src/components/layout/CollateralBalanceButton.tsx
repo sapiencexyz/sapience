@@ -533,7 +533,7 @@ export default function CollateralBalanceButton({
                     <HoverCardTrigger asChild>
                       <div className="flex items-baseline gap-1.5 cursor-default">
                         <span className="font-mono text-lg font-medium text-brand-white">
-                          {formatDollarLikeBalance(smartAccountBalance)}
+                          {smartAccountBalance.toFixed(2)}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {symbol}
