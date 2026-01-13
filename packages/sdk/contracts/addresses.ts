@@ -25,6 +25,13 @@ export const predictionMarket: ChainAddressMap = {
   },
 } as const;
 
+export const predictionMarketLZConditionalTokensResolver: ChainAddressMap = {
+  13374202: {
+    address: '0x04aD4e8AE0F828E4BeA2C86165a7800Db499e0F5',
+    legacy: [] as const,
+  },
+} as const;
+
 export const umaResolver: ChainAddressMap = {
   42161: {
     address: '0x2cc1311871b9fc7bfcb809c75da4ba25732eafb9',
