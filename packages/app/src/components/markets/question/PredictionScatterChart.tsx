@@ -356,7 +356,7 @@ export function PredictionScatterChart({
                     </div>
                   )}
 
-                  {/* Combined predictions section (if parlay) */}
+                  {/* Combined predictions section (if multi-leg position) */}
                   {!isForecast &&
                     combinedPredictions &&
                     combinedPredictions.length > 0 && (
@@ -464,7 +464,7 @@ export function PredictionScatterChart({
                       (maxR - minR)
                   : minR; // Fallback if range is 0
 
-              // Check if this is a combined prediction (parlay)
+              // Check if this is a combined prediction (multi-leg position)
               if (payload?.combinedPredictions?.length > 0) {
                 // Render horizontal line with gradient ray
                 const width = radius * 2.5;

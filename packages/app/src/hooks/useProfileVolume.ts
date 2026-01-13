@@ -1,12 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import type { Parlay } from '~/hooks/graphql/useUserParlays';
+import type { Position } from '~/hooks/graphql/useUserPositions';
 import { formatUnits } from 'viem';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 
 export function useProfileVolume(
-  positions: Parlay[] | undefined,
+  positions: Position[] | undefined,
   address?: string
 ) {
   return React.useMemo(() => {

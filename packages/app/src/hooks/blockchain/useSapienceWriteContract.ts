@@ -43,7 +43,7 @@ interface useSapienceWriteContractProps {
   /**
    * Specifies which page to redirect to after successful transaction.
    * Defaults to 'profile' if redirectProfileAnchor is provided, otherwise no redirect.
-   * When set to 'markets', redirects to '/markets' and clears the betslip.
+   * When set to 'markets', redirects to '/markets' and clears the position form.
    */
   redirectPage?: 'profile' | 'markets';
   /**
@@ -120,7 +120,7 @@ export function useSapienceWriteContract({
   const router = useRouter();
   const didRedirectRef = useRef(false);
   const didShowSuccessToastRef = useRef(false);
-  // Get betslip context - may be undefined if not within provider
+  // Get position form context - may be undefined if not within provider
   const createPositionContext = useContext(CreatePositionContext);
 
   // Helper to check if we're on Ethereal chain
@@ -246,7 +246,7 @@ export function useSapienceWriteContract({
 
       if (shouldRedirectToMarkets) {
         router.push(`/${redirectPage}`);
-        // Clear betslip after redirect
+        // Clear position form after redirect
         if (createPositionContext) {
           createPositionContext.clearPositionForm();
           createPositionContext.clearSelections();

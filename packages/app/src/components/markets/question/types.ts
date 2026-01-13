@@ -1,4 +1,4 @@
-// Type for combined prediction in a parlay
+// Type for combined prediction in a position
 export type CombinedPrediction = {
   question: string;
   prediction: boolean;

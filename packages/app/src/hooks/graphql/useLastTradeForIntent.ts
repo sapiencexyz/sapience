@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
-type LastParlayForIntent = {
+type LastPositionForIntent = {
   mintedAt: number;
   predictor: string;
   counterparty: string;
@@ -77,7 +77,7 @@ export function useLastTradeForIntent(params: {
         );
       const match =
         list.find((p) => normalize(p.predictions) === target) || null;
-      return { last: match } as { last: LastParlayForIntent | null } as any;
+      return { last: match } as { last: LastPositionForIntent | null } as any;
     },
   });
 

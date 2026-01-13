@@ -6,7 +6,7 @@ import { useAccount } from 'wagmi';
 
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { useSession } from '~/lib/context/SessionContext';
-import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
 
 type Anchor = 'forecasts' | 'positions';
 
@@ -15,17 +15,17 @@ type ShareIntentStored = {
   anchor: Anchor;
   clientTimestamp: number;
   txHash?: string;
-  lastNftId?: string; // Last NFT ID from positions before this parlay was submitted
+  lastNftId?: string; // Last NFT ID from positions before this position was submitted
   og?: {
     imagePath: string;
     params?: Record<string, string | number | boolean | null | undefined>;
   };
-  betslip?: {
+  positionForm?: {
     legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
     wager: string;
     payout?: string;
     symbol: string;
-    lastNftId?: string; // Last NFT ID before this parlay was submitted
+    lastNftId?: string; // Last NFT ID before this position was submitted
   };
 };
 
@@ -48,7 +48,7 @@ export default function ShareAfterMarketsRedirect() {
   const openRef = useRef(false);
   const imageSrcRef = useRef<string | null>(null);
   const storedLastNftIdRef = useRef<string | undefined>(undefined);
-  const positionsRef = useRef<Parlay[]>([]);
+  const positionsRef = useRef<Position[]>([]);
   const { address } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
 
@@ -60,7 +60,7 @@ export default function ShareAfterMarketsRedirect() {
     : null;
 
   // Data hooks for position resolution
-  const { data: positions, refetch: refetchPositions } = useUserParlays({
+  const { data: positions, refetch: refetchPositions } = useUserPositions({
     address: lowerAddress || undefined,
   });
 
@@ -105,7 +105,7 @@ export default function ShareAfterMarketsRedirect() {
     (
       nftTokenId: string,
       marketAddress: string,
-      position: Parlay
+      position: Position
     ): string | null => {
       try {
         const qp = new URLSearchParams();
@@ -169,10 +169,10 @@ export default function ShareAfterMarketsRedirect() {
   const checkAndUpdatePosition = useCallback(
     (
       intent: ShareIntentStored,
-      positionsList: Parlay[],
+      positionsList: Position[],
       lastNftIdToCheck: string
-    ): Parlay | null => {
-      if (!intent.betslip?.legs || intent.betslip.legs.length === 0) {
+    ): Position | null => {
+      if (!intent.positionForm?.legs || intent.positionForm.legs.length === 0) {
         return null;
       }
 
@@ -181,17 +181,17 @@ export default function ShareAfterMarketsRedirect() {
       const minTs = ts - windowMs;
 
       // Find positions minted after the intent timestamp
-      const candidatePositions = positionsList.filter((p: Parlay) => {
+      const candidatePositions = positionsList.filter((p: Position) => {
         const mintedAtMs = Number(p.mintedAt) * 1000;
         const passes = mintedAtMs >= minTs;
         return passes;
       });
 
       // Filter by NFT ID
-      let filteredByNftId: Parlay[] = [];
+      let filteredByNftId: Position[] = [];
       try {
         const lastNftIdBigInt = BigInt(lastNftIdToCheck);
-        filteredByNftId = candidatePositions.filter((p: Parlay) => {
+        filteredByNftId = candidatePositions.filter((p: Position) => {
           try {
             const currentNftId = BigInt(p.predictorNftTokenId || '0');
             return currentNftId > lastNftIdBigInt;
@@ -216,7 +216,7 @@ export default function ShareAfterMarketsRedirect() {
       }
 
       // Find the position using expected legs
-      const resolved = filteredByNftId.find((p: Parlay) => {
+      const resolved = filteredByNftId.find((p: Position) => {
         const positionLegs = (p.predictions || []).map((pred) => {
           const question =
             pred.condition?.shortName || pred.condition?.question || '';
@@ -224,12 +224,12 @@ export default function ShareAfterMarketsRedirect() {
           return { question, choice };
         });
 
-        if (positionLegs.length !== intent.betslip!.legs.length) {
+        if (positionLegs.length !== intent.positionForm!.legs.length) {
           return false;
         }
 
         const expectedMap = new Map(
-          intent.betslip!.legs.map((leg) => [
+          intent.positionForm!.legs.map((leg) => [
             `${leg.question}|${leg.choice}`,
             true,
           ])
@@ -239,7 +239,7 @@ export default function ShareAfterMarketsRedirect() {
         );
 
         // Check if all expected legs are present in position
-        for (const leg of intent.betslip!.legs) {
+        for (const leg of intent.positionForm!.legs) {
           const key = `${leg.question}|${leg.choice}`;
           if (!positionMap.has(key)) {
             return false;
@@ -287,7 +287,7 @@ export default function ShareAfterMarketsRedirect() {
       if (intentAddr !== lowerAddress) return;
       if (intent.anchor !== 'positions') return;
       // If dialog is already open, close it first to reset state for new intent
-      // This handles the case where multiple parlays are created without refresh
+      // This handles the case where multiple positions are created without refresh
       if (openRef.current) {
         setOpen(false);
         setImageSrc(null);
@@ -297,7 +297,7 @@ export default function ShareAfterMarketsRedirect() {
       }
 
       // Get lastNftId from intent (required)
-      const nftIdToUse = intent.betslip?.lastNftId || intent.lastNftId;
+      const nftIdToUse = intent.positionForm?.lastNftId || intent.lastNftId;
       if (!nftIdToUse) {
         // Cannot proceed without lastNftId
         return;
@@ -335,19 +335,19 @@ export default function ShareAfterMarketsRedirect() {
       if (intent.txHash) {
         setStoredTxHash(intent.txHash);
       }
-      if (intent.betslip?.legs && intent.betslip.legs.length > 0) {
-        setStoredExpectedLegs(intent.betslip.legs);
+      if (intent.positionForm?.legs && intent.positionForm.legs.length > 0) {
+        setStoredExpectedLegs(intent.positionForm.legs);
       }
 
       // Open dialog immediately with OG URL built from intent
-      if (!imageSrcRef.current && intent.betslip && lowerAddress) {
+      if (!imageSrcRef.current && intent.positionForm && lowerAddress) {
         try {
           const qp = new URLSearchParams();
           qp.set('addr', lowerAddress);
 
           // Add legs
-          if (intent.betslip.legs && intent.betslip.legs.length > 0) {
-            intent.betslip.legs.forEach((leg) => {
+          if (intent.positionForm.legs && intent.positionForm.legs.length > 0) {
+            intent.positionForm.legs.forEach((leg) => {
               if (leg.question) {
                 qp.append('leg', `${leg.question}|${leg.choice}`);
               }
@@ -355,18 +355,18 @@ export default function ShareAfterMarketsRedirect() {
           }
 
           // Add wager
-          if (intent.betslip.wager) {
-            qp.set('wager', intent.betslip.wager);
+          if (intent.positionForm.wager) {
+            qp.set('wager', intent.positionForm.wager);
           }
 
           // Add payout
-          if (intent.betslip.payout) {
-            qp.set('payout', intent.betslip.payout);
+          if (intent.positionForm.payout) {
+            qp.set('payout', intent.positionForm.payout);
           }
 
           // Add symbol
-          if (intent.betslip.symbol) {
-            qp.set('symbol', intent.betslip.symbol);
+          if (intent.positionForm.symbol) {
+            qp.set('symbol', intent.positionForm.symbol);
           }
 
           const ogUrl = `/og/position?${qp.toString()}`;
@@ -417,7 +417,7 @@ export default function ShareAfterMarketsRedirect() {
     // Use stored expected legs to check position
     if (!storedExpectedLegs || storedExpectedLegs.length === 0) return;
 
-    const list: Parlay[] = positions || [];
+    const list: Position[] = positions || [];
 
     // Create a temporary intent-like object for checkAndUpdatePosition
     const tempIntent: ShareIntentStored = {
@@ -425,7 +425,7 @@ export default function ShareAfterMarketsRedirect() {
       anchor: 'positions',
       clientTimestamp: storedClientTimestamp || Date.now(),
       lastNftId: storedLastNftId,
-      betslip: {
+      positionForm: {
         legs: storedExpectedLegs,
         wager: '',
         symbol: 'testUSDe',

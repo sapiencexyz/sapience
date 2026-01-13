@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import type { Parlay } from './useUserParlays';
+import type { Position } from './useUserPositions';
 
 // Note: GraphQL query name matches API schema (positionsByConditionId)
 const POSITIONS_BY_CONDITION_ID_QUERY = /* GraphQL */ `
@@ -71,7 +71,7 @@ export function usePositionsByConditionId(params: {
     queryFn: async () => {
       if (!conditionId) return [];
 
-      const resp = await graphqlRequest<{ positionsByConditionId: Parlay[] }>(
+      const resp = await graphqlRequest<{ positionsByConditionId: Position[] }>(
         POSITIONS_BY_CONDITION_ID_QUERY,
         {
           conditionId,

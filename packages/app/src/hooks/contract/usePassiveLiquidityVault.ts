@@ -25,7 +25,7 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 
 // Use ABI from SDK
-const PARLAY_VAULT_ABI: Abi = liquidityVaultAbi;
+const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 // ABI helper: check if contract implements a function with optional arity
@@ -109,61 +109,61 @@ export function usePassiveLiquidityVault(
   } = useReadContracts({
     contracts: [
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'availableAssets',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'totalSupply',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'totalDeployed',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'utilizationRate',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'maxUtilizationRate',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'withdrawalDelay',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'paused',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'manager',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'asset',
         chainId: TARGET_CHAIN_ID,
       },
       {
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         address: VAULT_ADDRESS,
         functionName: 'MIN_DEPOSIT',
         chainId: TARGET_CHAIN_ID,
@@ -183,35 +183,35 @@ export function usePassiveLiquidityVault(
     contracts: address
       ? [
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'balanceOf',
             args: [address],
             chainId: TARGET_CHAIN_ID,
           },
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'getPendingWithdrawal',
             args: [address],
             chainId: TARGET_CHAIN_ID,
           },
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'userWithdrawalIndex',
             args: [address],
             chainId: TARGET_CHAIN_ID,
           },
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'getPendingDeposit',
             args: [address],
             chainId: TARGET_CHAIN_ID,
           },
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'userDepositIndex',
             args: [address],
@@ -235,7 +235,7 @@ export function usePassiveLiquidityVault(
             ...(userWithdrawalIdx > 0n
               ? [
                   {
-                    abi: PARLAY_VAULT_ABI,
+                    abi: PASSIVE_VAULT_ABI,
                     address: VAULT_ADDRESS,
                     functionName: 'getWithdrawalRequest',
                     args: [userWithdrawalIdx - 1n],
@@ -246,7 +246,7 @@ export function usePassiveLiquidityVault(
             ...(userDepositIdx > 0n
               ? [
                   {
-                    abi: PARLAY_VAULT_ABI,
+                    abi: PASSIVE_VAULT_ABI,
                     address: VAULT_ADDRESS,
                     functionName: 'getDepositRequest',
                     args: [userDepositIdx - 1n],
@@ -364,7 +364,7 @@ export function usePassiveLiquidityVault(
       contracts: hasFunction('expirationTime', 0)
         ? [
             {
-              abi: PARLAY_VAULT_ABI,
+              abi: PASSIVE_VAULT_ABI,
               address: VAULT_ADDRESS,
               functionName: 'expirationTime',
               chainId: TARGET_CHAIN_ID,
@@ -384,7 +384,7 @@ export function usePassiveLiquidityVault(
     contracts: hasFunction('interactionDelay', 0)
       ? [
           {
-            abi: PARLAY_VAULT_ABI,
+            abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'interactionDelay',
             chainId: TARGET_CHAIN_ID,
@@ -404,7 +404,7 @@ export function usePassiveLiquidityVault(
       address && hasFunction('lastUserInteractionTimestamp', 1)
         ? [
             {
-              abi: PARLAY_VAULT_ABI,
+              abi: PASSIVE_VAULT_ABI,
               address: VAULT_ADDRESS,
               functionName: 'lastUserInteractionTimestamp',
               args: [address],
@@ -443,7 +443,7 @@ export function usePassiveLiquidityVault(
         address && hasFunction('pendingRequests', 1)
           ? [
               {
-                abi: PARLAY_VAULT_ABI,
+                abi: PASSIVE_VAULT_ABI,
                 address: VAULT_ADDRESS,
                 functionName: 'pendingRequests',
                 args: [address],
@@ -687,7 +687,7 @@ export function usePassiveLiquidityVault(
               outputs: [{ name: 'queuePosition', type: 'uint256' }],
             },
           ] as unknown as Abi)
-        : PARLAY_VAULT_ABI;
+        : PASSIVE_VAULT_ABI;
 
       const requestFunctionName = supportsRequestDepositWithMin
         ? hasFunctionCb('requestDepositWithMin', 2)
@@ -699,7 +699,7 @@ export function usePassiveLiquidityVault(
         abi:
           requestFunctionName === 'requestDeposit' &&
           !supportsRequestDepositWithMin
-            ? PARLAY_VAULT_ABI
+            ? PASSIVE_VAULT_ABI
             : requestDepositAbi,
         functionName: requestFunctionName as any,
         args: supportsRequestDepositWithMin
@@ -767,7 +767,7 @@ export function usePassiveLiquidityVault(
         abi:
           requestFunctionName === 'requestDeposit' &&
           !supportsRequestDepositWithMin
-            ? PARLAY_VAULT_ABI
+            ? PASSIVE_VAULT_ABI
             : requestDepositAbi,
         functionName: requestFunctionName as any,
         args: supportsRequestDepositWithMin
@@ -824,7 +824,7 @@ export function usePassiveLiquidityVault(
               outputs: [{ name: 'queuePosition', type: 'uint256' }],
             },
           ] as unknown as Abi)
-        : PARLAY_VAULT_ABI;
+        : PASSIVE_VAULT_ABI;
 
       const functionName = supportsWithdrawalWithMin
         ? hasFunctionCb('requestWithdrawalWithMin', 2)
@@ -837,7 +837,7 @@ export function usePassiveLiquidityVault(
         address: VAULT_ADDRESS,
         abi:
           functionName === 'requestWithdrawal' && !supportsWithdrawalWithMin
-            ? PARLAY_VAULT_ABI
+            ? PASSIVE_VAULT_ABI
             : withdrawalAbi,
         functionName: functionName as any,
         args: supportsWithdrawalWithMin
@@ -860,7 +860,7 @@ export function usePassiveLiquidityVault(
       await writeVaultContract({
         chainId,
         address: VAULT_ADDRESS,
-        abi: PARLAY_VAULT_ABI,
+        abi: PASSIVE_VAULT_ABI,
         functionName: 'processWithdrawals',
         args: [BigInt(maxRequests)],
       });

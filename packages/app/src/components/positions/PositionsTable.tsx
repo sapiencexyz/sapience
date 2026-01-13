@@ -45,10 +45,10 @@ import {
 } from '~/lib/auction/decodePredictedOutcomes';
 import { usePredictionMarketWriteContract } from '~/hooks/blockchain/usePredictionMarketWriteContract';
 import {
-  useUserParlays,
-  useUserParlaysCount,
-  type Parlay,
-} from '~/hooks/graphql/useUserParlays';
+  useUserPositions,
+  useUserPositionsCount,
+  type Position,
+} from '~/hooks/graphql/useUserPositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -184,7 +184,7 @@ export default function PositionsTable({
   // Infinite scroll state
   const ITEMS_PER_PAGE = 50;
   const [skip, setSkip] = React.useState(0);
-  const [allLoadedData, setAllLoadedData] = React.useState<Parlay[]>([]);
+  const [allLoadedData, setAllLoadedData] = React.useState<Position[]>([]);
   const [hasMore, setHasMore] = React.useState(true);
 
   // Sorting state
@@ -204,10 +204,10 @@ export default function PositionsTable({
   }, [account, sorting, chainId]);
 
   // Fetch total count
-  const totalCount = useUserParlaysCount(String(account), chainId);
+  const totalCount = useUserPositionsCount(String(account), chainId);
 
   // Fetch real data with pagination - fetch one extra to detect if there are more pages
-  const { data: rawData, isLoading } = useUserParlays({
+  const { data: rawData, isLoading } = useUserPositions({
     address: String(account),
     take: ITEMS_PER_PAGE + 1,
     skip,
@@ -609,11 +609,11 @@ export default function PositionsTable({
     return rows.find((r) => r.positionId === openSharePositionId) || null;
   }, [rows, openSharePositionId]);
 
-  // Find the original Parlay data to get predictorNftTokenId for sharing
-  const selectedParlay = React.useMemo(() => {
+  // Find the original Position data to get predictorNftTokenId for sharing
+  const selectedPositionData = React.useMemo(() => {
     if (!selectedPosition) return null;
-    // Find the original parlay by matching marketAddress and chainId
-    // The positionId in the row might be the NFT ID, so we need to find the parlay
+    // Find the original position by matching marketAddress and chainId
+    // The positionId in the row might be the NFT ID, so we need to find the position
     return (
       data.find(
         (p: any) =>
@@ -1367,8 +1367,8 @@ export default function PositionsTable({
           question={`Position #${selectedPosition.positionId}`}
           nftId={
             selectedPosition.addressRole === 'counterparty'
-              ? selectedParlay?.counterpartyNftTokenId
-              : selectedParlay?.predictorNftTokenId ||
+              ? selectedPositionData?.counterpartyNftTokenId
+              : selectedPositionData?.predictorNftTokenId ||
                 String(selectedPosition.positionId)
           }
           marketAddress={selectedPosition.marketAddress}

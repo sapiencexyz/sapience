@@ -405,7 +405,7 @@ const OrderBuilderDialog: React.FC<OrderBuilderDialogProps> = ({
                 >
                   leaderboard
                 </a>{' '}
-                for accounts with recently created <em>anti-parlay</em>{' '}
+                for accounts with recently created <em>counterparty</em>{' '}
                 positions.
               </p>
             ) : (

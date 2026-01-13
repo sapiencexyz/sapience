@@ -17,7 +17,7 @@ export const useUserProfitRank = (ownerAddress?: string) => {
     queryKey: ['userProfitRank', addressLc],
     enabled,
     queryFn: async () => {
-      // Use the combined all-time profit leaderboard that includes both market and parlay PnL
+      // Use the combined all-time profit leaderboard that includes both market and position PnL
       const GET_ALL_TIME_PROFIT_LEADERBOARD = /* GraphQL */ `
         query AllTimeProfitLeaderboard {
           allTimeProfitLeaderboard {

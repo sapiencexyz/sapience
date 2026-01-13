@@ -52,7 +52,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
-import { useUserParlays } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import { validateBids } from '~/lib/auction/validateBids';
 import { useValidatedBids } from '~/lib/auction/useValidatedBids';
@@ -89,7 +89,7 @@ const CreatePositionForm = ({
     positionsWithMarketData,
   } = useCreatePositionContext();
 
-  // Always use parlay mode (singles/spot mode removed)
+  // Always use position mode (singles/spot mode removed)
   const isPositionMode = true;
   const isCompact = useIsBelow(1024);
   const { hasConnectedWallet } = useConnectedWallet();
@@ -113,7 +113,7 @@ const CreatePositionForm = ({
     lastNftId?: string;
   } | null>(null);
 
-  const parlayChainId = useMemo(
+  const positionChainId = useMemo(
     () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
     [chainId, createPositionEntries]
   );
@@ -124,11 +124,11 @@ const CreatePositionForm = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserParlays({
+  const { data: userPositions } = useUserPositions({
     address: effectiveAddress
       ? String(effectiveAddress).toLowerCase()
       : undefined,
-    chainId: parlayChainId,
+    chainId: positionChainId,
     take: 1, // Only need the latest one
     orderBy: 'mintedAt',
     orderDirection: 'desc',
@@ -142,8 +142,8 @@ const CreatePositionForm = ({
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
-  // PredictionMarket address via centralized mapping (use parlayChainId)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[parlayChainId]?.address;
+  // PredictionMarket address via centralized mapping (use positionChainId)
+  const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
 
   // First pass: basic sync validation (non-zero maker address)
   const basicValidatedBids = useMemo(() => validateBids(rawBids), [rawBids]);
@@ -155,7 +155,7 @@ const CreatePositionForm = ({
         address: PREDICTION_MARKET_ADDRESS,
         abi: predictionMarketAbi,
         functionName: 'getConfig',
-        chainId: parlayChainId,
+        chainId: positionChainId,
       },
     ],
     query: {
@@ -189,7 +189,7 @@ const CreatePositionForm = ({
   // This filters out bids from market makers who don't have sufficient funds
   const bids = useValidatedBids({
     bids: basicValidatedBids,
-    chainId: parlayChainId,
+    chainId: positionChainId,
     collateralTokenAddress: collateralToken,
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     enabled: !!collateralToken && !!PREDICTION_MARKET_ADDRESS,
@@ -197,8 +197,8 @@ const CreatePositionForm = ({
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = useMemo(() => {
-    return COLLATERAL_SYMBOLS[parlayChainId] === 'USDe';
-  }, [parlayChainId]);
+    return COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
+  }, [positionChainId]);
 
   // Fetch collateral token symbol and decimals (skip for Ethereal chains)
   const erc20MetaRead = useReadContracts({
@@ -208,13 +208,13 @@ const CreatePositionForm = ({
             address: collateralToken,
             abi: erc20Abi,
             functionName: 'symbol',
-            chainId: parlayChainId,
+            chainId: positionChainId,
           },
           {
             address: collateralToken,
             abi: erc20Abi,
             functionName: 'decimals',
-            chainId: parlayChainId,
+            chainId: positionChainId,
           },
         ]
       : [],
@@ -224,7 +224,7 @@ const CreatePositionForm = ({
   const collateralSymbol: string | undefined = useMemo(() => {
     // For Ethereal chains, use the native symbol from constants
     if (isEtherealChain) {
-      return COLLATERAL_SYMBOLS[parlayChainId] || 'USDe';
+      return COLLATERAL_SYMBOLS[positionChainId] || 'USDe';
     }
     // For other chains, use the ERC20 token symbol
     const item = erc20MetaRead.data?.[0];
@@ -232,7 +232,7 @@ const CreatePositionForm = ({
       return String(item.result as unknown as string);
     }
     return undefined;
-  }, [erc20MetaRead.data, isEtherealChain, parlayChainId]);
+  }, [erc20MetaRead.data, isEtherealChain, positionChainId]);
 
   const collateralDecimals: number | undefined = useMemo(() => {
     // For Ethereal chains, native USDe always has 18 decimals
@@ -287,10 +287,10 @@ const CreatePositionForm = ({
     };
   }, []);
 
-  // Create separate form schemas for individual and parlay modes
+  // Create separate form schemas for individual and position modes
   const formSchema: z.ZodType<any> = useMemo(() => {
     if (isPositionMode) {
-      // Parlay mode only needs wagerAmount and limitAmount
+      // Position mode only needs wagerAmount and limitAmount
       // Use createWagerAmountSchema to include min/max validation
       // Max amount is 10 for Ethereal chain, undefined otherwise
       const maxAmount = chainId === CHAIN_ID_ETHEREAL ? '10' : undefined;
@@ -375,7 +375,7 @@ const CreatePositionForm = ({
     };
   }, [createPositionEntries, positionsWithMarketData]);
 
-  // Single form for both individual and parlay modes
+  // Single form for both individual and position modes
   const formMethods = useForm<{
     positions: Record<
       string,
@@ -555,14 +555,14 @@ const CreatePositionForm = ({
   //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
   // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
 
-  // Use the parlay submission hook
+  // Use the position submission hook
   // Note: Share dialog is handled locally in this component
   const {
     submitPosition,
     isSubmitting: isPositionSubmitting,
     error: positionError,
   } = useSubmitPosition({
-    chainId: parlayChainId,
+    chainId: positionChainId,
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     collateralTokenAddress:
       collateralToken || '0x0000000000000000000000000000000000000000',
@@ -581,7 +581,7 @@ const CreatePositionForm = ({
     },
   });
 
-  // Individual/spot trading is no longer supported - only parlay mode
+  // Individual/spot trading is no longer supported - only position mode
   const handleIndividualSubmit = () => {
     // Noop - spot trading removed
   };
@@ -686,7 +686,7 @@ const CreatePositionForm = ({
             lastNftId,
           };
 
-          // Open share dialog immediately with betslip data
+          // Open share dialog immediately with position form data
           setShareDialogData(dialogData);
           setShowShareDialog(true);
 
@@ -716,7 +716,7 @@ const CreatePositionForm = ({
     }
   };
 
-  // Build OG image URL from betslip data for the share dialog
+  // Build OG image URL from position form data for the share dialog
   const shareDialogImageSrc = useMemo(() => {
     if (!shareDialogData || !effectiveAddress) return null;
 
@@ -771,7 +771,7 @@ const CreatePositionForm = ({
         { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
-    parlayMethods: formMethods as unknown as UseFormReturn<{
+    formMethods: formMethods as unknown as UseFormReturn<{
       wagerAmount: string;
       limitAmount: string | number;
       positions: Record<
@@ -784,7 +784,7 @@ const CreatePositionForm = ({
     isPositionSubmitting,
     positionError,
     isSubmitting: false, // Individual trades removed
-    parlayChainId,
+    positionChainId,
     auctionId,
     bids,
     requestQuotes,
