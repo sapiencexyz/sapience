@@ -104,8 +104,8 @@ export async function GET(req: Request) {
                   <div
                     style={{
                       display: 'block',
-                      fontSize: 38 * scale,
-                      lineHeight: `${48 * scale}px`,
+                      fontSize: 32 * scale,
+                      lineHeight: `${40 * scale}px`,
                       fontWeight: 700,
                       letterSpacing: -0.16 * scale,
                       color: og.colors.brandWhite,
