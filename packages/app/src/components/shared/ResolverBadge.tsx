@@ -4,7 +4,10 @@ import Image from 'next/image';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { Copy, Gavel } from 'lucide-react';
 import { useMemo } from 'react';
-import { UMA_RESOLVER_DISPLAY } from '~/lib/constants';
+import {
+  UMA_RESOLVER_DISPLAY,
+  POLYMARKET_RESOLVER_DISPLAY,
+} from '~/lib/constants';
 
 interface ResolverBadgeProps {
   resolverAddress: string | null | undefined;
@@ -24,11 +27,18 @@ export function ResolverBadge({
   const resolverInfo = useMemo(() => {
     if (!resolverAddress) return null;
     const normalizedAddress = resolverAddress.toLowerCase();
-    // Find matching resolver info (case-insensitive)
-    const entry = Object.entries(UMA_RESOLVER_DISPLAY).find(
+    // Find matching resolver info (case-insensitive) - check UMA first, then Polymarket
+    const umaEntry = Object.entries(UMA_RESOLVER_DISPLAY).find(
       ([address]) => address.toLowerCase() === normalizedAddress
     );
-    return entry ? UMA_RESOLVER_DISPLAY[entry[0]] : null;
+    if (umaEntry) return UMA_RESOLVER_DISPLAY[umaEntry[0]];
+
+    const polymarketEntry = Object.entries(POLYMARKET_RESOLVER_DISPLAY).find(
+      ([address]) => address.toLowerCase() === normalizedAddress
+    );
+    if (polymarketEntry) return POLYMARKET_RESOLVER_DISPLAY[polymarketEntry[0]];
+
+    return null;
   }, [resolverAddress]);
 
   if (!resolverAddress) {
@@ -61,25 +71,27 @@ export function ResolverBadge({
         className={`${gavelIconClass} mr-1.5 -mt-[1px] ${iconOpacity} -scale-x-100 ${gavelColorClass}`}
       />
       <span className="whitespace-nowrap">Resolver</span>
-      {resolverInfo?.icon && (
+      {(resolverInfo?.badgeIcon || resolverInfo?.icon) && (
         <>
           <span
             aria-hidden="true"
             className="mx-2.5 h-4 w-px bg-muted-foreground/30"
           />
           <a
-            href="https://uma.xyz/"
+            href={resolverInfo.url || '#'}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center hover:opacity-70 transition-opacity"
-            aria-label="Visit UMA website"
+            aria-label={`Visit ${resolverInfo.name} website`}
           >
             <Image
-              src={resolverInfo.icon}
+              src={resolverInfo.badgeIcon || resolverInfo.icon || ''}
               alt={resolverInfo.iconAlt || resolverInfo.name}
-              width={iconSize}
+              width={resolverInfo.badgeIcon ? 80 : iconSize}
               height={iconHeight}
-              className={iconClass}
+              className={
+                resolverInfo.badgeIcon ? 'h-5 w-auto rounded' : iconClass
+              }
             />
           </a>
         </>

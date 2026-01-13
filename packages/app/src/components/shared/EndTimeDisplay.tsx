@@ -53,21 +53,21 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
       badgeText = `Resolves ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
     } else if (hoursDiff < 24) {
-      // Resolved recently (within 24 hours): show relative time only
-      badgeText = `Resolved ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Ended recently (within 24 hours): show relative time only
+      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else if (daysDiff < 7) {
-      // Resolved within a week: show relative time only
-      badgeText = `Resolved ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Ended within a week: show relative time only
+      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else {
-      // Resolved more than a week ago: show short date format
+      // Ended more than a week ago: show short date format
       const shortDate = new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       }).format(date);
-      badgeText = `Resolved ${shortDate}`;
+      badgeText = `Ended ${shortDate}`;
       showExpandedDate = false;
     }
 

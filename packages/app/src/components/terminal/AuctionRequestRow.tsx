@@ -10,8 +10,8 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { useConnectOrCreateWallet } from '@privy-io/react-auth';
 import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -57,7 +57,7 @@ const AuctionRequestRow: React.FC<Props> = ({
 }) => {
   const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
-  const { connectOrCreateWallet } = useConnectOrCreateWallet({});
+  const { openConnectDialog } = useConnectDialog();
   const chainId = useChainIdFromLocalStorage();
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
@@ -354,18 +354,10 @@ const AuctionRequestRow: React.FC<Props> = ({
           });
           return;
         }
-        // Ensure connected wallet FIRST so Privy opens immediately if needed
-        let maker = address;
+        // Ensure connected wallet FIRST
+        const maker = address;
         if (!maker) {
-          // eslint-disable-next-line @typescript-eslint/await-thenable
-          await connectOrCreateWallet();
-          // try to read again (wagmi state updates asynchronously)
-          maker = (window as any)?.wagmi?.state?.address as
-            | `0x${string}`
-            | undefined;
-        }
-        if (!maker) {
-          openApproval(String(data.amount || ''));
+          openConnectDialog();
           return;
         }
 
@@ -553,7 +545,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       takerWager,
       takerNonce,
       address,
-      connectOrCreateWallet,
+      openConnectDialog,
       runPreflight,
       submitBidToWs,
       terminalLogs,

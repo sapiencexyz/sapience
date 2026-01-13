@@ -537,6 +537,7 @@ export default function QuestionPageContent({
         endTime={data?.endTime ?? null}
         settled={data?.settled ?? null}
         resolvedToYes={data?.resolvedToYes ?? null}
+        resolverAddress={resolverAddress}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
 // Ethereal chain configuration
@@ -60,16 +61,23 @@ export function useSubmitPosition({
   betslipData,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
+
+  // Use smart account address when session is active, otherwise use EOA
+  // This ensures contract reads (balance, allowance, nonce) query the correct address
+  // that will be executing the transaction
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
     address: WUSDE_ADDRESS,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: address ? [address] : undefined,
+    args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!address && enabled && chainId === CHAIN_ID_ETHEREAL,
+      enabled: !!effectiveAddress && enabled && chainId === CHAIN_ID_ETHEREAL,
     },
   });
 
@@ -78,10 +86,10 @@ export function useSubmitPosition({
     address: predictionMarketAddress,
     abi: predictionMarketAbi,
     functionName: 'nonces',
-    args: address ? [address] : undefined,
+    args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!address && !!predictionMarketAddress && enabled,
+      enabled: !!effectiveAddress && !!predictionMarketAddress && enabled,
     },
   });
 
@@ -91,13 +99,13 @@ export function useSubmitPosition({
     abi: erc20Abi,
     functionName: 'allowance',
     args:
-      address && predictionMarketAddress
-        ? [address, predictionMarketAddress]
+      effectiveAddress && predictionMarketAddress
+        ? [effectiveAddress, predictionMarketAddress]
         : undefined,
     chainId,
     query: {
       enabled:
-        !!address &&
+        !!effectiveAddress &&
         !!collateralTokenAddress &&
         !!predictionMarketAddress &&
         enabled,
@@ -282,19 +290,47 @@ export function useSubmitPosition({
       }
 
       const attempt = async (forceRefetch: boolean) => {
-        // Ensure we have a fresh nonce when requested
-        const nonceValue = forceRefetch
-          ? (await refetchMakerNonce()).data
-          : makerNonce;
+        // CRITICAL: Use the nonce from mintData if provided (from auction bid)
+        // The bidder signed over this specific nonce - we must not change it
+        // Only fetch from contract if mintData doesn't have a nonce
+        let nonceValue: bigint | undefined;
+
+        if (mintData.makerNonce !== undefined) {
+          // Use the nonce from auction - this is what the bidder signed over
+          nonceValue =
+            typeof mintData.makerNonce === 'string'
+              ? BigInt(mintData.makerNonce)
+              : BigInt(mintData.makerNonce);
+        } else if (forceRefetch) {
+          // No nonce in mintData, fetch fresh from contract
+          const refetchResult = await refetchMakerNonce();
+          nonceValue = refetchResult.data as bigint | undefined;
+        } else {
+          // Use cached contract nonce
+          nonceValue = makerNonce as bigint | undefined;
+        }
 
         if (nonceValue === undefined) {
-          throw new Error('Unable to read maker nonce');
+          throw new Error('Unable to determine maker nonce');
         }
 
         const filled: MintPredictionRequestData = {
           ...mintData,
-          makerNonce: nonceValue as unknown as bigint,
+          makerNonce: nonceValue,
         };
+
+        // Verify the maker address matches expected smart account when session is active
+        // The takerSignature was signed by the bidder referencing the maker address
+        if (
+          isSessionActive &&
+          filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()
+        ) {
+          throw new Error(
+            'Address mismatch: the auction was started with a different account. ' +
+              'Please request new bids.'
+          );
+        }
+
         const calls = prepareCalls(filled);
         if (calls.length === 0) {
           throw new Error('No valid calls to execute');
@@ -319,8 +355,16 @@ export function useSubmitPosition({
         const msg = (err?.message || '').toString();
         const isNonceErr = msg.includes('InvalidMakerNonce');
         if (isNonceErr) {
+          // Only retry with fresh nonce if we weren't using an auction-provided nonce
+          // For auction bids, the bidder signed over a specific nonce - retrying won't help
+          if (mintData.makerNonce !== undefined) {
+            setError('The bid has become stale. Please request new bids.');
+            setIsProcessing(false);
+            return;
+          }
+
           try {
-            // One-time retry with fresh nonce
+            // One-time retry with fresh nonce (only for non-auction submissions)
             await attempt(true);
             setIsProcessing(false);
             return;
@@ -344,6 +388,8 @@ export function useSubmitPosition({
     [
       enabled,
       address,
+      effectiveAddress,
+      isSessionActive,
       chainId,
       prepareCalls,
       sendCalls,

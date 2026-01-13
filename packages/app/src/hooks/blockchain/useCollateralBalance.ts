@@ -9,8 +9,6 @@ import {
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 
-const GAS_RESERVE = 0.5;
-
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 interface UseCollateralBalanceProps {
@@ -23,6 +21,12 @@ interface UseCollateralBalanceResult {
   rawBalance: bigint | undefined;
 
   balance: number;
+
+  /** Native USDe balance (only on Ethereal) */
+  nativeBalance: number;
+
+  /** Wrapped USDe balance (only on Ethereal) */
+  wrappedBalance: number;
 
   formattedBalance: string;
   /** Token decimals */
@@ -125,9 +129,11 @@ export function useCollateralBalance({
         let totalBalance = 0;
         let rawNative = 0n;
         let rawWrapped = 0n;
+        let nativeNum = 0;
+        let wrappedNum = 0;
 
         if (nativeBalance) {
-          const nativeNum = Number(nativeBalance.formatted);
+          nativeNum = Number(nativeBalance.formatted);
           if (!Number.isNaN(nativeNum)) {
             totalBalance += nativeNum;
             rawNative = nativeBalance.value;
@@ -140,18 +146,18 @@ export function useCollateralBalance({
               ? wusdeDecimals
               : Number(wusdeDecimals ?? 18);
           const wusdeFormatted = formatUnits(wusdeBalance, dec);
-          const wusdeNum = Number(wusdeFormatted);
-          if (!Number.isNaN(wusdeNum)) {
-            totalBalance += wusdeNum;
+          wrappedNum = Number(wusdeFormatted);
+          if (!Number.isNaN(wrappedNum)) {
+            totalBalance += wrappedNum;
             rawWrapped = wusdeBalance;
           }
         }
 
-        const effectiveBalance = Math.max(0, totalBalance - GAS_RESERVE);
-
         return {
           rawBalance: rawNative + rawWrapped,
-          balance: effectiveBalance,
+          balance: totalBalance,
+          nativeBalance: nativeNum,
+          wrappedBalance: wrappedNum,
           decimals: nativeBalance?.decimals || 18,
         };
       } else {
@@ -163,17 +169,18 @@ export function useCollateralBalance({
           return {
             rawBalance: undefined,
             balance: 0,
+            nativeBalance: 0,
+            wrappedBalance: 0,
             decimals: dec,
           };
         }
         const human = formatUnits(usdeBalance, dec);
         const num = Number(human);
-        const adjustedNum = Number.isNaN(num)
-          ? 0
-          : Math.max(0, num - GAS_RESERVE);
         return {
           rawBalance: usdeBalance,
-          balance: adjustedNum,
+          balance: Number.isNaN(num) ? 0 : num,
+          nativeBalance: 0,
+          wrappedBalance: 0,
           decimals: dec,
         };
       }
@@ -181,6 +188,8 @@ export function useCollateralBalance({
       return {
         rawBalance: undefined,
         balance: 0,
+        nativeBalance: 0,
+        wrappedBalance: 0,
         decimals: 18,
       };
     }
@@ -196,6 +205,8 @@ export function useCollateralBalance({
   return {
     rawBalance: result.rawBalance,
     balance: result.balance,
+    nativeBalance: result.nativeBalance,
+    wrappedBalance: result.wrappedBalance,
     formattedBalance: `${result.balance} ${collateralSymbol}`,
     decimals: result.decimals,
     symbol: collateralSymbol,

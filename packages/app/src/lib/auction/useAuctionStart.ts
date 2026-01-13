@@ -8,6 +8,7 @@ import {
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
+import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
@@ -74,6 +75,12 @@ export function useAuctionStart() {
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
+  const {
+    isSessionActive,
+    smartAccountAddress,
+    etherealSessionApproval,
+    signMessage: sessionSignMessage,
+  } = useSession();
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
@@ -167,11 +174,18 @@ export function useAuctionStart() {
       options?: { forceRefresh?: boolean; requireSignature?: boolean }
     ) => {
       if (!params || !wsUrl) return;
+
+      // Use smart account address as taker when session is active
+      const effectiveTaker =
+        isSessionActive && smartAccountAddress
+          ? smartAccountAddress
+          : params.taker;
+
       const requestPayload = {
         wager: params.wager,
         resolver: params.resolver,
         predictedOutcomes: params.predictedOutcomes,
-        taker: params.taker,
+        taker: effectiveTaker,
         takerNonce: params.takerNonce,
         chainId: params.chainId,
       };
@@ -198,11 +212,12 @@ export function useAuctionStart() {
           try {
             const { domain, uri } = extractSiweDomainAndUri(wsUrl);
             const issuedAt = new Date().toISOString();
+
             const signingPayload: AuctionStartSigningPayload = {
               wager: params.wager,
               predictedOutcomes: params.predictedOutcomes,
               resolver: params.resolver,
-              taker: params.taker,
+              taker: effectiveTaker,
               takerNonce: params.takerNonce,
               chainId: params.chainId,
             };
@@ -212,11 +227,25 @@ export function useAuctionStart() {
               uri,
               issuedAt
             );
-            takerSignature = await signMessageAsync({ message });
-            takerSignedAt = issuedAt;
-            if (process.env.NODE_ENV !== 'production') {
-              console.debug('[AuctionStart] Generated SIWE signature');
+
+            // Use session key signing when session is active (no wallet popup)
+            // Otherwise fall back to owner's wallet signing
+            if (isSessionActive && sessionSignMessage) {
+              takerSignature = await sessionSignMessage(message);
+              if (process.env.NODE_ENV !== 'production') {
+                console.debug(
+                  '[AuctionStart] Generated SIWE signature with session key'
+                );
+              }
+            } else {
+              takerSignature = await signMessageAsync({ message });
+              if (process.env.NODE_ENV !== 'production') {
+                console.debug(
+                  '[AuctionStart] Generated SIWE signature with wallet'
+                );
+              }
             }
+            takerSignedAt = issuedAt;
           } catch (signError) {
             // If signature is required and fails, log and return early
             console.warn(
@@ -228,18 +257,40 @@ export function useAuctionStart() {
         }
 
         // Add signature and timestamp to request payload if available
-        const payloadWithSignature =
+        let payloadWithSignature: Record<string, unknown> =
           takerSignature && takerSignedAt
-            ? { ...requestPayload, takerSignature, takerSignedAt }
+            ? {
+                ...requestPayload,
+                takerSignature,
+                takerSignedAt,
+              }
             : requestPayload;
+
+        // Add session approval data for smart account authentication
+        // This allows the relayer to verify ownership without additional RPC calls
+        // Note: The session key is extracted from validatorData in the typed data (cryptographically signed by owner)
+        if (isSessionActive && etherealSessionApproval) {
+          payloadWithSignature = {
+            ...payloadWithSignature,
+            sessionApproval: etherealSessionApproval.approval,
+            sessionTypedData: etherealSessionApproval.typedData,
+          };
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug(
+              '[AuctionStart] Including session approval for smart account auth'
+            );
+          }
+        }
 
         // Clear previous auction state
         inflightRef.current = key;
         latestAuctionIdRef.current = null; // Clear so we don't process stale bids
         setAuctionId(null);
         setBids([]);
-        lastAuctionRef.current = params;
-        setCurrentAuctionParams(params);
+        // Store params with effectiveTaker so buildMintRequestDataFromBid uses the correct address
+        // (smart account address when session is active, otherwise EOA)
+        lastAuctionRef.current = { ...params, taker: effectiveTaker };
+        setCurrentAuctionParams({ ...params, taker: effectiveTaker });
 
         // Use sendWithAck for proper request/response correlation
         // Server echoes back the request ID, allowing parallel requests
@@ -261,7 +312,14 @@ export function useAuctionStart() {
         }
       }, 400);
     },
-    [wsUrl, signMessageAsync]
+    [
+      wsUrl,
+      signMessageAsync,
+      isSessionActive,
+      smartAccountAddress,
+      etherealSessionApproval,
+      sessionSignMessage,
+    ]
   );
 
   const acceptBid = useCallback(
@@ -316,7 +374,7 @@ export function useAuctionStart() {
           resolver,
           makerCollateral: auction.wager, // Contract maker = API taker (auction creator's wager)
           takerCollateral: args.selectedBid.makerWager, // Contract taker = API maker (bidder's wager)
-          maker: auction.taker, // Contract maker = API taker (auction creator)
+          maker: auction.taker, // Contract maker = API taker (auction creator) - should be smart account when session active
           taker: args.selectedBid.maker as `0x${string}`, // Contract taker = API maker (bidder)
           takerSignature: args.selectedBid.makerSignature as `0x${string}`, // Contract taker = API maker (bidder's signature)
           takerDeadline: String(args.selectedBid.makerDeadline), // Contract taker = API maker (bidder's deadline)
