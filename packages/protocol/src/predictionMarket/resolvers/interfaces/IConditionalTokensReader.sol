@@ -51,6 +51,9 @@ interface IConditionalTokensReader {
     error ConditionIsNotBinary(bytes32 conditionId);
     error ConditionNotResolved(bytes32 conditionId);
     error InvalidPayout(bytes32 conditionId);
+    error RefundFailed();
+    error ETHTransferFailed();
+    error OnlySelfCallAllowed();
 
     // ============ Functions ============
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import {OAppReceiver, Origin} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppReceiver.sol";
 import {OAppCore} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppCore.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPredictionMarketResolver} from "../interfaces/IPredictionMarketResolver.sol";
 import {IPredictionMarketLZConditionalTokensResolver} from "./interfaces/IPredictionMarketLZConditionalTokensResolver.sol";
 import {Encoder} from "../../bridge/cmdEncoder.sol";
@@ -24,6 +25,7 @@ interface IConditionalTokens {
  */
 contract PredictionMarketLZConditionalTokensResolver is
     OAppReceiver,
+    ReentrancyGuard,
     IPredictionMarketLZConditionalTokensResolver
 {
     using Encoder for bytes;
@@ -191,7 +193,7 @@ contract PredictionMarketLZConditionalTokensResolver is
         bytes calldata _message,
         address,
         bytes calldata
-    ) internal override {
+    ) internal override nonReentrant {
         // Validate source chain
         if (_origin.srcEid != bridgeConfig.remoteEid) {
             revert InvalidSourceChain(bridgeConfig.remoteEid, _origin.srcEid);
@@ -227,7 +229,12 @@ contract PredictionMarketLZConditionalTokensResolver is
         uint256 yesPayout
     ) internal {
         ConditionState storage condition = conditions[conditionId];
-        
+
+        // Prevent overwriting already-settled conditions
+        if (condition.settled) {
+            return;
+        }
+
         // Initialize if first time
         if (condition.conditionId == bytes32(0)) {
             condition.conditionId = conditionId;
@@ -290,7 +297,7 @@ contract PredictionMarketLZConditionalTokensResolver is
 
     function getConditionResolution(bytes32 conditionId) external view returns (bool resolvedToYes) {
         ConditionState memory condition = conditions[conditionId];
-        require(condition.settled, "Condition not settled");
+        if (!condition.settled) revert ConditionNotSettled(conditionId);
         return condition.resolvedToYes;
     }
 

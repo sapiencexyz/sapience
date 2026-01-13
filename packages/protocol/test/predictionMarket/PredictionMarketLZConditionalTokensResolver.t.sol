@@ -649,7 +649,10 @@ contract PredictionMarketLZConditionalTokensResolverTest is TestHelperOz5 {
     }
 
     function test_getConditionResolution_revertIfNotSettled() public {
-        vm.expectRevert("Condition not settled");
+        vm.expectRevert(abi.encodeWithSelector(
+            IPredictionMarketLZConditionalTokensResolver.ConditionNotSettled.selector,
+            TEST_CONDITION_ID
+        ));
         resolver.getConditionResolution(TEST_CONDITION_ID);
     }
 }

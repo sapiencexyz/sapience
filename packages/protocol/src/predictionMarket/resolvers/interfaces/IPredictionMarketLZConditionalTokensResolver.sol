@@ -54,6 +54,7 @@ interface IPredictionMarketLZConditionalTokensResolver is IPredictionMarketResol
     error InvalidSourceChain(uint32 expectedEid, uint32 actualEid);
     error InvalidSender(address expectedBridge, address actualSender);
     error InvalidCommandType(uint16 commandType);
+    error ConditionNotSettled(bytes32 conditionId);
 
     // ============ Functions ============
 

@@ -108,7 +108,7 @@ contract ConditionalTokensReader is
         if (msg.value > fee.nativeFee) {
             uint256 excess = msg.value - fee.nativeFee;
             (bool success, ) = payable(msg.sender).call{value: excess}("");
-            require(success, "Refund failed");
+            if (!success) revert RefundFailed();
         }
         
         emit ResolutionRequested(conditionId, receipt.guid, block.timestamp);
@@ -161,7 +161,7 @@ contract ConditionalTokensReader is
             revert InsufficientBalance(amount, address(this).balance);
         }
         (bool success, ) = payable(owner()).call{value: amount}("");
-        require(success, "ETH transfer failed");
+        if (!success) revert ETHTransferFailed();
     }
 
     /**
@@ -182,9 +182,30 @@ contract ConditionalTokensReader is
      * @notice Read condition data from ConditionalTokens contract
      * @param conditionId The conditionId to read
      * @return ConditionData struct with all condition information
-     * @dev Performs 4 external calls to ConditionalTokens contract
+     * @dev Uses try/catch to handle external call failures gracefully
      */
     function _readConditionData(bytes32 conditionId) internal view returns (ConditionData memory) {
+        try this.readConditionDataExternal(conditionId) returns (ConditionData memory data) {
+            return data;
+        } catch {
+            // Return invalid data that will fail validation
+            return ConditionData({
+                slotCount: 0,
+                payoutDenominator: 0,
+                noPayout: 0,
+                yesPayout: 0
+            });
+        }
+    }
+
+    /**
+     * @notice External helper for try/catch pattern - reverts if any call fails
+     * @param conditionId The conditionId to read
+     * @return ConditionData struct with all condition information
+     * @dev Only callable by this contract. Performs 4 external calls to ConditionalTokens contract.
+     */
+    function readConditionDataExternal(bytes32 conditionId) external view returns (ConditionData memory) {
+        if (msg.sender != address(this)) revert OnlySelfCallAllowed();
         return ConditionData({
             slotCount: IConditionalTokens(config.conditionalTokens).getOutcomeSlotCount(conditionId),
             payoutDenominator: IConditionalTokens(config.conditionalTokens).payoutDenominator(conditionId),
