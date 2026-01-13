@@ -12,7 +12,8 @@ process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID = mockProjectId;
 process.env.NEXT_PUBLIC_RPC_URL = 'https://mock-rpc.test';
 
 // Mock addresses
-const mockOwnerAddress = '0x1234567890123456789012345678901234567890' as Address;
+const mockOwnerAddress =
+  '0x1234567890123456789012345678901234567890' as Address;
 const mockSmartAccountAddress =
   '0xabcdef1234567890abcdef1234567890abcdef12' as Address;
 const mockSessionKeyAddress =
@@ -124,7 +125,9 @@ jest.mock('@zerodev/permissions', () => ({
       type: 'permission',
     })
   ),
-  deserializePermissionAccount: jest.fn(() => Promise.resolve(mockKernelAccount)),
+  deserializePermissionAccount: jest.fn(() =>
+    Promise.resolve(mockKernelAccount)
+  ),
   serializePermissionAccount: jest.fn(() =>
     Promise.resolve('mock-approval-string')
   ),

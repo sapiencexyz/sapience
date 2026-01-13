@@ -4,7 +4,6 @@
  * Tests the React context provider, useSession hook, and utility functions.
  */
 
-import React from 'react';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import type { Address, Hex } from 'viem';
 
@@ -290,7 +289,7 @@ describe('SessionContext', () => {
       );
 
       // Click start session button
-      await act(async () => {
+      act(() => {
         screen.getByTestId('startSession').click();
       });
 
@@ -302,9 +301,10 @@ describe('SessionContext', () => {
         expect(screen.getByTestId('isSessionActive')).toHaveTextContent('true');
       });
 
-      expect(mockSaveSession).toHaveBeenCalledWith(mockSessionResult.serialized);
+      expect(mockSaveSession).toHaveBeenCalledWith(
+        mockSessionResult.serialized
+      );
     });
-
   });
 
   describe('endSession', () => {
@@ -349,7 +349,7 @@ describe('SessionContext', () => {
       );
 
       // Start session first
-      await act(async () => {
+      act(() => {
         screen.getByTestId('startSession').click();
       });
 
@@ -358,7 +358,7 @@ describe('SessionContext', () => {
       });
 
       // End session
-      await act(async () => {
+      act(() => {
         screen.getByTestId('endSession').click();
       });
 

@@ -425,7 +425,9 @@ describe('useSessionSendCalls', () => {
         act(async () => {
           await result.current.sendCallsViaSession({
             chainId: ETHEREAL_CHAIN_ID,
-            calls: [{ to: mockContractAddress, data: '0xdata' as `0x${string}` }],
+            calls: [
+              { to: mockContractAddress, data: '0xdata' as `0x${string}` },
+            ],
           });
         })
       ).rejects.toThrow('Batch failed');
