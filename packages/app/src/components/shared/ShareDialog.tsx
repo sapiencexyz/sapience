@@ -119,7 +119,6 @@ export default function ShareDialog(props: ShareDialogProps) {
       shareText={question}
       open={controlledOpen}
       onOpenChange={onOpenChange}
-      loaderSizePx={48}
       copyButtonText="Copy Image"
       shareButtonText="Share"
     />

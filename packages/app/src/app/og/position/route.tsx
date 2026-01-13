@@ -58,10 +58,60 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
 
     if (searchParams.has('debug')) {
-      return new Response('ok', {
-        status: 200,
-        headers: { 'content-type': 'text/plain' },
-      });
+      const nftId = searchParams.get('nftId');
+      const marketAddr = searchParams.get('marketAddress');
+      const graphqlEndpoint = getGraphQLEndpoint();
+
+      let apiResult = 'Not queried';
+      if (nftId && marketAddr) {
+        try {
+          const query = `
+            query PositionsByNftAndMarket($nftTokenId: String, $marketAddress: String) {
+              positions(nftTokenId: $nftTokenId, marketAddress: $marketAddress, take: 1) {
+                id
+                predictor
+                predictorNftTokenId
+                counterpartyNftTokenId
+                predictorCollateral
+                counterpartyCollateral
+                totalCollateral
+                predictions {
+                  conditionId
+                  outcomeYes
+                  condition {
+                    shortName
+                    question
+                  }
+                }
+              }
+            }
+          `;
+          const response = await fetch(graphqlEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query,
+              variables: { nftTokenId: nftId, marketAddress: marketAddr },
+            }),
+          });
+          apiResult = await response.text();
+        } catch (err) {
+          apiResult = `Error: ${err instanceof Error ? err.message : String(err)}`;
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          endpoint: graphqlEndpoint,
+          nftId,
+          marketAddress: marketAddr,
+          apiResult: apiResult,
+        }, null, 2),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        }
+      );
     }
 
     // Check if nftId and marketAddress are provided - if so, query API for position data
@@ -328,8 +378,8 @@ export async function GET(req: Request) {
                               <div
                                 style={{
                                   display: 'flex',
-                                  fontSize: 38 * scale,
-                                  lineHeight: `${48 * scale}px`,
+                                  fontSize: 32 * scale,
+                                  lineHeight: `${40 * scale}px`,
                                   fontWeight: 700,
                                   letterSpacing: -0.16 * scale,
                                   color: og.colors.brandWhite,

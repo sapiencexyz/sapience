@@ -15,9 +15,7 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import * as viemChains from 'viem/chains';
-import Loader from '~/components/shared/Loader';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
-import PulsingGradient from '~/components/shared/PulsingGradient';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSession } from '~/lib/context/SessionContext';
@@ -30,7 +28,6 @@ interface OgShareDialogBaseProps {
   shareText?: string; // Text for navigator.share
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  loaderSizePx?: number; // defaults to 20 for consistency
   copyButtonText?: string; // defaults to "Copy Image"
   shareButtonText?: string; // defaults to "Share"
   trackPosition?: boolean; // Enable position tracking
@@ -49,7 +46,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     shareText: _shareText,
     open: controlledOpen,
     onOpenChange,
-    loaderSizePx = 20,
     copyButtonText = 'Copy Image',
     shareButtonText = 'Share',
     trackPosition = false,
@@ -441,30 +437,20 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             <div className="absolute inset-0 z-0">
               <HeroBackgroundLines className="opacity-60 !-z-0" />
             </div>
-            {/* Only show pulsing gradient while waiting:
-                - In tracking mode: while waiting for position to be indexed
-                - In non-tracking mode: while image is loading */}
-            {((trackPosition && !positionResolved) ||
-              (!trackPosition && imgLoading)) && (
-              <PulsingGradient
-                className="inset-0 z-[1]"
-                durationMs={12000}
-                baseOpacity={0.15}
-                gradient="radial-gradient(ellipse 70% 70% at 50% 30%, hsl(var(--accent-gold)/0.25) 0%, hsl(var(--accent-gold)/0.08) 50%, transparent 80%)"
-              />
-            )}
             {/* Waiting text - shown while tracking position and not yet resolved */}
             {trackPosition && !positionResolved && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <span className="font-mono text-[hsl(var(--accent-gold))] text-lg uppercase tracking-wider">
-                  WAITING FOR TRADE TO BE INDEXED
+                  WAITING FOR YOUR TRADE TO BE INDEXED
                 </span>
               </div>
             )}
-            {/* Loader for non-tracking mode */}
+            {/* Loading text for non-tracking mode */}
             {!trackPosition && imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
-                <Loader size={loaderSizePx} />
+                <span className="font-mono text-[hsl(var(--accent-gold))] text-lg uppercase tracking-wider">
+                  LOADING...
+                </span>
               </div>
             )}
             {/* OG Image - fades in over the hero background */}
@@ -479,7 +465,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               priority
               unoptimized
               className={`transition-opacity duration-500 ${
-                trackPosition && !positionResolved ? 'opacity-0' : 'opacity-100'
+                imgLoading || (trackPosition && !positionResolved) ? 'opacity-0' : 'opacity-100'
               }`}
             />
           </div>
