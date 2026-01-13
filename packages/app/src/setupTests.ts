@@ -3,6 +3,9 @@
 
 import '@testing-library/jest-dom';
 
+// Enable React act() environment for React 19
+(globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
 // Polyfill for TextEncoder/TextDecoder which is needed by viem
 class MockTextEncoder {
   encoding = 'utf-8';
@@ -41,3 +44,80 @@ class MockTextDecoder {
 // Cast to unknown first, then to the target type to satisfy stricter TS rules
 global.TextEncoder = MockTextEncoder as unknown as typeof global.TextEncoder;
 global.TextDecoder = MockTextDecoder as unknown as typeof global.TextDecoder;
+
+// Polyfill Request/Response for Next.js Edge Runtime API route tests
+// These are Web APIs available in browsers and Node 18+ but not in jsdom
+class MockHeaders {
+  private headers: Map<string, string>;
+
+  constructor(init?: Record<string, string> | [string, string][]) {
+    this.headers = new Map();
+    if (init) {
+      const entries = Array.isArray(init) ? init : Object.entries(init);
+      for (const [key, value] of entries) {
+        this.headers.set(key.toLowerCase(), value);
+      }
+    }
+  }
+
+  get(name: string): string | null {
+    return this.headers.get(name.toLowerCase()) ?? null;
+  }
+
+  set(name: string, value: string): void {
+    this.headers.set(name.toLowerCase(), value);
+  }
+
+  has(name: string): boolean {
+    return this.headers.has(name.toLowerCase());
+  }
+}
+
+class MockRequest {
+  url: string;
+  method: string;
+  headers: MockHeaders;
+
+  constructor(
+    url: string,
+    init?: { method?: string; headers?: Record<string, string> }
+  ) {
+    this.url = url;
+    this.method = init?.method || 'GET';
+    this.headers = new MockHeaders(init?.headers);
+  }
+}
+
+class MockResponse {
+  private body: string | null;
+  status: number;
+  headers: MockHeaders;
+
+  constructor(
+    body?: string | null,
+    init?: { status?: number; headers?: Record<string, string> }
+  ) {
+    this.body = body ?? null;
+    this.status = init?.status || 200;
+    this.headers = new MockHeaders(init?.headers);
+  }
+
+  json(): Promise<unknown> {
+    return Promise.resolve(this.body ? JSON.parse(this.body) : null);
+  }
+
+  text(): Promise<string> {
+    return Promise.resolve(this.body ?? '');
+  }
+}
+
+// Only polyfill if not already defined (e.g., in Node 18+)
+if (typeof globalThis.Request === 'undefined') {
+  globalThis.Request = MockRequest as unknown as typeof globalThis.Request;
+}
+if (typeof globalThis.Response === 'undefined') {
+  globalThis.Response = MockResponse as unknown as typeof globalThis.Response;
+}
+if (typeof globalThis.Headers === 'undefined') {
+  globalThis.Headers = MockHeaders as unknown as typeof globalThis.Headers;
+}

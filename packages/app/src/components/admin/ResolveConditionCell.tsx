@@ -1,10 +1,14 @@
 'use client';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import { useWallets } from '@privy-io/react-auth';
 import { Loader2 } from 'lucide-react';
 import { erc20Abi, zeroAddress, toHex, keccak256, concatHex } from 'viem';
-import { useReadContract, useWriteContract, useSwitchChain } from 'wagmi';
+import {
+  useAccount,
+  useReadContract,
+  useWriteContract,
+  useSwitchChain,
+} from 'wagmi';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -76,10 +80,7 @@ const ResolveConditionCell = ({
   assertionTimestamp,
   resolver,
 }: ResolveConditionCellProps) => {
-  const { wallets } = useWallets();
-  const connectedAddress = (wallets?.[0]?.address || undefined) as
-    | `0x${string}`
-    | undefined;
+  const { address: connectedAddress } = useAccount();
 
   const adminTarget =
     getAdminSettlementTarget({ conditionResolver: resolver }) ?? null;

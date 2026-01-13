@@ -19,11 +19,9 @@ import {
   TabsContent,
 } from '@sapience/ui/components/ui/tabs';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
-import { Monitor, Key, Share2, Bot } from 'lucide-react';
+import { Monitor, Share2, Bot } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
-import { usePrivy, useWallets } from '@privy-io/react-auth';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import Loader from '~/components/shared/Loader';
@@ -198,15 +196,6 @@ const SettingsPageContent = () => {
   const [selectedChain, setSelectedChain] = useState<
     'arbitrum' | 'ethereal' | null
   >(null);
-  const { ready, exportWallet } = usePrivy();
-  const { wallets } = useWallets();
-  const activeWallet = (
-    wallets && wallets.length > 0 ? (wallets[0] as any) : undefined
-  ) as (typeof wallets extends Array<infer T> ? T : any) | undefined;
-  const isActiveEmbeddedWallet = Boolean(
-    (activeWallet as any)?.walletClientType === 'privy'
-  );
-  const { hasConnectedWallet } = useConnectedWallet();
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
@@ -516,28 +505,6 @@ const SettingsPageContent = () => {
                         to send and receive signed messages
                       </p>
                     </div>
-
-                    {ready && isActiveEmbeddedWallet ? (
-                      <div className="grid gap-2">
-                        <Label htmlFor="export-wallet">Back Up Account</Label>
-                        <div id="export-wallet">
-                          <Button
-                            onClick={exportWallet}
-                            disabled={
-                              !(
-                                ready &&
-                                isActiveEmbeddedWallet &&
-                                hasConnectedWallet
-                              )
-                            }
-                            size="sm"
-                          >
-                            <Key className="h-4 w-4" />
-                            Export Private Key
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
                   </div>
                 </CardContent>
               </Card>

@@ -5,6 +5,7 @@ import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
 interface UseSingleConditionAuctionProps {
@@ -62,6 +63,7 @@ export function useSingleConditionAuction({
   requestQuotes,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
   const { address: takerAddress } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
@@ -70,7 +72,13 @@ export function useSingleConditionAuction({
   // Use zero address as guest taker when not connected
   const guestTakerAddress: `0x${string}` =
     '0x0000000000000000000000000000000000000000';
-  const selectedTakerAddress = takerAddress ?? guestTakerAddress;
+
+  // Use smart account address when session is active, otherwise use EOA
+  // This ensures the correct nonce is fetched for the address that will execute the transaction
+  const selectedTakerAddress =
+    isSessionActive && smartAccountAddress
+      ? smartAccountAddress
+      : (takerAddress ?? guestTakerAddress);
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
@@ -138,7 +146,12 @@ export function useSingleConditionAuction({
       if (!requestQuotes) return;
       if (!selectedTakerAddress) return;
       if (!conditionId || prediction === null) return;
-      if (takerAddress && takerNonce === undefined) return;
+      // Wait for nonce if using a real address (not guest)
+      if (
+        selectedTakerAddress !== guestTakerAddress &&
+        takerNonce === undefined
+      )
+        return;
 
       const wagerStr = wagerAmount || '0';
 
@@ -173,7 +186,6 @@ export function useSingleConditionAuction({
       selectedTakerAddress,
       conditionId,
       prediction,
-      takerAddress,
       takerNonce,
       wagerAmount,
       collateralDecimals,

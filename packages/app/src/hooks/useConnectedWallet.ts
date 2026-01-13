@@ -1,51 +1,37 @@
 'use client';
 
-import { useWallets, usePrivy } from '@privy-io/react-auth';
 import { useAccount } from 'wagmi';
 import { useMemo } from 'react';
 import { useAuth } from '~/lib/context/AuthContext';
 
 interface ConnectedWalletState {
   ready: boolean;
-  connectedWallet:
-    | ReturnType<typeof useWallets>['wallets'][number]
-    | { address: `0x${string}` }
-    | undefined;
+  connectedWallet: { address: `0x${string}` } | undefined;
   hasConnectedWallet: boolean;
 }
 
 /**
- * Unified hook to detect wallet connection from either Privy or wagmi.
- * Prioritizes Privy wallets but falls back to wagmi for direct external connections.
+ * Unified hook to detect wallet connection from wagmi.
  * Respects explicit logout state for wallets that don't support programmatic disconnect.
  */
 export function useConnectedWallet(): ConnectedWalletState {
-  const { wallets } = useWallets();
-  const { ready: privyReady } = usePrivy();
-  const { address: wagmiAddress, isConnected: wagmiConnected } = useAccount();
+  const { address, isConnected, status } = useAccount();
   const { isLoggedOut } = useAuth();
 
-  // Privy wallet takes priority
-  const privyWallet = useMemo(() => wallets?.[0], [wallets]);
+  const ready = status !== 'connecting' && status !== 'reconnecting';
 
-  // Use Privy wallet if available, otherwise use wagmi connection
-  // But respect the logged out state for wallets that can't programmatically disconnect
   const connectedWallet = useMemo(() => {
     // If user explicitly logged out, don't show any wallet
     if (isLoggedOut) {
       return undefined;
     }
-    if (privyWallet?.address) {
-      return privyWallet;
-    }
-    // Fallback to wagmi for direct external wallet connections
-    if (wagmiConnected && wagmiAddress) {
-      return { address: wagmiAddress };
+    if (isConnected && address) {
+      return { address };
     }
     return undefined;
-  }, [privyWallet, wagmiConnected, wagmiAddress, isLoggedOut]);
+  }, [isConnected, address, isLoggedOut]);
 
-  const hasConnectedWallet = Boolean(privyReady && connectedWallet?.address);
+  const hasConnectedWallet = Boolean(ready && connectedWallet?.address);
 
-  return { ready: privyReady, connectedWallet, hasConnectedWallet };
+  return { ready, connectedWallet, hasConnectedWallet };
 }

@@ -18,6 +18,7 @@ import * as viemChains from 'viem/chains';
 import Loader from '~/components/shared/Loader';
 import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { useSession } from '~/lib/context/SessionContext';
 
 interface OgShareDialogBaseProps {
   imageSrc: string; // Relative path with query, e.g. "/og/trade?..."
@@ -70,13 +71,16 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
   const { address } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const chainId = useChainIdFromLocalStorage();
   const [positionResolved, setPositionResolved] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
-  // Get user address for position tracking
-  const userAddress = address?.toLowerCase();
+  // Get user address for position tracking - use smart account when session is active
+  const userAddress = (
+    isSessionActive && smartAccountAddress ? smartAccountAddress : address
+  )?.toLowerCase();
 
   // Fetch positions for tracking
   const { data: positions, refetch: refetchPositions } = useUserParlays({
@@ -397,7 +401,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     return imageSrc;
   }, [imageSrc]);
 
-  const explorerTxUrl = useMemo(() => {
+  const _explorerTxUrl = useMemo(() => {
     if (!txHash || !chainId) return null;
     const ETHEREAL_CHAIN_ID = 5064014;
     const etherealExplorer = 'https://explorer.ethereal.trade';
@@ -430,25 +434,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Position tracking section */}
-          {trackPosition && open && userAddress && !positionResolved && (
-            <div className="w-full p-4 bg-muted/50 rounded-lg border border-border">
-              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-2 text-sm text-muted-foreground">
-                <Loader size={20} className="shrink-0" />
-                <span>Waiting for position to be indexed...</span>
-                {explorerTxUrl ? (
-                  <Link
-                    href={explorerTxUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline underline-offset-2 hover:text-foreground transition-colors"
-                  >
-                    View on explorer
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          )}
           {trackPosition && positionResolved && (
             <div className="w-full p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
               <p className="text-sm text-green-600 dark:text-green-400 text-center flex items-center justify-center gap-2">
@@ -527,7 +512,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               size="lg"
               className="w-full"
               type="button"
-              disabled={trackPosition && !positionResolved}
               onClick={() => {
                 const shareUrl = buildShareUrl();
                 const intent = buildXShareUrl(shareUrl);
@@ -549,7 +533,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
               className="w-full"
               type="button"
               variant="outline"
-              disabled={trackPosition && !positionResolved}
               onClick={async () => {
                 const shareUrl = buildShareUrl();
                 if ((navigator as any).share) {
