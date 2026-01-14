@@ -188,47 +188,52 @@ async function startTradingAuction({
       };
 
       socket.onopen = async () => {
-        elizaLogger.info("[Trading] Connected to auction WebSocket as TAKER");
-        startKeepAlive();
+        try {
+          elizaLogger.info("[Trading] Connected to auction WebSocket as TAKER");
+          startKeepAlive();
 
-        const contractNonce = await getCurrentMakerNonce(walletAddress as `0x${string}`, rpcUrl);
-        elizaLogger.info(`[Trading] Using contract taker nonce: ${contractNonce}`);
+          const contractNonce = await getCurrentMakerNonce(walletAddress as `0x${string}`, rpcUrl);
+          elizaLogger.info(`[Trading] Using contract taker nonce: ${contractNonce}`);
 
-        // Trading uses Ethereal chain with lzPMResolver
-        const { RESOLVER } = getTradingContractAddresses();
-        const predictedOutcomes = await encodeTradeOutcomes(markets, predictions);
+          // Trading uses Ethereal chain with lzPMResolver
+          const { RESOLVER } = getTradingContractAddresses();
+          const predictedOutcomes = await encodeTradeOutcomes(markets, predictions);
 
-        // Prepare base auction payload
-        const payload = {
-          taker: walletAddress,
-          wager: wagerAmount,
-          resolver: RESOLVER,
-          predictedOutcomes,
-          takerNonce: contractNonce,
-          chainId: CHAIN_ID_ETHEREAL,
-        };
+          // Prepare base auction payload
+          const payload = {
+            taker: walletAddress,
+            wager: wagerAmount,
+            resolver: RESOLVER,
+            predictedOutcomes,
+            takerNonce: contractNonce,
+            chainId: CHAIN_ID_ETHEREAL,
+          };
 
-        // Sign the auction request to get actionable bids from market makers (like the vault)
-        // Unsigned requests return quote-only bids (maker = 0x0000..., signature = 0x0000...)
-        const sdk = await loadSdk();
-        const account = privateKeyToAccount(getPrivateKey() as `0x${string}`);
-        const { domain, uri } = sdk.extractSiweDomainAndUri(sapienceWs);
-        const issuedAt = new Date().toISOString();
-        const message = sdk.createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
-        const takerSignature = await account.signMessage({ message });
-        const takerSignedAt = issuedAt;
+          // Sign the auction request to get actionable bids from market makers (like the vault)
+          // Unsigned requests return quote-only bids (maker = 0x0000..., signature = 0x0000...)
+          const sdk = await loadSdk();
+          const account = privateKeyToAccount(getPrivateKey() as `0x${string}`);
+          const { domain, uri } = sdk.extractSiweDomainAndUri(sapienceWs);
+          const issuedAt = new Date().toISOString();
+          const message = sdk.createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
+          const takerSignature = await account.signMessage({ message });
+          const takerSignedAt = issuedAt;
 
-        const auctionMessage = {
-          type: "auction.start",
-          payload: {
-            ...payload,
-            takerSignature,
-            takerSignedAt,
-          },
-        };
+          const auctionMessage = {
+            type: "auction.start",
+            payload: {
+              ...payload,
+              takerSignature,
+              takerSignedAt,
+            },
+          };
 
-        elizaLogger.info(`[Trading] Starting trading auction: ${JSON.stringify(auctionMessage)}`);
-        socket.send(JSON.stringify(auctionMessage));
+          elizaLogger.info(`[Trading] Starting trading auction: ${JSON.stringify(auctionMessage)}`);
+          socket.send(JSON.stringify(auctionMessage));
+        } catch (error: any) {
+          elizaLogger.error("[Trading] Error in socket.onopen handler:", error);
+          resolveOnce({ success: false, error: `Failed to start auction: ${error.message}` });
+        }
       };
 
       socket.onmessage = async (event) => {
