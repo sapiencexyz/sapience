@@ -265,7 +265,7 @@ const MarketsPage = () => {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
-        {/* Featured Parlays section */}
+        {/* Featured Positions section */}
         <ExampleCombos className="mt-4 md:mt-0" />
 
         {showPredictPrices ? (

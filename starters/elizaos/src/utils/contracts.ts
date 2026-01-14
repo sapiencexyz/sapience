@@ -54,7 +54,7 @@ export async function getCurrentMakerNonce(walletAddress: string, rpcUrl?: strin
 /**
  * Prepare for trading by wrapping USDe to WUSDe and approving for the PredictionMarket.
  * 
- * This follows the same pattern as the frontend betslip/parlay forms:
+ * This follows the same pattern as the frontend create position form:
  * 1. Always wrap the full collateral amount (no balance optimization)
  * 2. Check allowance and approve only if insufficient
  * 3. Execute transactions sequentially, waiting for each to confirm

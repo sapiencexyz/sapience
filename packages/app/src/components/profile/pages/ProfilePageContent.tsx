@@ -16,7 +16,7 @@ import ProfileHeader from '~/components/profile/ProfileHeader';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { useUserParlays } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 import Loader from '~/components/shared/Loader';
 import EmptyProfileState from '~/components/profile/EmptyProfileState';
@@ -39,7 +39,7 @@ const ProfilePageContent = () => {
   });
 
   // Positions for this profile address, filtered by chainId
-  const { data: positions, isLoading: positionsLoading } = useUserParlays({
+  const { data: positions, isLoading: positionsLoading } = useUserPositions({
     address: String(address),
     chainId,
   });

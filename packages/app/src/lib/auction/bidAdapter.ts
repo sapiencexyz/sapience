@@ -2,7 +2,7 @@ import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import type { AuctionBidData } from '~/components/shared/AuctionBidsChart';
 
 /**
- * Converts QuoteBid[] (from the parlay auction) to AuctionBidData[] format
+ * Converts QuoteBid[] (from the position auction) to AuctionBidData[] format
  * suitable for the AuctionBidsChart component.
  *
  * The main difference is that QuoteBid doesn't include receivedAtMs,

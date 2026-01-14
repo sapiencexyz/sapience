@@ -96,7 +96,7 @@ export function validateAuctionForMint(auction: AuctionRequestPayload): {
 }
 
 /**
- * Calculates the expected payout for a parlay (wager + taker collateral)
+ * Calculates the expected payout for a position (wager + taker collateral)
  */
 export function calculateExpectedPayout(
   wager: string,

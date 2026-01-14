@@ -20,7 +20,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 
 import { formatFiveSigFigs } from '~/lib/utils/util';
-import type { Parlay } from '~/hooks/graphql/useUserParlays';
+import type { Position } from '~/hooks/graphql/useUserPositions';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
@@ -174,7 +174,7 @@ function useProfileBalance(
 
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 
-function useFirstActivity(positions: Parlay[] | undefined) {
+function useFirstActivity(positions: Position[] | undefined) {
   return React.useMemo(() => {
     let earliest: Date | undefined;
     try {
@@ -221,7 +221,7 @@ function useFirstActivity(positions: Parlay[] | undefined) {
 type ProfileQuickMetricsProps = {
   address: string;
   forecastsCount: number;
-  positions: Parlay[];
+  positions: Position[];
   className?: string;
 };
 

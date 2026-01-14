@@ -16,7 +16,7 @@ import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import * as viemChains from 'viem/chains';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
-import { useUserParlays, type Parlay } from '~/hooks/graphql/useUserParlays';
+import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSession } from '~/lib/context/SessionContext';
 
@@ -33,8 +33,8 @@ interface OgShareDialogBaseProps {
   trackPosition?: boolean; // Enable position tracking
   txHash?: string; // Optional tx hash for explorer link while pending
   positionTimestamp?: number; // Timestamp when position was placed (ms)
-  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from betslip for validation
-  lastNftId?: string; // Last NFT ID before this parlay was submitted (for validation)
+  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
+  lastNftId?: string; // Last NFT ID before this position was submitted (for validation)
 }
 
 export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
@@ -81,7 +81,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   )?.toLowerCase();
 
   // Fetch positions for tracking
-  const { data: positions, refetch: refetchPositions } = useUserParlays({
+  const { data: positions, refetch: refetchPositions } = useUserPositions({
     address: trackPosition && userAddress ? userAddress : undefined,
     chainId,
     take: 10, // Only need recent positions
@@ -96,7 +96,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       return;
     }
 
-    // Reset tracking state when positionTimestamp changes (new parlay)
+    // Reset tracking state when positionTimestamp changes (new position)
     const currentTimestamp = positionTimestamp || Date.now();
     const timestampChanged =
       dialogOpenTimestampRef.current !== currentTimestamp;
@@ -111,7 +111,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       }
     }
 
-    const checkPosition = (positionsToCheck: Parlay[]) => {
+    const checkPosition = (positionsToCheck: Position[]) => {
       if (!positionsToCheck || positionsToCheck.length === 0) {
         return false;
       }
@@ -121,7 +121,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       // Find positions minted after the dialog opened
-      const candidatePositions = positionsToCheck.filter((p: Parlay) => {
+      const candidatePositions = positionsToCheck.filter((p: Position) => {
         const mintedAtSeconds = Number(p.mintedAt);
         const passes = mintedAtSeconds >= minTimestampSeconds;
         return passes;
@@ -136,7 +136,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       if (lastNftId) {
         try {
           const lastNftIdBigInt = BigInt(lastNftId);
-          filteredByNftId = candidatePositions.filter((p: Parlay) => {
+          filteredByNftId = candidatePositions.filter((p: Position) => {
             try {
               const currentNftId = BigInt(p.predictorNftTokenId || '0');
               return currentNftId > lastNftIdBigInt;
@@ -178,7 +178,7 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
 
       // If expectedLegs are provided, verify the position matches the submitted conditions
       if (expectedLegs && expectedLegs.length > 0) {
-        const foundPosition = filteredByNftId.find((p: Parlay) => {
+        const foundPosition = filteredByNftId.find((p: Position) => {
           const positionLegs = (p.predictions || []).map((pred) => {
             const question =
               pred.condition?.shortName || pred.condition?.question || '';

@@ -76,7 +76,7 @@ describe('getConditionMatchInfo', () => {
       expect(result).toBeNull();
     });
 
-    it('returns direct match when single-condition order matches one leg of a parlay (opposite)', () => {
+    it('returns direct match when single-condition order matches one leg of a multi-leg position (opposite)', () => {
       const order = createOrder([{ id: '0xmarket-a', outcome: 'yes' }]);
       const auctionLegs = createAuctionLegs([
         { marketId: '0xmarket-a', prediction: false },
@@ -89,7 +89,7 @@ describe('getConditionMatchInfo', () => {
       expect(result).toEqual({ inverted: false });
     });
 
-    it('returns inverted match when single-condition order matches one leg of a parlay (same side)', () => {
+    it('returns inverted match when single-condition order matches one leg of a multi-leg position (same side)', () => {
       const order = createOrder([{ id: '0xmarket-a', outcome: 'yes' }]);
       const auctionLegs = createAuctionLegs([
         { marketId: '0xmarket-a', prediction: true },
