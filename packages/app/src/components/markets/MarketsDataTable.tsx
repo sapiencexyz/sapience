@@ -238,7 +238,11 @@ function ForecastCell({
     if (!hasOpenInterest) {
       return <span className="text-muted-foreground">—</span>;
     }
-    return <span className="text-muted-foreground">Resolution Pending</span>;
+    return (
+      <span className="font-mono text-muted-foreground">
+        Resolution Pending
+      </span>
+    );
   }
 
   // Resolved - show badge with Yes or No based on resolvedToYes from GraphQL
@@ -435,6 +439,36 @@ function getRowEndTime(row: TopLevelRow): number {
     return row.maxEndTime;
   }
   return row.condition.endTime ?? 0;
+}
+
+// Helper to get header className by column ID
+function getHeaderClassName(colId: string): string {
+  switch (colId) {
+    case 'question':
+      return 'pl-4 max-w-[180px] md:max-w-none';
+    case 'endTime':
+      return 'pr-4';
+    case 'predict':
+      return 'text-center pr-4';
+    default:
+      return '';
+  }
+}
+
+// Helper to get cell className by column ID
+function getCellClassName(colId: string): string {
+  switch (colId) {
+    case 'question':
+      return 'py-2 pl-4 max-w-[180px] md:max-w-none';
+    case 'forecast':
+    case 'openInterest':
+    case 'endTime':
+      return 'py-2 text-right';
+    case 'predict':
+      return 'py-2 pr-4';
+    default:
+      return 'py-2';
+  }
 }
 
 // Create columns for the TopLevelRow type
@@ -1014,27 +1048,19 @@ export default function MarketsDataTable({
                 key={headerGroup.id}
                 className="hover:!bg-background bg-background border-b border-brand-white/20 shadow-[inset_0_1px_3px_rgba(0,0,0,0.3)]"
               >
-                {headerGroup.headers.map((header) => {
-                  const colId = header.column.id;
-                  let className = '';
-                  if (colId === 'question') {
-                    className = 'pl-4 max-w-[180px] md:max-w-none';
-                  } else if (colId === 'endTime') {
-                    className = 'pr-4';
-                  } else if (colId === 'predict') {
-                    className = 'text-center pr-4';
-                  }
-                  return (
-                    <TableHead key={header.id} className={className}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </TableHead>
-                  );
-                })}
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={getHeaderClassName(header.column.id)}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
               </TableRow>
             ))}
           </TableHeader>
@@ -1064,30 +1090,17 @@ export default function MarketsDataTable({
                       data-state={row.getIsSelected() && 'selected'}
                       className="border-b border-brand-white/20 hover:bg-transparent"
                     >
-                      {row.getVisibleCells().map((cell) => {
-                        const colId = cell.column.id;
-                        let className = 'py-2';
-                        if (colId === 'question') {
-                          className = 'py-2 pl-4 max-w-[180px] md:max-w-none';
-                        } else if (
-                          colId === 'forecast' ||
-                          colId === 'openInterest'
-                        ) {
-                          className = 'py-2 text-right';
-                        } else if (colId === 'endTime') {
-                          className = 'py-2 text-right';
-                        } else if (colId === 'predict') {
-                          className = 'py-2 pr-4';
-                        }
-                        return (
-                          <TableCell key={cell.id} className={className}>
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        );
-                      })}
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={getCellClassName(cell.column.id)}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
                     </TableRow>
                     {/* Render child rows when group is expanded */}
                     {isExpanded &&

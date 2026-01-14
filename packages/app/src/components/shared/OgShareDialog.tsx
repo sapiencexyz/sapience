@@ -16,7 +16,10 @@ import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import * as viemChains from 'viem/chains';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
-import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
+import {
+  useUserPositions,
+  type Position,
+} from '~/hooks/graphql/useUserPositions';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSession } from '~/lib/context/SessionContext';
 

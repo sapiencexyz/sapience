@@ -46,52 +46,51 @@ export default function ConditionTitleLink({
   // Compute style based on clamp behavior
   const linkStyle: React.CSSProperties = React.useMemo(() => {
     if (noWrap) {
-      return {
-        whiteSpace: 'nowrap',
-      } as React.CSSProperties;
+      return { whiteSpace: 'nowrap' };
     }
+
     if (clampLines == null) {
       return {};
     }
+
     if (clampLines === 1) {
       return {
         display: 'block',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
-      } as React.CSSProperties;
+      };
     }
+
+    // Multi-line clamp
     return {
       display: '-webkit-box',
       WebkitLineClamp: clampLines,
       WebkitBoxOrient: 'vertical',
       overflow: 'hidden',
-    } as React.CSSProperties;
+    };
   }, [clampLines, noWrap]);
 
   // Base clickable styles; prefer text underline for natural width and stable baseline
   // Dotted underline is brighter by default, dims on hover for subtle interaction feedback
-  const baseClickableClass = (() => {
+  const baseClickableClass = React.useMemo(() => {
     const shared = 'font-mono text-brand-white transition-colors break-words';
     const underlineStyle =
       'underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40';
+    const base = `p-0 m-0 bg-transparent ${shared} ${underlineStyle}`;
+
     if (noWrap) {
-      // Force a single continuous line, natural underline
-      return `inline align-baseline p-0 m-0 bg-transparent ${shared} whitespace-nowrap ${underlineStyle}`;
+      return `inline align-baseline ${base} whitespace-nowrap`;
     }
-    if (clampLines == null) {
-      // Wrap mode: inline so trailing can appear directly after the final word
-      // Keep link styling with dotted underline
-      return `inline align-baseline p-0 m-0 bg-transparent ${shared} whitespace-normal ${underlineStyle}`;
-    }
+
     if (clampLines === 1) {
-      // Single-line clamp: use block display so ellipsis works properly.
-      // Ellipsis is preserved via style (display:block, overflow:hidden, text-overflow:ellipsis, white-space:nowrap)
-      return `block max-w-full p-0 m-0 bg-transparent ${shared} whitespace-nowrap ${underlineStyle}`;
+      // Single-line clamp: use block display so ellipsis works properly
+      return `block max-w-full ${base} whitespace-nowrap`;
     }
-    // Multi-line clamp: use dotted text underline so it only spans the text width across wrapped lines
-    return `inline align-baseline p-0 m-0 bg-transparent ${shared} whitespace-normal ${underlineStyle}`;
-  })();
+
+    // Wrap mode or multi-line clamp: inline so trailing can appear after final word
+    return `inline align-baseline ${base} whitespace-normal`;
+  }, [noWrap, clampLines]);
 
   // Build the href for the questions page
   const href = getQuestionHref({ conditionId, resolverAddress });

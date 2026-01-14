@@ -9,7 +9,10 @@ import {
   useForecasts,
   type FormattedAttestation,
 } from '~/hooks/graphql/useForecasts';
-import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
+import {
+  useUserPositions,
+  type Position,
+} from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 
 type Anchor = 'forecasts' | 'positions';
@@ -81,7 +84,10 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
 
   // Build minimal OG url from resolved entities
   const toOgUrl = useCallback(
-    (anchor: Anchor, entity: FormattedAttestation | Position): string | null => {
+    (
+      anchor: Anchor,
+      entity: FormattedAttestation | Position
+    ): string | null => {
       const qp = new URLSearchParams();
       qp.set('addr', lowerAddress);
       try {
@@ -201,7 +207,8 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
         );
         resolved =
           filtered.sort(
-            (a: Position, b: Position) => Number(b.mintedAt) - Number(a.mintedAt)
+            (a: Position, b: Position) =>
+              Number(b.mintedAt) - Number(a.mintedAt)
           )[0] || null;
       }
 
