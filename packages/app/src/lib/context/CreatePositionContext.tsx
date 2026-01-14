@@ -44,6 +44,7 @@ interface PositionSelection {
   question: string;
   prediction: boolean; // true = yes, false = no
   categorySlug?: string | null; // category slug for icon display
+  resolverAddress?: string | null; // resolver address for canonical links
 }
 
 // Interface for market data with position

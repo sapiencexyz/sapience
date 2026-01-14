@@ -12,6 +12,8 @@ export interface ConditionGroupConditionType {
   description: string;
   similarMarkets: string[];
   chainId: number;
+  /** Canonical resolver address for this condition (latest observed wins) */
+  resolver?: string | null;
   category?: { id: number; name: string; slug: string } | null;
   settled?: boolean;
   resolvedToYes?: boolean;
@@ -73,6 +75,7 @@ const GET_CONDITION_GROUPS = /* GraphQL */ `
         description
         similarMarkets
         chainId
+        resolver
         settled
         resolvedToYes
         assertionId

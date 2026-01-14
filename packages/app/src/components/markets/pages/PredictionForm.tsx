@@ -18,6 +18,8 @@ interface PredictionFormProps {
   question: string;
   /** Category slug for context */
   categorySlug?: string | null;
+  /** Resolver address for canonical links */
+  resolverAddress?: string | null;
   /** Chain ID for the prediction market */
   chainId: number;
   /** Collateral decimals (default 18) */
@@ -45,6 +47,7 @@ export default function PredictionForm({
   conditionId,
   question,
   categorySlug,
+  resolverAddress,
   chainId,
   collateralDecimals = 18,
   predictionMarketAddress,
@@ -145,12 +148,14 @@ export default function PredictionForm({
       question,
       prediction: true,
       categorySlug: categorySlug ?? undefined,
+      resolverAddress,
     });
     router.push('/markets');
   }, [
     conditionId,
     question,
     categorySlug,
+    resolverAddress,
     selections,
     removeSelection,
     addSelection,
@@ -168,12 +173,14 @@ export default function PredictionForm({
       question,
       prediction: false,
       categorySlug: categorySlug ?? undefined,
+      resolverAddress,
     });
     router.push('/markets');
   }, [
     conditionId,
     question,
     categorySlug,
+    resolverAddress,
     selections,
     removeSelection,
     addSelection,

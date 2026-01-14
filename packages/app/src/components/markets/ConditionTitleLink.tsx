@@ -7,7 +7,6 @@ import { getQuestionHref } from '~/lib/utils/questionHref';
 type ConditionTitleLinkProps = {
   conditionId?: string;
   resolverAddress?: string;
-  chainId?: number | null;
   title: string;
   className?: string;
   /**
@@ -38,7 +37,6 @@ type ConditionTitleLinkProps = {
 export default function ConditionTitleLink({
   conditionId,
   resolverAddress,
-  chainId,
   title,
   className,
   clampLines = 1,
@@ -96,7 +94,7 @@ export default function ConditionTitleLink({
   })();
 
   // Build the href for the questions page
-  const href = getQuestionHref({ conditionId, resolverAddress, chainId });
+  const href = getQuestionHref({ conditionId, resolverAddress });
 
   // Wrapper display: block for single-line clamp, inline otherwise
   const wrapperDisplay = clampLines === 1 ? 'block' : 'inline align-baseline';

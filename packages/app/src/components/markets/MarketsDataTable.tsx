@@ -79,6 +79,7 @@ function groupConditionToConditionType(
     description: gc.description,
     similarMarkets: gc.similarMarkets,
     chainId: gc.chainId,
+    resolver: gc.resolver,
     category: gc.category,
     openInterest: gc.openInterest,
     settled: gc.settled,
@@ -211,7 +212,7 @@ function ForecastCell({
   onPrediction?: (p: number) => void;
   skipViewportCheck?: boolean;
 }) {
-  const { endTime, settled, resolvedToYes } = condition;
+  const { endTime, settled, resolvedToYes, openInterest } = condition;
 
   // Check if past end time synchronously (no state needed)
   const nowSec = Math.floor(Date.now() / 1000);
@@ -231,7 +232,12 @@ function ForecastCell({
 
   // Past end time - show resolution status from GraphQL API
   // Use settled and resolvedToYes fields that are already fetched from the API
+  // Don't show "Resolution Pending" if there's no open interest (no positions to resolve)
   if (!settled) {
+    const hasOpenInterest = openInterest && openInterest !== '0';
+    if (!hasOpenInterest) {
+      return <span className="text-muted-foreground">—</span>;
+    }
     return <span className="text-muted-foreground">Resolution Pending</span>;
   }
 
@@ -270,7 +276,7 @@ function GroupForecastCell({
   }, []);
 
   const predictionMap = predictionMapRef.current;
-  const spread = React.useMemo(() => {
+  const _spread = React.useMemo(() => {
     let minBest = Infinity;
     let maxBest = -Infinity;
     let count = 0;
@@ -323,13 +329,9 @@ function GroupForecastCell({
           ))}
         </div>
       )}
-      {spread.kind === 'none' || spread.kind === 'single' ? (
-        <span className="text-muted-foreground/60 animate-pulse">
-          Requesting...
-        </span>
-      ) : (
-        <span className="font-mono text-ethena">{spread.pct}% spread</span>
-      )}
+      <span className="text-muted-foreground font-mono">
+        {conditions.length} option{conditions.length === 1 ? '' : 's'}
+      </span>
     </>
   );
 }
@@ -489,7 +491,7 @@ function createColumns(
             />
             <ConditionTitleLink
               conditionId={condition.id}
-              chainId={condition.chainId}
+              resolverAddress={condition.resolver ?? undefined}
               title={displayQ}
               clampLines={1}
               className="text-sm min-w-0"
@@ -566,6 +568,15 @@ function createColumns(
         const nowMs = Date.now();
         const endMs = endTime * 1000;
         const isPast = endMs <= nowMs;
+
+        // Show em dash for zero open interest
+        if (openInterestWei === 0n) {
+          return (
+            <div className="text-sm whitespace-nowrap text-right">
+              <span className="text-muted-foreground">—</span>
+            </div>
+          );
+        }
 
         return (
           <div className="text-sm whitespace-nowrap text-right">
@@ -694,7 +705,7 @@ function ChildConditionRow({
           />
           <ConditionTitleLink
             conditionId={condition.id}
-            chainId={condition.chainId}
+            resolverAddress={condition.resolver ?? undefined}
             title={displayQ}
             clampLines={1}
             className="text-sm min-w-0"
@@ -713,13 +724,21 @@ function ChildConditionRow({
       </TableCell>
       <TableCell className="py-2 text-right">
         <div className="text-sm whitespace-nowrap text-right">
-          {condition.endTime && condition.endTime * 1000 <= Date.now() && (
-            <span className="text-muted-foreground tabular-nums mr-1">
-              Peak
-            </span>
+          {openInterestWei === 0n ? (
+            <span className="text-muted-foreground">—</span>
+          ) : (
+            <>
+              {condition.endTime && condition.endTime * 1000 <= Date.now() && (
+                <span className="text-muted-foreground tabular-nums mr-1">
+                  Peak
+                </span>
+              )}
+              <span className="tabular-nums text-foreground">
+                {formattedValue}
+              </span>
+              <span className="ml-1 text-foreground">USDe</span>
+            </>
           )}
-          <span className="tabular-nums text-foreground">{formattedValue}</span>
-          <span className="ml-1 text-foreground">USDe</span>
         </div>
       </TableCell>
       <TableCell className="py-2 text-right">

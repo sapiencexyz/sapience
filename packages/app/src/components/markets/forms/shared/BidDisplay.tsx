@@ -363,9 +363,31 @@ export default function BidDisplay({
         {isWaitingForBids ? <Loader size={12} /> : buttonState.text}
       </Button>
 
+      {/* Auction status row */}
+      <div className="flex items-center justify-between mt-1">
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-gold opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-gold"></span>
+          </span>
+          <span className="text-xs text-muted-foreground">
+            Requesting bids, higher amounts may appear
+          </span>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-xs text-muted-foreground hover:text-foreground px-2 h-7"
+          onClick={onRequestBids}
+        >
+          Restart
+        </Button>
+      </div>
+
       {/* Position-specific hint for combinations that may not receive bids */}
       {hintMounted && showNoBidsHint && (
-        <div className="text-xs text-foreground font-medium mt-2">
+        <div className="text-xs text-foreground font-medium mt-3">
           <span className="text-accent-gold">
             Some combinations may not receive bids
           </span>
@@ -373,7 +395,7 @@ export default function BidDisplay({
       )}
 
       {/* Disclaimer with optional crossfade */}
-      {disclaimerMounted && <WagerDisclaimer className="mt-4" />}
+      {disclaimerMounted && <WagerDisclaimer className="mt-3" />}
     </div>
   );
 }

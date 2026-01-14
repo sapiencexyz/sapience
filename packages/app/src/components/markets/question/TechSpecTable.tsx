@@ -2,12 +2,7 @@
 
 import Image from 'next/image';
 import { Copy } from 'lucide-react';
-import {
-  predictionMarket,
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-} from '@sapience/sdk/contracts/addresses';
+import { predictionMarket } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
 import {
   UMA_RESOLVER_ADDRESSES,
@@ -29,15 +24,9 @@ export function TechSpecTable({
   endTime,
   settled,
   resolvedToYes,
-  resolverAddress: resolverAddressProp,
+  resolverAddress,
 }: TechSpecTableProps) {
   const marketAddress = predictionMarket[chainId]?.address;
-  // Use prop if provided, otherwise fall back to contract lookups
-  const resolverAddress =
-    resolverAddressProp ??
-    lzPMResolver[chainId]?.address ??
-    lzUmaResolver[chainId]?.address ??
-    umaResolver[chainId]?.address;
 
   const isUmaResolver =
     resolverAddress &&

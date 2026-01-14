@@ -12,6 +12,7 @@ type PredictedOutcome = {
     description?: string | null;
     settled?: boolean;
     resolvedToYes?: boolean;
+    resolver?: string | null;
     category?: {
       slug: string;
     } | null;
@@ -78,6 +79,7 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
           id
           question
           endTime
+          resolver
         }
       }
     }
@@ -163,7 +165,7 @@ export function useUserPositions(params: {
 
       if (conditionIds.length === 0) return base;
 
-      // Fetch shortName, description, category, settled, resolvedToYes values for these condition IDs and join client-side
+      // Fetch shortName, description, category, settled, resolvedToYes, resolver values for these condition IDs and join client-side
       const CONDITIONS_BY_IDS = /* GraphQL */ `
         query ConditionsByIds($ids: [String!]!) {
           conditions(where: { id: { in: $ids } }, take: 1000) {
@@ -172,6 +174,7 @@ export function useUserPositions(params: {
             description
             settled
             resolvedToYes
+            resolver
             category {
               slug
             }
@@ -185,6 +188,7 @@ export function useUserPositions(params: {
         description?: string | null;
         settled?: boolean;
         resolvedToYes?: boolean;
+        resolver?: string | null;
         category?: { slug: string } | null;
       };
       const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
@@ -195,7 +199,7 @@ export function useUserPositions(params: {
         (condResp?.conditions || []).map((c) => [c.id, c])
       );
 
-      // Enrich predictions.condition with shortName, description, category, settled, resolvedToYes if available
+      // Enrich predictions.condition with shortName, description, category, settled, resolvedToYes, resolver if available
       return base.map((p) => ({
         ...p,
         predictions: (p.predictions || []).map((o) => {
@@ -211,6 +215,7 @@ export function useUserPositions(params: {
                   category: condData.category ?? o.condition.category,
                   settled: condData.settled,
                   resolvedToYes: condData.resolvedToYes,
+                  resolver: condData.resolver ?? o.condition.resolver,
                 }
               : undefined,
           };

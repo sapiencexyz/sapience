@@ -26,6 +26,7 @@ interface FeaturedCondition {
   shortName?: string | null;
   endTime: number;
   description?: string | null;
+  resolver?: string | null;
   color: string;
   categoryId: string;
   categorySlug: string;
@@ -89,6 +90,7 @@ export default function FeaturedMarketGroupCards() {
         shortName: c.shortName,
         endTime: c.endTime,
         description: c.description,
+        resolver: c.resolver,
         color,
         categoryId: String(c.category?.id ?? ''),
         categorySlug: slug,
@@ -325,6 +327,7 @@ function MobileAndDesktopLists({
                           endTime: c.endTime,
                           description: c.description,
                           categorySlug: c.categorySlug,
+                          resolver: c.resolver,
                         }}
                         color={c.color}
                         predictionProbability={
@@ -363,6 +366,7 @@ function MobileAndDesktopLists({
                           endTime: c.endTime,
                           description: c.description,
                           categorySlug: c.categorySlug,
+                          resolver: c.resolver,
                         }}
                         color={c.color}
                         predictionProbability={

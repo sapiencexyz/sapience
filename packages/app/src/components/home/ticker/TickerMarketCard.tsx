@@ -17,6 +17,7 @@ interface TickerMarketCardProps {
     endTime?: number | null;
     description?: string | null;
     categorySlug?: string | null;
+    resolver?: string | null;
   };
   color: string;
   predictionProbability?: number | null;
@@ -27,8 +28,15 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
   color,
   predictionProbability = null,
 }) => {
-  const { id, question, shortName, endTime, description, categorySlug } =
-    condition;
+  const {
+    id,
+    question,
+    shortName,
+    endTime,
+    description,
+    categorySlug,
+    resolver,
+  } = condition;
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
   const router = useRouter();
@@ -56,12 +64,14 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
       question: displayQ,
       prediction: true,
       categorySlug,
+      resolverAddress: resolver,
     });
     router.push('/markets');
   }, [
     id,
     displayQ,
     categorySlug,
+    resolver,
     selections,
     removeSelection,
     addSelection,
@@ -80,12 +90,14 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
       question: displayQ,
       prediction: false,
       categorySlug,
+      resolverAddress: resolver,
     });
     router.push('/markets');
   }, [
     id,
     displayQ,
     categorySlug,
+    resolver,
     selections,
     removeSelection,
     addSelection,
@@ -112,6 +124,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
               <div className="min-w-0 flex-1">
                 <ConditionTitleLink
                   conditionId={id}
+                  resolverAddress={resolver ?? undefined}
                   title={displayQ}
                   endTime={endTime}
                   description={description}

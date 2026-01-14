@@ -225,6 +225,18 @@ function RangeFilter({
     }
   };
 
+  const handleMinKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleMaxKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
   const isAtBounds = value[0] === min && value[1] === max;
 
   const formatDisplay = (v: number) => {
@@ -285,17 +297,25 @@ function RangeFilter({
           </div>
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
+              {showSign && parseValue(localMin) > 0 && localMin !== '∞' && (
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-foreground pointer-events-none z-10">
+                  +
+                </span>
+              )}
               <Input
                 inputSize="xs"
                 type="text"
-                value={
-                  showSign && parseValue(localMin) > 0 && localMin !== '∞'
-                    ? `+${localMin}`
-                    : localMin
-                }
+                value={localMin}
                 onChange={handleMinInputChange}
                 onBlur={handleMinBlur}
-                className="w-full pr-10 text-right font-mono text-xs tabular-nums"
+                onKeyDown={handleMinKeyDown}
+                className={cn(
+                  'w-full pr-10 text-right font-mono text-xs tabular-nums',
+                  showSign &&
+                    parseValue(localMin) > 0 &&
+                    localMin !== '∞' &&
+                    'pl-5'
+                )}
               />
               {unit && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
@@ -305,17 +325,25 @@ function RangeFilter({
             </div>
             <span className="text-muted-foreground text-xs">to</span>
             <div className="relative flex-1">
+              {showSign && parseValue(localMax) > 0 && localMax !== '∞' && (
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-foreground pointer-events-none z-10">
+                  +
+                </span>
+              )}
               <Input
                 inputSize="xs"
                 type="text"
-                value={
-                  showSign && parseValue(localMax) > 0 && localMax !== '∞'
-                    ? `+${localMax}`
-                    : localMax
-                }
+                value={localMax}
                 onChange={handleMaxInputChange}
                 onBlur={handleMaxBlur}
-                className="w-full pr-10 text-right font-mono text-xs tabular-nums"
+                onKeyDown={handleMaxKeyDown}
+                className={cn(
+                  'w-full pr-10 text-right font-mono text-xs tabular-nums',
+                  showSign &&
+                    parseValue(localMax) > 0 &&
+                    localMax !== '∞' &&
+                    'pl-5'
+                )}
               />
               {unit && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
