@@ -19,6 +19,19 @@ import {
 import { Wallet } from 'lucide-react';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+
+const USER_REFERRAL_STATUS_QUERY = `
+  query UserReferralStatus($wallet: String!) {
+    user(where: { address: $wallet }) {
+      address
+      refCodeHash
+      referredBy {
+        id
+      }
+    }
+  }
+`;
 
 // EIP-6963 types
 interface EIP6963ProviderInfo {
@@ -74,7 +87,7 @@ export default function ConnectDialog({
   open,
   onOpenChange,
 }: ConnectDialogProps) {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
   const { startSession } = useSession();
@@ -127,20 +140,62 @@ export default function ConnectDialog({
   }, []);
 
   // Auto-create session when wallet connects, then close dialog
+  // Only creates session if user has a valid referral relationship
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
 
     // Detect fresh wallet connection (went from disconnected to connected while dialog is open)
-    if (isConnected && !wasConnected && open) {
+    if (isConnected && !wasConnected && open && address) {
       console.debug(
-        '[ConnectDialog] Fresh wallet connection detected, creating session...'
+        '[ConnectDialog] Fresh wallet connection detected, checking referral status...'
       );
       setIsCreatingSession(true);
       clearLoggedOut();
 
       const createSessionAsync = async () => {
         try {
+          
+          const currentAddress = address.toLowerCase();
+          let hasReferral = false;
+
+          try {
+            const data = await graphqlRequest<{
+              user: {
+                address: string;
+                refCodeHash?: string | null;
+                referredBy?: { id: number } | null;
+              } | null;
+            }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
+
+            const user = data?.user;
+            hasReferral = !!(user && (user.refCodeHash || user.referredBy));
+
+            console.debug('[ConnectDialog] Referral check:', {
+              currentAddress,
+              hasReferral,
+              refCodeHash: user?.refCodeHash,
+              referredBy: user?.referredBy,
+            });
+          } catch (error) {
+            console.error('[ConnectDialog] Failed to check referral status:', error);
+            // On error, check localStorage fallback (same logic as Header)
+            try {
+              const key = `sapience:referralCode:${currentAddress}`;
+              const existing = window.localStorage.getItem(key);
+              hasReferral = !!existing;
+            } catch {
+              // If localStorage fails, assume no referral
+              hasReferral = false;
+            }
+          }
+
+
+          if (!hasReferral) {
+           
+            return;
+          }
+
           const durationHours = parseInt(duration || '24', 10);
 
           console.debug('[ConnectDialog] Starting session with:', {
@@ -162,7 +217,7 @@ export default function ConnectDialog({
 
       void createSessionAsync();
     }
-  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, duration]);
+  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, duration, address]);
 
   const handleEIP6963Connect = useCallback(
     (wallet: EIP6963ProviderDetail) => {
