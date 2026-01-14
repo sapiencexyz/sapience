@@ -6,7 +6,10 @@ import { useAccount } from 'wagmi';
 
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { useSession } from '~/lib/context/SessionContext';
-import { useUserPositions, type Position } from '~/hooks/graphql/useUserPositions';
+import {
+  useUserPositions,
+  type Position,
+} from '~/hooks/graphql/useUserPositions';
 
 type Anchor = 'forecasts' | 'positions';
 

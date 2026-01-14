@@ -193,7 +193,6 @@ export default function BidDisplay({
     }
   }, [estimateBid, wagerAmount, collateralDecimals]);
 
-  const _suffix = remainingSecs === 1 ? 'second' : 'seconds';
   const isBidExpired = effectiveBestBid
     ? effectiveBestBid.makerDeadline * 1000 - nowMs <= 0
     : true;
@@ -362,28 +361,6 @@ export default function BidDisplay({
       >
         {isWaitingForBids ? <Loader size={12} /> : buttonState.text}
       </Button>
-
-      {/* Auction status row */}
-      <div className="flex items-center justify-between mt-1">
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent-gold opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-accent-gold"></span>
-          </span>
-          <span className="text-xs text-muted-foreground">
-            Requesting bids, higher amounts may appear
-          </span>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="text-xs text-muted-foreground hover:text-foreground px-2 h-7"
-          onClick={onRequestBids}
-        >
-          Restart
-        </Button>
-      </div>
 
       {/* Position-specific hint for combinations that may not receive bids */}
       {hintMounted && showNoBidsHint && (
