@@ -6,12 +6,12 @@ set -euo pipefail
 # Using cast commands directly
 # ============================================================================
 
-# Configuration - UPDATE THESE VALUES
-READER="0x26DB702647e56B230E15687bFbC48b526E131dAe"
-ENDPOINT="0x1a44076050125825900e736c501f859c50fE728c"
+# Configuration - Uses env vars with defaults for LayerZero infrastructure
+READER="${POLYGON_CONDITIONAL_TOKENS_READER:?POLYGON_CONDITIONAL_TOKENS_READER must be set}"
+ENDPOINT="${POLYGON_LZ_ENDPOINT:?POLYGON_LZ_ENDPOINT must be set}"
 SEND_LIB="0x6c26c61a97006888ea9E4FA36584c7df57Cd9dA3"
 EXECUTOR="0xCd3F213AD101472e1713C72B1697E727C803885b"
-ETHEREAL_EID="30110"
+ETHEREAL_EID="30391"
 DVN1="0x23DE2FE932d9043291f870324B74F820e11dc81A"
 # DVN2="0xD56e4eAb23cb81f43168F9F45211Eb027b9aC7cc"
 CONFIRMATIONS="20"
@@ -75,8 +75,8 @@ echo ""
 
 # Step 4: Call setConfig with both configs
 # setConfig(address oapp, address lib, (uint32,uint32,bytes)[] params)
-# params[0] = (eid=30110, configType=1 (EXECUTOR), config=executorConfig)
-# params[1] = (eid=30110, configType=2 (ULN), config=ulnConfig)
+# params[0] = (eid=30391, configType=1 (EXECUTOR), config=executorConfig)
+# params[1] = (eid=30391, configType=2 (ULN), config=ulnConfig)
 echo "Step 4: Setting config (executor + DVN)..."
 cast send "$ENDPOINT" \
   "setConfig(address,address,(uint32,uint32,bytes)[])" \

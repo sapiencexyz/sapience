@@ -240,10 +240,17 @@ deploy_ethereal_resolver() {
     
     log_info "Step 2/4: Deploying PredictionMarketLZConditionalTokensResolver on Ethereal..."
     
+    local verify_flags=""
+    if [[ "$VERIFY" == "true" ]]; then
+        verify_flags="--verifier blockscout --verifier-url https://explorer.ethereal.trade/api/"
+        log_info "Verification enabled (will verify on Ethereal Blockscout)"
+    fi
+
     local output=$(forge script src/scripts/DeployConditionalTokensResolver/02_Ethereal_deployResolver.s.sol \
         --rpc-url "$ETHEREAL_RPC" \
         --broadcast \
         --private-key "$ETHEREAL_PRIVATE_KEY" \
+        $verify_flags \
         -vvv 2>&1)
     
     if [[ $? -ne 0 ]]; then

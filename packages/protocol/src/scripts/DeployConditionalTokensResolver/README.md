@@ -127,6 +127,8 @@ forge script src/scripts/DeployConditionalTokensResolver/02_Ethereal_deployResol
   --rpc-url $ETHEREAL_RPC \
   --broadcast \
   --private-key $ETHEREAL_PRIVATE_KEY \
+  --verifier blockscout \
+  --verifier-url https://explorer.ethereal.trade/api/ \
   -vvvv
 ```
 
