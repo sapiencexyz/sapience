@@ -35,6 +35,9 @@ contract ConditionalTokensReader is
     Settings public config;
     BridgeTypes.BridgeConfig private bridgeConfig;
 
+    uint256 private constant YES_INDEX = 0;
+    uint256 private constant NO_INDEX = 1;
+
     // ============ Constructor ============
     constructor(
         address _endpoint,
@@ -208,8 +211,8 @@ contract ConditionalTokensReader is
         return ConditionData({
             slotCount: IConditionalTokens(config.conditionalTokens).getOutcomeSlotCount(conditionId),
             payoutDenominator: IConditionalTokens(config.conditionalTokens).payoutDenominator(conditionId),
-            noPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(conditionId, 0),
-            yesPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(conditionId, 1)
+            noPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(conditionId, NO_INDEX),
+            yesPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(conditionId, YES_INDEX)
         });
     }
 

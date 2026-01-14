@@ -42,11 +42,12 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
     address constant CTF = 0x4D97DCd97eC945f40cF65F87097ACe5EA0476045;
 
     // Real resolved conditionIds from Polymarket (block ~80313100)
-    // Condition that resolved to YES: payoutNumerators = [0, 1]
-    bytes32 constant CONDITION_YES = 0x67903aa8fb5c90e936777cebd9c6570cb70dfeb1128008c04f11ae8e162111bc;
+    // Index 0 = YES payout, Index 1 = NO payout
+    // Condition that resolved to YES: payoutNumerators = [1, 0] (YES wins)
+    bytes32 constant CONDITION_YES = 0xace50cca5ccad582a0cbe373d62b6c6796dd89202bf47c726a3abb48688ba25e;
 
-    // Condition that resolved to NO: payoutNumerators = [1, 0]
-    bytes32 constant CONDITION_NO = 0xace50cca5ccad582a0cbe373d62b6c6796dd89202bf47c726a3abb48688ba25e;
+    // Condition that resolved to NO: payoutNumerators = [0, 1] (NO wins)
+    bytes32 constant CONDITION_NO = 0x67903aa8fb5c90e936777cebd9c6570cb70dfeb1128008c04f11ae8e162111bc;
 
     // ConditionalTokens interface
     IConditionalTokens ctf;
@@ -72,8 +73,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
     function test_fork_queryConditionYes_rawData() public {
         // Query the real ConditionalTokens contract
         uint256 denom = ctf.payoutDenominator(CONDITION_YES);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 1);
 
         // Verify expected values
         assertGt(denom, 0, "Condition should be resolved (denom > 0)");
@@ -83,15 +84,15 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         // Log for debugging
         emit log_named_bytes32("conditionId", CONDITION_YES);
         emit log_named_uint("payoutDenominator", denom);
-        emit log_named_uint("payoutNumerators[0] (NO)", noPayout);
-        emit log_named_uint("payoutNumerators[1] (YES)", yesPayout);
+        emit log_named_uint("payoutNumerators[0] (YES)", yesPayout);
+        emit log_named_uint("payoutNumerators[1] (NO)", noPayout);
     }
 
     function test_fork_queryConditionNo_rawData() public {
         // Query the real ConditionalTokens contract
         uint256 denom = ctf.payoutDenominator(CONDITION_NO);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 1);
 
         // Verify expected values
         assertGt(denom, 0, "Condition should be resolved (denom > 0)");
@@ -101,16 +102,16 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         // Log for debugging
         emit log_named_bytes32("conditionId", CONDITION_NO);
         emit log_named_uint("payoutDenominator", denom);
-        emit log_named_uint("payoutNumerators[0] (NO)", noPayout);
-        emit log_named_uint("payoutNumerators[1] (YES)", yesPayout);
+        emit log_named_uint("payoutNumerators[0] (YES)", yesPayout);
+        emit log_named_uint("payoutNumerators[1] (NO)", noPayout);
     }
 
     // ============ Binary Resolution Logic Tests ============
 
     function test_fork_binaryResolution_yes() public view {
         uint256 denom = ctf.payoutDenominator(CONDITION_YES);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 1);
 
         // Apply the resolver's binary logic
         bool isResolved = denom > 0;
@@ -124,8 +125,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
 
     function test_fork_binaryResolution_no() public view {
         uint256 denom = ctf.payoutDenominator(CONDITION_NO);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 1);
 
         // Apply the resolver's binary logic
         bool isResolved = denom > 0;
@@ -178,8 +179,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
 
         // Query real data from Polygon CTF
         uint256 denom = ctf.payoutDenominator(CONDITION_YES);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 1);
 
         // Process through resolver
         resolver.exposed_finalizeResolution(CONDITION_YES, denom, noPayout, yesPayout);
@@ -224,8 +225,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
 
         // Query real data from Polygon CTF
         uint256 denom = ctf.payoutDenominator(CONDITION_NO);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 1);
 
         // Process through resolver
         resolver.exposed_finalizeResolution(CONDITION_NO, denom, noPayout, yesPayout);
@@ -267,8 +268,8 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
 
         // Query real data from Polygon CTF
         uint256 denom = ctf.payoutDenominator(CONDITION_YES);
-        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 0);
-        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 1);
+        uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 0);
+        uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 1);
 
         // Process through resolver
         resolver.exposed_finalizeResolution(CONDITION_YES, denom, noPayout, yesPayout);
@@ -304,15 +305,15 @@ contract PredictionMarketLZConditionalTokensResolverForkTest is Test {
         // Process both real conditions
         {
             uint256 denom = ctf.payoutDenominator(CONDITION_YES);
-            uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 0);
-            uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 1);
+            uint256 yesPayout = ctf.payoutNumerators(CONDITION_YES, 0);
+            uint256 noPayout = ctf.payoutNumerators(CONDITION_YES, 1);
             resolver.exposed_finalizeResolution(CONDITION_YES, denom, noPayout, yesPayout);
         }
 
         {
             uint256 denom = ctf.payoutDenominator(CONDITION_NO);
-            uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 0);
-            uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 1);
+            uint256 yesPayout = ctf.payoutNumerators(CONDITION_NO, 0);
+            uint256 noPayout = ctf.payoutNumerators(CONDITION_NO, 1);
             resolver.exposed_finalizeResolution(CONDITION_NO, denom, noPayout, yesPayout);
         }
 

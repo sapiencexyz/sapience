@@ -492,8 +492,8 @@ contract MockConditionalTokens {
     }
 
     function payoutNumerators(bytes32 conditionId, uint256 index) external view returns (uint256) {
-        if (index == 0) return conditions[conditionId].noPayout;
-        if (index == 1) return conditions[conditionId].yesPayout;
+        if (index == 0) return conditions[conditionId].yesPayout;
+        if (index == 1) return conditions[conditionId].noPayout;
         return 0;
     }
 }
