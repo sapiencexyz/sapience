@@ -339,7 +339,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           suppressLoadingPlaceholder ? null : isRequesting ? (
             <motion.span
               key="requesting"
-              className="text-muted-foreground/60 animate-pulse"
+              className="font-mono text-muted-foreground/60 animate-pulse"
               variants={FADE_VARIANTS}
               initial="hidden"
               animate="visible"
@@ -353,7 +353,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               key="request"
               type="button"
               onClick={handleRequestPrediction}
-              className="text-foreground underline decoration-1 decoration-foreground/60 underline-offset-4 transition-colors hover:decoration-foreground/80 cursor-pointer"
+              className="font-mono text-foreground underline decoration-1 decoration-foreground/60 underline-offset-4 transition-colors hover:decoration-foreground/80 cursor-pointer"
               variants={FADE_VARIANTS}
               initial="hidden"
               animate="visible"
