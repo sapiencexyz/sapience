@@ -41,6 +41,7 @@ type ConditionData = {
   shortName?: string | null;
   endTime?: number | null;
   description?: string | null;
+  resolver?: string | null;
   category?: { slug?: string | null } | null;
 };
 
@@ -57,6 +58,7 @@ interface Comment {
   conditionId?: string;
   endTime?: number | null;
   description?: string | null;
+  resolverAddress?: string | null;
 }
 
 interface CommentsProps {
@@ -99,6 +101,7 @@ function attestationToComment(
     : 'Unknown question';
   let endTime: number | null | undefined = undefined;
   let description: string | null | undefined = undefined;
+  let resolverAddress: string | null | undefined = undefined;
 
   // Look up condition by conditionId
   const isZeroConditionId =
@@ -113,6 +116,7 @@ function attestationToComment(
       category = condition.category?.slug || undefined;
       endTime = condition.endTime;
       description = condition.description;
+      resolverAddress = condition.resolver;
     }
   }
 
@@ -140,6 +144,7 @@ function attestationToComment(
     conditionId: isZeroConditionId ? undefined : conditionId,
     endTime,
     description,
+    resolverAddress,
   };
 }
 
@@ -215,6 +220,7 @@ const Comments = ({
             shortName
             endTime
             description
+            resolver
             category {
               slug
             }
@@ -339,6 +345,9 @@ const Comments = ({
                             {comment.conditionId ? (
                               <ConditionTitleLink
                                 conditionId={comment.conditionId}
+                                resolverAddress={
+                                  comment.resolverAddress ?? undefined
+                                }
                                 title={comment.question}
                                 endTime={comment.endTime}
                                 description={comment.description}

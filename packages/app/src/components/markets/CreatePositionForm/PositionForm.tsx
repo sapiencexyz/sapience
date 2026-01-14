@@ -607,6 +607,7 @@ export default function PositionForm({
                   title={
                     <ConditionTitleLink
                       conditionId={s.conditionId}
+                      resolverAddress={s.resolverAddress ?? undefined}
                       title={s.question}
                       clampLines={1}
                     />

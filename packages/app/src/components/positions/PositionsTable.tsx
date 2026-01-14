@@ -147,6 +147,7 @@ export default function PositionsTable({
     question: string;
     choice: string;
     conditionId?: string;
+    resolverAddress?: string | null;
     categorySlug?: string | null;
     endTime?: number | null;
     description?: string | null;
@@ -332,6 +333,7 @@ export default function PositionsTable({
             // Keep a simple string for any fallback renderers.
             choice: makerPrediction ? 'OVER' : 'UNDER',
             conditionId: o?.conditionId,
+            resolverAddress: o?.condition?.resolver ?? null,
             categorySlug: null,
             endTime: o?.condition?.endTime ?? null,
             description: desc,
@@ -348,6 +350,7 @@ export default function PositionsTable({
           question,
           choice: o.outcomeYes ? 'YES' : 'NO',
           conditionId: o?.conditionId,
+          resolverAddress: o?.condition?.resolver ?? null,
           categorySlug: o?.condition?.category?.slug ?? null,
           endTime: o?.condition?.endTime ?? null,
           description: desc,
@@ -726,6 +729,7 @@ export default function PositionsTable({
                         question: leg.question,
                         choice: leg.choice,
                         conditionId: leg.conditionId,
+                        resolverAddress: leg.resolverAddress ?? null,
                         categorySlug: leg.categorySlug ?? null,
                         endTime: leg.endTime ?? null,
                         description: leg.description ?? null,

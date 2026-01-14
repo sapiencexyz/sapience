@@ -21,11 +21,6 @@ import {
   Handshake,
   Telescope,
 } from 'lucide-react';
-import {
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-} from '@sapience/sdk/contracts/addresses';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatEther } from 'viem';
@@ -71,7 +66,7 @@ export default function QuestionPageContent({
   const [refetchTrigger, setRefetchTrigger] = React.useState(0);
   const router = useRouter();
 
-  // Fetch condition data
+  // Fetch condition data - filter by both conditionId and resolver address when available
   const { data, isLoading, isError } = useQuery<
     {
       id: string;
@@ -88,13 +83,13 @@ export default function QuestionPageContent({
     } | null,
     Error
   >({
-    queryKey: ['conditionById', conditionId],
+    queryKey: ['conditionById', conditionId, resolverAddressFromUrl],
     enabled: Boolean(conditionId),
     queryFn: async () => {
       if (!conditionId) return null;
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 1) {
             id
             question
             shortName
@@ -111,6 +106,15 @@ export default function QuestionPageContent({
           }
         }
       `;
+      // Build where clause with conditionId and optional resolver filter
+      const whereClause: { AND: Array<Record<string, unknown>> } = {
+        AND: [{ id: { in: [conditionId] } }],
+      };
+      if (resolverAddressFromUrl) {
+        whereClause.AND.push({
+          resolver: { equals: resolverAddressFromUrl, mode: 'insensitive' },
+        });
+      }
       const resp = await graphqlRequest<{
         conditions: Array<{
           id: string;
@@ -125,7 +129,7 @@ export default function QuestionPageContent({
           resolver?: string | null;
           openInterest?: string | null;
         }>;
-      }>(QUERY, { ids: [conditionId] });
+      }>(QUERY, { where: whereClause });
       return resp?.conditions?.[0] || null;
     },
     staleTime: 60_000,
@@ -138,13 +142,9 @@ export default function QuestionPageContent({
     setRefetchTrigger((prev) => prev + 1);
   }, []);
 
-  // Use chain/resolver from the condition when available; fall back to Ethereal defaults.
+  // Use chain/resolver from the condition - no fallbacks
   const chainId = data?.chainId ?? CHAIN_ID_ETHEREAL;
-  const resolverAddress =
-    data?.resolver ??
-    lzPMResolver[chainId]?.address ??
-    lzUmaResolver[chainId]?.address ??
-    umaResolver[chainId]?.address;
+  const resolverAddress = data?.resolver ?? undefined;
 
   // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
   React.useEffect(() => {
@@ -515,6 +515,7 @@ export default function QuestionPageContent({
       conditionId={conditionId}
       question={data.shortName || data.question || ''}
       categorySlug={data.category?.slug}
+      resolverAddress={resolverAddress}
       chainId={chainId}
       predictionMarketAddress={predictionMarketAddress}
       bids={bids}

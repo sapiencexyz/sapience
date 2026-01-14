@@ -39,6 +39,7 @@ type ConditionData = {
   description?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  resolver?: string | null;
   conditionId?: string;
   conditionGroupId?: string;
 };
@@ -144,6 +145,7 @@ const renderQuestionCell = ({
     content = (
       <ConditionTitleLink
         conditionId={conditionData.id}
+        resolverAddress={conditionData.resolver ?? undefined}
         title={questionText}
         endTime={conditionData.endTime}
         description={conditionData.description}
@@ -315,6 +317,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
             description
             settled
             resolvedToYes
+            resolver
           }
         }
       `;

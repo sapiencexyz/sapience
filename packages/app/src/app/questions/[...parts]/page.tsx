@@ -1,9 +1,6 @@
 'use client';
 
-import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { getQuestionHref } from '~/lib/utils/questionHref';
+import { useParams } from 'next/navigation';
 import QuestionPageContent from '~/components/markets/pages/QuestionPageContent';
 
 function normalizeParts(parts: string | string[] | undefined): string[] {
@@ -13,7 +10,6 @@ function normalizeParts(parts: string | string[] | undefined): string[] {
 
 const QuestionPage = () => {
   const params = useParams();
-  const router = useRouter();
   const parts = normalizeParts(params.parts as string | string[] | undefined);
 
   // Canonical shape: /questions/:resolverAddress/:conditionId
@@ -29,17 +25,8 @@ const QuestionPage = () => {
   }
 
   // Legacy shape: /questions/:conditionId
+  // QuestionPageContent will handle redirecting to canonical URL with resolver from GraphQL
   const conditionId = parts[0] as string | undefined;
-
-  React.useEffect(() => {
-    if (!conditionId) return;
-    // Always redirect legacy URL to canonical URL once we know the chain.
-    router.replace(
-      getQuestionHref({ conditionId, chainId: CHAIN_ID_ETHEREAL })
-    );
-  }, [router, conditionId]);
-
-  // While resolving redirect, render the page content (keeps behavior close to previous implementation).
   return conditionId ? <QuestionPageContent conditionId={conditionId} /> : null;
 };
 

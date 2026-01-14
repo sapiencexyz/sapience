@@ -22,6 +22,7 @@ export interface Pick {
   question: string;
   choice: string;
   conditionId?: string;
+  resolverAddress?: string | null;
   categorySlug?: string | null;
   endTime?: number | null;
   description?: string | null;
@@ -143,6 +144,7 @@ export function StackedPredictionsTitle({
             {firstLeg.conditionId ? (
               <ConditionTitleLink
                 conditionId={firstLeg.conditionId}
+                resolverAddress={firstLeg.resolverAddress ?? undefined}
                 title={firstLeg.question}
                 clampLines={1}
                 className="text-sm min-w-0 flex-1"
@@ -201,6 +203,7 @@ export function StackedPredictionsTitle({
                           {leg.conditionId ? (
                             <ConditionTitleLink
                               conditionId={leg.conditionId}
+                              resolverAddress={leg.resolverAddress ?? undefined}
                               title={leg.question}
                               clampLines={1}
                               className="text-sm"

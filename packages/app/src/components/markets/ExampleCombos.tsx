@@ -109,6 +109,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         question: leg.condition.shortName || leg.condition.question,
         choice: leg.prediction ? ('Yes' as const) : ('No' as const),
         conditionId: leg.condition.id,
+        resolverAddress: leg.condition.resolver,
         categorySlug: leg.condition.category?.slug,
         endTime: leg.condition.endTime,
         description: leg.condition.description,
@@ -347,6 +348,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           question: leg.condition.shortName || leg.condition.question,
           prediction: leg.prediction,
           categorySlug: leg.condition.category?.slug,
+          resolverAddress: leg.condition.resolver,
         });
       });
     },
