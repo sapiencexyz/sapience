@@ -185,7 +185,7 @@ contract ConditionalTokensReader is
      * @dev Uses try/catch to handle external call failures gracefully
      */
     function _readConditionData(bytes32 conditionId) internal view returns (ConditionData memory) {
-        try this.readConditionDataExternal(conditionId) returns (ConditionData memory data) {
+        try this.getConditionResolution(conditionId) returns (ConditionData memory data) {
             return data;
         } catch {
             // Return invalid data that will fail validation
@@ -199,13 +199,12 @@ contract ConditionalTokensReader is
     }
 
     /**
-     * @notice External helper for try/catch pattern - reverts if any call fails
+     * @notice Get the resolution data for a condition from ConditionalTokens
      * @param conditionId The conditionId to read
      * @return ConditionData struct with all condition information
-     * @dev Only callable by this contract. Performs 4 external calls to ConditionalTokens contract.
+     * @dev Performs 4 external calls to ConditionalTokens contract. Also used internally for try/catch pattern.
      */
-    function readConditionDataExternal(bytes32 conditionId) external view returns (ConditionData memory) {
-        if (msg.sender != address(this)) revert OnlySelfCallAllowed();
+    function getConditionResolution(bytes32 conditionId) external view returns (ConditionData memory) {
         return ConditionData({
             slotCount: IConditionalTokens(config.conditionalTokens).getOutcomeSlotCount(conditionId),
             payoutDenominator: IConditionalTokens(config.conditionalTokens).payoutDenominator(conditionId),

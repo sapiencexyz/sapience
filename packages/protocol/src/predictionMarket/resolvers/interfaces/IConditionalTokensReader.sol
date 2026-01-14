@@ -53,7 +53,6 @@ interface IConditionalTokensReader {
     error InvalidPayout(bytes32 conditionId);
     error RefundFailed();
     error ETHTransferFailed();
-    error OnlySelfCallAllowed();
 
     // ============ Functions ============
 
@@ -68,6 +67,8 @@ interface IConditionalTokensReader {
     function quoteResolution(bytes32 conditionId) external view returns (MessagingFee memory fee);
 
     function canRequestResolution(bytes32 conditionId) external view returns (bool);
+
+    function getConditionResolution(bytes32 conditionId) external view returns (ConditionData memory);
 
     function withdrawETH(uint256 amount) external;
 
