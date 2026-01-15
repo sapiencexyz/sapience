@@ -168,13 +168,15 @@ export default function CollateralBalanceButton({
     });
 
     if (!smartAccountAddress || !eoaAddress || !isValidTransfer) {
+      let description = 'Wallet not connected';
+      if (!smartAccountAddress) {
+        description = 'Smart account address not available';
+      } else if (!isValidTransfer) {
+        description = 'Invalid transfer amount';
+      }
       toast({
         title: 'Cannot transfer',
-        description: !smartAccountAddress
-          ? 'Smart account address not available'
-          : !isValidTransfer
-            ? 'Invalid transfer amount'
-            : 'Wallet not connected',
+        description,
         variant: 'destructive',
         duration: 5000,
       });
@@ -276,7 +278,7 @@ export default function CollateralBalanceButton({
   }, []);
 
   return (
-    <div className={`flex w-fit mx-3 md:mx-0 mt-0 ${className ?? ''}`}>
+    <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
           <div
@@ -290,7 +292,7 @@ export default function CollateralBalanceButton({
                 height={20}
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
-              <span className="relative top-[1px] md:top-0 text-sm font-normal">
+              <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                 {smartAccountBalance.toFixed(2)} {symbol}
               </span>
             </div>
