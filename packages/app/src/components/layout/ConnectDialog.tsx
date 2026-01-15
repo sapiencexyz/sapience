@@ -155,7 +155,6 @@ export default function ConnectDialog({
 
       const createSessionAsync = async () => {
         try {
-          
           const currentAddress = address.toLowerCase();
           let hasReferral = false;
 
@@ -178,7 +177,10 @@ export default function ConnectDialog({
               referredBy: user?.referredBy,
             });
           } catch (error) {
-            console.error('[ConnectDialog] Failed to check referral status:', error);
+            console.error(
+              '[ConnectDialog] Failed to check referral status:',
+              error
+            );
             // On error, check localStorage fallback (same logic as Header)
             try {
               const key = `sapience:referralCode:${currentAddress}`;
@@ -190,9 +192,7 @@ export default function ConnectDialog({
             }
           }
 
-
           if (!hasReferral) {
-           
             return;
           }
 
@@ -217,7 +217,15 @@ export default function ConnectDialog({
 
       void createSessionAsync();
     }
-  }, [isConnected, open, onOpenChange, clearLoggedOut, startSession, duration, address]);
+  }, [
+    isConnected,
+    open,
+    onOpenChange,
+    clearLoggedOut,
+    startSession,
+    duration,
+    address,
+  ]);
 
   const handleEIP6963Connect = useCallback(
     (wallet: EIP6963ProviderDetail) => {

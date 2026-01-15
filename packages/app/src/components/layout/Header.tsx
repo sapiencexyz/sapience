@@ -73,21 +73,15 @@ const isActive = (path: string, pathname: string) => {
 };
 
 interface NavLinksProps {
-  isMobile?: boolean;
   onClose?: () => void;
 }
 
-const NavLinks = ({
-  isMobile: isMobileProp = false,
-  onClose,
-}: NavLinksProps) => {
+const NavLinks = ({ onClose }: NavLinksProps) => {
   const pathname = usePathname();
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { setOpenMobile, isMobile } = useSidebar();
   const { isSessionActive, smartAccountAddress } = useSession();
-  const linkClass = isMobileProp
-    ? 'sc-heading justify-start rounded-full'
-    : 'sc-heading justify-start rounded-full';
+  const linkClass = 'sc-heading justify-start rounded-full';
   const activeClass = 'text-accent-gold';
 
   const handleLinkClick = () => {
@@ -156,7 +150,7 @@ const NavLinks = ({
         {/* Mobile settings link, placed under links */}
         <Link
           href="/settings"
-          className={`flex w-fit md:hidden px-3 py-2 rounded-full ${linkClass} ${isActive('/settings', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          className={`flex w-fit xl:hidden px-3 py-2 rounded-full ${linkClass} ${isActive('/settings', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
           onClick={handleLinkClick}
         >
           Settings
@@ -164,7 +158,7 @@ const NavLinks = ({
       </nav>
       {ready && hasConnectedWallet && connectedWallet && (
         <>
-          <div className="flex w-fit md:hidden mt-3 ml-4">
+          <div className="flex w-fit xl:hidden mt-3 ml-4">
             <Button
               asChild
               variant="default"
@@ -177,13 +171,13 @@ const NavLinks = ({
                 className="flex items-center gap-2"
               >
                 <User className="h-4 w-4" />
-                <span className="relative top-[1px] md:top-0 text-sm mr-1">
+                <span className="relative top-[1px] xl:top-0 text-sm mr-1">
                   Your Profile
                 </span>
               </Link>
             </Button>
           </div>
-          <CollateralBalanceButton className="md:hidden mt-2 ml-4" />
+          <CollateralBalanceButton className="xl:hidden mt-2 ml-7" />
         </>
       )}
     </>
@@ -220,7 +214,7 @@ const Header = () => {
       try {
         const isDesktop =
           typeof window !== 'undefined' &&
-          window.matchMedia('(min-width: 768px)').matches;
+          window.matchMedia('(min-width: 1280px)').matches;
         let next = 4; // small default for mobile
         if (isDesktop) {
           const el = headerRef.current;
@@ -301,7 +295,6 @@ const Header = () => {
 
       const currentAddress = connectedWallet.address.toLowerCase();
       const previousAddress = lastWalletAddressRef.current;
-      lastWalletAddressRef.current = currentAddress;
 
       // Only re-check when the address actually changes.
       if (previousAddress === currentAddress) {
@@ -325,6 +318,9 @@ const Header = () => {
           (user.refCodeHash || user.referredBy)
         );
 
+        // Update ref only after successful check to avoid race conditions
+        lastWalletAddressRef.current = currentAddress;
+
         if (hasServerReferral) {
           setIsReferralRequiredOpen(false);
           return;
@@ -335,6 +331,8 @@ const Header = () => {
       } catch {
         // On network or GraphQL errors, fall back to localStorage so we don't
         // accidentally lock out users who have previously provided a code.
+        // Update ref here too so we don't keep retrying on persistent errors
+        lastWalletAddressRef.current = currentAddress;
         try {
           if (typeof window === 'undefined') return;
           const key = `sapience:referralCode:${currentAddress}`;
@@ -425,16 +423,16 @@ const Header = () => {
       <header
         ref={headerRef}
         style={{ top: 'var(--banner-offset, 0px)' } as React.CSSProperties}
-        className={`w-full pt-2 pb-2 md:py-6 z-[50] sticky left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip md:bg-transparent md:backdrop-blur-0 md:border-b-0 md:overflow-visible`}
+        className={`w-full pt-2 pb-2 xl:py-6 z-[50] sticky left-0 right-0 pointer-events-none bg-background/30 backdrop-blur-sm border-b border-border/20 overflow-x-clip xl:bg-transparent xl:backdrop-blur-0 xl:border-b-0 xl:overflow-visible`}
       >
-        <div className={`mx-auto px-4 md:px-6 transition-all`}>
+        <div className={`mx-auto px-4 xl:px-6 transition-all`}>
           <div
-            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'md:bg-background/60 md:backdrop-blur-sm md:border-y md:border-border/30 md:rounded-none md:border-l-0' : ''}`}
+            className={`flex items-center justify-between pointer-events-auto transition-all ${isScrolled ? 'xl:bg-background/60 xl:backdrop-blur-sm xl:border-y xl:border-border/30 xl:rounded-none xl:border-l-0' : ''}`}
           >
             <div className="flex flex-col pointer-events-auto">
               <div className="flex items-center">
-                <div className="flex flex-col order-2 md:order-1">
-                  <div className="flex items-center p-2 pr-4 md:pr-1 md:rounded-full">
+                <div className="flex flex-col order-2 xl:order-1">
+                  <div className="flex items-center p-2 pr-4 xl:pr-1 xl:rounded-full">
                     <Link href="/" className="inline-block">
                       <div className="flex items-center">
                         <Image
@@ -452,7 +450,7 @@ const Header = () => {
                 {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
                 <SidebarTrigger
                   id="nav-sidebar"
-                  className="md:hidden mr-0.5 order-1 md:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="xl:hidden mr-0.5 order-1 xl:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <Menu className="h-5 w-5" />
                 </SidebarTrigger>
@@ -460,7 +458,7 @@ const Header = () => {
             </div>
 
             {/* Desktop Nav (right-aligned cluster) */}
-            <nav className="hidden md:flex items-center gap-2 lg:gap-3 pointer-events-auto ml-auto mr-2 lg:mr-4">
+            <nav className="hidden xl:flex items-center gap-2 xl:gap-3 pointer-events-auto ml-auto mr-2 xl:mr-4">
               <Link
                 href="/markets"
                 className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
@@ -548,16 +546,16 @@ const Header = () => {
               </DropdownMenu>
             </nav>
 
-            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 pointer-events-auto">
+            <div className="flex items-center gap-2 sm:gap-3 xl:gap-4 pointer-events-auto">
               {/* Settings icon button replaced by text link in desktop nav */}
               {ready && hasConnectedWallet && (
-                <CollateralBalanceButton className="hidden md:flex" />
+                <CollateralBalanceButton className="hidden xl:flex" />
               )}
               {ready && hasConnectedWallet && (
                 <>
                   {!isSessionActive && (
                     <Button
-                      className="rounded-md h-10 md:h-9 px-4"
+                      className="rounded-md h-10 xl:h-9 px-4"
                       onClick={() => setIsStartSessionOpen(true)}
                     >
                       Start Session
@@ -703,7 +701,7 @@ const Header = () => {
               {ready && !hasConnectedWallet && (
                 <Button
                   onClick={openConnectDialog}
-                  className="bg-primary hover:bg-primary/90 rounded-md h-10 md:h-9 w-auto px-4 ml-1.5 md:ml-0 gap-2"
+                  className="bg-primary hover:bg-primary/90 rounded-md h-10 xl:h-9 w-auto px-4 ml-1.5 xl:ml-0 gap-2"
                 >
                   <span>Log in</span>
                 </Button>
@@ -730,7 +728,7 @@ const Header = () => {
         id="nav-sidebar"
         variant="sidebar"
         collapsible="offcanvas"
-        className="md:hidden"
+        className="xl:hidden"
       >
         <SidebarContent>
           <NavLinks />

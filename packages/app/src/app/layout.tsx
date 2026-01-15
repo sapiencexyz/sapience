@@ -1,21 +1,20 @@
-import { Toaster } from '@sapience/ui/components/ui/toaster';
-import { Analytics } from '@vercel/analytics/react';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
 import { Suspense } from 'react';
-
+import { Analytics } from '@vercel/analytics/react';
+import { Toaster } from '@sapience/ui/components/ui/toaster';
 import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
-import Layout from '~/components/layout';
-import GlobalLoader from '~/components/shared/GlobalLoader';
-import { LoadingProvider } from '~/lib/context/LoadingContext';
-import { ChatProvider } from '~/lib/context/ChatContext';
-import ChatWidget from '~/components/shared/ChatWidget';
-import FloatingChatButton from '~/components/shared/FloatingChatButton';
-import ConsoleMessage from '~/components/shared/ConsoleMessage';
-import InstallDialog from '~/components/shared/InstallDialog';
-import '~/styles/globals.css';
 import { ibmPlexMono } from '~/app/fonts';
+import Layout from '~/components/layout';
+import ChatWidget from '~/components/shared/ChatWidget';
+import ConsoleMessage from '~/components/shared/ConsoleMessage';
+import FloatingChatButton from '~/components/shared/FloatingChatButton';
+import GlobalLoader from '~/components/shared/GlobalLoader';
+import InstallDialog from '~/components/shared/InstallDialog';
+import { ChatProvider } from '~/lib/context/ChatContext';
+import { LoadingProvider } from '~/lib/context/LoadingContext';
+import '~/styles/globals.css';
 
 type RootLayoutProps = {
   children: React.ReactNode;
@@ -110,7 +109,11 @@ export const viewport: Viewport = {
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en" className={`${ibmPlexMono.variable}`}>
+    <html
+      lang="en"
+      className={`${ibmPlexMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="overflow-x-hidden">
         <Providers>
           <LoadingProvider>

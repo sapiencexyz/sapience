@@ -445,7 +445,7 @@ function getRowEndTime(row: TopLevelRow): number {
 function getHeaderClassName(colId: string): string {
   switch (colId) {
     case 'question':
-      return 'pl-4 max-w-[180px] md:max-w-none';
+      return 'pl-4 w-full min-w-[200px]';
     case 'endTime':
       return 'pr-4';
     case 'predict':
@@ -459,7 +459,7 @@ function getHeaderClassName(colId: string): string {
 function getCellClassName(colId: string): string {
   switch (colId) {
     case 'question':
-      return 'py-2 pl-4 max-w-[180px] md:max-w-none';
+      return 'py-2 pl-4 w-full max-w-0 min-w-[200px]';
     case 'forecast':
     case 'openInterest':
     case 'endTime':
@@ -485,15 +485,13 @@ function createColumns(
       accessorKey: 'question',
       header: () => <span>Question</span>,
       enableSorting: false,
-      size: 280,
-      maxSize: 400,
       cell: ({ row }) => {
         const data = row.original;
         if (data.kind === 'group') {
           const categorySlug = data.category?.slug;
           const color = getCategoryColor(categorySlug);
           return (
-            <div className="flex items-center gap-3 max-w-[180px] md:max-w-none min-w-0">
+            <div className="flex items-center gap-3 w-full min-w-0">
               <MarketBadge
                 label={data.name}
                 size={24}
@@ -503,7 +501,7 @@ function createColumns(
               <button
                 type="button"
                 onClick={() => onToggleExpand(data.groupId)}
-                className="block max-w-full min-w-0 p-0 m-0 bg-transparent border-0 text-sm font-mono text-brand-white transition-colors break-words whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                className="block max-w-full min-w-0 overflow-hidden p-0 m-0 bg-transparent border-0 text-sm font-mono text-brand-white transition-colors whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
               >
                 {data.name}
               </button>
@@ -516,7 +514,7 @@ function createColumns(
         const color = getCategoryColor(categorySlug);
         const displayQ = condition.shortName || condition.question;
         return (
-          <div className="flex items-center gap-3 max-w-[180px] md:max-w-none min-w-0">
+          <div className="flex items-center gap-3 w-full min-w-0">
             <MarketBadge
               label={displayQ}
               size={24}
@@ -729,8 +727,8 @@ function ChildConditionRow({
         isLast ? 'border-brand-white/20' : 'border-brand-white/10'
       }`}
     >
-      <TableCell className="py-2 pl-4 max-w-[180px] md:max-w-none">
-        <div className="flex items-center gap-3 max-w-[180px] md:max-w-none min-w-0">
+      <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
+        <div className="flex items-center gap-3 w-full min-w-0">
           <MarketBadge
             label={displayQ}
             size={24}
