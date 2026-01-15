@@ -5,13 +5,15 @@ import {OApp, Origin, MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./interfaces/IPositionTokenBridge.sol";
+import "../interfaces/IPositionToken.sol";
 
 /// @title PositionTokenBridge
 /// @notice Bridge for position tokens on Ethereal (source chain)
-/// @dev Escrows tokens when bridging out, releases when bridging back
+/// @dev Permissionless bridge with two-phase commit (ACK) for safety
 contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
@@ -19,26 +21,36 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     // ============ Constants ============
     uint16 private constant CMD_BRIDGE_TO_REMOTE = 1;
     uint16 private constant CMD_BRIDGE_BACK = 2;
+    uint16 private constant CMD_ACK = 3;
+    uint16 private constant CMD_CANCEL = 4;
+
+    uint128 private constant GAS_FOR_BRIDGE = 2_000_000;
+    uint128 private constant GAS_FOR_ACK = 100_000;
+    uint128 private constant GAS_FOR_CANCEL = 200_000;
 
     // ============ Storage ============
     BridgeConfig private _bridgeConfig;
+    uint64 public immutable expiryDuration;
 
-    /// @notice Token metadata for bridging
-    mapping(address => TokenMetadata) private _tokenMetadata;
+    /// @notice Pending bridge records
+    mapping(bytes32 => PendingBridge) private _pendingBridges;
 
     /// @notice Escrowed token balances
     mapping(address => uint256) private _escrowedBalances;
 
-    /// @notice Registered tokens
-    mapping(address => bool) private _registeredTokens;
+    /// @notice Nonce for generating unique bridge IDs
+    uint256 private _bridgeNonce;
 
     // ============ Constructor ============
     constructor(
         address endpoint_,
-        address owner_
-    ) OApp(endpoint_, owner_) Ownable(owner_) {}
+        address owner_,
+        uint64 expiryDuration_
+    ) OApp(endpoint_, owner_) Ownable(owner_) {
+        expiryDuration = expiryDuration_;
+    }
 
-    // ============ Configuration ============
+    // ============ Configuration (Owner only for LZ) ============
 
     /// @notice Set the bridge configuration
     function setBridgeConfig(BridgeConfig calldata config) external onlyOwner {
@@ -52,13 +64,8 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     }
 
     /// @inheritdoc IPositionTokenBridge
-    function registerToken(
-        address token,
-        TokenMetadata calldata metadata
-    ) external onlyOwner {
-        if (token == address(0)) revert ZeroAddress();
-        _tokenMetadata[token] = metadata;
-        _registeredTokens[token] = true;
+    function getExpiryDuration() external view returns (uint64) {
+        return expiryDuration;
     }
 
     // ============ Bridge Functions ============
@@ -68,31 +75,64 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         address token,
         address recipient,
         uint256 amount
-    ) external payable nonReentrant {
+    ) external payable nonReentrant returns (bytes32 bridgeId) {
         if (token == address(0) || recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
-        if (!_registeredTokens[token]) revert TokenNotRegistered(token);
 
-        TokenMetadata memory metadata = _tokenMetadata[token];
+        // Read token metadata directly from the token contract
+        bytes32 predictionId;
+        bool isPredictorToken;
+        string memory name;
+        string memory symbol;
+
+        try IPositionToken(token).predictionId() returns (bytes32 pid) {
+            predictionId = pid;
+        } catch {
+            revert InvalidToken(token);
+        }
+
+        try IPositionToken(token).isPredictorToken() returns (bool ipt) {
+            isPredictorToken = ipt;
+        } catch {
+            revert InvalidToken(token);
+        }
+
+        name = IERC20Metadata(token).name();
+        symbol = IERC20Metadata(token).symbol();
 
         // Transfer tokens to this contract (escrow)
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         _escrowedBalances[token] += amount;
 
-        // Encode message - include source token address for mapping
+        // Generate unique bridge ID
+        bridgeId = keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
+
+        // Create pending bridge record
+        uint64 expiry = uint64(block.timestamp) + expiryDuration;
+        _pendingBridges[bridgeId] = PendingBridge({
+            token: token,
+            sender: msg.sender,
+            recipient: recipient,
+            amount: amount,
+            expiry: expiry,
+            status: BridgeStatus.PENDING
+        });
+
+        // Encode message
         bytes memory payload = abi.encode(
-            token, // source token address
-            metadata.predictionId,
-            metadata.isPredictorToken,
-            metadata.name,
-            metadata.symbol,
+            bridgeId,
+            token,
+            predictionId,
+            isPredictorToken,
+            name,
+            symbol,
             recipient,
             amount
         );
         bytes memory message = abi.encode(CMD_BRIDGE_TO_REMOTE, payload);
 
-        // Build options - 2M gas for CREATE3 deployment + mint (CREATE3 is gas-intensive)
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(2_000_000, 0);
+        // Build options
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
 
         // Quote fee
         MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
@@ -101,7 +141,7 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         }
 
         // Send message
-        MessagingReceipt memory receipt = _lzSend(
+        _lzSend(
             _bridgeConfig.remoteEid,
             message,
             options,
@@ -113,30 +153,89 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         if (msg.value > fee.nativeFee) {
             uint256 excess = msg.value - fee.nativeFee;
             (bool success,) = payable(msg.sender).call{value: excess}("");
-            if (!success) revert ETHTransferFailed();
+            if (!success) revert RefundFailed();
         }
 
-        emit TokensBridged(token, msg.sender, recipient, amount, receipt.guid);
+        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, expiry);
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function cancelBridge(bytes32 bridgeId) external payable nonReentrant {
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        if (pending.status != BridgeStatus.PENDING) {
+            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+        }
+
+        if (block.timestamp < pending.expiry) {
+            revert BridgeNotExpired(bridgeId, pending.expiry, uint64(block.timestamp));
+        }
+
+        // Mark as cancelled
+        pending.status = BridgeStatus.CANCELLED;
+
+        // Return tokens to sender
+        _escrowedBalances[pending.token] -= pending.amount;
+        IERC20(pending.token).safeTransfer(pending.sender, pending.amount);
+
+        // Send cancel notification to remote (to burn if already minted)
+        bytes memory payload = abi.encode(bridgeId, pending.amount);
+        bytes memory message = abi.encode(CMD_CANCEL, payload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
+
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            message,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        if (msg.value > fee.nativeFee) {
+            uint256 excess = msg.value - fee.nativeFee;
+            (bool success,) = payable(msg.sender).call{value: excess}("");
+            if (!success) revert RefundFailed();
+        }
+
+        emit BridgeCancelled(bridgeId, pending.sender, pending.amount);
     }
 
     /// @inheritdoc IPositionTokenBridge
     function quoteBridge(
         address token,
-        address recipient,
         uint256 amount
     ) external view returns (MessagingFee memory fee) {
-        TokenMetadata memory metadata = _tokenMetadata[token];
+        // Read actual token metadata for accurate quote
+        string memory name = IERC20Metadata(token).name();
+        string memory symbol = IERC20Metadata(token).symbol();
+
+        // Build message with actual metadata for accurate fee calculation
         bytes memory payload = abi.encode(
-            token, // source token address
-            metadata.predictionId,
-            metadata.isPredictorToken,
-            metadata.name,
-            metadata.symbol,
-            recipient,
+            bytes32(0), // bridgeId placeholder
+            token,
+            bytes32(0), // predictionId placeholder
+            false, // isPredictorToken placeholder
+            name,
+            symbol,
+            address(0), // recipient placeholder
             amount
         );
         bytes memory message = abi.encode(CMD_BRIDGE_TO_REMOTE, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(2_000_000, 0);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        return _quote(_bridgeConfig.remoteEid, message, options, false);
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function quoteCancelBridge() external view returns (MessagingFee memory fee) {
+        bytes memory payload = abi.encode(bytes32(0), uint256(0));
+        bytes memory message = abi.encode(CMD_CANCEL, payload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
@@ -161,54 +260,131 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         // Decode command
         (uint16 commandType, bytes memory data) = abi.decode(_message, (uint16, bytes));
 
-        if (commandType == CMD_BRIDGE_BACK) {
+        if (commandType == CMD_ACK) {
+            _handleAck(data);
+        } else if (commandType == CMD_BRIDGE_BACK) {
             _handleBridgeBack(data);
         } else {
             revert InvalidCommandType(commandType);
         }
     }
 
+    function _handleAck(bytes memory data) internal {
+        bytes32 bridgeId = abi.decode(data, (bytes32));
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        // Only update if still pending (could have been cancelled)
+        if (pending.status == BridgeStatus.PENDING) {
+            pending.status = BridgeStatus.COMPLETED;
+            emit BridgeCompleted(bridgeId);
+        }
+    }
+
     function _handleBridgeBack(bytes memory data) internal {
-        (address token, address recipient, uint256 amount) = abi.decode(
-            data,
-            (address, address, uint256)
-        );
+        (
+            bytes32 bridgeId,
+            address token,
+            address recipient,
+            uint256 amount
+        ) = abi.decode(data, (bytes32, address, address, uint256));
 
         if (_escrowedBalances[token] < amount) {
             revert InsufficientEscrowBalance(amount, _escrowedBalances[token]);
         }
 
+        // Release tokens
         _escrowedBalances[token] -= amount;
         IERC20(token).safeTransfer(recipient, amount);
 
-        emit TokensReleased(token, recipient, amount);
+        emit TokensReleased(bridgeId, token, recipient, amount);
+
+        // Send ACK back to remote (if contract has sufficient balance)
+        _trySendAck(bridgeId);
+    }
+
+    /// @dev Attempt to send ACK - gracefully handles insufficient balance or send failures
+    function _trySendAck(bytes32 bridgeId) internal {
+        // Skip ACK if no balance (common in test environments)
+        if (address(this).balance == 0) {
+            return;
+        }
+
+        try this.sendAckInternal(bridgeId) {
+            // ACK sent successfully
+        } catch {
+            // ACK failed - can be retried via manualSendAck
+        }
+    }
+
+    /// @dev Internal function to send ACK (callable via this.sendAckInternal for try/catch)
+    function sendAckInternal(bytes32 bridgeId) external {
+        require(msg.sender == address(this), "Only self");
+
+        bytes memory ackPayload = abi.encode(bridgeId);
+        bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
+
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+
+        // Check if contract has enough balance for ACK
+        if (address(this).balance >= fee.nativeFee) {
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                ackMessage,
+                options,
+                fee,
+                payable(address(this))
+            );
+        }
+    }
+
+    /// @notice Manually send ACK for a completed bridge back (if auto-ACK failed due to low balance)
+    /// @param bridgeId The bridge identifier to acknowledge
+    function manualSendAck(bytes32 bridgeId) external payable {
+        bytes memory ackPayload = abi.encode(bridgeId);
+        bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
+
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            ackMessage,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        if (msg.value > fee.nativeFee) {
+            uint256 excess = msg.value - fee.nativeFee;
+            (bool success,) = payable(msg.sender).call{value: excess}("");
+            if (!success) revert RefundFailed();
+        }
     }
 
     // ============ View Functions ============
+
+    /// @inheritdoc IPositionTokenBridge
+    function getPendingBridge(bytes32 bridgeId) external view returns (PendingBridge memory) {
+        return _pendingBridges[bridgeId];
+    }
 
     /// @inheritdoc IPositionTokenBridge
     function getEscrowedBalance(address token) external view returns (uint256) {
         return _escrowedBalances[token];
     }
 
-    /// @inheritdoc IPositionTokenBridge
-    function isTokenRegistered(address token) external view returns (bool) {
-        return _registeredTokens[token];
-    }
+    // ============ ETH Management (for ACK fees) ============
 
-    /// @inheritdoc IPositionTokenBridge
-    function getTokenMetadata(address token) external view returns (TokenMetadata memory) {
-        return _tokenMetadata[token];
-    }
-
-    // ============ ETH Management ============
-
-    /// @notice Withdraw ETH from contract
-    function withdrawETH(uint256 amount) external onlyOwner {
-        (bool success,) = payable(owner()).call{value: amount}("");
-        if (!success) revert ETHTransferFailed();
-    }
-
-    /// @notice Receive ETH
+    /// @notice Receive ETH for ACK fee payments
     receive() external payable {}
+
+    /// @notice Get ETH balance
+    function getETHBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
 }
