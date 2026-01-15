@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { formatUnits, parseUnits } from 'viem';
-import { ChevronDown, Info, RefreshCw } from 'lucide-react';
+import { ChevronDown, Info } from 'lucide-react';
 import WagerDisclaimer from './WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
@@ -383,7 +383,10 @@ export default function BidDisplay({
           </div>
         </div>
       ) : null}
-      {!effectiveBestBid && !isAuctionPending && estimateBid && estimateTotal ? (
+      {!effectiveBestBid &&
+      !isAuctionPending &&
+      estimateBid &&
+      estimateTotal ? (
         <div
           className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -426,7 +429,11 @@ export default function BidDisplay({
         variant="default"
         onClick={buttonState.onClick}
       >
-        {isWaitingForBids || isAuctionPending ? <Loader size={12} /> : buttonState.text}
+        {isWaitingForBids || isAuctionPending ? (
+          <Loader size={12} />
+        ) : (
+          buttonState.text
+        )}
       </Button>
 
       {/* Position-specific hint for combinations that may not receive bids */}
