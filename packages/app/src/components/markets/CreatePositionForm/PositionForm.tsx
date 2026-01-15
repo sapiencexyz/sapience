@@ -659,6 +659,7 @@ export default function PositionForm({
               takerWagerWei={takerWagerWei}
               takerAddress={selectedTakerAddress}
               showAddPredictionsHint={selections.length === 1}
+              isAuctionPending={recentlyRequested}
             />
           </div>
           {error && (

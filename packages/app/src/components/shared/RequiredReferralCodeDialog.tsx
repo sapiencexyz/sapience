@@ -206,17 +206,7 @@ const RequiredReferralCodeDialog = ({
 
         <div className="space-y-4">
           <p className="text-base text-foreground">
-            Invite codes will be made available soon, prioritizing hackathon
-            participants and active{' '}
-            <a
-              href="https://discord.gg/sapience"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="gold-link"
-            >
-              Discord
-            </a>{' '}
-            members. An invite code isn&apos;t necessary to participate in the{' '}
+            An invite code isn&apos;t necessary to participate in the{' '}
             <Link href="/hackathon" className="gold-link">
               hackathon
             </Link>

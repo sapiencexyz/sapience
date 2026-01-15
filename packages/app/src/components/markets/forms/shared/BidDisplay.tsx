@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { formatUnits, parseUnits } from 'viem';
-import { ChevronDown, Info } from 'lucide-react';
+import { ChevronDown, Info, RefreshCw } from 'lucide-react';
 import WagerDisclaimer from './WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
@@ -62,6 +62,8 @@ interface BidDisplayProps {
   toWinTakesSpace?: boolean;
   /** Show "add more predictions to see bids" hint when only 1 prediction is selected */
   showAddPredictionsHint?: boolean;
+  /** Whether we're currently requesting higher bids (shows loading state) */
+  isAuctionPending?: boolean;
 }
 
 /**
@@ -94,6 +96,7 @@ export default function BidDisplay({
   takerAddress,
   toWinTakesSpace = true,
   showAddPredictionsHint = false,
+  isAuctionPending = false,
 }: BidDisplayProps) {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
   const [effectiveBestBid, setEffectiveBestBid] = useState<QuoteBid | null>(
@@ -208,6 +211,15 @@ export default function BidDisplay({
         type: 'submit' as const,
       };
     }
+    // If requesting higher bids (after clicking Restart auction), show waiting state
+    if (isAuctionPending) {
+      return {
+        text: 'WAITING FOR BIDS...',
+        disabled: true,
+        onClick: () => {},
+        type: 'button' as const,
+      };
+    }
     // If showing estimated quote (no valid bid, but estimate available), show "WAITING FOR BIDS..."
     if (!effectiveBestBid && estimateBid && estimateTotal) {
       return {
@@ -314,9 +326,64 @@ export default function BidDisplay({
               </div>
             )}
           </div>
+          {/* Higher bids hint row */}
+          <div className="flex items-center justify-between mt-2 px-1 text-xs">
+            <span
+              className="text-muted-foreground"
+              style={{
+                background:
+                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                backgroundSize: '200% 100%',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 2s linear infinite',
+              }}
+            >
+              Listening for higher bids...
+            </span>
+            <button
+              type="button"
+              onClick={onRequestBids}
+              disabled={isAuctionPending}
+              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity disabled:opacity-50"
+            >
+              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                Restart auction
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : !effectiveBestBid && isAuctionPending ? (
+        /* Show loading state when requesting higher bids but no bid yet */
+        <div
+          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+        >
+          <div className="rounded-md border-[1.5px] border-ethena/80 bg-ethena/20 px-4 py-2.5 w-full shadow-[0_0_10px_rgba(136,180,245,0.25)]">
+            <div className="flex items-center justify-center min-h-[40px]">
+              <Loader size={16} />
+            </div>
+          </div>
+          {/* Higher bids hint row */}
+          <div className="flex items-center justify-between mt-2 px-1 text-xs">
+            <span
+              className="text-muted-foreground"
+              style={{
+                background:
+                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                backgroundSize: '200% 100%',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 2s linear infinite',
+              }}
+            >
+              Listening for higher bids...
+            </span>
+          </div>
         </div>
       ) : null}
-      {!effectiveBestBid && estimateBid && estimateTotal ? (
+      {!effectiveBestBid && !isAuctionPending && estimateBid && estimateTotal ? (
         <div
           className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -333,7 +400,7 @@ export default function BidDisplay({
             </div>
           </div>
         </div>
-      ) : !effectiveBestBid && showAddPredictionsHint ? (
+      ) : !effectiveBestBid && !isAuctionPending && showAddPredictionsHint ? (
         <div className="mt-4 mb-4">
           <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
             <div className="flex items-center justify-center gap-2 min-h-[40px]">
@@ -353,13 +420,13 @@ export default function BidDisplay({
             ? 'position-form-submit hover:text-brand-white'
             : ''
         }`}
-        disabled={buttonState.disabled || isWaitingForBids}
+        disabled={buttonState.disabled || isWaitingForBids || isAuctionPending}
         type={buttonState.type}
         size="lg"
         variant="default"
         onClick={buttonState.onClick}
       >
-        {isWaitingForBids ? <Loader size={12} /> : buttonState.text}
+        {isWaitingForBids || isAuctionPending ? <Loader size={12} /> : buttonState.text}
       </Button>
 
       {/* Position-specific hint for combinations that may not receive bids */}
