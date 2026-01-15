@@ -121,15 +121,14 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
                 color={color}
                 categorySlug={categorySlug}
               />
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 max-w-[320px]">
                 <ConditionTitleLink
                   conditionId={id}
                   resolverAddress={resolver ?? undefined}
                   title={displayQ}
                   endTime={endTime}
                   description={description}
-                  clampLines={null}
-                  noWrap
+                  clampLines={1}
                   className="text-sm min-w-0"
                 />
               </div>
