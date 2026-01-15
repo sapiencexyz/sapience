@@ -23,9 +23,9 @@ import {
   predictionMarket,
   lzPMResolver,
   lzUmaResolver,
-  predictionMarketLZConditionalTokensResolver,
-  lzConditionalTokenResolverAbi,
 } from '@sapience/sdk';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts/addresses';
+import { lzConditionalTokenResolverAbi } from '@sapience/sdk/abis';
 
 /**
  * Pyth markets are synthetic placeholders created from on-chain Pyth outcomes.
@@ -1443,9 +1443,6 @@ class PredictionMarketIndexer implements IIndexer {
           });
         }
       }
-
-      const predictionResolver = eventData.resolver.toLowerCase();
-      const conditionIds = predictedOutcomes.map((o) => o.conditionId);
 
       const predictionLegsData = predictedOutcomes.map((outcome) => ({
         conditionId: outcome.conditionId,
