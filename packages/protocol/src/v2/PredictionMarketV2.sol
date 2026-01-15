@@ -183,7 +183,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function settle(bytes32 predictionId) external nonReentrant {
+    function settle(bytes32 predictionId, bytes32 refCode) external nonReentrant {
         IV2Types.Prediction storage prediction = _predictions[predictionId];
 
         if (prediction.predictorToken == address(0)) {
@@ -212,11 +212,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         prediction.settled = true;
         prediction.result = result;
 
-        emit PredictionSettled(predictionId, result, predictorClaimable, counterpartyClaimable);
+        emit PredictionSettled(predictionId, result, predictorClaimable, counterpartyClaimable, refCode);
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function redeem(address positionToken, uint256 amount) external nonReentrant returns (uint256 payout) {
+    function redeem(address positionToken, uint256 amount, bytes32 refCode) external nonReentrant returns (uint256 payout) {
         if (!_isPositionToken[positionToken]) {
             revert InvalidToken();
         }
@@ -229,7 +229,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         }
 
         // Calculate and transfer payout (internal)
-        payout = _redeemTokens(predictionId, positionToken, msg.sender, amount);
+        payout = _redeemTokens(predictionId, positionToken, msg.sender, amount, refCode);
     }
 
     // ============ View Functions ============
@@ -363,7 +363,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         bytes32 predictionId,
         address positionToken,
         address holder,
-        uint256 tokenAmount
+        uint256 tokenAmount,
+        bytes32 refCode
     ) internal returns (uint256 payout) {
         if (tokenAmount == 0) {
             revert ZeroWager(); // Reusing error for zero amount
@@ -385,7 +386,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             // Transfer collateral to holder
             collateralToken.safeTransfer(holder, payout);
 
-            emit TokensRedeemed(predictionId, holder, positionToken, tokenAmount, payout);
+            emit TokensRedeemed(predictionId, holder, positionToken, tokenAmount, payout, refCode);
         }
     }
 

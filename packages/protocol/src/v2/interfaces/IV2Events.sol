@@ -25,7 +25,8 @@ interface IV2Events {
         bytes32 indexed predictionId,
         IV2Types.SettlementResult result,
         uint256 predictorClaimable,
-        uint256 counterpartyClaimable
+        uint256 counterpartyClaimable,
+        bytes32 refCode
     );
 
     /// @notice Emitted when tokens are redeemed for collateral
@@ -34,7 +35,8 @@ interface IV2Events {
         address indexed holder,
         address indexed positionToken,
         uint256 tokensBurned,
-        uint256 collateralPaid
+        uint256 collateralPaid,
+        bytes32 refCode
     );
 
     /// @notice Emitted when collateral is deposited into escrow

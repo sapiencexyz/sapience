@@ -38,14 +38,16 @@ interface IPredictionMarketV2 {
 
     /// @notice Settle a prediction based on condition resolver outcomes
     /// @param predictionId The prediction to settle
+    /// @param refCode Referral code for integrator tracking
     /// @dev Anyone can call this once all picks are resolved
-    function settle(bytes32 predictionId) external;
+    function settle(bytes32 predictionId, bytes32 refCode) external;
 
     /// @notice Redeem position tokens for collateral
     /// @param positionToken The position token to redeem
     /// @param amount Amount of tokens to redeem
+    /// @param refCode Referral code for integrator tracking
     /// @return payout Amount of collateral received
-    function redeem(address positionToken, uint256 amount) external returns (uint256 payout);
+    function redeem(address positionToken, uint256 amount, bytes32 refCode) external returns (uint256 payout);
 
     // ============ View Functions ============
 
