@@ -29,6 +29,7 @@ import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { useCollateralBalanceContext } from '~/lib/context/CollateralBalanceContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
@@ -39,6 +40,46 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 
+/**
+ * Calculate the maximum wager amount based on user balance and chain.
+ * On Ethereal chain, cap at 1M. Otherwise, use user's full balance.
+ */
+function getMaxWagerAmount(
+  userBalance: number,
+  isEtherealChain: boolean
+): string | undefined {
+  const ETHEREAL_MAX = 1000000;
+
+  if (userBalance > 0) {
+    if (isEtherealChain) {
+      return Math.min(ETHEREAL_MAX, userBalance).toString();
+    }
+    return userBalance.toString();
+  }
+
+  if (isEtherealChain) {
+    return ETHEREAL_MAX.toString();
+  }
+
+  return undefined;
+}
+
+/**
+ * Converts a color string to include alpha transparency.
+ * Supports hsl(), rgb(), and hex color formats.
+ */
+function getColorWithAlpha(color: string, alpha: number): string {
+  if (color.startsWith('hsl(')) {
+    return `hsl(${color.slice(4, -1)} / ${alpha})`;
+  }
+  if (color.startsWith('rgb(')) {
+    return `rgb(${color.slice(4, -1)} / ${alpha})`;
+  }
+  // Hex color: append alpha as hex (0.1 = 1a)
+  const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  return `${color}${alphaHex}`;
+}
+
 interface PositionFormProps {
   methods: UseFormReturn<{
     wagerAmount: string;
@@ -48,7 +89,8 @@ interface PositionFormProps {
       { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
     >;
   }>;
-  onSubmit: () => void;
+  /** Submit handler - receives the exact bid being submitted to ensure what user sees is what gets submitted */
+  onSubmit: (bid: QuoteBid) => void;
   isSubmitting: boolean;
   error?: string | null;
   chainId?: number;
@@ -66,8 +108,6 @@ interface PositionFormProps {
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
-  // Callback to notify parent of the currently displayed best bid (for submission)
-  onBestBidChange?: (bid: QuoteBid | null) => void;
 }
 
 export default function PositionForm({
@@ -85,7 +125,6 @@ export default function PositionForm({
   predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
-  onBestBidChange,
 }: PositionFormProps) {
   const { selections, removeSelection } = useCreatePositionContext();
   const { address: takerAddress } = useAccount();
@@ -115,16 +154,17 @@ export default function PositionForm({
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { isSessionActive, smartAccountAddress } = useSession();
 
-  // Use zero address as the guest taker address when the user is logged out
-  const guestTakerAddress: `0x${string}` =
-    '0x0000000000000000000000000000000000000000';
-
   // Use smart account address when session is active, otherwise use EOA
-  // This ensures the correct nonce is fetched for the address that will execute the transaction
+  // Falls back to zero address for logged-out users
+  const ZERO_ADDRESS: `0x${string}` = '0x0000000000000000000000000000000000000000';
   const selectedTakerAddress =
     isSessionActive && smartAccountAddress
       ? smartAccountAddress
-      : (takerAddress ?? guestTakerAddress);
+      : (takerAddress ?? ZERO_ADDRESS);
+
+  // Get user's collateral balance from context (shared with form schema validation)
+  const { balance: userBalance, isLoading: isBalanceLoading } =
+    useCollateralBalanceContext();
 
   // Fetch taker nonce from PredictionMarket contract
   // Use refetch to get fresh nonce before auction requests
@@ -268,11 +308,6 @@ export default function PositionForm({
     return { bestBid: best, estimateBid: null };
   }, [validBids, nowMs]);
 
-  // Notify parent of the current best bid for submission
-  useEffect(() => {
-    onBestBidChange?.(bestBid);
-  }, [bestBid, onBestBidChange]);
-
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
     if (bestBid) {
@@ -387,12 +422,12 @@ export default function PositionForm({
         currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
-        const msg =
-          err instanceof Error
-            ? err.message
-            : typeof err === 'string'
-              ? err
-              : 'Unknown error';
+        let msg = 'Unknown error';
+        if (err instanceof Error) {
+          msg = err.message;
+        } else if (typeof err === 'string') {
+          msg = err;
+        }
         toast({
           title: 'Could not initiate auction',
           description: msg,
@@ -433,6 +468,12 @@ export default function PositionForm({
     // Only auto-trigger when session is active
     if (!isSessionActive) return;
 
+    // Wait for balance to load before triggering (so validation has the correct maxAmount)
+    if (isBalanceLoading) return;
+
+    // Don't auto-trigger if there are form errors (e.g., wager exceeds balance)
+    if (hasFormErrors) return;
+
     // Must have at least one prediction
     const hasPredictions = selections.length > 0 || pythPredictions.length > 0;
     if (!hasPredictions) return;
@@ -440,6 +481,10 @@ export default function PositionForm({
     // Must have a valid wager amount
     const wagerNum = Number(wagerAmount || '0');
     if (wagerNum <= 0 || Number.isNaN(wagerNum)) return;
+
+    // Don't auto-trigger if wager exceeds user's balance
+    // Use simple comparison: if userBalance is 0 (loading/unavailable) and wager > 0, this returns
+    if (wagerNum > userBalance) return;
 
     // Clear previous debounce timer
     if (autoAuctionDebounceRef.current) {
@@ -458,11 +503,14 @@ export default function PositionForm({
     };
   }, [
     isSessionActive,
+    isBalanceLoading,
+    hasFormErrors,
     predictionsKey,
     wagerAmount,
     triggerAuctionRequest,
     selections.length,
     pythPredictions.length,
+    userBalance,
   ]);
 
   // Show "Request Bids" button when:
@@ -470,6 +518,14 @@ export default function PositionForm({
   // 2. Not in the cooldown period after making a request
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
+
+  // Show "Some combinations may not receive bids" hint after 3 seconds of no bids
+  // This replaces the disclaimer after waiting for bids without success
+  const HINT_DELAY_MS = 3000;
+  const showNoBidsWarning =
+    lastQuoteRequestMs !== null &&
+    !bestBid &&
+    nowMs - lastQuoteRequestMs >= HINT_DELAY_MS;
 
   // Crossfade between disclaimer and hint when bids may not arrive
   const HINT_FADE_MS = 300;
@@ -482,7 +538,7 @@ export default function PositionForm({
     let timeout1: number | undefined;
     let timeout2: number | undefined;
 
-    if (showNoBidsHint) {
+    if (showNoBidsWarning) {
       if (!hintMounted) {
         // Fade out disclaimer, then show hint
         setDisclaimerVisible(false);
@@ -513,7 +569,7 @@ export default function PositionForm({
       if (timeout1) window.clearTimeout(timeout1);
       if (timeout2) window.clearTimeout(timeout2);
     };
-  }, [showNoBidsHint, hintMounted]);
+  }, [showNoBidsWarning, hintMounted]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -523,7 +579,7 @@ export default function PositionForm({
   return (
     <FormProvider {...methods}>
       <form
-        onSubmit={methods.handleSubmit(onSubmit)}
+        onSubmit={(e) => e.preventDefault()}
         className="space-y-4 px-4 pb-4 pt-4"
       >
         <div>
@@ -573,12 +629,8 @@ export default function PositionForm({
             const s = item.s;
             const CategoryIcon = getCategoryIcon(s.categorySlug);
             const categoryColor = getCategoryStyle(s.categorySlug).color;
-            // Match MarketBadge style: 10% opacity background, category color icon
-            const bgWithAlpha = categoryColor.startsWith('hsl(')
-              ? `hsl(${categoryColor.slice(4, -1)} / 0.1)`
-              : categoryColor.startsWith('rgb(')
-                ? `rgb(${categoryColor.slice(4, -1)} / 0.1)`
-                : `${categoryColor}1a`; // hex with ~10% alpha
+            // Convert color to 10% opacity background (matches MarketBadge style)
+            const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
             const umaPrediction: UmaPrediction = {
               id: s.id,
               conditionId: s.conditionId,
@@ -621,7 +673,7 @@ export default function PositionForm({
           <div className="mt-5">
             <WagerInput
               minAmount={minWager}
-              maxAmount={isEtherealChain ? '1000000' : undefined}
+              maxAmount={getMaxWagerAmount(userBalance, isEtherealChain)}
               collateralSymbol={collateralSymbol}
               collateralAddress={collateralToken}
               chainId={chainId}
@@ -640,9 +692,6 @@ export default function PositionForm({
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
               nowMs={nowMs}
-              isWaitingForBids={
-                recentlyRequested && !bestBid && !stickyEstimateBid
-              }
               showRequestBidsButton={showNoBidsHint}
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
@@ -659,7 +708,8 @@ export default function PositionForm({
               takerWagerWei={takerWagerWei}
               takerAddress={selectedTakerAddress}
               showAddPredictionsHint={selections.length === 1}
-              isAuctionPending={recentlyRequested}
+              isAuctionPending={recentlyRequested && !bestBid}
+              hasFormErrors={hasFormErrors}
             />
           </div>
           {error && (

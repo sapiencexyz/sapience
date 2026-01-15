@@ -1,6 +1,6 @@
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
-import { useMemo, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -97,23 +97,18 @@ export function WagerInput({
   const {
     register,
     formState: { errors },
-    getValues,
     setValue,
-    clearErrors,
   } = useFormContext();
   const chainShortName = getChainShortName(chainId);
 
   // Create schema with min/max constraints if provided
-  // This is used for the validate function in register, but the form-level
-  // schema (from zodResolver) is the source of truth for validation
-  const validationSchema = useMemo(
-    () => createWagerAmountSchema(minAmount, maxAmount),
-    [minAmount, maxAmount]
-  );
+  // Used by the validate function in register (form-level zodResolver is source of truth)
+  const validationSchemaRef = useRef<z.ZodTypeAny>(createWagerAmountSchema(minAmount, maxAmount));
 
-  // Use a ref to ensure the validate function always uses the latest schema
-  const validationSchemaRef = useRef<z.ZodTypeAny>(validationSchema);
-  validationSchemaRef.current = validationSchema;
+  // Keep ref updated when constraints change
+  useEffect(() => {
+    validationSchemaRef.current = createWagerAmountSchema(minAmount, maxAmount);
+  }, [minAmount, maxAmount]);
   return (
     <div className="space-y-2">
       {!hideHeader && (
@@ -145,7 +140,7 @@ export function WagerInput({
           spellCheck={false}
           autoCapitalize="none"
           className={`pr-24 text-brand-white placeholder:text-brand-white/70 ${
-            errors[name] ? 'border-destructive' : ''
+            errors[name] ? 'border-destructive ring-1 ring-destructive' : ''
           } ${inputClassName || ''}`}
           {...register(name, {
             // Validate function for immediate feedback
@@ -194,12 +189,12 @@ export function WagerInput({
 
               // Update the form state and validate immediately
               // This ensures form state is updated synchronously for useWatch to pick up changes
+              // Note: Don't call clearErrors here - let validation set/clear errors naturally
               setValue(name, finalValue, {
                 shouldValidate: true,
                 shouldDirty: true,
                 shouldTouch: true,
               });
-              clearErrors(name);
             },
           })}
         />
@@ -207,25 +202,6 @@ export function WagerInput({
           {collateralSymbol}
         </div>
       </div>
-      {typeof minAmount !== 'undefined' &&
-        Number(getValues(name) || 0) < Number(minAmount) && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Minimum: {minAmount} {collateralSymbol}
-          </p>
-        )}
-      {typeof maxAmount !== 'undefined' &&
-        Number(getValues(name) || 0) > Number(maxAmount) && (
-          <p className="text-xs text-muted-foreground mt-1">
-            Maximum: {maxAmount} {collateralSymbol}
-          </p>
-        )}
-      {errors[name] &&
-        errors[name]?.message &&
-        errors[name]?.message?.toString() !== 'Wager amount is required' && (
-          <p className="text-destructive text-sm mb-2">
-            {errors[name]?.message?.toString()}
-          </p>
-        )}
     </div>
   );
 }

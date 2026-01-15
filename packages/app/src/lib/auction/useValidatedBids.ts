@@ -1,15 +1,48 @@
 'use client';
 
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { erc20Abi } from 'viem';
+
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+
+interface ValidationCheckResult {
+  makerHasSufficientAllowance: boolean;
+  makerHasSufficientBalance: boolean;
+  userHasSufficientAllowance: boolean;
+  userHasSufficientBalance: boolean;
+}
+
+/**
+ * Returns an error message if any validation check fails, undefined if all pass.
+ */
+function getValidationErrorMessage(checks: ValidationCheckResult): string | undefined {
+  if (!checks.makerHasSufficientAllowance) {
+    return 'Market maker has insufficient allowance';
+  }
+  if (!checks.makerHasSufficientBalance) {
+    return 'Market maker has insufficient balance';
+  }
+  if (!checks.userHasSufficientAllowance) {
+    return 'Insufficient allowance for your wager';
+  }
+  if (!checks.userHasSufficientBalance) {
+    return 'Insufficient balance for your wager';
+  }
+  return undefined;
+}
 
 interface UseValidatedBidsParams {
   bids: QuoteBid[];
   chainId: number;
   collateralTokenAddress?: `0x${string}`;
   predictionMarketAddress?: `0x${string}`;
+  /** User's address (auction creator / contract maker) for balance validation */
+  userAddress?: `0x${string}`;
+  /** User's wager amount in wei for balance validation */
+  userWagerWei?: string;
+  /** Whether user is on Ethereal chain (uses native balance, skip ERC20 allowance check) */
+  isEtherealChain?: boolean;
   enabled?: boolean;
 }
 
@@ -24,6 +57,9 @@ export function useValidatedBids({
   chainId,
   collateralTokenAddress,
   predictionMarketAddress,
+  userAddress,
+  userWagerWei,
+  isEtherealChain = false,
   enabled = true,
 }: UseValidatedBidsParams): QuoteBid[] {
   const [validatedBids, setValidatedBids] = useState<QuoteBid[]>([]);
@@ -61,7 +97,8 @@ export function useValidatedBids({
             return bid;
           }
 
-          const cacheKey = `${bid.maker}-${bid.makerWager}-${chainId}`;
+          // Include user address and wager in cache key to revalidate when they change
+          const cacheKey = `${bid.maker}-${bid.makerWager}-${userAddress || ''}-${userWagerWei || ''}-${chainId}`;
 
           // Check cache first
           const cached = validationCacheRef.current.get(cacheKey);
@@ -86,36 +123,91 @@ export function useValidatedBids({
           pendingValidationsRef.current.add(cacheKey);
 
           try {
-            const takerAddress = bid.maker as `0x${string}`; // In our system, bid.maker is the contract taker
-            const takerCollateralRequired = BigInt(bid.makerWager);
+            // Market maker validation (bid.maker = contract taker)
+            const makerAddress = bid.maker as `0x${string}`;
+            const makerCollateralRequired = BigInt(bid.makerWager);
 
-            const [takerAllowance, takerBalance] = await Promise.all([
+            // Build validation calls for market maker
+            const validationCalls: Promise<bigint>[] = [
               publicClient.readContract({
                 address: collateralTokenAddress,
                 abi: erc20Abi,
                 functionName: 'allowance',
-                args: [takerAddress, predictionMarketAddress],
+                args: [makerAddress, predictionMarketAddress],
               }),
               publicClient.readContract({
                 address: collateralTokenAddress,
                 abi: erc20Abi,
                 functionName: 'balanceOf',
-                args: [takerAddress],
+                args: [makerAddress],
               }),
-            ]);
+            ];
 
-            const hasSufficientAllowance =
-              takerAllowance >= takerCollateralRequired;
-            const hasSufficientBalance =
-              takerBalance >= takerCollateralRequired;
-            const isValid = hasSufficientAllowance && hasSufficientBalance;
+            // Add user validation if user address and wager provided (non-Ethereal only for allowance)
+            const userWager = userWagerWei ? BigInt(userWagerWei) : 0n;
+            const shouldValidateUser = userAddress && userWager > 0n;
 
-            let errorMessage: string | undefined;
-            if (!hasSufficientAllowance) {
-              errorMessage = 'Market maker has insufficient allowance';
-            } else if (!hasSufficientBalance) {
-              errorMessage = 'Market maker has insufficient balance';
+            if (shouldValidateUser && !isEtherealChain) {
+              // On non-Ethereal chains, check user's ERC20 allowance
+              validationCalls.push(
+                publicClient.readContract({
+                  address: collateralTokenAddress,
+                  abi: erc20Abi,
+                  functionName: 'allowance',
+                  args: [userAddress, predictionMarketAddress],
+                })
+              );
+              validationCalls.push(
+                publicClient.readContract({
+                  address: collateralTokenAddress,
+                  abi: erc20Abi,
+                  functionName: 'balanceOf',
+                  args: [userAddress],
+                })
+              );
+            } else if (shouldValidateUser && isEtherealChain) {
+              // On Ethereal, only check balance (native USDe doesn't need ERC20 approval)
+              validationCalls.push(
+                publicClient.getBalance({ address: userAddress })
+              );
             }
+
+            const results = await Promise.all(validationCalls);
+            const [makerAllowance, makerBalance] = results;
+
+            // Validate market maker
+            const makerHasSufficientAllowance =
+              makerAllowance >= makerCollateralRequired;
+            const makerHasSufficientBalance =
+              makerBalance >= makerCollateralRequired;
+
+            // Validate user (if applicable)
+            let userHasSufficientAllowance = true;
+            let userHasSufficientBalance = true;
+
+            if (shouldValidateUser) {
+              if (isEtherealChain) {
+                // Ethereal: only balance check (index 2 is native balance)
+                const userBalance = results[2] ?? 0n;
+                userHasSufficientBalance = userBalance >= userWager;
+              } else {
+                // Non-Ethereal: allowance (index 2) and balance (index 3)
+                const userAllowance = results[2] ?? 0n;
+                const userBalance = results[3] ?? 0n;
+                userHasSufficientAllowance = userAllowance >= userWager;
+                userHasSufficientBalance = userBalance >= userWager;
+              }
+            }
+
+            // Determine validation result and error message
+            const errorMessage = getValidationErrorMessage({
+              makerHasSufficientAllowance,
+              makerHasSufficientBalance,
+              userHasSufficientAllowance,
+              userHasSufficientBalance,
+            });
+
+            const isValid = errorMessage === undefined;
 
             // Cache the result
             validationCacheRef.current.set(cacheKey, {
@@ -160,6 +252,9 @@ export function useValidatedBids({
     chainId,
     collateralTokenAddress,
     predictionMarketAddress,
+    userAddress,
+    userWagerWei,
+    isEtherealChain,
     enabled,
     publicClient,
   ]);

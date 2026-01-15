@@ -1,7 +1,6 @@
 'use client';
 
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { useState, useMemo, useCallback, useEffect } from 'react';
@@ -49,8 +48,7 @@ const MarketsPage = () => {
   // Read chainId from localStorage with event monitoring
   const chainId = useChainIdFromLocalStorage();
 
-  // Get mobile/compact status (needed by callbacks below)
-  const isMobile = useIsMobile();
+  // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
 
   const [showPredictPrices, setShowPredictPrices] = useState(false);
@@ -253,7 +251,7 @@ const MarketsPage = () => {
   return (
     <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
       {/* Render only one position form instance based on viewport */}
-      {isCompact ? (
+      {isCompact && (
         <div className="block lg:hidden">
           <CreatePositionForm
             pythPredictions={pythPredictions}
@@ -261,14 +259,14 @@ const MarketsPage = () => {
             onClearPythPredictions={() => setPythPredictions([])}
           />
         </div>
-      ) : null}
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
         {/* Featured Positions section */}
         <ExampleCombos className="mt-4 md:mt-0" />
 
-        {showPredictPrices ? (
+        {showPredictPrices && (
           <div className="w-full mt-2">
             <div className="flex items-center justify-between mb-2 px-1">
               <h2 className="sc-heading text-foreground">Predict Prices</h2>
@@ -276,7 +274,7 @@ const MarketsPage = () => {
             <CreatePythPredictionForm onPick={handlePythPick} />
             <hr className="gold-hr mt-6 -mb-2" />
           </div>
-        ) : null}
+        )}
 
         {/* Results area - always table view */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
@@ -302,7 +300,7 @@ const MarketsPage = () => {
       </div>
 
       {/* Desktop/Tablet sticky position form sidebar */}
-      {!isMobile ? (
+      {!isCompact && (
         <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
           <div
             className="rounded-none shadow-lg overflow-hidden"
@@ -320,7 +318,7 @@ const MarketsPage = () => {
             </div>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

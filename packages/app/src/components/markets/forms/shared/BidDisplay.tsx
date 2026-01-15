@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { formatUnits, parseUnits } from 'viem';
-import { ChevronDown, Info, RefreshCw } from 'lucide-react';
+import { ChevronDown, Info } from 'lucide-react';
 import WagerDisclaimer from './WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
@@ -24,27 +24,25 @@ interface BidDisplayProps {
   collateralDecimals?: number;
   /** Current time in ms for expiration calculation */
   nowMs: number;
-  /** Whether we're waiting for bids */
-  isWaitingForBids: boolean;
   /** Whether to show "Request Bids" button */
   showRequestBidsButton: boolean;
   /** Callback to request new bids */
   onRequestBids: () => void;
   /** Whether submission is in progress */
   isSubmitting: boolean;
-  /** Submit handler */
-  onSubmit: () => void;
+  /** Submit handler - receives the exact bid being submitted */
+  onSubmit: (bid: QuoteBid) => void;
   /** Whether submit is disabled (beyond bid expiration) */
   isSubmitDisabled?: boolean;
   /** Optional rainbow hover effect for high wagers */
   enableRainbowHover?: boolean;
-  /** Optional "Limit Order" button handler */
+  /** Optional "Limit Order" button handler (not currently used in UI) */
   onLimitOrderClick?: () => void;
   /** Show position-specific "Some combinations may not receive bids" hint */
   showNoBidsHint?: boolean;
-  /** Hint visibility for crossfade animation */
+  /** Hint visibility for crossfade animation (not currently used) */
   hintVisible?: boolean;
-  /** Disclaimer visibility for crossfade animation */
+  /** Disclaimer visibility for crossfade animation (not currently used) */
   disclaimerVisible?: boolean;
   /** Whether disclaimer is mounted */
   disclaimerMounted?: boolean;
@@ -64,6 +62,8 @@ interface BidDisplayProps {
   showAddPredictionsHint?: boolean;
   /** Whether we're currently requesting higher bids (shows loading state) */
   isAuctionPending?: boolean;
+  /** Whether form has validation errors (disables initiate auction) */
+  hasFormErrors?: boolean;
 }
 
 /**
@@ -77,17 +77,13 @@ export default function BidDisplay({
   collateralSymbol,
   collateralDecimals = 18,
   nowMs,
-  isWaitingForBids,
   showRequestBidsButton,
   onRequestBids,
   isSubmitting,
   onSubmit,
   isSubmitDisabled = false,
   enableRainbowHover = false,
-  onLimitOrderClick: _onLimitOrderClick,
   showNoBidsHint = false,
-  hintVisible: _hintVisible = false,
-  disclaimerVisible: _disclaimerVisible = true,
   disclaimerMounted = true,
   hintMounted = false,
   className,
@@ -97,21 +93,9 @@ export default function BidDisplay({
   toWinTakesSpace = true,
   showAddPredictionsHint = false,
   isAuctionPending = false,
-}: BidDisplayProps) {
+  hasFormErrors = false,
+}: BidDisplayProps): React.ReactElement {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
-  const [effectiveBestBid, setEffectiveBestBid] = useState<QuoteBid | null>(
-    bestBid
-  );
-  const prevBestBidRef = useRef<QuoteBid | null>(null);
-  const prevWagerAmountRef = useRef<string>(wagerAmount);
-
-  // Detect when wager amount changes and clear any displayed bid immediately.
-  useEffect(() => {
-    if (prevWagerAmountRef.current !== wagerAmount) {
-      setEffectiveBestBid(null);
-      prevWagerAmountRef.current = wagerAmount;
-    }
-  }, [wagerAmount]);
 
   // Helper function to calculate "To Win" amount
   const calculateToWinAmount = useCallback(
@@ -141,29 +125,30 @@ export default function BidDisplay({
     [collateralDecimals]
   );
 
-  // Detect when bid appears/changes and trigger animations for "To Win" and button
-  useEffect(() => {
-    if (bestBid) {
-      setEffectiveBestBid(bestBid);
-    } else {
-      setEffectiveBestBid(null);
-    }
-
-    // Update ref
-    prevBestBidRef.current = bestBid;
-  }, [bestBid, wagerAmount, calculateToWinAmount]);
-
   // Convert QuoteBids to AuctionBidData for the chart
   const chartBids = useMemo(() => quoteBidsToAuctionBids(allBids), [allBids]);
+
+  // Check if the current best bid is expired
+  const isBidExpired = bestBid ? bestBid.makerDeadline * 1000 - nowMs <= 0 : true;
+
+  // Unified UI state - single source of truth for all UI rendering
+  type UIState = 'idle' | 'pending' | 'active' | 'submitting';
+  const uiState: UIState = useMemo(() => {
+    if (isSubmitting) return 'submitting';
+    if (bestBid && !isBidExpired) return 'active';
+    if (isAuctionPending) return 'pending';
+    return 'idle';
+  }, [isSubmitting, bestBid, isBidExpired, isAuctionPending]);
+
   // Calculate remaining seconds and the "to win" amount.
   const { humanTotal, remainingSecs } = (() => {
-    if (!effectiveBestBid) {
+    if (!bestBid) {
       return { humanTotal: '0.00', remainingSecs: 0 };
     }
 
-    const humanTotalVal = calculateToWinAmount(effectiveBestBid, wagerAmount);
+    const humanTotalVal = calculateToWinAmount(bestBid, wagerAmount);
 
-    const remainingMs = effectiveBestBid.makerDeadline * 1000 - nowMs;
+    const remainingMs = bestBid.makerDeadline * 1000 - nowMs;
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
 
     return { humanTotal: humanTotalVal, remainingSecs: secs };
@@ -172,88 +157,52 @@ export default function BidDisplay({
   // Calculate estimate payout from estimate bid (failed simulation, only bid available)
   const estimateTotal = useMemo(() => {
     if (!estimateBid) return null;
+    return calculateToWinAmount(estimateBid, wagerAmount);
+  }, [estimateBid, wagerAmount, calculateToWinAmount]);
 
-    let userWagerWei: bigint = 0n;
-    try {
-      userWagerWei = parseUnits(wagerAmount || '0', collateralDecimals);
-    } catch {
-      userWagerWei = 0n;
-    }
-
-    const totalWei = (() => {
-      try {
-        return userWagerWei + BigInt(estimateBid.makerWager);
-      } catch {
-        return 0n;
-      }
-    })();
-
-    try {
-      const human = Number(formatUnits(totalWei, collateralDecimals));
-      return formatNumber(human, 2);
-    } catch {
-      return '0.00';
-    }
-  }, [estimateBid, wagerAmount, collateralDecimals]);
-
-  const isBidExpired = effectiveBestBid
-    ? effectiveBestBid.makerDeadline * 1000 - nowMs <= 0
-    : true;
-
-  // Determine button state and text
+  // Determine button state and text based on unified uiState
   const getButtonState = () => {
-    // If we have a bid, show submit.
-    if (effectiveBestBid) {
-      return {
-        text: isSubmitting ? 'SUBMITTING...' : 'SUBMIT PREDICTION',
-        disabled: isSubmitting || isBidExpired || isSubmitDisabled,
-        onClick: onSubmit,
-        type: 'submit' as const,
-      };
+    switch (uiState) {
+      case 'submitting':
+        return {
+          text: 'SUBMITTING...',
+          disabled: true,
+          onClick: () => {},
+          type: 'button' as const,
+        };
+      case 'active':
+        return {
+          text: 'SUBMIT PREDICTION',
+          disabled: isSubmitDisabled,
+          // Pass the exact bid being displayed to ensure what user sees is what gets submitted
+          onClick: () => bestBid && onSubmit(bestBid),
+          type: 'button' as const,
+        };
+      case 'pending':
+        return {
+          text: 'SUBMIT PREDICTION',
+          disabled: true,
+          onClick: () => {},
+          type: 'button' as const,
+        };
+      case 'idle':
+      default:
+        // Show estimate state if we have an estimate bid but no valid bid
+        if (estimateBid && estimateTotal) {
+          return {
+            text: 'WAITING FOR BIDS...',
+            disabled: true,
+            onClick: () => {},
+            type: 'button' as const,
+          };
+        }
+        return {
+          text: showRequestBidsButton ? 'INITIATE AUCTION' : 'WAITING FOR BIDS...',
+          disabled: !showRequestBidsButton || hasFormErrors,
+          onClick: onRequestBids,
+          type: 'button' as const,
+        };
     }
-    // If requesting higher bids (after clicking Restart auction), show waiting state
-    if (isAuctionPending) {
-      return {
-        text: 'WAITING FOR BIDS...',
-        disabled: true,
-        onClick: () => {},
-        type: 'button' as const,
-      };
-    }
-    // If showing estimated quote (no valid bid, but estimate available), show "WAITING FOR BIDS..."
-    if (!effectiveBestBid && estimateBid && estimateTotal) {
-      return {
-        text: 'WAITING FOR BIDS...',
-        disabled: true,
-        onClick: () => {},
-        type: 'button' as const,
-      };
-    }
-    // If there is no bid and we aren't waiting, allow requesting bids.
-    if (
-      !bestBid &&
-      !effectiveBestBid &&
-      !isWaitingForBids &&
-      showRequestBidsButton
-    ) {
-      return {
-        text: 'INITIATE AUCTION',
-        disabled: isWaitingForBids,
-        onClick: onRequestBids,
-        type: 'button' as const,
-      };
-    }
-    // No bid or waiting state
-    const baseText =
-      showRequestBidsButton && !isWaitingForBids
-        ? 'INITIATE AUCTION'
-        : 'WAITING FOR BIDS...';
-    return {
-      text: baseText,
-      disabled: !showRequestBidsButton || isWaitingForBids,
-      onClick: () => showRequestBidsButton && onRequestBids(),
-      type: 'button' as const,
-    };
   };
 
   const buttonState = getButtonState();
@@ -263,7 +212,7 @@ export default function BidDisplay({
       className={`text-center ${toWinTakesSpace ? '' : 'relative'} ${className ?? ''}`}
     >
       {/* To Win Display - takes up space when toWinTakesSpace is true, otherwise positioned absolutely */}
-      {effectiveBestBid ? (
+      {uiState === 'active' && bestBid && (
         <div
           className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -345,8 +294,7 @@ export default function BidDisplay({
             <button
               type="button"
               onClick={onRequestBids}
-              disabled={isAuctionPending}
-              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity disabled:opacity-50"
+              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
             >
               <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
                 Restart auction
@@ -354,18 +302,12 @@ export default function BidDisplay({
             </button>
           </div>
         </div>
-      ) : !effectiveBestBid && isAuctionPending ? (
-        /* Show loading state when requesting higher bids but no bid yet */
-        <div
-          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
-        >
-          <div className="rounded-md border-[1.5px] border-ethena/80 bg-ethena/20 px-4 py-2.5 w-full shadow-[0_0_10px_rgba(136,180,245,0.25)]">
-            <div className="flex items-center justify-center min-h-[40px]">
-              <Loader size={16} />
-            </div>
-          </div>
-          {/* Higher bids hint row */}
-          <div className="flex items-center justify-between mt-2 px-1 text-xs">
+      )}
+
+      {/* Show "Listening for bids..." hint when waiting for bids */}
+      {uiState === 'pending' && (
+        <div className="mb-4 -mt-1">
+          <div className="flex items-center justify-between px-1 text-xs">
             <span
               className="text-muted-foreground"
               style={{
@@ -378,12 +320,21 @@ export default function BidDisplay({
                 animation: 'shimmer 2s linear infinite',
               }}
             >
-              Listening for higher bids...
+              Listening for bids...
             </span>
+            <button
+              type="button"
+              onClick={onRequestBids}
+              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+            >
+              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                Restart auction
+              </span>
+            </button>
           </div>
         </div>
-      ) : null}
-      {!effectiveBestBid && !isAuctionPending && estimateBid && estimateTotal ? (
+      )}
+      {uiState === 'idle' && estimateBid && estimateTotal && (
         <div
           className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -391,7 +342,7 @@ export default function BidDisplay({
             <div className="flex items-center min-h-[40px]">
               <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
                 <span className="font-light text-muted-foreground uppercase tracking-wider">
-                  Est. Quote to Win
+                  ESTIMATED TO WIN
                 </span>
                 <span className="text-muted-foreground font-semibold whitespace-nowrap">
                   {`${estimateTotal} ${collateralSymbol}`}
@@ -399,8 +350,35 @@ export default function BidDisplay({
               </span>
             </div>
           </div>
+          {/* Listening for bids hint row - shown while waiting for valid bids */}
+          <div className="flex items-center justify-between mt-3 px-1 text-xs">
+            <span
+              className="text-muted-foreground"
+              style={{
+                background:
+                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                backgroundSize: '200% 100%',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 2s linear infinite',
+              }}
+            >
+              Listening for bids...
+            </span>
+            <button
+              type="button"
+              onClick={onRequestBids}
+              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+            >
+              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                Restart auction
+              </span>
+            </button>
+          </div>
         </div>
-      ) : !effectiveBestBid && !isAuctionPending && showAddPredictionsHint ? (
+      )}
+      {uiState === 'idle' && !estimateBid && showAddPredictionsHint && (
         <div className="mt-4 mb-4">
           <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
             <div className="flex items-center justify-center gap-2 min-h-[40px]">
@@ -411,7 +389,7 @@ export default function BidDisplay({
             </div>
           </div>
         </div>
-      ) : null}
+      )}
 
       {/* Submit / Request Bids Button */}
       <Button
@@ -420,17 +398,17 @@ export default function BidDisplay({
             ? 'position-form-submit hover:text-brand-white'
             : ''
         }`}
-        disabled={buttonState.disabled || isWaitingForBids || isAuctionPending}
+        disabled={buttonState.disabled}
         type={buttonState.type}
         size="lg"
         variant="default"
         onClick={buttonState.onClick}
       >
-        {isWaitingForBids || isAuctionPending ? <Loader size={12} /> : buttonState.text}
+        {uiState === 'submitting' ? <Loader size={12} /> : buttonState.text}
       </Button>
 
       {/* Position-specific hint for combinations that may not receive bids */}
-      {hintMounted && showNoBidsHint && (
+      {hintMounted && (
         <div className="text-xs text-foreground font-medium mt-3">
           <span className="text-accent-gold">
             Some combinations may not receive bids
