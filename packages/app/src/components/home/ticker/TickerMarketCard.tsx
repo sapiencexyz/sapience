@@ -41,7 +41,13 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     useCreatePositionContext();
   const router = useRouter();
 
-  const displayQ = shortName || question;
+  const rawDisplayQ = shortName || question;
+  // Truncate long condition text to prevent overflow onto predict buttons
+  const MAX_DISPLAY_LENGTH = 40;
+  const displayQ =
+    rawDisplayQ.length > MAX_DISPLAY_LENGTH
+      ? `${rawDisplayQ.slice(0, MAX_DISPLAY_LENGTH)}…`
+      : rawDisplayQ;
 
   const selectionState = React.useMemo(() => {
     if (!id) return { selectedYes: false, selectedNo: false };
