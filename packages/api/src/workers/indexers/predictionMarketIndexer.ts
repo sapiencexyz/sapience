@@ -20,7 +20,7 @@ import {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts/addresses';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import { lzConditionalTokenResolverAbi } from '@sapience/sdk/abis';
 
 /**
