@@ -306,7 +306,59 @@ export async function loadSdk(): Promise<SdkModule> {
 
     console.log("[SDK] Added trading WUSDe utilities (local fallback)");
   }
-  
+
+  // Add SIWE utilities for auction signing if not available from SDK
+  if (!sdk.extractSiweDomainAndUri) {
+    console.log("[SDK] extractSiweDomainAndUri not found in SDK, using local fallback");
+    sdk.extractSiweDomainAndUri = (wsUrl: string): { domain: string; uri: string } => {
+      try {
+        const url = new URL(wsUrl);
+        const domain = url.hostname;
+        // Use origin with https/http protocol (EIP-4361 requirement)
+        const protocol = url.protocol === 'wss:' ? 'https:' : 'http:';
+        const uri = `${protocol}//${url.host}`;
+        return { domain, uri };
+      } catch (err) {
+        console.error('[SDK] Invalid WebSocket URL:', wsUrl, err);
+        return { domain: 'unknown', uri: 'https://unknown' };
+      }
+    };
+  }
+
+  if (!sdk.createAuctionStartSiweMessage) {
+    console.log("[SDK] createAuctionStartSiweMessage not found in SDK, using local fallback");
+    sdk.createAuctionStartSiweMessage = (
+      payload: {
+        taker: string;
+        wager: string;
+        resolver: string;
+        predictedOutcomes: string[];
+        takerNonce: number;
+        chainId: number;
+      },
+      domain: string,
+      uri: string,
+      issuedAt: string
+    ): string => {
+      // Create SIWE-formatted message for auction start
+      // Must match SDK's format exactly for signature verification
+      const nonce = payload.takerNonce.toString();
+      const statement = `Sign to get a quote | Wager: ${payload.wager} | Outcomes: ${payload.predictedOutcomes.join(',')} | Resolver: ${payload.resolver}`;
+
+      // EIP-4361 format - must be exactly 6 lines
+      const message = [
+        `${domain} wants you to sign in with your Ethereum account:\n${payload.taker}`,
+        statement,
+        `URI: ${uri}\nVersion: 1`,
+        `Chain ID: ${payload.chainId}`,
+        `Nonce: ${nonce}`,
+        `Issued At: ${issuedAt}`
+      ].join('\n');
+
+      return message;
+    };
+  }
+
   return sdk;
 }
 
