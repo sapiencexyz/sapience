@@ -71,34 +71,32 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             abi.encode(predictionId, request.predictorWager, request.counterpartyWager, request.predictor, request.counterparty)
         );
 
-        // Validate predictor signature
-        if (
-            !_isApprovalValid(
-                predictionHash,
-                request.predictor,
-                request.predictorWager,
-                request.predictorNonce,
-                request.predictorDeadline,
-                request.predictorSignature
-            )
-        ) {
+        // Validate predictor signature (EOA or session key)
+        if (!_validatePartySignature(
+            predictionHash,
+            request.predictor,
+            request.predictorWager,
+            request.predictorNonce,
+            request.predictorDeadline,
+            request.predictorSignature,
+            request.predictorSessionKeyData
+        )) {
             revert InvalidSignature();
         }
         if (request.predictorNonce != _nonces[request.predictor]) {
             revert InvalidNonce();
         }
 
-        // Validate counterparty signature
-        if (
-            !_isApprovalValid(
-                predictionHash,
-                request.counterparty,
-                request.counterpartyWager,
-                request.counterpartyNonce,
-                request.counterpartyDeadline,
-                request.counterpartySignature
-            )
-        ) {
+        // Validate counterparty signature (EOA or session key)
+        if (!_validatePartySignature(
+            predictionHash,
+            request.counterparty,
+            request.counterpartyWager,
+            request.counterpartyNonce,
+            request.counterpartyDeadline,
+            request.counterpartySignature,
+            request.counterpartySessionKeyData
+        )) {
             revert InvalidSignature();
         }
         if (request.counterpartyNonce != _nonces[request.counterparty]) {
@@ -327,5 +325,51 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
         // All picks matched decisively - predictor wins
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
+    }
+
+    /// @notice Validate a party's signature (supports both EOA and session key)
+    /// @param predictionHash Hash of the prediction parameters
+    /// @param signer The expected signer address (EOA or smart account)
+    /// @param wager Wager amount
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The signature bytes
+    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
+    /// @return isValid True if the signature is valid
+    function _validatePartySignature(
+        bytes32 predictionHash,
+        address signer,
+        uint256 wager,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) internal view returns (bool isValid) {
+        if (sessionKeyData.length == 0) {
+            // EOA signature - use standard validation
+            return _isApprovalValid(predictionHash, signer, wager, nonce, deadline, signature);
+        } else {
+            // Session key signature - decode and validate
+            IV2Types.SessionKeyData memory skData = abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
+
+            SessionKeyApproval memory approval = SessionKeyApproval({
+                sessionKey: skData.sessionKey,
+                owner: skData.owner,
+                smartAccount: signer,
+                validUntil: skData.validUntil,
+                permissionsHash: skData.permissionsHash,
+                ownerSignature: skData.ownerSignature
+            });
+
+            return _isSessionKeyApprovalValid(
+                predictionHash,
+                signer,
+                wager,
+                nonce,
+                deadline,
+                signature,
+                approval
+            );
+        }
     }
 }

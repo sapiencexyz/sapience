@@ -47,20 +47,34 @@ interface IV2Types {
         SettlementResult result; // Settlement outcome
     }
 
+    /// @notice Session key approval data for ZeroDev integration
+    /// @dev Used when a party signs via session key instead of EOA/smart account directly
+    struct SessionKeyData {
+        address sessionKey; // The session key address that signed
+        address owner; // The owner who authorized this session key
+        uint256 validUntil; // Expiration timestamp for the session key
+        bytes32 permissionsHash; // Hash of permissions granted to this session key
+        bytes ownerSignature; // Owner's signature authorizing the session key
+    }
+
     /// @notice Mint request data for creating a new prediction
+    /// @dev Supports both EOA signatures and session key signatures
     struct MintRequest {
         Pick[] picks; // Canonical ordered picks
         uint256 predictorWager; // Amount from predictor
         uint256 counterpartyWager; // Amount from counterparty
-        address predictor; // Predictor address
-        address counterparty; // Counterparty address
+        address predictor; // Predictor address (smart account if using session key)
+        address counterparty; // Counterparty address (smart account if using session key)
         uint256 predictorNonce; // Nonce for predictor signature
         uint256 counterpartyNonce; // Nonce for counterparty signature
         uint256 predictorDeadline; // Deadline for predictor signature
         uint256 counterpartyDeadline; // Deadline for counterparty signature
-        bytes predictorSignature; // EIP-712 signature from predictor
-        bytes counterpartySignature; // EIP-712 signature from counterparty
+        bytes predictorSignature; // EIP-712 signature (from EOA or session key)
+        bytes counterpartySignature; // EIP-712 signature (from EOA or session key)
         bytes32 refCode; // Referral code
+        // Session key support (optional - empty bytes if not using session keys)
+        bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
+        bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
     }
 
     /// @notice Token pair for a prediction
