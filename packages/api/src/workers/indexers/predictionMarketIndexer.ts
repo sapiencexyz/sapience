@@ -19,11 +19,7 @@ import {
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
-import {
-  predictionMarket,
-  lzPMResolver,
-  lzUmaResolver,
-} from '@sapience/sdk';
+import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
 import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts/addresses';
 import { lzConditionalTokenResolverAbi } from '@sapience/sdk/abis';
 
@@ -566,7 +562,9 @@ class PredictionMarketIndexer implements IIndexer {
             addresses.push(this.resolverAddress as `0x${string}`);
           }
           if (this.lzConditionalTokenResolverAddress) {
-            addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
+            addresses.push(
+              this.lzConditionalTokenResolverAddress as `0x${string}`
+            );
           }
           const logs = await this.client.getLogs({
             address: addresses,
@@ -733,7 +731,9 @@ class PredictionMarketIndexer implements IIndexer {
         toHex('MarketSubmittedToUMA(bytes32,bytes32,address,bytes,bool)')
       );
       const conditionResolvedTopic = keccak256(
-        toHex('ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)')
+        toHex(
+          'ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)'
+        )
       );
 
       if (log.topics[0] === predictionMintedTopic) {
@@ -1915,7 +1915,10 @@ class PredictionMarketIndexer implements IIndexer {
     }
   }
 
-  private async processConditionResolved(log: Log, block: Block): Promise<void> {
+  private async processConditionResolved(
+    log: Log,
+    block: Block
+  ): Promise<void> {
     try {
       const decoded = decodeEventLog({
         abi: CONDITION_RESOLVED_EVENT_ABI,
