@@ -51,42 +51,34 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Validate conditionHash if provided (must be 0x-prefixed 32-byte hex)
     if (conditionHash && !/^0x[0-9a-fA-F]{64}$/.test(conditionHash)) {
-      return res
-        .status(400)
-        .json({
-          message: 'conditionHash must be a 0x-prefixed 32-byte hex string',
-        });
+      return res.status(400).json({
+        message: 'conditionHash must be a 0x-prefixed 32-byte hex string',
+      });
     }
 
     if (!question || !endTime || !description) {
-      return res
-        .status(400)
-        .json({
-          message: `Missing required fields: ${!question ? 'question' : ''}${!endTime ? ' endTime ' : ''}${!description ? ' description' : ''}`,
-        });
+      return res.status(400).json({
+        message: `Missing required fields: ${!question ? 'question' : ''}${!endTime ? ' endTime ' : ''}${!description ? ' description' : ''}`,
+      });
     }
 
     // When conditionHash is provided, claimStatement and resolver are optional
     // Otherwise, both are required for computing the condition ID
     if (!conditionHash) {
       if (!claimStatement || !resolver) {
-        return res
-          .status(400)
-          .json({
-            message:
-              'claimStatement and resolver are required when conditionHash is not provided',
-          });
+        return res.status(400).json({
+          message:
+            'claimStatement and resolver are required when conditionHash is not provided',
+        });
       }
       // Validate resolver is a valid Ethereum address
       if (
         typeof resolver !== 'string' ||
         !/^0x[a-fA-F0-9]{40}$/.test(resolver)
       ) {
-        return res
-          .status(400)
-          .json({
-            message: 'Resolver must be a valid Ethereum address (0x...)',
-          });
+        return res.status(400).json({
+          message: 'Resolver must be a valid Ethereum address (0x...)',
+        });
       }
     } else if (resolver) {
       // If resolver is provided with conditionHash, still validate it
@@ -94,11 +86,9 @@ router.post('/', async (req: Request, res: Response) => {
         typeof resolver !== 'string' ||
         !/^0x[a-fA-F0-9]{40}$/.test(resolver)
       ) {
-        return res
-          .status(400)
-          .json({
-            message: 'Resolver must be a valid Ethereum address (0x...)',
-          });
+        return res.status(400).json({
+          message: 'Resolver must be a valid Ethereum address (0x...)',
+        });
       }
     }
 
@@ -143,11 +133,9 @@ router.post('/', async (req: Request, res: Response) => {
     // Enforce endTime is in the future (Unix seconds)
     const nowSeconds = Math.floor(Date.now() / 1000);
     if (endTimeInt <= nowSeconds) {
-      return res
-        .status(400)
-        .json({
-          message: `endTime must be a future Unix timestamp (seconds), endTime: ${endTimeInt}, nowSeconds: ${nowSeconds}`,
-        });
+      return res.status(400).json({
+        message: `endTime must be a future Unix timestamp (seconds), endTime: ${endTimeInt}, nowSeconds: ${nowSeconds}`,
+      });
     }
 
     // Validate similarMarkets URLs if provided
