@@ -189,13 +189,12 @@ function MobileAndDesktopLists({
   const hasRandomizedDesktopStart = React.useRef(false);
   const [hasShown, setHasShown] = React.useState(false);
   const minSlidesForScroll = 6;
-  const memoItems = React.useMemo(() => items, [items]);
   const readyItems = React.useMemo(
     () =>
-      memoItems.filter(
+      items.filter(
         (item) => item.conditionId && predictionMap[item.conditionId] != null
       ),
-    [memoItems, predictionMap]
+    [items, predictionMap]
   );
   const loopItems = React.useMemo(() => {
     if (readyItems.length === 0) return [];
@@ -215,10 +214,10 @@ function MobileAndDesktopLists({
   }, [canAutoScroll, hasShown]);
   const pendingItems = React.useMemo(
     () =>
-      memoItems.filter(
+      items.filter(
         (item) => item.conditionId && predictionMap[item.conditionId] == null
       ),
-    [memoItems, predictionMap]
+    [items, predictionMap]
   );
 
   const autoScrollPluginMobile = React.useMemo(
@@ -276,9 +275,7 @@ function MobileAndDesktopLists({
     hasRandomizedDesktopStart.current = true;
   }, [desktopApi, readyItems.length]);
 
-  const desktopItemClass = React.useMemo(() => {
-    return 'pl-0 w-auto flex-none';
-  }, []);
+  const desktopItemClass = 'pl-0 w-auto flex-none';
 
   return (
     <div className="relative">
@@ -308,7 +305,7 @@ function MobileAndDesktopLists({
           style={{ pointerEvents: hasShown ? 'auto' : 'none' }}
         >
           {/* Mobile: Embla carousel with auto-scroll */}
-          <div className="md:hidden w-full px-0">
+          <div className="xl:hidden w-full px-0">
             <Carousel
               opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
               plugins={[autoScrollPluginMobile]}
@@ -347,7 +344,7 @@ function MobileAndDesktopLists({
           </div>
 
           {/* Desktop: Embla carousel with auto-scroll */}
-          <div className="hidden md:block w-full px-0">
+          <div className="hidden xl:block w-full px-0">
             <Carousel
               opts={{ loop: true, align: 'start', containScroll: 'trimSnaps' }}
               plugins={[autoScrollPluginDesktop]}
