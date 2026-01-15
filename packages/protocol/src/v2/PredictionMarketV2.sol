@@ -508,52 +508,126 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     // ============ Internal: Resolution ============
 
     /// @notice Resolve a prediction using integrated parlay logic
+    /// @dev Optimized to use batch resolution when all picks use the same resolver
     function _resolvePrediction(bytes32 predictionId)
         internal
         view
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
         IV2Types.Pick[] storage picks = _predictionPicks[predictionId];
+        uint256 numPicks = picks.length;
+
+        // Check if all picks use the same resolver (common case for 2-4 picks)
+        bool allSameResolver = true;
+        address firstResolver = picks[0].conditionResolver;
+        for (uint256 i = 1; i < numPicks; i++) {
+            if (picks[i].conditionResolver != firstResolver) {
+                allSameResolver = false;
+                break;
+            }
+        }
+
+        if (allSameResolver) {
+            return _resolveBatch(picks, numPicks, firstResolver);
+        } else {
+            return _resolveIndividual(picks, numPicks);
+        }
+    }
+
+    /// @notice Resolve using batch call when all picks use the same resolver
+    function _resolveBatch(
+        IV2Types.Pick[] storage picks,
+        uint256 numPicks,
+        address resolver
+    ) internal view returns (bool canResolve, IV2Types.SettlementResult result) {
+        // Build array of condition IDs
+        bytes32[] memory conditionIds = new bytes32[](numPicks);
+        for (uint256 i = 0; i < numPicks; i++) {
+            conditionIds[i] = picks[i].conditionId;
+        }
+
+        // Single batch call to resolver
+        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
+            IConditionResolver(resolver).getResolutions(conditionIds);
+
+        // Process results
+        bool hasNonDecisive = false;
+        for (uint256 i = 0; i < numPicks; i++) {
+            if (!resolved[i]) {
+                return (false, IV2Types.SettlementResult.UNRESOLVED);
+            }
+
+            (bool isLoss, bool isNonDecisive) = _evaluatePick(picks[i].predictedOutcome, outcomes[i]);
+            if (isLoss) {
+                return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
+            }
+            if (isNonDecisive) {
+                hasNonDecisive = true;
+            }
+        }
+
+        if (hasNonDecisive) {
+            return (true, IV2Types.SettlementResult.NON_DECISIVE);
+        }
+        return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
+    }
+
+    /// @notice Resolve using individual calls when picks use different resolvers
+    function _resolveIndividual(IV2Types.Pick[] storage picks, uint256 numPicks)
+        internal
+        view
+        returns (bool canResolve, IV2Types.SettlementResult result)
+    {
         bool hasNonDecisive = false;
 
-        for (uint256 i = 0; i < picks.length; i++) {
+        for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
             (bool isResolved, IV2Types.OutcomeVector memory outcome) =
                 IConditionResolver(pick.conditionResolver).getResolution(pick.conditionId);
 
-            // If any pick is unresolved, prediction cannot be resolved
             if (!isResolved) {
                 return (false, IV2Types.SettlementResult.UNRESOLVED);
             }
 
-            // Check if outcome is decisive
-            bool isDecisiveYes = outcome.yesWeight > 0 && outcome.noWeight == 0;
-            bool isDecisiveNo = outcome.yesWeight == 0 && outcome.noWeight > 0;
-
-            if (!isDecisiveYes && !isDecisiveNo) {
-                // Non-decisive outcome (tie)
-                hasNonDecisive = true;
-                continue;
-            }
-
-            // Check if pick matches outcome
-            bool pickMatchesYes = pick.predictedOutcome == IV2Types.OutcomeSide.YES && isDecisiveYes;
-            bool pickMatchesNo = pick.predictedOutcome == IV2Types.OutcomeSide.NO && isDecisiveNo;
-
-            if (!pickMatchesYes && !pickMatchesNo) {
-                // Decisive loss for predictor - counterparty wins immediately
+            (bool isLoss, bool isNonDecisive) = _evaluatePick(pick.predictedOutcome, outcome);
+            if (isLoss) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
+            }
+            if (isNonDecisive) {
+                hasNonDecisive = true;
             }
         }
 
-        // All picks resolved and matched (or were non-decisive)
         if (hasNonDecisive) {
             return (true, IV2Types.SettlementResult.NON_DECISIVE);
         }
-
-        // All picks matched decisively - predictor wins
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
+    }
+
+    /// @notice Evaluate a single pick against its outcome
+    /// @return isLoss True if predictor decisively lost this pick
+    /// @return isNonDecisive True if outcome is a tie
+    function _evaluatePick(IV2Types.OutcomeSide predictedOutcome, IV2Types.OutcomeVector memory outcome)
+        internal
+        pure
+        returns (bool isLoss, bool isNonDecisive)
+    {
+        bool isDecisiveYes = outcome.yesWeight > 0 && outcome.noWeight == 0;
+        bool isDecisiveNo = outcome.yesWeight == 0 && outcome.noWeight > 0;
+
+        if (!isDecisiveYes && !isDecisiveNo) {
+            return (false, true); // Non-decisive (tie)
+        }
+
+        bool pickMatchesYes = predictedOutcome == IV2Types.OutcomeSide.YES && isDecisiveYes;
+        bool pickMatchesNo = predictedOutcome == IV2Types.OutcomeSide.NO && isDecisiveNo;
+
+        if (!pickMatchesYes && !pickMatchesNo) {
+            return (true, false); // Decisive loss
+        }
+
+        return (false, false); // Decisive win
     }
 
     // ============ Internal: Signature Validation ============

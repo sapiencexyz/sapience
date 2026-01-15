@@ -34,4 +34,14 @@ interface IConditionResolver {
     /// @param conditionId The opaque condition identifier
     /// @return isFinalized True if the resolution is final
     function isFinalized(bytes32 conditionId) external view returns (bool isFinalized);
+
+    /// @notice Batch get resolution status and outcome vectors for multiple conditions
+    /// @param conditionIds Array of opaque condition identifiers
+    /// @return isResolved Array of resolution statuses
+    /// @return outcomes Array of outcome vectors
+    /// @dev More gas efficient when resolving multiple conditions from the same resolver
+    function getResolutions(bytes32[] calldata conditionIds)
+        external
+        view
+        returns (bool[] memory isResolved, IV2Types.OutcomeVector[] memory outcomes);
 }
