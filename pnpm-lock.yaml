@@ -322,7 +322,7 @@ importers:
         version: 2.0.3(@types/eslint@9.6.1)(eslint@9.31.0(jiti@2.6.1))(prettier@3.3.3)(typescript@5.8.3)
       eslint-plugin-import:
         specifier: 2.32.0
-        version: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
+        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react:
         specifier: 7.37.5
         version: 7.37.5(eslint@9.31.0(jiti@2.6.1))
@@ -390,6 +390,12 @@ importers:
       '@layerzerolabs/oapp-evm':
         specifier: 0.3.2
         version: 0.3.2(wtanjgypsod3qwylrniuqirj2i)
+      '@layerzerolabs/test-devtools-evm-foundry':
+        specifier: ^8.0.1
+        version: 8.0.1(ojgxbu2b3x6zlfenuvecxhcn74)
+      '@layerzerolabs/toolbox-foundry':
+        specifier: ^0.1.13
+        version: 0.1.13
       '@openzeppelin/contracts':
         specifier: ^5.0.2
         version: 5.4.0
@@ -411,6 +417,9 @@ importers:
       '@usecannon/cli':
         specifier: 2.24.1
         version: 2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
+      solady:
+        specifier: ^0.1.26
+        version: 0.1.26
     devDependencies:
       '@layerzerolabs/lz-evm-messagelib-v2':
         specifier: 3.0.123
@@ -545,7 +554,7 @@ importers:
         version: 9.31.0(jiti@2.6.1)
       eslint-plugin-import:
         specifier: 2.32.0
-        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
+        version: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
       prettier:
         specifier: 3.3.3
         version: 3.3.3
@@ -3061,6 +3070,30 @@ packages:
       '@layerzerolabs/lz-evm-v1-0.7': ^3.0.75
       '@openzeppelin/contracts': ^5.0.2
       '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+
+  '@layerzerolabs/oft-evm@4.0.1':
+    resolution: {integrity: sha512-GjjfnUbx77TnFFKALVRXJYb1bt1jvarcyyx/AQo6sZfJng5DIqzI9wDxEGlUz03tEnsS6ZOOLBsH+e/hYsruiA==}
+    peerDependencies:
+      '@layerzerolabs/lz-evm-messagelib-v2': ^3.0.148
+      '@layerzerolabs/lz-evm-protocol-v2': ^3.0.148
+      '@layerzerolabs/lz-evm-v1-0.7': ^3.0.148
+      '@layerzerolabs/oapp-evm': ^0.4.1
+      '@openzeppelin/contracts': ^5.0.2
+      '@openzeppelin/contracts-upgradeable': ^4.8.1 || ^5.0.0
+
+  '@layerzerolabs/test-devtools-evm-foundry@8.0.1':
+    resolution: {integrity: sha512-oih2mReJJsSjjxFyovcOefgMmHo22f9LocHPuHNV82aGI5Sw+RR+eP6bIOuKPt/8I5cMJfusMJzQJtuvDYQhDg==}
+    peerDependencies:
+      '@layerzerolabs/lz-evm-messagelib-v2': ^3.0.148
+      '@layerzerolabs/lz-evm-protocol-v2': ^3.0.148
+      '@layerzerolabs/lz-evm-v1-0.7': ^3.0.148
+      '@layerzerolabs/oapp-evm': ^0.4.1
+      '@layerzerolabs/oft-evm': ^4.0.1
+      '@openzeppelin/contracts': ^5.0.2
+      '@openzeppelin/contracts-upgradeable': ^4.9.5 || ^5.0.0
+
+  '@layerzerolabs/toolbox-foundry@0.1.13':
+    resolution: {integrity: sha512-3rC+BVEPgcHLHPO4qn3KqYUG1vhDtr1m/gsaI1S635MK+19475U8HYATznAzHKwi09cf9uEv5C7fdtHXgIw8sQ==}
 
   '@ledgerhq/cryptoassets@5.53.0':
     resolution: {integrity: sha512-M3ibc3LRuHid5UtL7FI3IC6nMEppvly98QHFoSa7lJU0HDzQxY6zHec/SPM4uuJUC8sXoGVAiRJDkgny54damw==}
@@ -15645,6 +15678,9 @@ packages:
     resolution: {integrity: sha512-/GbIKmo8ioc+NIWIhwdecY0ge+qVBSMdgxGygevmdHj24bsfgtCmcUUcQ5ZzcylGFHsN3k4HB4Cgkl96KVnuew==}
     engines: {node: '>=10.0.0'}
 
+  solady@0.1.26:
+    resolution: {integrity: sha512-dhGr/ptJFdea/1KE6xgqgwEdbMhUiSfRc6A+jLeltPe16zyt9qtED3PElIBVRnzEmUO5aZTjKVAr6SlqXBBcIw==}
+
   solc@0.4.26:
     resolution: {integrity: sha512-o+c6FpkiHd+HPjmjEVpQgH7fqZ14tJpXhho+/bQXlXbliLIS/xjXb42Vxh+qQY1WCSTMQ0+a5vR9vi0MfhU6mA==}
     hasBin: true
@@ -21353,6 +21389,27 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  '@layerzerolabs/oft-evm@4.0.1(gjfydigadidkbascdj6xpx5nj4)':
+    dependencies:
+      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.123(2yogqury6tfrgff3zsnlmz6i4u)
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.123(@openzeppelin/contracts-upgradeable@5.0.2(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.9.1(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(hardhat@2.22.4(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.5(@swc/helpers@0.5.17))(@types/node@20.16.5)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.123(@openzeppelin/contracts-upgradeable@5.0.2(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.9.1(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(hardhat@2.22.4(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.5(@swc/helpers@0.5.17))(@types/node@20.16.5)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))
+      '@layerzerolabs/oapp-evm': 0.3.2(wtanjgypsod3qwylrniuqirj2i)
+      '@openzeppelin/contracts': 5.4.0
+      '@openzeppelin/contracts-upgradeable': 5.0.2(@openzeppelin/contracts@5.4.0)
+
+  '@layerzerolabs/test-devtools-evm-foundry@8.0.1(ojgxbu2b3x6zlfenuvecxhcn74)':
+    dependencies:
+      '@layerzerolabs/lz-evm-messagelib-v2': 3.0.123(2yogqury6tfrgff3zsnlmz6i4u)
+      '@layerzerolabs/lz-evm-protocol-v2': 3.0.123(@openzeppelin/contracts-upgradeable@5.0.2(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.9.1(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(hardhat@2.22.4(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.5(@swc/helpers@0.5.17))(@types/node@20.16.5)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))(solidity-bytes-utils@0.8.4)
+      '@layerzerolabs/lz-evm-v1-0.7': 3.0.123(@openzeppelin/contracts-upgradeable@5.0.2(@openzeppelin/contracts@5.4.0))(@openzeppelin/contracts@5.4.0)(hardhat-deploy@0.9.1(@ethersproject/hardware-wallets@5.8.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(hardhat@2.22.4(bufferutil@4.0.9)(ts-node@10.9.2(@swc/core@1.13.5(@swc/helpers@0.5.17))(@types/node@20.16.5)(typescript@5.8.3))(typescript@5.8.3)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10))
+      '@layerzerolabs/oapp-evm': 0.3.2(wtanjgypsod3qwylrniuqirj2i)
+      '@layerzerolabs/oft-evm': 4.0.1(gjfydigadidkbascdj6xpx5nj4)
+      '@openzeppelin/contracts': 5.4.0
+      '@openzeppelin/contracts-upgradeable': 5.0.2(@openzeppelin/contracts@5.4.0)
+
+  '@layerzerolabs/toolbox-foundry@0.1.13': {}
 
   '@ledgerhq/cryptoassets@5.53.0':
     dependencies:
@@ -31157,7 +31214,7 @@ snapshots:
     dependencies:
       confusing-browser-globals: 1.0.11
       eslint: 9.31.0(jiti@2.6.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       object.assign: 4.1.7
       object.entries: 1.1.9
       semver: 6.3.1
@@ -31175,7 +31232,7 @@ snapshots:
     dependencies:
       eslint: 9.31.0(jiti@2.6.1)
       eslint-config-airbnb-base: 15.0.0(eslint-plugin-import@2.32.0)(eslint@9.31.0(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react: 7.37.5(eslint@9.31.0(jiti@2.6.1))
       eslint-plugin-react-hooks: 4.6.2(eslint@9.31.0(jiti@2.6.1))
@@ -31250,7 +31307,7 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
     transitivePeerDependencies:
       - supports-color
 
@@ -38911,6 +38968,8 @@ snapshots:
       debug: 4.3.7
     transitivePeerDependencies:
       - supports-color
+
+  solady@0.1.26: {}
 
   solc@0.4.26:
     dependencies:
