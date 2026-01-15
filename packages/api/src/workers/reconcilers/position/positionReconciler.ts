@@ -9,6 +9,7 @@ import { getStringParam, setStringParam } from '../reconcilerUtils';
 import { getProviderForChain, getBlockByTimestamp } from '../../../utils/utils';
 import PredictionMarketIndexer from '../../../workers/indexers/predictionMarketIndexer';
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import type { Block } from 'viem';
 
 export class PositionReconciler {
@@ -115,11 +116,19 @@ export class PositionReconciler {
         const resolverAddress =
           pmResolverEntry?.address || umaResolverEntry?.address;
 
+        const lzConditionalTokenResolverEntry =
+          predictionMarketLZConditionalTokensResolver[
+            chainId as keyof typeof predictionMarketLZConditionalTokensResolver
+          ];
+
         const addresses: `0x${string}`[] = [
           contractEntry.address as `0x${string}`,
         ];
         if (resolverAddress) {
           addresses.push(resolverAddress as `0x${string}`);
+        }
+        if (lzConditionalTokenResolverEntry?.address) {
+          addresses.push(lzConditionalTokenResolverEntry.address as `0x${string}`);
         }
 
         try {
