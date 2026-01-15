@@ -7,7 +7,7 @@ import "./interfaces/IPositionToken.sol";
 /**
  * @title PositionToken
  * @notice ERC20 token representing a position in a prediction (predictor or counterparty)
- * @dev Fixed supply of 1e18, burnable for redemption. Created by PositionTokenFactory.
+ * @dev Fixed supply of 1e18, burnable for redemption. Created by PredictionMarketV2.
  */
 contract PositionToken is ERC20, IPositionToken {
     /// @inheritdoc IPositionToken
@@ -22,8 +22,8 @@ contract PositionToken is ERC20, IPositionToken {
     /// @inheritdoc IPositionToken
     bool public immutable isPredictorToken;
 
-    /// @notice Address authorized to burn tokens (escrow contract)
-    address public immutable escrow;
+    /// @notice Address authorized to burn tokens (market contract)
+    address public immutable market;
 
     error Unauthorized();
 
@@ -33,25 +33,25 @@ contract PositionToken is ERC20, IPositionToken {
     /// @param predictionId_ The prediction this token belongs to
     /// @param isPredictorToken_ True if this is the predictor token
     /// @param recipient Initial recipient of the token supply
-    /// @param escrow_ Address authorized to burn tokens
+    /// @param market_ Address authorized to burn tokens (the market contract)
     constructor(
         string memory name_,
         string memory symbol_,
         bytes32 predictionId_,
         bool isPredictorToken_,
         address recipient,
-        address escrow_
+        address market_
     ) ERC20(name_, symbol_) {
         predictionId = predictionId_;
-        factory = msg.sender;
+        factory = msg.sender; // The market is also the factory now
         isPredictorToken = isPredictorToken_;
-        escrow = escrow_;
+        market = market_;
         _mint(recipient, TOTAL_SUPPLY);
     }
 
     /// @inheritdoc IPositionToken
     function burn(address holder, uint256 amount) external {
-        if (msg.sender != escrow) {
+        if (msg.sender != market) {
             revert Unauthorized();
         }
         _burn(holder, amount);

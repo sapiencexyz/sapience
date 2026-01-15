@@ -1,26 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "./PositionToken.sol";
 import "./interfaces/IPredictionMarketV2.sol";
 import "./interfaces/IConditionResolver.sol";
-import "./interfaces/ICollateralEscrow.sol";
-import "./interfaces/IPositionTokenFactory.sol";
+import "./interfaces/IPositionToken.sol";
 import "./interfaces/IV2Types.sol";
 import "./interfaces/IV2Events.sol";
 import "./utils/SignatureValidator.sol";
 
 /**
  * @title PredictionMarketV2
- * @notice Main orchestrator for the V2 Prediction Market protocol
- * @dev Handles mint, settle, and redeem with integrated parlay resolution logic
+ * @notice Unified prediction market contract combining market, escrow, and token factory
+ * @dev Handles mint, settle, redeem with integrated collateral management and token creation
  */
 contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, SignatureValidator {
-    /// @notice The collateral escrow contract
-    ICollateralEscrow public immutable escrow;
+    using SafeERC20 for IERC20;
 
-    /// @notice The position token factory
-    IPositionTokenFactory public immutable factory;
+    // ============ Constants ============
+
+    /// @notice Fixed supply for position tokens
+    uint256 public constant POSITION_TOKEN_SUPPLY = 1e18;
+
+    // ============ Immutables ============
+
+    /// @notice The collateral token (WUSDe)
+    IERC20 public immutable collateralToken;
+
+    // ============ State: Predictions ============
 
     /// @notice Mapping from predictionId to prediction data
     mapping(bytes32 => IV2Types.Prediction) private _predictions;
@@ -31,15 +41,34 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     /// @notice Nonces for replay protection (per account)
     mapping(address => uint256) private _nonces;
 
+    // ============ State: Escrow ============
+
+    /// @notice Escrow records by prediction ID
+    mapping(bytes32 => IV2Types.EscrowRecord) private _escrowRecords;
+
+    // ============ State: Token Factory ============
+
+    /// @notice Mapping from predictionId to token pair
+    mapping(bytes32 => IV2Types.TokenPair) private _tokenPairs;
+
+    /// @notice Mapping from token address to predictionId
+    mapping(address => bytes32) private _tokenToPrediction;
+
+    /// @notice Mapping from token address to whether it's a predictor token
+    mapping(address => bool) private _isPredictorToken;
+
+    /// @notice Set of valid position tokens
+    mapping(address => bool) private _isPositionToken;
+
+    // ============ Constructor ============
+
     /// @notice Create a new prediction market
-    /// @param escrow_ The collateral escrow contract
-    /// @param factory_ The position token factory
-    constructor(address escrow_, address factory_) {
-        escrow = ICollateralEscrow(escrow_);
-        factory = IPositionTokenFactory(factory_);
+    /// @param collateralToken_ The collateral token address (WUSDe)
+    constructor(address collateralToken_) {
+        collateralToken = IERC20(collateralToken_);
     }
 
-    // ============ External Functions ============
+    // ============ External Functions: Market ============
 
     /// @inheritdoc IPredictionMarketV2
     function mint(IV2Types.MintRequest calldata request)
@@ -107,8 +136,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         _nonces[request.predictor]++;
         _nonces[request.counterparty]++;
 
-        // Deposit collateral to escrow
-        escrow.deposit(
+        // Deposit collateral (internal)
+        _depositCollateral(
             predictionId,
             request.predictorWager,
             request.counterpartyWager,
@@ -116,9 +145,12 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             request.counterparty
         );
 
-        // Create position tokens
-        (predictorToken, counterpartyToken) =
-            factory.createTokenPair(predictionId, request.predictor, request.counterparty);
+        // Create position tokens (internal)
+        (predictorToken, counterpartyToken) = _createTokenPair(
+            predictionId,
+            request.predictor,
+            request.counterparty
+        );
 
         // Store prediction data
         _predictions[predictionId] = IV2Types.Prediction({
@@ -168,45 +200,36 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             revert PredictionNotResolvable();
         }
 
-        // Record settlement in escrow
-        escrow.recordSettlement(predictionId, result, prediction.predictorWager, prediction.counterpartyWager);
+        // Record settlement (internal)
+        (uint256 predictorClaimable, uint256 counterpartyClaimable) = _recordSettlement(
+            predictionId,
+            result,
+            prediction.predictorWager,
+            prediction.counterpartyWager
+        );
 
         // Update prediction state
         prediction.settled = true;
         prediction.result = result;
-
-        // Calculate claimable amounts for event
-        uint256 totalCollateral = prediction.predictorWager + prediction.counterpartyWager;
-        uint256 predictorClaimable;
-        uint256 counterpartyClaimable;
-
-        if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
-            predictorClaimable = totalCollateral;
-        } else if (result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
-            counterpartyClaimable = totalCollateral;
-        } else {
-            predictorClaimable = prediction.predictorWager;
-            counterpartyClaimable = prediction.counterpartyWager;
-        }
 
         emit PredictionSettled(predictionId, result, predictorClaimable, counterpartyClaimable);
     }
 
     /// @inheritdoc IPredictionMarketV2
     function redeem(address positionToken, uint256 amount) external nonReentrant returns (uint256 payout) {
-        if (!factory.isPositionToken(positionToken)) {
+        if (!_isPositionToken[positionToken]) {
             revert InvalidToken();
         }
 
-        bytes32 predictionId = factory.getPredictionId(positionToken);
+        bytes32 predictionId = _tokenToPrediction[positionToken];
         IV2Types.Prediction storage prediction = _predictions[predictionId];
 
         if (!prediction.settled) {
             revert PredictionNotSettled();
         }
 
-        // Redeem through escrow (handles burn and transfer)
-        payout = escrow.redeem(predictionId, positionToken, msg.sender, amount);
+        // Calculate and transfer payout (internal)
+        payout = _redeemTokens(predictionId, positionToken, msg.sender, amount);
     }
 
     // ============ View Functions ============
@@ -218,7 +241,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
     /// @inheritdoc IPredictionMarketV2
     function getTokenPair(bytes32 predictionId) external view returns (IV2Types.TokenPair memory tokenPair) {
-        return factory.getTokenPair(predictionId);
+        return _tokenPairs[predictionId];
     }
 
     /// @inheritdoc IPredictionMarketV2
@@ -241,7 +264,211 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         return _predictionPicks[predictionId];
     }
 
-    // ============ Internal Functions ============
+    /// @notice Get the escrow record for a prediction
+    function getEscrowRecord(bytes32 predictionId) external view returns (IV2Types.EscrowRecord memory record) {
+        return _escrowRecords[predictionId];
+    }
+
+    /// @notice Calculate claimable amount for a given token amount
+    function getClaimableAmount(bytes32 predictionId, address positionToken, uint256 tokenAmount)
+        external
+        view
+        returns (uint256 claimable)
+    {
+        IV2Types.EscrowRecord storage record = _escrowRecords[predictionId];
+        if (!record.settled || tokenAmount == 0) {
+            return 0;
+        }
+
+        bool isPredictor = _isPredictorToken[positionToken];
+        uint256 claimablePool = isPredictor ? record.predictorTokenClaimable : record.counterpartyTokenClaimable;
+
+        return (tokenAmount * claimablePool) / POSITION_TOKEN_SUPPLY;
+    }
+
+    /// @notice Check if an address is a valid position token
+    function isPositionToken(address token) external view returns (bool) {
+        return _isPositionToken[token];
+    }
+
+    /// @notice Check if a token is a predictor token
+    function isPredictorToken(address token) external view returns (bool) {
+        return _isPredictorToken[token];
+    }
+
+    /// @notice Get prediction ID from token address
+    function getPredictionIdFromToken(address token) external view returns (bytes32) {
+        return _tokenToPrediction[token];
+    }
+
+    // ============ Internal: Escrow ============
+
+    /// @notice Deposit collateral from both parties
+    function _depositCollateral(
+        bytes32 predictionId,
+        uint256 predictorWager,
+        uint256 counterpartyWager,
+        address predictor,
+        address counterparty
+    ) internal {
+        uint256 totalCollateral = predictorWager + counterpartyWager;
+
+        // Transfer collateral from both parties
+        collateralToken.safeTransferFrom(predictor, address(this), predictorWager);
+        collateralToken.safeTransferFrom(counterparty, address(this), counterpartyWager);
+
+        // Store escrow record
+        _escrowRecords[predictionId] = IV2Types.EscrowRecord({
+            totalCollateral: totalCollateral,
+            predictorWager: predictorWager,
+            counterpartyWager: counterpartyWager,
+            predictorTokenClaimable: 0,
+            counterpartyTokenClaimable: 0,
+            settled: false
+        });
+
+        emit CollateralDeposited(predictionId, totalCollateral);
+    }
+
+    /// @notice Record settlement and assign claimable amounts
+    function _recordSettlement(
+        bytes32 predictionId,
+        IV2Types.SettlementResult result,
+        uint256 predictorWager,
+        uint256 counterpartyWager
+    ) internal returns (uint256 predictorClaimable, uint256 counterpartyClaimable) {
+        IV2Types.EscrowRecord storage record = _escrowRecords[predictionId];
+        uint256 totalCollateral = record.totalCollateral;
+
+        if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
+            predictorClaimable = totalCollateral;
+            counterpartyClaimable = 0;
+        } else if (result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+            predictorClaimable = 0;
+            counterpartyClaimable = totalCollateral;
+        } else if (result == IV2Types.SettlementResult.NON_DECISIVE) {
+            predictorClaimable = predictorWager;
+            counterpartyClaimable = counterpartyWager;
+        }
+
+        record.predictorTokenClaimable = predictorClaimable;
+        record.counterpartyTokenClaimable = counterpartyClaimable;
+        record.settled = true;
+
+        emit CollateralDistributed(predictionId, predictorClaimable, counterpartyClaimable);
+    }
+
+    /// @notice Redeem tokens for collateral
+    function _redeemTokens(
+        bytes32 predictionId,
+        address positionToken,
+        address holder,
+        uint256 tokenAmount
+    ) internal returns (uint256 payout) {
+        if (tokenAmount == 0) {
+            revert ZeroWager(); // Reusing error for zero amount
+        }
+
+        IV2Types.EscrowRecord storage record = _escrowRecords[predictionId];
+
+        // Calculate payout based on token type
+        bool isPredictor = _isPredictorToken[positionToken];
+        uint256 claimablePool = isPredictor ? record.predictorTokenClaimable : record.counterpartyTokenClaimable;
+
+        // Proportional payout: (tokenAmount / TOTAL_SUPPLY) * claimablePool
+        payout = (tokenAmount * claimablePool) / POSITION_TOKEN_SUPPLY;
+
+        if (payout > 0) {
+            // Burn the position tokens
+            IPositionToken(positionToken).burn(holder, tokenAmount);
+
+            // Transfer collateral to holder
+            collateralToken.safeTransfer(holder, payout);
+
+            emit TokensRedeemed(predictionId, holder, positionToken, tokenAmount, payout);
+        }
+    }
+
+    // ============ Internal: Token Factory ============
+
+    /// @notice Create a token pair for a prediction
+    function _createTokenPair(
+        bytes32 predictionId,
+        address predictor,
+        address counterparty
+    ) internal returns (address predictorToken, address counterpartyToken) {
+        // Create predictor token with CREATE2
+        bytes32 predictorSalt = keccak256(abi.encode(predictionId, true));
+        predictorToken = address(
+            new PositionToken{salt: predictorSalt}(
+                _generateTokenName(predictionId, true),
+                _generateTokenSymbol(predictionId, true),
+                predictionId,
+                true,
+                predictor,
+                address(this) // market is the burner
+            )
+        );
+
+        // Create counterparty token with CREATE2
+        bytes32 counterpartySalt = keccak256(abi.encode(predictionId, false));
+        counterpartyToken = address(
+            new PositionToken{salt: counterpartySalt}(
+                _generateTokenName(predictionId, false),
+                _generateTokenSymbol(predictionId, false),
+                predictionId,
+                false,
+                counterparty,
+                address(this) // market is the burner
+            )
+        );
+
+        // Store mappings
+        _tokenPairs[predictionId] = IV2Types.TokenPair(predictorToken, counterpartyToken);
+        _tokenToPrediction[predictorToken] = predictionId;
+        _tokenToPrediction[counterpartyToken] = predictionId;
+        _isPredictorToken[predictorToken] = true;
+        _isPredictorToken[counterpartyToken] = false;
+        _isPositionToken[predictorToken] = true;
+        _isPositionToken[counterpartyToken] = true;
+    }
+
+    /// @notice Generate token name
+    function _generateTokenName(bytes32 predictionId, bool isPredictor) internal pure returns (string memory) {
+        string memory prefix = isPredictor ? "Predictor-" : "Counterparty-";
+        return string(abi.encodePacked(prefix, _bytes32ToHexString(predictionId)));
+    }
+
+    /// @notice Generate token symbol
+    function _generateTokenSymbol(bytes32 predictionId, bool isPredictor) internal pure returns (string memory) {
+        string memory prefix = isPredictor ? "PRD-" : "CTR-";
+        bytes4 short = bytes4(predictionId);
+        return string(abi.encodePacked(prefix, _bytes4ToHexString(short)));
+    }
+
+    /// @notice Convert bytes32 to hex string (first 4 bytes)
+    function _bytes32ToHexString(bytes32 data) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(8);
+        for (uint256 i = 0; i < 4; i++) {
+            str[i * 2] = alphabet[uint8(data[i] >> 4)];
+            str[i * 2 + 1] = alphabet[uint8(data[i] & 0x0f)];
+        }
+        return string(str);
+    }
+
+    /// @notice Convert bytes4 to hex string
+    function _bytes4ToHexString(bytes4 data) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(8);
+        for (uint256 i = 0; i < 4; i++) {
+            str[i * 2] = alphabet[uint8(data[i] >> 4)];
+            str[i * 2 + 1] = alphabet[uint8(data[i] & 0x0f)];
+        }
+        return string(str);
+    }
+
+    // ============ Internal: Validation ============
 
     /// @notice Validate picks array (canonical order, no duplicates, valid conditions)
     function _validatePicks(IV2Types.Pick[] calldata picks) internal view {
@@ -277,8 +504,9 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         return keccak256(abi.encode(picks));
     }
 
+    // ============ Internal: Resolution ============
+
     /// @notice Resolve a prediction using integrated parlay logic
-    /// @dev Queries each condition resolver and applies parlay semantics
     function _resolvePrediction(bytes32 predictionId)
         internal
         view
@@ -327,15 +555,9 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }
 
+    // ============ Internal: Signature Validation ============
+
     /// @notice Validate a party's signature (supports both EOA and session key)
-    /// @param predictionHash Hash of the prediction parameters
-    /// @param signer The expected signer address (EOA or smart account)
-    /// @param wager Wager amount
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param signature The signature bytes
-    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
-    /// @return isValid True if the signature is valid
     function _validatePartySignature(
         bytes32 predictionHash,
         address signer,
