@@ -404,7 +404,11 @@ export default function BidDisplay({
         variant="default"
         onClick={buttonState.onClick}
       >
-        {uiState === 'submitting' ? <Loader size={12} /> : buttonState.text}
+        {uiState === 'submitting' || uiState === 'pending' ? (
+          <Loader size={12} />
+        ) : (
+          buttonState.text
+        )}
       </Button>
 
       {/* Position-specific hint for combinations that may not receive bids */}
