@@ -669,18 +669,23 @@ function createChainClient(
     bundlerTransport: http(bundlerUrl),
     paymaster: {
       getPaymasterData: async (userOperation) => {
-        console.debug(
+        const paymasterStart = Date.now();
+        console.log(
           `[SessionKeyManager] Requesting paymaster sponsorship for chain ${chain.id}...`
         );
         try {
           const result = await paymasterClient.sponsorUserOperation({
             userOperation,
           });
-          console.debug(`[SessionKeyManager] Paymaster sponsorship received`);
+          const paymasterMs = Date.now() - paymasterStart;
+          console.log(
+            `[SessionKeyManager] Paymaster sponsorship received in ${paymasterMs}ms`
+          );
           return result;
         } catch (error: any) {
+          const paymasterMs = Date.now() - paymasterStart;
           console.error(
-            `[SessionKeyManager] Paymaster error:`,
+            `[SessionKeyManager] Paymaster error after ${paymasterMs}ms:`,
             error?.message || error
           );
           throw error;

@@ -159,14 +159,6 @@ export default function CollateralBalanceButton({
 
   // Handle transfer from wallet using sendCalls for batched wrap + transfer
   const handleTransferFromWallet = async () => {
-    console.log('[Transfer] handleTransferFromWallet called', {
-      smartAccountAddress,
-      eoaAddress,
-      transferAmountNum,
-      fromWrapped,
-      fromNative,
-    });
-
     if (!smartAccountAddress || !eoaAddress || !isValidTransfer) {
       let description = 'Wallet not connected';
       if (!smartAccountAddress) {
@@ -204,11 +196,6 @@ export default function CollateralBalanceButton({
           data: wrapData,
           value: wrapAmount,
         });
-
-        console.log('[Transfer] Adding wrap call:', {
-          amount: fromNative,
-          wrapAmount: wrapAmount.toString(),
-        });
       }
 
       // Add transfer call (transfer the full requested amount as wUSDe)
@@ -223,12 +210,6 @@ export default function CollateralBalanceButton({
         to: WUSDE_ADDRESS as `0x${string}`,
         data: transferData,
         value: 0n,
-      });
-
-      console.log('[Transfer] Adding transfer call:', {
-        amount: transferAmountNum,
-        transferAmount: transferAmount.toString(),
-        to: smartAccountAddress,
       });
 
       setTransferStatus(

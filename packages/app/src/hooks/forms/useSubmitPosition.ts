@@ -8,7 +8,59 @@ import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteCon
 import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+
+function toBigIntSafe(
+  value: string | number | bigint | undefined
+): bigint | undefined {
+  if (value === undefined) return undefined;
+  return BigInt(value);
+}
+
+async function validateTakerFunds(
+  takerAddress: `0x${string}` | undefined,
+  takerCollateralWei: bigint,
+  collateralTokenAddress: `0x${string}`,
+  predictionMarketAddress: `0x${string}`,
+  publicClient: ReturnType<typeof getPublicClientForChainId>
+): Promise<void> {
+  if (!takerAddress || !collateralTokenAddress || !predictionMarketAddress) {
+    return;
+  }
+
+  try {
+    const [takerAllowance, takerBalance] = await Promise.all([
+      publicClient.readContract({
+        address: collateralTokenAddress,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [takerAddress, predictionMarketAddress],
+      }),
+      publicClient.readContract({
+        address: collateralTokenAddress,
+        abi: erc20Abi,
+        functionName: 'balanceOf',
+        args: [takerAddress],
+      }),
+    ]);
+
+    if (
+      takerAllowance < takerCollateralWei ||
+      takerBalance < takerCollateralWei
+    ) {
+      throw new Error(
+        'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
+      );
+    }
+  } catch (e) {
+    // Re-throw our own error, only catch RPC failures
+    if (e instanceof Error && e.message.includes('market maker')) {
+      throw e;
+    }
+    // Silently continue on RPC failures
+  }
+}
 
 // WUSDe ABI for wrapping
 const WUSDE_ABI = parseAbi([
@@ -22,11 +74,11 @@ interface UseSubmitPositionProps {
   collateralTokenAddress: `0x${string}`;
   onSuccess?: () => void;
   enabled?: boolean;
-  onOrderCreated?: (
-    makerNftId: bigint,
-    takerNftId: bigint,
-    txHash?: string
-  ) => void;
+  onProgressUpdate?: {
+    onTxSending?: () => void;
+    onTxSent?: (txHash: string) => void;
+    onReceiptConfirmed?: () => void;
+  };
 }
 
 export function useSubmitPosition({
@@ -35,6 +87,7 @@ export function useSubmitPosition({
   collateralTokenAddress,
   onSuccess,
   enabled = true,
+  onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
@@ -113,6 +166,16 @@ export function useSubmitPosition({
       const message = err?.message || 'Transaction failed';
       setError(message);
     },
+    onTxHash: (txHash) => {
+      // Called for non-session transactions (legacy path)
+      onProgressUpdate?.onTxSent?.(txHash);
+    },
+    onTxSent: (txHash) => {
+      // Called for session transactions when bundler accepts user op
+      onProgressUpdate?.onTxSent?.(txHash);
+    },
+    onTxSending: onProgressUpdate?.onTxSending,
+    onReceiptConfirmed: onProgressUpdate?.onReceiptConfirmed,
     fallbackErrorMessage: 'Failed to submit position prediction',
     disableSuccessToast: true,
   });
@@ -239,15 +302,10 @@ export function useSubmitPosition({
       setSuccess(null);
 
       const attempt = async (forceRefetch: boolean) => {
-        // Use the nonce from mintData if provided (from auction bid)
-        // The bidder signed over this specific nonce - we must not change it
+        // Determine nonce value - use auction-provided nonce if available
         let nonceValue: bigint | undefined;
-
         if (mintData.makerNonce !== undefined) {
-          nonceValue =
-            typeof mintData.makerNonce === 'string'
-              ? BigInt(mintData.makerNonce)
-              : BigInt(mintData.makerNonce);
+          nonceValue = toBigIntSafe(mintData.makerNonce);
         } else if (forceRefetch) {
           const result = await refetchMakerNonce();
           nonceValue = result.data as bigint | undefined;
@@ -255,14 +313,11 @@ export function useSubmitPosition({
           nonceValue = makerNonce as bigint | undefined;
         }
 
-        // Verify on-chain nonce via wagmi refetch (bypasses stale cache)
+        // Verify on-chain nonce matches what we're sending
         const { data: freshMakerNonce } = await refetchMakerNonce();
-
         if (nonceValue === undefined) {
           throw new Error('Unable to determine maker nonce');
         }
-
-        // Verify on-chain nonce matches what we're sending
         if (freshMakerNonce !== undefined && nonceValue !== freshMakerNonce) {
           throw new Error('Your nonce has changed. Please request new bids.');
         }
@@ -292,42 +347,13 @@ export function useSubmitPosition({
         }
 
         // Safety net: Check bidder's (taker's) allowance and balance
-        // This catches invalid bids that slipped through validation
-        const takerAddress = filled.taker;
-        const takerCollateralWei = BigInt(filled.takerCollateral);
-        if (takerAddress && collateralTokenAddress && predictionMarketAddress) {
-          try {
-            const [takerAllowance, takerBalance] = await Promise.all([
-              publicClient.readContract({
-                address: collateralTokenAddress,
-                abi: erc20Abi,
-                functionName: 'allowance',
-                args: [takerAddress, predictionMarketAddress],
-              }),
-              publicClient.readContract({
-                address: collateralTokenAddress,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [takerAddress],
-              }),
-            ]);
-            const takerHasSufficientAllowance =
-              takerAllowance >= takerCollateralWei;
-            const takerHasSufficientBalance =
-              takerBalance >= takerCollateralWei;
-            if (!takerHasSufficientAllowance || !takerHasSufficientBalance) {
-              throw new Error(
-                'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
-              );
-            }
-          } catch (e) {
-            // Re-throw our own error, only catch RPC failures
-            if (e instanceof Error && e.message.includes('market maker')) {
-              throw e;
-            }
-            // Silently continue on RPC failures
-          }
-        }
+        await validateTakerFunds(
+          filled.taker,
+          BigInt(filled.takerCollateral),
+          collateralTokenAddress,
+          predictionMarketAddress,
+          publicClient
+        );
 
         const calls = prepareCalls(filled, freshAllowance);
         if (calls.length === 0) {
