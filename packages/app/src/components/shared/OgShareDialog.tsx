@@ -26,21 +26,18 @@ import type { PositionProgressState } from '~/types/positionProgress';
 // Stable counter for cache busting - increments each time a dialog opens
 let dialogOpenCounter = 0;
 
-// Helper to check if position picks match expected picks exactly
 function picksMatch(
   positionPicks: Array<{ question: string; choice: string }>,
   expectedPicks: Array<{ question: string; choice: string }>
 ): boolean {
   if (positionPicks.length !== expectedPicks.length) return false;
 
-  const expectedSet = new Set(
-    expectedPicks.map((leg) => `${leg.question}|${leg.choice}`)
-  );
-  const positionSet = new Set(
-    positionPicks.map((leg) => `${leg.question}|${leg.choice}`)
-  );
+  const toKey = (leg: { question: string; choice: string }): string =>
+    `${leg.question}|${leg.choice}`;
 
-  // Check bidirectional match
+  const expectedSet = new Set(expectedPicks.map(toKey));
+  const positionSet = new Set(positionPicks.map(toKey));
+
   for (const key of expectedSet) {
     if (!positionSet.has(key)) return false;
   }
