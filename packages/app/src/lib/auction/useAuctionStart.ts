@@ -364,7 +364,7 @@ export function useAuctionStart() {
         taker: args.selectedBid.maker as `0x${string}`,
         takerSignature: args.selectedBid.makerSignature as `0x${string}`,
         takerDeadline: String(args.selectedBid.makerDeadline),
-        refCode: args.refCode ?? ZERO_BYTES32,
+        refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.takerNonce),
         takerClaimedNonce: args.selectedBid.makerNonce,
       };

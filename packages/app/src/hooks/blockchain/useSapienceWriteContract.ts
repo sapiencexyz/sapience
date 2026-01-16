@@ -16,7 +16,6 @@ import { waitForCallsStatus } from 'viem/actions';
 import { handleViemError } from '~/utils/blockchain/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
-import { getPublicClientForChainId } from '~/lib/utils/util';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { ethereal } from '~/lib/session/sessionKeyManager';
@@ -25,11 +24,7 @@ import { arbitrum } from 'viem/chains';
 // Ethereal chain configuration
 const CHAIN_ID_ETHEREAL = 5064014;
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
-const WUSDE_ABI = parseAbi([
-  'function deposit() payable',
-  'function withdraw(uint256 amount)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
+const WUSDE_ABI = parseAbi(['function deposit() payable']);
 
 interface useSapienceWriteContractProps {
   onSuccess?: (
@@ -130,7 +125,7 @@ export function useSapienceWriteContract({
   // Helper to create WUSDe wrap transaction for Ethereal chain
   const createWrapTransaction = useCallback(
     (amount: bigint) => ({
-      to: WUSDE_ADDRESS,
+      to: WUSDE_ADDRESS as `0x${string}`,
       data: encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'deposit',
@@ -138,91 +133,6 @@ export function useSapienceWriteContract({
       value: amount,
     }),
     []
-  );
-
-  // Helper to create WUSDe unwrap transaction for Ethereal chain
-  const createUnwrapTransaction = useCallback(
-    (amount: bigint) => ({
-      to: WUSDE_ADDRESS,
-      data: encodeFunctionData({
-        abi: WUSDE_ABI,
-        functionName: 'withdraw',
-        args: [amount],
-      }),
-      value: 0n,
-    }),
-    []
-  );
-
-  // Helper to get user's WUSDe balance
-  const getUserWUSDEBalance = useCallback(async (): Promise<bigint> => {
-    if (!wagmiAddress || !chainId || !isEtherealChain(chainId)) {
-      return 0n;
-    }
-
-    try {
-      const publicClient = getPublicClientForChainId(chainId);
-      const balance = await publicClient.readContract({
-        address: WUSDE_ADDRESS,
-        abi: WUSDE_ABI,
-        functionName: 'balanceOf',
-        args: [wagmiAddress],
-      });
-      return balance as bigint;
-    } catch (error) {
-      console.error('Failed to get WUSDe balance:', error);
-      return 0n;
-    }
-  }, [wagmiAddress, chainId]);
-
-  // Common withdrawal/redeem function names that should trigger unwrapping
-  const WITHDRAWAL_FUNCTIONS = [
-    'withdraw',
-    'redeem',
-    'redeemCollateral',
-    'exitPosition',
-    'closeTrade',
-    'removeLP',
-    'removeLiquidity',
-    'unstake',
-    'claimRewards',
-    'settlePosition',
-    'decreaseLiquidity',
-    'cancelWithdrawal',
-    'cancelDeposit',
-    'burn',
-    'processWithdrawals',
-  ];
-
-  // Helper to detect if this is a withdrawal operation that should trigger unwrapping
-  const shouldAutoUnwrap = useCallback(
-    (functionName: string): boolean => {
-      if (!chainId || !isEtherealChain(chainId)) {
-        return false;
-      }
-
-      const fnLower = functionName.toLowerCase();
-      return WITHDRAWAL_FUNCTIONS.some((fn) =>
-        fnLower.includes(fn.toLowerCase())
-      );
-    },
-    [chainId]
-  );
-
-  // Helper to execute auto-unwrap after main transaction
-  const executeAutoUnwrap = useCallback(
-    async (balanceBefore: bigint) => {
-      const balanceAfter = await getUserWUSDEBalance();
-      const received =
-        balanceAfter > balanceBefore ? balanceAfter - balanceBefore : 0n;
-
-      if (received <= 0n) {
-        return null;
-      }
-
-      return createUnwrapTransaction(received);
-    },
-    [getUserWUSDEBalance, createUnwrapTransaction]
   );
 
   const maybeRedirect = useCallback(() => {
@@ -346,27 +256,6 @@ export function useSapienceWriteContract({
     isPending: isSendingCalls,
     reset: resetCalls,
   } = useSendCalls();
-
-  // Execute unwrap for non-embedded wallets
-  const executeNonEmbeddedUnwrap = useCallback(
-    (chainId: number, balanceBefore: bigint) => {
-      setTimeout(async () => {
-        try {
-          const unwrapTx = await executeAutoUnwrap(balanceBefore);
-          if (unwrapTx) {
-            await sendCallsAsync({
-              chainId,
-              calls: [unwrapTx],
-              experimental_fallback: true,
-            });
-          }
-        } catch (error) {
-          console.error('Auto-unwrap failed:', error);
-        }
-      }, 2000);
-    },
-    [executeAutoUnwrap, sendCallsAsync]
-  );
 
   const pickFinalTransactionHash = useCallback((data: any) => {
     const receipts = data?.receipts;
@@ -510,100 +399,51 @@ export function useSapienceWriteContract({
         // Validate and switch chain if needed (only for non-session paths)
         await validateAndSwitchChain(_chainId);
 
-        // For external wallets, use sendCalls if on Ethereal and wrapping is needed
+        // For external wallets on Ethereal chain with value, wrap USDe first
         if (isEtherealChain(_chainId)) {
           const params = args[0];
           const { value } = params as any;
 
           if (value && BigInt(value) > 0n) {
-            // Check if we need unwrapping for this operation
-            const needsUnwrap = shouldAutoUnwrap((params as any).functionName);
+            // Wrap USDe first, then execute main transaction in atomic batch
+            const wrapTx = createWrapTransaction(BigInt(value));
 
-            // Get balance before transaction if unwrapping might be needed
-            let balanceBeforeTransaction = 0n;
-            if (needsUnwrap) {
-              balanceBeforeTransaction = await getUserWUSDEBalance();
-            }
+            const mainCalldata = encodeFunctionData({
+              abi: (params as any).abi,
+              functionName: (params as any).functionName,
+              args: (params as any).args,
+            });
 
-            // Check existing WUSDe balance and only wrap the difference
-            const requiredAmount = BigInt(value);
-            const currentBalance = needsUnwrap
-              ? balanceBeforeTransaction
-              : await getUserWUSDEBalance();
-            const amountToWrap =
-              requiredAmount > currentBalance
-                ? requiredAmount - currentBalance
-                : 0n;
+            const calls = [
+              wrapTx,
+              {
+                to: (params as any).address as `0x${string}`,
+                data: mainCalldata,
+                value: 0n, // No value for main tx since we wrapped
+              },
+            ];
 
-            if (amountToWrap > 0n) {
-              // Need to wrap USDe first, then execute main transaction
-              const wrapTx = createWrapTransaction(amountToWrap);
+            const result = await sendCallsAsync({
+              chainId: _chainId,
+              calls,
+              experimental_fallback: true,
+            });
 
-              const mainCalldata = encodeFunctionData({
-                abi: (params as any).abi,
-                functionName: (params as any).functionName,
-                args: (params as any).args,
-              });
-
-              const calls = [
-                wrapTx,
-                {
-                  to: (params as any).address as `0x${string}`,
-                  data: mainCalldata,
-                  value: 0n, // No value for main tx since we wrapped
-                },
-              ];
-
-              const result = await sendCallsAsync({
-                chainId: _chainId,
-                calls,
-                experimental_fallback: true,
-              });
-
-              // Type assertion needed because sendCallsAsync can return different shapes
-              // depending on EIP-5792 support vs fallback mode
-              const resultWithHash = result as
-                | {
-                    receipts?: Array<{ transactionHash?: string }>;
-                    transactionHash?: string;
-                    txHash?: string;
-                  }
-                | undefined;
-              const transactionHash = pickFinalTransactionHash(resultWithHash);
-              handleTransactionSuccess(transactionHash as Hash | undefined);
-
-              // Execute auto-unwrap if this is a withdrawal operation
-              if (needsUnwrap) {
-                executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
-              }
-            } else {
-              // No wrapping needed, user has sufficient WUSDe balance
-              const hash = await writeContractAsync(...args);
-              handleTransactionSuccess(hash);
-
-              // Execute auto-unwrap if this is a withdrawal operation
-              if (needsUnwrap) {
-                executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
-              }
-            }
+            // Type assertion needed because sendCallsAsync can return different shapes
+            // depending on EIP-5792 support vs fallback mode
+            const resultWithHash = result as
+              | {
+                  receipts?: Array<{ transactionHash?: string }>;
+                  transactionHash?: string;
+                  txHash?: string;
+                }
+              | undefined;
+            const transactionHash = pickFinalTransactionHash(resultWithHash);
+            handleTransactionSuccess(transactionHash as Hash | undefined);
           } else {
-            // No wrapping needed, check if unwrapping is needed
-            const needsUnwrap = shouldAutoUnwrap((args[0] as any).functionName);
-
-            // Get balance before transaction if unwrapping might be needed
-            let balanceBeforeTransaction = 0n;
-            if (needsUnwrap) {
-              balanceBeforeTransaction = await getUserWUSDEBalance();
-            }
-
-            // Execute main transaction
+            // No wrapping needed
             const hash = await writeContractAsync(...args);
             handleTransactionSuccess(hash);
-
-            // Execute auto-unwrap if this is a withdrawal operation
-            if (needsUnwrap) {
-              executeNonEmbeddedUnwrap(_chainId, balanceBeforeTransaction);
-            }
           }
         } else {
           // Execute the transaction normally for non-Ethereal chains
@@ -628,12 +468,8 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
-      shouldAutoUnwrap,
-      executeNonEmbeddedUnwrap,
       handleTransactionSuccess,
       createWrapTransaction,
-      getUserWUSDEBalance,
-      isEtherealChain,
       sendCallsAsync,
       pickFinalTransactionHash,
       canUseSessionForChain,
