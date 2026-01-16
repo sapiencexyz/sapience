@@ -48,8 +48,7 @@ import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBids } from '~/lib/auction/validateBids';
-import { useValidatedBids } from '~/lib/auction/useValidatedBids';
+import { validateBidsAsync } from '~/lib/auction/validateBids';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
@@ -149,8 +148,8 @@ const CreatePositionFormInner = ({
   // PredictionMarket address via centralized mapping (use positionChainId)
   const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
 
-  // First pass: basic sync validation (non-zero maker address)
-  const basicValidatedBids = useMemo(() => validateBids(rawBids), [rawBids]);
+  // State for validated bids (async validation checks market maker balance/allowance)
+  const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
@@ -169,57 +168,76 @@ const CreatePositionFormInner = ({
 
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg =
-        (item.result as { collateralToken: Address }) ||
-        ({} as { collateralToken: Address });
-      return cfg.collateralToken;
+    if (item?.status === 'success') {
+      return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
+
+  // Async validation of bids - checks market maker's balance and allowance on-chain
+  // This runs when bids arrive and validates them before showing as submittable
+  useEffect(() => {
+    if (rawBids.length === 0) {
+      setBids([]);
+      return;
+    }
+
+    // Need collateral token and prediction market address for validation
+    if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
+      // Can't validate yet, show bids as pending
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'pending' as const,
+        }))
+      );
+      return;
+    }
+
+    let cancelled = false;
+
+    const runValidation = async () => {
+      try {
+        const validated = await validateBidsAsync(rawBids, {
+          chainId: positionChainId,
+          collateralTokenAddress: collateralToken,
+          predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+        });
+
+        if (!cancelled) {
+          setBids(validated);
+        }
+      } catch (err) {
+        console.error('[Bid] Async validation error:', err);
+        if (!cancelled) {
+          // On error, mark all as pending (don't block the user)
+          setBids(
+            rawBids.map((b) => ({
+              ...b,
+              validationStatus: 'pending' as const,
+            }))
+          );
+        }
+      }
+    };
+
+    runValidation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawBids, collateralToken, PREDICTION_MARKET_ADDRESS, positionChainId]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg =
-        (item.result as { minCollateral: bigint }) ||
-        ({} as { minCollateral: bigint });
-      return cfg.minCollateral;
+    if (item?.status === 'success') {
+      return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Check if we're on an Ethereal chain (needed before useValidatedBids)
-  const isEtherealChain = useMemo(() => {
-    return COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
-  }, [positionChainId]);
-
-  // Track wager amount for bid validation (synced from form via useEffect below)
-  const [currentWagerAmount, setCurrentWagerAmount] = useState('');
-
-  // Calculate user wager in wei for bid validation
-  // Use 18 decimals as default (correct for Ethereal native USDe and most ERC20 tokens)
-  const userWagerWei = useMemo(() => {
-    try {
-      return parseUnits(currentWagerAmount || '0', 18).toString();
-    } catch {
-      return '0';
-    }
-  }, [currentWagerAmount]);
-
-  // Second pass: async on-chain validation (check bidder allowance/balance)
-  // This filters out bids from market makers who don't have sufficient funds
-  // Also validates user can afford their wager
-  const bids = useValidatedBids({
-    bids: basicValidatedBids,
-    chainId: positionChainId,
-    collateralTokenAddress: collateralToken,
-    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-    userAddress: effectiveAddress,
-    userWagerWei,
-    isEtherealChain,
-    enabled: !!collateralToken && !!PREDICTION_MARKET_ADDRESS,
-  });
+  // Check if we're on an Ethereal chain
+  const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
 
   // Fetch collateral token symbol and decimals (skip for Ethereal chains)
   const erc20MetaRead = useReadContracts({
@@ -249,8 +267,8 @@ const CreatePositionFormInner = ({
     }
     // For other chains, use the ERC20 token symbol
     const item = erc20MetaRead.data?.[0];
-    if (item && item.status === 'success') {
-      return String(item.result as unknown as string);
+    if (item?.status === 'success') {
+      return String(item.result);
     }
     return undefined;
   }, [erc20MetaRead.data, isEtherealChain, positionChainId]);
@@ -262,8 +280,8 @@ const CreatePositionFormInner = ({
     }
     // For other chains, fetch from ERC20 token
     const item = erc20MetaRead.data?.[1];
-    if (item && item.status === 'success') {
-      return Number(item.result as unknown as number);
+    if (item?.status === 'success') {
+      return Number(item.result);
     }
     return undefined;
   }, [erc20MetaRead.data, isEtherealChain]);
@@ -283,6 +301,7 @@ const CreatePositionFormInner = ({
   // Desktop-only top gradient bar across categories in filter order
   const { categoryGradient, categoryGradientStops } = useMemo(() => {
     const colors = FOCUS_AREAS.map((fa) => fa.color);
+
     if (colors.length === 0) {
       return { categoryGradient: 'transparent', categoryGradientStops: '' };
     }
@@ -292,19 +311,21 @@ const CreatePositionFormInner = ({
 
     // Header gradient: use each category color once across the width
     const headerStep = 100 / (colors.length - 1);
-    const headerStops = colors.map((c, i) => `${c} ${i * headerStep}%`);
-    const headerJoinedStops = headerStops.join(', ');
+    const headerStops = colors
+      .map((c, i) => `${c} ${i * headerStep}%`)
+      .join(', ');
 
     // Glow gradient: repeat the first color as a final stop so the loop
     // can wrap without a visible edge when the background-position resets.
     const loopColors = [...colors, colors[0]];
     const loopStep = 100 / (loopColors.length - 1);
-    const glowStops = loopColors.map((c, i) => `${c} ${i * loopStep}%`);
-    const glowJoinedStops = glowStops.join(', ');
+    const glowStops = loopColors
+      .map((c, i) => `${c} ${i * loopStep}%`)
+      .join(', ');
 
     return {
-      categoryGradient: `linear-gradient(to right, ${headerJoinedStops})`,
-      categoryGradientStops: glowJoinedStops,
+      categoryGradient: `linear-gradient(to right, ${headerStops})`,
+      categoryGradientStops: glowStops,
     };
   }, []);
 
@@ -424,13 +445,6 @@ const CreatePositionFormInner = ({
     control: formMethods.control,
     name: 'wagerAmount',
   });
-
-  // Sync watched wager amount to state for useValidatedBids (called earlier in hook order)
-  useEffect(() => {
-    if (watchedWagerAmount && watchedWagerAmount !== currentWagerAmount) {
-      setCurrentWagerAmount(watchedWagerAmount);
-    }
-  }, [watchedWagerAmount, currentWagerAmount]);
 
   // Re-validate wager amount when user balance loads/changes
   // This ensures the form schema with updated maxAmount is applied
@@ -646,8 +660,7 @@ const CreatePositionFormInner = ({
       return;
     }
 
-    // Validate the bid hasn't expired (validation status is already guaranteed
-    // to be 'valid' since bestBid only includes validated bids from useValidatedBids)
+    // Validate the bid hasn't expired
     const nowSec = Math.floor(Date.now() / 1000);
 
     if (bid.makerDeadline <= nowSec) {

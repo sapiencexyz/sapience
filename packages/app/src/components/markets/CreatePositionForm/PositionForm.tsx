@@ -117,8 +117,7 @@ export default function PositionForm({
 
   // Use smart account address when session is active, otherwise use EOA
   // Falls back to zero address for logged-out users
-  const ZERO_ADDRESS: `0x${string}` =
-    '0x0000000000000000000000000000000000000000';
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const selectedTakerAddress =
     isSessionActive && smartAccountAddress
       ? smartAccountAddress
@@ -159,10 +158,8 @@ export default function PositionForm({
 
   // Calculate taker wager in wei for auction chart
   const takerWagerWei = useMemo(() => {
+    const decimals = collateralDecimals ?? 18;
     try {
-      const decimals = Number.isFinite(collateralDecimals as number)
-        ? (collateralDecimals as number)
-        : 18;
       return parseUnits(wagerAmount || '0', decimals).toString();
     } catch {
       return '0';
@@ -227,15 +224,18 @@ export default function PositionForm({
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
-    if (!validBids || validBids.length === 0)
+    if (!validBids || validBids.length === 0) {
       return { bestBid: null, estimateBid: null };
+    }
 
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
       (bid) => bid.makerDeadline * 1000 > nowMs
     );
-    if (nonExpiredBids.length === 0)
+
+    if (nonExpiredBids.length === 0) {
       return { bestBid: null, estimateBid: null };
+    }
 
     // Only bids marked as valid are valid for submission
     const validFilteredBids = nonExpiredBids.filter(
@@ -311,10 +311,10 @@ export default function PositionForm({
 
   const triggerAuctionRequest = useCallback(
     async (options?: { forceRefresh?: boolean }) => {
-      if (!requestQuotes) return;
-      if (!selectedTakerAddress) return;
-      const hasUma = !!selections && selections.length > 0;
-      const hasPyth = !!pythPredictions && pythPredictions.length > 0;
+      if (!requestQuotes || !selectedTakerAddress) return;
+
+      const hasUma = selections.length > 0;
+      const hasPyth = pythPredictions.length > 0;
 
       // Auctions accept a single resolver per request; we can't mix UMA + Pyth in one auction today.
       if (hasUma && hasPyth) {
@@ -344,9 +344,7 @@ export default function PositionForm({
           return;
         }
 
-        const decimals = Number.isFinite(collateralDecimals as number)
-          ? (collateralDecimals as number)
-          : 18;
+        const decimals = collateralDecimals ?? 18;
         const wagerWei = parseUnits(wagerStr, decimals).toString();
 
         const payload = hasPyth
@@ -384,12 +382,12 @@ export default function PositionForm({
         currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
-        let msg = 'Unknown error';
-        if (err instanceof Error) {
-          msg = err.message;
-        } else if (typeof err === 'string') {
-          msg = err;
-        }
+        const msg =
+          err instanceof Error
+            ? err.message
+            : typeof err === 'string'
+              ? err
+              : 'Unknown error';
         toast({
           title: 'Could not initiate auction',
           description: msg,

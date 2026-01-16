@@ -128,32 +128,34 @@ export function useSapienceWriteContract({
     chainId === CHAIN_ID_ETHEREAL;
 
   // Helper to create WUSDe wrap transaction for Ethereal chain
-  const createWrapTransaction = useCallback((amount: bigint) => {
-    return {
-      to: WUSDE_ADDRESS as `0x${string}`,
+  const createWrapTransaction = useCallback(
+    (amount: bigint) => ({
+      to: WUSDE_ADDRESS,
       data: encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'deposit',
       }),
       value: amount,
-    };
-  }, []);
+    }),
+    []
+  );
 
   // Helper to create WUSDe unwrap transaction for Ethereal chain
-  const createUnwrapTransaction = useCallback((amount: bigint) => {
-    return {
-      to: WUSDE_ADDRESS as `0x${string}`,
+  const createUnwrapTransaction = useCallback(
+    (amount: bigint) => ({
+      to: WUSDE_ADDRESS,
       data: encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'withdraw',
         args: [amount],
       }),
       value: 0n,
-    };
-  }, []);
+    }),
+    []
+  );
 
   // Helper to get user's WUSDe balance
-  const getUserWUSDEBalance = useCallback(async () => {
+  const getUserWUSDEBalance = useCallback(async (): Promise<bigint> => {
     if (!wagmiAddress || !chainId || !isEtherealChain(chainId)) {
       return 0n;
     }
@@ -161,7 +163,7 @@ export function useSapienceWriteContract({
     try {
       const publicClient = getPublicClientForChainId(chainId);
       const balance = await publicClient.readContract({
-        address: WUSDE_ADDRESS as `0x${string}`,
+        address: WUSDE_ADDRESS,
         abi: WUSDE_ABI,
         functionName: 'balanceOf',
         args: [wagmiAddress],
@@ -171,62 +173,54 @@ export function useSapienceWriteContract({
       console.error('Failed to get WUSDe balance:', error);
       return 0n;
     }
-  }, [wagmiAddress, chainId, isEtherealChain]);
+  }, [wagmiAddress, chainId]);
+
+  // Common withdrawal/redeem function names that should trigger unwrapping
+  const WITHDRAWAL_FUNCTIONS = [
+    'withdraw',
+    'redeem',
+    'redeemCollateral',
+    'exitPosition',
+    'closeTrade',
+    'removeLP',
+    'removeLiquidity',
+    'unstake',
+    'claimRewards',
+    'settlePosition',
+    'decreaseLiquidity',
+    'cancelWithdrawal',
+    'cancelDeposit',
+    'burn',
+    'processWithdrawals',
+  ];
 
   // Helper to detect if this is a withdrawal operation that should trigger unwrapping
   const shouldAutoUnwrap = useCallback(
-    (functionName: string) => {
+    (functionName: string): boolean => {
       if (!chainId || !isEtherealChain(chainId)) {
         return false;
       }
 
-      // Common withdrawal/redeem function names that should trigger unwrapping
-      const withdrawalFunctions = [
-        'withdraw',
-        'redeem',
-        'redeemCollateral',
-        'exitPosition',
-        'closeTrade',
-        'removeLP',
-        'removeLiquidity',
-        'unstake',
-        'claimRewards',
-        // Additional patterns found in codebase
-        'settlePosition', // Settling/closing positions
-        'decreaseLiquidity', // Reducing LP positions
-        'cancelWithdrawal', // Canceling withdrawals (funds return to user)
-        'cancelDeposit', // Canceling deposits (funds return to user)
-        'burn', // Burning prediction NFTs for payout
-        'processWithdrawals', // Processing withdrawal queue
-      ];
-
-      // Special case: modifyTraderPosition with size 0 is a full close
-      // (we can't detect this here without args, but it's worth noting)
-
-      return withdrawalFunctions.some((fn) =>
-        functionName.toLowerCase().includes(fn.toLowerCase())
+      const fnLower = functionName.toLowerCase();
+      return WITHDRAWAL_FUNCTIONS.some((fn) =>
+        fnLower.includes(fn.toLowerCase())
       );
     },
-    [chainId, isEtherealChain]
+    [chainId]
   );
 
   // Helper to execute auto-unwrap after main transaction
   const executeAutoUnwrap = useCallback(
     async (balanceBefore: bigint) => {
-      // Get the current balance after transaction
       const balanceAfter = await getUserWUSDEBalance();
-
-      // Calculate how much WUSDe was received
       const received =
         balanceAfter > balanceBefore ? balanceAfter - balanceBefore : 0n;
 
       if (received <= 0n) {
-        return null; // No new WUSDe to unwrap
+        return null;
       }
 
-      // Only unwrap the amount received from this transaction
-      const unwrapTx = createUnwrapTransaction(received);
-      return unwrapTx;
+      return createUnwrapTransaction(received);
     },
     [getUserWUSDEBalance, createUnwrapTransaction]
   );
@@ -445,14 +439,10 @@ export function useSapienceWriteContract({
           let sessionClient = getSessionClient(_chainId);
 
           if (needsArbitrumSession(_chainId)) {
-            console.debug(
-              '[Session] Creating Arbitrum session lazily before transaction...'
-            );
             setIsSubmitting(true);
             try {
               // Use returned client directly to avoid race condition with state updates
               sessionClient = await createArbitrumSessionIfNeeded();
-              console.debug('[Session] Arbitrum session created successfully');
             } catch (sessionCreateError) {
               console.error(
                 '[Session] Failed to create Arbitrum session:',
@@ -475,9 +465,6 @@ export function useSapienceWriteContract({
               args: fnArgs,
               value,
             } = params as any;
-
-            console.debug('[Session] Target contract:', address);
-            console.debug('[Session] Function:', functionName);
 
             try {
               const calldata = encodeFunctionData({
@@ -679,14 +666,10 @@ export function useSapienceWriteContract({
           let sessionClient = getSessionClient(_chainId);
 
           if (needsArbitrumSession(_chainId)) {
-            console.debug(
-              '[Session] Creating Arbitrum session lazily before batch transaction...'
-            );
             setIsSubmitting(true);
             try {
               // Use returned client directly to avoid race condition with state updates
               sessionClient = await createArbitrumSessionIfNeeded();
-              console.debug('[Session] Arbitrum session created successfully');
             } catch (sessionCreateError) {
               console.error(
                 '[Session] Failed to create Arbitrum session:',
@@ -707,12 +690,6 @@ export function useSapienceWriteContract({
             if (calls.length === 0) {
               throw new Error('No calls to execute');
             }
-
-            console.debug(
-              '[Session] Batch transaction with',
-              calls.length,
-              'calls'
-            );
 
             try {
               const formattedCalls = calls.map((call: any) => ({
