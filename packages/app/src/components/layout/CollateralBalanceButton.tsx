@@ -246,7 +246,7 @@ export default function CollateralBalanceButton({
       setTransferStatus('');
       toast({
         title: 'Transfer successful',
-        description: `${formatDollarLikeBalance(transferAmountNum)} wUSDe transferred to your Sapience account.`,
+        description: `This will be reflected in the app shortly.`,
         duration: 5000,
       });
 

@@ -50,7 +50,7 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
 
     if (!isPast) {
       // Future: show relative time
-      badgeText = `Resolves ${formatDistanceToNow(date, { addSuffix: true })}`;
+      badgeText = `Ends ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
     } else if (hoursDiff < 24) {
       // Ended recently (within 24 hours): show relative time only
