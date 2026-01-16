@@ -260,83 +260,16 @@ function ForecastCell({
   );
 }
 
-// Group forecast cell - shows the spread and triggers prediction requests for conditions
+// Group forecast cell - shows option count (predictions load lazily when expanded)
 function GroupForecastCell({
   conditions,
-  predictionMapRef,
-  onPrediction,
 }: {
   conditions: ConditionGroupConditionType[];
-  predictionMapRef: React.RefObject<Record<string, number>>;
-  onPrediction: (conditionId: string, p: number) => void;
 }) {
-  // Use state to force re-render when predictions arrive
-  const [, forceUpdate] = React.useReducer((x) => x + 1, 0);
-
-  // Re-render periodically to pick up new predictions from the ref
-  React.useEffect(() => {
-    const interval = setInterval(forceUpdate, 300);
-    return () => clearInterval(interval);
-  }, []);
-
-  const predictionMap = predictionMapRef.current;
-  const _spread = React.useMemo(() => {
-    let minBest = Infinity;
-    let maxBest = -Infinity;
-    let count = 0;
-
-    for (const c of conditions) {
-      const probYes = predictionMap[c.id];
-      if (probYes == null) continue;
-      const best = Math.max(probYes, 1 - probYes);
-      minBest = Math.min(minBest, best);
-      maxBest = Math.max(maxBest, best);
-      count += 1;
-    }
-
-    if (!count) return { kind: 'none' as const };
-    if (count < 2 || !isFinite(minBest) || !isFinite(maxBest)) {
-      return { kind: 'single' as const };
-    }
-    return {
-      kind: 'spread' as const,
-      pct: Math.round((maxBest - minBest) * 100),
-    };
-  }, [conditions, predictionMap]);
-
-  // Determine which conditions still need prediction requests
-  const pendingConditionIds = React.useMemo(() => {
-    return conditions
-      .filter((c) => predictionMap[c.id] == null)
-      .map((c) => c.id);
-  }, [conditions, predictionMap]);
-
   return (
-    <>
-      {/* Hidden request drivers - one per condition needing a prediction.
-          These have a measurable size so IntersectionObserver fires when the
-          group row scrolls into view. */}
-      {pendingConditionIds.length > 0 && (
-        <div
-          aria-hidden
-          className="absolute w-px h-px overflow-hidden opacity-0 pointer-events-none"
-        >
-          {pendingConditionIds.map((id) => (
-            <MarketPredictionRequest
-              key={`group-driver-${id}`}
-              conditionId={id}
-              suppressLoadingPlaceholder
-              inline={false}
-              className="block w-px h-px"
-              onPrediction={(p) => onPrediction(id, p)}
-            />
-          ))}
-        </div>
-      )}
-      <span className="text-muted-foreground font-mono">
-        {conditions.length} option{conditions.length === 1 ? '' : 's'}
-      </span>
-    </>
+    <span className="text-muted-foreground font-mono">
+      {conditions.length} option{conditions.length === 1 ? '' : 's'}
+    </span>
   );
 }
 
@@ -441,34 +374,27 @@ function getRowEndTime(row: TopLevelRow): number {
   return row.condition.endTime ?? 0;
 }
 
-// Helper to get header className by column ID
+// Class name maps for table headers and cells
+const HEADER_CLASS_MAP: Record<string, string> = {
+  question: 'pl-4 w-full min-w-[200px]',
+  endTime: 'pr-4',
+  predict: 'text-center pr-4',
+};
+
+const CELL_CLASS_MAP: Record<string, string> = {
+  question: 'py-2 pl-4 w-full max-w-0 min-w-[200px]',
+  forecast: 'py-2 text-right',
+  openInterest: 'py-2 text-right',
+  endTime: 'py-2 text-right',
+  predict: 'py-2 pr-4',
+};
+
 function getHeaderClassName(colId: string): string {
-  switch (colId) {
-    case 'question':
-      return 'pl-4 w-full min-w-[200px]';
-    case 'endTime':
-      return 'pr-4';
-    case 'predict':
-      return 'text-center pr-4';
-    default:
-      return '';
-  }
+  return HEADER_CLASS_MAP[colId] ?? '';
 }
 
-// Helper to get cell className by column ID
 function getCellClassName(colId: string): string {
-  switch (colId) {
-    case 'question':
-      return 'py-2 pl-4 w-full max-w-0 min-w-[200px]';
-    case 'forecast':
-    case 'openInterest':
-    case 'endTime':
-      return 'py-2 text-right';
-    case 'predict':
-      return 'py-2 pr-4';
-    default:
-      return 'py-2';
-  }
+  return CELL_CLASS_MAP[colId] ?? 'py-2';
 }
 
 // Create columns for the TopLevelRow type
@@ -542,11 +468,7 @@ function createColumns(
         if (data.kind === 'group') {
           return (
             <div className="text-sm whitespace-nowrap text-right relative">
-              <GroupForecastCell
-                conditions={data.conditions}
-                predictionMapRef={predictionMapRef}
-                onPrediction={onPrediction}
-              />
+              <GroupForecastCell conditions={data.conditions} />
             </div>
           );
         }
@@ -627,7 +549,9 @@ function createColumns(
       sortingFn: (rowA, rowB) => {
         const a = getRowOpenInterest(rowA.original);
         const b = getRowOpenInterest(rowB.original);
-        return a < b ? -1 : a > b ? 1 : 0;
+        if (a < b) return -1;
+        if (a > b) return 1;
+        return 0;
       },
     },
     {
@@ -750,7 +674,6 @@ function ChildConditionRow({
             condition={conditionType}
             prefetchedProbability={predictionMap[condition.id]}
             onPrediction={(p) => onPrediction(condition.id, p)}
-            skipViewportCheck
           />
         </div>
       </TableCell>

@@ -55,18 +55,17 @@ export interface MintPredictionRequestData {
   takerClaimedNonce?: number;
 }
 
-function jsonStableStringify(value: unknown) {
-  // Deep-stable stringify: sorts object keys at every level
+function jsonStableStringify(value: unknown): string {
   const serialize = (val: unknown): unknown => {
     if (val === null || typeof val !== 'object') return val;
-    if (Array.isArray(val)) return (val as unknown[]).map(serialize);
+    if (Array.isArray(val)) return val.map(serialize);
+
     const obj = val as Record<string, unknown>;
-    const sortedKeys = Object.keys(obj).sort();
-    const out: Record<string, unknown> = {};
-    for (const key of sortedKeys) {
-      out[key] = serialize(obj[key]);
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(obj).sort()) {
+      sorted[key] = serialize(obj[key]);
     }
-    return out;
+    return sorted;
   };
   return JSON.stringify(serialize(value));
 }
@@ -127,32 +126,31 @@ export function useAuctionStart() {
           // Only accept bids for OUR auction id
           const targetAuctionId: string | null =
             rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
+
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
-          if (targetAuctionId !== latestAuctionIdRef.current) return;
-          const normalized: QuoteBid[] = rawBids
-            .map((b) => {
-              try {
-                const auctionIdVal: string =
-                  b.auctionId || latestAuctionIdRef.current || '';
-                const maker: string =
-                  b.maker || '0x0000000000000000000000000000000000000000';
-                const makerWager: string = b.makerWager || '0';
-                const makerDeadline: number = b.makerDeadline || 0;
+          if (targetAuctionId !== latestAuctionIdRef.current) {
+            return;
+          }
 
+          console.log(`[Auction] Received ${rawBids.length} bid(s)`);
+          const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+          const normalized: QuoteBid[] = rawBids
+            .map((b): QuoteBid | null => {
+              try {
                 return {
-                  auctionId: auctionIdVal,
-                  maker,
-                  makerWager,
-                  makerDeadline,
+                  auctionId: b.auctionId || latestAuctionIdRef.current || '',
+                  maker: b.maker || ZERO_ADDRESS,
+                  makerWager: b.makerWager || '0',
+                  makerDeadline: b.makerDeadline || 0,
                   makerSignature: b.makerSignature || '0x',
                   makerNonce: b.makerNonce || 0,
-                } as QuoteBid;
+                };
               } catch {
                 return null;
               }
             })
-            .filter(Boolean) as QuoteBid[];
+            .filter((b): b is QuoteBid => b !== null);
           setBids(normalized);
         }
         // auction.ack handled via sendWithAck
@@ -249,26 +247,20 @@ export function useAuctionStart() {
           }
         }
 
-        // Add signature and timestamp to request payload if available
-        let payloadWithSignature: Record<string, unknown> =
-          takerSignature && takerSignedAt
+        // Build final payload with signature and session data
+        const payloadWithSignature: Record<string, unknown> = {
+          ...requestPayload,
+          ...(takerSignature && takerSignedAt
+            ? { takerSignature, takerSignedAt }
+            : {}),
+          // Add session approval data for smart account authentication
+          ...(isSessionActive && etherealSessionApproval
             ? {
-                ...requestPayload,
-                takerSignature,
-                takerSignedAt,
+                sessionApproval: etherealSessionApproval.approval,
+                sessionTypedData: etherealSessionApproval.typedData,
               }
-            : requestPayload;
-
-        // Add session approval data for smart account authentication
-        // This allows the relayer to verify ownership without additional RPC calls
-        // Note: The session key is extracted from validatorData in the typed data (cryptographically signed by owner)
-        if (isSessionActive && etherealSessionApproval) {
-          payloadWithSignature = {
-            ...payloadWithSignature,
-            sessionApproval: etherealSessionApproval.approval,
-            sessionTypedData: etherealSessionApproval.typedData,
-          };
-        }
+            : {}),
+        };
 
         // Clear previous auction state
         inflightRef.current = key;
@@ -309,11 +301,10 @@ export function useAuctionStart() {
 
   const acceptBid = useCallback(
     (txHashOfSubmit?: string) => {
-      // Stub for now: submit directly to mint via app flow; emulate success
       if (!auctionId) throw new Error('auction_not_initialized');
       return Promise.resolve({
-        status: 'submitted',
-        relayTxHash: txHashOfSubmit || null,
+        status: 'submitted' as const,
+        relayTxHash: txHashOfSubmit ?? null,
       });
     },
     [auctionId]
@@ -346,40 +337,37 @@ export function useAuctionStart() {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
 
-      try {
-        const zeroBytes32 = `0x${'0'.repeat(64)}`;
-        const resolver = auction.resolver as `0x${string}`;
-        const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
-        if (!resolver || predictedOutcomes.length === 0) return null;
+      const resolver = auction.resolver as `0x${string}`;
+      const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
+      if (!resolver || predictedOutcomes.length === 0) return null;
 
-        // Validate bid is from the current auction to avoid stale nonce errors
-        if (args.selectedBid.auctionId !== auctionId) {
-          console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
-            bidAuctionId: args.selectedBid.auctionId,
-            currentAuctionId: auctionId,
-          });
-          return null;
-        }
-
-        // Contract field names haven't changed - map BID (API) roles to contract roles:
-        // Contract "maker" = API "taker" (auction creator)
-        // Contract "taker" = API "maker" (bidder)
-        return {
-          encodedPredictedOutcomes: predictedOutcomes[0],
-          resolver,
-          makerCollateral: auction.wager, // Contract maker = API taker (auction creator's wager)
-          takerCollateral: args.selectedBid.makerWager, // Contract taker = API maker (bidder's wager)
-          maker: auction.taker, // Contract maker = API taker (auction creator) - should be smart account when session active
-          taker: args.selectedBid.maker as `0x${string}`, // Contract taker = API maker (bidder)
-          takerSignature: args.selectedBid.makerSignature as `0x${string}`, // Contract taker = API maker (bidder's signature)
-          takerDeadline: String(args.selectedBid.makerDeadline), // Contract taker = API maker (bidder's deadline)
-          refCode: args.refCode || (zeroBytes32 as `0x${string}`),
-          makerNonce: String(auction.takerNonce), // Contract maker = API taker (auction creator's nonce)
-          takerClaimedNonce: args.selectedBid.makerNonce, // Bidder's claimed nonce for validation
-        };
-      } catch {
+      // Validate bid is from the current auction to avoid stale nonce errors
+      if (args.selectedBid.auctionId !== auctionId) {
+        console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
+          bidAuctionId: args.selectedBid.auctionId,
+          currentAuctionId: auctionId,
+        });
         return null;
       }
+
+      const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
+
+      // Contract field names map BID (API) roles to contract roles:
+      // Contract "maker" = API "taker" (auction creator)
+      // Contract "taker" = API "maker" (bidder)
+      return {
+        encodedPredictedOutcomes: predictedOutcomes[0],
+        resolver,
+        makerCollateral: auction.wager,
+        takerCollateral: args.selectedBid.makerWager,
+        maker: auction.taker,
+        taker: args.selectedBid.maker as `0x${string}`,
+        takerSignature: args.selectedBid.makerSignature as `0x${string}`,
+        takerDeadline: String(args.selectedBid.makerDeadline),
+        refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
+        makerNonce: String(auction.takerNonce),
+        takerClaimedNonce: args.selectedBid.makerNonce,
+      };
     },
     [auctionId]
   );
