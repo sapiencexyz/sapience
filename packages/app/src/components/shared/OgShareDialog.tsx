@@ -120,6 +120,11 @@ export default function OgShareDialogBase({
   const { isSessionActive, smartAccountAddress } = useSession();
   const chainId = useChainIdFromLocalStorage();
   const [positionResolved, setPositionResolved] = useState(false);
+  // Store resolved position data for share URL
+  const [resolvedPositionData, setResolvedPositionData] = useState<{
+    nftId: string;
+    marketAddress: string;
+  } | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
@@ -208,6 +213,11 @@ export default function OgShareDialogBase({
 
         if (foundPosition) {
           setPositionResolved(true);
+          // Store resolved position data for share URL
+          setResolvedPositionData({
+            nftId: foundPosition.predictorNftTokenId,
+            marketAddress: foundPosition.marketAddress,
+          });
           onPositionIndexed?.();
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
@@ -222,6 +232,11 @@ export default function OgShareDialogBase({
       const foundPosition = filteredByNftId[0];
       if (foundPosition) {
         setPositionResolved(true);
+        // Store resolved position data for share URL
+        setResolvedPositionData({
+          nftId: foundPosition.predictorNftTokenId,
+          marketAddress: foundPosition.marketAddress,
+        });
         onPositionIndexed?.();
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
@@ -239,7 +254,7 @@ export default function OgShareDialogBase({
 
     // Only start polling if not already polling (or if timestamp changed, restart polling)
     if (!pollingIntervalRef.current) {
-      // Poll every second
+      // Poll every half second
       pollingIntervalRef.current = setInterval(async () => {
         try {
           const result = await refetchPositions();
@@ -248,7 +263,7 @@ export default function OgShareDialogBase({
         } catch {
           // Error refetching positions - will retry on next interval
         }
-      }, 1000);
+      }, 500);
     }
 
     return () => {
@@ -272,6 +287,7 @@ export default function OgShareDialogBase({
   useEffect(() => {
     if (!open) {
       setPositionResolved(false);
+      setResolvedPositionData(null); // Reset resolved position data
       setImgLoading(true); // Reset image loading state to prevent flash on reopen
       dialogOpenTimestampRef.current = null;
       if (pollingIntervalRef.current) {
@@ -321,11 +337,17 @@ export default function OgShareDialogBase({
   const buildShareUrl = useCallback((): string => {
     let relativeUrl: string;
 
+    // Priority 1: Use resolved position data from tracking (most accurate)
+    // Priority 2: Extract from imageSrc parameters
+    const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
+    const marketAddress =
+      resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
+
     // If nftId and marketAddress are available, use them
-    if (positionShareParams?.nftId && positionShareParams?.marketAddress) {
+    if (nftId && marketAddress) {
       const qp = new URLSearchParams();
-      qp.set('nftId', positionShareParams.nftId);
-      qp.set('marketAddress', positionShareParams.marketAddress);
+      qp.set('nftId', nftId);
+      qp.set('marketAddress', marketAddress);
       relativeUrl = `/share?${qp.toString()}`;
     } else {
       // If no position parameters are available, fall back to share page without params
@@ -341,7 +363,7 @@ export default function OgShareDialogBase({
       return `${window.location.origin}${relativeUrl}`;
     }
     return relativeUrl;
-  }, [positionShareParams]);
+  }, [resolvedPositionData, positionShareParams]);
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {

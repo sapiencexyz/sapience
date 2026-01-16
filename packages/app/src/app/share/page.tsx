@@ -203,8 +203,8 @@ export default function SharePage({ searchParams }: SharePageProps) {
 
   // Simple, crawlable HTML body for social scrapers and a basic human fallback
   return (
-    <div className="relative min-h-screen">
-      <main className="relative container mx-auto px-4 mt-36 mb-12 max-w-3xl">
+    <div className="relative min-h-[calc(100vh-200px)] flex items-center justify-center">
+      <main className="relative container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex flex-col items-center text-center">
           {img ? (
             // Intentionally not using next/image here to avoid loader constraints for absolute URLs
