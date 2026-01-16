@@ -54,7 +54,10 @@ export function ChatMessages({
     >
       {messages.map((m, index) => {
         const prevMessage = index > 0 ? messages[index - 1] : null;
-        const isSameAddressAsPrev = isSameAddress(prevMessage?.address, m.address);
+        const isSameAddressAsPrev = isSameAddress(
+          prevMessage?.address,
+          m.address
+        );
 
         return (
           <div
@@ -111,7 +114,7 @@ export function ChatMessages({
       )}
       {messages.length === 0 && showLoader && (
         <div className="w-full h-full flex items-center justify-center">
-          <Loader size={16} />
+          <Loader size={24} />
         </div>
       )}
       <div ref={endRef} />

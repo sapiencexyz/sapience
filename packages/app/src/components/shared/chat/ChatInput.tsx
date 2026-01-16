@@ -44,6 +44,7 @@ export function ChatInput({
         placeholder={canChat ? 'Type a message...' : ''}
       />
       <Button
+        className="ml-1"
         onClick={() =>
           canAttemptSend ? onSend() : !canChat ? onLogin() : undefined
         }

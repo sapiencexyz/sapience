@@ -98,7 +98,9 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
       {ready && hasConnectedWallet && connectedWallet && (
         <CollateralBalanceButton className="xl:hidden mt-10 ml-4" />
       )}
-      <nav className={`flex flex-col gap-3 w-full ${ready && hasConnectedWallet && connectedWallet ? 'mt-3' : 'mt-10'} pl-4`}>
+      <nav
+        className={`flex flex-col gap-3 w-full ${ready && hasConnectedWallet && connectedWallet ? 'mt-3' : 'mt-10'} pl-4`}
+      >
         <Link
           href="/markets"
           className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/markets', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}

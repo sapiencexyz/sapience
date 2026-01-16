@@ -490,8 +490,7 @@ const AuctionBidsChart: React.FC<Props> = ({
                   percent={
                     displayBidData.data.amount + takerEth > 0
                       ? Math.round(
-                          (takerEth /
-                            (displayBidData.data.amount + takerEth)) *
+                          (takerEth / (displayBidData.data.amount + takerEth)) *
                             100
                         )
                       : undefined
