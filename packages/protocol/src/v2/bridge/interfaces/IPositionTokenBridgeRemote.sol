@@ -184,4 +184,14 @@ interface IPositionTokenBridgeRemote {
     /// @param token The bridged token address
     /// @return The escrowed amount
     function getEscrowedBalance(address token) external view returns (uint256);
+
+    // ============ Ownership Management ============
+
+    /// @notice Check if configuration is complete for safe ownership renouncement
+    /// @return True if bridge config and LZ peer are set
+    function isConfigComplete() external view returns (bool);
+
+    /// @notice Renounce ownership after verifying config is complete
+    /// @dev Reverts if config is incomplete
+    function renounceOwnershipSafe() external;
 }

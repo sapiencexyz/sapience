@@ -378,6 +378,27 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         return _escrowedBalances[token];
     }
 
+    // ============ Ownership Management ============
+
+    /// @inheritdoc IPositionTokenBridge
+    function isConfigComplete() external view returns (bool) {
+        // Check bridge config
+        if (_bridgeConfig.remoteEid == 0) return false;
+        if (_bridgeConfig.remoteBridge == address(0)) return false;
+
+        // Check LZ peer is set
+        bytes32 peer = peers[_bridgeConfig.remoteEid];
+        if (peer == bytes32(0)) return false;
+
+        return true;
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function renounceOwnershipSafe() external onlyOwner {
+        require(this.isConfigComplete(), "Config incomplete");
+        renounceOwnership();
+    }
+
     // ============ ETH Management (for ACK fees) ============
 
     /// @notice Receive ETH for ACK fee payments

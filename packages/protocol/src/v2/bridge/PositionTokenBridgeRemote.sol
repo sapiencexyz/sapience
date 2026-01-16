@@ -386,6 +386,29 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         return factory.predictAddress(predictionId, isPredictorToken);
     }
 
+    // ============ Ownership Management ============
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function isConfigComplete() external view returns (bool) {
+        // Check bridge config
+        if (_bridgeConfig.remoteEid == 0) return false;
+        if (_bridgeConfig.remoteBridge == address(0)) return false;
+
+        // Check LZ peer is set
+        bytes32 peer = peers[_bridgeConfig.remoteEid];
+        if (peer == bytes32(0)) return false;
+
+        // Factory is immutable, set in constructor - no need to check
+
+        return true;
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function renounceOwnershipSafe() external onlyOwner {
+        require(this.isConfigComplete(), "Config incomplete");
+        renounceOwnership();
+    }
+
     // ============ ETH Management (for ACK fees) ============
 
     /// @notice Receive ETH for ACK fee payments

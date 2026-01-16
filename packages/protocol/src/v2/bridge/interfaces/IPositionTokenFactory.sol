@@ -70,4 +70,14 @@ interface IPositionTokenFactory {
         bytes32 predictionId,
         bool isPredictorToken
     ) external view returns (bool);
+
+    // ============ Ownership Management ============
+
+    /// @notice Check if configuration is complete for safe ownership renouncement
+    /// @return True if deployer is set
+    function isConfigComplete() external view returns (bool);
+
+    /// @notice Renounce ownership after verifying config is complete
+    /// @dev Reverts if config is incomplete
+    function renounceOwnershipSafe() external;
 }

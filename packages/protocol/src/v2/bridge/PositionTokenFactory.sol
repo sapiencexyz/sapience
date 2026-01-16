@@ -80,4 +80,17 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         address predicted = predictAddress(predictionId, isPredictorToken);
         return predicted.code.length > 0;
     }
+
+    // ============ Ownership Management ============
+
+    /// @inheritdoc IPositionTokenFactory
+    function isConfigComplete() external view returns (bool) {
+        return deployer != address(0);
+    }
+
+    /// @inheritdoc IPositionTokenFactory
+    function renounceOwnershipSafe() external onlyOwner {
+        require(this.isConfigComplete(), "Config incomplete");
+        renounceOwnership();
+    }
 }

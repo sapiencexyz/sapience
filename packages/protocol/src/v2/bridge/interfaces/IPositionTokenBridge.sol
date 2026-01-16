@@ -151,4 +151,14 @@ interface IPositionTokenBridge {
     /// @notice Get the bridge expiry duration
     /// @return The expiry duration in seconds
     function getExpiryDuration() external view returns (uint64);
+
+    // ============ Ownership Management ============
+
+    /// @notice Check if configuration is complete for safe ownership renouncement
+    /// @return True if bridge config and LZ peer are set
+    function isConfigComplete() external view returns (bool);
+
+    /// @notice Renounce ownership after verifying config is complete
+    /// @dev Reverts if config is incomplete
+    function renounceOwnershipSafe() external;
 }

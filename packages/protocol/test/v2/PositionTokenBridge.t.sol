@@ -654,6 +654,81 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         assertEq(etherealBridge.getExpiryDuration(), EXPIRY_DURATION);
         assertEq(arbitrumBridge.getExpiryDuration(), EXPIRY_DURATION);
     }
+
+    // ============ Ownership Renouncement Tests ============
+
+    function test_isConfigComplete_returnsFalse_whenNotConfigured() public {
+        // Deploy new bridge without config
+        PositionTokenBridge newBridge = new PositionTokenBridge(
+            address(endpoints[etherealEid]),
+            owner,
+            EXPIRY_DURATION
+        );
+
+        assertFalse(newBridge.isConfigComplete());
+    }
+
+    function test_isConfigComplete_returnsTrue_whenFullyConfigured() public view {
+        // Already configured in setUp
+        assertTrue(etherealBridge.isConfigComplete());
+        assertTrue(arbitrumBridge.isConfigComplete());
+    }
+
+    function test_renounceOwnershipSafe_reverts_whenIncomplete() public {
+        // Deploy new bridge without config
+        PositionTokenBridge newBridge = new PositionTokenBridge(
+            address(endpoints[etherealEid]),
+            owner,
+            EXPIRY_DURATION
+        );
+
+        vm.expectRevert("Config incomplete");
+        newBridge.renounceOwnershipSafe();
+    }
+
+    function test_renounceOwnershipSafe_succeeds_whenComplete() public {
+        // Ethereal bridge is fully configured
+        assertEq(etherealBridge.owner(), owner);
+
+        etherealBridge.renounceOwnershipSafe();
+
+        assertEq(etherealBridge.owner(), address(0));
+    }
+
+    function test_renounceOwnershipSafe_reverts_whenNotOwner() public {
+        vm.prank(unauthorizedUser);
+        vm.expectRevert();
+        etherealBridge.renounceOwnershipSafe();
+    }
+
+    function test_factory_isConfigComplete_returnsFalse_whenNoDeployer() public {
+        // Deploy new factory without deployer set
+        PositionTokenFactory newFactory = new PositionTokenFactory(owner);
+
+        assertFalse(newFactory.isConfigComplete());
+    }
+
+    function test_factory_isConfigComplete_returnsTrue_whenDeployerSet() public view {
+        // Already configured in setUp
+        assertTrue(factory.isConfigComplete());
+    }
+
+    function test_factory_renounceOwnershipSafe_reverts_whenIncomplete() public {
+        // Deploy new factory without deployer set
+        PositionTokenFactory newFactory = new PositionTokenFactory(owner);
+
+        vm.expectRevert("Config incomplete");
+        newFactory.renounceOwnershipSafe();
+    }
+
+    function test_factory_renounceOwnershipSafe_succeeds_whenComplete() public {
+        // Factory is configured with deployer in setUp
+        assertEq(factory.owner(), owner);
+
+        factory.renounceOwnershipSafe();
+
+        assertEq(factory.owner(), address(0));
+    }
 }
 
 /// @notice Mock invalid token without required interface
