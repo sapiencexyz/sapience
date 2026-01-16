@@ -55,7 +55,6 @@ interface OgShareDialogBaseProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   trackPosition?: boolean; // Enable position tracking
-  txHash?: string; // Optional tx hash for explorer link while pending
   positionTimestamp?: number; // Timestamp when position was placed (ms)
   expectedPicks?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
   expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Alias for expectedPicks (backward compatibility)
@@ -71,7 +70,6 @@ export default function OgShareDialogBase({
   open: controlledOpen,
   onOpenChange,
   trackPosition = false,
-  txHash: _txHash,
   positionTimestamp,
   expectedPicks,
   expectedLegs,
