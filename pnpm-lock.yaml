@@ -500,12 +500,6 @@ importers:
       '@tanstack/react-query':
         specifier: 5.x
         version: 5.84.2(react@19.1.0)
-      '@zerodev/ecdsa-validator':
-        specifier: 5.3.3
-        version: 5.3.3(@zerodev/sdk@5.4.5(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6)))(permissionless@0.2.30(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(webauthn-p256@0.0.10))(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))
-      '@zerodev/sdk':
-        specifier: 5.4.5
-        version: 5.4.5(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))
       abitype:
         specifier: 1.0.8
         version: 1.0.8(typescript@5.8.3)(zod@3.23.6)
@@ -543,6 +537,12 @@ importers:
       '@types/ws':
         specifier: 8.5.10
         version: 8.5.10
+      '@zerodev/ecdsa-validator':
+        specifier: 5.3.3
+        version: 5.3.3(@zerodev/sdk@5.4.5(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6)))(permissionless@0.2.30(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))(webauthn-p256@0.0.10))(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))
+      '@zerodev/sdk':
+        specifier: 5.4.5
+        version: 5.4.5(viem@2.23.5(bufferutil@4.0.9)(typescript@5.8.3)(utf-8-validate@5.0.10)(zod@3.23.6))
       autoprefixer:
         specifier: 10.4.20
         version: 10.4.20(postcss@8.5.6)

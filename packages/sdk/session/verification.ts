@@ -5,6 +5,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+import { computeSmartAccountAddress } from './smartAccount';
 
 // ValidatorData structure constants
 const FLAG_BYTES = 2;
@@ -248,6 +249,19 @@ export async function verifySessionApproval(
         signature: parsed.enableSignature,
       });
 
+      // CRITICAL SECURITY CHECK: Verify the recovered owner actually controls the claimed smart account
+      // This prevents attackers from signing typed data with any verifyingContract they choose
+      // and impersonating accounts they don't own.
+      const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
+      if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+        console.warn('[SessionAuth] Owner does not control claimed account:', {
+          recoveredOwner,
+          expectedSmartAccount,
+          claimedAccount: claimedAccountAddress,
+        });
+        return { valid: false, error: 'owner_mismatch' };
+      }
+
       // Extract the authorized session key from the signed validatorData
       // This is cryptographically bound to the enable signature, so we trust it
       const sessionKeyAddress = extractSessionKeyFromValidatorData(
@@ -259,13 +273,11 @@ export async function verifySessionApproval(
         return { valid: false, error: 'invalid_validator_data' };
       }
 
-      // Security model (no RPC needed):
+      // Security model:
       // 1. The enableSignature is valid over typed data with verifyingContract = smart account
-      // 2. This proves the recovered owner authorized the session key for that specific smart account
-      // 3. The EIP-712 domain binding ensures the signature can't be replayed for a different account
-      // 4. We already verified verifyingContract matches the claimed account address above
-      // 5. If someone faked an authorization for an account they don't own, it wouldn't work on-chain
-      // 6. For chat auth, we just need to prove session key possession for the claimed account
+      // 2. We verify the recovered owner's deterministic smart account matches the claimed account
+      // 3. This proves only the legitimate owner could have created this signature
+      // 4. The session key is extracted from cryptographically signed data (not client-provided)
 
       if (process.env.NODE_ENV !== 'production') {
         console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner, 'sessionKey:', sessionKeyAddress);
