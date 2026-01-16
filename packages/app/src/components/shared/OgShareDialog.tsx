@@ -154,27 +154,37 @@ export default function OgShareDialogBase({
       return;
     }
 
-    const checkPosition = (positionsToCheck: Position[]) => {
+    const resolvePosition = (position: Position): void => {
+      setPositionResolved(true);
+      setResolvedPositionData({
+        nftId: position.predictorNftTokenId,
+        marketAddress: position.marketAddress,
+      });
+      onPositionIndexed?.();
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+
+    const checkPosition = (positionsToCheck: Position[]): boolean => {
       if (!positionsToCheck || positionsToCheck.length === 0) {
         return false;
       }
 
       const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000; // 2 minute window
+        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000;
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
-      // Find positions minted after the dialog opened
       const candidatePositions = positionsToCheck.filter((p: Position) => {
         const mintedAtSeconds = Number(p.mintedAt);
-        const passes = mintedAtSeconds >= minTimestampSeconds;
-        return passes;
+        return mintedAtSeconds >= minTimestampSeconds;
       });
 
       if (candidatePositions.length === 0) {
         return false;
       }
 
-      // Filter by NFT ID if lastNftId is provided (must be larger than last known NFT ID)
       let filteredByNftId = candidatePositions;
       if (lastNftId) {
         try {
@@ -192,11 +202,10 @@ export default function OgShareDialogBase({
             return false;
           }
         } catch {
-          // Error comparing NFT IDs - continue without filter
+          // Continue without NFT ID filter on parse error
         }
       }
 
-      // If picks are provided, verify the position matches the submitted conditions
       if (picks && picks.length > 0) {
         const foundPosition = filteredByNftId.find((p: Position) => {
           const positionPicks = (p.predictions || []).map((pred) => ({
@@ -204,41 +213,19 @@ export default function OgShareDialogBase({
               pred.condition?.shortName || pred.condition?.question || '',
             choice: pred.outcomeYes ? 'Yes' : 'No',
           }));
-
           return picksMatch(positionPicks, picks);
         });
 
         if (foundPosition) {
-          setPositionResolved(true);
-          // Store resolved position data for share URL
-          setResolvedPositionData({
-            nftId: foundPosition.predictorNftTokenId,
-            marketAddress: foundPosition.marketAddress,
-          });
-          onPositionIndexed?.();
-          if (pollingIntervalRef.current) {
-            clearInterval(pollingIntervalRef.current);
-            pollingIntervalRef.current = null;
-          }
+          resolvePosition(foundPosition);
           return true;
         }
         return false;
       }
 
-      // Fallback: if no picks provided, use first candidate after NFT ID filter (backward compatibility)
       const foundPosition = filteredByNftId[0];
       if (foundPosition) {
-        setPositionResolved(true);
-        // Store resolved position data for share URL
-        setResolvedPositionData({
-          nftId: foundPosition.predictorNftTokenId,
-          marketAddress: foundPosition.marketAddress,
-        });
-        onPositionIndexed?.();
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current);
-          pollingIntervalRef.current = null;
-        }
+        resolvePosition(foundPosition);
         return true;
       }
       return false;
@@ -329,37 +316,23 @@ export default function OgShareDialogBase({
     return null;
   }, [imageSrc]);
 
-  // Build share URL - use nftId and marketAddress if available
-  // Returns absolute URL for sharing
   const buildShareUrl = useCallback((): string => {
-    let relativeUrl: string;
-
-    // Priority 1: Use resolved position data from tracking (most accurate)
-    // Priority 2: Extract from imageSrc parameters
     const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
     const marketAddress =
       resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
 
-    // If nftId and marketAddress are available, use them
+    let relativeUrl = '/share';
     if (nftId && marketAddress) {
       const qp = new URLSearchParams();
       qp.set('nftId', nftId);
       qp.set('marketAddress', marketAddress);
       relativeUrl = `/share?${qp.toString()}`;
-    } else {
-      // If no position parameters are available, fall back to share page without params
-      relativeUrl = '/share';
     }
 
-    // Convert to absolute URL
-    if (typeof window !== 'undefined') {
-      // Check if relativeUrl is already absolute
-      if (relativeUrl.startsWith('http')) {
-        return relativeUrl;
-      }
-      return `${window.location.origin}${relativeUrl}`;
+    if (typeof window === 'undefined') {
+      return relativeUrl;
     }
-    return relativeUrl;
+    return `${window.location.origin}${relativeUrl}`;
   }, [resolvedPositionData, positionShareParams]);
 
   // Absolute URL to the actual image route (for copying image binary)
