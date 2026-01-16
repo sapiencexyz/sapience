@@ -95,7 +95,10 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
 
   return (
     <>
-      <nav className="flex flex-col gap-3 w-full mt-10 pl-4">
+      {ready && hasConnectedWallet && connectedWallet && (
+        <CollateralBalanceButton className="xl:hidden mt-10 ml-4" />
+      )}
+      <nav className={`flex flex-col gap-3 w-full ${ready && hasConnectedWallet && connectedWallet ? 'mt-3' : 'mt-10'} pl-4`}>
         <Link
           href="/markets"
           className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/markets', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
@@ -157,28 +160,25 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
         </Link>
       </nav>
       {ready && hasConnectedWallet && connectedWallet && (
-        <>
-          <div className="flex w-fit xl:hidden mt-3 ml-4">
-            <Button
-              asChild
-              variant="default"
-              size="xs"
-              className="rounded-full h-9 px-3 min-w-[122px] justify-start gap-2"
-              onClick={handleLinkClick}
+        <div className="flex w-fit xl:hidden mt-3 ml-4">
+          <Button
+            asChild
+            variant="default"
+            size="xs"
+            className="rounded-full h-9 px-3 min-w-[122px] justify-start gap-2"
+            onClick={handleLinkClick}
+          >
+            <Link
+              href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
+              className="flex items-center gap-2"
             >
-              <Link
-                href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
-                className="flex items-center gap-2"
-              >
-                <User className="h-4 w-4" />
-                <span className="relative top-[1px] xl:top-0 text-sm mr-1">
-                  Your Profile
-                </span>
-              </Link>
-            </Button>
-          </div>
-          <CollateralBalanceButton className="xl:hidden mt-2 ml-7" />
-        </>
+              <User className="h-4 w-4" />
+              <span className="relative top-[1px] xl:top-0 text-sm mr-1">
+                Your Profile
+              </span>
+            </Link>
+          </Button>
+        </div>
       )}
     </>
   );
@@ -595,15 +595,6 @@ const Header = () => {
                       >
                         <Users className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Referrals</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/settings"
-                          className="flex items-center cursor-pointer"
-                        >
-                          <Settings className="mr-0.5 opacity-75 h-4 w-4" />
-                          <span>Settings</span>
-                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={handleLogout}

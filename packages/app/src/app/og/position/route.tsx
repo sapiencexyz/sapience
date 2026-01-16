@@ -20,6 +20,27 @@ import {
 
 export const runtime = 'edge';
 
+// Helper to normalize choice labels to standard format
+function normalizeChoiceLabel(
+  label: string
+): 'YES' | 'NO' | 'OVER' | 'UNDER' | null {
+  const upper = label.toUpperCase();
+  if (upper === 'YES' || upper.startsWith('YES')) return 'YES';
+  if (upper === 'NO' || upper.startsWith('NO')) return 'NO';
+  if (upper === 'OVER' || upper.startsWith('OVER')) return 'OVER';
+  if (upper === 'UNDER' || upper.startsWith('UNDER')) return 'UNDER';
+  return null;
+}
+
+// Helper to determine pill tone from normalized choice
+function getChoiceTone(
+  normalized: 'YES' | 'NO' | 'OVER' | 'UNDER' | null
+): 'success' | 'danger' | 'neutral' {
+  if (normalized === 'YES' || normalized === 'OVER') return 'success';
+  if (normalized === 'NO' || normalized === 'UNDER') return 'danger';
+  return 'neutral';
+}
+
 // Helper to get GraphQL endpoint URL
 function getGraphQLEndpoint(): string {
   const baseUrl =
@@ -269,27 +290,11 @@ export async function GET(req: Request) {
       .map((entry) => entry.split('|'))
       .map(([text, choice]) => {
         const label = normalizeText(choice || '', 48) || '—';
-        const upper = label.toUpperCase();
-        const normalized =
-          upper === 'YES' || upper.startsWith('YES')
-            ? 'YES'
-            : upper === 'NO' || upper.startsWith('NO')
-              ? 'NO'
-              : upper === 'OVER' || upper.startsWith('OVER')
-                ? 'OVER'
-                : upper === 'UNDER' || upper.startsWith('UNDER')
-                  ? 'UNDER'
-                  : null;
-        const tone =
-          normalized === 'YES' || normalized === 'OVER'
-            ? ('success' as const)
-            : normalized === 'NO' || normalized === 'UNDER'
-              ? ('danger' as const)
-              : ('neutral' as const);
+        const normalized = normalizeChoiceLabel(label);
         return {
           text: normalizeText(text || '', 120),
           choice: label,
-          tone,
+          tone: getChoiceTone(normalized),
         };
       })
       .filter((l) => l.text);
@@ -384,7 +389,7 @@ export async function GET(req: Request) {
                                   display: 'flex',
                                   fontSize: 32 * scale,
                                   lineHeight: `${40 * scale}px`,
-                                  fontWeight: 700,
+                                  fontWeight: 600,
                                   letterSpacing: -0.16 * scale,
                                   color: og.colors.brandWhite,
                                   fontFamily:

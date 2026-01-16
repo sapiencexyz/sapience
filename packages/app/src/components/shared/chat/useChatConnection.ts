@@ -7,10 +7,84 @@ import type { ChatMessage } from './types';
 
 type SendQueueItem = { text: string; clientId: string };
 
-export function useChatConnection(isOpen: boolean, addressOverride?: string) {
+// Session approval data for session-based authentication
+interface SessionApprovalData {
+  approval: string;
+  typedData: {
+    domain: {
+      name: string;
+      version: string;
+      chainId: number;
+      verifyingContract: string;
+    };
+    types: {
+      Enable: readonly { name: string; type: string }[];
+    };
+    primaryType: 'Enable';
+    message: {
+      validationId: string;
+      nonce: number;
+      hook: string;
+      validatorData: string;
+      hookData: string;
+      selectorData: string;
+    };
+  };
+}
+
+interface ChatConnectionOptions {
+  isOpen: boolean;
+  addressOverride?: string;
+  // Session-based auth (optional)
+  sessionApproval?: SessionApprovalData | null;
+  signMessageWithSession?: ((message: string) => Promise<string>) | null;
+  isSessionActive?: boolean;
+}
+
+// Map error codes to user-friendly messages
+function getFriendlyErrorMessage(errorText: string): string {
+  if (errorText === 'rate_limited') {
+    return 'You are sending messages too quickly. Please wait.';
+  }
+  if (errorText === 'empty_message') {
+    return 'Message cannot be empty.';
+  }
+  return `Error: ${errorText}`;
+}
+
+export function useChatConnection(
+  isOpenOrOptions: boolean | ChatConnectionOptions,
+  addressOverrideDeprecated?: string
+) {
+  // Support both old (isOpen, address) and new (options object) signatures
+  const options: ChatConnectionOptions =
+    typeof isOpenOrOptions === 'boolean'
+      ? { isOpen: isOpenOrOptions, addressOverride: addressOverrideDeprecated }
+      : isOpenOrOptions;
+
+  const {
+    isOpen,
+    addressOverride,
+    sessionApproval,
+    signMessageWithSession,
+    isSessionActive = false,
+  } = options;
+
   const userAddress: string | undefined = addressOverride;
   const normalizedUserAddress = (userAddress || '').toLowerCase();
   const { signMessageAsync } = useSignMessage();
+
+  // Track session data in refs to avoid stale closures
+  const sessionApprovalRef = useRef(sessionApproval);
+  const signMessageWithSessionRef = useRef(signMessageWithSession);
+  const isSessionActiveRef = useRef(isSessionActive);
+
+  // Update refs when props change
+  useEffect(() => {
+    sessionApprovalRef.current = sessionApproval;
+    signMessageWithSessionRef.current = signMessageWithSession;
+    isSessionActiveRef.current = isSessionActive;
+  }, [sessionApproval, signMessageWithSession, isSessionActive]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -173,6 +247,42 @@ export function useChatConnection(isOpen: boolean, addressOverride?: string) {
           ) {
             (async () => {
               try {
+                // Prefer session-based auth if session is active
+                const currentSessionApproval = sessionApprovalRef.current;
+                const currentSignWithSession = signMessageWithSessionRef.current;
+                const currentIsSessionActive = isSessionActiveRef.current;
+
+                if (
+                  currentIsSessionActive &&
+                  currentSessionApproval &&
+                  currentSignWithSession
+                ) {
+                  try {
+                    // Sign the challenge with the session key
+                    const sessionSignature = await currentSignWithSession(
+                      data.message
+                    );
+                    ws.send(
+                      JSON.stringify({
+                        type: 'auth_session',
+                        sessionApproval: currentSessionApproval.approval,
+                        sessionTypedData: currentSessionApproval.typedData,
+                        sessionSignature,
+                        nonce: data.nonce,
+                        chainId: currentSessionApproval.typedData.domain.chainId,
+                      })
+                    );
+                    return;
+                  } catch (sessionError) {
+                    // Session auth failed, fall back to wallet signature
+                    console.debug(
+                      '[Chat] Session auth failed, falling back to wallet signature:',
+                      sessionError
+                    );
+                  }
+                }
+
+                // Fall back to wallet signature
                 const signature = await signMessageAsync({
                   message: data.message,
                 });
@@ -325,12 +435,7 @@ export function useChatConnection(isOpen: boolean, addressOverride?: string) {
               return;
             }
 
-            const friendly =
-              data.text === 'rate_limited'
-                ? 'You are sending messages too quickly. Please wait.'
-                : data.text === 'empty_message'
-                  ? 'Message cannot be empty.'
-                  : `Error: ${data.text}`;
+            const friendly = getFriendlyErrorMessage(data.text);
 
             if (data.clientId) {
               setMessagesAndRef((prev) => {
