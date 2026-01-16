@@ -76,7 +76,11 @@ function extractParamFromImg(
     const cleaned = raw.replace(/\s/g, '').toLowerCase();
     if (/^0x[a-f0-9]{40}$/.test(cleaned)) return cleaned;
   } catch (err) {
-    console.error(`extractParamFromImg: failed to parse ${paramName}`, img, err);
+    console.error(
+      `extractParamFromImg: failed to parse ${paramName}`,
+      img,
+      err
+    );
   }
   return undefined;
 }
