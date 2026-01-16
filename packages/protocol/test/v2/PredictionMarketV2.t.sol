@@ -42,7 +42,7 @@ contract PredictionMarketV2Test is Test {
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
-        market = new PredictionMarketV2(address(collateralToken));
+        market = new PredictionMarketV2(address(collateralToken), owner);
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);

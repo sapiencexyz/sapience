@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "./IAccountFactory.sol";
 
 /**
  * @title SignatureValidator
@@ -15,7 +16,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
  * 3. Contract verifies:
  *    - Session key signature on the message
  *    - Owner's session approval proving authorization
- *    - Smart account derivation from owner
+ *    - Smart account derivation from owner (verified against account factory)
  */
 abstract contract SignatureValidator is EIP712 {
     /// @notice EIP-712 typehash for mint approval
@@ -28,7 +29,29 @@ abstract contract SignatureValidator is EIP712 {
         "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash)"
     );
 
+    /// @notice Trusted account factory for smart account verification
+    /// @dev Used to verify that a smart account is derived from the claimed owner
+    IAccountFactory public accountFactory;
+
+    /// @notice Emitted when the account factory is updated
+    event AccountFactoryUpdated(address indexed oldFactory, address indexed newFactory);
+
+    /// @notice Error when smart account verification fails
+    error SmartAccountVerificationFailed(address owner, address claimedAccount, address expectedAccount);
+
+    /// @notice Error when account factory is not set but session key validation is attempted
+    error AccountFactoryNotSet();
+
     constructor() EIP712("PredictionMarketV2", "1") {}
+
+    /// @notice Set the trusted account factory for smart account verification
+    /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
+    /// @dev Should be called by inheriting contract with proper access control
+    function _setAccountFactory(address factory_) internal {
+        address oldFactory = address(accountFactory);
+        accountFactory = IAccountFactory(factory_);
+        emit AccountFactoryUpdated(oldFactory, factory_);
+    }
 
     /// @notice Validate a mint approval signature
     /// @param predictionHash Hash of the prediction parameters
@@ -162,10 +185,20 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // 3. Verify the smart account is derived from the owner
-        // This is a simplified check - in production, you might want to verify
-        // against a specific account factory or use a registry
-        // For now, we trust that the owner signed the sessionApproval with the correct smartAccount
-        // The security comes from the owner explicitly authorizing the (sessionKey, smartAccount) pair
+        // This ensures the owner actually controls the smart account they claim to
+        if (address(accountFactory) != address(0)) {
+            // Try index 0 first (primary account), then index 1 as fallback
+            address expectedAccount = accountFactory.getAccountAddress(sessionApproval.owner, 0);
+            if (expectedAccount != smartAccount) {
+                // Try index 1 for users with multiple accounts
+                expectedAccount = accountFactory.getAccountAddress(sessionApproval.owner, 1);
+                if (expectedAccount != smartAccount) {
+                    return false;
+                }
+            }
+        }
+        // Note: If accountFactory is not set, we fall back to trusting the owner's signature
+        // This allows gradual migration - set accountFactory for stricter verification
 
         return true;
     }

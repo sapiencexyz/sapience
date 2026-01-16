@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "./PositionToken.sol";
 import "./interfaces/IPredictionMarketV2.sol";
 import "./interfaces/IConditionResolver.sol";
@@ -17,7 +18,7 @@ import "./utils/SignatureValidator.sol";
  * @notice Unified prediction market contract with fungible betting pools
  * @dev Same picks share tokens. Token supply = total wagers. Parimutuel model.
  */
-contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, SignatureValidator {
+contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, SignatureValidator, Ownable {
     using SafeERC20 for IERC20;
 
     // ============ Immutables ============
@@ -67,8 +68,18 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
     /// @notice Create a new prediction market
     /// @param collateralToken_ The collateral token address (WUSDe)
-    constructor(address collateralToken_) {
+    /// @param owner_ The contract owner (can set account factory)
+    constructor(address collateralToken_, address owner_) Ownable(owner_) {
         collateralToken = IERC20(collateralToken_);
+    }
+
+    // ============ Admin Functions ============
+
+    /// @notice Set the account factory for session key smart account verification
+    /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
+    /// @dev Only callable by owner. Set to address(0) to disable strict verification
+    function setAccountFactory(address factory_) external onlyOwner {
+        _setAccountFactory(factory_);
     }
 
     // ============ External Functions: Market ============
