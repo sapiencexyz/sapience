@@ -26,6 +26,19 @@ const CHAIN_ID_ETHEREAL = 5064014;
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 const WUSDE_ABI = parseAbi(['function deposit() payable']);
 
+// Success toast messages
+const SUCCESS_TITLE = 'Transaction successfully submitted.';
+const SUCCESS_SUFFIX =
+  'It may take a few moments for the transaction to be processed and reflected in the app.';
+
+function formatSuccessDescription(message?: string): string {
+  return message ? `${message}\n\n${SUCCESS_SUFFIX}` : SUCCESS_SUFFIX;
+}
+
+function formatSessionError(error: any): string {
+  return error?.shortMessage || error?.message || 'Session transaction failed';
+}
+
 interface useSapienceWriteContractProps {
   onSuccess?: (
     receipt: ReturnType<typeof useTransactionReceipt>['data']
@@ -50,6 +63,18 @@ interface useSapienceWriteContractProps {
    * Use `triggerRedirect()` returned from the hook to manually trigger redirect.
    */
   disableAutoRedirect?: boolean;
+  /**
+   * Called when transaction is about to be sent to the network.
+   */
+  onTxSending?: () => void;
+  /**
+   * Called when transaction hash is available (tx sent to network).
+   */
+  onTxSent?: (txHash: string) => void;
+  /**
+   * Called after on-chain receipt is confirmed.
+   */
+  onReceiptConfirmed?: () => void;
 }
 
 export function useSapienceWriteContract({
@@ -62,6 +87,9 @@ export function useSapienceWriteContract({
   redirectPage = 'profile',
   disableSuccessToast = false,
   disableAutoRedirect = false,
+  onTxSending,
+  onTxSent,
+  onReceiptConfirmed,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
 
@@ -198,7 +226,7 @@ export function useSapienceWriteContract({
       if (!disableSuccessToast) {
         try {
           toast({
-            title: successTitle,
+            title: SUCCESS_TITLE,
             description: formatSuccessDescription(successMessage),
             duration: 5000,
           });
@@ -221,15 +249,6 @@ export function useSapienceWriteContract({
       disableAutoRedirect,
     ]
   );
-
-  // Unified success toast formatting
-  const successTitle = 'Transaction successfully submitted.';
-  const successSuffixNote =
-    'It may take a few moments for the transaction to be processed and reflected in the app.';
-  const formatSuccessDescription = (message?: string) =>
-    message && message.length > 0
-      ? `${message}\n\n${successSuffixNote}`
-      : successSuffixNote;
 
   // Chain validation
   const { validateAndSwitchChain } = useChainValidation({
@@ -257,20 +276,57 @@ export function useSapienceWriteContract({
     reset: resetCalls,
   } = useSendCalls();
 
-  const pickFinalTransactionHash = useCallback((data: any) => {
-    const receipts = data?.receipts;
-    if (Array.isArray(receipts) && receipts.length > 0) {
-      for (let i = receipts.length - 1; i >= 0; i--) {
-        const h = receipts?.[i]?.transactionHash;
-        if (typeof h === 'string' && h.length > 0) return h;
+  const pickFinalTransactionHash = useCallback(
+    (data: any): string | undefined => {
+      const receipts = data?.receipts;
+      if (Array.isArray(receipts) && receipts.length > 0) {
+        for (let i = receipts.length - 1; i >= 0; i--) {
+          const h = receipts?.[i]?.transactionHash;
+          if (typeof h === 'string' && h.length > 0) return h;
+        }
       }
+      if (typeof data?.transactionHash === 'string')
+        return data.transactionHash;
+      if (typeof data?.txHash === 'string') return data.txHash;
+      return undefined;
+    },
+    []
+  );
+
+  // Helper to show success toast (used by sendCalls in multiple places)
+  const showSuccessToast = useCallback(() => {
+    if (disableSuccessToast || didShowSuccessToastRef.current) return;
+    try {
+      toast({
+        title: SUCCESS_TITLE,
+        description: formatSuccessDescription(successMessage),
+        duration: 5000,
+      });
+      didShowSuccessToastRef.current = true;
+    } catch {
+      // Silently ignore toast errors
     }
-    const txHash =
-      (typeof data?.transactionHash === 'string' && data.transactionHash) ||
-      (typeof data?.txHash === 'string' && data.txHash) ||
-      undefined;
-    return txHash;
-  }, []);
+  }, [disableSuccessToast, toast, successMessage]);
+
+  // Helper to complete sendCalls with a tx hash
+  const completeSendCallsWithHash = useCallback(
+    (transactionHash: Hash) => {
+      maybeRedirect();
+      showSuccessToast();
+      onTxHash?.(transactionHash);
+      setTxHash(transactionHash);
+      setIsSubmitting(false);
+    },
+    [maybeRedirect, showSuccessToast, onTxHash]
+  );
+
+  // Helper to complete sendCalls without a tx hash
+  const completeSendCallsWithoutHash = useCallback(() => {
+    maybeRedirect();
+    showSuccessToast();
+    onSuccess?.(undefined as any);
+    setIsSubmitting(false);
+  }, [maybeRedirect, showSuccessToast, onSuccess]);
 
   // Helper to execute transaction via session key (shared by writeContract and sendCalls)
   const executeViaSessionKey = useCallback(
@@ -279,6 +335,9 @@ export function useSapienceWriteContract({
       calls: Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }>,
       _chainId: number
     ): Promise<Hash> => {
+      const timings: Record<string, number> = {};
+      const startTime = Date.now();
+
       // Check session expiration before attempting transaction
       if (sessionConfig) {
         const nowMs = Date.now();
@@ -291,19 +350,59 @@ export function useSapienceWriteContract({
         }
       }
 
+      // Step 1: Encode calls
+      const encodeStart = Date.now();
       const encodedCalls = await sessionClient.account.encodeCalls(calls);
+      timings.encodeCallsMs = Date.now() - encodeStart;
 
+      // Notify that tx is about to be sent to bundler
+      onTxSending?.();
+
+      // Step 2: Send user operation to bundler
+      // Internally this does: gas estimation → paymaster sponsorship → sign → send to bundler
+      const sendStart = Date.now();
       const userOpHash = await sessionClient.sendUserOperation({
         callData: encodedCalls,
       });
+      timings.sendUserOpMs = Date.now() - sendStart;
 
+      // Notify that bundler accepted - now waiting for block inclusion
+      onTxSent?.(userOpHash);
+
+      // Step 3: Wait for bundler to include user op in a block
+      const waitStart = Date.now();
       const receipt = await sessionClient.waitForUserOperationReceipt({
         hash: userOpHash,
       });
+      timings.waitForReceiptMs = Date.now() - waitStart;
 
-      return receipt.receipt.transactionHash;
+      const txHash = receipt.receipt.transactionHash;
+
+      // Notify that receipt was confirmed - now waiting for indexer
+      onReceiptConfirmed?.();
+
+      // Log final summary
+      timings.totalMs = Date.now() - startTime;
+      console.log('[SessionTx] ═══════════════════════════════════════════');
+      console.log('[SessionTx] TIMING BREAKDOWN:');
+      console.log(
+        `[SessionTx]   1. encodeCalls:          ${String(timings.encodeCallsMs).padStart(5)}ms`
+      );
+      console.log(
+        `[SessionTx]   2. sendUserOperation:    ${String(timings.sendUserOpMs).padStart(5)}ms  ← (paymaster + bundler submit)`
+      );
+      console.log(
+        `[SessionTx]   3. waitForReceipt:       ${String(timings.waitForReceiptMs).padStart(5)}ms  ← (block confirmation)`
+      );
+      console.log(`[SessionTx]   ─────────────────────────────`);
+      console.log(
+        `[SessionTx]   TOTAL:                   ${String(timings.totalMs).padStart(5)}ms`
+      );
+      console.log('[SessionTx] ═══════════════════════════════════════════');
+
+      return txHash;
     },
-    [sessionConfig]
+    [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
   );
 
   // Custom write contract function that handles chain validation
@@ -378,18 +477,8 @@ export function useSapienceWriteContract({
               return;
             } catch (sessionError: any) {
               console.error('[Session] UserOperation failed:', sessionError);
-              console.error('[Session] Error details:', {
-                message: sessionError?.message,
-                cause: sessionError?.cause,
-                details: sessionError?.details,
-                shortMessage: sessionError?.shortMessage,
-              });
-              const errorMessage =
-                sessionError?.shortMessage ||
-                sessionError?.message ||
-                'Session transaction failed';
               throw new Error(
-                `Session key transaction failed: ${errorMessage}`
+                `Session key transaction failed: ${formatSessionError(sessionError)}`
               );
             }
           }
@@ -540,36 +629,17 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              // Redirect after successful transaction
+              // Complete transaction - redirect and show success
+              // Note: Don't call onTxHash here - onTxSent was already called in executeViaSessionKey
               maybeRedirect();
-
-              if (!disableSuccessToast) {
-                toast({
-                  title: successTitle,
-                  description: formatSuccessDescription(successMessage),
-                  duration: 5000,
-                });
-                didShowSuccessToastRef.current = true;
-              }
-
-              onTxHash?.(txHashFromSession);
+              showSuccessToast();
               setTxHash(txHashFromSession);
               setIsSubmitting(false);
               return;
             } catch (sessionError: any) {
               console.error('[Session] UserOperation failed:', sessionError);
-              console.error('[Session] Error details:', {
-                message: sessionError?.message,
-                cause: sessionError?.cause,
-                details: sessionError?.details,
-                shortMessage: sessionError?.shortMessage,
-              });
-              const errorMessage =
-                sessionError?.shortMessage ||
-                sessionError?.message ||
-                'Session transaction failed';
               throw new Error(
-                `Session key transaction failed: ${errorMessage}`
+                `Session key transaction failed: ${formatSessionError(sessionError)}`
               );
             }
           }
@@ -583,98 +653,28 @@ export function useSapienceWriteContract({
           ...(args[0] as any),
           experimental_fallback: true,
         });
-        // If the wallet supports EIP-5792, we can poll for calls status using the returned id.
-        // If it does not (fallback path), `waitForCallsStatus` may throw or `id` may be unusable.
+        // Handle response - try to get tx hash from EIP-5792 or fallback
         try {
+          let transactionHash: string | undefined;
+
           if (data?.id) {
+            // EIP-5792 supported - poll for status
             const result = await waitForCallsStatus(client!, { id: data.id });
-            const transactionHash = pickFinalTransactionHash(result);
-            if (transactionHash) {
-              // Redirect as soon as a tx hash is known
-              maybeRedirect();
-              // Show success toast after navigation so it appears on profile
-              if (!disableSuccessToast) {
-                try {
-                  toast({
-                    title: successTitle,
-                    description: formatSuccessDescription(successMessage),
-                    duration: 5000,
-                  });
-                  didShowSuccessToastRef.current = true;
-                } catch (_e) {
-                  // Error showing success toast
-                }
-              }
-              onTxHash?.(transactionHash);
-              setTxHash(transactionHash);
-              setIsSubmitting(false);
-            } else {
-              // No tx hash available from aggregator; consider operation successful.
-              // Redirect before showing success toast
-              maybeRedirect();
-              if (!disableSuccessToast) {
-                toast({
-                  title: successTitle,
-                  description: formatSuccessDescription(successMessage),
-                  duration: 5000,
-                });
-                didShowSuccessToastRef.current = true;
-              }
-              onSuccess?.(undefined as any);
-            }
+            transactionHash = pickFinalTransactionHash(result);
           } else {
-            // Fallback path without aggregator id.
-            const transactionHash = pickFinalTransactionHash(data);
-            if (transactionHash) {
-              // Redirect as soon as a tx hash is known
-              maybeRedirect();
-              // Show success toast after navigation so it appears on profile
-              if (!disableSuccessToast) {
-                try {
-                  toast({
-                    title: successTitle,
-                    description: formatSuccessDescription(successMessage),
-                    duration: 5000,
-                  });
-                  didShowSuccessToastRef.current = true;
-                } catch (e) {
-                  console.error(e);
-                }
-              }
-              onTxHash?.(transactionHash);
-              setTxHash(transactionHash);
-              setIsSubmitting(false);
-              return;
-            }
-            // Fallback path without aggregator id.
-            // Redirect before showing success toast
-            maybeRedirect();
-            if (!disableSuccessToast) {
-              toast({
-                title: successTitle,
-                description: formatSuccessDescription(successMessage),
-                duration: 5000,
-              });
-              didShowSuccessToastRef.current = true;
-            }
-            onSuccess?.(undefined as any);
-            setIsSubmitting(false);
+            // Fallback path without aggregator id
+            transactionHash = pickFinalTransactionHash(data);
+          }
+
+          if (transactionHash) {
+            completeSendCallsWithHash(transactionHash as Hash);
+          } else {
+            completeSendCallsWithoutHash();
           }
         } catch (e) {
           console.error(e);
-          // `wallet_getCallsStatus` unsupported or failed; assume success since `sendCalls` resolved.
-          // Redirect before showing success toast
-          maybeRedirect();
-          if (!disableSuccessToast) {
-            toast({
-              title: successTitle,
-              description: formatSuccessDescription(successMessage),
-              duration: 5000,
-            });
-            didShowSuccessToastRef.current = true;
-          }
-          onSuccess?.(undefined as any);
-          setIsSubmitting(false);
+          // waitForCallsStatus unsupported or failed; assume success since sendCalls resolved
+          completeSendCallsWithoutHash();
         }
       } catch (error) {
         setIsSubmitting(false);
@@ -695,37 +695,31 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
-      onTxHash,
-      maybeRedirect,
-      onSuccess,
-      successMessage,
       pickFinalTransactionHash,
-      disableSuccessToast,
       canUseSessionForChain,
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
       executeViaSessionKey,
+      completeSendCallsWithHash,
+      completeSendCallsWithoutHash,
+      showSuccessToast,
+      maybeRedirect,
+      successMessage,
+      disableSuccessToast,
     ]
   );
 
   const handleTxSuccess = useCallback(
     (receipt: ReturnType<typeof useTransactionReceipt>['data']) => {
       if (!txHash) return;
-      // Avoid duplicate success toast if already shown after redirect
-      if (!disableSuccessToast && !didShowSuccessToastRef.current) {
-        toast({
-          title: successTitle,
-          description: formatSuccessDescription(successMessage),
-          duration: 5000,
-        });
-      }
+      showSuccessToast();
       onSuccess?.(receipt);
       setTxHash(undefined);
       setIsSubmitting(false);
       didShowSuccessToastRef.current = false;
     },
-    [txHash, toast, successMessage, onSuccess, disableSuccessToast]
+    [txHash, showSuccessToast, onSuccess]
   );
 
   const handleTxError = useCallback(

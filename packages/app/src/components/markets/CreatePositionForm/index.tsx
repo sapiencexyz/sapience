@@ -46,6 +46,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import { validateBidsAsync } from '~/lib/auction/validateBids';
@@ -110,12 +111,22 @@ const CreatePositionFormInner = ({
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareDialogData, setShareDialogData] = useState<{
-    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    picks: Array<{ question: string; choice: 'Yes' | 'No' }>;
     wager: string;
     payout?: string;
     symbol: string;
     lastNftId?: string;
   } | null>(null);
+
+  // Position progress tracking for benchmarking and UI
+  const {
+    progressState,
+    startSubmission,
+    markTxSent,
+    markReceiptReceived,
+    markPositionIndexed,
+    reset: resetProgress,
+  } = usePositionProgress();
 
   const positionChainId = useMemo(
     () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
@@ -141,7 +152,6 @@ const CreatePositionFormInner = ({
   const {
     bids: rawBids,
     requestQuotes,
-    notifyOrderCreated,
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
@@ -584,49 +594,6 @@ const CreatePositionFormInner = ({
     }
   }, [positionsWithMarketData, formMethods]);
 
-  // Prepare parlay positions for the hook (currently unused but may be needed later)
-  // const parlayPositions = useMemo(() => {
-  //   const limitAmount = (parlayLimitAmount ?? '10').toString();
-  //   const positionsForm =
-  //     (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
-  //     {};
-
-  //   return positionsWithMarketData
-  //     .filter(
-  //       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-  //     )
-  //     .map(({ position, marketClassification }) => {
-  //       const predValue = positionsForm?.[position.id]?.predictionValue;
-  //       if (
-  //         marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-  //       ) {
-  //         const selectedMarketId = Number(predValue ?? position.marketId);
-  //         return {
-  //           marketAddress: position.marketAddress,
-  //           marketId: selectedMarketId,
-  //           prediction: true,
-  //           limit: limitAmount,
-  //         };
-  //       }
-  //       // YES/NO path (default)
-  //       const isYes = predValue === YES_SQRT_PRICE_X96;
-  //       return {
-  //         marketAddress: position.marketAddress,
-  //         marketId: position.marketId,
-  //         prediction: isYes,
-  //         limit: limitAmount,
-  //       };
-  //     });
-  // }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
-
-  // Calculate payout amount = wager × 2^(number of positions) (unused for now)
-  // const payoutAmount = useMemo(() => {
-  //   const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
-  //   const listLength = parlayPositions.length;
-  //   const payout = parseFloat(wager) * Math.pow(2, listLength);
-  //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
-  // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
-
   // Use the position submission hook
   // Note: Share dialog is handled locally in this component
   const {
@@ -640,16 +607,13 @@ const CreatePositionFormInner = ({
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
     onSuccess: () => {
-      // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();
       setIsPopoverOpen(false);
     },
-    onOrderCreated: (makerNftId, takerNftId, txHash) => {
-      try {
-        notifyOrderCreated(`${makerNftId}-${takerNftId}`, txHash);
-      } catch {
-        // Failed to notify order created
-      }
+    onProgressUpdate: {
+      onTxSending: startSubmission,
+      onTxSent: markTxSent,
+      onReceiptConfirmed: markReceiptReceived,
     },
   });
 
@@ -722,7 +686,7 @@ const CreatePositionFormInner = ({
           }
 
           const dialogData = {
-            legs: selections.map((s) => ({
+            picks: selections.map((s) => ({
               question: s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
@@ -769,11 +733,11 @@ const CreatePositionFormInner = ({
     const qp = new URLSearchParams();
     qp.set('addr', String(effectiveAddress).toLowerCase());
 
-    // Add legs
-    if (shareDialogData.legs && shareDialogData.legs.length > 0) {
-      shareDialogData.legs.forEach((leg) => {
-        if (leg.question) {
-          qp.append('leg', `${leg.question}|${leg.choice}`);
+    // Add picks
+    if (shareDialogData.picks && shareDialogData.picks.length > 0) {
+      shareDialogData.picks.forEach((pick) => {
+        if (pick.question) {
+          qp.append('leg', `${pick.question}|${pick.choice}`);
         }
       });
     }
@@ -804,9 +768,10 @@ const CreatePositionFormInner = ({
         setShareDialogData(null);
         clearPositionForm();
         clearSelections();
+        resetProgress();
       }
     },
-    [clearPositionForm, clearSelections]
+    [clearPositionForm, clearSelections, resetProgress]
   );
 
   const contentProps = {
@@ -842,8 +807,10 @@ const CreatePositionFormInner = ({
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
       trackPosition={true}
-      expectedLegs={shareDialogData?.legs}
+      expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
+      progressState={progressState}
+      onPositionIndexed={markPositionIndexed}
     />
   );
 

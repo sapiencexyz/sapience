@@ -8,55 +8,82 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
-import Image from 'next/image';
 import Link from 'next/link';
-import { Copy, Share2, User } from 'lucide-react';
+import { Image as ImageIcon, Share2, User } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import * as viemChains from 'viem/chains';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
+import PositionProgressBar from '~/components/shared/PositionProgressBar';
 import {
   useUserPositions,
   type Position,
 } from '~/hooks/graphql/useUserPositions';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSession } from '~/lib/context/SessionContext';
+import type { PositionProgressState } from '~/types/positionProgress';
+
+// Stable counter for cache busting - increments each time a dialog opens
+let dialogOpenCounter = 0;
+
+// Helper to check if position picks match expected picks exactly
+function picksMatch(
+  positionPicks: Array<{ question: string; choice: string }>,
+  expectedPicks: Array<{ question: string; choice: string }>
+): boolean {
+  if (positionPicks.length !== expectedPicks.length) return false;
+
+  const expectedSet = new Set(
+    expectedPicks.map((leg) => `${leg.question}|${leg.choice}`)
+  );
+  const positionSet = new Set(
+    positionPicks.map((leg) => `${leg.question}|${leg.choice}`)
+  );
+
+  // Check bidirectional match
+  for (const key of expectedSet) {
+    if (!positionSet.has(key)) return false;
+  }
+  for (const key of positionSet) {
+    if (!expectedSet.has(key)) return false;
+  }
+  return true;
+}
 
 interface OgShareDialogBaseProps {
   imageSrc: string; // Relative path with query, e.g. "/og/trade?..."
   title?: string; // Dialog title
   trigger?: React.ReactNode;
-  shareTitle?: string; // Title for navigator.share
-  shareText?: string; // Text for navigator.share
+  shareTitle?: string; // Unused but kept for backward compatibility
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  copyButtonText?: string; // defaults to "Copy Image"
-  shareButtonText?: string; // defaults to "Share"
   trackPosition?: boolean; // Enable position tracking
   txHash?: string; // Optional tx hash for explorer link while pending
   positionTimestamp?: number; // Timestamp when position was placed (ms)
-  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
+  expectedPicks?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
+  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Alias for expectedPicks (backward compatibility)
   lastNftId?: string; // Last NFT ID before this position was submitted (for validation)
+  progressState?: PositionProgressState; // Progress state for showing submission stages
+  onPositionIndexed?: () => void; // Called when position is found in GraphQL
 }
 
-export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
-  const {
-    imageSrc,
-    title = 'Trade Submitted',
-    trigger,
-    shareTitle: _shareTitle = 'Share',
-    shareText: _shareText,
-    open: controlledOpen,
-    onOpenChange,
-    copyButtonText = 'Copy Image',
-    shareButtonText = 'Share',
-    trackPosition = false,
-    txHash,
-    positionTimestamp,
-    expectedLegs,
-    lastNftId,
-  } = props;
+export default function OgShareDialogBase({
+  imageSrc,
+  title = 'Trade Submitted',
+  trigger,
+  open: controlledOpen,
+  onOpenChange,
+  trackPosition = false,
+  txHash: _txHash,
+  positionTimestamp,
+  expectedPicks,
+  expectedLegs,
+  lastNftId,
+  progressState,
+  onPositionIndexed,
+}: OgShareDialogBaseProps) {
+  // Support both expectedPicks and expectedLegs for backward compatibility
+  const picks = expectedPicks || expectedLegs;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -68,7 +95,25 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
       }
     : setUncontrolledOpen;
 
-  const [cacheBust, setCacheBust] = useState('');
+  // Track if we've already generated cacheBust for this dialog open session
+  const cacheBustRef = useRef<string>('');
+  const wasOpenRef = useRef(false);
+
+  // Compute cacheBust synchronously during render (not in useEffect) to prevent double image load
+  // This ensures the image src is correct on the very first render when dialog opens
+  if (open && !wasOpenRef.current) {
+    // Dialog just opened - generate new cacheBust
+    dialogOpenCounter += 1;
+    cacheBustRef.current = `${dialogOpenCounter}-${Date.now()}`;
+    wasOpenRef.current = true;
+  } else if (!open && wasOpenRef.current) {
+    // Dialog just closed - reset for next open
+    cacheBustRef.current = '';
+    wasOpenRef.current = false;
+  }
+
+  const cacheBust = open ? cacheBustRef.current : '';
+
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
   const { address } = useAccount();
@@ -95,23 +140,16 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
   // Position tracking logic
   useEffect(() => {
     if (!trackPosition || !open || !userAddress) {
-      setPositionResolved(false);
       return;
     }
 
-    // Reset tracking state when positionTimestamp changes (new position)
-    const currentTimestamp = positionTimestamp || Date.now();
-    const timestampChanged =
-      dialogOpenTimestampRef.current !== currentTimestamp;
-
-    if (timestampChanged) {
-      setPositionResolved(false);
-      dialogOpenTimestampRef.current = currentTimestamp;
-      // Clear any existing polling interval
+    // Stop polling once position is resolved - prevents flickering
+    if (positionResolved) {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
         pollingIntervalRef.current = null;
       }
+      return;
     }
 
     const checkPosition = (positionsToCheck: Position[]) => {
@@ -143,136 +181,48 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             try {
               const currentNftId = BigInt(p.predictorNftTokenId || '0');
               return currentNftId > lastNftIdBigInt;
-            } catch (err) {
-              console.error(
-                '[OgShareDialog] Position indexing: Error comparing NFT ID for position',
-                {
-                  positionId: p.id,
-                  nftId: p.predictorNftTokenId,
-                  error: err,
-                }
-              );
+            } catch {
               return false;
             }
           });
 
           if (filteredByNftId.length === 0) {
-            console.warn(
-              '[OgShareDialog] Position indexing: No candidates after NFT ID filter',
-              {
-                lastNftId,
-                candidateCount: candidatePositions.length,
-                candidates: candidatePositions.map((p) => ({
-                  id: p.id,
-                  nftId: p.predictorNftTokenId,
-                })),
-              }
-            );
             return false;
           }
-        } catch (_e) {
-          console.error(
-            '[OgShareDialog] Position indexing: Error comparing NFT IDs:',
-            _e
-          );
-          // Error comparing NFT IDs
+        } catch {
+          // Error comparing NFT IDs - continue without filter
         }
       }
 
-      // If expectedLegs are provided, verify the position matches the submitted conditions
-      if (expectedLegs && expectedLegs.length > 0) {
+      // If picks are provided, verify the position matches the submitted conditions
+      if (picks && picks.length > 0) {
         const foundPosition = filteredByNftId.find((p: Position) => {
-          const positionLegs = (p.predictions || []).map((pred) => {
-            const question =
-              pred.condition?.shortName || pred.condition?.question || '';
-            const choice = pred.outcomeYes ? 'Yes' : 'No';
-            return { question, choice };
-          });
+          const positionPicks = (p.predictions || []).map((pred) => ({
+            question:
+              pred.condition?.shortName || pred.condition?.question || '',
+            choice: pred.outcomeYes ? 'Yes' : 'No',
+          }));
 
-          // Check if all expected legs match the position's predictions
-          if (positionLegs.length !== expectedLegs.length) {
-            return false;
-          }
-
-          // Create maps for easier comparison
-          const expectedMap = new Map(
-            expectedLegs.map((leg) => [`${leg.question}|${leg.choice}`, true])
-          );
-          const positionMap = new Map(
-            positionLegs.map((leg) => [`${leg.question}|${leg.choice}`, true])
-          );
-
-          // Check if all expected legs are present in position
-          for (const leg of expectedLegs) {
-            const key = `${leg.question}|${leg.choice}`;
-            if (!positionMap.has(key)) {
-              return false;
-            }
-          }
-
-          // Check if all position legs are in expected (to ensure exact match)
-          for (const leg of positionLegs) {
-            const key = `${leg.question}|${leg.choice}`;
-            if (!expectedMap.has(key)) {
-              return false;
-            }
-          }
-
-          return true;
+          return picksMatch(positionPicks, picks);
         });
 
         if (foundPosition) {
-          console.log('[OgShareDialog] Position indexed by FE', {
-            positionId: foundPosition.id,
-            nftId: foundPosition.predictorNftTokenId,
-            chainId: foundPosition.chainId,
-            mintedAt: foundPosition.mintedAt,
-            lastNftId,
-            expectedLegsCount: expectedLegs?.length || 0,
-          });
           setPositionResolved(true);
+          onPositionIndexed?.();
           if (pollingIntervalRef.current) {
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
           return true;
         }
-        console.warn(
-          '[OgShareDialog] Position indexing: No position matched expected legs',
-          {
-            expectedLegs,
-            checkedPositions: filteredByNftId.map((p) => ({
-              id: p.id,
-              legs: (p.predictions || []).map((pred) => ({
-                question: pred.condition?.shortName || pred.condition?.question,
-                choice: pred.outcomeYes ? 'Yes' : 'No',
-              })),
-            })),
-          }
-        );
         return false;
       }
 
-      // Fallback: if no expectedLegs provided, use first candidate after NFT ID filter (backward compatibility)
-      console.warn(
-        '[OgShareDialog] Position indexing: Using fallback (no expected legs) - this should be avoided!',
-        {
-          candidates: filteredByNftId.length,
-          candidateIds: filteredByNftId.map((p) => p.id),
-          hasExpectedLegs: !!(expectedLegs && expectedLegs.length > 0),
-        }
-      );
+      // Fallback: if no picks provided, use first candidate after NFT ID filter (backward compatibility)
       const foundPosition = filteredByNftId[0];
       if (foundPosition) {
-        console.log('[OgShareDialog] Position indexed by FE (fallback)', {
-          positionId: foundPosition.id,
-          nftId: foundPosition.predictorNftTokenId,
-          chainId: foundPosition.chainId,
-          mintedAt: foundPosition.mintedAt,
-          lastNftId,
-          note: 'Using fallback - no expected legs provided',
-        });
         setPositionResolved(true);
+        onPositionIndexed?.();
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current);
           pollingIntervalRef.current = null;
@@ -295,11 +245,8 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
           const result = await refetchPositions();
           const latestPositions = result.data || [];
           checkPosition(latestPositions);
-        } catch (_error) {
-          console.error(
-            '[OgShareDialog] Position indexing: Error refetching positions',
-            _error
-          );
+        } catch {
+          // Error refetching positions - will retry on next interval
         }
       }, 1000);
     }
@@ -314,17 +261,18 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     trackPosition,
     open,
     userAddress,
-    positions,
+    positionResolved,
     refetchPositions,
-    positionTimestamp,
-    expectedLegs,
+    picks,
     lastNftId,
+    onPositionIndexed,
   ]);
 
   // Reset tracking state when dialog closes
   useEffect(() => {
     if (!open) {
       setPositionResolved(false);
+      setImgLoading(true); // Reset image loading state to prevent flash on reopen
       dialogOpenTimestampRef.current = null;
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -402,30 +350,14 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
     return imageSrc;
   }, [imageSrc]);
 
-  const _explorerTxUrl = useMemo(() => {
-    if (!txHash || !chainId) return null;
-    const ETHEREAL_CHAIN_ID = 5064014;
-    const etherealExplorer = 'https://explorer.ethereal.trade';
-
-    const baseUrl =
-      chainId === ETHEREAL_CHAIN_ID
-        ? etherealExplorer
-        : (Object.values(viemChains).find((c: any) => c?.id === chainId) as any)
-            ?.blockExplorers?.default?.url;
-
-    if (!baseUrl) return null;
-    return `${String(baseUrl).replace(/\/$/, '')}/tx/${txHash}`;
-  }, [txHash, chainId]);
-
+  // Set dialogOpenTimestamp when dialog opens for position tracking
   useEffect(() => {
-    if (open) setCacheBust(String(Date.now()));
-  }, [open]);
+    if (open && trackPosition && !dialogOpenTimestampRef.current) {
+      dialogOpenTimestampRef.current = positionTimestamp || Date.now();
+    }
+  }, [open, trackPosition, positionTimestamp]);
 
   const previewSrc = `${imageSrc}${cacheBust ? `&cb=${cacheBust}` : ''}`;
-
-  useEffect(() => {
-    setImgLoading(true);
-  }, [previewSrc]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -440,14 +372,6 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
             <div className="absolute inset-0 z-0">
               <HeroBackgroundLines className="opacity-60 !-z-0" />
             </div>
-            {/* Waiting text - shown while tracking position and not yet resolved */}
-            {trackPosition && !positionResolved && (
-              <div className="absolute inset-0 flex items-center justify-center z-10">
-                <span className="font-mono text-[hsl(var(--accent-gold))] text-lg uppercase tracking-wider">
-                  WAITING FOR YOUR TRADE TO BE INDEXED
-                </span>
-              </div>
-            )}
             {/* Loading text for non-tracking mode */}
             {!trackPosition && imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -456,137 +380,150 @@ export default function OgShareDialogBase(props: OgShareDialogBaseProps) {
                 </span>
               </div>
             )}
-            {/* OG Image - fades in over the hero background */}
-            {/* Use unoptimized to avoid double-encoding of URL params */}
-            <Image
+            {/* OG Image - fades in over the waiting text and hero background */}
+            {/* Using regular img tag to prevent Next.js Image from re-fetching on re-renders */}
+            <img
               src={previewSrc}
               alt="Share preview"
-              fill
-              sizes="(max-width: 768px) 100vw, 720px"
               onLoad={() => setImgLoading(false)}
               onError={() => setImgLoading(false)}
-              priority
-              unoptimized
-              className={`transition-opacity duration-500 ${
-                imgLoading || (trackPosition && !positionResolved)
-                  ? 'opacity-0'
-                  : 'opacity-100'
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 z-20 ${
+                imgLoading ? 'opacity-0' : 'opacity-100'
               }`}
             />
           </div>
-          <div
-            className={`grid grid-cols-3 gap-4 transition-all duration-500 ease-out overflow-hidden ${
-              trackPosition && !positionResolved
-                ? 'max-h-0 opacity-0 pointer-events-none'
-                : 'max-h-24 opacity-100 mt-4'
-            }`}
-          >
-            {/* Copy */}
-            <Button
-              size="lg"
-              className="w-full"
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                try {
-                  const res = await fetch(absoluteImageUrl, {
-                    cache: 'no-store',
-                  });
-                  const blob = await res.blob();
-                  if (navigator.clipboard && (window as any).ClipboardItem) {
-                    const item = new (window as any).ClipboardItem({
-                      [blob.type]: blob,
-                    });
-                    await navigator.clipboard.write([item]);
-                    toast({ title: 'Image copied successfully' });
-                    return;
-                  }
-
-                  // Fallback: generate compact share URL and copy as text
-                  const shareUrl = buildShareUrl();
-                  await navigator.clipboard.writeText(shareUrl);
-                  toast({ title: 'Link copied successfully' });
-                } catch {
-                  try {
-                    const shareUrl = buildShareUrl();
-                    await navigator.clipboard.writeText(shareUrl);
-                    toast({ title: 'Link copied successfully' });
-                  } catch {
-                    // ignore
-                  }
-                }
-              }}
-            >
-              <Copy className="mr-0.5 h-4 w-4" /> {copyButtonText}
-            </Button>
-            {/* Post (X) - middle */}
-            <Button
-              size="lg"
-              className="w-full"
-              type="button"
-              onClick={() => {
-                const shareUrl = buildShareUrl();
-                const intent = buildXShareUrl(shareUrl);
-                window.open(intent, '_blank', 'noopener,noreferrer');
-              }}
-            >
-              <Image
-                src="/x.svg"
-                alt="X"
-                width={14}
-                height={14}
-                className="mr-0.5 dark:invert"
-              />
-              Post
-            </Button>
-            {/* Share */}
-            <Button
-              size="lg"
-              className="w-full"
-              type="button"
-              variant="outline"
-              onClick={async () => {
-                const shareUrl = buildShareUrl();
-                if ((navigator as any).share) {
-                  try {
-                    await (navigator as any).share({ url: shareUrl });
-                    return;
-                  } catch {
-                    // fallthrough
-                  }
-                }
-                window.open(shareUrl, '_blank', 'noopener,noreferrer');
-              }}
-            >
-              <Share2 className="mr-0.5 h-4 w-4" /> {shareButtonText}
-            </Button>
-          </div>
-          {/* View Portfolio - slides open when position is resolved */}
-          {trackPosition && userAddress && (
+          {/* Progress bar and buttons container - they cross-fade */}
+          <div className="relative mt-4 min-h-[44px]">
+            {/* Progress bar - fades out when resolved */}
+            {trackPosition && progressState && (
+              <div
+                className={`absolute inset-0 transition-opacity duration-500 ${
+                  positionResolved
+                    ? 'opacity-0 pointer-events-none'
+                    : 'opacity-100'
+                }`}
+              >
+                <PositionProgressBar progressState={progressState} />
+              </div>
+            )}
+            {/* Buttons - fade in on top of progress bar when resolved */}
             <div
-              className={`overflow-hidden transition-all duration-500 ease-out ${
-                positionResolved
-                  ? 'max-h-16 opacity-100 mt-4'
-                  : 'max-h-0 opacity-0'
+              className={`absolute inset-0 flex items-center transition-opacity duration-500 ease-out ${
+                trackPosition && !positionResolved
+                  ? 'opacity-0 pointer-events-none'
+                  : 'opacity-100'
               }`}
             >
-              <Button
-                size="lg"
-                className="w-full"
-                type="button"
-                variant="outline"
-                asChild
+              <div
+                className={`grid gap-4 w-full ${
+                  trackPosition && userAddress ? 'grid-cols-4' : 'grid-cols-3'
+                }`}
               >
-                <Link
-                  href={`/profile/${userAddress}#positions`}
-                  className="whitespace-nowrap"
+                {/* Copy */}
+                <Button
+                  size="lg"
+                  className="w-full"
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(absoluteImageUrl, {
+                        cache: 'no-store',
+                      });
+                      const blob = await res.blob();
+                      if (
+                        navigator.clipboard &&
+                        (window as any).ClipboardItem
+                      ) {
+                        const item = new (window as any).ClipboardItem({
+                          [blob.type]: blob,
+                        });
+                        await navigator.clipboard.write([item]);
+                        toast({ title: 'Image copied successfully' });
+                        return;
+                      }
+
+                      // Fallback: generate compact share URL and copy as text
+                      const shareUrl = buildShareUrl();
+                      await navigator.clipboard.writeText(shareUrl);
+                      toast({ title: 'Link copied successfully' });
+                    } catch {
+                      try {
+                        const shareUrl = buildShareUrl();
+                        await navigator.clipboard.writeText(shareUrl);
+                        toast({ title: 'Link copied successfully' });
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  }}
                 >
-                  <User className="mr-0.5 h-4 w-4" />
-                  View Portfolio
-                </Link>
-              </Button>
+                  <ImageIcon className="mr-0.5 h-4 w-4" /> Copy
+                </Button>
+                {/* Post (X) */}
+                <Button
+                  size="lg"
+                  className="w-full"
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const shareUrl = buildShareUrl();
+                    const intent = buildXShareUrl(shareUrl);
+                    window.open(intent, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <svg
+                    className="mr-0.5 h-4 w-4"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+                  </svg>
+                  Post
+                </Button>
+                {/* Share */}
+                <Button
+                  size="lg"
+                  className="w-full"
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    const shareUrl = buildShareUrl();
+                    if ((navigator as any).share) {
+                      try {
+                        await (navigator as any).share({ url: shareUrl });
+                        return;
+                      } catch {
+                        // fallthrough
+                      }
+                    }
+                    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <Share2 className="mr-0.5 h-4 w-4" /> Share
+                </Button>
+                {/* Portfolio */}
+                {trackPosition && userAddress && (
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    type="button"
+                    variant="outline"
+                    asChild
+                  >
+                    <Link
+                      href={`/profile/${userAddress}#positions`}
+                      className="whitespace-nowrap"
+                    >
+                      <User className="mr-0.5 h-4 w-4" />
+                      Portfolio
+                    </Link>
+                  </Button>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
