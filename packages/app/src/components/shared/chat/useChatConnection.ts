@@ -249,7 +249,8 @@ export function useChatConnection(
               try {
                 // Prefer session-based auth if session is active
                 const currentSessionApproval = sessionApprovalRef.current;
-                const currentSignWithSession = signMessageWithSessionRef.current;
+                const currentSignWithSession =
+                  signMessageWithSessionRef.current;
                 const currentIsSessionActive = isSessionActiveRef.current;
 
                 if (
@@ -269,7 +270,8 @@ export function useChatConnection(
                         sessionTypedData: currentSessionApproval.typedData,
                         sessionSignature,
                         nonce: data.nonce,
-                        chainId: currentSessionApproval.typedData.domain.chainId,
+                        chainId:
+                          currentSessionApproval.typedData.domain.chainId,
                       })
                     );
                     return;
