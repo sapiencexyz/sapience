@@ -158,9 +158,9 @@ contract PredictionMarketV2Test is Test {
         assertEq(collateralToken.balanceOf(counterparty), counterpartyBalanceBefore - COUNTERPARTY_WAGER);
         assertEq(collateralToken.balanceOf(address(market)), PREDICTOR_WAGER + COUNTERPARTY_WAGER);
 
-        // Check position tokens were minted
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), 1e18);
-        assertEq(IPositionToken(counterpartyToken).balanceOf(counterparty), 1e18);
+        // Check position tokens were minted (amount = wager in fungible model)
+        assertEq(IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER);
+        assertEq(IPositionToken(counterpartyToken).balanceOf(counterparty), COUNTERPARTY_WAGER);
 
         // Check prediction data
         IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
@@ -182,8 +182,9 @@ contract PredictionMarketV2Test is Test {
         assertTrue(predictorToken != address(0));
         assertTrue(counterpartyToken != address(0));
 
-        // Verify picks were stored
-        IV2Types.Pick[] memory storedPicks = market.getPicks(predictionId);
+        // Verify picks were stored (getPicks uses pickConfigId)
+        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.Pick[] memory storedPicks = market.getPicks(prediction.pickConfigId);
         assertEq(storedPicks.length, 2);
         assertEq(storedPicks[0].conditionId, conditionId1);
         assertEq(storedPicks[1].conditionId, conditionId2);
@@ -237,10 +238,11 @@ contract PredictionMarketV2Test is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Check prediction is settled
+        // Check prediction is settled (result is now on PickConfiguration)
         IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        assertEq(uint256(prediction.result), uint256(IV2Types.SettlementResult.PREDICTOR_WINS));
+        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.PREDICTOR_WINS));
     }
 
     function test_settle_counterpartyWins() public {
@@ -257,10 +259,11 @@ contract PredictionMarketV2Test is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Check prediction is settled
+        // Check prediction is settled (result is now on PickConfiguration)
         IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        assertEq(uint256(prediction.result), uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS));
+        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS));
     }
 
     function test_settle_tie() public {
@@ -277,10 +280,11 @@ contract PredictionMarketV2Test is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Check prediction is settled
+        // Check prediction is settled (result is now on PickConfiguration)
         IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        assertEq(uint256(prediction.result), uint256(IV2Types.SettlementResult.NON_DECISIVE));
+        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.NON_DECISIVE));
     }
 
     function test_settle_revertIfNotFound() public {
@@ -329,11 +333,11 @@ contract PredictionMarketV2Test is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
-        // Predictor redeems
+        // Predictor redeems (full token balance = PREDICTOR_WAGER)
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 
         vm.prank(predictor);
-        uint256 payout = market.redeem(predictorToken, 1e18, REF_CODE);
+        uint256 payout = market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
 
         // Predictor should get all collateral
         assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
@@ -351,11 +355,11 @@ contract PredictionMarketV2Test is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Counterparty redeems
+        // Counterparty redeems (full token balance = COUNTERPARTY_WAGER)
         uint256 counterpartyBalanceBefore = collateralToken.balanceOf(counterparty);
 
         vm.prank(counterparty);
-        uint256 payout = market.redeem(counterpartyToken, 1e18, REF_CODE);
+        uint256 payout = market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
 
         // Counterparty should get all collateral
         assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
@@ -373,12 +377,12 @@ contract PredictionMarketV2Test is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem
+        // Both redeem their full token balances
         vm.prank(predictor);
-        uint256 predictorPayout = market.redeem(predictorToken, 1e18, REF_CODE);
+        uint256 predictorPayout = market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
 
         vm.prank(counterparty);
-        uint256 counterpartyPayout = market.redeem(counterpartyToken, 1e18, REF_CODE);
+        uint256 counterpartyPayout = market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
 
         // Each gets their original wager back
         assertEq(predictorPayout, PREDICTOR_WAGER);
@@ -396,16 +400,17 @@ contract PredictionMarketV2Test is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
-        // Predictor redeems half
+        // Predictor redeems half of their tokens
+        uint256 redeemAmount = PREDICTOR_WAGER / 2;
         vm.prank(predictor);
-        uint256 payout = market.redeem(predictorToken, 0.5e18, REF_CODE);
+        uint256 payout = market.redeem(predictorToken, redeemAmount, REF_CODE);
 
-        // Should get half of total
+        // Should get half of total (since they own all predictor tokens)
         uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
         assertEq(payout, totalCollateral / 2);
 
         // Should still have half the tokens
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), 0.5e18);
+        assertEq(IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER / 2);
     }
 
     function test_redeem_revertIfNotSettled() public {
@@ -415,14 +420,14 @@ contract PredictionMarketV2Test is Test {
         (, address predictorToken,) = _mintPrediction(picks);
 
         vm.prank(predictor);
-        vm.expectRevert(IPredictionMarketV2.PredictionNotSettled.selector);
-        market.redeem(predictorToken, 1e18, REF_CODE);
+        vm.expectRevert(IPredictionMarketV2.PickConfigNotResolved.selector);
+        market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
     }
 
     function test_redeem_revertIfInvalidToken() public {
         vm.prank(predictor);
         vm.expectRevert(IPredictionMarketV2.InvalidToken.selector);
-        market.redeem(address(collateralToken), 1e18, REF_CODE);
+        market.redeem(address(collateralToken), 100e18, REF_CODE);
     }
 
     // ============ View Functions Tests ============
@@ -454,7 +459,9 @@ contract PredictionMarketV2Test is Test {
 
         (bytes32 predictionId, address predictorToken, address counterpartyToken) = _mintPrediction(picks);
 
-        IV2Types.TokenPair memory pair = market.getTokenPair(predictionId);
+        // getTokenPair now takes pickConfigId
+        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.TokenPair memory pair = market.getTokenPair(prediction.pickConfigId);
         assertEq(pair.predictorToken, predictorToken);
         assertEq(pair.counterpartyToken, counterpartyToken);
     }

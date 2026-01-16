@@ -80,13 +80,13 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         if (amount == 0) revert ZeroAmount();
 
         // Read token metadata directly from the token contract
-        bytes32 predictionId;
+        bytes32 pickConfigId;
         bool isPredictorToken;
         string memory name;
         string memory symbol;
 
-        try IPositionToken(token).predictionId() returns (bytes32 pid) {
-            predictionId = pid;
+        try IPositionToken(token).pickConfigId() returns (bytes32 pid) {
+            pickConfigId = pid;
         } catch {
             revert InvalidToken(token);
         }
@@ -122,7 +122,7 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         bytes memory payload = abi.encode(
             bridgeId,
             token,
-            predictionId,
+            pickConfigId,
             isPredictorToken,
             name,
             symbol,
@@ -219,7 +219,7 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         bytes memory payload = abi.encode(
             bytes32(0), // bridgeId placeholder
             token,
-            bytes32(0), // predictionId placeholder
+            bytes32(0), // pickConfigId placeholder
             false, // isPredictorToken placeholder
             name,
             symbol,

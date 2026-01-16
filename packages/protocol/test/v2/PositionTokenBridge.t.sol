@@ -305,7 +305,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Verify token was deployed and minted
         assertTrue(bridgedToken.code.length > 0);
         assertEq(BridgedPositionToken(bridgedToken).balanceOf(user), amount);
-        assertEq(BridgedPositionToken(bridgedToken).predictionId(), PREDICTION_ID);
+        assertEq(BridgedPositionToken(bridgedToken).pickConfigId(), PREDICTION_ID);
         assertEq(BridgedPositionToken(bridgedToken).isPredictorToken(), IS_PREDICTOR_TOKEN);
 
         // Status remains PENDING (ACK not sent in test env due to balance limitation)

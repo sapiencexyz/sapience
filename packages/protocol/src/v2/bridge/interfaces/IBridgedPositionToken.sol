@@ -14,7 +14,7 @@ interface IBridgedPositionToken is IERC20 {
     // ============ View Functions ============
 
     /// @notice The prediction this token represents
-    function predictionId() external view returns (bytes32);
+    function pickConfigId() external view returns (bytes32);
 
     /// @notice True if this is the predictor token
     function isPredictorToken() external view returns (bool);

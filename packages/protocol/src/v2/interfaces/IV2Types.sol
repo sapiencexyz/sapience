@@ -35,16 +35,29 @@ interface IV2Types {
     }
 
     /// @notice Full prediction data stored on-chain
+    /// @dev Links to a PickConfiguration for fungible token sharing
     struct Prediction {
-        bytes32 predictionId; // Unique identifier (hash of canonical picks)
+        bytes32 predictionId; // Unique identifier for this bet
+        bytes32 pickConfigId; // Link to shared pick configuration
         uint256 predictorWager; // Amount from predictor
         uint256 counterpartyWager; // Amount from counterparty
         address predictor; // Predictor address
         address counterparty; // Counterparty address
-        address predictorToken; // ERC20 token for predictor position
-        address counterpartyToken; // ERC20 token for counterparty position
-        bool settled; // Whether prediction has been settled
-        SettlementResult result; // Settlement outcome
+        uint256 predictorTokensMinted; // Tokens minted to predictor (= predictorWager)
+        uint256 counterpartyTokensMinted; // Tokens minted to counterparty (= counterpartyWager)
+        bool settled; // Whether this prediction has been settled
+    }
+
+    /// @notice Pick configuration for fungible betting pools
+    /// @dev Multiple predictions with same picks share tokens
+    struct PickConfiguration {
+        bytes32 pickConfigId; // Hash of canonical picks
+        uint256 totalPredictorCollateral; // Sum of all predictor wagers
+        uint256 totalCounterpartyCollateral; // Sum of all counterparty wagers
+        uint256 claimedPredictorCollateral; // Amount claimed by predictor token holders
+        uint256 claimedCounterpartyCollateral; // Amount claimed by counterparty token holders
+        bool resolved; // Whether picks have been resolved
+        SettlementResult result; // Outcome when resolved
     }
 
     /// @notice Session key approval data for ZeroDev integration
@@ -84,12 +97,14 @@ interface IV2Types {
     }
 
     /// @notice Escrow record for a prediction
+    /// @dev Tracks individual bet for audit trail, linked to shared PickConfiguration
     struct EscrowRecord {
-        uint256 totalCollateral; // predictorWager + counterpartyWager
+        bytes32 pickConfigId; // Link to shared pick configuration
+        uint256 totalCollateral; // predictorWager + counterpartyWager for THIS bet
         uint256 predictorWager; // Original predictor wager
         uint256 counterpartyWager; // Original counterparty wager
-        uint256 predictorTokenClaimable; // Total claimable by predictor token holders
-        uint256 counterpartyTokenClaimable; // Total claimable by counterparty token holders
-        bool settled; // Whether escrow has been settled
+        uint256 predictorTokensMinted; // Tokens minted to predictor
+        uint256 counterpartyTokensMinted; // Tokens minted to counterparty
+        bool settled; // Whether this individual bet has been settled
     }
 }

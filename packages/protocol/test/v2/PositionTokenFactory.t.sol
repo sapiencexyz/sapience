@@ -93,7 +93,7 @@ contract PositionTokenFactoryTest is Test {
         BridgedPositionToken bridged = BridgedPositionToken(token);
         assertEq(bridged.name(), "My Token");
         assertEq(bridged.symbol(), "MTK");
-        assertEq(bridged.predictionId(), PREDICTION_ID);
+        assertEq(bridged.pickConfigId(), PREDICTION_ID);
         assertEq(bridged.isPredictorToken(), IS_PREDICTOR_TOKEN);
         assertEq(bridged.bridge(), address(this));
         // Factory address from token's perspective is the CREATE3 proxy, not the factory contract

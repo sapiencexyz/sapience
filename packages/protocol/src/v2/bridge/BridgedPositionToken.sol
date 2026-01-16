@@ -9,7 +9,7 @@ import "./interfaces/IBridgedPositionToken.sol";
 /// @dev Mintable/burnable only by the bridge contract
 contract BridgedPositionToken is ERC20, IBridgedPositionToken {
     /// @inheritdoc IBridgedPositionToken
-    bytes32 public immutable predictionId;
+    bytes32 public immutable pickConfigId;
 
     /// @inheritdoc IBridgedPositionToken
     bool public immutable isPredictorToken;
@@ -23,17 +23,17 @@ contract BridgedPositionToken is ERC20, IBridgedPositionToken {
     /// @notice Create a new bridged position token
     /// @param name_ Token name
     /// @param symbol_ Token symbol
-    /// @param predictionId_ The prediction this token represents
+    /// @param pickConfigId_ The prediction this token represents
     /// @param isPredictorToken_ True if this is the predictor token
     /// @param bridge_ Address authorized to mint/burn (the bridge contract)
     constructor(
         string memory name_,
         string memory symbol_,
-        bytes32 predictionId_,
+        bytes32 pickConfigId_,
         bool isPredictorToken_,
         address bridge_
     ) ERC20(name_, symbol_) {
-        predictionId = predictionId_;
+        pickConfigId = pickConfigId_;
         isPredictorToken = isPredictorToken_;
         bridge = bridge_;
         factory = msg.sender; // Factory deploys via CREATE3

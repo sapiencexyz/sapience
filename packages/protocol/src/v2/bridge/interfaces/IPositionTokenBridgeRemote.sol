@@ -159,20 +159,20 @@ interface IPositionTokenBridgeRemote {
     function getFactory() external view returns (address);
 
     /// @notice Check if token exists at predicted address
-    /// @param predictionId The prediction ID
+    /// @param pickConfigId The pick configuration ID
     /// @param isPredictorToken True if predictor token
     /// @return True if token is deployed
     function isTokenDeployed(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) external view returns (bool);
 
-    /// @notice Get token address for a prediction
-    /// @param predictionId The prediction ID
+    /// @notice Get token address for a pick configuration
+    /// @param pickConfigId The pick configuration ID
     /// @param isPredictorToken True if predictor token
     /// @return The token address (may not be deployed)
     function getTokenAddress(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) external view returns (address);
 

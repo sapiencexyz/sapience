@@ -8,17 +8,17 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract MockPositionToken is ERC20 {
     uint256 public constant TOTAL_SUPPLY = 1e18;
 
-    bytes32 public immutable predictionId;
+    bytes32 public immutable pickConfigId;
     bool public immutable isPredictorToken;
 
     constructor(
         string memory name_,
         string memory symbol_,
-        bytes32 predictionId_,
+        bytes32 pickConfigId_,
         bool isPredictorToken_,
         address recipient
     ) ERC20(name_, symbol_) {
-        predictionId = predictionId_;
+        pickConfigId = pickConfigId_;
         isPredictorToken = isPredictorToken_;
         _mint(recipient, TOTAL_SUPPLY);
     }

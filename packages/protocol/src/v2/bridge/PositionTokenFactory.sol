@@ -29,14 +29,14 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
 
     /// @inheritdoc IPositionTokenFactory
     function deploy(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
         address, // recipient - unused, minting done by bridge
         address burner
     ) external onlyDeployer returns (address token) {
-        bytes32 salt = computeSalt(predictionId, isPredictorToken);
+        bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
 
         // Check if already deployed
         if (CREATE3.predictDeterministicAddress(salt, address(this)).code.length > 0) {
@@ -47,37 +47,37 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         token = CREATE3.deployDeterministic(
             abi.encodePacked(
                 type(BridgedPositionToken).creationCode,
-                abi.encode(name, symbol, predictionId, isPredictorToken, burner)
+                abi.encode(name, symbol, pickConfigId, isPredictorToken, burner)
             ),
             salt
         );
 
-        emit TokenDeployed(predictionId, isPredictorToken, token, salt);
+        emit TokenDeployed(pickConfigId, isPredictorToken, token, salt);
     }
 
     /// @inheritdoc IPositionTokenFactory
     function predictAddress(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) public view returns (address) {
-        bytes32 salt = computeSalt(predictionId, isPredictorToken);
+        bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
         return CREATE3.predictDeterministicAddress(salt, address(this));
     }
 
     /// @inheritdoc IPositionTokenFactory
     function computeSalt(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) public pure returns (bytes32) {
-        return keccak256(abi.encode(predictionId, isPredictorToken));
+        return keccak256(abi.encode(pickConfigId, isPredictorToken));
     }
 
     /// @inheritdoc IPositionTokenFactory
     function isDeployed(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) external view returns (bool) {
-        address predicted = predictAddress(predictionId, isPredictorToken);
+        address predicted = predictAddress(pickConfigId, isPredictorToken);
         return predicted.code.length > 0;
     }
 

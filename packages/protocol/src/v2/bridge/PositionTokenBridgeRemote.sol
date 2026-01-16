@@ -228,7 +228,7 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         (
             bytes32 bridgeId,
             address sourceToken,
-            bytes32 predictionId,
+            bytes32 pickConfigId,
             bool isPredictorToken,
             string memory name,
             string memory symbol,
@@ -237,13 +237,13 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         ) = abi.decode(data, (bytes32, address, bytes32, bool, string, string, address, uint256));
 
         // Check if token exists, deploy if not
-        address remoteToken = factory.predictAddress(predictionId, isPredictorToken);
+        address remoteToken = factory.predictAddress(pickConfigId, isPredictorToken);
         bool isNewDeployment = false;
 
         if (remoteToken.code.length == 0) {
             // Deploy new token
             remoteToken = factory.deploy(
-                predictionId,
+                pickConfigId,
                 isPredictorToken,
                 name,
                 symbol,
@@ -372,18 +372,18 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
 
     /// @inheritdoc IPositionTokenBridgeRemote
     function isTokenDeployed(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) external view returns (bool) {
-        return factory.isDeployed(predictionId, isPredictorToken);
+        return factory.isDeployed(pickConfigId, isPredictorToken);
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
     function getTokenAddress(
-        bytes32 predictionId,
+        bytes32 pickConfigId,
         bool isPredictorToken
     ) external view returns (address) {
-        return factory.predictAddress(predictionId, isPredictorToken);
+        return factory.predictAddress(pickConfigId, isPredictorToken);
     }
 
     // ============ Ownership Management ============
