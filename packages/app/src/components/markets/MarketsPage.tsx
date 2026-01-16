@@ -2,7 +2,6 @@
 
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -25,13 +24,6 @@ import {
   type CreatePythPredictionFormValues,
   type PythPrediction,
 } from '@sapience/ui';
-
-// Dynamically import Loader
-const Loader = dynamic(() => import('~/components/shared/Loader'), {
-  ssr: false,
-  // Use a simple div as placeholder during load
-  loading: () => <div className="w-8 h-8" />,
-});
 
 const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
 
@@ -233,23 +225,23 @@ const MarketsPage = () => {
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [allCategories]);
 
-  // Show loader only on initial load (not when filtering)
+  // Show nothing while loading, then fade in content
   if (isLoadingCategories) {
     return (
       <div
-        className="flex justify-center items-center w-full"
-        style={{
-          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
-        }}
-      >
-        <Loader size={16} />
-      </div>
+        className="w-full"
+        style={{ minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }}
+      />
     );
   }
 
-  // Render content once loaded
   return (
-    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start"
+    >
       {/* Render only one position form instance based on viewport */}
       {isCompact && (
         <div className="block lg:hidden">
@@ -319,7 +311,7 @@ const MarketsPage = () => {
           </div>
         </div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
