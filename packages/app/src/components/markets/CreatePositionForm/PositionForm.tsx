@@ -32,55 +32,14 @@ import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLoc
 import { useCollateralBalanceContext } from '~/lib/context/CollateralBalanceContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import { getCategoryStyle, getColorWithAlpha } from '~/lib/utils/categoryStyle';
+import { getMaxWagerAmount } from '~/lib/utils/positionFormUtils';
 import {
   PythPredictionListItem,
   UmaPredictionListItem,
   type PythPrediction,
   type UmaPrediction,
 } from '@sapience/ui';
-
-/**
- * Calculate the maximum wager amount based on user balance and chain.
- * On Ethereal chain, cap at 1M. Otherwise, use user's full balance.
- */
-function getMaxWagerAmount(
-  userBalance: number,
-  isEtherealChain: boolean
-): string | undefined {
-  const ETHEREAL_MAX = 1000000;
-
-  if (userBalance > 0) {
-    if (isEtherealChain) {
-      return Math.min(ETHEREAL_MAX, userBalance).toString();
-    }
-    return userBalance.toString();
-  }
-
-  if (isEtherealChain) {
-    return ETHEREAL_MAX.toString();
-  }
-
-  return undefined;
-}
-
-/**
- * Converts a color string to include alpha transparency.
- * Supports hsl(), rgb(), and hex color formats.
- */
-function getColorWithAlpha(color: string, alpha: number): string {
-  if (color.startsWith('hsl(')) {
-    return `hsl(${color.slice(4, -1)} / ${alpha})`;
-  }
-  if (color.startsWith('rgb(')) {
-    return `rgb(${color.slice(4, -1)} / ${alpha})`;
-  }
-  // Hex color: append alpha as hex (0.1 = 1a)
-  const alphaHex = Math.round(alpha * 255)
-    .toString(16)
-    .padStart(2, '0');
-  return `${color}${alphaHex}`;
-}
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -530,12 +489,10 @@ export default function PositionForm({
     !bestBid &&
     nowMs - lastQuoteRequestMs >= HINT_DELAY_MS;
 
-  // Crossfade between disclaimer and hint when bids may not arrive
-  const HINT_FADE_MS = 300;
+  // Toggle between disclaimer and hint when bids may not arrive
+  const HINT_DELAY_MS_TRANSITION = 300;
   const [disclaimerMounted, setDisclaimerMounted] = useState(true);
-  const [disclaimerVisible, setDisclaimerVisible] = useState(true);
   const [hintMounted, setHintMounted] = useState(false);
-  const [hintVisible, setHintVisible] = useState(false);
 
   useEffect(() => {
     let timeout1: number | undefined;
@@ -543,28 +500,22 @@ export default function PositionForm({
 
     if (showNoBidsWarning) {
       if (!hintMounted) {
-        // Fade out disclaimer, then show hint
-        setDisclaimerVisible(false);
+        // Hide disclaimer, then show hint
         timeout1 = window.setTimeout(() => {
           setDisclaimerMounted(false);
           setHintMounted(true);
-          // Next frame to ensure CSS transition applies
-          requestAnimationFrame(() => setHintVisible(true));
-        }, HINT_FADE_MS);
+        }, HINT_DELAY_MS_TRANSITION);
       }
     } else {
       if (hintMounted) {
-        // Fade out hint, then show disclaimer
-        setHintVisible(false);
+        // Hide hint, then show disclaimer
         timeout2 = window.setTimeout(() => {
           setHintMounted(false);
           setDisclaimerMounted(true);
-          requestAnimationFrame(() => setDisclaimerVisible(true));
-        }, HINT_FADE_MS);
+        }, HINT_DELAY_MS_TRANSITION);
       } else {
         // Ensure disclaimer is visible by default
         setDisclaimerMounted(true);
-        setDisclaimerVisible(true);
       }
     }
 
@@ -701,11 +652,7 @@ export default function PositionForm({
               onSubmit={onSubmit}
               isSubmitDisabled={isPermitLoading || isRestricted}
               enableRainbowHover={isRainbowHoverEnabled}
-              onLimitOrderClick={() => setIsLimitDialogOpen(true)}
-              showNoBidsHint={showNoBidsHint}
-              hintVisible={hintVisible}
               hintMounted={hintMounted}
-              disclaimerVisible={disclaimerVisible}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               takerWagerWei={takerWagerWei}

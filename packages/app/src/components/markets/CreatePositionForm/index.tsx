@@ -54,6 +54,7 @@ import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
   getDefaultFormPredictionValue,
+  getMaxWagerAmount,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -63,30 +64,6 @@ import {
   useCollateralBalanceContext,
 } from '~/lib/context/CollateralBalanceContext';
 import type { PythPrediction } from '@sapience/ui';
-
-/**
- * Calculate the maximum wager amount based on user balance and chain.
- * On Ethereal chain, cap at 1M. Otherwise, use user's full balance.
- */
-function getMaxWagerAmount(
-  userBalance: number,
-  isEtherealChain: boolean
-): string | undefined {
-  const ETHEREAL_MAX = 1000000;
-
-  if (userBalance > 0) {
-    if (isEtherealChain) {
-      return Math.min(ETHEREAL_MAX, userBalance).toString();
-    }
-    return userBalance.toString();
-  }
-
-  if (isEtherealChain) {
-    return ETHEREAL_MAX.toString();
-  }
-
-  return undefined;
-}
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';

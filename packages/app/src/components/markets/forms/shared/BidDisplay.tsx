@@ -36,14 +36,6 @@ interface BidDisplayProps {
   isSubmitDisabled?: boolean;
   /** Optional rainbow hover effect for high wagers */
   enableRainbowHover?: boolean;
-  /** Optional "Limit Order" button handler (not currently used in UI) */
-  onLimitOrderClick?: () => void;
-  /** Show position-specific "Some combinations may not receive bids" hint */
-  showNoBidsHint?: boolean;
-  /** Hint visibility for crossfade animation (not currently used) */
-  hintVisible?: boolean;
-  /** Disclaimer visibility for crossfade animation (not currently used) */
-  disclaimerVisible?: boolean;
   /** Whether disclaimer is mounted */
   disclaimerMounted?: boolean;
   /** Whether hint is mounted */
@@ -83,7 +75,6 @@ export default function BidDisplay({
   onSubmit,
   isSubmitDisabled = false,
   enableRainbowHover = false,
-  showNoBidsHint: _showNoBidsHint = false,
   disclaimerMounted = true,
   hintMounted = false,
   className,

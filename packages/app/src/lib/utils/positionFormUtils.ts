@@ -7,6 +7,31 @@ const NO_SQRT_PRICE_X96 = '0';
 // Default wager amount for new positions
 export const DEFAULT_WAGER_AMOUNT = '1';
 
+// Maximum wager amount for Ethereal chain (1M USDe)
+export const ETHEREAL_MAX_WAGER = 1000000;
+
+/**
+ * Calculate the maximum wager amount based on user balance and chain.
+ * On Ethereal chain, cap at ETHEREAL_MAX_WAGER. Otherwise, use user's full balance.
+ */
+export function getMaxWagerAmount(
+  userBalance: number,
+  isEtherealChain: boolean
+): string | undefined {
+  if (userBalance > 0) {
+    if (isEtherealChain) {
+      return Math.min(ETHEREAL_MAX_WAGER, userBalance).toString();
+    }
+    return userBalance.toString();
+  }
+
+  if (isEtherealChain) {
+    return ETHEREAL_MAX_WAGER.toString();
+  }
+
+  return undefined;
+}
+
 /**
  * Converts boolean prediction to sqrtPriceX96 string for yes/no markets
  */
