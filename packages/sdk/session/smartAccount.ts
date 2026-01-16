@@ -28,13 +28,14 @@ export async function computeSmartAccountAddress(ownerAddress: Address): Promise
   });
 
   const emptyAccount = addressToEmptyAccount(ownerAddress);
-  const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
+  // Cast to any to avoid viem version mismatch type errors between ZeroDev and SDK
+  const ecdsaValidator = await signerToEcdsaValidator(publicClient as any, {
     signer: emptyAccount,
     entryPoint: ENTRY_POINT,
     kernelVersion: KERNEL_VERSION,
   });
 
-  const account = await createKernelAccount(publicClient, {
+  const account = await createKernelAccount(publicClient as any, {
     plugins: {
       sudo: ecdsaValidator,
     },

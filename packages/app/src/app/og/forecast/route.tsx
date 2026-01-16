@@ -120,7 +120,7 @@ export async function GET(req: Request) {
                       display: 'block',
                       fontSize: 32 * scale,
                       lineHeight: `${40 * scale}px`,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       letterSpacing: -0.16 * scale,
                       color: og.colors.brandWhite,
                       fontFamily:

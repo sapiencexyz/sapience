@@ -239,9 +239,12 @@ function ForecastCell({
       return <span className="text-muted-foreground">—</span>;
     }
     return (
-      <span className="font-mono text-muted-foreground">
-        Resolution Pending
-      </span>
+      <Badge
+        variant="outline"
+        className="px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+      >
+        PENDING
+      </Badge>
     );
   }
 

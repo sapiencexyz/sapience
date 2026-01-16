@@ -21,6 +21,20 @@ import {
 
 export const runtime = 'edge';
 
+// Determine yes/no label from direction
+function getYesNoLabel(direction: string): string {
+  if (direction.includes('on yes')) return 'Yes';
+  if (direction.includes('on no')) return 'No';
+  return '';
+}
+
+// Determine long/short label from direction
+function getLongShortLabel(direction: string): string {
+  if (direction === 'long') return 'Long';
+  if (direction === 'short') return 'Short';
+  return '';
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -40,13 +54,8 @@ export async function GET(req: Request) {
     const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
 
     const lowerDir = (dir || '').toLowerCase();
-    const yesNoLabel = lowerDir.includes('on yes')
-      ? 'Yes'
-      : lowerDir.includes('on no')
-        ? 'No'
-        : '';
-    const longShortLabel =
-      lowerDir === 'long' ? 'Long' : lowerDir === 'short' ? 'Short' : '';
+    const yesNoLabel = getYesNoLabel(lowerDir);
+    const longShortLabel = getLongShortLabel(lowerDir);
 
     // Closed trades (shared from the closed positions table) include explicit entry/exit params
     // Use that as a signal to suppress the Yes/No pill on share cards (keep Long/Short for linear)
@@ -106,7 +115,7 @@ export async function GET(req: Request) {
                       display: 'block',
                       fontSize: 32 * scale,
                       lineHeight: `${40 * scale}px`,
-                      fontWeight: 700,
+                      fontWeight: 600,
                       letterSpacing: -0.16 * scale,
                       color: og.colors.brandWhite,
                       fontFamily:
