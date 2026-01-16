@@ -49,6 +49,9 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     /// @notice Nonce for generating unique bridge IDs
     uint256 private _bridgeNonce;
 
+    /// @notice Tracking for minted tokens per bridgeId (for cancel recovery)
+    mapping(bytes32 => IPositionTokenBridgeRemote.MintedBridge) private _mintedBridges;
+
     // ============ Constructor ============
     constructor(
         address endpoint_,
@@ -262,6 +265,13 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         // Mint tokens to recipient
         IBridgedPositionToken(remoteToken).mint(recipient, amount);
 
+        // Track minted tokens for potential cancel recovery
+        _mintedBridges[bridgeId] = IPositionTokenBridgeRemote.MintedBridge({
+            token: remoteToken,
+            recipient: recipient,
+            amount: amount
+        });
+
         emit TokensMinted(bridgeId, remoteToken, recipient, amount, isNewDeployment);
 
         // Send ACK back to Ethereal (if contract has sufficient balance)
@@ -351,11 +361,37 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     function _handleCancel(bytes memory data) internal {
         (bytes32 bridgeId, uint256 amount) = abi.decode(data, (bytes32, uint256));
 
-        // If tokens were minted for this bridgeId, we need to burn them
-        // However, we don't track minted amounts per bridgeId, so this is a notification
-        // The sender would need to return the tokens voluntarily or through governance
-        // For now, we just emit an event
-        emit CancelReceived(bridgeId, amount);
+        IPositionTokenBridgeRemote.MintedBridge storage minted = _mintedBridges[bridgeId];
+
+        // Check if tokens were minted for this bridgeId
+        if (minted.amount == 0) {
+            // No tokens minted (message arrived before bridge or already cancelled)
+            emit CancelReceived(bridgeId, amount);
+            return;
+        }
+
+        // Verify amount matches (sanity check)
+        if (minted.amount != amount) {
+            emit CancelAmountMismatch(bridgeId, minted.amount, amount);
+        }
+
+        // Cache values before potential deletion
+        address token = minted.token;
+        address recipient = minted.recipient;
+        uint256 mintedAmount = minted.amount;
+
+        // Try to burn the minted tokens from the recipient
+        // Use try/catch because recipient may have transferred tokens
+        try IBridgedPositionToken(token).burn(recipient, mintedAmount) {
+            // Burn succeeded - clear the minted record
+            delete _mintedBridges[bridgeId];
+            emit CancelBurnExecuted(bridgeId, token, recipient, mintedAmount);
+        } catch {
+            // Burn failed - recipient has insufficient balance (transferred tokens)
+            // Mark as failed but don't delete - allows tracking for governance recovery
+            // The tokens are now unbacked and require manual intervention
+            emit CancelBurnFailed(bridgeId, token, recipient, mintedAmount);
+        }
     }
 
     // ============ View Functions ============
@@ -368,6 +404,11 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     /// @inheritdoc IPositionTokenBridgeRemote
     function getEscrowedBalance(address token) external view returns (uint256) {
         return _escrowedBalances[token];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function getMintedBridge(bytes32 bridgeId) external view returns (IPositionTokenBridgeRemote.MintedBridge memory) {
+        return _mintedBridges[bridgeId];
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote

@@ -36,6 +36,13 @@ interface IPositionTokenBridgeRemote {
         BridgeStatus status;
     }
 
+    /// @notice Minted bridge record (for cancel recovery)
+    struct MintedBridge {
+        address token;
+        address recipient;
+        uint256 amount;
+    }
+
     // ============ Events ============
 
     /// @notice Emitted when tokens are minted on remote chain
@@ -63,8 +70,28 @@ interface IPositionTokenBridgeRemote {
     /// @notice Emitted when bridge back is cancelled (expired)
     event BridgeBackCancelled(bytes32 indexed bridgeId, address indexed sender, uint256 amount);
 
-    /// @notice Emitted when cancel notification received from Ethereal
+    /// @notice Emitted when cancel notification received from Ethereal (no tokens to burn)
     event CancelReceived(bytes32 indexed bridgeId, uint256 amount);
+
+    /// @notice Emitted when cancel burns minted tokens from recipient
+    event CancelBurnExecuted(
+        bytes32 indexed bridgeId,
+        address indexed token,
+        address indexed recipient,
+        uint256 amount
+    );
+
+    /// @notice Emitted when cancel amount doesn't match minted amount (sanity check warning)
+    event CancelAmountMismatch(bytes32 indexed bridgeId, uint256 mintedAmount, uint256 cancelAmount);
+
+    /// @notice Emitted when cancel burn fails (recipient transferred tokens)
+    /// @dev Tokens are now unbacked - requires governance intervention
+    event CancelBurnFailed(
+        bytes32 indexed bridgeId,
+        address indexed token,
+        address indexed recipient,
+        uint256 amount
+    );
 
     /// @notice Emitted when bridge config is updated
     event BridgeConfigUpdated(BridgeConfig config);
@@ -184,6 +211,11 @@ interface IPositionTokenBridgeRemote {
     /// @param token The bridged token address
     /// @return The escrowed amount
     function getEscrowedBalance(address token) external view returns (uint256);
+
+    /// @notice Get minted bridge info (for cancel recovery tracking)
+    /// @param bridgeId The bridge identifier
+    /// @return The minted bridge record
+    function getMintedBridge(bytes32 bridgeId) external view returns (MintedBridge memory);
 
     // ============ Ownership Management ============
 
