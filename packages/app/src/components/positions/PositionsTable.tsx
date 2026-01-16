@@ -93,12 +93,12 @@ function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
               className="whitespace-nowrap"
               disabled
             >
-              {`Settles in ${label}`}
+              {`Ends in ${label}`}
             </Button>
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          <div>{`Settles at ${settlesAtLocalDisplay}`}</div>
+          <div>{`Ends at ${settlesAtLocalDisplay}`}</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
