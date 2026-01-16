@@ -34,11 +34,7 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  COLLATERAL_SYMBOLS,
-  CHAIN_ID_ETHEREAL,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits, parseUnits } from 'viem';
@@ -131,7 +127,9 @@ const CreatePositionFormInner = ({
 
   // Track whether wager has been initialized and for which address
   const [isWagerInitialized, setIsWagerInitialized] = useState(false);
-  const [initializedForAddress, setInitializedForAddress] = useState<string | null>(null);
+  const [initializedForAddress, setInitializedForAddress] = useState<
+    string | null
+  >(null);
 
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -494,7 +492,13 @@ const CreatePositionFormInner = ({
     });
     setIsWagerInitialized(true);
     setInitializedForAddress(effectiveAddress?.toLowerCase() || null);
-  }, [isBalanceLoading, userBalance, isWagerInitialized, effectiveAddress, formMethods]);
+  }, [
+    isBalanceLoading,
+    userBalance,
+    isWagerInitialized,
+    effectiveAddress,
+    formMethods,
+  ]);
 
   // Sync form when position entries change without clobbering existing values
   useEffect(() => {
@@ -558,7 +562,7 @@ const CreatePositionFormInner = ({
     formMethods.reset(
       {
         positions: mergedPositions,
-        wagerAmount: current?.wagerAmount || '',  // Don't clobber with default - let initialization effect handle it
+        wagerAmount: current?.wagerAmount || '', // Don't clobber with default - let initialization effect handle it
         limitAmount: current?.limitAmount || 2,
       },
       {

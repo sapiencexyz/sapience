@@ -76,7 +76,9 @@ function getColorWithAlpha(color: string, alpha: number): string {
     return `rgb(${color.slice(4, -1)} / ${alpha})`;
   }
   // Hex color: append alpha as hex (0.1 = 1a)
-  const alphaHex = Math.round(alpha * 255).toString(16).padStart(2, '0');
+  const alphaHex = Math.round(alpha * 255)
+    .toString(16)
+    .padStart(2, '0');
   return `${color}${alphaHex}`;
 }
 
@@ -156,7 +158,8 @@ export default function PositionForm({
 
   // Use smart account address when session is active, otherwise use EOA
   // Falls back to zero address for logged-out users
-  const ZERO_ADDRESS: `0x${string}` = '0x0000000000000000000000000000000000000000';
+  const ZERO_ADDRESS: `0x${string}` =
+    '0x0000000000000000000000000000000000000000';
   const selectedTakerAddress =
     isSessionActive && smartAccountAddress
       ? smartAccountAddress

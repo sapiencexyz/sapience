@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useMemo,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
@@ -42,13 +37,16 @@ interface CollateralBalanceContextValue {
   isBalanceReady: boolean;
 }
 
-const CollateralBalanceContext = createContext<CollateralBalanceContextValue | null>(null);
+const CollateralBalanceContext =
+  createContext<CollateralBalanceContextValue | null>(null);
 
 interface CollateralBalanceProviderProps {
   children: ReactNode;
 }
 
-export function CollateralBalanceProvider({ children }: CollateralBalanceProviderProps): React.ReactElement {
+export function CollateralBalanceProvider({
+  children,
+}: CollateralBalanceProviderProps): React.ReactElement {
   const { address: eoaAddress, isConnected } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
   const chainId = useChainIdFromLocalStorage();

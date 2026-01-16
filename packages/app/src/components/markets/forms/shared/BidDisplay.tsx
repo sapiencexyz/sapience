@@ -83,7 +83,7 @@ export default function BidDisplay({
   onSubmit,
   isSubmitDisabled = false,
   enableRainbowHover = false,
-  showNoBidsHint = false,
+  showNoBidsHint: _showNoBidsHint = false,
   disclaimerMounted = true,
   hintMounted = false,
   className,
@@ -129,7 +129,9 @@ export default function BidDisplay({
   const chartBids = useMemo(() => quoteBidsToAuctionBids(allBids), [allBids]);
 
   // Check if the current best bid is expired
-  const isBidExpired = bestBid ? bestBid.makerDeadline * 1000 - nowMs <= 0 : true;
+  const isBidExpired = bestBid
+    ? bestBid.makerDeadline * 1000 - nowMs <= 0
+    : true;
 
   // Unified UI state - single source of truth for all UI rendering
   type UIState = 'idle' | 'pending' | 'active' | 'submitting';
@@ -197,7 +199,9 @@ export default function BidDisplay({
           };
         }
         return {
-          text: showRequestBidsButton ? 'INITIATE AUCTION' : 'WAITING FOR BIDS...',
+          text: showRequestBidsButton
+            ? 'INITIATE AUCTION'
+            : 'WAITING FOR BIDS...',
           disabled: !showRequestBidsButton || hasFormErrors,
           onClick: onRequestBids,
           type: 'button' as const,

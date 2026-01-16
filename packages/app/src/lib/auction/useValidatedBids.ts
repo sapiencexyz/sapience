@@ -16,7 +16,9 @@ interface ValidationCheckResult {
 /**
  * Returns an error message if any validation check fails, undefined if all pass.
  */
-function getValidationErrorMessage(checks: ValidationCheckResult): string | undefined {
+function getValidationErrorMessage(
+  checks: ValidationCheckResult
+): string | undefined {
   if (!checks.makerHasSufficientAllowance) {
     return 'Market maker has insufficient allowance';
   }

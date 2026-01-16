@@ -22,7 +22,9 @@ export default function CollateralBalance({
   // Use smart account address when session is active, otherwise EOA
   // This ensures we show the balance of the address that will execute transactions
   const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : accountAddress;
+    isSessionActive && smartAccountAddress
+      ? smartAccountAddress
+      : accountAddress;
 
   const {
     balance: numericBalance,
@@ -49,7 +51,8 @@ export default function CollateralBalance({
 
   // Return null if missing required data or no valid balance
   const hasValidConnection = isConnected && accountAddress && chainId;
-  const hasValidBalance = !isBalanceLoading && numericBalance > 0 && !Number.isNaN(numericBalance);
+  const hasValidBalance =
+    !isBalanceLoading && numericBalance > 0 && !Number.isNaN(numericBalance);
 
   if (!hasValidConnection) {
     return null;

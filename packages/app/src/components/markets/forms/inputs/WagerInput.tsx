@@ -103,7 +103,9 @@ export function WagerInput({
 
   // Create schema with min/max constraints if provided
   // Used by the validate function in register (form-level zodResolver is source of truth)
-  const validationSchemaRef = useRef<z.ZodTypeAny>(createWagerAmountSchema(minAmount, maxAmount));
+  const validationSchemaRef = useRef<z.ZodTypeAny>(
+    createWagerAmountSchema(minAmount, maxAmount)
+  );
 
   // Keep ref updated when constraints change
   useEffect(() => {
