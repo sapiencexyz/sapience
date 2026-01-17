@@ -241,7 +241,7 @@ function ForecastCell({
     return (
       <Badge
         variant="outline"
-        className="px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+        className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
       >
         PENDING
       </Badge>
@@ -427,13 +427,23 @@ function createColumns(
                 color={color}
                 categorySlug={categorySlug}
               />
-              <button
-                type="button"
-                onClick={() => onToggleExpand(data.groupId)}
-                className="block max-w-full min-w-0 overflow-hidden p-0 m-0 bg-transparent border-0 text-sm font-mono text-brand-white transition-colors whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-              >
-                {data.name}
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => onToggleExpand(data.groupId)}
+                    className="block max-w-full min-w-0 overflow-hidden p-0 m-0 bg-transparent border-0 text-sm font-mono text-brand-white transition-colors whitespace-nowrap underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4 hover:decoration-brand-white/40 truncate text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+                  >
+                    {data.name}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs text-xs whitespace-normal break-words"
+                >
+                  {data.name}
+                </TooltipContent>
+              </Tooltip>
             </div>
           );
         }
@@ -874,11 +884,11 @@ export default function MarketsDataTable({
       const endTime = getRowEndTime(row);
       if (endTime) {
         const daysFromNow = (endTime - nowSec) / 86400;
-        // Only apply if not at extreme bounds
-        if (minDays > -1000 && daysFromNow < minDays) {
+        // Only apply if not at extreme bounds (Infinity/-Infinity)
+        if (minDays !== -Infinity && daysFromNow < minDays) {
           return false;
         }
-        if (maxDays < 1000 && daysFromNow > maxDays) {
+        if (maxDays !== Infinity && daysFromNow > maxDays) {
           return false;
         }
       }

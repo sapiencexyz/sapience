@@ -1,47 +1,42 @@
 'use client';
 
 import type React from 'react';
-import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import { Input } from '@sapience/ui/components/ui/input';
+import { RangeFilter } from '~/components/shared/RangeFilter';
 
 type Props = {
-  value: string;
-  onChange: (v: string) => void;
+  value: [number, number];
+  onChange: (v: [number, number]) => void;
 };
 
+const SLIDER_MAX = 100;
+
 const MinBidsFilter: React.FC<Props> = ({ value, onChange }) => {
-  const [internal, setInternal] = useState<string>(value);
-  const deferred = useDeferredValue(internal);
-  const label = useMemo(() => {
-    const n = parseInt(deferred || '0', 10);
-    const valid = Number.isFinite(n) ? Math.max(0, n) : 0;
-    return valid === 1 ? 'Minimum Bid' : 'Minimum Bids';
-  }, [deferred]);
+  // Map Infinity to slider max for display, and back
+  const sliderValue: [number, number] = [
+    value[0],
+    value[1] === Infinity ? SLIDER_MAX : Math.min(value[1], SLIDER_MAX),
+  ];
 
-  useEffect(() => {
-    setInternal(value);
-  }, [value]);
-
-  useEffect(() => {
-    const id = window.setTimeout(() => onChange(deferred), 180);
-    return () => window.clearTimeout(id);
-  }, [deferred, onChange]);
+  const handleChange = (v: [number, number]) => {
+    onChange([v[0], v[1] >= SLIDER_MAX ? Infinity : v[1]]);
+  };
 
   return (
-    <div className="flex">
-      <Input
-        type="number"
-        inputMode="numeric"
-        min={0}
-        step={1}
-        className="h-8 rounded-r-none border-r-0"
-        value={internal}
-        onChange={(e) => setInternal(e.target.value)}
-      />
-      <span className="inline-flex items-center h-8 rounded-md rounded-l-none border border-input border-l-0 bg-muted/30 px-3 text-xs text-muted-foreground whitespace-nowrap">
-        {label}
-      </span>
-    </div>
+    <RangeFilter
+      placeholder="All Bid Counts"
+      value={sliderValue}
+      onChange={handleChange}
+      min={0}
+      max={SLIDER_MAX}
+      step={1}
+      formatValue={(v) => (v >= SLIDER_MAX ? '∞' : String(v))}
+      parseValue={(v) => {
+        if (v === '∞') return SLIDER_MAX;
+        return Number(v);
+      }}
+      unit="bids"
+      customLabels={[{ range: [1, SLIDER_MAX], label: '≥1 Bids' }]}
+    />
   );
 };
 

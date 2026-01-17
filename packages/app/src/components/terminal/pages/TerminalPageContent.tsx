@@ -29,6 +29,10 @@ import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
 import MinBidsFilter from '~/components/terminal/filters/MinBidsFilter';
 import MinWagerFilter from '~/components/terminal/filters/MinWagerFilter';
+import AddressFilter from '~/components/terminal/filters/AddressFilter';
+import SignedFilter, {
+  type SignedFilterValue,
+} from '~/components/terminal/filters/SignedFilter';
 import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useReadContracts } from 'wagmi';
@@ -37,6 +41,16 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+
+/** Shape of auction.started message data payload */
+interface AuctionStartedData {
+  auctionId?: string;
+  taker?: string;
+  takerSignature?: string;
+  wager?: string;
+  resolver?: string;
+  predictedOutcomes?: string[];
+}
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
@@ -51,14 +65,16 @@ const TerminalPageContent: React.FC = () => {
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
     new Set()
   );
-  const [minWager, setMinWager] = useState<string>('1');
-  const [minBids, setMinBids] = useState<string>('0');
+  const [wagerRange, setWagerRange] = useState<[number, number]>([0, Infinity]);
+  const [bidsRange, setBidsRange] = useState<[number, number]>([0, Infinity]);
   const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>(
     []
   );
   const [selectedConditionIds, setSelectedConditionIds] = useState<string[]>(
     []
   );
+  const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
+  const [signedFilter, setSignedFilter] = useState<SignedFilterValue>('all');
   const togglePin = useCallback((auctionId: string | null) => {
     if (!auctionId) return;
     setPinnedAuctions((prev) => {
@@ -261,6 +277,19 @@ const TerminalPageContent: React.FC = () => {
     return Array.from(set);
   }, [auctionAndBidMessages]);
 
+  // Collect unique predictor addresses from auction.started messages for the address filter
+  const uniqueAddresses = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of auctionAndBidMessages) {
+      if (m.type !== 'auction.started') continue;
+      const taker = (m as any)?.data?.taker;
+      if (taker && typeof taker === 'string') {
+        set.add(taker);
+      }
+    }
+    return Array.from(set).sort();
+  }, [auctionAndBidMessages]);
+
   // Query conditions to enrich shortName/question for decoded predicted outcomes
   const {
     list: conditions,
@@ -447,18 +476,25 @@ const TerminalPageContent: React.FC = () => {
     return 18;
   }, [erc20MetaRead.data]);
 
-  const minWagerWei = useMemo(() => {
+  const wagerRangeWei = useMemo((): [bigint, bigint] => {
     try {
-      return parseUnits(minWager || '0', tokenDecimals);
+      const minWei = parseUnits(String(wagerRange[0] || 0), tokenDecimals);
+      const maxWei =
+        wagerRange[1] === Infinity
+          ? BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+          : parseUnits(String(wagerRange[1]), tokenDecimals);
+      return [minWei, maxWei];
     } catch {
-      return 0n;
+      return [0n, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')];
     }
-  }, [minWager, tokenDecimals]);
+  }, [wagerRange, tokenDecimals]);
 
-  const minBidsNum = useMemo(() => {
-    const n = parseInt(minBids || '0', 10);
-    return Number.isFinite(n) && n >= 0 ? n : 0;
-  }, [minBids]);
+  const bidsRangeNum = useMemo((): [number, number] => {
+    return [
+      Number.isFinite(bidsRange[0]) && bidsRange[0] >= 0 ? bidsRange[0] : 0,
+      bidsRange[1] === Infinity ? Infinity : (Number.isFinite(bidsRange[1]) ? bidsRange[1] : Infinity),
+    ];
+  }, [bidsRange]);
 
   // Track live bids via shared hub to keep counts in sync with row components
   const [bidsTick, setBidsTick] = useState(0);
@@ -529,11 +565,27 @@ const TerminalPageContent: React.FC = () => {
         );
       if (!matchesCondition) return false;
 
+      // Check address filter
+      const auctionData = row.m?.data as AuctionStartedData | undefined;
+      if (selectedAddresses.length > 0) {
+        if (!auctionData?.taker || !selectedAddresses.includes(auctionData.taker)) return false;
+      }
+
+      // Check signed filter
+      const isSigned = !!auctionData?.takerSignature && auctionData.takerSignature !== '0x';
+      if (signedFilter === 'signed' && !isSigned) return false;
+      if (signedFilter === 'unsigned' && isSigned) return false;
+
       try {
-        const makerWagerWei = BigInt(String(row.m?.data?.wager ?? '0'));
+        const makerWagerWei = BigInt(String(auctionData?.wager ?? '0'));
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
-        if (bidsCount < minBidsNum) return false;
-        return makerWagerWei >= minWagerWei;
+        // Check bids range
+        if (bidsCount < bidsRangeNum[0]) return false;
+        if (bidsRangeNum[1] !== Infinity && bidsCount > bidsRangeNum[1]) return false;
+        // Check wager range
+        if (makerWagerWei < wagerRangeWei[0]) return false;
+        if (makerWagerWei > wagerRangeWei[1]) return false;
+        return true;
       } catch {
         // On parse failure, do not include the row
         return false;
@@ -556,11 +608,13 @@ const TerminalPageContent: React.FC = () => {
     latestStartedByAuction,
     lastActivityByAuction,
     pinnedAuctions,
-    minWagerWei,
-    minBidsNum,
+    wagerRangeWei,
+    bidsRangeNum,
     bidsCountByAuction,
     selectedCategorySlugs,
     selectedConditionIds,
+    selectedAddresses,
+    signedFilter,
     renderConditionMap,
     getDecodedPredictedOutcomes,
   ]);
@@ -595,10 +649,12 @@ const TerminalPageContent: React.FC = () => {
       /* noop */
     }
   }, [
-    minWagerWei,
-    minBidsNum,
+    wagerRangeWei,
+    bidsRangeNum,
     selectedCategorySlugs,
     selectedConditionIds,
+    selectedAddresses,
+    signedFilter,
     virtualizer,
   ]);
 
@@ -761,7 +817,7 @@ const TerminalPageContent: React.FC = () => {
                 <div className="flex-none">
                   <div className="p-3 border-b border-border/60 bg-muted/10">
                     <div className="flex items-center gap-4">
-                      <div className="grid gap-3 grid-cols-2 md:grid-cols-4 flex-1">
+                      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6 flex-1">
                         {/* Categories */}
                         <div className="flex flex-col md:col-span-1">
                           <CategoryFilter
@@ -808,23 +864,42 @@ const TerminalPageContent: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Minimum Bids */}
+                        {/* Predictor Address */}
+                        <div className="flex flex-col md:col-span-1">
+                          <AddressFilter
+                            items={uniqueAddresses.map((addr) => ({
+                              value: addr,
+                              label: addr,
+                            }))}
+                            selected={selectedAddresses}
+                            onChange={setSelectedAddresses}
+                          />
+                        </div>
+
+                        {/* Signed/Unsigned Filter */}
+                        <div className="flex flex-col md:col-span-1">
+                          <SignedFilter
+                            value={signedFilter}
+                            onChange={setSignedFilter}
+                          />
+                        </div>
+
+                        {/* Bids Range */}
                         <div className="flex flex-col md:col-span-1">
                           <MinBidsFilter
-                            value={minBids}
-                            onChange={setMinBids}
+                            value={bidsRange}
+                            onChange={setBidsRange}
                           />
                         </div>
 
-                        {/* Minimum Wager */}
+                        {/* Wager Range */}
                         <div className="flex flex-col md:col-span-1">
                           <MinWagerFilter
-                            value={minWager}
-                            onChange={setMinWager}
+                            value={wagerRange}
+                            onChange={setWagerRange}
+                            unit={collateralAssetTicker}
                           />
                         </div>
-
-                        {/* Addresses filter removed */}
                       </div>
                     </div>
                   </div>

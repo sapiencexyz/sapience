@@ -40,6 +40,8 @@ type Props = {
   size?: 'default' | 'compact';
   matchTriggerWidth?: boolean;
   closeOnSelect?: boolean;
+  /** Render custom header content above the list (e.g., an input for adding items) */
+  renderHeader?: (props: { selected: string[]; onChange: (values: string[]) => void }) => React.ReactNode;
 };
 
 const MultiSelect: React.FC<Props> = ({
@@ -56,6 +58,7 @@ const MultiSelect: React.FC<Props> = ({
   size = 'compact',
   matchTriggerWidth = false,
   closeOnSelect = false,
+  renderHeader,
 }) => {
   const [open, setOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
@@ -132,6 +135,7 @@ const MultiSelect: React.FC<Props> = ({
         align="start"
       >
         <Command className="flex flex-col overflow-visible">
+          {renderHeader && renderHeader({ selected, onChange })}
           {enableSearch && (
             <div className="relative">
               <CommandInput placeholder="Search…" />

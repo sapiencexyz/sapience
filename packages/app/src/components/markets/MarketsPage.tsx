@@ -101,8 +101,8 @@ const MarketsPage = () => {
   // Filter state managed here, passed down to MarketsDataTable
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterState>({
-    openInterestRange: [0, 100000],
-    timeToResolutionRange: [0, 1000], // Default to future markets only
+    openInterestRange: [0, Infinity],
+    timeToResolutionRange: [0, Infinity], // Default to future markets only
     selectedCategories: [],
   });
 
