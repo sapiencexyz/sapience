@@ -28,6 +28,12 @@ class AnalyticsTimeSeriesPoint {
   tvl!: string;
 }
 
+interface AnalyticsSummaryRow {
+  total_volume: string | null;
+  tvl: string | null;
+  open_interest: string | null;
+}
+
 interface DailyVolumeRow {
   date: Date;
   daily_volume: string | null;
@@ -51,38 +57,20 @@ export class AnalyticsResolver {
   ): Promise<AnalyticsSummary> {
     const now = Math.floor(Date.now() / 1000);
 
-    // Get all positions with their details
-    const allPositions = await prisma.position.findMany({
-      where: { chainId },
-      select: { totalCollateral: true, status: true, endsAt: true },
-    });
-
-    let totalVolume = 0n;
-    let tvl = 0n;
-    let openInterest = 0n;
-
-    for (const p of allPositions) {
-      const collateral = BigInt(p.totalCollateral || '0');
-
-      // Volume: all collateral ever deposited
-      totalVolume += collateral;
-
-      // TVL: collateral in active positions (not yet settled/claimed)
-      // This includes ended markets that haven't been settled yet
-      if (p.status === 'active') {
-        tvl += collateral;
-
-        // OI: collateral in markets that haven't ended yet
-        if (p.endsAt && p.endsAt > now) {
-          openInterest += collateral;
-        }
-      }
-    }
+    // Aggregate all metrics in a single query at the database level
+    const [result] = await prisma.$queryRaw<AnalyticsSummaryRow[]>`
+      SELECT
+        COALESCE(SUM(CAST("totalCollateral" AS DECIMAL)), 0)::TEXT as total_volume,
+        COALESCE(SUM(CASE WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL) ELSE 0 END), 0)::TEXT as tvl,
+        COALESCE(SUM(CASE WHEN status = 'active' AND "endsAt" > ${now} THEN CAST("totalCollateral" AS DECIMAL) ELSE 0 END), 0)::TEXT as open_interest
+      FROM position
+      WHERE "chainId" = ${chainId}
+    `;
 
     return {
-      totalVolume: totalVolume.toString(),
-      openInterest: openInterest.toString(),
-      tvl: tvl.toString(),
+      totalVolume: result?.total_volume || '0',
+      openInterest: result?.open_interest || '0',
+      tvl: result?.tvl || '0',
     };
   }
 

@@ -78,7 +78,10 @@ const AnimatedCursor = ({ points, top, height }: AnimatedCursorProps) => {
 // Custom tooltip component matching auction row tooltip styles
 type ChartTooltipProps = {
   active?: boolean;
-  payload?: Array<{ value: number; dataKey: string }>;
+  payload?: Array<{
+    value?: number | string | (number | string)[];
+    dataKey?: string | number;
+  }>;
   label?: string;
   dataKey: string;
   collateralSymbol: string;
@@ -94,9 +97,9 @@ const ChartTooltip = ({
   if (!active || !payload?.length) return null;
 
   const dataPoint = payload.find((p) => p.dataKey === dataKey);
-  if (!dataPoint) return null;
+  if (!dataPoint || dataPoint.value == null) return null;
 
-  const value = dataPoint.value;
+  const value = Number(dataPoint.value);
   const formattedValue = value.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -113,7 +116,9 @@ const ChartTooltip = ({
 
   return (
     <div className="bg-background border border-border rounded-md px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground mb-1">{dateLabel}</div>
+      <div className="text-xs font-medium text-muted-foreground mb-1">
+        {dateLabel}
+      </div>
       <div className="text-sm font-mono text-ethena">
         {formattedValue} {collateralSymbol}
       </div>
@@ -166,7 +171,8 @@ const AnalyticsPageContent = () => {
                   <span className="animate-pulse">...</span>
                 ) : (
                   <>
-                    {formatNumber(summary?.openInterest || '0')} {collateralSymbol}
+                    {formatNumber(summary?.openInterest || '0')}{' '}
+                    {collateralSymbol}
                   </>
                 )}
               </div>
@@ -200,7 +206,8 @@ const AnalyticsPageContent = () => {
                   <span className="animate-pulse">...</span>
                 ) : (
                   <>
-                    {formatNumber(summary?.totalVolume || '0')} {collateralSymbol}
+                    {formatNumber(summary?.totalVolume || '0')}{' '}
+                    {collateralSymbol}
                   </>
                 )}
               </div>
@@ -374,7 +381,9 @@ const AnalyticsPageContent = () => {
           {/* TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Total Value Locked</h3>
+              <h3 className="sc-heading text-foreground mb-4">
+                Total Value Locked
+              </h3>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">

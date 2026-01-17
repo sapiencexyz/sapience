@@ -68,8 +68,8 @@ export const useAnalyticsTimeSeries = (chainId: number) => {
         return [];
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minute TTL
-    refetchInterval: 5 * 60 * 1000,
+    staleTime: 60 * 1000, // 60 second TTL
+    refetchInterval: 60 * 1000,
   });
 };
 
