@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useCallback, useDeferredValue, useMemo, useState } from 'react';
+import { useCallback, useDeferredValue, useState } from 'react';
 import MultiSelect, { type MultiSelectItem } from './MultiSelect';
 import { Input } from '@sapience/ui/components/ui/input';
 
@@ -24,8 +24,6 @@ type Props = {
 const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
   const deferredItems = useDeferredValue(items);
   const deferredSelected = useDeferredValue(selected);
-  const memoItems = useMemo(() => deferredItems, [deferredItems]);
-  const memoSelected = useMemo(() => deferredSelected, [deferredSelected]);
 
   const [inputValue, setInputValue] = useState('');
 
@@ -48,7 +46,13 @@ const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
   );
 
   const renderHeader = useCallback(
-    ({ selected: sel, onChange: onChangeSelected }: { selected: string[]; onChange: (values: string[]) => void }) => (
+    ({
+      selected: sel,
+      onChange: onChangeSelected,
+    }: {
+      selected: string[];
+      onChange: (values: string[]) => void;
+    }) => (
       <div className="relative border-b border-border">
         <Input
           inputSize="xs"
@@ -89,8 +93,8 @@ const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
   return (
     <MultiSelect
       placeholder="All Predictors"
-      items={memoItems}
-      selected={memoSelected}
+      items={deferredItems}
+      selected={deferredSelected}
       onChange={onChange}
       emptyMessage="No predictors found"
       renderHeader={renderHeader}
@@ -105,9 +109,7 @@ const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
         if (sel.length === 0) return null;
         if (sel.length === 1) {
           return (
-            <span className="font-mono text-xs">
-              {truncateAddress(sel[0])}
-            </span>
+            <span className="font-mono text-xs">{truncateAddress(sel[0])}</span>
           );
         }
         return `${sel.length} predictors`;

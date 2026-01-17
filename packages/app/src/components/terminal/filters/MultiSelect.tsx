@@ -41,7 +41,10 @@ type Props = {
   matchTriggerWidth?: boolean;
   closeOnSelect?: boolean;
   /** Render custom header content above the list (e.g., an input for adding items) */
-  renderHeader?: (props: { selected: string[]; onChange: (values: string[]) => void }) => React.ReactNode;
+  renderHeader?: (props: {
+    selected: string[];
+    onChange: (values: string[]) => void;
+  }) => React.ReactNode;
 };
 
 const MultiSelect: React.FC<Props> = ({

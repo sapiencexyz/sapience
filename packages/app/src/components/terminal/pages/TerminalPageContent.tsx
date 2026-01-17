@@ -41,6 +41,8 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
 
 /** Shape of auction.started message data payload */
 interface AuctionStartedData {
@@ -56,6 +58,16 @@ const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
   const chainId = useChainIdFromLocalStorage();
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
+
+  // Ensure bids hub is connected regardless of whether any rows are rendered.
+  // This fixes a chicken-and-egg bug where filtering by bid count (or other filters
+  // that exclude all auctions) prevents bids from ever being received.
+  const { apiBaseUrl } = useSettings();
+  const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
+  useEffect(() => {
+    bidsHub.setUrl(wsUrl);
+  }, [wsUrl]);
+
   const isMobile = useIsMobile();
   const isCompact = useIsBelow(1024);
   const desktopBottomGap = 'clamp(16px, 2.5vw, 32px)';
@@ -282,7 +294,8 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
       if (m.type !== 'auction.started') continue;
-      const taker = (m as any)?.data?.taker;
+      const auctionData = m.data as AuctionStartedData | undefined;
+      const taker = auctionData?.taker;
       if (taker && typeof taker === 'string') {
         set.add(taker);
       }
@@ -481,18 +494,29 @@ const TerminalPageContent: React.FC = () => {
       const minWei = parseUnits(String(wagerRange[0] || 0), tokenDecimals);
       const maxWei =
         wagerRange[1] === Infinity
-          ? BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')
+          ? BigInt(
+              '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+            )
           : parseUnits(String(wagerRange[1]), tokenDecimals);
       return [minWei, maxWei];
     } catch {
-      return [0n, BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff')];
+      return [
+        0n,
+        BigInt(
+          '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+        ),
+      ];
     }
   }, [wagerRange, tokenDecimals]);
 
   const bidsRangeNum = useMemo((): [number, number] => {
     return [
       Number.isFinite(bidsRange[0]) && bidsRange[0] >= 0 ? bidsRange[0] : 0,
-      bidsRange[1] === Infinity ? Infinity : (Number.isFinite(bidsRange[1]) ? bidsRange[1] : Infinity),
+      bidsRange[1] === Infinity
+        ? Infinity
+        : Number.isFinite(bidsRange[1])
+          ? bidsRange[1]
+          : Infinity,
     ];
   }, [bidsRange]);
 
@@ -568,11 +592,16 @@ const TerminalPageContent: React.FC = () => {
       // Check address filter
       const auctionData = row.m?.data as AuctionStartedData | undefined;
       if (selectedAddresses.length > 0) {
-        if (!auctionData?.taker || !selectedAddresses.includes(auctionData.taker)) return false;
+        if (
+          !auctionData?.taker ||
+          !selectedAddresses.includes(auctionData.taker)
+        )
+          return false;
       }
 
       // Check signed filter
-      const isSigned = !!auctionData?.takerSignature && auctionData.takerSignature !== '0x';
+      const isSigned =
+        !!auctionData?.takerSignature && auctionData.takerSignature !== '0x';
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
@@ -581,7 +610,8 @@ const TerminalPageContent: React.FC = () => {
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
-        if (bidsRangeNum[1] !== Infinity && bidsCount > bidsRangeNum[1]) return false;
+        if (bidsRangeNum[1] !== Infinity && bidsCount > bidsRangeNum[1])
+          return false;
         // Check wager range
         if (makerWagerWei < wagerRangeWei[0]) return false;
         if (makerWagerWei > wagerRangeWei[1]) return false;
