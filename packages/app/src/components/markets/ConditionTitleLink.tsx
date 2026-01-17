@@ -3,6 +3,11 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { getQuestionHref } from '~/lib/utils/questionHref';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 
 type ConditionTitleLinkProps = {
   conditionId?: string;
@@ -98,15 +103,34 @@ export default function ConditionTitleLink({
   // Wrapper display: block for single-line clamp, inline otherwise
   const wrapperDisplay = clampLines === 1 ? 'block' : 'inline align-baseline';
 
+  // Only show tooltip when text might be truncated (clamped)
+  const showTooltip = clampLines != null && !noWrap;
+
+  const linkElement = (
+    <Link
+      href={href}
+      className={`${baseClickableClass} min-w-0 max-w-full`}
+      style={linkStyle}
+    >
+      {title}
+    </Link>
+  );
+
   return (
     <span className={`${wrapperDisplay} min-w-0 max-w-full ${className ?? ''}`}>
-      <Link
-        href={href}
-        className={`${baseClickableClass} min-w-0 max-w-full`}
-        style={linkStyle}
-      >
-        {title}
-      </Link>
+      {showTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-xs text-xs whitespace-normal break-words"
+          >
+            {title}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        linkElement
+      )}
       {trailing ? (
         <>
           {' '}

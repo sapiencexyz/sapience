@@ -192,6 +192,21 @@ const AddressDisplay = ({
                 <span className="font-medium">Copy Address</span>
               </button>
               <a
+                href={`https://explorer.ethereal.trade/address/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
+              >
+                <Image
+                  src="/ethereal-logomark.svg"
+                  alt="Ethereal Explorer"
+                  width={12}
+                  height={12}
+                  className="opacity-70 group-hover/address-action:opacity-100 transition-all duration-200 ease-in-out group-hover/address-action:[filter:brightness(0)_saturate(100%)_invert(77%)_sepia(33%)_saturate(592%)_hue-rotate(9deg)_brightness(103%)_contrast(94%)]"
+                />
+                <span className="font-medium">Explorer</span>
+              </a>
+              <a
                 href={`https://app.zerion.io/${address}/history`}
                 target="_blank"
                 rel="noopener noreferrer"

@@ -392,7 +392,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                   Array.from({ length: NUM_TO_DISPLAY }).map((_, idx) => (
                     <motion.tr
                       key={`skeleton-${idx}`}
-                      initial={{ opacity: 0 }}
+                      initial={false}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.3 }}
@@ -559,9 +559,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           </div>
                         </TableCell>
                         {/* Probability cell - desktop only */}
-                        <TableCell className="hidden md:table-cell py-3 px-4 text-right min-w-0 whitespace-normal">
+                        <TableCell className="hidden md:table-cell py-3 px-4 text-right whitespace-nowrap">
                           {status === 'received' && probability !== null ? (
-                            <div className="text-sm min-w-0 leading-snug">
+                            <div className="text-sm">
                               <PercentChance
                                 probability={1 - probability}
                                 showLabel
