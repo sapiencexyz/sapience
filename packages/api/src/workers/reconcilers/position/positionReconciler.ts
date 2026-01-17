@@ -128,7 +128,9 @@ export class PositionReconciler {
           addresses.push(resolverAddress as `0x${string}`);
         }
         if (lzConditionalTokenResolverEntry?.address) {
-          addresses.push(lzConditionalTokenResolverEntry.address as `0x${string}`);
+          addresses.push(
+            lzConditionalTokenResolverEntry.address as `0x${string}`
+          );
         }
 
         try {

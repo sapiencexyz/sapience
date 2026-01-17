@@ -333,8 +333,7 @@ export function createChatWebSocketServer() {
                 ? data.sessionSignature
                 : '';
             const nonce = typeof data.nonce === 'string' ? data.nonce : '';
-            const chainId =
-              typeof data.chainId === 'number' ? data.chainId : 0;
+            const chainId = typeof data.chainId === 'number' ? data.chainId : 0;
 
             if (
               !sessionApproval ||
