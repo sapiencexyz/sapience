@@ -84,13 +84,7 @@ export function RangeFilter({
     }
   };
 
-  const handleMinKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
-  };
-
-  const handleMaxKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       e.currentTarget.blur();
     }
@@ -104,33 +98,36 @@ export function RangeFilter({
     return formatted;
   };
 
-  const getButtonLabel = () => {
-    if (isAtBounds) return placeholder;
-    // Check for custom labels
+  const getButtonLabel = (): string => {
+    if (isAtBounds) {
+      return placeholder;
+    }
+
+    // Check for custom labels first
     if (customLabels) {
-      for (const { range, label } of customLabels) {
-        if (value[0] === range[0] && value[1] === range[1]) {
-          return label;
-        }
+      const matchedLabel = customLabels.find(
+        ({ range }) => value[0] === range[0] && value[1] === range[1]
+      );
+      if (matchedLabel) {
+        return matchedLabel.label;
       }
     }
+
     const minDisplay = formatDisplay(value[0]);
     const maxDisplay = formatDisplay(value[1]);
-    // If max is at the upper bound (infinity), use "≥X" format
+    const unitSuffix = unit ? ` ${unit}` : '';
+
+    // Upper bound at infinity: show "≥X" format
     if (value[1] === max && maxDisplay === '∞') {
-      return `≥${minDisplay}${unit ? ` ${unit}` : ''}`;
+      return `≥${minDisplay}${unitSuffix}`;
     }
-    // If min is at the lower bound, use "≤X" format
-    if (value[0] === min && minDisplay === formatDisplay(min)) {
-      const minFormatted = formatValue(min);
-      if (minFormatted === '-∞' || (min === 0 && value[0] === 0)) {
-        // Only use ≤ format for actual lower bound cases like "-∞"
-        if (minFormatted === '-∞') {
-          return `≤${maxDisplay}${unit ? ` ${unit}` : ''}`;
-        }
-      }
+
+    // Lower bound at negative infinity: show "≤X" format
+    if (value[0] === min && formatValue(min) === '-∞') {
+      return `≤${maxDisplay}${unitSuffix}`;
     }
-    return `${minDisplay} → ${maxDisplay}${unit ? ` ${unit}` : ''}`;
+
+    return `${minDisplay} → ${maxDisplay}${unitSuffix}`;
   };
 
   return (
@@ -166,7 +163,7 @@ export function RangeFilter({
                 value={localMin}
                 onChange={handleMinInputChange}
                 onBlur={handleMinBlur}
-                onKeyDown={handleMinKeyDown}
+                onKeyDown={handleKeyDown}
                 className="w-full pr-10 text-right font-mono text-xs tabular-nums"
               />
               {unit && (
@@ -183,7 +180,7 @@ export function RangeFilter({
                 value={localMax}
                 onChange={handleMaxInputChange}
                 onBlur={handleMaxBlur}
-                onKeyDown={handleMaxKeyDown}
+                onKeyDown={handleKeyDown}
                 className="w-full pr-10 text-right font-mono text-xs tabular-nums"
               />
               {unit && (

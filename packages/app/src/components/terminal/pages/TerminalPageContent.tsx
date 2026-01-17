@@ -510,14 +510,10 @@ const TerminalPageContent: React.FC = () => {
   }, [wagerRange, tokenDecimals]);
 
   const bidsRangeNum = useMemo((): [number, number] => {
-    return [
-      Number.isFinite(bidsRange[0]) && bidsRange[0] >= 0 ? bidsRange[0] : 0,
-      bidsRange[1] === Infinity
-        ? Infinity
-        : Number.isFinite(bidsRange[1])
-          ? bidsRange[1]
-          : Infinity,
-    ];
+    const minBids =
+      Number.isFinite(bidsRange[0]) && bidsRange[0] >= 0 ? bidsRange[0] : 0;
+    const maxBids = Number.isFinite(bidsRange[1]) ? bidsRange[1] : Infinity;
+    return [minBids, maxBids];
   }, [bidsRange]);
 
   // Track live bids via shared hub to keep counts in sync with row components
@@ -565,15 +561,18 @@ const TerminalPageContent: React.FC = () => {
         decoded.kind === 'uma'
           ? decoded.data.map((l) => String(l.marketId))
           : [];
-      const legCategorySlugs =
-        decoded.kind === 'uma'
-          ? decoded.data.map((l) => {
-              const cond = renderConditionMap.get(String(l.marketId));
-              return cond?.category?.slug ?? null;
-            })
-          : decoded.kind === 'pyth'
-            ? (['prices'] as const)
-            : [];
+      const legCategorySlugs = (() => {
+        if (decoded.kind === 'uma') {
+          return decoded.data.map((l) => {
+            const cond = renderConditionMap.get(String(l.marketId));
+            return cond?.category?.slug ?? null;
+          });
+        }
+        if (decoded.kind === 'pyth') {
+          return ['prices'] as const;
+        }
+        return [];
+      })();
 
       const matchesCategory =
         selectedCategorySlugs.length === 0 ||

@@ -98,13 +98,11 @@ const AddressFilter: React.FC<Props> = ({ items, selected, onChange }) => {
       onChange={onChange}
       emptyMessage="No predictors found"
       renderHeader={renderHeader}
-      renderItemContent={(item) => {
-        return (
-          <span className="font-mono text-xs text-brand-white">
-            {truncateAddress(item.value)}
-          </span>
-        );
-      }}
+      renderItemContent={(item) => (
+        <span className="font-mono text-xs text-brand-white">
+          {truncateAddress(item.value)}
+        </span>
+      )}
       renderTriggerContent={(sel) => {
         if (sel.length === 0) return null;
         if (sel.length === 1) {

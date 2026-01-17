@@ -41,7 +41,7 @@ const SignedFilter: React.FC<Props> = ({ value, onChange }) => {
           className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between px-3 text-sm"
         >
           <span
-            className={value === 'all' ? 'text-muted-foreground' : undefined}
+            className={value === 'all' ? 'text-muted-foreground' : ''}
           >
             {selectedOption.label}
           </span>

@@ -30,7 +30,9 @@ function picksMatch(
   positionPicks: Array<{ question: string; choice: string }>,
   expectedPicks: Array<{ question: string; choice: string }>
 ): boolean {
-  if (positionPicks.length !== expectedPicks.length) return false;
+  if (positionPicks.length !== expectedPicks.length) {
+    return false;
+  }
 
   const toKey = (leg: { question: string; choice: string }): string =>
     `${leg.question}|${leg.choice}`;
@@ -38,12 +40,17 @@ function picksMatch(
   const expectedSet = new Set(expectedPicks.map(toKey));
   const positionSet = new Set(positionPicks.map(toKey));
 
+  // Check both sets have identical keys
+  if (expectedSet.size !== positionSet.size) {
+    return false;
+  }
+
   for (const key of expectedSet) {
-    if (!positionSet.has(key)) return false;
+    if (!positionSet.has(key)) {
+      return false;
+    }
   }
-  for (const key of positionSet) {
-    if (!expectedSet.has(key)) return false;
-  }
+
   return true;
 }
 
