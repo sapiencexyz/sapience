@@ -1,4 +1,9 @@
-import { verifyMessage, recoverMessageAddress, type Address, type Hex } from 'viem';
+import {
+  verifyMessage,
+  recoverMessageAddress,
+  type Address,
+  type Hex,
+} from 'viem';
 import crypto from 'crypto';
 import {
   verifySessionApproval,
@@ -184,13 +189,20 @@ export async function verifySessionAndCreateToken(params: {
   };
 
   // Extract claimed account address from typed data
-  const claimedAccountAddress = params.sessionTypedData.domain.verifyingContract as Address;
+  const claimedAccountAddress = params.sessionTypedData.domain
+    .verifyingContract as Address;
 
   // Verify the session approval
-  const sessionResult = await verifySessionApproval(approvalPayload, claimedAccountAddress);
+  const sessionResult = await verifySessionApproval(
+    approvalPayload,
+    claimedAccountAddress
+  );
 
   if (!sessionResult.valid || !sessionResult.sessionKeyAddress) {
-    console.warn('[ChatAuth] Session approval verification failed:', sessionResult.error);
+    console.warn(
+      '[ChatAuth] Session approval verification failed:',
+      sessionResult.error
+    );
     return null;
   }
 
@@ -201,7 +213,10 @@ export async function verifySessionAndCreateToken(params: {
       signature: params.sessionSignature as Hex,
     });
 
-    if (recoveredSigner.toLowerCase() !== sessionResult.sessionKeyAddress.toLowerCase()) {
+    if (
+      recoveredSigner.toLowerCase() !==
+      sessionResult.sessionKeyAddress.toLowerCase()
+    ) {
       console.warn('[ChatAuth] Challenge signature not from session key:', {
         expected: sessionResult.sessionKeyAddress,
         recovered: recoveredSigner,

@@ -75,6 +75,21 @@ export type AggregatedProfitEntryType = {
   totalPnL: Scalars['Float']['output'];
 };
 
+export type AnalyticsSummary = {
+  __typename?: 'AnalyticsSummary';
+  openInterest: Scalars['String']['output'];
+  totalVolume: Scalars['String']['output'];
+  tvl: Scalars['String']['output'];
+};
+
+export type AnalyticsTimeSeriesPoint = {
+  __typename?: 'AnalyticsTimeSeriesPoint';
+  dailyVolume: Scalars['String']['output'];
+  date: Scalars['String']['output'];
+  openInterest: Scalars['String']['output'];
+  tvl: Scalars['String']['output'];
+};
+
 export type Attestation = {
   __typename?: 'Attestation';
   attestation_score?: Maybe<AttestationScore>;
@@ -2054,6 +2069,8 @@ export type Query = {
   aggregateConditionGroup: AggregateConditionGroup;
   aggregateUser: AggregateUser;
   allTimeProfitLeaderboard: Array<AggregatedProfitEntryType>;
+  analyticsSummary: AnalyticsSummary;
+  analyticsTimeSeries: Array<AnalyticsTimeSeriesPoint>;
   attestation?: Maybe<Attestation>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
@@ -2141,6 +2158,16 @@ export type QueryAggregateUserArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
+};
+
+
+export type QueryAnalyticsSummaryArgs = {
+  chainId: Scalars['Int']['input'];
+};
+
+
+export type QueryAnalyticsTimeSeriesArgs = {
+  chainId: Scalars['Int']['input'];
 };
 
 
