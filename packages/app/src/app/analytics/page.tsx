@@ -2,8 +2,8 @@
 
 import AnalyticsPageContent from '~/components/analytics/pages/AnalyticsPageContent';
 
-const AnalyticsPage = () => {
+function AnalyticsPage(): React.ReactElement {
   return <AnalyticsPageContent />;
-};
+}
 
 export default AnalyticsPage;

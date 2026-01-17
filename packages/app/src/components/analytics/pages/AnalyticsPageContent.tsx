@@ -20,62 +20,54 @@ import {
   useAnalyticsTimeSeries,
 } from '~/hooks/graphql/useAnalytics';
 
-const formatNumber = (value: string | number, decimals = 2): string => {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(num)) return '0';
-  // Convert from 18 decimals (wei) to human readable
-  const humanReadable = num / 1e18;
-  if (humanReadable >= 1_000_000) {
-    return `${(humanReadable / 1_000_000).toFixed(decimals)}M`;
-  }
-  if (humanReadable >= 1_000) {
-    return `${(humanReadable / 1_000).toFixed(decimals)}K`;
-  }
-  return humanReadable.toFixed(decimals);
-};
-
-const formatChartValue = (value: number): string => {
-  // Value is already in human readable form (divided by 1e18)
+function formatLargeNumber(
+  value: number,
+  decimals: number,
+  useDecimals: boolean
+): string {
   if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
+    return `${(value / 1_000_000).toFixed(useDecimals ? decimals : 1)}M`;
   }
   if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`;
+    return `${(value / 1_000).toFixed(useDecimals ? decimals : 1)}K`;
   }
-  return value.toFixed(0);
-};
+  return value.toFixed(useDecimals ? decimals : 0);
+}
 
-// Custom cursor with animated dots (matching AuctionBidsChart style)
+function formatNumber(value: string | number, decimals = 2): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0';
+  const humanReadable = num / 1e18;
+  return formatLargeNumber(humanReadable, decimals, true);
+}
+
+function formatChartValue(value: number): string {
+  return formatLargeNumber(value, 1, false);
+}
+
 type AnimatedCursorProps = {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
   top?: number;
+  height?: number;
   points?: Array<{ x: number; y: number }>;
 };
 
-const AnimatedCursor = ({ points, top, height }: AnimatedCursorProps) => {
+function AnimatedCursor({ points, top, height }: AnimatedCursorProps) {
   if (!points || points.length === 0) return null;
-  const x = points[0].x;
-  const y1 = top ?? 0;
-  const y2 = y1 + (height ?? 0);
 
   return (
     <line
-      x1={x}
-      y1={y1}
-      x2={x}
-      y2={y2}
+      x1={points[0].x}
+      y1={top ?? 0}
+      x2={points[0].x}
+      y2={(top ?? 0) + (height ?? 0)}
       stroke="hsl(var(--brand-white))"
       strokeWidth={1}
       strokeDasharray="1 3"
       className="analytics-chart-cursor"
     />
   );
-};
+}
 
-// Custom tooltip component matching auction row tooltip styles
 type ChartTooltipProps = {
   active?: boolean;
   payload?: Array<{
@@ -87,13 +79,13 @@ type ChartTooltipProps = {
   collateralSymbol: string;
 };
 
-const ChartTooltip = ({
+function ChartTooltip({
   active,
   payload,
   label,
   dataKey,
   collateralSymbol,
-}: ChartTooltipProps) => {
+}: ChartTooltipProps): React.ReactNode {
   if (!active || !payload?.length) return null;
 
   const dataPoint = payload.find((p) => p.dataKey === dataKey);
@@ -105,7 +97,6 @@ const ChartTooltip = ({
     maximumFractionDigits: 2,
   });
 
-  // Format date label with year
   const dateLabel = label
     ? new Date(label).toLocaleDateString(undefined, {
         month: 'short',
@@ -124,9 +115,22 @@ const ChartTooltip = ({
       </div>
     </div>
   );
+}
+
+function formatDateTick(value: string): string {
+  const date = new Date(value);
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+const CHART_AXIS_STYLE = {
+  tick: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 },
+  axisLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
+  tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const AnalyticsPageContent = () => {
+const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
+
+function AnalyticsPageContent(): React.ReactElement {
   const chainId = useChainIdFromLocalStorage();
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
 
@@ -135,7 +139,6 @@ const AnalyticsPageContent = () => {
   const { data: timeSeries, isLoading: timeSeriesLoading } =
     useAnalyticsTimeSeries(chainId);
 
-  // Transform time series data for charts
   const chartData = useMemo(() => {
     if (!timeSeries) return [];
 
@@ -234,34 +237,18 @@ const AnalyticsPageContent = () => {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart
-                      data={chartData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
+                    <ComposedChart data={chartData} margin={CHART_MARGIN}>
                       <CartesianGrid
                         strokeDasharray="3 3"
                         stroke="hsl(var(--brand-white) / 0.1)"
                       />
                       <XAxis
                         dataKey="date"
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getDate()}`;
-                        }}
+                        {...CHART_AXIS_STYLE}
+                        tickFormatter={formatDateTick}
                       />
                       <YAxis
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
+                        {...CHART_AXIS_STYLE}
                         tickFormatter={formatChartValue}
                       />
                       <Tooltip
@@ -303,10 +290,7 @@ const AnalyticsPageContent = () => {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={chartData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
+                    <AreaChart data={chartData} margin={CHART_MARGIN}>
                       <defs>
                         <linearGradient
                           id="openInterestGradient"
@@ -333,24 +317,11 @@ const AnalyticsPageContent = () => {
                       />
                       <XAxis
                         dataKey="date"
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getDate()}`;
-                        }}
+                        {...CHART_AXIS_STYLE}
+                        tickFormatter={formatDateTick}
                       />
                       <YAxis
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
+                        {...CHART_AXIS_STYLE}
                         tickFormatter={formatChartValue}
                       />
                       <Tooltip
@@ -397,10 +368,7 @@ const AnalyticsPageContent = () => {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
-                      data={chartData}
-                      margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-                    >
+                    <AreaChart data={chartData} margin={CHART_MARGIN}>
                       <defs>
                         <linearGradient
                           id="tvlGradient"
@@ -427,24 +395,11 @@ const AnalyticsPageContent = () => {
                       />
                       <XAxis
                         dataKey="date"
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickFormatter={(value) => {
-                          const date = new Date(value);
-                          return `${date.getMonth() + 1}/${date.getDate()}`;
-                        }}
+                        {...CHART_AXIS_STYLE}
+                        tickFormatter={formatDateTick}
                       />
                       <YAxis
-                        tick={{
-                          fill: 'hsl(var(--muted-foreground))',
-                          fontSize: 11,
-                        }}
-                        axisLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
-                        tickLine={{ stroke: 'hsl(var(--brand-white) / 0.3)' }}
+                        {...CHART_AXIS_STYLE}
                         tickFormatter={formatChartValue}
                       />
                       <Tooltip
@@ -486,6 +441,6 @@ const AnalyticsPageContent = () => {
       `}</style>
     </div>
   );
-};
+}
 
 export default AnalyticsPageContent;

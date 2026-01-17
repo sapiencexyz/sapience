@@ -58,7 +58,6 @@ export class PositionReconciler {
       const chainIds = Array.from(new Set(chainsRaw.map((r) => r.chainId)));
 
       let totalScanned = 0;
-      const totalInserted = 0;
       let totalUpdated = 0;
       let totalPositions = 0;
 
@@ -169,12 +168,10 @@ export class PositionReconciler {
               }
             }
           }
+          const lastLogBlockNumber =
+            logs.length > 0 ? logs[logs.length - 1].blockNumber : null;
           const newWatermark =
-            logs.length > 0 && logs[logs.length - 1].blockNumber
-              ? logs[logs.length - 1].blockNumber!
-              : toBlock === 'latest'
-                ? await client.getBlockNumber()
-                : BigInt(toBlock);
+            lastLogBlockNumber ?? (await client.getBlockNumber());
           await this.setWatermark(chainId, newWatermark);
         } catch (e) {
           console.error(
@@ -185,7 +182,7 @@ export class PositionReconciler {
       }
 
       console.log(
-        `${POSITION_RECONCILE_CONFIG.logPrefix} Run complete: chains=${chainIds.length}, positions=${totalPositions}, scannedLogs=${totalScanned}, newEvents=${totalInserted}, updated=${totalUpdated}`
+        `${POSITION_RECONCILE_CONFIG.logPrefix} Run complete: chains=${chainIds.length}, positions=${totalPositions}, scannedLogs=${totalScanned}, updated=${totalUpdated}`
       );
       await setStringParam(
         POSITION_RECONCILE_IPC_KEYS.lastRunAt,

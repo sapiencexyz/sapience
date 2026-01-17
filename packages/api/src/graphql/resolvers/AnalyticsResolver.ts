@@ -49,6 +49,19 @@ interface DailyTVLRow {
   tvl: string | null;
 }
 
+function buildDateMap<T extends { date: Date }>(
+  rows: T[],
+  key: keyof T
+): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const row of rows) {
+    const dateStr = row.date.toISOString().split('T')[0];
+    const value = row[key];
+    map.set(dateStr, value?.toString() || '0');
+  }
+  return map;
+}
+
 @Resolver()
 export class AnalyticsResolver {
   @Query(() => AnalyticsSummary)
@@ -139,47 +152,22 @@ export class AnalyticsResolver {
       ORDER BY d.date
     `;
 
-    // Build a map of dates for easy lookup
-    const volumeMap = new Map<string, string>();
-    for (const row of dailyVolumes) {
-      const dateStr = row.date.toISOString().split('T')[0];
-      volumeMap.set(dateStr, row.daily_volume?.toString() || '0');
-    }
+    const volumeMap = buildDateMap(dailyVolumes, 'daily_volume');
+    const oiMap = buildDateMap(dailyOI, 'open_interest');
+    const tvlMap = buildDateMap(dailyTVL, 'tvl');
 
-    const oiMap = new Map<string, string>();
-    for (const row of dailyOI) {
-      const dateStr = row.date.toISOString().split('T')[0];
-      oiMap.set(dateStr, row.open_interest?.toString() || '0');
-    }
-
-    const tvlMap = new Map<string, string>();
-    for (const row of dailyTVL) {
-      const dateStr = row.date.toISOString().split('T')[0];
-      tvlMap.set(dateStr, row.tvl?.toString() || '0');
-    }
-
-    // Collect all unique dates
-    const allDates = new Set<string>();
-    for (const d of dailyVolumes)
-      allDates.add(d.date.toISOString().split('T')[0]);
-    for (const d of dailyOI) allDates.add(d.date.toISOString().split('T')[0]);
-    for (const d of dailyTVL) allDates.add(d.date.toISOString().split('T')[0]);
-
-    // Sort dates
+    const allDates = new Set([
+      ...volumeMap.keys(),
+      ...oiMap.keys(),
+      ...tvlMap.keys(),
+    ]);
     const sortedDates = Array.from(allDates).sort();
 
-    // Build time series
-    const result: AnalyticsTimeSeriesPoint[] = [];
-
-    for (const dateStr of sortedDates) {
-      result.push({
-        date: dateStr,
-        dailyVolume: volumeMap.get(dateStr) || '0',
-        openInterest: oiMap.get(dateStr) || '0',
-        tvl: tvlMap.get(dateStr) || '0',
-      });
-    }
-
-    return result;
+    return sortedDates.map((dateStr) => ({
+      date: dateStr,
+      dailyVolume: volumeMap.get(dateStr) || '0',
+      openInterest: oiMap.get(dateStr) || '0',
+      tvl: tvlMap.get(dateStr) || '0',
+    }));
   }
 }

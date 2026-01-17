@@ -1,6 +1,5 @@
 'use client';
 
-import type React from 'react';
 import { useState } from 'react';
 import {
   Popover,
@@ -17,7 +16,7 @@ import { cn } from '@sapience/ui/lib/utils';
 
 export type SignedFilterValue = 'all' | 'signed' | 'unsigned';
 
-type Props = {
+type SignedFilterProps = {
   value: SignedFilterValue;
   onChange: (value: SignedFilterValue) => void;
 };
@@ -28,9 +27,11 @@ const OPTIONS: Array<{ value: SignedFilterValue; label: string }> = [
   { value: 'unsigned', label: 'Unsigned Only' },
 ];
 
-const SignedFilter: React.FC<Props> = ({ value, onChange }) => {
+function SignedFilter({
+  value,
+  onChange,
+}: SignedFilterProps): React.ReactElement {
   const [open, setOpen] = useState(false);
-
   const selectedOption = OPTIONS.find((o) => o.value === value) ?? OPTIONS[0];
 
   return (
@@ -95,6 +96,6 @@ const SignedFilter: React.FC<Props> = ({ value, onChange }) => {
       </PopoverContent>
     </Popover>
   );
-};
+}
 
 export default SignedFilter;

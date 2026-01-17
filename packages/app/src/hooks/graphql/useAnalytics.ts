@@ -35,42 +35,34 @@ const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
   }
 `;
 
-export const useAnalyticsSummary = (chainId: number) => {
+const CACHE_TIME_MS = 60 * 1000;
+
+export function useAnalyticsSummary(chainId: number) {
   return useQuery<AnalyticsSummary | null>({
     queryKey: ['analyticsSummary', chainId],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{
-          analyticsSummary: AnalyticsSummary;
-        }>(GET_ANALYTICS_SUMMARY, { chainId });
-        return data?.analyticsSummary || null;
-      } catch (error) {
-        console.error('Error fetching analytics summary:', error);
-        return null;
-      }
+      const data = await graphqlRequest<{
+        analyticsSummary: AnalyticsSummary;
+      }>(GET_ANALYTICS_SUMMARY, { chainId });
+      return data?.analyticsSummary ?? null;
     },
-    staleTime: 60 * 1000, // 60 second TTL
-    refetchInterval: 60 * 1000,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
   });
-};
+}
 
-export const useAnalyticsTimeSeries = (chainId: number) => {
+export function useAnalyticsTimeSeries(chainId: number) {
   return useQuery<AnalyticsTimeSeriesPoint[]>({
     queryKey: ['analyticsTimeSeries', chainId],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{
-          analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
-        }>(GET_ANALYTICS_TIME_SERIES, { chainId });
-        return data?.analyticsTimeSeries || [];
-      } catch (error) {
-        console.error('Error fetching analytics time series:', error);
-        return [];
-      }
+      const data = await graphqlRequest<{
+        analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
+      }>(GET_ANALYTICS_TIME_SERIES, { chainId });
+      return data?.analyticsTimeSeries ?? [];
     },
-    staleTime: 60 * 1000, // 60 second TTL
-    refetchInterval: 60 * 1000,
+    staleTime: CACHE_TIME_MS,
+    refetchInterval: CACHE_TIME_MS,
   });
-};
+}
 
 export type { AnalyticsSummary, AnalyticsTimeSeriesPoint };
