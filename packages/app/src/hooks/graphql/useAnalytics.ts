@@ -15,8 +15,8 @@ interface AnalyticsTimeSeriesPoint {
 }
 
 const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
-  query AnalyticsSummary($chainId: Int!) {
-    analyticsSummary(chainId: $chainId) {
+  query AnalyticsSummary {
+    analyticsSummary {
       totalVolume
       openInterest
       tvl
@@ -25,8 +25,8 @@ const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
 `;
 
 const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
-  query AnalyticsTimeSeries($chainId: Int!) {
-    analyticsTimeSeries(chainId: $chainId) {
+  query AnalyticsTimeSeries {
+    analyticsTimeSeries {
       date
       dailyVolume
       openInterest
@@ -37,13 +37,13 @@ const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useAnalyticsSummary(chainId: number) {
+export function useAnalyticsSummary() {
   return useQuery<AnalyticsSummary | null>({
-    queryKey: ['analyticsSummary', chainId],
+    queryKey: ['analyticsSummary'],
     queryFn: async () => {
       const data = await graphqlRequest<{
         analyticsSummary: AnalyticsSummary;
-      }>(GET_ANALYTICS_SUMMARY, { chainId });
+      }>(GET_ANALYTICS_SUMMARY);
       return data?.analyticsSummary ?? null;
     },
     staleTime: CACHE_TIME_MS,
@@ -51,13 +51,13 @@ export function useAnalyticsSummary(chainId: number) {
   });
 }
 
-export function useAnalyticsTimeSeries(chainId: number) {
+export function useAnalyticsTimeSeries() {
   return useQuery<AnalyticsTimeSeriesPoint[]>({
-    queryKey: ['analyticsTimeSeries', chainId],
+    queryKey: ['analyticsTimeSeries'],
     queryFn: async () => {
       const data = await graphqlRequest<{
         analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
-      }>(GET_ANALYTICS_TIME_SERIES, { chainId });
+      }>(GET_ANALYTICS_TIME_SERIES);
       return data?.analyticsTimeSeries ?? [];
     },
     staleTime: CACHE_TIME_MS,

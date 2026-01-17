@@ -1879,8 +1879,8 @@ type Query {
   aggregateConditionGroup(cursor: ConditionGroupWhereUniqueInput, orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): AggregateConditionGroup!
   aggregateUser(cursor: UserWhereUniqueInput, orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): AggregateUser!
   allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
-  analyticsSummary(chainId: Int!): AnalyticsSummary!
-  analyticsTimeSeries(chainId: Int!): [AnalyticsTimeSeriesPoint!]!
+  analyticsSummary: AnalyticsSummary!
+  analyticsTimeSeries: [AnalyticsTimeSeriesPoint!]!
   attestation(where: AttestationWhereUniqueInput!): Attestation
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!

@@ -1,6 +1,6 @@
 'use client';
 
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useMemo } from 'react';
 import {
@@ -14,11 +14,11 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import {
   useAnalyticsSummary,
   useAnalyticsTimeSeries,
 } from '~/hooks/graphql/useAnalytics';
+import Loader from '~/components/shared/Loader';
 
 function formatLargeNumber(
   value: number,
@@ -131,13 +131,11 @@ const CHART_AXIS_STYLE = {
 const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
 
 function AnalyticsPageContent(): React.ReactElement {
-  const chainId = useChainIdFromLocalStorage();
-  const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
+  const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
 
-  const { data: summary, isLoading: summaryLoading } =
-    useAnalyticsSummary(chainId);
+  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
   const { data: timeSeries, isLoading: timeSeriesLoading } =
-    useAnalyticsTimeSeries(chainId);
+    useAnalyticsTimeSeries();
 
   const chartData = useMemo(() => {
     if (!timeSeries) return [];
@@ -169,14 +167,16 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="sc-heading text-foreground mb-2">
                 Open Interest
               </div>
-              <div className="text-2xl md:text-3xl font-mono">
+              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
-                  <span className="animate-pulse">...</span>
+                  <div className="w-full flex justify-center pt-3">
+                    <Loader size={24} />
+                  </div>
                 ) : (
-                  <>
+                  <span className="transition-opacity duration-300">
                     {formatNumber(summary?.openInterest || '0')}{' '}
                     {collateralSymbol}
-                  </>
+                  </span>
                 )}
               </div>
             </CardContent>
@@ -187,13 +187,15 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="sc-heading text-foreground mb-2">
                 Total Value Locked
               </div>
-              <div className="text-2xl md:text-3xl font-mono">
+              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
-                  <span className="animate-pulse">...</span>
+                  <div className="w-full flex justify-center pt-3">
+                    <Loader size={24} />
+                  </div>
                 ) : (
-                  <>
+                  <span className="transition-opacity duration-300">
                     {formatNumber(summary?.tvl || '0')} {collateralSymbol}
-                  </>
+                  </span>
                 )}
               </div>
             </CardContent>
@@ -204,14 +206,16 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="sc-heading text-foreground mb-2">
                 Cumulative Volume
               </div>
-              <div className="text-2xl md:text-3xl font-mono">
+              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
-                  <span className="animate-pulse">...</span>
+                  <div className="w-full flex justify-center pt-3">
+                    <Loader size={24} />
+                  </div>
                 ) : (
-                  <>
+                  <span className="transition-opacity duration-300">
                     {formatNumber(summary?.totalVolume || '0')}{' '}
                     {collateralSymbol}
-                  </>
+                  </span>
                 )}
               </div>
             </CardContent>
@@ -227,47 +231,47 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <span className="animate-pulse text-muted-foreground">
-                      Loading...
-                    </span>
+                    <Loader size={32} />
                   </div>
                 ) : chartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={chartData} margin={CHART_MARGIN}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="hsl(var(--brand-white) / 0.1)"
-                      />
-                      <XAxis
-                        dataKey="date"
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatDateTick}
-                      />
-                      <YAxis
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatChartValue}
-                      />
-                      <Tooltip
-                        cursor={<AnimatedCursor />}
-                        content={(props) => (
-                          <ChartTooltip
-                            {...props}
-                            dataKey="dailyVolume"
-                            collateralSymbol={collateralSymbol}
-                          />
-                        )}
-                      />
-                      <Bar
-                        dataKey="dailyVolume"
-                        fill="hsl(var(--ethena) / 0.6)"
-                        name="dailyVolume"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+                  <div className="w-full h-full transition-opacity duration-300">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={chartData} margin={CHART_MARGIN}>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--brand-white) / 0.1)"
+                        />
+                        <XAxis
+                          dataKey="date"
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatDateTick}
+                        />
+                        <YAxis
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatChartValue}
+                        />
+                        <Tooltip
+                          cursor={<AnimatedCursor />}
+                          content={(props) => (
+                            <ChartTooltip
+                              {...props}
+                              dataKey="dailyVolume"
+                              collateralSymbol={collateralSymbol}
+                            />
+                          )}
+                        />
+                        <Bar
+                          dataKey="dailyVolume"
+                          fill="hsl(var(--ethena) / 0.6)"
+                          name="dailyVolume"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -280,70 +284,70 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <span className="animate-pulse text-muted-foreground">
-                      Loading...
-                    </span>
+                    <Loader size={32} />
                   </div>
                 ) : chartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={CHART_MARGIN}>
-                      <defs>
-                        <linearGradient
-                          id="openInterestGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="hsl(var(--ethena))"
-                            stopOpacity={0.4}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="hsl(var(--ethena))"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="hsl(var(--brand-white) / 0.1)"
-                      />
-                      <XAxis
-                        dataKey="date"
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatDateTick}
-                      />
-                      <YAxis
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatChartValue}
-                      />
-                      <Tooltip
-                        cursor={<AnimatedCursor />}
-                        content={(props) => (
-                          <ChartTooltip
-                            {...props}
-                            dataKey="openInterest"
-                            collateralSymbol={collateralSymbol}
-                          />
-                        )}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="openInterest"
-                        stroke="hsl(var(--ethena))"
-                        strokeWidth={2}
-                        fill="url(#openInterestGradient)"
-                        activeDot={{ r: 4, strokeWidth: 0 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <div className="w-full h-full transition-opacity duration-300">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                        <defs>
+                          <linearGradient
+                            id="openInterestGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="hsl(var(--ethena))"
+                              stopOpacity={0.4}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="hsl(var(--ethena))"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--brand-white) / 0.1)"
+                        />
+                        <XAxis
+                          dataKey="date"
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatDateTick}
+                        />
+                        <YAxis
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatChartValue}
+                        />
+                        <Tooltip
+                          cursor={<AnimatedCursor />}
+                          content={(props) => (
+                            <ChartTooltip
+                              {...props}
+                              dataKey="openInterest"
+                              collateralSymbol={collateralSymbol}
+                            />
+                          )}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="openInterest"
+                          stroke="hsl(var(--ethena))"
+                          strokeWidth={2}
+                          fill="url(#openInterestGradient)"
+                          activeDot={{ r: 4, strokeWidth: 0 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -358,70 +362,70 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <span className="animate-pulse text-muted-foreground">
-                      Loading...
-                    </span>
+                    <Loader size={32} />
                   </div>
                 ) : chartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData} margin={CHART_MARGIN}>
-                      <defs>
-                        <linearGradient
-                          id="tvlGradient"
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop
-                            offset="5%"
-                            stopColor="hsl(var(--accent-gold))"
-                            stopOpacity={0.4}
-                          />
-                          <stop
-                            offset="95%"
-                            stopColor="hsl(var(--accent-gold))"
-                            stopOpacity={0}
-                          />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="hsl(var(--brand-white) / 0.1)"
-                      />
-                      <XAxis
-                        dataKey="date"
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatDateTick}
-                      />
-                      <YAxis
-                        {...CHART_AXIS_STYLE}
-                        tickFormatter={formatChartValue}
-                      />
-                      <Tooltip
-                        cursor={<AnimatedCursor />}
-                        content={(props) => (
-                          <ChartTooltip
-                            {...props}
-                            dataKey="tvl"
-                            collateralSymbol={collateralSymbol}
-                          />
-                        )}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="tvl"
-                        stroke="hsl(var(--accent-gold))"
-                        strokeWidth={2}
-                        fill="url(#tvlGradient)"
-                        activeDot={{ r: 4, strokeWidth: 0 }}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+                  <div className="w-full h-full transition-opacity duration-300">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                        <defs>
+                          <linearGradient
+                            id="tvlGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop
+                              offset="5%"
+                              stopColor="hsl(var(--accent-gold))"
+                              stopOpacity={0.4}
+                            />
+                            <stop
+                              offset="95%"
+                              stopColor="hsl(var(--accent-gold))"
+                              stopOpacity={0}
+                            />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid
+                          strokeDasharray="3 3"
+                          stroke="hsl(var(--brand-white) / 0.1)"
+                        />
+                        <XAxis
+                          dataKey="date"
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatDateTick}
+                        />
+                        <YAxis
+                          {...CHART_AXIS_STYLE}
+                          tickFormatter={formatChartValue}
+                        />
+                        <Tooltip
+                          cursor={<AnimatedCursor />}
+                          content={(props) => (
+                            <ChartTooltip
+                              {...props}
+                              dataKey="tvl"
+                              collateralSymbol={collateralSymbol}
+                            />
+                          )}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="tvl"
+                          stroke="hsl(var(--accent-gold))"
+                          strokeWidth={2}
+                          fill="url(#tvlGradient)"
+                          activeDot={{ r: 4, strokeWidth: 0 }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
                 )}
               </div>
             </CardContent>

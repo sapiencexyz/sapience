@@ -1,4 +1,5 @@
-import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
+import { Field, ObjectType, Query, Resolver } from 'type-graphql';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import prisma from '../../db';
 
 @ObjectType()
@@ -65,10 +66,9 @@ function buildDateMap<T extends { date: Date }>(
 @Resolver()
 export class AnalyticsResolver {
   @Query(() => AnalyticsSummary)
-  async analyticsSummary(
-    @Arg('chainId', () => Int) chainId: number
-  ): Promise<AnalyticsSummary> {
+  async analyticsSummary(): Promise<AnalyticsSummary> {
     const now = Math.floor(Date.now() / 1000);
+    const chainId = CHAIN_ID_ETHEREAL;
 
     // Aggregate all metrics in a single query at the database level
     const [result] = await prisma.$queryRaw<AnalyticsSummaryRow[]>`
@@ -88,9 +88,9 @@ export class AnalyticsResolver {
   }
 
   @Query(() => [AnalyticsTimeSeriesPoint])
-  async analyticsTimeSeries(
-    @Arg('chainId', () => Int) chainId: number
-  ): Promise<AnalyticsTimeSeriesPoint[]> {
+  async analyticsTimeSeries(): Promise<AnalyticsTimeSeriesPoint[]> {
+    const chainId = CHAIN_ID_ETHEREAL;
+
     // Get daily volumes from positions - last 90 days
     const dailyVolumes = await prisma.$queryRaw<DailyVolumeRow[]>`
       SELECT
