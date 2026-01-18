@@ -97,6 +97,7 @@ const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 
 const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarket as any)[CHAIN_ID]?.address) as Address;
 const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || (addressBook.collateralToken as any)[CHAIN_ID]?.address) as Address;
+const POLYMARKET_RESOLVER = ((addressBook.predictionMarketLZConditionalTokensResolver as any)[CHAIN_ID]?.address as string | undefined)?.toLowerCase();
 
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
 const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_WAGER || '10';
@@ -257,6 +258,13 @@ function start() {
 
         // Ignore auctions on different chains
         if (auctionChainId && auctionChainId !== CHAIN_ID) {
+          return;
+        }
+
+        // Verify resolver matches Polymarket LZ resolver
+        const auctionResolver = String(auction.resolver || '').toLowerCase();
+        if (POLYMARKET_RESOLVER && auctionResolver !== POLYMARKET_RESOLVER) {
+          logger.warn(`Skipping auction ${auctionId} - unexpected resolver: ${auction.resolver}`);
           return;
         }
 
