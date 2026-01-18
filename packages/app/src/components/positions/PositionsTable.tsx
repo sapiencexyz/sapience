@@ -23,6 +23,7 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
 import { useReadContracts, useAccount } from 'wagmi';
+import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -128,7 +129,13 @@ export default function PositionsTable({
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const hasWallet = Boolean(connectedAddress);
+  // When a session is active, use the smart account address for ownership checks
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress
+      ? smartAccountAddress.toLowerCase()
+      : connectedAddress?.toLowerCase();
   const [claimingTokenId, setClaimingTokenId] = React.useState<bigint | null>(
     null
   );
@@ -1073,9 +1080,8 @@ export default function PositionsTable({
                         : BigInt(positionId);
 
                     const isOwnerConnected =
-                      connectedAddress &&
-                      connectedAddress.toLowerCase() ===
-                        String(account || '').toLowerCase();
+                      effectiveAddress &&
+                      effectiveAddress === String(account || '').toLowerCase();
                     const isThisTokenClaiming =
                       isClaimPending && claimingTokenId === tokenIdToClaim;
 
@@ -1124,9 +1130,8 @@ export default function PositionsTable({
                 claimableTokenIds.has(String(row.original.tokenIdToClaim)) &&
                 (() => {
                   const isOwnerConnected =
-                    connectedAddress &&
-                    connectedAddress.toLowerCase() ===
-                      String(account || '').toLowerCase();
+                    effectiveAddress &&
+                    effectiveAddress === String(account || '').toLowerCase();
                   const isThisTokenClaiming =
                     isClaimPending &&
                     claimingTokenId === row.original.tokenIdToClaim;
@@ -1210,7 +1215,7 @@ export default function PositionsTable({
       burn,
       account,
       claimableTokenIds,
-      connectedAddress,
+      effectiveAddress,
       hasWallet,
       collateralSymbol,
     ]
