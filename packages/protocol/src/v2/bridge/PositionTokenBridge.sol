@@ -28,9 +28,14 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     uint128 private constant GAS_FOR_ACK = 100_000;
     uint128 private constant GAS_FOR_CANCEL = 200_000;
 
+    /// @notice Minimum delay between retry attempts
+    uint64 public constant MIN_RETRY_DELAY = 5 minutes;
+
+    /// @notice Delay before emergency cancel is allowed
+    uint64 public constant EMERGENCY_CANCEL_DELAY = 7 days;
+
     // ============ Storage ============
     BridgeConfig private _bridgeConfig;
-    uint64 public immutable expiryDuration;
 
     /// @notice Pending bridge records
     mapping(bytes32 => PendingBridge) private _pendingBridges;
@@ -41,14 +46,14 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     /// @notice Nonce for generating unique bridge IDs
     uint256 private _bridgeNonce;
 
+    /// @notice Mapping from sender to their bridge IDs
+    mapping(address => bytes32[]) private _senderBridges;
+
     // ============ Constructor ============
     constructor(
         address endpoint_,
-        address owner_,
-        uint64 expiryDuration_
-    ) OApp(endpoint_, owner_) Ownable(owner_) {
-        expiryDuration = expiryDuration_;
-    }
+        address owner_
+    ) OApp(endpoint_, owner_) Ownable(owner_) {}
 
     // ============ Configuration (Owner only for LZ) ============
 
@@ -61,11 +66,6 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     /// @inheritdoc IPositionTokenBridge
     function getBridgeConfig() external view returns (BridgeConfig memory) {
         return _bridgeConfig;
-    }
-
-    /// @inheritdoc IPositionTokenBridge
-    function getExpiryDuration() external view returns (uint64) {
-        return expiryDuration;
     }
 
     // ============ Bridge Functions ============
@@ -108,15 +108,19 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         bridgeId = keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
 
         // Create pending bridge record
-        uint64 expiry = uint64(block.timestamp) + expiryDuration;
+        uint64 createdAt = uint64(block.timestamp);
         _pendingBridges[bridgeId] = PendingBridge({
             token: token,
             sender: msg.sender,
             recipient: recipient,
             amount: amount,
-            expiry: expiry,
+            createdAt: createdAt,
+            lastRetryAt: createdAt,
             status: BridgeStatus.PENDING
         });
+
+        // Track sender's bridges
+        _senderBridges[msg.sender].push(bridgeId);
 
         // Encode message
         bytes memory payload = abi.encode(
@@ -156,19 +160,96 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
             if (!success) revert RefundFailed();
         }
 
-        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, expiry);
+        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt);
     }
 
     /// @inheritdoc IPositionTokenBridge
-    function cancelBridge(bytes32 bridgeId) external payable nonReentrant {
+    function retryBridge(bytes32 bridgeId) external payable nonReentrant {
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
         if (pending.status != BridgeStatus.PENDING) {
             revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
         }
 
-        if (block.timestamp < pending.expiry) {
-            revert BridgeNotExpired(bridgeId, pending.expiry, uint64(block.timestamp));
+        // Only the original sender can retry
+        if (pending.sender != msg.sender) {
+            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
+        }
+
+        // Check retry delay
+        uint64 minNextRetry = pending.lastRetryAt + MIN_RETRY_DELAY;
+        if (block.timestamp < minNextRetry) {
+            revert RetryTooSoon(bridgeId, pending.lastRetryAt, minNextRetry);
+        }
+
+        // Update last retry timestamp
+        pending.lastRetryAt = uint64(block.timestamp);
+
+        // Re-read token metadata
+        bytes32 pickConfigId = IPositionToken(pending.token).pickConfigId();
+        bool isPredictorToken = IPositionToken(pending.token).isPredictorToken();
+        string memory name = IERC20Metadata(pending.token).name();
+        string memory symbol = IERC20Metadata(pending.token).symbol();
+
+        // Encode same message as original bridge
+        bytes memory payload = abi.encode(
+            bridgeId,
+            pending.token,
+            pickConfigId,
+            isPredictorToken,
+            name,
+            symbol,
+            pending.recipient,
+            pending.amount
+        );
+        bytes memory message = abi.encode(CMD_BRIDGE_TO_REMOTE, payload);
+
+        // Build options
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+
+        // Quote fee
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        // Send message
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            message,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        if (msg.value > fee.nativeFee) {
+            uint256 excess = msg.value - fee.nativeFee;
+            (bool success,) = payable(msg.sender).call{value: excess}("");
+            if (!success) revert RefundFailed();
+        }
+
+        // Count retries based on how many times lastRetryAt was updated
+        emit BridgeRetried(bridgeId, 1);
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function emergencyCancelBridge(bytes32 bridgeId) external payable nonReentrant {
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        if (pending.status != BridgeStatus.PENDING) {
+            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+        }
+
+        // Only the original sender can cancel
+        if (pending.sender != msg.sender) {
+            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
+        }
+
+        // Check emergency cancel delay (7 days from creation)
+        uint64 emergencyCancelTime = pending.createdAt + EMERGENCY_CANCEL_DELAY;
+        if (block.timestamp < emergencyCancelTime) {
+            revert BridgeNotExpiredForEmergencyCancel(bridgeId, pending.createdAt, uint64(block.timestamp));
         }
 
         // Mark as cancelled
@@ -178,7 +259,7 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         _escrowedBalances[pending.token] -= pending.amount;
         IERC20(pending.token).safeTransfer(pending.sender, pending.amount);
 
-        // Send cancel notification to remote (to burn if already minted)
+        // Send cancel notification to remote (to mark as cancelled if not processed)
         bytes memory payload = abi.encode(bridgeId, pending.amount);
         bytes memory message = abi.encode(CMD_CANCEL, payload);
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
@@ -232,7 +313,30 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     }
 
     /// @inheritdoc IPositionTokenBridge
-    function quoteCancelBridge() external view returns (MessagingFee memory fee) {
+    function quoteRetryBridge(bytes32 bridgeId) external view returns (MessagingFee memory fee) {
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        // Re-read token metadata for accurate quote
+        string memory name = IERC20Metadata(pending.token).name();
+        string memory symbol = IERC20Metadata(pending.token).symbol();
+
+        bytes memory payload = abi.encode(
+            bridgeId,
+            pending.token,
+            bytes32(0), // pickConfigId placeholder
+            false, // isPredictorToken placeholder
+            name,
+            symbol,
+            pending.recipient,
+            pending.amount
+        );
+        bytes memory message = abi.encode(CMD_BRIDGE_TO_REMOTE, payload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        return _quote(_bridgeConfig.remoteEid, message, options, false);
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function quoteEmergencyCancelBridge() external view returns (MessagingFee memory fee) {
         bytes memory payload = abi.encode(bytes32(0), uint256(0));
         bytes memory message = abi.encode(CMD_CANCEL, payload);
         bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
@@ -374,8 +478,41 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     }
 
     /// @inheritdoc IPositionTokenBridge
+    function getPendingBridges(address sender) external view returns (bytes32[] memory bridgeIds) {
+        bytes32[] storage allBridges = _senderBridges[sender];
+        uint256 pendingCount = 0;
+
+        // Count pending bridges
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridges[allBridges[i]].status == BridgeStatus.PENDING) {
+                pendingCount++;
+            }
+        }
+
+        // Create array of pending bridges
+        bridgeIds = new bytes32[](pendingCount);
+        uint256 j = 0;
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridges[allBridges[i]].status == BridgeStatus.PENDING) {
+                bridgeIds[j] = allBridges[i];
+                j++;
+            }
+        }
+    }
+
+    /// @inheritdoc IPositionTokenBridge
     function getEscrowedBalance(address token) external view returns (uint256) {
         return _escrowedBalances[token];
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function getMinRetryDelay() external pure returns (uint64) {
+        return MIN_RETRY_DELAY;
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function getEmergencyCancelDelay() external pure returns (uint64) {
+        return EMERGENCY_CANCEL_DELAY;
     }
 
     // ============ Ownership Management ============

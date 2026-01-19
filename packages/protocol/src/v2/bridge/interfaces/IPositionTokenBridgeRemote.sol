@@ -32,7 +32,8 @@ interface IPositionTokenBridgeRemote {
         address sender;
         address recipient;
         uint256 amount;
-        uint64 expiry;
+        uint64 createdAt;
+        uint64 lastRetryAt;
         BridgeStatus status;
     }
 
@@ -61,8 +62,14 @@ interface IPositionTokenBridgeRemote {
         address indexed sender,
         address recipient,
         uint256 amount,
-        uint64 expiry
+        uint64 createdAt
     );
+
+    /// @notice Emitted when bridge back is retried
+    event BridgeBackRetried(bytes32 indexed bridgeId, uint256 retryCount);
+
+    /// @notice Emitted when a bridge is processed (for idempotency tracking)
+    event BridgeProcessed(bytes32 indexed bridgeId, bool alreadyProcessed);
 
     /// @notice Emitted when bridge back is completed (ACK received)
     event BridgeBackCompleted(bytes32 indexed bridgeId);
@@ -134,8 +141,14 @@ interface IPositionTokenBridgeRemote {
     /// @notice Bridge not found or wrong status
     error InvalidBridgeStatus(bytes32 bridgeId, BridgeStatus expected, BridgeStatus actual);
 
-    /// @notice Bridge not yet expired
-    error BridgeNotExpired(bytes32 bridgeId, uint64 expiry, uint64 currentTime);
+    /// @notice Bridge not yet expired for emergency cancel
+    error BridgeNotExpiredForEmergencyCancel(bytes32 bridgeId, uint64 createdAt, uint64 currentTime);
+
+    /// @notice Retry too soon
+    error RetryTooSoon(bytes32 bridgeId, uint64 lastRetryAt, uint64 minNextRetry);
+
+    /// @notice Not the bridge sender
+    error NotBridgeSender(bytes32 bridgeId, address expected, address actual);
 
     /// @notice Insufficient escrowed balance
     error InsufficientEscrowBalance(uint256 requested, uint256 available);
@@ -153,9 +166,13 @@ interface IPositionTokenBridgeRemote {
         uint256 amount
     ) external payable returns (bytes32 bridgeId);
 
-    /// @notice Cancel an expired bridge back and recover tokens
+    /// @notice Retry a pending bridge back (resend the message)
     /// @param bridgeId The bridge identifier
-    function cancelBridgeBack(bytes32 bridgeId) external payable;
+    function retryBridgeBack(bytes32 bridgeId) external payable;
+
+    /// @notice Emergency cancel a bridge back after extended period (7 days)
+    /// @param bridgeId The bridge identifier
+    function emergencyCancelBridgeBack(bytes32 bridgeId) external payable;
 
     /// @notice Quote the fee for bridging back
     /// @param token The bridged position token address
@@ -166,9 +183,14 @@ interface IPositionTokenBridgeRemote {
         uint256 amount
     ) external view returns (MessagingFee memory fee);
 
-    /// @notice Quote the fee for cancelling a bridge back
+    /// @notice Quote the fee for retrying a bridge back
+    /// @param bridgeId The bridge identifier
     /// @return fee The messaging fee
-    function quoteCancelBridgeBack() external view returns (MessagingFee memory fee);
+    function quoteRetryBridgeBack(bytes32 bridgeId) external view returns (MessagingFee memory fee);
+
+    /// @notice Quote the fee for emergency cancel
+    /// @return fee The messaging fee
+    function quoteEmergencyCancelBridgeBack() external view returns (MessagingFee memory fee);
 
     // ============ View Functions ============
 
@@ -176,6 +198,16 @@ interface IPositionTokenBridgeRemote {
     /// @param bridgeId The bridge identifier
     /// @return The pending bridge back record
     function getPendingBridgeBack(bytes32 bridgeId) external view returns (PendingBridgeBack memory);
+
+    /// @notice Get all pending bridge back IDs for a sender
+    /// @param sender The sender address
+    /// @return bridgeIds Array of pending bridge back IDs
+    function getPendingBridgeBacks(address sender) external view returns (bytes32[] memory bridgeIds);
+
+    /// @notice Check if a bridge has been processed (for idempotency)
+    /// @param bridgeId The bridge identifier
+    /// @return True if the bridge was already processed
+    function isBridgeProcessed(bytes32 bridgeId) external view returns (bool);
 
     /// @notice Get bridge configuration
     /// @return The bridge config
@@ -203,9 +235,13 @@ interface IPositionTokenBridgeRemote {
         bool isPredictorToken
     ) external view returns (address);
 
-    /// @notice Get the bridge expiry duration
-    /// @return The expiry duration in seconds
-    function getExpiryDuration() external view returns (uint64);
+    /// @notice Get the minimum retry delay
+    /// @return The minimum delay between retries in seconds
+    function getMinRetryDelay() external view returns (uint64);
+
+    /// @notice Get the emergency cancel delay
+    /// @return The delay before emergency cancel is allowed in seconds
+    function getEmergencyCancelDelay() external view returns (uint64);
 
     /// @notice Get escrowed balance for a token (pending bridge backs)
     /// @param token The bridged token address

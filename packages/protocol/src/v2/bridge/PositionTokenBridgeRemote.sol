@@ -27,9 +27,14 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     uint128 private constant GAS_FOR_BRIDGE_BACK = 200_000;
     uint128 private constant GAS_FOR_ACK = 100_000;
 
+    /// @notice Minimum delay between retry attempts
+    uint64 public constant MIN_RETRY_DELAY = 5 minutes;
+
+    /// @notice Delay before emergency cancel is allowed
+    uint64 public constant EMERGENCY_CANCEL_DELAY = 7 days;
+
     // ============ Storage ============
     BridgeConfig private _bridgeConfig;
-    uint64 public immutable expiryDuration;
 
     /// @notice Token factory for CREATE3 deployments
     IPositionTokenFactory public immutable factory;
@@ -49,18 +54,22 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     /// @notice Nonce for generating unique bridge IDs
     uint256 private _bridgeNonce;
 
-    /// @notice Tracking for minted tokens per bridgeId (for cancel recovery)
+    /// @notice Tracking for minted tokens per bridgeId (for audit trail)
     mapping(bytes32 => IPositionTokenBridgeRemote.MintedBridge) private _mintedBridges;
+
+    /// @notice Mapping from sender to their bridge back IDs
+    mapping(address => bytes32[]) private _senderBridgeBacks;
+
+    /// @notice Processed bridges for idempotency
+    mapping(bytes32 => bool) private _processedBridges;
 
     // ============ Constructor ============
     constructor(
         address endpoint_,
         address owner_,
-        address factory_,
-        uint64 expiryDuration_
+        address factory_
     ) OApp(endpoint_, owner_) Ownable(owner_) {
         factory = IPositionTokenFactory(factory_);
-        expiryDuration = expiryDuration_;
     }
 
     // ============ Configuration (Owner only for LZ) ============
@@ -79,11 +88,6 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     /// @inheritdoc IPositionTokenBridgeRemote
     function getFactory() external view returns (address) {
         return address(factory);
-    }
-
-    /// @inheritdoc IPositionTokenBridgeRemote
-    function getExpiryDuration() external view returns (uint64) {
-        return expiryDuration;
     }
 
     // ============ Bridge Functions ============
@@ -108,16 +112,20 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         bridgeId = keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
 
         // Create pending bridge record
-        uint64 expiry = uint64(block.timestamp) + expiryDuration;
+        uint64 createdAt = uint64(block.timestamp);
         _pendingBridgeBacks[bridgeId] = PendingBridgeBack({
             token: token,
             sourceToken: sourceToken,
             sender: msg.sender,
             recipient: recipient,
             amount: amount,
-            expiry: expiry,
+            createdAt: createdAt,
+            lastRetryAt: createdAt,
             status: BridgeStatus.PENDING
         });
+
+        // Track sender's bridge backs
+        _senderBridgeBacks[msg.sender].push(bridgeId);
 
         // Encode message - send the SOURCE token address so Ethereal knows which token to release
         bytes memory payload = abi.encode(bridgeId, sourceToken, recipient, amount);
@@ -148,19 +156,80 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
             if (!success) revert RefundFailed();
         }
 
-        emit BridgeBackInitiated(bridgeId, token, msg.sender, recipient, amount, expiry);
+        emit BridgeBackInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt);
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function cancelBridgeBack(bytes32 bridgeId) external payable nonReentrant {
+    function retryBridgeBack(bytes32 bridgeId) external payable nonReentrant {
         PendingBridgeBack storage pending = _pendingBridgeBacks[bridgeId];
 
         if (pending.status != BridgeStatus.PENDING) {
             revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
         }
 
-        if (block.timestamp < pending.expiry) {
-            revert BridgeNotExpired(bridgeId, pending.expiry, uint64(block.timestamp));
+        // Only the original sender can retry
+        if (pending.sender != msg.sender) {
+            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
+        }
+
+        // Check retry delay
+        uint64 minNextRetry = pending.lastRetryAt + MIN_RETRY_DELAY;
+        if (block.timestamp < minNextRetry) {
+            revert RetryTooSoon(bridgeId, pending.lastRetryAt, minNextRetry);
+        }
+
+        // Update last retry timestamp
+        pending.lastRetryAt = uint64(block.timestamp);
+
+        // Encode same message as original bridge back
+        bytes memory payload = abi.encode(bridgeId, pending.sourceToken, pending.recipient, pending.amount);
+        bytes memory message = abi.encode(CMD_BRIDGE_BACK, payload);
+
+        // Build options
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE_BACK, 0);
+
+        // Quote fee
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        // Send message
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            message,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        if (msg.value > fee.nativeFee) {
+            uint256 excess = msg.value - fee.nativeFee;
+            (bool success,) = payable(msg.sender).call{value: excess}("");
+            if (!success) revert RefundFailed();
+        }
+
+        emit BridgeBackRetried(bridgeId, 1);
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function emergencyCancelBridgeBack(bytes32 bridgeId) external payable nonReentrant {
+        PendingBridgeBack storage pending = _pendingBridgeBacks[bridgeId];
+
+        if (pending.status != BridgeStatus.PENDING) {
+            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+        }
+
+        // Only the original sender can cancel
+        if (pending.sender != msg.sender) {
+            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
+        }
+
+        // Check emergency cancel delay (7 days from creation)
+        uint64 emergencyCancelTime = pending.createdAt + EMERGENCY_CANCEL_DELAY;
+        if (block.timestamp < emergencyCancelTime) {
+            revert BridgeNotExpiredForEmergencyCancel(bridgeId, pending.createdAt, uint64(block.timestamp));
         }
 
         // Mark as cancelled
@@ -190,8 +259,18 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function quoteCancelBridgeBack() external pure returns (MessagingFee memory fee) {
-        // Cancel doesn't send a cross-chain message, so fee is 0
+    function quoteRetryBridgeBack(bytes32 bridgeId) external view returns (MessagingFee memory fee) {
+        PendingBridgeBack storage pending = _pendingBridgeBacks[bridgeId];
+        // Build sample message for quote
+        bytes memory payload = abi.encode(bridgeId, pending.sourceToken, pending.recipient, pending.amount);
+        bytes memory message = abi.encode(CMD_BRIDGE_BACK, payload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE_BACK, 0);
+        return _quote(_bridgeConfig.remoteEid, message, options, false);
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function quoteEmergencyCancelBridgeBack() external pure returns (MessagingFee memory fee) {
+        // Emergency cancel doesn't send a cross-chain message, so fee is 0
         return MessagingFee({nativeFee: 0, lzTokenFee: 0});
     }
 
@@ -239,6 +318,17 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
             uint256 amount
         ) = abi.decode(data, (bytes32, address, bytes32, bool, string, string, address, uint256));
 
+        // Check if this bridge was already processed (idempotency)
+        if (_processedBridges[bridgeId]) {
+            // Already processed - just re-send ACK
+            emit BridgeProcessed(bridgeId, true);
+            _trySendAck(bridgeId);
+            return;
+        }
+
+        // Mark as processed BEFORE minting (prevents reentrancy issues)
+        _processedBridges[bridgeId] = true;
+
         // Check if token exists, deploy if not
         address remoteToken = factory.predictAddress(pickConfigId, isPredictorToken);
         bool isNewDeployment = false;
@@ -265,13 +355,14 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
         // Mint tokens to recipient
         IBridgedPositionToken(remoteToken).mint(recipient, amount);
 
-        // Track minted tokens for potential cancel recovery
+        // Track minted tokens (for audit trail)
         _mintedBridges[bridgeId] = IPositionTokenBridgeRemote.MintedBridge({
             token: remoteToken,
             recipient: recipient,
             amount: amount
         });
 
+        emit BridgeProcessed(bridgeId, false);
         emit TokensMinted(bridgeId, remoteToken, recipient, amount, isNewDeployment);
 
         // Send ACK back to Ethereal (if contract has sufficient balance)
@@ -361,36 +452,43 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     function _handleCancel(bytes memory data) internal {
         (bytes32 bridgeId, uint256 amount) = abi.decode(data, (bytes32, uint256));
 
-        IPositionTokenBridgeRemote.MintedBridge storage minted = _mintedBridges[bridgeId];
+        // Check if already processed
+        if (_processedBridges[bridgeId]) {
+            // Tokens were minted - this is an emergency cancel after processing
+            IPositionTokenBridgeRemote.MintedBridge storage minted = _mintedBridges[bridgeId];
 
-        // Check if tokens were minted for this bridgeId
-        if (minted.amount == 0) {
-            // No tokens minted (message arrived before bridge or already cancelled)
+            if (minted.amount == 0) {
+                // Already handled
+                emit CancelReceived(bridgeId, amount);
+                return;
+            }
+
+            // Verify amount matches (sanity check)
+            if (minted.amount != amount) {
+                emit CancelAmountMismatch(bridgeId, minted.amount, amount);
+            }
+
+            // Cache values before potential deletion
+            address token = minted.token;
+            address recipient = minted.recipient;
+            uint256 mintedAmount = minted.amount;
+
+            // Try to burn the minted tokens from the recipient
+            // Use try/catch because recipient may have transferred tokens
+            try IBridgedPositionToken(token).burn(recipient, mintedAmount) {
+                // Burn succeeded - clear the minted record
+                delete _mintedBridges[bridgeId];
+                emit CancelBurnExecuted(bridgeId, token, recipient, mintedAmount);
+            } catch {
+                // Burn failed - recipient has insufficient balance (transferred tokens)
+                // Mark as failed but don't delete - allows tracking for governance recovery
+                // The tokens are now unbacked and require manual intervention
+                emit CancelBurnFailed(bridgeId, token, recipient, mintedAmount);
+            }
+        } else {
+            // Not yet processed - mark as cancelled to prevent future processing
+            _processedBridges[bridgeId] = true;
             emit CancelReceived(bridgeId, amount);
-            return;
-        }
-
-        // Verify amount matches (sanity check)
-        if (minted.amount != amount) {
-            emit CancelAmountMismatch(bridgeId, minted.amount, amount);
-        }
-
-        // Cache values before potential deletion
-        address token = minted.token;
-        address recipient = minted.recipient;
-        uint256 mintedAmount = minted.amount;
-
-        // Try to burn the minted tokens from the recipient
-        // Use try/catch because recipient may have transferred tokens
-        try IBridgedPositionToken(token).burn(recipient, mintedAmount) {
-            // Burn succeeded - clear the minted record
-            delete _mintedBridges[bridgeId];
-            emit CancelBurnExecuted(bridgeId, token, recipient, mintedAmount);
-        } catch {
-            // Burn failed - recipient has insufficient balance (transferred tokens)
-            // Mark as failed but don't delete - allows tracking for governance recovery
-            // The tokens are now unbacked and require manual intervention
-            emit CancelBurnFailed(bridgeId, token, recipient, mintedAmount);
         }
     }
 
@@ -402,6 +500,34 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
+    function getPendingBridgeBacks(address sender) external view returns (bytes32[] memory bridgeIds) {
+        bytes32[] storage allBridges = _senderBridgeBacks[sender];
+        uint256 pendingCount = 0;
+
+        // Count pending bridges
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridgeBacks[allBridges[i]].status == BridgeStatus.PENDING) {
+                pendingCount++;
+            }
+        }
+
+        // Create array of pending bridges
+        bridgeIds = new bytes32[](pendingCount);
+        uint256 j = 0;
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridgeBacks[allBridges[i]].status == BridgeStatus.PENDING) {
+                bridgeIds[j] = allBridges[i];
+                j++;
+            }
+        }
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function isBridgeProcessed(bytes32 bridgeId) external view returns (bool) {
+        return _processedBridges[bridgeId];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
     function getEscrowedBalance(address token) external view returns (uint256) {
         return _escrowedBalances[token];
     }
@@ -409,6 +535,16 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
     /// @inheritdoc IPositionTokenBridgeRemote
     function getMintedBridge(bytes32 bridgeId) external view returns (IPositionTokenBridgeRemote.MintedBridge memory) {
         return _mintedBridges[bridgeId];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function getMinRetryDelay() external pure returns (uint64) {
+        return MIN_RETRY_DELAY;
+    }
+
+    /// @inheritdoc IPositionTokenBridgeRemote
+    function getEmergencyCancelDelay() external pure returns (uint64) {
+        return EMERGENCY_CANCEL_DELAY;
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote

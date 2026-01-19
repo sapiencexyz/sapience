@@ -31,7 +31,8 @@ interface IPositionTokenBridge {
         address sender;
         address recipient;
         uint256 amount;
-        uint64 expiry;
+        uint64 createdAt;
+        uint64 lastRetryAt;
         BridgeStatus status;
     }
 
@@ -44,8 +45,11 @@ interface IPositionTokenBridge {
         address indexed sender,
         address recipient,
         uint256 amount,
-        uint64 expiry
+        uint64 createdAt
     );
+
+    /// @notice Emitted when bridge is retried
+    event BridgeRetried(bytes32 indexed bridgeId, uint256 retryCount);
 
     /// @notice Emitted when bridge is completed (ACK received)
     event BridgeCompleted(bytes32 indexed bridgeId);
@@ -93,8 +97,14 @@ interface IPositionTokenBridge {
     /// @notice Bridge not found or wrong status
     error InvalidBridgeStatus(bytes32 bridgeId, BridgeStatus expected, BridgeStatus actual);
 
-    /// @notice Bridge not yet expired
-    error BridgeNotExpired(bytes32 bridgeId, uint64 expiry, uint64 currentTime);
+    /// @notice Bridge not yet expired for emergency cancel
+    error BridgeNotExpiredForEmergencyCancel(bytes32 bridgeId, uint64 createdAt, uint64 currentTime);
+
+    /// @notice Retry too soon
+    error RetryTooSoon(bytes32 bridgeId, uint64 lastRetryAt, uint64 minNextRetry);
+
+    /// @notice Not the bridge sender
+    error NotBridgeSender(bytes32 bridgeId, address expected, address actual);
 
     /// @notice ETH transfer failed
     error ETHTransferFailed();
@@ -115,9 +125,13 @@ interface IPositionTokenBridge {
         uint256 amount
     ) external payable returns (bytes32 bridgeId);
 
-    /// @notice Cancel an expired bridge and recover tokens
+    /// @notice Retry a pending bridge (resend the message)
     /// @param bridgeId The bridge identifier
-    function cancelBridge(bytes32 bridgeId) external payable;
+    function retryBridge(bytes32 bridgeId) external payable;
+
+    /// @notice Emergency cancel a bridge after extended period (7 days)
+    /// @param bridgeId The bridge identifier
+    function emergencyCancelBridge(bytes32 bridgeId) external payable;
 
     /// @notice Quote the fee for bridging
     /// @param token The position token address
@@ -128,9 +142,14 @@ interface IPositionTokenBridge {
         uint256 amount
     ) external view returns (MessagingFee memory fee);
 
-    /// @notice Quote the fee for cancelling a bridge
+    /// @notice Quote the fee for retrying a bridge
+    /// @param bridgeId The bridge identifier
     /// @return fee The messaging fee
-    function quoteCancelBridge() external view returns (MessagingFee memory fee);
+    function quoteRetryBridge(bytes32 bridgeId) external view returns (MessagingFee memory fee);
+
+    /// @notice Quote the fee for emergency cancel
+    /// @return fee The messaging fee
+    function quoteEmergencyCancelBridge() external view returns (MessagingFee memory fee);
 
     // ============ View Functions ============
 
@@ -138,6 +157,11 @@ interface IPositionTokenBridge {
     /// @param bridgeId The bridge identifier
     /// @return The pending bridge record
     function getPendingBridge(bytes32 bridgeId) external view returns (PendingBridge memory);
+
+    /// @notice Get all pending bridge IDs for a sender
+    /// @param sender The sender address
+    /// @return bridgeIds Array of pending bridge IDs
+    function getPendingBridges(address sender) external view returns (bytes32[] memory bridgeIds);
 
     /// @notice Get escrowed balance for a token
     /// @param token The position token address
@@ -148,9 +172,13 @@ interface IPositionTokenBridge {
     /// @return The bridge config
     function getBridgeConfig() external view returns (BridgeConfig memory);
 
-    /// @notice Get the bridge expiry duration
-    /// @return The expiry duration in seconds
-    function getExpiryDuration() external view returns (uint64);
+    /// @notice Get the minimum retry delay
+    /// @return The minimum delay between retries in seconds
+    function getMinRetryDelay() external view returns (uint64);
+
+    /// @notice Get the emergency cancel delay
+    /// @return The delay before emergency cancel is allowed in seconds
+    function getEmergencyCancelDelay() external view returns (uint64);
 
     // ============ Ownership Management ============
 
