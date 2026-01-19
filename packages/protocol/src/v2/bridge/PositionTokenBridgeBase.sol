@@ -114,13 +114,15 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     function _trySendAck(bytes32 bridgeId) internal {
         // Skip ACK if no balance (common in test environments)
         if (address(this).balance == 0) {
+            emit AckSendFailed(bridgeId);
             return;
         }
 
         try this.sendAckInternal(bridgeId) {
             // ACK sent successfully
         } catch {
-            // ACK failed - can be retried via manualSendAck
+            // ACK failed - emit event for monitoring
+            emit AckSendFailed(bridgeId);
         }
     }
 
