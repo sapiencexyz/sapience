@@ -41,9 +41,6 @@ export default function ShareAfterMarketsRedirect() {
   const [storedClientTimestamp, setStoredClientTimestamp] = useState<
     number | undefined
   >(undefined);
-  const [storedTxHash, setStoredTxHash] = useState<string | undefined>(
-    undefined
-  );
   const [storedExpectedLegs, setStoredExpectedLegs] = useState<
     Array<{ question: string; choice: 'Yes' | 'No' }> | undefined
   >(undefined);
@@ -335,9 +332,6 @@ export default function ShareAfterMarketsRedirect() {
       if (intent.clientTimestamp) {
         setStoredClientTimestamp(intent.clientTimestamp);
       }
-      if (intent.txHash) {
-        setStoredTxHash(intent.txHash);
-      }
       if (intent.positionForm?.legs && intent.positionForm.legs.length > 0) {
         setStoredExpectedLegs(intent.positionForm.legs);
       }
@@ -472,7 +466,6 @@ export default function ShareAfterMarketsRedirect() {
       }
       // Clear stored state when dialog closes
       setStoredClientTimestamp(undefined);
-      setStoredTxHash(undefined);
       setStoredExpectedLegs(undefined);
       setStoredLastNftId(undefined);
     }
@@ -483,11 +476,6 @@ export default function ShareAfterMarketsRedirect() {
     if (!imageSrc) return undefined;
     return storedClientTimestamp;
   }, [imageSrc, storedClientTimestamp]);
-
-  const txHash = useMemo(() => {
-    if (!imageSrc) return undefined;
-    return storedTxHash;
-  }, [imageSrc, storedTxHash]);
 
   const expectedLegs = useMemo(() => {
     if (!imageSrc) return undefined;
@@ -513,9 +501,7 @@ export default function ShareAfterMarketsRedirect() {
         setOpen(newOpen);
       }}
       title="Trade Submitted"
-      shareTitle="Share"
       trackPosition={true}
-      txHash={txHash}
       positionTimestamp={positionTimestamp}
       expectedLegs={expectedLegs}
       lastNftId={lastNftId}

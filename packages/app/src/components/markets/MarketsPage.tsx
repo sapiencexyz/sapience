@@ -1,45 +1,37 @@
 'use client';
 
-import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
-import { motion } from 'framer-motion';
-import dynamic from 'next/dynamic';
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { useCategories } from '~/hooks/graphql/useCategories';
-import {
-  useConditions,
-  type ConditionFilters,
-} from '~/hooks/graphql/useConditions';
-import {
-  useConditionGroups,
-  type ConditionGroupFilters,
-} from '~/hooks/graphql/useConditionGroups';
-import CreatePositionForm from '~/components/markets/CreatePositionForm';
-import ExampleCombos from '~/components/markets/ExampleCombos';
-import MarketsDataTable from '~/components/markets/MarketsDataTable';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import type { FilterState } from '~/components/markets/TableFilters';
-import { useDebouncedValue } from '~/hooks/useDebouncedValue';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import {
   CreatePythPredictionForm,
   type CreatePythPredictionFormValues,
   type PythPrediction,
 } from '@sapience/ui';
+import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
+import { motion } from 'framer-motion';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 
-// Dynamically import Loader
-const Loader = dynamic(() => import('~/components/shared/Loader'), {
-  ssr: false,
-  // Use a simple div as placeholder during load
-  loading: () => <div className="w-8 h-8" />,
-});
+import CreatePositionForm from '~/components/markets/CreatePositionForm';
+import ExampleCombos from '~/components/markets/ExampleCombos';
+import MarketsDataTable from '~/components/markets/MarketsDataTable';
+import type { FilterState } from '~/components/markets/TableFilters';
+import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { useCategories } from '~/hooks/graphql/useCategories';
+import {
+  useConditionGroups,
+  type ConditionGroupFilters,
+} from '~/hooks/graphql/useConditionGroups';
+import {
+  useConditions,
+  type ConditionFilters,
+} from '~/hooks/graphql/useConditions';
+import { useDebouncedValue } from '~/hooks/useDebouncedValue';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
 
 function isEnabledFlagValue(raw: string | null): boolean {
   if (!raw) return false;
-  const v = raw.toLowerCase().trim();
-  return v === '1' || v === 'true';
+  const normalized = raw.toLowerCase().trim();
+  return normalized === '1' || normalized === 'true';
 }
 
 const MarketsPage = () => {
@@ -49,8 +41,7 @@ const MarketsPage = () => {
   // Read chainId from localStorage with event monitoring
   const chainId = useChainIdFromLocalStorage();
 
-  // Get mobile/compact status (needed by callbacks below)
-  const isMobile = useIsMobile();
+  // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
 
   const [showPredictPrices, setShowPredictPrices] = useState(false);
@@ -60,7 +51,7 @@ const MarketsPage = () => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const computeFromStorage = () => {
+    const readFromStorage = (): boolean => {
       try {
         return isEnabledFlagValue(
           window.localStorage.getItem(PREDICT_PRICES_FLAG_KEY)
@@ -70,18 +61,22 @@ const MarketsPage = () => {
       }
     };
 
+    const clearUrlParam = (url: URL): void => {
+      url.searchParams.delete('predictPrices');
+      window.history.replaceState({}, '', url.toString());
+    };
+
     try {
       const url = new URL(window.location.href);
       const param = url.searchParams.get('predictPrices');
 
-      if (param === '1' || param?.toLowerCase() === 'true') {
+      if (isEnabledFlagValue(param)) {
         try {
           window.localStorage.setItem(PREDICT_PRICES_FLAG_KEY, '1');
         } catch {
-          /* noop */
+          // Storage unavailable
         }
-        url.searchParams.delete('predictPrices');
-        window.history.replaceState({}, '', url.toString());
+        clearUrlParam(url);
         setShowPredictPrices(true);
         return;
       }
@@ -90,25 +85,24 @@ const MarketsPage = () => {
         try {
           window.localStorage.removeItem(PREDICT_PRICES_FLAG_KEY);
         } catch {
-          /* noop */
+          // Storage unavailable
         }
-        url.searchParams.delete('predictPrices');
-        window.history.replaceState({}, '', url.toString());
+        clearUrlParam(url);
         setShowPredictPrices(false);
         return;
       }
 
-      setShowPredictPrices(computeFromStorage());
+      setShowPredictPrices(readFromStorage());
     } catch {
-      setShowPredictPrices(computeFromStorage());
+      setShowPredictPrices(readFromStorage());
     }
   }, []);
 
   // Filter state managed here, passed down to MarketsDataTable
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterState>({
-    openInterestRange: [0, 100000],
-    timeToResolutionRange: [0, 1000], // Default to future markets only
+    openInterestRange: [0, Infinity],
+    timeToResolutionRange: [0, Infinity], // Default to future markets only
     selectedCategories: [],
   });
 
@@ -178,24 +172,12 @@ const MarketsPage = () => {
   // Combined loading state
   const isLoadingData = isLoadingGroups || isLoadingConditions;
 
-  // Callbacks for filter changes
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchTerm(value);
-  }, []);
-
-  const handleFiltersChange = useCallback((newFilters: FilterState) => {
-    setFilters(newFilters);
-  }, []);
-
   const handlePythPick = useCallback(
     (values: CreatePythPredictionFormValues) => {
-      const id = (() => {
-        try {
-          return crypto.randomUUID();
-        } catch {
-          return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-        }
-      })();
+      const id =
+        typeof crypto?.randomUUID === 'function'
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
       setPythPredictions((prev) => [
         ...prev,
@@ -212,7 +194,7 @@ const MarketsPage = () => {
         },
       ]);
 
-      // Mobile UX: after a successful pick, open the bet slip drawer so users can see/use it.
+      // Mobile UX: open the bet slip drawer so users can see their selection
       if (isCompact) {
         openPopover();
       }
@@ -224,36 +206,31 @@ const MarketsPage = () => {
     setPythPredictions((prev) => prev.filter((p) => p.id !== id));
   }, []);
 
-  // Convert categories to the format expected by TableFilters
-  const categoryOptions = useMemo(() => {
-    return allCategories
-      .map((cat) => ({
-        id: cat.id,
-        name: cat.name,
-        slug: cat.slug,
-      }))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [allCategories]);
+  // Sort categories alphabetically for the filter dropdown
+  const categoryOptions = useMemo(
+    () => [...allCategories].sort((a, b) => a.name.localeCompare(b.name)),
+    [allCategories]
+  );
 
-  // Show loader only on initial load (not when filtering)
+  // Show nothing while loading, then fade in content
   if (isLoadingCategories) {
     return (
       <div
-        className="flex justify-center items-center w-full"
-        style={{
-          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
-        }}
-      >
-        <Loader size={16} />
-      </div>
+        className="w-full"
+        style={{ minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }}
+      />
     );
   }
 
-  // Render content once loaded
   return (
-    <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start"
+    >
       {/* Render only one position form instance based on viewport */}
-      {isCompact ? (
+      {isCompact && (
         <div className="block lg:hidden">
           <CreatePositionForm
             pythPredictions={pythPredictions}
@@ -261,14 +238,14 @@ const MarketsPage = () => {
             onClearPythPredictions={() => setPythPredictions([])}
           />
         </div>
-      ) : null}
+      )}
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
         {/* Featured Positions section */}
         <ExampleCombos className="mt-4 md:mt-0" />
 
-        {showPredictPrices ? (
+        {showPredictPrices && (
           <div className="w-full mt-2">
             <div className="flex items-center justify-between mb-2 px-1">
               <h2 className="sc-heading text-foreground">Predict Prices</h2>
@@ -276,7 +253,7 @@ const MarketsPage = () => {
             <CreatePythPredictionForm onPick={handlePythPick} />
             <hr className="gold-hr mt-6 -mb-2" />
           </div>
-        ) : null}
+        )}
 
         {/* Results area - always table view */}
         <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
@@ -292,9 +269,9 @@ const MarketsPage = () => {
               ungroupedConditions={ungroupedConditions}
               isLoading={isLoadingData}
               searchTerm={searchTerm}
-              onSearchChange={handleSearchChange}
+              onSearchChange={setSearchTerm}
               filters={filters}
-              onFiltersChange={handleFiltersChange}
+              onFiltersChange={setFilters}
               categories={categoryOptions}
             />
           </motion.div>
@@ -302,7 +279,7 @@ const MarketsPage = () => {
       </div>
 
       {/* Desktop/Tablet sticky position form sidebar */}
-      {!isMobile ? (
+      {!isCompact && (
         <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
           <div
             className="rounded-none shadow-lg overflow-hidden"
@@ -320,8 +297,8 @@ const MarketsPage = () => {
             </div>
           </div>
         </div>
-      ) : null}
-    </div>
+      )}
+    </motion.div>
   );
 };
 

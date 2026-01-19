@@ -3,6 +3,7 @@
 A minimal auction maker bot that:
 - Connects to the auction relayer WebSocket
 - Prepares collateral for trading (wraps native USDe to WUSDe and approves)
+- Verifies auctions use the expected resolver (`predictionMarketLZConditionalTokensResolver` from SDK)
 - Bids a fixed amount on auctions whose maker wager meets a minimum
 - Signs bids with EIP-712 using a private key
 

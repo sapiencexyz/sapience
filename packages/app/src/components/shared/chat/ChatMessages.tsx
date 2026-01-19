@@ -19,6 +19,10 @@ type Props = {
   };
 };
 
+function isSameAddress(a: string | undefined, b: string | undefined): boolean {
+  return Boolean(a && b && a.toLowerCase() === b.toLowerCase());
+}
+
 export function ChatMessages({
   messages,
   showLoader,
@@ -48,46 +52,55 @@ export function ChatMessages({
       ref={scrollRef}
       className={`overflow-y-auto overscroll-contain p-3 space-y-3 ${className}`}
     >
-      {messages.map((m) => (
-        <div
-          key={m.id}
-          className={`text-sm ${m.author === 'me' ? 'text-right' : 'text-left'}`}
-        >
-          {labels?.[m.author] ? (
-            <div className="mb-1 opacity-80 text-xs">{labels[m.author]}</div>
-          ) : (
-            m.address &&
-            m.author === 'server' && (
-              <div className="mb-0.5 opacity-80">
-                <div className="inline-flex items-center gap-1">
-                  <EnsAvatar
-                    address={m.address}
-                    alt={m.address}
-                    className="h-4 w-4 shrink-0"
-                    width={14}
-                    height={14}
-                  />
-                  <AddressDisplay
-                    address={m.address}
-                    className="text-[10px]"
-                    compact
-                  />
-                </div>
-              </div>
-            )
-          )}
+      {messages.map((m, index) => {
+        const prevMessage = index > 0 ? messages[index - 1] : null;
+        const isSameAddressAsPrev = isSameAddress(
+          prevMessage?.address,
+          m.address
+        );
+
+        return (
           <div
-            className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} max-w-[80%] text-left break-words`}
+            key={m.id}
+            className={`text-sm ${m.author === 'me' ? 'text-right' : 'text-left'} ${isSameAddressAsPrev ? '!mt-1' : ''}`}
           >
-            <SafeMarkdown content={m.text} variant="compact" />
-          </div>
-          {m.error && (
-            <div className="text-[10px] text-destructive mt-0.5 opacity-80">
-              {m.error}
+            {labels?.[m.author] ? (
+              <div className="mb-1 opacity-80 text-xs">{labels[m.author]}</div>
+            ) : (
+              m.address &&
+              m.author === 'server' &&
+              !isSameAddressAsPrev && (
+                <div className="mb-0.5 opacity-80">
+                  <div className="inline-flex items-center gap-1">
+                    <EnsAvatar
+                      address={m.address}
+                      alt={m.address}
+                      className="h-4 w-4 shrink-0 rounded-sm"
+                      width={14}
+                      height={14}
+                    />
+                    <AddressDisplay
+                      address={m.address}
+                      className="text-[10px]"
+                      compact
+                    />
+                  </div>
+                </div>
+              )
+            )}
+            <div
+              className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} max-w-[80%] text-left break-words`}
+            >
+              <SafeMarkdown content={m.text} variant="compact" />
             </div>
-          )}
-        </div>
-      ))}
+            {m.error && (
+              <div className="text-[10px] text-destructive mt-0.5 opacity-80">
+                {m.error}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {showTyping && (
         <div className="text-sm text-left">
           <div className="inline-block px-3.5 py-2 rounded-full bg-muted">
@@ -101,7 +114,7 @@ export function ChatMessages({
       )}
       {messages.length === 0 && showLoader && (
         <div className="w-full h-full flex items-center justify-center">
-          <Loader size={16} />
+          <Loader size={24} />
         </div>
       )}
       <div ref={endRef} />

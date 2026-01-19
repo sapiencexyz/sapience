@@ -1,5 +1,15 @@
-import { verifyMessage } from 'viem';
+import {
+  verifyMessage,
+  recoverMessageAddress,
+  type Address,
+  type Hex,
+} from 'viem';
 import crypto from 'crypto';
+import {
+  verifySessionApproval,
+  type EnableTypedData,
+  type SessionApprovalPayload,
+} from '@sapience/sdk/session';
 
 export type ChatSession = { address: string; expiresAt: number };
 export type NonceRecord = { message: string; expiresAt: number; used: boolean };
@@ -132,4 +142,106 @@ export function refreshToken(
   sessions.set(token, { address: sess.address, expiresAt });
   enforceCap(sessions, MAX_SESSIONS);
   return { token, expiresAt, address: sess.address };
+}
+
+/**
+ * Verifies a session approval and challenge signature, then creates a chat token.
+ *
+ * This allows users with an active ZeroDev session to authenticate to chat
+ * using their session key instead of signing with their wallet again.
+ *
+ * Security model:
+ * 1. Verify the session approval to confirm the smart account and extract the session key
+ * 2. Verify the challenge signature was signed by the extracted session key
+ * 3. If both pass, create a chat token for the smart account address
+ *
+ * @param params - Session authentication parameters
+ * @returns Chat token and expiry, or null if verification fails
+ */
+export async function verifySessionAndCreateToken(params: {
+  sessionApproval: string;
+  sessionTypedData: EnableTypedData;
+  sessionSignature: string;
+  nonce: string;
+  chainId: number;
+}): Promise<{ token: string; expiresAt: number; address: string } | null> {
+  // Validate nonce exists and is unused
+  const record = nonces.get(params.nonce);
+  if (!record) {
+    console.warn('[ChatAuth] Session auth failed: nonce not found');
+    return null;
+  }
+  if (record.used) {
+    console.warn('[ChatAuth] Session auth failed: nonce already used');
+    return null;
+  }
+  if (Date.now() > record.expiresAt) {
+    nonces.delete(params.nonce);
+    console.warn('[ChatAuth] Session auth failed: nonce expired');
+    return null;
+  }
+
+  // Build session approval payload
+  const approvalPayload: SessionApprovalPayload = {
+    approval: params.sessionApproval,
+    chainId: params.chainId,
+    typedData: params.sessionTypedData,
+  };
+
+  // Extract claimed account address from typed data
+  const claimedAccountAddress = params.sessionTypedData.domain
+    .verifyingContract as Address;
+
+  // Verify the session approval
+  const sessionResult = await verifySessionApproval(
+    approvalPayload,
+    claimedAccountAddress
+  );
+
+  if (!sessionResult.valid || !sessionResult.sessionKeyAddress) {
+    console.warn(
+      '[ChatAuth] Session approval verification failed:',
+      sessionResult.error
+    );
+    return null;
+  }
+
+  // Verify the challenge was signed by the session key
+  try {
+    const recoveredSigner = await recoverMessageAddress({
+      message: record.message,
+      signature: params.sessionSignature as Hex,
+    });
+
+    if (
+      recoveredSigner.toLowerCase() !==
+      sessionResult.sessionKeyAddress.toLowerCase()
+    ) {
+      console.warn('[ChatAuth] Challenge signature not from session key:', {
+        expected: sessionResult.sessionKeyAddress,
+        recovered: recoveredSigner,
+      });
+      return null;
+    }
+  } catch (error) {
+    console.error('[ChatAuth] Failed to verify challenge signature:', error);
+    return null;
+  }
+
+  // Invalidate nonce
+  record.used = true;
+  nonces.set(params.nonce, record);
+
+  // Create chat token for the smart account address
+  const address = claimedAccountAddress.toLowerCase();
+  const token = generateToken();
+  const expiresAt = Date.now() + TOKEN_TTL_MS;
+  sessions.set(token, { address, expiresAt });
+  enforceCap(sessions, MAX_SESSIONS);
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.debug('[ChatAuth] Session auth successful for:', address);
+  }
+
+  return { token, expiresAt, address };
 }

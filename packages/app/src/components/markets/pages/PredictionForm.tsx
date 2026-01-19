@@ -149,6 +149,7 @@ export default function PredictionForm({
       prediction: true,
       categorySlug: categorySlug ?? undefined,
       resolverAddress,
+      endTime,
     });
     router.push('/markets');
   }, [
@@ -156,6 +157,7 @@ export default function PredictionForm({
     question,
     categorySlug,
     resolverAddress,
+    endTime,
     selections,
     removeSelection,
     addSelection,
@@ -174,6 +176,7 @@ export default function PredictionForm({
       prediction: false,
       categorySlug: categorySlug ?? undefined,
       resolverAddress,
+      endTime,
     });
     router.push('/markets');
   }, [
@@ -181,6 +184,7 @@ export default function PredictionForm({
     question,
     categorySlug,
     resolverAddress,
+    endTime,
     selections,
     removeSelection,
     addSelection,

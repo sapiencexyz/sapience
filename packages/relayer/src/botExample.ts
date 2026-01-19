@@ -7,12 +7,18 @@ import {
   getAddress,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const API_BASE = process.env.FOIL_RELAYER_BASE || 'http://localhost:3002';
 const WS_URL =
   API_BASE.replace('https://', 'wss://')
     .replace('http://', 'ws://')
     .replace(/\/$/, '') + '/auction';
+
+// Polymarket LZ resolver address for Ethereal
+const POLYMARKET_RESOLVER =
+  predictionMarketLZConditionalTokensResolver[CHAIN_ID_ETHEREAL]?.address?.toLowerCase();
 
 console.log('[BOT] Env FOIL_RELAYER_BASE =', process.env.FOIL_RELAYER_BASE);
 console.log('[BOT] Connecting to', WS_URL);
@@ -92,8 +98,17 @@ ws.on('message', (data: RawData) => {
       case 'auction.started': {
         const auction = msg.payload || {};
         console.log(
-          `[BOT] auction.started auctionId=${auction.auctionId} taker=${auction.taker} wager=${auction.wager} outcomes=${auction.predictedOutcomes?.length ?? 0}`
+          `[BOT] auction.started auctionId=${auction.auctionId} taker=${auction.taker} wager=${auction.wager} resolver=${auction.resolver} outcomes=${auction.predictedOutcomes?.length ?? 0}`
         );
+
+        // Verify the resolver address matches the Polymarket LZ resolver
+        const auctionResolver = String(auction.resolver || '').toLowerCase();
+        if (auctionResolver !== POLYMARKET_RESOLVER) {
+          console.log(
+            `[BOT] Skipping auction - unexpected resolver: ${auction.resolver} (expected ${POLYMARKET_RESOLVER})`
+          );
+          break;
+        }
 
         // For the new mint flow, we need to provide maker collateral and signature
         const wager = BigInt(auction.wager || '0');

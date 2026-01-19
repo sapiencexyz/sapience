@@ -1,8 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Slider from '@sapience/ui/components/ui/slider';
-import { Input } from '@sapience/ui/components/ui/input';
 import {
   Popover,
   PopoverContent,
@@ -19,6 +17,7 @@ import {
 import { ChevronsUpDown, Check, Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
+import { RangeFilter } from '~/components/shared/RangeFilter';
 
 export interface CategoryOption {
   id: number;
@@ -153,210 +152,10 @@ function CategoryMultiSelect({
   );
 }
 
-interface RangeFilterProps {
-  placeholder: string;
-  value: [number, number];
-  onChange: (value: [number, number]) => void;
-  min: number;
-  max: number;
-  step?: number;
-  formatValue?: (value: number) => string;
-  parseValue?: (value: string) => number;
-  unit?: string;
-  showSign?: boolean;
-  // Custom label to show for specific value ranges
-  customLabels?: Array<{ range: [number, number]; label: string }>;
-}
-
-function RangeFilter({
-  placeholder,
-  value,
-  onChange,
-  min,
-  max,
-  step = 1,
-  formatValue = (v) => String(v),
-  parseValue = (v) => Number(v),
-  unit,
-  showSign = false,
-  customLabels,
-}: RangeFilterProps) {
-  const [open, setOpen] = React.useState(false);
-  const [localMin, setLocalMin] = React.useState(formatValue(value[0]));
-  const [localMax, setLocalMax] = React.useState(formatValue(value[1]));
-
-  // Sync local state when value prop changes
-  React.useEffect(() => {
-    setLocalMin(formatValue(value[0]));
-    setLocalMax(formatValue(value[1]));
-  }, [value, formatValue]);
-
-  const handleSliderChange = (newValue: number[]) => {
-    if (newValue.length >= 2) {
-      onChange([newValue[0], newValue[1]]);
-    }
-  };
-
-  const handleMinInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalMin(e.target.value);
-  };
-
-  const handleMaxInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocalMax(e.target.value);
-  };
-
-  const handleMinBlur = () => {
-    const parsed = parseValue(localMin);
-    if (!isNaN(parsed)) {
-      const clamped = Math.max(min, Math.min(parsed, value[1]));
-      onChange([clamped, value[1]]);
-    } else {
-      setLocalMin(formatValue(value[0]));
-    }
-  };
-
-  const handleMaxBlur = () => {
-    const parsed = parseValue(localMax);
-    if (!isNaN(parsed)) {
-      const clamped = Math.min(max, Math.max(parsed, value[0]));
-      onChange([value[0], clamped]);
-    } else {
-      setLocalMax(formatValue(value[1]));
-    }
-  };
-
-  const handleMinKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
-  };
-
-  const handleMaxKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    }
-  };
-
-  const isAtBounds = value[0] === min && value[1] === max;
-
-  const formatDisplay = (v: number) => {
-    const formatted = formatValue(v);
-    if (showSign && v > 0 && formatted !== '∞') return `+${formatted}`;
-    return formatted;
-  };
-
-  const getButtonLabel = () => {
-    if (isAtBounds) return placeholder;
-    // Check for custom labels
-    if (customLabels) {
-      for (const { range, label } of customLabels) {
-        if (value[0] === range[0] && value[1] === range[1]) {
-          return label;
-        }
-      }
-    }
-    return `${formatDisplay(value[0])} – ${formatDisplay(value[1])}${unit ? ` ${unit}` : ''}`;
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between px-3 text-sm"
-        >
-          <span className={isAtBounds ? 'text-muted-foreground' : ''}>
-            {getButtonLabel()}
-          </span>
-          <ChevronsUpDown className="h-4 w-4 opacity-50" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[280px] p-4" align="start">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{placeholder}</span>
-            {!isAtBounds && (
-              <button
-                type="button"
-                onClick={() => onChange([min, max])}
-                className="font-mono text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                RESET
-              </button>
-            )}
-          </div>
-          <div className="px-1">
-            <Slider
-              value={[value[0], value[1]]}
-              onValueChange={handleSliderChange}
-              min={min}
-              max={max}
-              step={step}
-              className="w-full"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              {showSign && parseValue(localMin) > 0 && localMin !== '∞' && (
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-foreground pointer-events-none z-10">
-                  +
-                </span>
-              )}
-              <Input
-                inputSize="xs"
-                type="text"
-                value={localMin}
-                onChange={handleMinInputChange}
-                onBlur={handleMinBlur}
-                onKeyDown={handleMinKeyDown}
-                className={cn(
-                  'w-full pr-10 text-right font-mono text-xs tabular-nums',
-                  showSign &&
-                    parseValue(localMin) > 0 &&
-                    localMin !== '∞' &&
-                    'pl-5'
-                )}
-              />
-              {unit && (
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
-                  {unit}
-                </span>
-              )}
-            </div>
-            <span className="text-muted-foreground text-xs">to</span>
-            <div className="relative flex-1">
-              {showSign && parseValue(localMax) > 0 && localMax !== '∞' && (
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs font-mono text-foreground pointer-events-none z-10">
-                  +
-                </span>
-              )}
-              <Input
-                inputSize="xs"
-                type="text"
-                value={localMax}
-                onChange={handleMaxInputChange}
-                onBlur={handleMaxBlur}
-                onKeyDown={handleMaxKeyDown}
-                className={cn(
-                  'w-full pr-10 text-right font-mono text-xs tabular-nums',
-                  showSign &&
-                    parseValue(localMax) > 0 &&
-                    localMax !== '∞' &&
-                    'pl-5'
-                )}
-              />
-              {unit && (
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
-                  {unit}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
+// Map slider bounds to Infinity for range filters
+const OPEN_INTEREST_SLIDER_MAX = 1000000;
+const TIME_SLIDER_MAX = 1000;
+const TIME_SLIDER_MIN = -1000;
 
 export default function TableFilters({
   filters,
@@ -370,12 +169,42 @@ export default function TableFilters({
 }: TableFiltersProps) {
   const isMobile = useIsMobile();
 
+  // Map Infinity to slider max for display
+  const openInterestSliderValue: [number, number] = [
+    filters.openInterestRange[0],
+    filters.openInterestRange[1] === Infinity
+      ? OPEN_INTEREST_SLIDER_MAX
+      : Math.min(filters.openInterestRange[1], OPEN_INTEREST_SLIDER_MAX),
+  ];
+
   const handleOpenInterestChange = (value: [number, number]) => {
-    onFiltersChange({ ...filters, openInterestRange: value });
+    onFiltersChange({
+      ...filters,
+      openInterestRange: [
+        value[0],
+        value[1] >= OPEN_INTEREST_SLIDER_MAX ? Infinity : value[1],
+      ],
+    });
   };
 
+  // Map Infinity/-Infinity to slider bounds for time display
+  const timeSliderValue: [number, number] = [
+    filters.timeToResolutionRange[0] === -Infinity
+      ? TIME_SLIDER_MIN
+      : Math.max(filters.timeToResolutionRange[0], TIME_SLIDER_MIN),
+    filters.timeToResolutionRange[1] === Infinity
+      ? TIME_SLIDER_MAX
+      : Math.min(filters.timeToResolutionRange[1], TIME_SLIDER_MAX),
+  ];
+
   const handleTimeToResolutionChange = (value: [number, number]) => {
-    onFiltersChange({ ...filters, timeToResolutionRange: value });
+    onFiltersChange({
+      ...filters,
+      timeToResolutionRange: [
+        value[0] <= TIME_SLIDER_MIN ? -Infinity : value[0],
+        value[1] >= TIME_SLIDER_MAX ? Infinity : value[1],
+      ],
+    });
   };
 
   const handleCategoriesChange = (slugs: string[]) => {
@@ -413,37 +242,42 @@ export default function TableFilters({
       />
       <RangeFilter
         placeholder="Any open interest"
-        value={filters.openInterestRange}
+        value={openInterestSliderValue}
         onChange={handleOpenInterestChange}
         min={openInterestBounds[0]}
-        max={openInterestBounds[1]}
+        max={OPEN_INTEREST_SLIDER_MAX}
         step={100}
-        formatValue={(v) => v.toLocaleString()}
-        parseValue={(v) => Number(v.replace(/,/g, ''))}
+        formatValue={(v) =>
+          v >= OPEN_INTEREST_SLIDER_MAX ? '∞' : v.toLocaleString()
+        }
+        parseValue={(v) => {
+          if (v === '∞') return OPEN_INTEREST_SLIDER_MAX;
+          return Number(v.replace(/,/g, ''));
+        }}
         unit="USDe"
       />
       <RangeFilter
         placeholder="Time to resolution"
-        value={filters.timeToResolutionRange}
+        value={timeSliderValue}
         onChange={handleTimeToResolutionChange}
-        min={-1000}
-        max={1000}
+        min={TIME_SLIDER_MIN}
+        max={TIME_SLIDER_MAX}
         step={1}
         formatValue={(v) => {
-          if (v === 1000) return '∞';
-          if (v === -1000) return '-∞';
+          if (v >= TIME_SLIDER_MAX) return '∞';
+          if (v <= TIME_SLIDER_MIN) return '-∞';
           return String(v);
         }}
         parseValue={(v) => {
-          if (v === '∞') return 1000;
-          if (v === '-∞') return -1000;
+          if (v === '∞') return TIME_SLIDER_MAX;
+          if (v === '-∞') return TIME_SLIDER_MIN;
           return Number(v);
         }}
         unit="days"
         showSign
         customLabels={[
-          { range: [0, 1000], label: 'Ends in the future' },
-          { range: [-1000, 0], label: 'Ended in the past' },
+          { range: [0, TIME_SLIDER_MAX], label: 'Ends in the future' },
+          { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
       />
     </div>

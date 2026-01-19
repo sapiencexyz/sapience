@@ -3,6 +3,11 @@
 import { useMemo } from 'react';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 
+function formatAmount(val: number): string {
+  if (!Number.isFinite(val)) return '0';
+  return val.toFixed(val < 1 ? 4 : 2);
+}
+
 interface ShareDialogProps {
   question: string;
   side?: string;
@@ -19,37 +24,31 @@ interface ShareDialogProps {
   trigger?: React.ReactNode;
   imagePath?: string; // defaults to OG position path for now
   title?: string; // dialog title
-  legs?: { question: string; choice: string }[];
+  legs?: Array<{ question: string; choice: string }>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
 
-export default function ShareDialog(props: ShareDialogProps) {
-  const {
-    question,
-    side,
-    wager,
-    payout,
-    symbol,
-    groupAddress,
-    marketId,
-    positionId,
-    nftId,
-    marketAddress,
-    owner,
-    extraParams,
-    trigger,
-    imagePath = '/og/trade',
-    title = 'Share',
-    open: controlledOpen,
-    onOpenChange,
-  } = props;
-
-  const formatAmount = (val: number): string => {
-    if (!Number.isFinite(val)) return '0';
-    return val.toFixed(val < 1 ? 4 : 2);
-  };
-
+export default function ShareDialog({
+  question,
+  side,
+  wager,
+  payout,
+  symbol,
+  groupAddress,
+  marketId,
+  positionId,
+  nftId,
+  marketAddress,
+  owner,
+  extraParams,
+  trigger,
+  imagePath = '/og/trade',
+  title = 'Share',
+  open: controlledOpen,
+  onOpenChange,
+  legs,
+}: ShareDialogProps) {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
 
@@ -75,8 +74,8 @@ export default function ShareDialog(props: ShareDialogProps) {
     if (symbol) sp.set('symbol', symbol);
     if (positionId != null) sp.set('pid', String(positionId));
     if (owner) sp.set('addr', owner);
-    if (props.legs && Array.isArray(props.legs)) {
-      for (const leg of props.legs) {
+    if (legs) {
+      for (const leg of legs) {
         const q = (leg?.question ?? '').toString().replace(/\|/g, ' ').trim();
         const c = (leg?.choice ?? '').toString().replace(/\|/g, ' ').trim();
         if (q && c) sp.append('leg', `${q}|${c}`);
@@ -104,23 +103,21 @@ export default function ShareDialog(props: ShareDialogProps) {
     marketAddress,
     owner,
     extraParams,
-    props.legs,
+    legs,
     imagePath,
   ]);
 
-  const imageSrc = `${imagePath}?${queryString}&t=${Date.now()}`;
+  // Note: OgShareDialog handles cache busting via its own cacheBust mechanism
+  // Don't add timestamp here or the image URL will change on every render
+  const imageSrc = `${imagePath}?${queryString}`;
 
   return (
     <OgShareDialogBase
       imageSrc={imageSrc}
       title={title}
       trigger={trigger}
-      shareTitle={title}
-      shareText={question}
       open={controlledOpen}
       onOpenChange={onOpenChange}
-      copyButtonText="Copy Image"
-      shareButtonText="Share"
     />
   );
 }

@@ -15,18 +15,41 @@ import { useChatConnection } from './chat/useChatConnection';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useChat } from '~/lib/context/ChatContext';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useSession } from '~/lib/context/SessionContext';
 
 const ChatWidget = () => {
   const { isOpen, closeChat } = useChat();
   const { openConnectDialog } = useConnectDialog();
   const { ready, connectedWallet, hasConnectedWallet } = useConnectedWallet();
-  const addressOverride =
-    ready && hasConnectedWallet ? connectedWallet?.address : undefined;
+  const {
+    etherealSessionApproval,
+    signMessage,
+    isSessionActive,
+    smartAccountAddress,
+  } = useSession();
+  // When session is active, use smart account address (matches server's session auth)
+  // Otherwise fall back to EOA address
+  function getAddressOverride(): `0x${string}` | undefined {
+    if (!ready || !hasConnectedWallet) {
+      return undefined;
+    }
+    if (isSessionActive && smartAccountAddress) {
+      return smartAccountAddress;
+    }
+    return connectedWallet?.address;
+  }
+  const addressOverride = getAddressOverride();
 
   const {
     state: { messages, pendingText, setPendingText, canChat, canType },
     actions: { sendMessage, loginNow },
-  } = useChatConnection(isOpen, addressOverride);
+  } = useChatConnection({
+    isOpen,
+    addressOverride,
+    sessionApproval: etherealSessionApproval,
+    signMessageWithSession: signMessage,
+    isSessionActive,
+  });
 
   const handleLogin = () => {
     if (ready && !hasConnectedWallet) {

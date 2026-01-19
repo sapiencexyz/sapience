@@ -16,7 +16,7 @@ Check your local regulations. Start with small amounts and monitor performance. 
 :::
 
 :::note[Collateral]
-On Ethereal, prediction market contracts use WUSDe (Wrapped USDe). The SDK's `prepareForTrade` helper handles wrapping and approval automatically.
+On Ethereal, prediction market contracts use [wUSDe](https://explorer.ethereal.trade/address/0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D) (Wrapped USDe). The SDK's `prepareForTrade` helper handles wrapping and approval automatically.
 :::
 
 ### What It Does
@@ -78,7 +78,7 @@ The bot follows this flow:
 
 ### Preparing Collateral
 
-On Ethereal, the native token is USDe but prediction market contracts expect WUSDe (Wrapped USDe). The SDK provides `prepareForTrade` to handle this automatically:
+On Ethereal, the native token is USDe but prediction market contracts expect [wUSDe](https://explorer.ethereal.trade/address/0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D) (Wrapped USDe). The SDK provides `prepareForTrade` to handle this automatically:
 
 ```typescript
 import { prepareForTrade } from '@sapience/sdk/onchain/trading';

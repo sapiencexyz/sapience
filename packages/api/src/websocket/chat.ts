@@ -5,6 +5,7 @@ import {
   refreshToken,
   validateToken,
   verifyAndCreateToken,
+  verifySessionAndCreateToken,
 } from './chatAuth';
 
 export type StoredMessage = {
@@ -74,7 +75,7 @@ export function createChatWebSocketServer() {
   void loadHistoryFromDbOnce();
   const wss = new WebSocketServer({
     noServer: true,
-    maxPayload: 4096,
+    maxPayload: 64 * 1024, // 64KB to accommodate session auth payloads
     perMessageDeflate: false,
   });
 
@@ -318,6 +319,90 @@ export function createChatWebSocketServer() {
             } catch {
               /* noop */
             }
+            return;
+          }
+          // Handle session-based authentication (for users with active ZeroDev sessions)
+          if (type === 'auth_session') {
+            const sessionApproval =
+              typeof data.sessionApproval === 'string'
+                ? data.sessionApproval
+                : '';
+            const sessionTypedData = data.sessionTypedData;
+            const sessionSignature =
+              typeof data.sessionSignature === 'string'
+                ? data.sessionSignature
+                : '';
+            const nonce = typeof data.nonce === 'string' ? data.nonce : '';
+            const chainId = typeof data.chainId === 'number' ? data.chainId : 0;
+
+            if (
+              !sessionApproval ||
+              !sessionTypedData ||
+              !sessionSignature ||
+              !nonce ||
+              !chainId
+            ) {
+              try {
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_error',
+                    reason: 'missing_session_params',
+                  })
+                );
+              } catch {
+                /* noop */
+              }
+              return;
+            }
+
+            (async () => {
+              try {
+                const result = await verifySessionAndCreateToken({
+                  sessionApproval,
+                  sessionTypedData,
+                  sessionSignature,
+                  nonce,
+                  chainId,
+                });
+                if (!result) {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'session_auth_failed',
+                    })
+                  );
+                  return;
+                }
+                ws._address = result.address;
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_ok',
+                    token: result.token,
+                    expiresAt: result.expiresAt,
+                    address: result.address,
+                  })
+                );
+                ws.send(
+                  JSON.stringify({
+                    type: 'auth_status',
+                    authenticated: true,
+                    address: result.address,
+                    expiresAt: result.expiresAt,
+                  })
+                );
+              } catch {
+                try {
+                  ws.send(
+                    JSON.stringify({
+                      type: 'auth_error',
+                      reason: 'session_auth_failed',
+                    })
+                  );
+                } catch {
+                  /* noop */
+                }
+              }
+            })();
             return;
           }
 

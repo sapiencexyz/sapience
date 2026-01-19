@@ -62,12 +62,17 @@
       "import": "./dist/contracts/index.mjs",
       "require": "./dist/contracts/index.js"
     },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "import": "./dist/session/index.mjs",
+      "require": "./dist/session/index.js"
+    },
     "./boilerplates": "./boilerplates/README.md"
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts relayer/auctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts relayer/auctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts relayer/auctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts relayer/auctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
@@ -81,6 +86,12 @@
   "peerDependenciesMeta": {
     "ws": {
       "optional": true
+    },
+    "@zerodev/sdk": {
+      "optional": true
+    },
+    "@zerodev/ecdsa-validator": {
+      "optional": true
     }
   },
   "devDependencies": {
@@ -88,6 +99,8 @@
     "@types/node": "22.14.0",
     "@types/react": "19.1.8",
     "@types/ws": "8.5.10",
+    "@zerodev/ecdsa-validator": "5.3.3",
+    "@zerodev/sdk": "5.4.5",
     "autoprefixer": "10.4.20",
     "eslint": "9.31.0",
     "eslint-plugin-import": "2.32.0",
@@ -101,6 +114,8 @@
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.x",
+    "@zerodev/ecdsa-validator": "5.3.3",
+    "@zerodev/sdk": "5.4.5",
     "lucide-react": "0.461.0",
     "react": ">=18 || 19",
     "react-dom": ">=18 || 19",

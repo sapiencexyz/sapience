@@ -1,42 +1,47 @@
 'use client';
 
 import type React from 'react';
-import { useDeferredValue, useEffect, useState } from 'react';
-import { Input } from '@sapience/ui/components/ui/input';
+import { RangeFilter } from '~/components/shared/RangeFilter';
 
 type Props = {
-  value: string;
-  onChange: (v: string) => void;
+  value: [number, number];
+  onChange: (v: [number, number]) => void;
+  unit?: string;
 };
 
-const MinWagerFilter: React.FC<Props> = ({ value, onChange }) => {
-  const [internal, setInternal] = useState<string>(value);
-  const deferred = useDeferredValue(internal);
+const SLIDER_MAX = 1000;
 
-  useEffect(() => {
-    setInternal(value);
-  }, [value]);
+const MinWagerFilter: React.FC<Props> = ({
+  value,
+  onChange,
+  unit = 'USDC',
+}) => {
+  // Map Infinity to slider max for display, and back
+  const sliderValue: [number, number] = [
+    value[0],
+    value[1] === Infinity ? SLIDER_MAX : Math.min(value[1], SLIDER_MAX),
+  ];
 
-  useEffect(() => {
-    const id = window.setTimeout(() => onChange(deferred), 180);
-    return () => window.clearTimeout(id);
-  }, [deferred, onChange]);
+  const handleChange = (v: [number, number]) => {
+    onChange([v[0], v[1] >= SLIDER_MAX ? Infinity : v[1]]);
+  };
 
   return (
-    <div className="flex">
-      <Input
-        type="number"
-        inputMode="decimal"
-        min={0}
-        step="0.01"
-        className="h-8 rounded-r-none border-r-0"
-        value={internal}
-        onChange={(e) => setInternal(e.target.value)}
-      />
-      <span className="inline-flex items-center h-8 rounded-md rounded-l-none border border-input border-l-0 bg-muted/30 px-3 text-xs text-muted-foreground whitespace-nowrap">
-        Minimum Wager
-      </span>
-    </div>
+    <RangeFilter
+      placeholder="Any Wager"
+      value={sliderValue}
+      onChange={handleChange}
+      min={0}
+      max={SLIDER_MAX}
+      step={1}
+      formatValue={(v) => (v >= SLIDER_MAX ? '∞' : v.toLocaleString())}
+      parseValue={(v) => {
+        if (v === '∞') return SLIDER_MAX;
+        return Number(v.replace(/,/g, ''));
+      }}
+      unit={unit}
+      customLabels={[{ range: [1, SLIDER_MAX], label: `≥1 ${unit} Wager` }]}
+    />
   );
 };
 

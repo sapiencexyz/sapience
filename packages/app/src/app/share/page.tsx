@@ -7,6 +7,20 @@ type SharePageProps = {
   searchParams?: Record<string, string | string[] | undefined>;
 };
 
+type TokenData = {
+  img?: string;
+  title?: string;
+  description?: string;
+  alt?: string;
+  url?: string;
+  // Short form variants
+  i?: string;
+  t?: string;
+  d?: string;
+  a?: string;
+  u?: string;
+};
+
 function coerceString(val: unknown): string | undefined {
   if (typeof val === 'string' && val.trim()) return val;
   if (Array.isArray(val) && val.length > 0 && typeof val[0] === 'string')
@@ -16,7 +30,6 @@ function coerceString(val: unknown): string | undefined {
 
 function toAbsoluteUrl(urlOrPath: string, base?: URL): string {
   try {
-    // If already absolute, return as-is
     const u = new URL(urlOrPath);
     return u.toString();
   } catch {
@@ -25,31 +38,58 @@ function toAbsoluteUrl(urlOrPath: string, base?: URL): string {
   }
 }
 
-function extractAddrFromImg(img?: string): string | undefined {
+function decodeToken(token: string): TokenData | null {
+  try {
+    const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
+    const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+    const buf = Buffer.from(b64 + pad, 'base64');
+
+    let jsonStr: string | null = null;
+    try {
+      jsonStr = brotliDecompressSync(Uint8Array.from(buf)).toString('utf8');
+    } catch {
+      // Fall through to try deflate
+    }
+
+    if (!jsonStr) {
+      try {
+        jsonStr = inflateRawSync(Uint8Array.from(buf)).toString('utf8');
+      } catch {
+        return null;
+      }
+    }
+
+    return jsonStr ? (JSON.parse(jsonStr) as TokenData) : null;
+  } catch {
+    return null;
+  }
+}
+
+function extractParamFromImg(
+  img: string | undefined,
+  paramName: string
+): string | undefined {
   if (!img) return undefined;
   try {
-    // Support relative paths by providing a dummy base
     const u = new URL(img, 'http://local');
-    const raw = (u.searchParams.get('addr') || '').toString();
+    const raw = u.searchParams.get(paramName) || '';
     const cleaned = raw.replace(/\s/g, '').toLowerCase();
     if (/^0x[a-f0-9]{40}$/.test(cleaned)) return cleaned;
   } catch (err) {
-    console.error('extractAddrFromImg: failed to parse img', img, err);
+    console.error(
+      `extractParamFromImg: failed to parse ${paramName}`,
+      img,
+      err
+    );
   }
   return undefined;
 }
 
-function extractGroupFromImg(img?: string): string | undefined {
-  if (!img) return undefined;
-  try {
-    const u = new URL(img, 'http://local');
-    const raw = (u.searchParams.get('group') || '').toString();
-    const cleaned = raw.replace(/\s/g, '').toLowerCase();
-    if (/^0x[a-f0-9]{40}$/.test(cleaned)) return cleaned;
-  } catch (err) {
-    console.error('extractGroupFromImg: failed to parse img', img, err);
-  }
-  return undefined;
+function buildPositionImageUrl(nftId: string, marketAddress: string): string {
+  const qp = new URLSearchParams();
+  qp.set('nftId', nftId);
+  qp.set('marketAddress', marketAddress);
+  return `/og/position?${qp.toString()}`;
 }
 
 export function generateMetadata({ searchParams }: SharePageProps): Metadata {
@@ -63,55 +103,17 @@ export function generateMetadata({ searchParams }: SharePageProps): Metadata {
   let imageAlt = coerceString(searchParams?.alt) || 'Sapience Share Image';
   let canonical = coerceString(searchParams?.url);
 
-  // If nftId and marketAddress are present, build OG image URL from them
   if (nftId && marketAddress) {
-    const qp = new URLSearchParams();
-    qp.set('nftId', nftId);
-    qp.set('marketAddress', marketAddress);
-    img = `/og/position?${qp.toString()}`;
+    img = buildPositionImageUrl(nftId, marketAddress);
   }
 
-  // If short token is present, decode fields from token
   if (token) {
-    try {
-      const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
-      const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-      const buf = Buffer.from(b64 + pad, 'base64');
-      let jsonStr: string | null = null;
-      try {
-        jsonStr = brotliDecompressSync(Uint8Array.from(buf)).toString('utf8');
-      } catch {
-        jsonStr = null;
-      }
-      if (!jsonStr) {
-        try {
-          jsonStr = inflateRawSync(Uint8Array.from(buf)).toString('utf8');
-        } catch {
-          jsonStr = null;
-        }
-      }
-      if (jsonStr) {
-        const data = JSON.parse(jsonStr) as Partial<
-          | {
-              img: string;
-              title?: string;
-              description?: string;
-              alt?: string;
-              url?: string;
-            }
-          | { i: string; t?: string; d?: string; a?: string; u?: string }
-        >;
-        const resolvedImg = (data as any).img ?? (data as any).i;
-        const resolvedDesc = (data as any).description ?? (data as any).d;
-        const resolvedAlt = (data as any).alt ?? (data as any).a;
-        const resolvedUrl = (data as any).url ?? (data as any).u;
-        img = (resolvedImg as string) || img;
-        description = (resolvedDesc as string) || description;
-        imageAlt = (resolvedAlt as string) || imageAlt;
-        canonical = (resolvedUrl as string) || canonical;
-      }
-    } catch {
-      // ignore token decode errors; fall back to query params
+    const data = decodeToken(token);
+    if (data) {
+      img = data.img ?? data.i ?? img;
+      description = data.description ?? data.d ?? description;
+      imageAlt = data.alt ?? data.a ?? imageAlt;
+      canonical = data.url ?? data.u ?? canonical;
     }
   }
 
@@ -156,55 +158,28 @@ export default function SharePage({ searchParams }: SharePageProps) {
   const marketAddress = coerceString(searchParams?.marketAddress);
   let img = coerceString(searchParams?.img);
   let alt = coerceString(searchParams?.alt) || 'Share image';
-  const addrFromQuery = extractAddrFromImg(img);
-  const groupFromQuery = extractGroupFromImg(img);
+  const addrFromQuery = extractParamFromImg(img, 'addr');
+  const groupFromQuery = extractParamFromImg(img, 'group');
 
-  // If nftId and marketAddress are present, build OG image URL from them (preferred method)
   if (nftId && marketAddress) {
-    const qp = new URLSearchParams();
-    qp.set('nftId', nftId);
-    qp.set('marketAddress', marketAddress);
-    img = `/og/position?${qp.toString()}`;
+    img = buildPositionImageUrl(nftId, marketAddress);
   }
 
   if (token) {
-    try {
-      const b64 = token.replace(/-/g, '+').replace(/_/g, '/');
-      const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-      const buf = Buffer.from(b64 + pad, 'base64');
-      let jsonStr: string | null = null;
-      try {
-        jsonStr = brotliDecompressSync(Uint8Array.from(buf)).toString('utf8');
-      } catch {
-        jsonStr = null;
-      }
-      if (!jsonStr) {
-        try {
-          jsonStr = inflateRawSync(Uint8Array.from(buf)).toString('utf8');
-        } catch {
-          jsonStr = null;
-        }
-      }
-      if (jsonStr) {
-        const data = JSON.parse(jsonStr) as Partial<
-          { img: string; alt?: string } | { i: string; a?: string }
-        >;
-        const resolvedImg = (data as any).img ?? (data as any).i;
-        const resolvedAlt = (data as any).alt ?? (data as any).a;
-        img = (resolvedImg as string) || img;
-        alt = (resolvedAlt as string) || alt;
-      }
-    } catch {
-      // ignore
+    const data = decodeToken(token);
+    if (data) {
+      img = data.img ?? data.i ?? img;
+      alt = data.alt ?? data.a ?? alt;
     }
   }
-  const addr = extractAddrFromImg(img) || addrFromQuery;
-  const group = extractGroupFromImg(img) || groupFromQuery;
+
+  const addr = extractParamFromImg(img, 'addr') || addrFromQuery;
+  const group = extractParamFromImg(img, 'group') || groupFromQuery;
 
   // Simple, crawlable HTML body for social scrapers and a basic human fallback
   return (
-    <div className="relative min-h-screen">
-      <main className="relative container mx-auto px-4 mt-36 mb-12 max-w-3xl">
+    <div className="relative min-h-[calc(100vh-200px)] flex items-center justify-center">
+      <main className="relative container mx-auto px-4 py-8 max-w-3xl">
         <div className="flex flex-col items-center text-center">
           {img ? (
             // Intentionally not using next/image here to avoid loader constraints for absolute URLs

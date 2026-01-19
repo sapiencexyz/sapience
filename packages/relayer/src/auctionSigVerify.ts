@@ -9,8 +9,7 @@ import {
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
 import { AuctionRequestPayload } from './types';
-import { computeSmartAccountAddress } from './smartAccount';
-import { verifySessionApproval, type SessionApprovalPayload } from './sessionAuth';
+import { verifySessionApproval, computeSmartAccountAddress, type SessionApprovalPayload } from './sessionAuth';
 
 /**
  * Verifies the taker signature for an auction request.

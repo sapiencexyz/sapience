@@ -25,45 +25,44 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
 } from 'react';
-import { useForm, type UseFormReturn } from 'react-hook-form';
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  COLLATERAL_SYMBOLS,
-  CHAIN_ID_ETHEREAL,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
-import {
-  wagerAmountSchema,
-  createWagerAmountSchema,
-} from '~/components/markets/forms/inputs/WagerInput';
+import { createWagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBids } from '~/lib/auction/validateBids';
-import { useValidatedBids } from '~/lib/auction/useValidatedBids';
+import { validateBidsAsync } from '~/lib/auction/validateBids';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
   getDefaultFormPredictionValue,
+  getMaxWagerAmount,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import {
+  CollateralBalanceProvider,
+  useCollateralBalanceContext,
+} from '~/lib/context/CollateralBalanceContext';
 import type { PythPrediction } from '@sapience/ui';
 
 interface CreatePositionFormProps {
@@ -73,12 +72,18 @@ interface CreatePositionFormProps {
   onClearPythPredictions?: () => void;
 }
 
-const CreatePositionForm = ({
+const CreatePositionFormInner = ({
   variant = 'triggered',
   pythPredictions = [],
   onRemovePythPrediction,
   onClearPythPredictions,
 }: CreatePositionFormProps) => {
+  // Get user's collateral balance from context for form validation
+  const {
+    balance: userBalance,
+    isLoading: isBalanceLoading,
+    isEtherealChain: isEtherealFromContext,
+  } = useCollateralBalanceContext();
   const {
     createPositionEntries,
     isPopoverOpen,
@@ -89,8 +94,6 @@ const CreatePositionForm = ({
     positionsWithMarketData,
   } = useCreatePositionContext();
 
-  // Always use position mode (singles/spot mode removed)
-  const isPositionMode = true;
   const isCompact = useIsBelow(1024);
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -99,19 +102,31 @@ const CreatePositionForm = ({
   const { toast } = useToast();
   const chainId = useChainIdFromLocalStorage();
 
+  // Track whether wager has been initialized and for which address
+  const [isWagerInitialized, setIsWagerInitialized] = useState(false);
+  const [initializedForAddress, setInitializedForAddress] = useState<
+    string | null
+  >(null);
+
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
-  // Store the currently displayed best bid from PositionForm for submission
-  const [displayedBestBid, setDisplayedBestBid] = useState<QuoteBid | null>(
-    null
-  );
   const [shareDialogData, setShareDialogData] = useState<{
-    legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    picks: Array<{ question: string; choice: 'Yes' | 'No' }>;
     wager: string;
     payout?: string;
     symbol: string;
     lastNftId?: string;
   } | null>(null);
+
+  // Position progress tracking for benchmarking and UI
+  const {
+    progressState,
+    startSubmission,
+    markTxSent,
+    markReceiptReceived,
+    markPositionIndexed,
+    reset: resetProgress,
+  } = usePositionProgress();
 
   const positionChainId = useMemo(
     () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
@@ -135,18 +150,16 @@ const CreatePositionForm = ({
   });
 
   const {
-    auctionId,
     bids: rawBids,
     requestQuotes,
-    notifyOrderCreated,
     buildMintRequestDataFromBid,
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
   const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
 
-  // First pass: basic sync validation (non-zero maker address)
-  const basicValidatedBids = useMemo(() => validateBids(rawBids), [rawBids]);
+  // State for validated bids (async validation checks market maker balance/allowance)
+  const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
   const predictionMarketConfigRead = useReadContracts({
@@ -165,40 +178,76 @@ const CreatePositionForm = ({
 
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg =
-        (item.result as { collateralToken: Address }) ||
-        ({} as { collateralToken: Address });
-      return cfg.collateralToken;
+    if (item?.status === 'success') {
+      return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
+
+  // Async validation of bids - checks market maker's balance and allowance on-chain
+  // This runs when bids arrive and validates them before showing as submittable
+  useEffect(() => {
+    if (rawBids.length === 0) {
+      setBids([]);
+      return;
+    }
+
+    // Need collateral token and prediction market address for validation
+    if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
+      // Can't validate yet, show bids as pending
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'pending' as const,
+        }))
+      );
+      return;
+    }
+
+    let cancelled = false;
+
+    const runValidation = async () => {
+      try {
+        const validated = await validateBidsAsync(rawBids, {
+          chainId: positionChainId,
+          collateralTokenAddress: collateralToken,
+          predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+        });
+
+        if (!cancelled) {
+          setBids(validated);
+        }
+      } catch (err) {
+        console.error('[Bid] Async validation error:', err);
+        if (!cancelled) {
+          // On error, mark all as pending (don't block the user)
+          setBids(
+            rawBids.map((b) => ({
+              ...b,
+              validationStatus: 'pending' as const,
+            }))
+          );
+        }
+      }
+    };
+
+    runValidation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawBids, collateralToken, PREDICTION_MARKET_ADDRESS, positionChainId]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg =
-        (item.result as { minCollateral: bigint }) ||
-        ({} as { minCollateral: bigint });
-      return cfg.minCollateral;
+    if (item?.status === 'success') {
+      return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Second pass: async on-chain validation (check bidder allowance/balance)
-  // This filters out bids from market makers who don't have sufficient funds
-  const bids = useValidatedBids({
-    bids: basicValidatedBids,
-    chainId: positionChainId,
-    collateralTokenAddress: collateralToken,
-    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-    enabled: !!collateralToken && !!PREDICTION_MARKET_ADDRESS,
-  });
-
   // Check if we're on an Ethereal chain
-  const isEtherealChain = useMemo(() => {
-    return COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
-  }, [positionChainId]);
+  const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
 
   // Fetch collateral token symbol and decimals (skip for Ethereal chains)
   const erc20MetaRead = useReadContracts({
@@ -228,8 +277,8 @@ const CreatePositionForm = ({
     }
     // For other chains, use the ERC20 token symbol
     const item = erc20MetaRead.data?.[0];
-    if (item && item.status === 'success') {
-      return String(item.result as unknown as string);
+    if (item?.status === 'success') {
+      return String(item.result);
     }
     return undefined;
   }, [erc20MetaRead.data, isEtherealChain, positionChainId]);
@@ -241,8 +290,8 @@ const CreatePositionForm = ({
     }
     // For other chains, fetch from ERC20 token
     const item = erc20MetaRead.data?.[1];
-    if (item && item.status === 'success') {
-      return Number(item.result as unknown as number);
+    if (item?.status === 'success') {
+      return Number(item.result);
     }
     return undefined;
   }, [erc20MetaRead.data, isEtherealChain]);
@@ -262,6 +311,7 @@ const CreatePositionForm = ({
   // Desktop-only top gradient bar across categories in filter order
   const { categoryGradient, categoryGradientStops } = useMemo(() => {
     const colors = FOCUS_AREAS.map((fa) => fa.color);
+
     if (colors.length === 0) {
       return { categoryGradient: 'transparent', categoryGradientStops: '' };
     }
@@ -271,63 +321,58 @@ const CreatePositionForm = ({
 
     // Header gradient: use each category color once across the width
     const headerStep = 100 / (colors.length - 1);
-    const headerStops = colors.map((c, i) => `${c} ${i * headerStep}%`);
-    const headerJoinedStops = headerStops.join(', ');
+    const headerStops = colors
+      .map((c, i) => `${c} ${i * headerStep}%`)
+      .join(', ');
 
     // Glow gradient: repeat the first color as a final stop so the loop
     // can wrap without a visible edge when the background-position resets.
     const loopColors = [...colors, colors[0]];
     const loopStep = 100 / (loopColors.length - 1);
-    const glowStops = loopColors.map((c, i) => `${c} ${i * loopStep}%`);
-    const glowJoinedStops = glowStops.join(', ');
+    const glowStops = loopColors
+      .map((c, i) => `${c} ${i * loopStep}%`)
+      .join(', ');
 
     return {
-      categoryGradient: `linear-gradient(to right, ${headerJoinedStops})`,
-      categoryGradientStops: glowJoinedStops,
+      categoryGradient: `linear-gradient(to right, ${headerStops})`,
+      categoryGradientStops: glowStops,
     };
   }, []);
 
-  // Create separate form schemas for individual and position modes
+  // Create form schema for position mode
   const formSchema: z.ZodType<any> = useMemo(() => {
-    if (isPositionMode) {
-      // Position mode only needs wagerAmount and limitAmount
-      // Use createWagerAmountSchema to include min/max validation
-      // Max amount is 10 for Ethereal chain, undefined otherwise
-      const maxAmount = chainId === CHAIN_ID_ETHEREAL ? '10' : undefined;
-      const wagerSchema = createWagerAmountSchema(minWager, maxAmount);
-      return z
-        .object({
-          wagerAmount: wagerSchema,
-          limitAmount: z.number().min(0),
-          positions: z.object({}).optional(), // Keep for interface compatibility
-        })
-        .refine((data) => data.wagerAmount && data.wagerAmount.trim() !== '', {
-          message: 'Wager amount is required',
-          path: ['wagerAmount'],
-        })
-        .refine(
-          (data) => data.limitAmount !== undefined && data.limitAmount >= 0,
-          { message: 'Limit amount is required', path: ['limitAmount'] }
-        );
-    } else {
-      // Individual mode needs positions with predictions and wagers
-      const positionsSchema: Record<string, z.ZodTypeAny> = {};
+    const maxAmount = getMaxWagerAmount(userBalance, isEtherealFromContext);
+    const wagerSchema = createWagerAmountSchema(minWager, maxAmount);
+    return z
+      .object({
+        wagerAmount: wagerSchema,
+        limitAmount: z.number().min(0),
+        positions: z.object({}).optional(),
+      })
+      .refine((data) => data.wagerAmount && data.wagerAmount.trim() !== '', {
+        message: 'Wager amount is required',
+        path: ['wagerAmount'],
+      })
+      .refine(
+        (data) => data.limitAmount !== undefined && data.limitAmount >= 0,
+        { message: 'Limit amount is required', path: ['limitAmount'] }
+      );
+  }, [minWager, userBalance, isEtherealFromContext]);
 
-      createPositionEntries.forEach((position) => {
-        positionsSchema[position.id] = z.object({
-          predictionValue: z.string().min(1, 'Please make a prediction'),
-          wagerAmount: wagerAmountSchema,
-          isFlipped: z.boolean().optional(),
-        });
-      });
+  // Keep schema in a ref so the resolver always uses the latest version
+  // This is needed because zodResolver captures the schema at creation time
+  const formSchemaRef = useRef(formSchema);
+  formSchemaRef.current = formSchema;
 
-      return z.object({
-        positions: z.object(positionsSchema),
-        wagerAmount: wagerAmountSchema.optional(),
-        limitAmount: z.number().min(0).optional(),
-      });
-    }
-  }, [createPositionEntries, isPositionMode, minWager, chainId]);
+  // Create a stable resolver that reads from the ref
+  // This ensures validation uses the latest schema (with updated userBalance)
+  const dynamicResolver = useCallback(
+    async (data: any, context: any, options: any) => {
+      const resolver = zodResolver(formSchemaRef.current as any);
+      return resolver(data, context, options);
+    },
+    []
+  );
 
   // Helper function to generate form values
   const generateFormValues = useMemo(() => {
@@ -384,10 +429,10 @@ const CreatePositionForm = ({
     wagerAmount?: string;
     limitAmount?: string | number;
   }>({
-    resolver: zodResolver(formSchema as any),
+    resolver: dynamicResolver,
     defaultValues: {
       ...generateFormValues,
-      wagerAmount: DEFAULT_WAGER_AMOUNT,
+      wagerAmount: '',
       limitAmount:
         positionsWithMarketData.filter(
           (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
@@ -405,19 +450,56 @@ const CreatePositionForm = ({
     mode: 'onChange',
   });
 
-  // Reactive form field values (used only for individual mode)
-  // const parlayWagerAmount = useWatch({
-  //   control: formMethods.control,
-  //   name: 'wagerAmount',
-  // });
-  // const parlayLimitAmount = useWatch({
-  //   control: formMethods.control,
-  //   name: 'limitAmount',
-  // });
-  // const parlayPositionsForm = useWatch({
-  //   control: formMethods.control,
-  //   name: 'positions',
-  // });
+  // Watch wager amount for bid validation
+  const watchedWagerAmount = useWatch({
+    control: formMethods.control,
+    name: 'wagerAmount',
+  });
+
+  // Re-validate wager amount when user balance loads/changes
+  // This ensures the form schema with updated maxAmount is applied
+  useEffect(() => {
+    if (userBalance > 0 && watchedWagerAmount) {
+      // Trigger validation to apply the new maxAmount constraint
+      formMethods.trigger('wagerAmount');
+    }
+  }, [userBalance, watchedWagerAmount, formMethods]);
+
+  // Reset initialization when effective address changes (e.g., session activates)
+  useEffect(() => {
+    const currentAddress = effectiveAddress?.toLowerCase() || null;
+    if (initializedForAddress && initializedForAddress !== currentAddress) {
+      setIsWagerInitialized(false);
+      setInitializedForAddress(null);
+      // Clear the wager so it re-initializes with new address's balance
+      formMethods.setValue('wagerAmount', '', { shouldValidate: false });
+    }
+  }, [effectiveAddress, initializedForAddress, formMethods]);
+
+  // Single initialization effect - sets wager when balance becomes ready
+  useEffect(() => {
+    if (isWagerInitialized) return;
+    if (isBalanceLoading) return;
+    if (userBalance <= 0) return;
+
+    // Compute initial wager directly from userBalance to avoid stale data
+    const initialWager = Math.min(userBalance, 10);
+    const formattedWager = Number.isInteger(initialWager)
+      ? initialWager.toString()
+      : initialWager.toFixed(2);
+
+    formMethods.setValue('wagerAmount', formattedWager, {
+      shouldValidate: true,
+    });
+    setIsWagerInitialized(true);
+    setInitializedForAddress(effectiveAddress?.toLowerCase() || null);
+  }, [
+    isBalanceLoading,
+    userBalance,
+    isWagerInitialized,
+    effectiveAddress,
+    formMethods,
+  ]);
 
   // Sync form when position entries change without clobbering existing values
   useEffect(() => {
@@ -481,7 +563,7 @@ const CreatePositionForm = ({
     formMethods.reset(
       {
         positions: mergedPositions,
-        wagerAmount: current?.wagerAmount || DEFAULT_WAGER_AMOUNT,
+        wagerAmount: current?.wagerAmount || '', // Don't clobber with default - let initialization effect handle it
         limitAmount: current?.limitAmount || 2,
       },
       {
@@ -512,49 +594,6 @@ const CreatePositionForm = ({
     }
   }, [positionsWithMarketData, formMethods]);
 
-  // Prepare parlay positions for the hook (currently unused but may be needed later)
-  // const parlayPositions = useMemo(() => {
-  //   const limitAmount = (parlayLimitAmount ?? '10').toString();
-  //   const positionsForm =
-  //     (parlayPositionsForm as Record<string, { predictionValue?: string }>) ||
-  //     {};
-
-  //   return positionsWithMarketData
-  //     .filter(
-  //       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-  //     )
-  //     .map(({ position, marketClassification }) => {
-  //       const predValue = positionsForm?.[position.id]?.predictionValue;
-  //       if (
-  //         marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-  //       ) {
-  //         const selectedMarketId = Number(predValue ?? position.marketId);
-  //         return {
-  //           marketAddress: position.marketAddress,
-  //           marketId: selectedMarketId,
-  //           prediction: true,
-  //           limit: limitAmount,
-  //         };
-  //       }
-  //       // YES/NO path (default)
-  //       const isYes = predValue === YES_SQRT_PRICE_X96;
-  //       return {
-  //         marketAddress: position.marketAddress,
-  //         marketId: position.marketId,
-  //         prediction: isYes,
-  //         limit: limitAmount,
-  //       };
-  //     });
-  // }, [positionsWithMarketData, parlayLimitAmount, parlayPositionsForm]);
-
-  // Calculate payout amount = wager × 2^(number of positions) (unused for now)
-  // const payoutAmount = useMemo(() => {
-  //   const wager = parlayWagerAmount || minParlayWager || DEFAULT_WAGER_AMOUNT;
-  //   const listLength = parlayPositions.length;
-  //   const payout = parseFloat(wager) * Math.pow(2, listLength);
-  //   return Number.isFinite(payout) ? payout.toFixed(2) : '0';
-  // }, [parlayWagerAmount, parlayPositions.length, minParlayWager]);
-
   // Use the position submission hook
   // Note: Share dialog is handled locally in this component
   const {
@@ -568,59 +607,30 @@ const CreatePositionForm = ({
       collateralToken || '0x0000000000000000000000000000000000000000',
     enabled: !!collateralToken,
     onSuccess: () => {
-      // Clear position form and close popover; hook handles redirect to profile
       clearPositionForm();
       setIsPopoverOpen(false);
     },
-    onOrderCreated: (makerNftId, takerNftId, txHash) => {
-      try {
-        notifyOrderCreated(`${makerNftId}-${takerNftId}`, txHash);
-      } catch {
-        // Failed to notify order created
-      }
+    onProgressUpdate: {
+      onTxSending: startSubmission,
+      onTxSent: markTxSent,
+      onReceiptConfirmed: markReceiptReceived,
     },
   });
 
-  // Individual/spot trading is no longer supported - only position mode
-  const handleIndividualSubmit = () => {
-    // Noop - spot trading removed
-  };
-
-  const handlePositionSubmit = () => {
+  // Receives the exact bid the user clicked to submit - no race condition possible
+  const handlePositionSubmit = (bid: QuoteBid) => {
     if (!hasConnectedWallet) {
       openConnectDialog();
       return;
     }
 
-    // Use the bid that was actually displayed to the user
-    if (!displayedBestBid) {
-      toast({
-        title: 'No bid available',
-        description: 'Please wait for bids to arrive.',
-        variant: 'destructive',
-        duration: 5000,
-      });
-      return;
-    }
-
-    // Validate the displayed bid is still usable
+    // Validate the bid hasn't expired
     const nowSec = Math.floor(Date.now() / 1000);
 
-    if (displayedBestBid.makerDeadline <= nowSec) {
+    if (bid.makerDeadline <= nowSec) {
       toast({
         title: 'Bid expired',
         description: 'The bid has expired. Please wait for new bids.',
-        variant: 'destructive',
-        duration: 5000,
-      });
-      return;
-    }
-
-    if (displayedBestBid.validationStatus !== 'valid') {
-      toast({
-        title: 'Bid no longer valid',
-        description:
-          'The market maker bid is no longer valid. Please wait for new bids.',
         variant: 'destructive',
         duration: 5000,
       });
@@ -631,21 +641,21 @@ const CreatePositionForm = ({
     try {
       if (address && buildMintRequestDataFromBid) {
         const mintReq = buildMintRequestDataFromBid({
-          selectedBid: displayedBestBid,
+          selectedBid: bid,
         });
 
         if (mintReq) {
-          // Build share dialog data using displayedBestBid
+          // Build share dialog data using the submitted bid
           const wagerAmount =
             formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
           const limitAmount = formMethods.getValues('limitAmount');
 
-          // Calculate payout from displayed bid
+          // Calculate payout from submitted bid
           let payout: string | undefined = undefined;
           if (collateralDecimals) {
             try {
               const userWagerWei = parseUnits(wagerAmount, collateralDecimals);
-              const bidMakerWagerWei = BigInt(displayedBestBid.makerWager);
+              const bidMakerWagerWei = BigInt(bid.makerWager);
               const totalPayoutWei = userWagerWei + bidMakerWagerWei;
               const totalPayoutHuman = formatUnits(
                 totalPayoutWei,
@@ -676,7 +686,7 @@ const CreatePositionForm = ({
           }
 
           const dialogData = {
-            legs: selections.map((s) => ({
+            picks: selections.map((s) => ({
               question: s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
@@ -723,11 +733,11 @@ const CreatePositionForm = ({
     const qp = new URLSearchParams();
     qp.set('addr', String(effectiveAddress).toLowerCase());
 
-    // Add legs
-    if (shareDialogData.legs && shareDialogData.legs.length > 0) {
-      shareDialogData.legs.forEach((leg) => {
-        if (leg.question) {
-          qp.append('leg', `${leg.question}|${leg.choice}`);
+    // Add picks
+    if (shareDialogData.picks && shareDialogData.picks.length > 0) {
+      shareDialogData.picks.forEach((pick) => {
+        if (pick.question) {
+          qp.append('leg', `${pick.question}|${pick.choice}`);
         }
       });
     }
@@ -758,19 +768,13 @@ const CreatePositionForm = ({
         setShareDialogData(null);
         clearPositionForm();
         clearSelections();
+        resetProgress();
       }
     },
-    [clearPositionForm, clearSelections]
+    [clearPositionForm, clearSelections, resetProgress]
   );
 
   const contentProps = {
-    isPositionMode,
-    individualMethods: formMethods as unknown as UseFormReturn<{
-      positions: Record<
-        string,
-        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
-      >;
-    }>,
     formMethods: formMethods as unknown as UseFormReturn<{
       wagerAmount: string;
       limitAmount: string | number;
@@ -779,26 +783,20 @@ const CreatePositionForm = ({
         { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
       >;
     }>,
-    handleIndividualSubmit,
     handlePositionSubmit,
     isPositionSubmitting,
     positionError,
-    isSubmitting: false, // Individual trades removed
     positionChainId,
-    auctionId,
     bids,
     requestQuotes,
-    // Collateral configuration
     collateralToken,
     collateralSymbol,
     collateralDecimals,
     minWager,
-    // PredictionMarket contract address for fetching maker nonce
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
-    onBestBidChange: setDisplayedBestBid,
   };
 
   // Share dialog component - rendered independently of layout
@@ -809,8 +807,10 @@ const CreatePositionForm = ({
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
       trackPosition={true}
-      expectedLegs={shareDialogData?.legs}
+      expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
+      progressState={progressState}
+      onPositionIndexed={markPositionIndexed}
     />
   );
 
@@ -853,9 +853,12 @@ const CreatePositionForm = ({
   }
 
   if (variant === 'panel') {
-    const hasItems = isPositionMode
-      ? selections.length > 0 || pythPredictions.length > 0
-      : createPositionEntries.length > 0;
+    const hasItems = selections.length > 0 || pythPredictions.length > 0;
+
+    const handleClearPanel = () => {
+      clearSelections();
+      onClearPythPredictions?.();
+    };
 
     return (
       <>
@@ -867,14 +870,7 @@ const CreatePositionForm = ({
               variant="ghost"
               size="xs"
               className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              onClick={() => {
-                if (isPositionMode) {
-                  clearSelections();
-                  onClearPythPredictions?.();
-                } else {
-                  clearPositionForm();
-                }
-              }}
+              onClick={handleClearPanel}
               title="Reset"
             >
               CLEAR
@@ -904,9 +900,12 @@ const CreatePositionForm = ({
     );
   }
 
-  const hasTriggeredItems = isPositionMode
-    ? selections.length > 0 || pythPredictions.length > 0
-    : createPositionEntries.length > 0;
+  const hasTriggeredItems = selections.length > 0 || pythPredictions.length > 0;
+
+  const handleClearTriggered = () => {
+    clearSelections();
+    onClearPythPredictions?.();
+  };
 
   return (
     <>
@@ -934,14 +933,7 @@ const CreatePositionForm = ({
                   variant="ghost"
                   size="xs"
                   className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0"
-                  onClick={() => {
-                    if (isPositionMode) {
-                      clearSelections();
-                      onClearPythPredictions?.();
-                    } else {
-                      clearPositionForm();
-                    }
-                  }}
+                  onClick={handleClearTriggered}
                   title="Reset"
                 >
                   CLEAR
@@ -967,6 +959,18 @@ const CreatePositionForm = ({
         </PopoverContent>
       </Popover>
     </>
+  );
+};
+
+/**
+ * CreatePositionForm wrapped with CollateralBalanceProvider
+ * This ensures user balance is available for form validation
+ */
+const CreatePositionForm = (props: CreatePositionFormProps) => {
+  return (
+    <CollateralBalanceProvider>
+      <CreatePositionFormInner {...props} />
+    </CollateralBalanceProvider>
   );
 };
 

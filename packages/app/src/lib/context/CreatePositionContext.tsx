@@ -45,6 +45,7 @@ interface PositionSelection {
   prediction: boolean; // true = yes, false = no
   categorySlug?: string | null; // category slug for icon display
   resolverAddress?: string | null; // resolver address for canonical links
+  endTime?: number | null; // Unix timestamp in seconds for filtering expired conditions
 }
 
 // Interface for market data with position
@@ -99,9 +100,15 @@ export const CreatePositionProvider = ({
   const [singlePositions, setSinglePositions] = useState<CreatePositionEntry[]>(
     []
   );
-  const [selections, setSelections] = useState<PositionSelection[]>(() =>
-    loadFromStorage(STORAGE_KEY_SELECTIONS, [])
-  );
+  const [selections, setSelections] = useState<PositionSelection[]>(() => {
+    const stored = loadFromStorage<PositionSelection[]>(
+      STORAGE_KEY_SELECTIONS,
+      []
+    );
+    // Filter out selections whose endTime has passed
+    const nowSec = Math.floor(Date.now() / 1000);
+    return stored.filter((s) => !s.endTime || s.endTime > nowSec);
+  });
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   // Persist position selections to localStorage whenever they change

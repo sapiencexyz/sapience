@@ -3,7 +3,6 @@
 import * as React from 'react';
 import type { Position } from '~/hooks/graphql/useUserPositions';
 import { formatUnits } from 'viem';
-import { formatFiveSigFigs } from '~/lib/utils/util';
 
 export function useProfileVolume(
   positions: Position[] | undefined,
@@ -40,9 +39,9 @@ export function useProfileVolume(
       }
 
       const value = total;
-      return { value, display: formatFiveSigFigs(value) };
+      return { value, display: value.toFixed(2) };
     } catch {
-      return { value: 0, display: '0' };
+      return { value: 0, display: '0.00' };
     }
   }, [positions, address]);
 }

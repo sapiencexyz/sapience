@@ -23,6 +23,7 @@ import {
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
 import { useReadContracts, useAccount } from 'wagmi';
+import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -93,12 +94,12 @@ function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
               className="whitespace-nowrap"
               disabled
             >
-              {`Settles in ${label}`}
+              {`Ends in ${label}`}
             </Button>
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          <div>{`Settles at ${settlesAtLocalDisplay}`}</div>
+          <div>{`Ends at ${settlesAtLocalDisplay}`}</div>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -128,7 +129,13 @@ export default function PositionsTable({
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useAccount();
+  const { isSessionActive, smartAccountAddress } = useSession();
   const hasWallet = Boolean(connectedAddress);
+  // When a session is active, use the smart account address for ownership checks
+  const effectiveAddress =
+    isSessionActive && smartAccountAddress
+      ? smartAccountAddress.toLowerCase()
+      : connectedAddress?.toLowerCase();
   const [claimingTokenId, setClaimingTokenId] = React.useState<bigint | null>(
     null
   );
@@ -904,7 +911,15 @@ export default function PositionsTable({
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
                   To Win
                 </div>
-                <span className="text-muted-foreground">Wager Lost</span>
+                <div className="whitespace-nowrap tabular-nums text-muted-foreground font-mono line-through">
+                  <NumberDisplay
+                    value={totalPayout}
+                    className="tabular-nums text-muted-foreground font-mono"
+                  />{' '}
+                  <span className="tabular-nums text-muted-foreground font-mono">
+                    {symbol}
+                  </span>
+                </div>
               </div>
             );
           }
@@ -1022,7 +1037,7 @@ export default function PositionsTable({
                   className={`text-xs tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
                   ({roi >= 0 ? '+' : ''}
-                  {roi.toFixed(2)}%)
+                  {Math.round(roi).toLocaleString()}%)
                 </div>
               )}
             </div>
@@ -1073,9 +1088,8 @@ export default function PositionsTable({
                         : BigInt(positionId);
 
                     const isOwnerConnected =
-                      connectedAddress &&
-                      connectedAddress.toLowerCase() ===
-                        String(account || '').toLowerCase();
+                      effectiveAddress &&
+                      effectiveAddress === String(account || '').toLowerCase();
                     const isThisTokenClaiming =
                       isClaimPending && claimingTokenId === tokenIdToClaim;
 
@@ -1124,9 +1138,8 @@ export default function PositionsTable({
                 claimableTokenIds.has(String(row.original.tokenIdToClaim)) &&
                 (() => {
                   const isOwnerConnected =
-                    connectedAddress &&
-                    connectedAddress.toLowerCase() ===
-                      String(account || '').toLowerCase();
+                    effectiveAddress &&
+                    effectiveAddress === String(account || '').toLowerCase();
                   const isThisTokenClaiming =
                     isClaimPending &&
                     claimingTokenId === row.original.tokenIdToClaim;
@@ -1210,7 +1223,7 @@ export default function PositionsTable({
       burn,
       account,
       claimableTokenIds,
-      connectedAddress,
+      effectiveAddress,
       hasWallet,
       collateralSymbol,
     ]
@@ -1266,7 +1279,7 @@ export default function PositionsTable({
         </div>
       ) : (
         <>
-          <div className="border-y border-border rounded-none overflow-hidden bg-brand-black relative">
+          <div className="overflow-hidden bg-brand-black relative">
             {isLoading && (
               <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
                 <Loader size={12} />
@@ -1348,7 +1361,7 @@ export default function PositionsTable({
           {hasMore && (
             <div
               ref={loadMoreRef}
-              className="flex items-center justify-center px-4 py-6 border-b border-border bg-brand-black"
+              className="flex items-center justify-center px-4 py-6 bg-brand-black"
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">

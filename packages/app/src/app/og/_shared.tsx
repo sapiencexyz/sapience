@@ -54,9 +54,9 @@ export async function loadFontData(req: Request) {
         req.url
       )
     ).then((res) => res.arrayBuffer()),
-    // Optional: IBM Plex Mono local assets if present (fast timeout)
-    fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-400.woff'),
-    fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-600.woff'),
+    // IBM Plex Mono - load reliably like Avenir fonts (no short timeout)
+    fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-400.woff', 5000),
+    fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-600.woff', 5000),
   ]);
   return { regular, demi, bold, plex400, plex600 } as const;
 }
@@ -171,6 +171,12 @@ export function Background({
   );
 }
 
+function getPredictionsLabelText(count?: number, against?: boolean): string {
+  if (against) return 'Predicted Against';
+  if (count === 1) return 'Prediction';
+  return 'Predictions';
+}
+
 export function PredictionsLabel({
   scale = 1,
   count,
@@ -192,11 +198,7 @@ export function PredictionsLabel({
         letterSpacing: 0.06 * scale + 'em',
       }}
     >
-      {against
-        ? 'Predicted Against'
-        : count === 1
-          ? 'Prediction'
-          : 'Predictions'}
+      {getPredictionsLabelText(count, against)}
     </div>
   );
 }
@@ -330,7 +332,7 @@ function StatsRow({
     display: 'flex',
     fontSize: 32 * scale,
     lineHeight: `${32 * scale}px`,
-    fontWeight: 700,
+    fontWeight: 600,
     color: og.colors.brandWhite,
     fontFamily:
       'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -557,7 +559,7 @@ function LiquidityStatsRow({
     display: 'flex',
     fontSize: 32 * scale,
     lineHeight: `${32 * scale}px`,
-    fontWeight: 700,
+    fontWeight: 600,
     color: og.colors.brandWhite,
     fontFamily:
       'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -744,7 +746,7 @@ function ForecastStatsRow({
     display: 'flex',
     fontSize: 32 * scale,
     lineHeight: `${40 * scale}px`,
-    fontWeight: 700,
+    fontWeight: 600,
     color: og.colors.brandWhite,
     fontFamily:
       'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -966,120 +968,127 @@ const pillTones: Record<PillTone, { bg: string; fg: string; border: string }> =
     },
   };
 
-function computePillStyle(scale: number, tone: PillTone) {
+// Convert CSS color string to rgba with given alpha
+function toRgba(css: string, alpha: number): string {
+  if (!css) return css;
+
+  if (css.startsWith('rgb(')) {
+    const inside = css.slice(4, -1);
+    return `rgba(${inside}, ${alpha})`;
+  }
+
+  if (css.startsWith('#')) {
+    const hex = css.replace('#', '');
+    const normalizedHex =
+      hex.length === 3
+        ? hex
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : hex;
+    const bigint = parseInt(normalizedHex, 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  if (css.startsWith('hsl(')) {
+    const inside = css.slice(4, -1).split('/')[0].trim();
+    const [hStr, sStr, lStr] = inside.split(/\s+/);
+    const h = parseFloat(hStr);
+    const s = parseFloat(sStr.replace('%', '')) / 100;
+    const l = parseFloat(lStr.replace('%', '')) / 100;
+    const c = (1 - Math.abs(2 * l - 1)) * s;
+    const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    const m = l - c / 2;
+
+    let r1 = 0;
+    let g1 = 0;
+    let b1 = 0;
+
+    if (h >= 0 && h < 60) {
+      r1 = c;
+      g1 = x;
+    } else if (h < 120) {
+      r1 = x;
+      g1 = c;
+    } else if (h < 180) {
+      g1 = c;
+      b1 = x;
+    } else if (h < 240) {
+      g1 = x;
+      b1 = c;
+    } else if (h < 300) {
+      r1 = x;
+      b1 = c;
+    } else {
+      r1 = c;
+      b1 = x;
+    }
+
+    const r = Math.round((r1 + m) * 255);
+    const g = Math.round((g1 + m) * 255);
+    const b = Math.round((b1 + m) * 255);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  return css;
+}
+
+function getPillColors(tone: PillTone): {
+  border: string;
+  fg: string;
+  bg: string;
+} {
   const t = pillTones[tone];
-  const toRgba = (css: string, alpha: number) => {
-    if (!css) return css;
-    if (css.startsWith('rgb(')) {
-      const inside = css.slice(4, -1);
-      return `rgba(${inside}, ${alpha})`;
-    }
-    if (css.startsWith('#')) {
-      // Convert hex to rgba
-      const hex = css.replace('#', '');
-      const bigint = parseInt(
-        hex.length === 3
-          ? hex
-              .split('')
-              .map((c) => c + c)
-              .join('')
-          : hex,
-        16
-      );
-      const r = (bigint >> 16) & 255;
-      const g = (bigint >> 8) & 255;
-      const b = bigint & 255;
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-    if (css.startsWith('hsl(')) {
-      // Parse hsl(H S% L%) or hsl(H S% L% / A)
-      const inside = css.slice(4, -1).split('/')[0].trim();
-      const [hStr, sStr, lStr] = inside.split(/\s+/);
-      const h = parseFloat(hStr);
-      const s = parseFloat(sStr.replace('%', '')) / 100;
-      const l = parseFloat(lStr.replace('%', '')) / 100;
-      const c = (1 - Math.abs(2 * l - 1)) * s;
-      const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-      const m = l - c / 2;
-      let r1 = 0,
-        g1 = 0,
-        b1 = 0;
-      if (h >= 0 && h < 60) {
-        r1 = c;
-        g1 = x;
-        b1 = 0;
-      } else if (h < 120) {
-        r1 = x;
-        g1 = c;
-        b1 = 0;
-      } else if (h < 180) {
-        r1 = 0;
-        g1 = c;
-        b1 = x;
-      } else if (h < 240) {
-        r1 = 0;
-        g1 = x;
-        b1 = c;
-      } else if (h < 300) {
-        r1 = x;
-        g1 = 0;
-        b1 = c;
-      } else {
-        r1 = c;
-        g1 = 0;
-        b1 = x;
-      }
-      const r = Math.round((r1 + m) * 255);
-      const g = Math.round((g1 + m) * 255);
-      const b = Math.round((b1 + m) * 255);
-      return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-    }
-    return css;
-  };
-  const borderWidth = Math.max(
-    1,
-    Math.round((tone === 'success' || tone === 'danger' ? 2 : 1) * scale)
-  );
+
+  if (tone === 'success') {
+    return {
+      border: toRgba(og.colors.success, 0.45),
+      fg: og.colors.success,
+      bg: toRgba(og.colors.success, 0.1),
+    };
+  }
+
+  if (tone === 'danger') {
+    return {
+      border: toRgba(og.colors.danger, 0.45),
+      fg: og.colors.danger,
+      bg: toRgba(og.colors.danger, 0.1),
+    };
+  }
+
+  return { border: t.border, fg: t.fg, bg: t.bg };
+}
+
+function computePillStyle(scale: number, tone: PillTone): React.CSSProperties {
+  const isHighlighted = tone === 'success' || tone === 'danger';
+  const colors = getPillColors(tone);
+
+  const borderWidth = Math.max(1, Math.round((isHighlighted ? 2 : 1) * scale));
   const paddingY = Math.max(0, Math.round(3 * scale));
   const paddingX = Math.max(0, Math.round(10 * scale));
   const fontSize = Math.round(20 * scale);
   const lineHeight = Math.round(24 * scale);
-  const borderColor =
-    tone === 'success'
-      ? toRgba(og.colors.success, 0.45)
-      : tone === 'danger'
-        ? toRgba(og.colors.danger, 0.45)
-        : t.border;
-  const fgColor =
-    tone === 'success'
-      ? og.colors.success
-      : tone === 'danger'
-        ? og.colors.danger
-        : t.fg;
-  const bgColor =
-    tone === 'success'
-      ? toRgba(og.colors.success, 0.1)
-      : tone === 'danger'
-        ? toRgba(og.colors.danger, 0.1)
-        : t.bg;
+
   return {
     display: 'flex',
     alignItems: 'center',
     padding: `${paddingY}px ${paddingX}px`,
     borderRadius: Math.round(6 * scale),
-    background: bgColor,
-    color: fgColor,
+    background: colors.bg,
+    color: colors.fg,
     fontWeight: 500,
     borderStyle: 'solid',
     borderWidth,
-    borderColor,
+    borderColor: colors.border,
     fontSize,
     lineHeight: `${lineHeight}px`,
-    fontFamily:
-      tone === 'success' || tone === 'danger'
-        ? 'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-        : undefined,
-  } as React.CSSProperties;
+    fontFamily: isHighlighted
+      ? 'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
+      : undefined,
+  };
 }
 
 export function Pill({
