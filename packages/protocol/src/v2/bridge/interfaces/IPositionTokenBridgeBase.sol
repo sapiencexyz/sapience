@@ -54,9 +54,6 @@ interface IPositionTokenBridgeBase {
     /// @notice Emitted when bridge is completed (ACK received)
     event BridgeCompleted(bytes32 indexed bridgeId);
 
-    /// @notice Emitted when bridge is cancelled (emergency)
-    event BridgeCancelled(bytes32 indexed bridgeId, address indexed sender, uint256 amount);
-
     /// @notice Emitted when a bridge is processed (for idempotency tracking)
     event BridgeProcessed(bytes32 indexed bridgeId, bool alreadyProcessed);
 
@@ -89,14 +86,8 @@ interface IPositionTokenBridgeBase {
     /// @notice Bridge not found or wrong status
     error InvalidBridgeStatus(bytes32 bridgeId, BridgeStatus expected, BridgeStatus actual);
 
-    /// @notice Bridge not yet expired for emergency cancel
-    error BridgeNotExpiredForEmergencyCancel(bytes32 bridgeId, uint64 createdAt, uint64 currentTime);
-
     /// @notice Retry too soon
     error RetryTooSoon(bytes32 bridgeId, uint64 lastRetryAt, uint64 minNextRetry);
-
-    /// @notice Not the bridge sender
-    error NotBridgeSender(bytes32 bridgeId, address expected, address actual);
 
     /// @notice ETH transfer failed
     error ETHTransferFailed();
@@ -110,18 +101,10 @@ interface IPositionTokenBridgeBase {
     /// @param bridgeId The bridge identifier
     function retry(bytes32 bridgeId) external payable;
 
-    /// @notice Emergency cancel a bridge after extended period (7 days)
-    /// @param bridgeId The bridge identifier
-    function emergencyCancel(bytes32 bridgeId) external payable;
-
     /// @notice Quote the fee for retrying a bridge
     /// @param bridgeId The bridge identifier
     /// @return fee The messaging fee
     function quoteRetry(bytes32 bridgeId) external view returns (MessagingFee memory fee);
-
-    /// @notice Quote the fee for emergency cancel
-    /// @return fee The messaging fee
-    function quoteEmergencyCancel() external view returns (MessagingFee memory fee);
 
     // ============ View Functions ============
 
@@ -152,10 +135,6 @@ interface IPositionTokenBridgeBase {
     /// @notice Get the minimum retry delay
     /// @return The minimum delay between retries in seconds
     function getMinRetryDelay() external view returns (uint64);
-
-    /// @notice Get the emergency cancel delay
-    /// @return The delay before emergency cancel is allowed in seconds
-    function getEmergencyCancelDelay() external view returns (uint64);
 
     // ============ Ownership Management ============
 

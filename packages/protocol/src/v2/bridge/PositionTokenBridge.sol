@@ -19,7 +19,6 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
 
     // ============ Constants ============
     uint128 private constant GAS_FOR_BRIDGE = 2_000_000;
-    uint128 private constant GAS_FOR_CANCEL = 200_000;
 
     // ============ Constructor ============
     constructor(
@@ -168,14 +167,6 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
-    function quoteEmergencyCancel() external view returns (MessagingFee memory fee) {
-        bytes memory payload = abi.encode(bytes32(0), uint256(0));
-        bytes memory message = abi.encode(CMD_CANCEL, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
-        return _quote(_bridgeConfig.remoteEid, message, options, false);
-    }
-
     // ============ Abstract Implementation ============
 
     /// @dev Build retry message for Ethereal -> Remote bridge
@@ -202,32 +193,6 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         );
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;
-    }
-
-    /// @dev Return escrowed tokens to sender
-    function _returnTokensOnCancel(PendingBridge storage pending) internal override {
-        _escrowedBalances[pending.token] -= pending.amount;
-        IERC20(pending.token).safeTransfer(pending.sender, pending.amount);
-    }
-
-    /// @dev Send cancel notification to remote chain
-    function _sendCancelNotification(bytes32 bridgeId, uint256 amount) internal override {
-        bytes memory payload = abi.encode(bridgeId, amount);
-        bytes memory message = abi.encode(CMD_CANCEL, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_CANCEL, 0);
-
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
-        if (msg.value < fee.nativeFee) {
-            revert InsufficientFee(fee.nativeFee, msg.value);
-        }
-
-        _lzSend(
-            _bridgeConfig.remoteEid,
-            message,
-            options,
-            fee,
-            payable(msg.sender)
-        );
     }
 
     /// @dev Handle incoming bridge from remote (release escrowed tokens)
@@ -270,12 +235,9 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         bytes32 bridgeId = abi.decode(data, (bytes32));
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
-        // Only update if still pending (could have been cancelled)
         if (pending.status == BridgeStatus.PENDING) {
             pending.status = BridgeStatus.COMPLETED;
             emit BridgeCompleted(bridgeId);
         }
     }
-
-    // Note: _handleCancel is not overridden - Ethereal doesn't receive cancel messages
 }

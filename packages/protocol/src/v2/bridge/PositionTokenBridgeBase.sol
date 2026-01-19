@@ -19,15 +19,11 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ Constants ============
     uint16 internal constant CMD_BRIDGE = 1;
     uint16 internal constant CMD_ACK = 2;
-    uint16 internal constant CMD_CANCEL = 3;
 
     uint128 internal constant GAS_FOR_ACK = 100_000;
 
     /// @notice Minimum delay between retry attempts
     uint64 public constant MIN_RETRY_DELAY = 1 hours;
-
-    /// @notice Delay before emergency cancel is allowed
-    uint64 public constant EMERGENCY_CANCEL_DELAY = 7 days;
 
     // ============ Storage ============
     BridgeConfig internal _bridgeConfig;
@@ -112,39 +108,6 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         emit BridgeRetried(bridgeId);
     }
 
-    // ============ Emergency Cancel Function ============
-
-    /// @inheritdoc IPositionTokenBridgeBase
-    function emergencyCancel(bytes32 bridgeId) external payable nonReentrant {
-        PendingBridge storage pending = _pendingBridges[bridgeId];
-
-        if (pending.status != BridgeStatus.PENDING) {
-            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
-        }
-
-        // Only the original sender can cancel
-        if (pending.sender != msg.sender) {
-            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
-        }
-
-        // Check emergency cancel delay (7 days from creation)
-        uint64 emergencyCancelTime = pending.createdAt + EMERGENCY_CANCEL_DELAY;
-        if (block.timestamp < emergencyCancelTime) {
-            revert BridgeNotExpiredForEmergencyCancel(bridgeId, pending.createdAt, uint64(block.timestamp));
-        }
-
-        // Mark as cancelled
-        pending.status = BridgeStatus.CANCELLED;
-
-        // Return tokens (chain-specific implementation)
-        _returnTokensOnCancel(pending);
-
-        // Send cancel notification if needed (chain-specific)
-        _sendCancelNotification(bridgeId, pending.amount);
-
-        emit BridgeCancelled(bridgeId, pending.sender, pending.amount);
-    }
-
     // ============ ACK Handling ============
 
     /// @dev Attempt to send ACK - gracefully handles insufficient balance or send failures
@@ -183,30 +146,6 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         }
     }
 
-    /// @notice Manually send ACK for a completed bridge (if auto-ACK failed due to low balance)
-    /// @param bridgeId The bridge identifier to acknowledge
-    function manualSendAck(bytes32 bridgeId) external payable {
-        bytes memory ackPayload = abi.encode(bridgeId);
-        bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
-
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
-        if (msg.value < fee.nativeFee) {
-            revert InsufficientFee(fee.nativeFee, msg.value);
-        }
-
-        _lzSend(
-            _bridgeConfig.remoteEid,
-            ackMessage,
-            options,
-            fee,
-            payable(msg.sender)
-        );
-
-        // Refund excess ETH
-        _refundExcess(fee.nativeFee);
-    }
-
     // ============ LayerZero Receive ============
 
     function _lzReceive(
@@ -232,8 +171,6 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
             _handleBridge(data);
         } else if (commandType == CMD_ACK) {
             _handleAck(data);
-        } else if (commandType == CMD_CANCEL) {
-            _handleCancel(data);
         } else {
             revert InvalidCommandType(commandType);
         }
@@ -282,11 +219,6 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     /// @inheritdoc IPositionTokenBridgeBase
     function getMinRetryDelay() external pure returns (uint64) {
         return MIN_RETRY_DELAY;
-    }
-
-    /// @inheritdoc IPositionTokenBridgeBase
-    function getEmergencyCancelDelay() external pure returns (uint64) {
-        return EMERGENCY_CANCEL_DELAY;
     }
 
     // ============ Ownership Management ============
@@ -344,18 +276,9 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         PendingBridge storage pending
     ) internal view virtual returns (bytes memory message, uint128 gasLimit);
 
-    /// @dev Return tokens to sender on cancel
-    function _returnTokensOnCancel(PendingBridge storage pending) internal virtual;
-
-    /// @dev Send cancel notification to remote chain (optional)
-    function _sendCancelNotification(bytes32 bridgeId, uint256 amount) internal virtual;
-
     /// @dev Handle incoming bridge from remote chain
     function _handleBridge(bytes memory data) internal virtual;
 
     /// @dev Handle ACK from remote chain
     function _handleAck(bytes memory data) internal virtual;
-
-    /// @dev Handle cancel from remote chain (optional override)
-    function _handleCancel(bytes memory data) internal virtual {}
 }

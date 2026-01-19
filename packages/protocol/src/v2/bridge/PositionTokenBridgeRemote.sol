@@ -161,12 +161,6 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
-    function quoteEmergencyCancel() external pure returns (MessagingFee memory fee) {
-        // Emergency cancel doesn't send a cross-chain message, so fee is 0
-        return MessagingFee({nativeFee: 0, lzTokenFee: 0});
-    }
-
     // ============ Abstract Implementation ============
 
     /// @dev Build retry message for Remote -> Ethereal bridge
@@ -178,18 +172,6 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         bytes memory payload = abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;
-    }
-
-    /// @dev Return escrowed tokens to sender
-    function _returnTokensOnCancel(PendingBridge storage pending) internal override {
-        _escrowedBalances[pending.token] -= pending.amount;
-        IERC20(pending.token).safeTransfer(pending.sender, pending.amount);
-    }
-
-    /// @dev No cancel notification needed from Remote side
-    function _sendCancelNotification(bytes32, uint256) internal override {
-        // Note: We don't send a cancel message to Ethereal because the tokens were never
-        // released there (no ACK was sent back to us, meaning the release failed or was never processed)
     }
 
     /// @dev Handle incoming bridge from Ethereal (mint tokens)
@@ -261,7 +243,6 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         bytes32 bridgeId = abi.decode(data, (bytes32));
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
-        // Only process if still pending (could have been cancelled)
         if (pending.status == BridgeStatus.PENDING) {
             pending.status = BridgeStatus.COMPLETED;
 
@@ -270,50 +251,6 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
             IBridgedPositionToken(pending.token).burn(address(this), pending.amount);
 
             emit BridgeCompleted(bridgeId);
-        }
-    }
-
-    /// @dev Handle cancel from Ethereal
-    function _handleCancel(bytes memory data) internal override {
-        (bytes32 bridgeId, uint256 amount) = abi.decode(data, (bytes32, uint256));
-
-        // Check if already processed
-        if (_processedBridges[bridgeId]) {
-            // Tokens were minted - this is an emergency cancel after processing
-            MintedBridge storage minted = _mintedBridges[bridgeId];
-
-            if (minted.amount == 0) {
-                // Already handled
-                emit CancelReceived(bridgeId, amount);
-                return;
-            }
-
-            // Verify amount matches (sanity check)
-            if (minted.amount != amount) {
-                emit CancelAmountMismatch(bridgeId, minted.amount, amount);
-            }
-
-            // Cache values before potential deletion
-            address token = minted.token;
-            address recipient = minted.recipient;
-            uint256 mintedAmount = minted.amount;
-
-            // Try to burn the minted tokens from the recipient
-            // Use try/catch because recipient may have transferred tokens
-            try IBridgedPositionToken(token).burn(recipient, mintedAmount) {
-                // Burn succeeded - clear the minted record
-                delete _mintedBridges[bridgeId];
-                emit CancelBurnExecuted(bridgeId, token, recipient, mintedAmount);
-            } catch {
-                // Burn failed - recipient has insufficient balance (transferred tokens)
-                // Mark as failed but don't delete - allows tracking for governance recovery
-                // The tokens are now unbacked and require manual intervention
-                emit CancelBurnFailed(bridgeId, token, recipient, mintedAmount);
-            }
-        } else {
-            // Not yet processed - mark as cancelled to prevent future processing
-            _processedBridges[bridgeId] = true;
-            emit CancelReceived(bridgeId, amount);
         }
     }
 }

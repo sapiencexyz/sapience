@@ -10,7 +10,7 @@ import "./IPositionTokenBridgeBase.sol";
 interface IPositionTokenBridgeRemote is IPositionTokenBridgeBase {
     // ============ Structs ============
 
-    /// @notice Minted bridge record (for cancel recovery)
+    /// @notice Minted bridge record (for audit trail)
     struct MintedBridge {
         address token;
         address recipient;
@@ -26,29 +26,6 @@ interface IPositionTokenBridgeRemote is IPositionTokenBridgeBase {
         address indexed recipient,
         uint256 amount,
         bool isNewDeployment
-    );
-
-    /// @notice Emitted when cancel notification received from Ethereal (no tokens to burn)
-    event CancelReceived(bytes32 indexed bridgeId, uint256 amount);
-
-    /// @notice Emitted when cancel burns minted tokens from recipient
-    event CancelBurnExecuted(
-        bytes32 indexed bridgeId,
-        address indexed token,
-        address indexed recipient,
-        uint256 amount
-    );
-
-    /// @notice Emitted when cancel amount doesn't match minted amount (sanity check warning)
-    event CancelAmountMismatch(bytes32 indexed bridgeId, uint256 mintedAmount, uint256 cancelAmount);
-
-    /// @notice Emitted when cancel burn fails (recipient transferred tokens)
-    /// @dev Tokens are now unbacked - requires governance intervention
-    event CancelBurnFailed(
-        bytes32 indexed bridgeId,
-        address indexed token,
-        address indexed recipient,
-        uint256 amount
     );
 
     /// @notice Emitted when factory is updated
@@ -108,7 +85,7 @@ interface IPositionTokenBridgeRemote is IPositionTokenBridgeBase {
         bool isPredictorToken
     ) external view returns (address);
 
-    /// @notice Get minted bridge info (for cancel recovery tracking)
+    /// @notice Get minted bridge info (for audit trail)
     /// @param bridgeId The bridge identifier
     /// @return The minted bridge record
     function getMintedBridge(bytes32 bridgeId) external view returns (MintedBridge memory);
