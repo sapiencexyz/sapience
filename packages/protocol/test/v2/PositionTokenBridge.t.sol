@@ -8,6 +8,7 @@ import {PositionTokenFactory} from "../../src/v2/bridge/PositionTokenFactory.sol
 import {BridgedPositionToken} from "../../src/v2/bridge/BridgedPositionToken.sol";
 import {IPositionTokenBridge} from "../../src/v2/bridge/interfaces/IPositionTokenBridge.sol";
 import {IPositionTokenBridgeRemote} from "../../src/v2/bridge/interfaces/IPositionTokenBridgeRemote.sol";
+import {IPositionTokenBridgeBase} from "../../src/v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
 import {MockPositionToken} from "./mocks/MockPositionToken.sol";
 import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
@@ -34,7 +35,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     bytes32 public constant PREDICTION_ID = keccak256("test-prediction");
     bool public constant IS_PREDICTOR_TOKEN = true;
 
-    // Events from IPositionTokenBridge
+    // Events from IPositionTokenBridgeBase
     event BridgeInitiated(
         bytes32 indexed bridgeId,
         address indexed token,
@@ -43,16 +44,18 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         uint256 amount,
         uint64 createdAt
     );
-    event BridgeRetried(bytes32 indexed bridgeId, uint256 retryCount);
+    event BridgeRetried(bytes32 indexed bridgeId);
     event BridgeCompleted(bytes32 indexed bridgeId);
     event BridgeCancelled(bytes32 indexed bridgeId, address indexed sender, uint256 amount);
+    event BridgeConfigUpdated(IPositionTokenBridgeBase.BridgeConfig config);
+
+    // Events from IPositionTokenBridge
     event TokensReleased(
         bytes32 indexed bridgeId,
         address indexed token,
         address indexed recipient,
         uint256 amount
     );
-    event BridgeConfigUpdated(IPositionTokenBridge.BridgeConfig config);
 
     // Events from IPositionTokenBridgeRemote
     event TokensMinted(
@@ -62,17 +65,6 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         uint256 amount,
         bool isNewDeployment
     );
-    event BridgeBackInitiated(
-        bytes32 indexed bridgeId,
-        address indexed token,
-        address indexed sender,
-        address recipient,
-        uint256 amount,
-        uint64 createdAt
-    );
-    event BridgeBackRetried(bytes32 indexed bridgeId, uint256 retryCount);
-    event BridgeBackCompleted(bytes32 indexed bridgeId);
-    event BridgeBackCancelled(bytes32 indexed bridgeId, address indexed sender, uint256 amount);
 
     function setUp() public override {
         owner = address(this);
@@ -125,13 +117,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Configure bridges
         etherealBridge.setBridgeConfig(
-            IPositionTokenBridge.BridgeConfig({
+            IPositionTokenBridgeBase.BridgeConfig({
                 remoteEid: arbitrumEid,
                 remoteBridge: address(arbitrumBridge)
             })
         );
         arbitrumBridge.setBridgeConfig(
-            IPositionTokenBridgeRemote.BridgeConfig({
+            IPositionTokenBridgeBase.BridgeConfig({
                 remoteEid: etherealEid,
                 remoteBridge: address(etherealBridge)
             })
@@ -162,16 +154,16 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     }
 
     function test_constructor_setsDelayConstants() public view {
-        assertEq(etherealBridge.getMinRetryDelay(), 5 minutes);
+        assertEq(etherealBridge.getMinRetryDelay(), 1 hours);
         assertEq(etherealBridge.getEmergencyCancelDelay(), 7 days);
-        assertEq(arbitrumBridge.getMinRetryDelay(), 5 minutes);
+        assertEq(arbitrumBridge.getMinRetryDelay(), 1 hours);
         assertEq(arbitrumBridge.getEmergencyCancelDelay(), 7 days);
     }
 
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        IPositionTokenBridge.BridgeConfig memory newConfig = IPositionTokenBridge.BridgeConfig({
+        IPositionTokenBridgeBase.BridgeConfig memory newConfig = IPositionTokenBridgeBase.BridgeConfig({
             remoteEid: 999,
             remoteBridge: address(0x1234)
         });
@@ -180,7 +172,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         emit BridgeConfigUpdated(newConfig);
         etherealBridge.setBridgeConfig(newConfig);
 
-        IPositionTokenBridge.BridgeConfig memory retrieved = etherealBridge.getBridgeConfig();
+        IPositionTokenBridgeBase.BridgeConfig memory retrieved = etherealBridge.getBridgeConfig();
         assertEq(retrieved.remoteEid, 999);
         assertEq(retrieved.remoteBridge, address(0x1234));
     }
@@ -189,7 +181,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         etherealBridge.setBridgeConfig(
-            IPositionTokenBridge.BridgeConfig({
+            IPositionTokenBridgeBase.BridgeConfig({
                 remoteEid: 999,
                 remoteBridge: address(0x1234)
             })
@@ -200,13 +192,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     function test_bridge_revertIfZeroAddress() public {
         vm.prank(user);
-        vm.expectRevert(IPositionTokenBridge.ZeroAddress.selector);
+        vm.expectRevert(IPositionTokenBridgeBase.ZeroAddress.selector);
         etherealBridge.bridge{value: 1 ether}(address(0), user, 1e17);
     }
 
     function test_bridge_revertIfZeroAmount() public {
         vm.prank(user);
-        vm.expectRevert(IPositionTokenBridge.ZeroAmount.selector);
+        vm.expectRevert(IPositionTokenBridgeBase.ZeroAmount.selector);
         etherealBridge.bridge{value: 1 ether}(address(positionToken), user, 0);
     }
 
@@ -254,12 +246,12 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         );
 
         // Verify pending bridge created
-        IPositionTokenBridge.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
+        IPositionTokenBridgeBase.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
         assertEq(pending.token, address(positionToken));
         assertEq(pending.sender, user);
         assertEq(pending.recipient, user);
         assertEq(pending.amount, amount);
-        assertEq(uint8(pending.status), uint8(IPositionTokenBridge.BridgeStatus.PENDING));
+        assertEq(uint8(pending.status), uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING));
 
         // Verify escrowed
         assertEq(etherealBridge.getEscrowedBalance(address(positionToken)), amount);
@@ -295,7 +287,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Initial status is PENDING
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridge.BridgeStatus.PENDING)
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
 
         // Deliver packets to Arbitrum (mint tokens)
@@ -314,7 +306,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // In production, ACK would mark it COMPLETED
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridge.BridgeStatus.PENDING)
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
     }
 
@@ -347,13 +339,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(user);
         BridgedPositionToken(bridgedToken).approve(address(arbitrumBridge), amount);
 
-        MessagingFee memory backFee = arbitrumBridge.quoteBridgeBack(
+        MessagingFee memory backFee = arbitrumBridge.quoteBridge(
             bridgedToken,
             amount
         );
 
         vm.prank(user);
-        bytes32 bridgeBackId = arbitrumBridge.bridgeBack{value: backFee.nativeFee}(
+        bytes32 bridgeBackId = arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
             amount
@@ -366,8 +358,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Bridge back is PENDING
         assertEq(
-            uint8(arbitrumBridge.getPendingBridgeBack(bridgeBackId).status),
-            uint8(IPositionTokenBridgeRemote.BridgeStatus.PENDING)
+            uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
 
         // Deliver packets back to Ethereal (release tokens, ACK not sent due to test env)
@@ -380,8 +372,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Bridge back status remains PENDING (ACK not received in test env)
         // Tokens remain escrowed on Arbitrum until ACK received
         assertEq(
-            uint8(arbitrumBridge.getPendingBridgeBack(bridgeBackId).status),
-            uint8(IPositionTokenBridgeRemote.BridgeStatus.PENDING)
+            uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
         // In production, ACK would trigger burn of escrowed tokens
     }
@@ -415,13 +407,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(user);
         BridgedPositionToken(bridgedToken).approve(address(arbitrumBridge), bridgeBackAmount);
 
-        MessagingFee memory backFee = arbitrumBridge.quoteBridgeBack(
+        MessagingFee memory backFee = arbitrumBridge.quoteBridge(
             bridgedToken,
             bridgeBackAmount
         );
 
         vm.prank(user);
-        arbitrumBridge.bridgeBack{value: backFee.nativeFee}(
+        arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
             bridgeBackAmount
@@ -446,7 +438,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     // ============ Retry and Emergency Cancel Tests ============
 
-    function test_retryBridge_success() public {
+    function test_retry_success() public {
         uint256 amount = 5e17;
 
         // Bridge tokens
@@ -466,23 +458,23 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         );
 
         // Fast forward past min retry delay
-        vm.warp(block.timestamp + 5 minutes + 1);
+        vm.warp(block.timestamp + 1 hours + 1);
 
         // Get retry fee quote
-        MessagingFee memory retryFee = etherealBridge.quoteRetryBridge(bridgeId);
+        MessagingFee memory retryFee = etherealBridge.quoteRetry(bridgeId);
 
         // Retry bridge
         vm.prank(user);
-        etherealBridge.retryBridge{value: retryFee.nativeFee}(bridgeId);
+        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId);
 
         // Status should still be PENDING (waiting for ACK)
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridge.BridgeStatus.PENDING)
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
     }
 
-    function test_retryBridge_permissionless() public {
+    function test_retry_permissionless() public {
         uint256 amount = 5e17;
 
         // Bridge tokens as user
@@ -502,23 +494,23 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         );
 
         // Fast forward past min retry delay
-        vm.warp(block.timestamp + 5 minutes + 1);
+        vm.warp(block.timestamp + 1 hours + 1);
 
         // Get retry fee quote
-        MessagingFee memory retryFee = etherealBridge.quoteRetryBridge(bridgeId);
+        MessagingFee memory retryFee = etherealBridge.quoteRetry(bridgeId);
 
         // Anyone can retry (using unauthorizedUser)
         vm.prank(unauthorizedUser);
-        etherealBridge.retryBridge{value: retryFee.nativeFee}(bridgeId);
+        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId);
 
         // Status should still be PENDING
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridge.BridgeStatus.PENDING)
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
     }
 
-    function test_retryBridge_revertIfTooSoon() public {
+    function test_retry_revertIfTooSoon() public {
         uint256 amount = 5e17;
 
         // Bridge tokens
@@ -537,22 +529,22 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
             amount
         );
 
-        IPositionTokenBridge.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
+        IPositionTokenBridgeBase.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
 
         // Try to retry immediately
         vm.prank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IPositionTokenBridge.RetryTooSoon.selector,
+                IPositionTokenBridgeBase.RetryTooSoon.selector,
                 bridgeId,
                 pending.lastRetryAt,
-                pending.lastRetryAt + 5 minutes
+                pending.lastRetryAt + 1 hours
             )
         );
-        etherealBridge.retryBridge{value: 0.1 ether}(bridgeId);
+        etherealBridge.retry{value: 0.1 ether}(bridgeId);
     }
 
-    function test_emergencyCancelBridge_success() public {
+    function test_emergencyCancel_success() public {
         uint256 amount = 5e17;
 
         // Bridge tokens
@@ -575,16 +567,16 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.warp(block.timestamp + 7 days + 1);
 
         // Get cancel fee quote
-        MessagingFee memory cancelFee = etherealBridge.quoteEmergencyCancelBridge();
+        MessagingFee memory cancelFee = etherealBridge.quoteEmergencyCancel();
 
         // Emergency cancel bridge
         vm.prank(user);
-        etherealBridge.emergencyCancelBridge{value: cancelFee.nativeFee}(bridgeId);
+        etherealBridge.emergencyCancel{value: cancelFee.nativeFee}(bridgeId);
 
         // Verify cancelled
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridge.BridgeStatus.CANCELLED)
+            uint8(IPositionTokenBridgeBase.BridgeStatus.CANCELLED)
         );
 
         // Tokens returned to user
@@ -592,7 +584,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         assertEq(etherealBridge.getEscrowedBalance(address(positionToken)), 0);
     }
 
-    function test_emergencyCancelBridge_revertIfNotExpired() public {
+    function test_emergencyCancel_revertIfNotExpired() public {
         uint256 amount = 5e17;
 
         // Bridge tokens
@@ -611,22 +603,22 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
             amount
         );
 
-        IPositionTokenBridge.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
+        IPositionTokenBridgeBase.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
 
         // Try to emergency cancel before 7 days
         vm.prank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IPositionTokenBridge.BridgeNotExpiredForEmergencyCancel.selector,
+                IPositionTokenBridgeBase.BridgeNotExpiredForEmergencyCancel.selector,
                 bridgeId,
                 pending.createdAt,
                 uint64(block.timestamp)
             )
         );
-        etherealBridge.emergencyCancelBridge{value: 0.1 ether}(bridgeId);
+        etherealBridge.emergencyCancel{value: 0.1 ether}(bridgeId);
     }
 
-    function test_emergencyCancelBridgeBack_success() public {
+    function test_emergencyCancelRemote_success() public {
         uint256 amount = 5e17;
 
         // First bridge to Arbitrum
@@ -654,13 +646,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(user);
         BridgedPositionToken(bridgedToken).approve(address(arbitrumBridge), amount);
 
-        MessagingFee memory backFee = arbitrumBridge.quoteBridgeBack(
+        MessagingFee memory backFee = arbitrumBridge.quoteBridge(
             bridgedToken,
             amount
         );
 
         vm.prank(user);
-        bytes32 bridgeBackId = arbitrumBridge.bridgeBack{value: backFee.nativeFee}(
+        bytes32 bridgeBackId = arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
             amount
@@ -674,12 +666,12 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Emergency cancel bridge back
         vm.prank(user);
-        arbitrumBridge.emergencyCancelBridgeBack(bridgeBackId);
+        arbitrumBridge.emergencyCancel(bridgeBackId);
 
         // Verify cancelled
         assertEq(
-            uint8(arbitrumBridge.getPendingBridgeBack(bridgeBackId).status),
-            uint8(IPositionTokenBridgeRemote.BridgeStatus.CANCELLED)
+            uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
+            uint8(IPositionTokenBridgeBase.BridgeStatus.CANCELLED)
         );
 
         // Tokens returned to user
@@ -687,7 +679,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         assertEq(arbitrumBridge.getEscrowedBalance(bridgedToken), 0);
     }
 
-    function test_retryBridgeBack_permissionless() public {
+    function test_retryRemote_permissionless() public {
         uint256 amount = 5e17;
 
         // First bridge to Arbitrum
@@ -715,32 +707,32 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(user);
         BridgedPositionToken(bridgedToken).approve(address(arbitrumBridge), amount);
 
-        MessagingFee memory backFee = arbitrumBridge.quoteBridgeBack(
+        MessagingFee memory backFee = arbitrumBridge.quoteBridge(
             bridgedToken,
             amount
         );
 
         vm.prank(user);
-        bytes32 bridgeBackId = arbitrumBridge.bridgeBack{value: backFee.nativeFee}(
+        bytes32 bridgeBackId = arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
             amount
         );
 
         // Fast forward past min retry delay
-        vm.warp(block.timestamp + 5 minutes + 1);
+        vm.warp(block.timestamp + 1 hours + 1);
 
         // Get retry fee quote
-        MessagingFee memory retryFee = arbitrumBridge.quoteRetryBridgeBack(bridgeBackId);
+        MessagingFee memory retryFee = arbitrumBridge.quoteRetry(bridgeBackId);
 
         // Anyone can retry (using unauthorizedUser)
         vm.prank(unauthorizedUser);
-        arbitrumBridge.retryBridgeBack{value: retryFee.nativeFee}(bridgeBackId);
+        arbitrumBridge.retry{value: retryFee.nativeFee}(bridgeBackId);
 
         // Status should still be PENDING
         assertEq(
-            uint8(arbitrumBridge.getPendingBridgeBack(bridgeBackId).status),
-            uint8(IPositionTokenBridgeRemote.BridgeStatus.PENDING)
+            uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
+            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
         );
     }
 
@@ -845,11 +837,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     function test_isBridgeProcessed_returnsFalseInitially() public view {
         bytes32 fakeBridgeId = keccak256("fake");
         assertFalse(arbitrumBridge.isBridgeProcessed(fakeBridgeId));
-    }
-
-    function test_isBridgeBackProcessed_returnsFalseInitially() public view {
-        bytes32 fakeBridgeId = keccak256("fake");
-        assertFalse(etherealBridge.isBridgeBackProcessed(fakeBridgeId));
+        assertFalse(etherealBridge.isBridgeProcessed(fakeBridgeId));
     }
 
     // ============ Ownership Renouncement Tests ============

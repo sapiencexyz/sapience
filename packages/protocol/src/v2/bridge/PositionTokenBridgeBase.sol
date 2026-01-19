@@ -1,0 +1,361 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import {OApp, Origin, MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import "./interfaces/IPositionTokenBridgeBase.sol";
+
+/// @title PositionTokenBridgeBase
+/// @notice Abstract base contract for position token bridges
+/// @dev Contains shared logic for both Ethereal and Arbitrum bridges
+abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTokenBridgeBase {
+    using SafeERC20 for IERC20;
+    using OptionsBuilder for bytes;
+
+    // ============ Constants ============
+    uint16 internal constant CMD_BRIDGE = 1;
+    uint16 internal constant CMD_ACK = 2;
+    uint16 internal constant CMD_CANCEL = 3;
+
+    uint128 internal constant GAS_FOR_ACK = 100_000;
+
+    /// @notice Minimum delay between retry attempts
+    uint64 public constant MIN_RETRY_DELAY = 1 hours;
+
+    /// @notice Delay before emergency cancel is allowed
+    uint64 public constant EMERGENCY_CANCEL_DELAY = 7 days;
+
+    // ============ Storage ============
+    BridgeConfig internal _bridgeConfig;
+
+    /// @notice Pending bridge records
+    mapping(bytes32 => PendingBridge) internal _pendingBridges;
+
+    /// @notice Escrowed token balances
+    mapping(address => uint256) internal _escrowedBalances;
+
+    /// @notice Nonce for generating unique bridge IDs
+    uint256 internal _bridgeNonce;
+
+    /// @notice Mapping from sender to their bridge IDs
+    mapping(address => bytes32[]) internal _senderBridges;
+
+    /// @notice Processed bridges for idempotency
+    mapping(bytes32 => bool) internal _processedBridges;
+
+    // ============ Constructor ============
+    constructor(
+        address endpoint_,
+        address owner_
+    ) OApp(endpoint_, owner_) Ownable(owner_) {}
+
+    // ============ Configuration (Owner only for LZ) ============
+
+    /// @notice Set the bridge configuration
+    function setBridgeConfig(BridgeConfig calldata config) external onlyOwner {
+        _bridgeConfig = config;
+        emit BridgeConfigUpdated(config);
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getBridgeConfig() external view returns (BridgeConfig memory) {
+        return _bridgeConfig;
+    }
+
+    // ============ Retry Function ============
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function retry(bytes32 bridgeId) external payable nonReentrant {
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        if (pending.status != BridgeStatus.PENDING) {
+            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+        }
+
+        // Check retry delay
+        uint64 minNextRetry = pending.lastRetryAt + MIN_RETRY_DELAY;
+        if (block.timestamp < minNextRetry) {
+            revert RetryTooSoon(bridgeId, pending.lastRetryAt, minNextRetry);
+        }
+
+        // Update last retry timestamp
+        pending.lastRetryAt = uint64(block.timestamp);
+
+        // Build message (chain-specific)
+        (bytes memory message, uint128 gasLimit) = _buildRetryMessage(bridgeId, pending);
+
+        // Build options
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(gasLimit, 0);
+
+        // Quote fee
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        // Send message
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            message,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        _refundExcess(fee.nativeFee);
+
+        emit BridgeRetried(bridgeId);
+    }
+
+    // ============ Emergency Cancel Function ============
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function emergencyCancel(bytes32 bridgeId) external payable nonReentrant {
+        PendingBridge storage pending = _pendingBridges[bridgeId];
+
+        if (pending.status != BridgeStatus.PENDING) {
+            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+        }
+
+        // Only the original sender can cancel
+        if (pending.sender != msg.sender) {
+            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
+        }
+
+        // Check emergency cancel delay (7 days from creation)
+        uint64 emergencyCancelTime = pending.createdAt + EMERGENCY_CANCEL_DELAY;
+        if (block.timestamp < emergencyCancelTime) {
+            revert BridgeNotExpiredForEmergencyCancel(bridgeId, pending.createdAt, uint64(block.timestamp));
+        }
+
+        // Mark as cancelled
+        pending.status = BridgeStatus.CANCELLED;
+
+        // Return tokens (chain-specific implementation)
+        _returnTokensOnCancel(pending);
+
+        // Send cancel notification if needed (chain-specific)
+        _sendCancelNotification(bridgeId, pending.amount);
+
+        emit BridgeCancelled(bridgeId, pending.sender, pending.amount);
+    }
+
+    // ============ ACK Handling ============
+
+    /// @dev Attempt to send ACK - gracefully handles insufficient balance or send failures
+    function _trySendAck(bytes32 bridgeId) internal {
+        // Skip ACK if no balance (common in test environments)
+        if (address(this).balance == 0) {
+            return;
+        }
+
+        try this.sendAckInternal(bridgeId) {
+            // ACK sent successfully
+        } catch {
+            // ACK failed - can be retried via manualSendAck
+        }
+    }
+
+    /// @dev Internal function to send ACK (callable via this.sendAckInternal for try/catch)
+    function sendAckInternal(bytes32 bridgeId) external {
+        require(msg.sender == address(this), "Only self");
+
+        bytes memory ackPayload = abi.encode(bridgeId);
+        bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
+
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+
+        // Check if contract has enough balance for ACK
+        if (address(this).balance >= fee.nativeFee) {
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                ackMessage,
+                options,
+                fee,
+                payable(address(this))
+            );
+        }
+    }
+
+    /// @notice Manually send ACK for a completed bridge (if auto-ACK failed due to low balance)
+    /// @param bridgeId The bridge identifier to acknowledge
+    function manualSendAck(bytes32 bridgeId) external payable {
+        bytes memory ackPayload = abi.encode(bridgeId);
+        bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
+        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
+
+        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+        if (msg.value < fee.nativeFee) {
+            revert InsufficientFee(fee.nativeFee, msg.value);
+        }
+
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            ackMessage,
+            options,
+            fee,
+            payable(msg.sender)
+        );
+
+        // Refund excess ETH
+        _refundExcess(fee.nativeFee);
+    }
+
+    // ============ LayerZero Receive ============
+
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32,
+        bytes calldata _message,
+        address,
+        bytes calldata
+    ) internal override nonReentrant {
+        // Validate source
+        if (_origin.srcEid != _bridgeConfig.remoteEid) {
+            revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
+        }
+        address sender = address(uint160(uint256(_origin.sender)));
+        if (sender != _bridgeConfig.remoteBridge) {
+            revert InvalidSender(_bridgeConfig.remoteBridge, sender);
+        }
+
+        // Decode command
+        (uint16 commandType, bytes memory data) = abi.decode(_message, (uint16, bytes));
+
+        if (commandType == CMD_BRIDGE) {
+            _handleBridge(data);
+        } else if (commandType == CMD_ACK) {
+            _handleAck(data);
+        } else if (commandType == CMD_CANCEL) {
+            _handleCancel(data);
+        } else {
+            revert InvalidCommandType(commandType);
+        }
+    }
+
+    // ============ View Functions ============
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getPendingBridge(bytes32 bridgeId) external view returns (PendingBridge memory) {
+        return _pendingBridges[bridgeId];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getPendingBridges(address sender) external view returns (bytes32[] memory bridgeIds) {
+        bytes32[] storage allBridges = _senderBridges[sender];
+        uint256 pendingCount = 0;
+
+        // Count pending bridges
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridges[allBridges[i]].status == BridgeStatus.PENDING) {
+                pendingCount++;
+            }
+        }
+
+        // Create array of pending bridges
+        bridgeIds = new bytes32[](pendingCount);
+        uint256 j = 0;
+        for (uint256 i = 0; i < allBridges.length; i++) {
+            if (_pendingBridges[allBridges[i]].status == BridgeStatus.PENDING) {
+                bridgeIds[j] = allBridges[i];
+                j++;
+            }
+        }
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function isBridgeProcessed(bytes32 bridgeId) external view returns (bool) {
+        return _processedBridges[bridgeId];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getEscrowedBalance(address token) external view returns (uint256) {
+        return _escrowedBalances[token];
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getMinRetryDelay() external pure returns (uint64) {
+        return MIN_RETRY_DELAY;
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function getEmergencyCancelDelay() external pure returns (uint64) {
+        return EMERGENCY_CANCEL_DELAY;
+    }
+
+    // ============ Ownership Management ============
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function isConfigComplete() public view virtual returns (bool) {
+        // Check bridge config
+        if (_bridgeConfig.remoteEid == 0) return false;
+        if (_bridgeConfig.remoteBridge == address(0)) return false;
+
+        // Check LZ peer is set
+        bytes32 peer = peers[_bridgeConfig.remoteEid];
+        if (peer == bytes32(0)) return false;
+
+        return true;
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function renounceOwnershipSafe() external onlyOwner {
+        require(this.isConfigComplete(), "Config incomplete");
+        renounceOwnership();
+    }
+
+    // ============ ETH Management (for ACK fees) ============
+
+    /// @notice Receive ETH for ACK fee payments
+    receive() external payable {}
+
+    /// @notice Get ETH balance
+    function getETHBalance() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    // ============ Internal Helpers ============
+
+    /// @dev Refund excess ETH to sender
+    function _refundExcess(uint256 usedFee) internal {
+        if (msg.value > usedFee) {
+            uint256 excess = msg.value - usedFee;
+            (bool success,) = payable(msg.sender).call{value: excess}("");
+            if (!success) revert RefundFailed();
+        }
+    }
+
+    /// @dev Generate unique bridge ID
+    function _generateBridgeId() internal returns (bytes32) {
+        return keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
+    }
+
+    // ============ Abstract Functions (chain-specific) ============
+
+    /// @dev Build retry message (chain-specific payload format)
+    function _buildRetryMessage(
+        bytes32 bridgeId,
+        PendingBridge storage pending
+    ) internal view virtual returns (bytes memory message, uint128 gasLimit);
+
+    /// @dev Return tokens to sender on cancel
+    function _returnTokensOnCancel(PendingBridge storage pending) internal virtual;
+
+    /// @dev Send cancel notification to remote chain (optional)
+    function _sendCancelNotification(bytes32 bridgeId, uint256 amount) internal virtual;
+
+    /// @dev Handle incoming bridge from remote chain
+    function _handleBridge(bytes memory data) internal virtual;
+
+    /// @dev Handle ACK from remote chain
+    function _handleAck(bytes memory data) internal virtual;
+
+    /// @dev Handle cancel from remote chain (optional override)
+    function _handleCancel(bytes memory data) internal virtual {}
+}
