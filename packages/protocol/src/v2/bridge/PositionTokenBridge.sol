@@ -49,6 +49,9 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     /// @notice Mapping from sender to their bridge IDs
     mapping(address => bytes32[]) private _senderBridges;
 
+    /// @notice Processed bridge backs for idempotency (prevents duplicate escrow release)
+    mapping(bytes32 => bool) private _processedBridgeBacks;
+
     // ============ Constructor ============
     constructor(
         address endpoint_,
@@ -169,11 +172,6 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
 
         if (pending.status != BridgeStatus.PENDING) {
             revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
-        }
-
-        // Only the original sender can retry
-        if (pending.sender != msg.sender) {
-            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
         }
 
         // Check retry delay
@@ -392,6 +390,17 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
             uint256 amount
         ) = abi.decode(data, (bytes32, address, address, uint256));
 
+        // Check if this bridge back was already processed (idempotency)
+        if (_processedBridgeBacks[bridgeId]) {
+            // Already processed - just re-send ACK
+            emit BridgeBackProcessed(bridgeId, true);
+            _trySendAck(bridgeId);
+            return;
+        }
+
+        // Mark as processed BEFORE releasing (prevents reentrancy issues)
+        _processedBridgeBacks[bridgeId] = true;
+
         if (_escrowedBalances[token] < amount) {
             revert InsufficientEscrowBalance(amount, _escrowedBalances[token]);
         }
@@ -400,6 +409,7 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
         _escrowedBalances[token] -= amount;
         IERC20(token).safeTransfer(recipient, amount);
 
+        emit BridgeBackProcessed(bridgeId, false);
         emit TokensReleased(bridgeId, token, recipient, amount);
 
         // Send ACK back to remote (if contract has sufficient balance)
@@ -513,6 +523,11 @@ contract PositionTokenBridge is OApp, ReentrancyGuard, IPositionTokenBridge {
     /// @inheritdoc IPositionTokenBridge
     function getEmergencyCancelDelay() external pure returns (uint64) {
         return EMERGENCY_CANCEL_DELAY;
+    }
+
+    /// @inheritdoc IPositionTokenBridge
+    function isBridgeBackProcessed(bytes32 bridgeId) external view returns (bool) {
+        return _processedBridgeBacks[bridgeId];
     }
 
     // ============ Ownership Management ============

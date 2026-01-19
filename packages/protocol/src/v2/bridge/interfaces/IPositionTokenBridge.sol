@@ -68,6 +68,9 @@ interface IPositionTokenBridge {
     /// @notice Emitted when bridge config is updated
     event BridgeConfigUpdated(BridgeConfig config);
 
+    /// @notice Emitted when a bridge back is processed (for idempotency tracking)
+    event BridgeBackProcessed(bytes32 indexed bridgeId, bool alreadyProcessed);
+
     // ============ Errors ============
 
     /// @notice Zero address provided
@@ -179,6 +182,11 @@ interface IPositionTokenBridge {
     /// @notice Get the emergency cancel delay
     /// @return The delay before emergency cancel is allowed in seconds
     function getEmergencyCancelDelay() external view returns (uint64);
+
+    /// @notice Check if a bridge back has been processed (for idempotency)
+    /// @param bridgeId The bridge identifier
+    /// @return True if the bridge back was already processed
+    function isBridgeBackProcessed(bytes32 bridgeId) external view returns (bool);
 
     // ============ Ownership Management ============
 

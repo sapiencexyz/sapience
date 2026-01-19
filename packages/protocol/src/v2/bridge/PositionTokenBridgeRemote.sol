@@ -167,11 +167,6 @@ contract PositionTokenBridgeRemote is OApp, ReentrancyGuard, IPositionTokenBridg
             revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
         }
 
-        // Only the original sender can retry
-        if (pending.sender != msg.sender) {
-            revert NotBridgeSender(bridgeId, pending.sender, msg.sender);
-        }
-
         // Check retry delay
         uint64 minNextRetry = pending.lastRetryAt + MIN_RETRY_DELAY;
         if (block.timestamp < minNextRetry) {

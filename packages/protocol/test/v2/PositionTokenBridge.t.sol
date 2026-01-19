@@ -482,6 +482,42 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         );
     }
 
+    function test_retryBridge_permissionless() public {
+        uint256 amount = 5e17;
+
+        // Bridge tokens as user
+        vm.prank(user);
+        positionToken.approve(address(etherealBridge), amount);
+
+        MessagingFee memory fee = etherealBridge.quoteBridge(
+            address(positionToken),
+            amount
+        );
+
+        vm.prank(user);
+        bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
+            address(positionToken),
+            user,
+            amount
+        );
+
+        // Fast forward past min retry delay
+        vm.warp(block.timestamp + 5 minutes + 1);
+
+        // Get retry fee quote
+        MessagingFee memory retryFee = etherealBridge.quoteRetryBridge(bridgeId);
+
+        // Anyone can retry (using unauthorizedUser)
+        vm.prank(unauthorizedUser);
+        etherealBridge.retryBridge{value: retryFee.nativeFee}(bridgeId);
+
+        // Status should still be PENDING
+        assertEq(
+            uint8(etherealBridge.getPendingBridge(bridgeId).status),
+            uint8(IPositionTokenBridge.BridgeStatus.PENDING)
+        );
+    }
+
     function test_retryBridge_revertIfTooSoon() public {
         uint256 amount = 5e17;
 
@@ -651,6 +687,63 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         assertEq(arbitrumBridge.getEscrowedBalance(bridgedToken), 0);
     }
 
+    function test_retryBridgeBack_permissionless() public {
+        uint256 amount = 5e17;
+
+        // First bridge to Arbitrum
+        vm.prank(user);
+        positionToken.approve(address(etherealBridge), amount);
+
+        MessagingFee memory fee = etherealBridge.quoteBridge(
+            address(positionToken),
+            amount
+        );
+
+        vm.prank(user);
+        etherealBridge.bridge{value: fee.nativeFee}(
+            address(positionToken),
+            user,
+            amount
+        );
+
+        // Deliver to Arbitrum
+        verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
+
+        address bridgedToken = factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+
+        // Initiate bridge back
+        vm.prank(user);
+        BridgedPositionToken(bridgedToken).approve(address(arbitrumBridge), amount);
+
+        MessagingFee memory backFee = arbitrumBridge.quoteBridgeBack(
+            bridgedToken,
+            amount
+        );
+
+        vm.prank(user);
+        bytes32 bridgeBackId = arbitrumBridge.bridgeBack{value: backFee.nativeFee}(
+            bridgedToken,
+            user,
+            amount
+        );
+
+        // Fast forward past min retry delay
+        vm.warp(block.timestamp + 5 minutes + 1);
+
+        // Get retry fee quote
+        MessagingFee memory retryFee = arbitrumBridge.quoteRetryBridgeBack(bridgeBackId);
+
+        // Anyone can retry (using unauthorizedUser)
+        vm.prank(unauthorizedUser);
+        arbitrumBridge.retryBridgeBack{value: retryFee.nativeFee}(bridgeBackId);
+
+        // Status should still be PENDING
+        assertEq(
+            uint8(arbitrumBridge.getPendingBridgeBack(bridgeBackId).status),
+            uint8(IPositionTokenBridgeRemote.BridgeStatus.PENDING)
+        );
+    }
+
     // ============ Factory Tests ============
 
     function test_factory_computeSalt() public view {
@@ -752,6 +845,11 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     function test_isBridgeProcessed_returnsFalseInitially() public view {
         bytes32 fakeBridgeId = keccak256("fake");
         assertFalse(arbitrumBridge.isBridgeProcessed(fakeBridgeId));
+    }
+
+    function test_isBridgeBackProcessed_returnsFalseInitially() public view {
+        bytes32 fakeBridgeId = keccak256("fake");
+        assertFalse(etherealBridge.isBridgeBackProcessed(fakeBridgeId));
     }
 
     // ============ Ownership Renouncement Tests ============
