@@ -65,7 +65,7 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ Retry Function ============
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function retry(bytes32 bridgeId) external payable nonReentrant {
+    function retry(bytes32 bridgeId, bytes32 refCode) external payable nonReentrant {
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
         if (pending.status != BridgeStatus.PENDING) {
@@ -105,7 +105,7 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
 
-        emit BridgeRetried(bridgeId);
+        emit BridgeRetried(bridgeId, refCode);
     }
 
     // ============ ACK Handling ============

@@ -51,7 +51,8 @@ contract TestBridgeBack is Script {
         bytes32 bridgeId = bridge.bridge{value: fee.nativeFee}(
             tokenAddr,
             recipient,
-            amount
+            amount,
+            bytes32(0) // refCode
         );
 
         vm.stopBroadcast();

@@ -45,11 +45,13 @@ interface IPositionTokenBridgeRemote is IPositionTokenBridgeBase {
     /// @param token The bridged position token address
     /// @param recipient Recipient on source chain
     /// @param amount Amount to bridge
+    /// @param refCode Referral code for tracking
     /// @return bridgeId The unique bridge identifier
     function bridge(
         address token,
         address recipient,
-        uint256 amount
+        uint256 amount,
+        bytes32 refCode
     ) external payable returns (bytes32 bridgeId);
 
     /// @notice Quote the fee for bridging

@@ -45,11 +45,12 @@ interface IPositionTokenBridgeBase {
         address indexed sender,
         address recipient,
         uint256 amount,
-        uint64 createdAt
+        uint64 createdAt,
+        bytes32 refCode
     );
 
     /// @notice Emitted when bridge is retried
-    event BridgeRetried(bytes32 indexed bridgeId);
+    event BridgeRetried(bytes32 indexed bridgeId, bytes32 refCode);
 
     /// @notice Emitted when bridge is completed (ACK received)
     event BridgeCompleted(bytes32 indexed bridgeId);
@@ -102,7 +103,8 @@ interface IPositionTokenBridgeBase {
 
     /// @notice Retry a pending bridge (resend the message)
     /// @param bridgeId The bridge identifier
-    function retry(bytes32 bridgeId) external payable;
+    /// @param refCode Referral code for tracking
+    function retry(bytes32 bridgeId, bytes32 refCode) external payable;
 
     /// @notice Quote the fee for retrying a bridge
     /// @param bridgeId The bridge identifier

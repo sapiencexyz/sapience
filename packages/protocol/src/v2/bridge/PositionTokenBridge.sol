@@ -32,31 +32,18 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
     function bridge(
         address token,
         address recipient,
-        uint256 amount
+        uint256 amount,
+        bytes32 refCode
     ) external payable nonReentrant returns (bytes32 bridgeId) {
         if (token == address(0) || recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
-        // Read token metadata directly from the token contract
-        bytes32 pickConfigId;
-        bool isPredictorToken;
-        string memory name;
-        string memory symbol;
+        // Validate token has required interface (must be a PositionToken)
+        try IPositionToken(token).pickConfigId() returns (bytes32) {}
+        catch { revert InvalidToken(token); }
 
-        try IPositionToken(token).pickConfigId() returns (bytes32 pid) {
-            pickConfigId = pid;
-        } catch {
-            revert InvalidToken(token);
-        }
-
-        try IPositionToken(token).isPredictorToken() returns (bool ipt) {
-            isPredictorToken = ipt;
-        } catch {
-            revert InvalidToken(token);
-        }
-
-        name = IERC20Metadata(token).name();
-        symbol = IERC20Metadata(token).symbol();
+        try IPositionToken(token).isPredictorToken() returns (bool) {}
+        catch { revert InvalidToken(token); }
 
         // Transfer tokens to this contract (escrow)
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -80,41 +67,44 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         // Track sender's bridges
         _senderBridges[msg.sender].push(bridgeId);
 
-        // Encode message
-        bytes memory payload = abi.encode(
-            bridgeId,
-            token,
-            pickConfigId,
-            isPredictorToken,
-            name,
-            symbol,
-            recipient,
-            amount
-        );
-        bytes memory message = abi.encode(CMD_BRIDGE, payload);
+        // Build and send LZ message in scoped block to reduce stack depth
+        {
+            // Encode message with token metadata
+            bytes memory payload = abi.encode(
+                bridgeId,
+                token,
+                IPositionToken(token).pickConfigId(),
+                IPositionToken(token).isPredictorToken(),
+                IERC20Metadata(token).name(),
+                IERC20Metadata(token).symbol(),
+                recipient,
+                amount
+            );
+            bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
-        // Build options
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+            // Build options
+            bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
 
-        // Quote fee
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
-        if (msg.value < fee.nativeFee) {
-            revert InsufficientFee(fee.nativeFee, msg.value);
+            // Quote fee
+            MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+            if (msg.value < fee.nativeFee) {
+                revert InsufficientFee(fee.nativeFee, msg.value);
+            }
+
+            // Send message
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                message,
+                options,
+                fee,
+                payable(msg.sender)
+            );
+
+            // Refund excess ETH
+            _refundExcess(fee.nativeFee);
         }
 
-        // Send message
-        _lzSend(
-            _bridgeConfig.remoteEid,
-            message,
-            options,
-            fee,
-            payable(msg.sender)
-        );
-
-        // Refund excess ETH
-        _refundExcess(fee.nativeFee);
-
-        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt);
+        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt, refCode);
     }
 
     // ============ Quote Functions ============

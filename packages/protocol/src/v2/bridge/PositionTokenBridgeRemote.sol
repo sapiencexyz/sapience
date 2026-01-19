@@ -77,7 +77,8 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     function bridge(
         address token,
         address recipient,
-        uint256 amount
+        uint256 amount,
+        bytes32 refCode
     ) external payable nonReentrant returns (bytes32 bridgeId) {
         if (token == address(0) || recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
@@ -132,7 +133,7 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
 
-        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt);
+        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt, refCode);
     }
 
     // ============ Quote Functions ============

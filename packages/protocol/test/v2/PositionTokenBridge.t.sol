@@ -42,9 +42,10 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         address indexed sender,
         address recipient,
         uint256 amount,
-        uint64 createdAt
+        uint64 createdAt,
+        bytes32 refCode
     );
-    event BridgeRetried(bytes32 indexed bridgeId);
+    event BridgeRetried(bytes32 indexed bridgeId, bytes32 refCode);
     event BridgeCompleted(bytes32 indexed bridgeId);
     event BridgeCancelled(bytes32 indexed bridgeId, address indexed sender, uint256 amount);
     event BridgeConfigUpdated(IPositionTokenBridgeBase.BridgeConfig config);
@@ -191,13 +192,13 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     function test_bridge_revertIfZeroAddress() public {
         vm.prank(user);
         vm.expectRevert(IPositionTokenBridgeBase.ZeroAddress.selector);
-        etherealBridge.bridge{value: 1 ether}(address(0), user, 1e17);
+        etherealBridge.bridge{value: 1 ether}(address(0), user, 1e17, bytes32(0));
     }
 
     function test_bridge_revertIfZeroAmount() public {
         vm.prank(user);
         vm.expectRevert(IPositionTokenBridgeBase.ZeroAmount.selector);
-        etherealBridge.bridge{value: 1 ether}(address(positionToken), user, 0);
+        etherealBridge.bridge{value: 1 ether}(address(positionToken), user, 0, bytes32(0));
     }
 
     function test_bridge_revertIfInvalidToken() public {
@@ -211,7 +212,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
                 address(invalidToken)
             )
         );
-        etherealBridge.bridge{value: 1 ether}(address(invalidToken), user, 1e17);
+        etherealBridge.bridge{value: 1 ether}(address(invalidToken), user, 1e17, bytes32(0));
     }
 
     function test_quoteBridge_returnsValidFee() public view {
@@ -240,7 +241,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Verify pending bridge created
@@ -279,7 +281,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Initial status is PENDING
@@ -324,7 +327,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Deliver to Arbitrum (ACK not sent due to test env balance limitation)
@@ -346,7 +350,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeBackId = arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Bridged tokens should be escrowed (NOT burned yet)
@@ -393,7 +398,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            bridgeAmount
+            bridgeAmount,
+            bytes32(0)
         );
 
         // Deliver to Arbitrum (ACK not sent due to test env balance limitation)
@@ -414,7 +420,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
-            bridgeBackAmount
+            bridgeBackAmount,
+            bytes32(0)
         );
 
         // Should have remaining bridged tokens (minus escrowed amount)
@@ -452,7 +459,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Fast forward past min retry delay
@@ -463,7 +471,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Retry bridge
         vm.prank(user);
-        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId);
+        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId, bytes32(0));
 
         // Status should still be PENDING (waiting for ACK)
         assertEq(
@@ -488,7 +496,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Fast forward past min retry delay
@@ -499,7 +508,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Anyone can retry (using unauthorizedUser)
         vm.prank(unauthorizedUser);
-        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId);
+        etherealBridge.retry{value: retryFee.nativeFee}(bridgeId, bytes32(0));
 
         // Status should still be PENDING
         assertEq(
@@ -524,7 +533,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         IPositionTokenBridgeBase.PendingBridge memory pending = etherealBridge.getPendingBridge(bridgeId);
@@ -539,7 +549,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
                 pending.lastRetryAt + 1 hours
             )
         );
-        etherealBridge.retry{value: 0.1 ether}(bridgeId);
+        etherealBridge.retry{value: 0.1 ether}(bridgeId, bytes32(0));
     }
 
     function test_retryRemote_permissionless() public {
@@ -558,7 +568,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Deliver to Arbitrum
@@ -579,7 +590,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeBackId = arbitrumBridge.bridge{value: backFee.nativeFee}(
             bridgedToken,
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Fast forward past min retry delay
@@ -590,7 +602,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Anyone can retry (using unauthorizedUser)
         vm.prank(unauthorizedUser);
-        arbitrumBridge.retry{value: retryFee.nativeFee}(bridgeBackId);
+        arbitrumBridge.retry{value: retryFee.nativeFee}(bridgeBackId, bytes32(0));
 
         // Status should still be PENDING
         assertEq(
@@ -648,7 +660,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
@@ -688,7 +701,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         bytes32 bridgeId = etherealBridge.bridge{value: fee.nativeFee}(
             address(positionToken),
             user,
-            amount
+            amount,
+            bytes32(0)
         );
 
         // Check pending bridges
