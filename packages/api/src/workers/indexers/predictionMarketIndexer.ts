@@ -1808,35 +1808,51 @@ class PredictionMarketIndexer implements IIndexer {
         });
 
         if (condition) {
-          await prisma.condition.update({
-            where: { id: condition.id },
-            data: {
-              settled: true,
-              resolvedToYes: eventData.resolvedToYes,
-              settledAt: Number(block.timestamp),
-            },
-          });
-          console.log(
-            `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} to settled`
-          );
+          // Only mark as settled if the event came from the condition's resolver
+          // or if the condition doesn't have a specific resolver set
+          const eventSourceAddress = log.address?.toLowerCase();
+          const conditionResolver = condition.resolver?.toLowerCase();
 
-          // Score forecasts and compute TW errors for the accuracy leaderboard
-          const marketAddress = condition.resolver?.toLowerCase();
-          if (marketAddress) {
-            try {
-              await scoreSelectedForecastsForSettledMarket(
-                marketAddress,
-                condition.id
-              );
-              await computeAndStoreMarketTwErrors(marketAddress, condition.id);
-              console.log(
-                `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${eventData.marketId}`
-              );
-            } catch (scoringError) {
-              console.error(
-                `[PredictionMarketIndexer] Error scoring forecasts for ${eventData.marketId}:`,
-                scoringError
-              );
+          if (
+            conditionResolver &&
+            eventSourceAddress &&
+            conditionResolver !== eventSourceAddress
+          ) {
+            console.log(
+              `[PredictionMarketIndexer] Skipping MarketResolved for ${eventData.marketId}: ` +
+                `event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`
+            );
+          } else {
+            await prisma.condition.update({
+              where: { id: condition.id },
+              data: {
+                settled: true,
+                resolvedToYes: eventData.resolvedToYes,
+                settledAt: Number(block.timestamp),
+              },
+            });
+            console.log(
+              `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} to settled`
+            );
+
+            // Score forecasts and compute TW errors for the accuracy leaderboard
+            const marketAddress = condition.resolver?.toLowerCase();
+            if (marketAddress) {
+              try {
+                await scoreSelectedForecastsForSettledMarket(
+                  marketAddress,
+                  condition.id
+                );
+                await computeAndStoreMarketTwErrors(marketAddress, condition.id);
+                console.log(
+                  `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${eventData.marketId}`
+                );
+              } catch (scoringError) {
+                console.error(
+                  `[PredictionMarketIndexer] Error scoring forecasts for ${eventData.marketId}:`,
+                  scoringError
+                );
+              }
             }
           }
         } else {
@@ -2030,17 +2046,33 @@ class PredictionMarketIndexer implements IIndexer {
         });
 
         if (condition) {
-          await prisma.condition.update({
-            where: { id: condition.id },
-            data: {
-              settled: true,
-              resolvedToYes: eventData.resolvedToYes,
-              settledAt: Number(decoded.args.timestamp),
-            },
-          });
-          console.log(
-            `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
-          );
+          // Only mark as settled if the event came from the condition's resolver
+          // or if the condition doesn't have a specific resolver set
+          const eventSourceAddress = log.address?.toLowerCase();
+          const conditionResolver = condition.resolver?.toLowerCase();
+
+          if (
+            conditionResolver &&
+            eventSourceAddress &&
+            conditionResolver !== eventSourceAddress
+          ) {
+            console.log(
+              `[PredictionMarketIndexer] Skipping ConditionResolved for ${conditionId}: ` +
+                `event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`
+            );
+          } else {
+            await prisma.condition.update({
+              where: { id: condition.id },
+              data: {
+                settled: true,
+                resolvedToYes: eventData.resolvedToYes,
+                settledAt: Number(decoded.args.timestamp),
+              },
+            });
+            console.log(
+              `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
+            );
+          }
         } else {
           console.warn(
             `[PredictionMarketIndexer] ConditionResolved but no matching Condition found for conditionId=${conditionId}`
