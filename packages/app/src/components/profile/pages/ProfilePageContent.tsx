@@ -132,10 +132,7 @@ const ProfilePageContent = () => {
           className="w-full"
         >
           <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8">
-            <TabsContent
-              value="positions"
-              className="mt-0"
-            >
+            <TabsContent value="positions" className="mt-0">
               <PositionsTable
                 account={address}
                 showHeaderText={false}
@@ -144,10 +141,7 @@ const ProfilePageContent = () => {
               />
             </TabsContent>
 
-            <TabsContent
-              value="forecasts"
-              className="mt-0"
-            >
+            <TabsContent value="forecasts" className="mt-0">
               <ForecastsTable
                 attesterAddress={address}
                 leftSlot={tabSwitcher}

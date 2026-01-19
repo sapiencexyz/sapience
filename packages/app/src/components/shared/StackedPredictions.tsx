@@ -105,131 +105,137 @@ export function StackedIcons({
  * Renders just the question + badge + "and N predictions" popover portion.
  * Can be used separately when the title needs to be in a different cell/container.
  */
-export const StackedPredictionsTitle = React.memo(function StackedPredictionsTitle({
-  legs,
-  className,
-  maxWidthClass = 'max-w-[300px]',
-}: {
-  legs: Pick[];
-  className?: string;
-  maxWidthClass?: string;
-}) {
-  if (!legs || legs.length === 0) {
-    return null;
-  }
+export const StackedPredictionsTitle = React.memo(
+  function StackedPredictionsTitle({
+    legs,
+    className,
+    maxWidthClass = 'max-w-[300px]',
+  }: {
+    legs: Pick[];
+    className?: string;
+    maxWidthClass?: string;
+  }) {
+    if (!legs || legs.length === 0) {
+      return null;
+    }
 
-  const firstLeg = legs[0];
-  const remainingLegs = legs.slice(1);
-  const remainingCount = remainingLegs.length;
-  const badgeLabel = String(firstLeg.choice).toUpperCase();
-  const firstIsPyth = firstLeg.source === 'pyth' && !!firstLeg.pythPrediction;
+    const firstLeg = legs[0];
+    const remainingLegs = legs.slice(1);
+    const remainingCount = remainingLegs.length;
+    const badgeLabel = String(firstLeg.choice).toUpperCase();
+    const firstIsPyth = firstLeg.source === 'pyth' && !!firstLeg.pythPrediction;
 
-  return (
-    <div
-      className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
-    >
-      {firstIsPyth ? (
-        <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
-          <PythPredictionListItem
-            prediction={firstLeg.pythPrediction!}
-            layout="inline"
-            showOracleIcon={false}
-          />
-        </div>
-      ) : (
-        <>
-          {/* Question + badge stay together; question truncates but doesn't push badge to far right */}
-          <span
-            className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
-          >
-            {firstLeg.conditionId ? (
-              <ConditionTitleLink
-                conditionId={firstLeg.conditionId}
-                resolverAddress={firstLeg.resolverAddress ?? undefined}
-                title={firstLeg.question}
-                clampLines={1}
-                className="text-sm min-w-0 flex-1"
-              />
-            ) : (
-              <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
-                {firstLeg.question}
-              </span>
-            )}
-            <span className="shrink-0 whitespace-nowrap">
-              <PredictionChoiceBadge choice={badgeLabel} />
-            </span>
-          </span>
-        </>
-      )}
-
-      <span className="inline-flex items-center gap-2 whitespace-nowrap basis-full md:basis-auto md:shrink-0">
-        {/* "and N predictions" hover card */}
-        {remainingCount > 0 && (
+    return (
+      <div
+        className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
+      >
+        {firstIsPyth ? (
+          <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
+            <PythPredictionListItem
+              prediction={firstLeg.pythPrediction!}
+              layout="inline"
+              showOracleIcon={false}
+            />
+          </div>
+        ) : (
           <>
-            <span className="text-sm text-muted-foreground shrink-0">and</span>
-            <HoverCard openDelay={100} closeDelay={200}>
-              <HoverCardTrigger asChild>
-                <button
-                  type="button"
-                  className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 shrink-0 transition-colors"
-                >
-                  {remainingCount} {remainingCount === 1 ? 'other' : 'others'}
-                </button>
-              </HoverCardTrigger>
-              <HoverCardContent
-                className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
-                align="start"
-              >
-                <div className="flex flex-col divide-y divide-brand-white/20">
-                  {remainingLegs.map((leg, i) => (
-                    <div
-                      key={`${leg.conditionId || i}-${i}`}
-                      className="flex items-center gap-3 px-3 py-2"
-                    >
-                      {leg.source === 'pyth' && leg.pythPrediction ? (
-                        <div className="min-w-0 flex-1">
-                          <PythPredictionListItem
-                            prediction={leg.pythPrediction}
-                            layout="inline"
-                          />
-                        </div>
-                      ) : (
-                        <>
-                          <MarketBadge
-                            label={leg.question}
-                            size={32}
-                            color={getCategoryColor(leg.categorySlug)}
-                            categorySlug={leg.categorySlug}
-                          />
-                          {leg.conditionId ? (
-                            <ConditionTitleLink
-                              conditionId={leg.conditionId}
-                              resolverAddress={leg.resolverAddress ?? undefined}
-                              title={leg.question}
-                              clampLines={1}
-                              className="text-sm"
-                            />
-                          ) : (
-                            <span className="text-sm font-mono text-brand-white">
-                              {leg.question}
-                            </span>
-                          )}
-                          <PredictionChoiceBadge
-                            choice={String(leg.choice).toUpperCase()}
-                          />
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </HoverCardContent>
-            </HoverCard>
+            {/* Question + badge stay together; question truncates but doesn't push badge to far right */}
+            <span
+              className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
+            >
+              {firstLeg.conditionId ? (
+                <ConditionTitleLink
+                  conditionId={firstLeg.conditionId}
+                  resolverAddress={firstLeg.resolverAddress ?? undefined}
+                  title={firstLeg.question}
+                  clampLines={1}
+                  className="text-sm min-w-0 flex-1"
+                />
+              ) : (
+                <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
+                  {firstLeg.question}
+                </span>
+              )}
+              <span className="shrink-0 whitespace-nowrap">
+                <PredictionChoiceBadge choice={badgeLabel} />
+              </span>
+            </span>
           </>
         )}
-      </span>
-    </div>
-  );
-});
+
+        <span className="inline-flex items-center gap-2 whitespace-nowrap basis-full md:basis-auto md:shrink-0">
+          {/* "and N predictions" hover card */}
+          {remainingCount > 0 && (
+            <>
+              <span className="text-sm text-muted-foreground shrink-0">
+                and
+              </span>
+              <HoverCard openDelay={100} closeDelay={200}>
+                <HoverCardTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 shrink-0 transition-colors"
+                  >
+                    {remainingCount} {remainingCount === 1 ? 'other' : 'others'}
+                  </button>
+                </HoverCardTrigger>
+                <HoverCardContent
+                  className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
+                  align="start"
+                >
+                  <div className="flex flex-col divide-y divide-brand-white/20">
+                    {remainingLegs.map((leg, i) => (
+                      <div
+                        key={`${leg.conditionId || i}-${i}`}
+                        className="flex items-center gap-3 px-3 py-2"
+                      >
+                        {leg.source === 'pyth' && leg.pythPrediction ? (
+                          <div className="min-w-0 flex-1">
+                            <PythPredictionListItem
+                              prediction={leg.pythPrediction}
+                              layout="inline"
+                            />
+                          </div>
+                        ) : (
+                          <>
+                            <MarketBadge
+                              label={leg.question}
+                              size={32}
+                              color={getCategoryColor(leg.categorySlug)}
+                              categorySlug={leg.categorySlug}
+                            />
+                            {leg.conditionId ? (
+                              <ConditionTitleLink
+                                conditionId={leg.conditionId}
+                                resolverAddress={
+                                  leg.resolverAddress ?? undefined
+                                }
+                                title={leg.question}
+                                clampLines={1}
+                                className="text-sm"
+                              />
+                            ) : (
+                              <span className="text-sm font-mono text-brand-white">
+                                {leg.question}
+                              </span>
+                            )}
+                            <PredictionChoiceBadge
+                              choice={String(leg.choice).toUpperCase()}
+                            />
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </HoverCardContent>
+              </HoverCard>
+            </>
+          )}
+        </span>
+      </div>
+    );
+  }
+);
 
 /**
  * Displays multiple predictions with stacked category icons,

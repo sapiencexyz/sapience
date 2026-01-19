@@ -5,7 +5,10 @@ import { Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { RangeFilter } from '~/components/shared/RangeFilter';
-import { StatusFilter, type StatusOption } from '~/components/shared/StatusFilter';
+import {
+  StatusFilter,
+  type StatusOption,
+} from '~/components/shared/StatusFilter';
 
 export type ResolutionStatus = 'pending' | 'yes' | 'no';
 

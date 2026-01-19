@@ -596,7 +596,9 @@ export default function PositionsTable({
             ? (row.predictorCollateralWei ?? 0n)
             : row.addressRole === 'counterparty'
               ? (row.counterpartyCollateralWei ?? 0n)
-              : (row.predictorCollateralWei ?? row.counterpartyCollateralWei ?? 0n);
+              : (row.predictorCollateralWei ??
+                row.counterpartyCollateralWei ??
+                0n);
         const wager = Number(formatEther(viewerWagerWei));
         return wager >= filters.wagerRange[0] && wager <= filters.wagerRange[1];
       });
@@ -607,7 +609,10 @@ export default function PositionsTable({
       const nowMs = Date.now();
       result = result.filter((row) => {
         const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
-        return daysFromNow >= filters.dateRange[0] && daysFromNow <= filters.dateRange[1];
+        return (
+          daysFromNow >= filters.dateRange[0] &&
+          daysFromNow <= filters.dateRange[1]
+        );
       });
     }
 
@@ -719,15 +724,15 @@ export default function PositionsTable({
           >
             Created
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -866,15 +871,15 @@ export default function PositionsTable({
           >
             Wager
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -934,15 +939,15 @@ export default function PositionsTable({
           >
             To Win
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -1018,15 +1023,15 @@ export default function PositionsTable({
           >
             Profit/Loss
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -1335,7 +1340,10 @@ export default function PositionsTable({
           <div className="px-4 py-4 border-b border-border flex items-center gap-4">
             {leftSlot}
             <div className="flex-1">
-              <PositionsTableFilters filters={filters} onFiltersChange={setFilters} />
+              <PositionsTableFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+              />
             </div>
           </div>
           {rows.length === 0 ? (
@@ -1344,104 +1352,109 @@ export default function PositionsTable({
             <EmptyTabState centered message="No positions match your filters" />
           ) : (
             <>
-            <div className="overflow-hidden bg-brand-black relative">
-            {isLoading && (
-              <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                <Loader size={12} />
-              </div>
-            )}
-            <Table className="w-full table-fixed">
-              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:!bg-background bg-background border-b border-border">
-                    {headerGroup.headers.map((header) => (
-                      <TableHead
-                        key={header.id}
-                        className={
-                          [
-                            header.id === 'created'
-                              ? 'xl:w-[150px] whitespace-nowrap'
-                              : '',
-                            header.id === 'conditions' ? 'xl:w-auto' : '',
-                            header.id === 'counterparty' ? 'xl:w-[240px]' : '',
-                            header.id === 'wager' ? 'xl:w-[170px]' : '',
-                            header.id === 'toWin' ? 'xl:w-[170px]' : '',
-                            header.id === 'pnl' ? 'xl:w-[170px]' : '',
-                            header.id === 'actions'
-                              ? 'xl:w-[220px] text-right'
-                              : '',
-                          ]
-                            .filter(Boolean)
-                            .join(' ') || undefined
-                        }
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                          cell.column.id === 'created'
-                            ? 'xl:w-[150px] whitespace-nowrap'
-                            : ''
-                        } ${cell.column.id === 'conditions' ? 'xl:w-auto' : ''} ${
-                          cell.column.id === 'counterparty'
-                            ? 'xl:w-[240px] min-w-0'
-                            : ''
-                        } ${cell.column.id === 'wager' ? 'xl:w-[170px]' : ''} ${
-                          cell.column.id === 'toWin' ? 'xl:w-[170px]' : ''
-                        } ${cell.column.id === 'pnl' ? 'xl:w-[170px]' : ''} ${
-                          cell.column.id === 'actions'
-                            ? 'xl:w-[220px] text-left xl:text-right xl:mt-0'
-                            : ''
-                        }`}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-            {/* Infinite scroll sentinel - triggers auto-load when visible */}
-            {hasMore && (
-              <div
-                ref={loadMoreRef}
-                className="flex items-center justify-center px-4 py-6 bg-brand-black"
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
+              <div className="overflow-hidden bg-brand-black relative">
+                {isLoading && (
+                  <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
                     <Loader size={12} />
-                    <span className="text-sm text-muted-foreground">
-                      Loading more positions...
-                    </span>
                   </div>
-                ) : (
-                  <span className="text-sm text-muted-foreground">
-                    Scroll to load more • {data.length} of {totalCount}
-                  </span>
                 )}
+                <Table className="w-full table-fixed">
+                  <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow
+                        key={headerGroup.id}
+                        className="hover:!bg-background bg-background border-b border-border"
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <TableHead
+                            key={header.id}
+                            className={
+                              [
+                                header.id === 'created'
+                                  ? 'xl:w-[150px] whitespace-nowrap'
+                                  : '',
+                                header.id === 'conditions' ? 'xl:w-auto' : '',
+                                header.id === 'counterparty'
+                                  ? 'xl:w-[240px]'
+                                  : '',
+                                header.id === 'wager' ? 'xl:w-[170px]' : '',
+                                header.id === 'toWin' ? 'xl:w-[170px]' : '',
+                                header.id === 'pnl' ? 'xl:w-[170px]' : '',
+                                header.id === 'actions'
+                                  ? 'xl:w-[220px] text-right'
+                                  : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ') || undefined
+                            }
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableHeader>
+                  <TableBody>
+                    {table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                              cell.column.id === 'created'
+                                ? 'xl:w-[150px] whitespace-nowrap'
+                                : ''
+                            } ${cell.column.id === 'conditions' ? 'xl:w-auto' : ''} ${
+                              cell.column.id === 'counterparty'
+                                ? 'xl:w-[240px] min-w-0'
+                                : ''
+                            } ${cell.column.id === 'wager' ? 'xl:w-[170px]' : ''} ${
+                              cell.column.id === 'toWin' ? 'xl:w-[170px]' : ''
+                            } ${cell.column.id === 'pnl' ? 'xl:w-[170px]' : ''} ${
+                              cell.column.id === 'actions'
+                                ? 'xl:w-[220px] text-left xl:text-right xl:mt-0'
+                                : ''
+                            }`}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
-            )}
+              {/* Infinite scroll sentinel - triggers auto-load when visible */}
+              {hasMore && (
+                <div
+                  ref={loadMoreRef}
+                  className="flex items-center justify-center px-4 py-6 bg-brand-black"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader size={12} />
+                      <span className="text-sm text-muted-foreground">
+                        Loading more positions...
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">
+                      Scroll to load more • {data.length} of {totalCount}
+                    </span>
+                  )}
+                </div>
+              )}
             </>
           )}
         </>

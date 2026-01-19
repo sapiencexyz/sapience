@@ -78,7 +78,9 @@ export function StatusFilter<T extends string = string>({
           type="button"
           className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between px-3 text-sm"
         >
-          <span className={selected.length === 0 ? 'text-muted-foreground' : ''}>
+          <span
+            className={selected.length === 0 ? 'text-muted-foreground' : ''}
+          >
             {getButtonLabel()}
           </span>
           <ChevronsUpDown className="h-4 w-4 opacity-50" />

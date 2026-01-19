@@ -394,15 +394,15 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           >
             Created
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: (info) => (
@@ -434,15 +434,15 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           >
             Question
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: (info) =>
@@ -472,15 +472,15 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           >
             Forecast
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: (info) =>
@@ -517,15 +517,15 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           >
             Resolution
             {column.getIsSorted() === 'asc' ? (
-                <ChevronUp className="h-4 w-4" />
-              ) : column.getIsSorted() === 'desc' ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <span className="flex flex-col -my-2">
-                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                  <ChevronDown className="h-3 w-3 opacity-50" />
-                </span>
-              )}
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
           </Button>
         ),
         cell: (info) =>
@@ -556,7 +556,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     let result = attestations || [];
 
     // Filter by resolution status
-    if (filters.resolutionStatus.length > 0 && filters.resolutionStatus.length < 3) {
+    if (
+      filters.resolutionStatus.length > 0 &&
+      filters.resolutionStatus.length < 3
+    ) {
       result = result.filter((att) => {
         const conditionId = att.conditionId;
         let status: 'pending' | 'yes' | 'no' = 'pending';
@@ -574,7 +577,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     if (filters.probabilityRange[0] > 0 || filters.probabilityRange[1] < 100) {
       result = result.filter((att) => {
         const percentage = d18ToPercentage(att.value);
-        return percentage >= filters.probabilityRange[0] && percentage <= filters.probabilityRange[1];
+        return (
+          percentage >= filters.probabilityRange[0] &&
+          percentage <= filters.probabilityRange[1]
+        );
       });
     }
 
@@ -586,7 +592,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         const daysAgo = (nowMs - createdMs) / (1000 * 60 * 60 * 24);
         // For forecasts: negative days = created in the past (e.g., -30 = created 30 days ago)
         const daysFromNow = -daysAgo;
-        return daysFromNow >= filters.dateRange[0] && daysFromNow <= filters.dateRange[1];
+        return (
+          daysFromNow >= filters.dateRange[0] &&
+          daysFromNow <= filters.dateRange[1]
+        );
       });
     }
 
@@ -600,7 +609,11 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         if (conditionId && conditionsMap) {
           const condition = conditionsMap[conditionId.toLowerCase()];
           if (condition) {
-            questionText = (condition.shortName || condition.question || '').toLowerCase();
+            questionText = (
+              condition.shortName ||
+              condition.question ||
+              ''
+            ).toLowerCase();
           }
         }
         return comment.includes(term) || questionText.includes(term);
@@ -643,7 +656,8 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
   }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
 
   // Initial loading state (no data yet)
-  const isInitialLoading = isLoading && (!attestations || attestations.length === 0);
+  const isInitialLoading =
+    isLoading && (!attestations || attestations.length === 0);
   const hasNoData = !attestations || attestations.length === 0;
 
   const renderContent = (
@@ -680,7 +694,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       <div className="px-4 py-4 border-b border-border flex items-center gap-4">
         {leftSlot}
         <div className="flex-1">
-          <ForecastsTableFilters filters={filters} onFiltersChange={setFilters} />
+          <ForecastsTableFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
         </div>
       </div>
       {hasNoData ? (
@@ -698,7 +715,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             <Table>
               <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id} className="hover:!bg-background bg-background border-b border-border">
+                  <TableRow
+                    key={headerGroup.id}
+                    className="hover:!bg-background bg-background border-b border-border"
+                  >
                     {headerGroup.headers.map((header) => {
                       const content = header.isPlaceholder
                         ? null
@@ -771,7 +791,10 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       <EmptyTabState message="No forecasts match your filters" />
                     </TableCell>
                   </TableRow>

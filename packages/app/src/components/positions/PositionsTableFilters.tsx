@@ -5,7 +5,10 @@ import { Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { RangeFilter } from '~/components/shared/RangeFilter';
-import { StatusFilter, type StatusOption } from '~/components/shared/StatusFilter';
+import {
+  StatusFilter,
+  type StatusOption,
+} from '~/components/shared/StatusFilter';
 
 export type PositionStatus = 'active' | 'won' | 'lost';
 
@@ -118,9 +121,7 @@ export function PositionsTableFilters({
         min={0}
         max={WAGER_SLIDER_MAX}
         step={10}
-        formatValue={(v) =>
-          v >= WAGER_SLIDER_MAX ? '∞' : v.toLocaleString()
-        }
+        formatValue={(v) => (v >= WAGER_SLIDER_MAX ? '∞' : v.toLocaleString())}
         parseValue={(v) => {
           if (v === '∞') return WAGER_SLIDER_MAX;
           return Number(v.replace(/,/g, ''));
