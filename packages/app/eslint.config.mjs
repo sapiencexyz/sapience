@@ -7,6 +7,13 @@ import importPlugin from 'eslint-plugin-import';
 import graphqlPlugin from '@graphql-eslint/eslint-plugin';
 
 export default typescriptPlugin.config(
+  // Global ignores - test files excluded from tsconfig
+  {
+    ignores: [
+      '**/*.test.ts',
+      '**/*.test.tsx',
+    ],
+  },
   // Base JavaScript recommended config
   js.configs.recommended,
   // TypeScript files

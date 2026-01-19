@@ -17,8 +17,8 @@ import {
 } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
-import React, { useMemo } from 'react';
-import { ArrowUpDown, ArrowUp, ArrowDown, Copy } from 'lucide-react';
+import React, { useMemo, useRef, useEffect, useCallback } from 'react';
+import { ChevronUp, ChevronDown, Copy } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -26,9 +26,18 @@ import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { formatPercentChance } from '~/lib/format/percentChance';
+import Loader from '~/components/shared/Loader';
+import {
+  ForecastsTableFilters,
+  getDefaultForecastsFilterState,
+  type ForecastsFilterState,
+} from '~/components/profile/ForecastsTableFilters';
+import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
+import { SCHEMA_UID } from '~/lib/constants';
 
 interface ForecastsTableProps {
-  attestations: FormattedAttestation[] | undefined;
+  attesterAddress: string;
+  leftSlot?: React.ReactNode;
 }
 
 type ConditionData = {
@@ -80,7 +89,7 @@ const renderSubmittedCell = ({
       </div>
       {uid && (
         <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
-          <span className="font-mono">UID {truncatedUid}</span>
+          <span className="font-mono">ID {truncatedUid}</span>
           <button
             type="button"
             onClick={handleCopy}
@@ -260,13 +269,16 @@ const renderResolutionCell = ({
     if (condition) {
       if (condition.settled) {
         const isYes = condition.resolvedToYes === true;
-        const label = isYes ? 'Yes' : 'No';
-        const className = isYes
-          ? 'border-green-500/40 bg-green-500/10 text-green-600'
-          : 'border-red-500/40 bg-red-500/10 text-red-600';
         return (
-          <Badge variant="outline" className={`${className} whitespace-nowrap`}>
-            {label}
+          <Badge
+            variant="outline"
+            className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+              isYes
+                ? 'border-yes/40 bg-yes/10 text-yes'
+                : 'border-no/40 bg-no/10 text-no'
+            }`}
+          >
+            {isYes ? 'YES' : 'NO'}
           </Badge>
         );
       }
@@ -274,13 +286,40 @@ const renderResolutionCell = ({
   }
 
   return (
-    <Badge variant="secondary" className="whitespace-nowrap">
-      Pending
+    <Badge
+      variant="outline"
+      className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+    >
+      PENDING
     </Badge>
   );
 };
 
-const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
+const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
+  // Filter state
+  const [filters, setFilters] = React.useState<ForecastsFilterState>(
+    getDefaultForecastsFilterState
+  );
+
+  // Fetch data with infinite pagination
+  const {
+    data: attestations,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteForecasts({
+    attesterAddress,
+    schemaId: SCHEMA_UID,
+  });
+
+  // Load more handler (wrapped in useCallback for IntersectionObserver dependency)
+  const handleLoadMore = useCallback(() => {
+    if (!isFetchingNextPage && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
+
   // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
@@ -344,7 +383,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -355,11 +394,14 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
           >
             Created
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
+              <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
             ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
             )}
           </Button>
         ),
@@ -381,7 +423,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -392,11 +434,14 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
           >
             Question
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
+              <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
             ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
             )}
           </Button>
         ),
@@ -416,7 +461,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -427,11 +472,14 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
           >
             Forecast
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
+              <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
             ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
             )}
           </Button>
         ),
@@ -458,7 +506,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -469,11 +517,14 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
           >
             Resolution
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
+              <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
+              <ChevronDown className="h-4 w-4" />
             ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
             )}
           </Button>
         ),
@@ -500,8 +551,80 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
     { id: 'rawTime', desc: true },
   ]);
 
+  // Apply client-side filtering
+  const filteredAttestations = useMemo(() => {
+    let result = attestations || [];
+
+    // Filter by resolution status
+    if (
+      filters.resolutionStatus.length > 0 &&
+      filters.resolutionStatus.length < 3
+    ) {
+      result = result.filter((att) => {
+        const conditionId = att.conditionId;
+        let status: 'pending' | 'yes' | 'no' = 'pending';
+        if (conditionId && conditionsMap) {
+          const condition = conditionsMap[conditionId.toLowerCase()];
+          if (condition?.settled) {
+            status = condition.resolvedToYes ? 'yes' : 'no';
+          }
+        }
+        return filters.resolutionStatus.includes(status);
+      });
+    }
+
+    // Filter by probability range
+    if (filters.probabilityRange[0] > 0 || filters.probabilityRange[1] < 100) {
+      result = result.filter((att) => {
+        const percentage = d18ToPercentage(att.value);
+        return (
+          percentage >= filters.probabilityRange[0] &&
+          percentage <= filters.probabilityRange[1]
+        );
+      });
+    }
+
+    // Filter by date range (days from now based on forecast creation time)
+    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
+      const nowMs = Date.now();
+      result = result.filter((att) => {
+        const createdMs = Number(att.rawTime) * 1000;
+        const daysAgo = (nowMs - createdMs) / (1000 * 60 * 60 * 24);
+        // For forecasts: negative days = created in the past (e.g., -30 = created 30 days ago)
+        const daysFromNow = -daysAgo;
+        return (
+          daysFromNow >= filters.dateRange[0] &&
+          daysFromNow <= filters.dateRange[1]
+        );
+      });
+    }
+
+    // Filter by search term
+    if (filters.searchTerm.trim()) {
+      const term = filters.searchTerm.toLowerCase();
+      result = result.filter((att) => {
+        const comment = (att.comment || '').toLowerCase();
+        const conditionId = att.conditionId;
+        let questionText = '';
+        if (conditionId && conditionsMap) {
+          const condition = conditionsMap[conditionId.toLowerCase()];
+          if (condition) {
+            questionText = (
+              condition.shortName ||
+              condition.question ||
+              ''
+            ).toLowerCase();
+          }
+        }
+        return comment.includes(term) || questionText.includes(term);
+      });
+    }
+
+    return result;
+  }, [attestations, filters, conditionsMap]);
+
   const table = useReactTable({
-    data: attestations || [],
+    data: filteredAttestations,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -509,10 +632,33 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Empty state
-  if (!attestations || attestations.length === 0) {
-    return <EmptyTabState centered message="No forecasts found" />;
-  }
+  // Auto-load more when scrolling near bottom
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loadMoreRef.current || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+          handleLoadMore();
+        }
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '100px', // Start loading 100px before the element is visible
+      }
+    );
+
+    observer.observe(loadMoreRef.current);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
+
+  // Initial loading state (no data yet)
+  const isInitialLoading =
+    isLoading && (!attestations || attestations.length === 0);
+  const hasNoData = !attestations || attestations.length === 0;
 
   const renderContent = (
     content: unknown
@@ -535,91 +681,149 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
     return content as string | number | null;
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
+        <Loader size={24} />
+      </div>
+    );
+  }
+
   return (
-    <div className="overflow-hidden bg-brand-black">
-      <Table>
-        <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => {
-                const content = header.isPlaceholder
-                  ? null
-                  : flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    );
-                return (
-                  <TableHead
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    className={
-                      header.column.id === 'actions'
-                        ? 'text-right'
-                        : header.column.id === 'question'
-                          ? 'w-full'
-                          : undefined
-                    }
+    <div>
+      <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+        {leftSlot}
+        <div className="flex-1">
+          <ForecastsTableFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+          />
+        </div>
+      </div>
+      {hasNoData ? (
+        <EmptyTabState centered message="No forecasts found" />
+      ) : filteredAttestations.length === 0 ? (
+        <EmptyTabState centered message="No forecasts match your filters" />
+      ) : (
+        <>
+          <div className="overflow-hidden bg-brand-black relative">
+            {(isLoading || isFetchingNextPage) && (
+              <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
+                <Loader size={12} />
+              </div>
+            )}
+            <Table>
+              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow
+                    key={headerGroup.id}
+                    className="hover:!bg-background bg-background border-b border-border"
                   >
-                    {renderContent(content)}
-                  </TableHead>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && 'selected'}
-                className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 hover:bg-muted/50"
-              >
-                {row.getVisibleCells().map((cell) => {
-                  const content = flexRender(
-                    cell.column.columnDef.cell,
-                    cell.getContext()
-                  );
-                  const colId = cell.column.id;
-                  const mobileLabel =
-                    colId === 'value'
-                      ? 'Forecast'
-                      : colId === 'rawTime'
-                        ? 'Created'
-                        : undefined;
-                  return (
-                    <TableCell
-                      key={cell.id}
-                      className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                        colId === 'actions'
-                          ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
-                          : ''
-                      } ${colId === 'question' ? 'xl:w-full' : ''}`}
-                    >
-                      {mobileLabel ? (
-                        <div
-                          className={`text-xs text-muted-foreground xl:hidden ${
-                            mobileLabel === 'Forecast' ? 'mb-1.5' : ''
-                          }`}
+                    {headerGroup.headers.map((header) => {
+                      const content = header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          );
+                      return (
+                        <TableHead
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          className={
+                            header.column.id === 'actions'
+                              ? 'text-right'
+                              : header.column.id === 'question'
+                                ? 'w-full'
+                                : undefined
+                          }
                         >
-                          {mobileLabel}
-                        </div>
-                      ) : null}
-                      {renderContent(content)}
+                          {renderContent(content)}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && 'selected'}
+                      className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 hover:bg-muted/50"
+                    >
+                      {row.getVisibleCells().map((cell) => {
+                        const content = flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        );
+                        const colId = cell.column.id;
+                        const mobileLabel =
+                          colId === 'value'
+                            ? 'Forecast'
+                            : colId === 'rawTime'
+                              ? 'Created'
+                              : undefined;
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                              colId === 'actions'
+                                ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
+                                : ''
+                            } ${colId === 'question' ? 'xl:w-full' : ''}`}
+                          >
+                            {mobileLabel ? (
+                              <div
+                                className={`text-xs text-muted-foreground xl:hidden ${
+                                  mobileLabel === 'Forecast' ? 'mb-1.5' : ''
+                                }`}
+                              >
+                                {mobileLabel}
+                              </div>
+                            ) : null}
+                            {renderContent(content)}
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      <EmptyTabState message="No forecasts match your filters" />
                     </TableCell>
-                  );
-                })}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                <EmptyTabState message="No forecasts found" />
-              </TableCell>
-            </TableRow>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          {/* Infinite scroll sentinel - triggers auto-load when visible */}
+          {hasNextPage && (
+            <div
+              ref={loadMoreRef}
+              className="flex items-center justify-center px-4 py-6 bg-brand-black"
+            >
+              {isFetchingNextPage ? (
+                <div className="flex items-center gap-2">
+                  <Loader size={12} />
+                  <span className="text-sm text-muted-foreground">
+                    Loading more forecasts...
+                  </span>
+                </div>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  Scroll to load more
+                </span>
+              )}
+            </div>
           )}
-        </TableBody>
-      </Table>
+        </>
+      )}
     </div>
   );
 };

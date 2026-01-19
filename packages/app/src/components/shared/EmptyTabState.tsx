@@ -1,4 +1,3 @@
-import { FrownIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 type EmptyTabStateProps = {
@@ -14,13 +13,12 @@ export default function EmptyTabState({
 }: EmptyTabStateProps) {
   return (
     <div
-      className={`text-center text-muted-foreground py-16 ${
+      className={`text-center text-muted-foreground py-16 font-mono uppercase ${
         centered
-          ? 'w-full min-h-[50vh] md:min-h-[60vh] flex flex-col items-center justify-center'
+          ? 'w-full min-h-[200px] flex flex-col items-center justify-center'
           : ''
       } ${className}`}
     >
-      <FrownIcon className="h-9 w-9 mx-auto mb-2 opacity-20" />
       {message}
     </div>
   );
