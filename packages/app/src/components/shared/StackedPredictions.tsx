@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@sapience/ui/components/ui/hover-card';
 import {
   PredictionChoiceBadge,
   PythOracleMark,
@@ -162,20 +162,20 @@ export function StackedPredictionsTitle({
       )}
 
       <span className="inline-flex items-center gap-2 whitespace-nowrap basis-full md:basis-auto md:shrink-0">
-        {/* "and N predictions" popover */}
+        {/* "and N predictions" hover card */}
         {remainingCount > 0 && (
           <>
             <span className="text-sm text-muted-foreground shrink-0">and</span>
-            <Popover>
-              <PopoverTrigger asChild>
+            <HoverCard openDelay={100} closeDelay={200}>
+              <HoverCardTrigger asChild>
                 <button
                   type="button"
                   className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 shrink-0 transition-colors"
                 >
                   {remainingCount} {remainingCount === 1 ? 'other' : 'others'}
                 </button>
-              </PopoverTrigger>
-              <PopoverContent
+              </HoverCardTrigger>
+              <HoverCardContent
                 className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
                 align="start"
               >
@@ -221,8 +221,8 @@ export function StackedPredictionsTitle({
                     </div>
                   ))}
                 </div>
-              </PopoverContent>
-            </Popover>
+              </HoverCardContent>
+            </HoverCard>
           </>
         )}
       </span>

@@ -305,10 +305,12 @@ function PredictCell({ condition }: { condition: ConditionType }) {
       question: displayQ,
       prediction: true,
       categorySlug: condition.category?.slug,
+      endTime: condition.endTime,
     });
   }, [
     condition.id,
     condition.category?.slug,
+    condition.endTime,
     displayQ,
     selections,
     removeSelection,
@@ -327,10 +329,12 @@ function PredictCell({ condition }: { condition: ConditionType }) {
       question: displayQ,
       prediction: false,
       categorySlug: condition.category?.slug,
+      endTime: condition.endTime,
     });
   }, [
     condition.id,
     condition.category?.slug,
+    condition.endTime,
     displayQ,
     selections,
     removeSelection,

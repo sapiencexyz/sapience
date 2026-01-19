@@ -65,6 +65,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
       prediction: true,
       categorySlug,
       resolverAddress: resolver,
+      endTime,
     });
     router.push('/markets');
   }, [
@@ -72,6 +73,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     displayQ,
     categorySlug,
     resolver,
+    endTime,
     selections,
     removeSelection,
     addSelection,
@@ -91,6 +93,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
       prediction: false,
       categorySlug,
       resolverAddress: resolver,
+      endTime,
     });
     router.push('/markets');
   }, [
@@ -98,6 +101,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     displayQ,
     categorySlug,
     resolver,
+    endTime,
     selections,
     removeSelection,
     addSelection,

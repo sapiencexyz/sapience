@@ -19,7 +19,6 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 
-import { formatFiveSigFigs } from '~/lib/utils/util';
 import type { Position } from '~/hooks/graphql/useUserPositions';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
@@ -161,10 +160,10 @@ function useProfileBalance(
   const memo = React.useMemo(() => {
     const effectiveSymbol = collateralSymbol ?? symbol;
     if (balance === 0) {
-      return { display: '0', tooltip: `0 ${effectiveSymbol}` };
+      return { display: '0.00', tooltip: `0 ${effectiveSymbol}` };
     }
     return {
-      display: `${formatFiveSigFigs(balance)}`,
+      display: balance.toFixed(2),
       tooltip: `${balance.toLocaleString()} ${effectiveSymbol}`,
     };
   }, [balance, symbol, collateralSymbol]);

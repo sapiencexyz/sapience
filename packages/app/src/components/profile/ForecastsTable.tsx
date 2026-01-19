@@ -536,7 +536,7 @@ const ForecastsTable = ({ attestations }: ForecastsTableProps) => {
   };
 
   return (
-    <div className="border-y border-border rounded-none overflow-hidden bg-brand-black">
+    <div className="overflow-hidden bg-brand-black">
       <Table>
         <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
           {table.getHeaderGroups().map((headerGroup) => (
