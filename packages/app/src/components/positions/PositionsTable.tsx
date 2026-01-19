@@ -20,7 +20,7 @@ import {
   type ColumnDef,
   type SortingState,
 } from '@tanstack/react-table';
-import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import * as React from 'react';
 import { useReadContracts, useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
@@ -36,9 +36,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
-import StackedPredictions, {
-  type Pick,
-} from '~/components/shared/StackedPredictions';
+import StackedPredictions from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import {
   formatPythPriceDecimalFromInt,
@@ -58,6 +56,11 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import type { PythPrediction } from '@sapience/ui';
+import {
+  PositionsTableFilters,
+  getDefaultPositionsFilterState,
+  type PositionsFilterState,
+} from '~/components/positions/PositionsTableFilters';
 
 function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
   const [nowMs, setNowMs] = React.useState(() => Date.now());
@@ -110,10 +113,12 @@ export default function PositionsTable({
   account,
   showHeaderText = true,
   chainId,
+  leftSlot,
 }: {
   account: Address;
   showHeaderText?: boolean;
   chainId?: number;
+  leftSlot?: React.ReactNode;
 }) {
   const pythSideForRole = (
     makerPrediction: boolean,
@@ -200,11 +205,17 @@ export default function PositionsTable({
     { id: 'created', desc: true },
   ]);
 
+  // Filter state
+  const [filters, setFilters] = React.useState<PositionsFilterState>(
+    getDefaultPositionsFilterState
+  );
+
   // Convert sorting state to API params
   const orderBy = sorting[0]?.id;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
-  // Reset when account, sorting, or chainId changes
+  // Reset when account, sorting, or chainId change (server-side params only)
+  // Note: filters are applied client-side, so they shouldn't reset the loaded data
   React.useEffect(() => {
     setSkip(0);
     setAllLoadedData([]);
@@ -567,6 +578,52 @@ export default function PositionsTable({
 
     return positionRows;
   }, [data, viewer]);
+
+  // Apply client-side filtering
+  const filteredRows = React.useMemo(() => {
+    let result = rows;
+
+    // Filter by status
+    if (filters.status.length > 0 && filters.status.length < 3) {
+      result = result.filter((row) => filters.status.includes(row.status));
+    }
+
+    // Filter by wager range
+    if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
+      result = result.filter((row) => {
+        const viewerWagerWei =
+          row.addressRole === 'predictor'
+            ? (row.predictorCollateralWei ?? 0n)
+            : row.addressRole === 'counterparty'
+              ? (row.counterpartyCollateralWei ?? 0n)
+              : (row.predictorCollateralWei ?? row.counterpartyCollateralWei ?? 0n);
+        const wager = Number(formatEther(viewerWagerWei));
+        return wager >= filters.wagerRange[0] && wager <= filters.wagerRange[1];
+      });
+    }
+
+    // Filter by date range (days from now based on endsAt)
+    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
+      const nowMs = Date.now();
+      result = result.filter((row) => {
+        const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
+        return daysFromNow >= filters.dateRange[0] && daysFromNow <= filters.dateRange[1];
+      });
+    }
+
+    // Filter by search term
+    if (filters.searchTerm.trim()) {
+      const term = filters.searchTerm.toLowerCase();
+      result = result.filter((row) => {
+        return row.legs.some((leg) =>
+          leg.question.toLowerCase().includes(term)
+        );
+      });
+    }
+
+    return result;
+  }, [rows, filters]);
+
   // Detect claimability by checking on-chain ownerOf for the potential claim tokenIds
   const tokenIdsToCheck = React.useMemo(
     () =>
@@ -651,7 +708,7 @@ export default function PositionsTable({
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -662,12 +719,15 @@ export default function PositionsTable({
           >
             Created
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
+                <ChevronUp className="h-4 w-4" />
+              ) : column.getIsSorted() === 'desc' ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <span className="flex flex-col -my-2">
+                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </span>
+              )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -730,21 +790,7 @@ export default function PositionsTable({
                   </>
                 )}
                 <StackedPredictions
-                  legs={
-                    row.original.legs.map(
-                      (leg): Pick => ({
-                        question: leg.question,
-                        choice: leg.choice,
-                        conditionId: leg.conditionId,
-                        resolverAddress: leg.resolverAddress ?? null,
-                        categorySlug: leg.categorySlug ?? null,
-                        endTime: leg.endTime ?? null,
-                        description: leg.description ?? null,
-                        source: leg.source,
-                        pythPrediction: leg.pythPrediction,
-                      })
-                    ) ?? []
-                  }
+                  legs={row.original.legs}
                   className="max-w-full flex-1 min-w-0"
                 />
               </div>
@@ -809,7 +855,7 @@ export default function PositionsTable({
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -820,12 +866,15 @@ export default function PositionsTable({
           >
             Wager
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
+                <ChevronUp className="h-4 w-4" />
+              ) : column.getIsSorted() === 'desc' ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <span className="flex flex-col -my-2">
+                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </span>
+              )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -874,7 +923,7 @@ export default function PositionsTable({
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -885,12 +934,15 @@ export default function PositionsTable({
           >
             To Win
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
+                <ChevronUp className="h-4 w-4" />
+              ) : column.getIsSorted() === 'desc' ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <span className="flex flex-col -my-2">
+                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </span>
+              )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -955,7 +1007,7 @@ export default function PositionsTable({
             variant="ghost"
             size="sm"
             onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 h-auto font-medium text-brand-white hover:opacity-80 hover:bg-transparent transition-opacity inline-flex items-center"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             aria-sort={
               column.getIsSorted() === false
                 ? 'none'
@@ -966,12 +1018,15 @@ export default function PositionsTable({
           >
             Profit/Loss
             {column.getIsSorted() === 'asc' ? (
-              <ArrowUp className="ml-1 h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ArrowDown className="ml-1 h-4 w-4" />
-            ) : (
-              <ArrowUpDown className="ml-1 h-4 w-4 opacity-50" />
-            )}
+                <ChevronUp className="h-4 w-4" />
+              ) : column.getIsSorted() === 'desc' ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <span className="flex flex-col -my-2">
+                  <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </span>
+              )}
           </Button>
         ),
         cell: ({ row }) => {
@@ -1036,8 +1091,8 @@ export default function PositionsTable({
                 <div
                   className={`text-xs tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
-                  ({roi >= 0 ? '+' : ''}
-                  {Math.round(roi).toLocaleString()}%)
+                  {roi >= 0 ? '+' : ''}
+                  {Math.round(roi).toLocaleString()}%
                 </div>
               )}
             </div>
@@ -1230,7 +1285,7 @@ export default function PositionsTable({
   );
 
   const table = useReactTable({
-    data: rows,
+    data: filteredRows,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -1271,24 +1326,34 @@ export default function PositionsTable({
       {showHeaderText && (
         <h2 className="text-lg font-medium mb-2">Your Positions</h2>
       )}
-      {rows.length === 0 && !isLoading ? (
-        <EmptyTabState centered message="No positions found" />
-      ) : isLoading && rows.length === 0 ? (
-        <div className="w-full min-h-[300px] flex items-center justify-center">
-          <Loader size={12} />
+      {isLoading && rows.length === 0 ? (
+        <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
+          <Loader size={24} />
         </div>
       ) : (
         <>
-          <div className="overflow-hidden bg-brand-black relative">
+          <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+            {leftSlot}
+            <div className="flex-1">
+              <PositionsTableFilters filters={filters} onFiltersChange={setFilters} />
+            </div>
+          </div>
+          {rows.length === 0 ? (
+            <EmptyTabState centered message="No positions found" />
+          ) : filteredRows.length === 0 ? (
+            <EmptyTabState centered message="No positions match your filters" />
+          ) : (
+            <>
+            <div className="overflow-hidden bg-brand-black relative">
             {isLoading && (
               <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
                 <Loader size={12} />
               </div>
             )}
             <Table className="w-full table-fixed">
-              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
+              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
                 {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
+                  <TableRow key={headerGroup.id} className="hover:!bg-background bg-background border-b border-border">
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
@@ -1357,25 +1422,27 @@ export default function PositionsTable({
               </TableBody>
             </Table>
           </div>
-          {/* Infinite scroll sentinel - triggers auto-load when visible */}
-          {hasMore && (
-            <div
-              ref={loadMoreRef}
-              className="flex items-center justify-center px-4 py-6 bg-brand-black"
-            >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader size={12} />
+            {/* Infinite scroll sentinel - triggers auto-load when visible */}
+            {hasMore && (
+              <div
+                ref={loadMoreRef}
+                className="flex items-center justify-center px-4 py-6 bg-brand-black"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader size={12} />
+                    <span className="text-sm text-muted-foreground">
+                      Loading more positions...
+                    </span>
+                  </div>
+                ) : (
                   <span className="text-sm text-muted-foreground">
-                    Loading more positions...
+                    Scroll to load more • {data.length} of {totalCount}
                   </span>
-                </div>
-              ) : (
-                <span className="text-sm text-muted-foreground">
-                  Scroll to load more • {data.length} of {totalCount}
-                </span>
-              )}
-            </div>
+                )}
+              </div>
+            )}
+            </>
           )}
         </>
       )}

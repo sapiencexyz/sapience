@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import {
   HoverCard,
   HoverCardContent,
@@ -104,7 +105,7 @@ export function StackedIcons({
  * Renders just the question + badge + "and N predictions" popover portion.
  * Can be used separately when the title needs to be in a different cell/container.
  */
-export function StackedPredictionsTitle({
+export const StackedPredictionsTitle = React.memo(function StackedPredictionsTitle({
   legs,
   className,
   maxWidthClass = 'max-w-[300px]',
@@ -228,7 +229,7 @@ export function StackedPredictionsTitle({
       </span>
     </div>
   );
-}
+});
 
 /**
  * Displays multiple predictions with stacked category icons,
@@ -239,7 +240,7 @@ export function StackedPredictionsTitle({
  * For split layouts (e.g., icons in one cell, title in another), use
  * `StackedIcons` and `StackedPredictionsTitle` separately.
  */
-export default function StackedPredictions({
+const StackedPredictions = React.memo(function StackedPredictions({
   legs,
   showIcons = true,
   className,
@@ -257,4 +258,6 @@ export default function StackedPredictions({
       </div>
     </div>
   );
-}
+});
+
+export default StackedPredictions;
