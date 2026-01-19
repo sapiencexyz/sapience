@@ -1106,20 +1106,46 @@ class PredictionMarketIndexer implements IIndexer {
 
       if (existingBurned) {
         console.log(
-          `[PredictionMarketIndexer] Skipping duplicate PredictionBurned event tx=${burnedKey.transactionHash} block=${burnedKey.blockNumber} logIndex=${burnedKey.logIndex}`
+          `[PredictionMarketIndexer] Event already exists tx=${burnedKey.transactionHash} block=${burnedKey.blockNumber} logIndex=${burnedKey.logIndex}`
         );
-        return;
-      }
 
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-        },
-      });
+        // For reindexing: still check if position needs to be updated (might be missing due to old bug)
+        const existingPosition = await prisma.position.findFirst({
+          where: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
+            predictorNftTokenId: eventData.makerNftTokenId,
+            counterpartyNftTokenId: eventData.takerNftTokenId,
+          },
+        });
+
+        if (existingPosition && existingPosition.status === 'settled') {
+          console.log(
+            `[PredictionMarketIndexer] Position already settled for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          return;
+        } else if (existingPosition) {
+          console.log(
+            `[PredictionMarketIndexer] Event exists but position not settled - updating position for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          // Continue to position update logic below
+        } else {
+          console.log(
+            `[PredictionMarketIndexer] Event exists but position not found for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          return;
+        }
+      } else {
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
+          },
+        });
+      }
 
       // Update Position status
       try {
@@ -1127,10 +1153,8 @@ class PredictionMarketIndexer implements IIndexer {
           where: {
             chainId: this.chainId,
             marketAddress: log.address.toLowerCase(),
-            OR: [
-              { predictorNftTokenId: eventData.makerNftTokenId },
-              { counterpartyNftTokenId: eventData.takerNftTokenId },
-            ],
+            predictorNftTokenId: eventData.makerNftTokenId,
+            counterpartyNftTokenId: eventData.takerNftTokenId,
           },
         });
         if (position) {
@@ -1202,20 +1226,46 @@ class PredictionMarketIndexer implements IIndexer {
 
       if (existingConsolidated) {
         console.log(
-          `[PredictionMarketIndexer] Skipping duplicate PredictionConsolidated event tx=${consolidatedKey.transactionHash} block=${consolidatedKey.blockNumber} logIndex=${consolidatedKey.logIndex}`
+          `[PredictionMarketIndexer] Event already exists tx=${consolidatedKey.transactionHash} block=${consolidatedKey.blockNumber} logIndex=${consolidatedKey.logIndex}`
         );
-        return;
-      }
 
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-        },
-      });
+        // For reindexing: still check if position needs to be updated (might be missing due to old bug)
+        const existingPosition = await prisma.position.findFirst({
+          where: {
+            chainId: this.chainId,
+            marketAddress: log.address.toLowerCase(),
+            predictorNftTokenId: eventData.makerNftTokenId,
+            counterpartyNftTokenId: eventData.takerNftTokenId,
+          },
+        });
+
+        if (existingPosition && existingPosition.status === 'consolidated') {
+          console.log(
+            `[PredictionMarketIndexer] Position already consolidated for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          return;
+        } else if (existingPosition) {
+          console.log(
+            `[PredictionMarketIndexer] Event exists but position not consolidated - updating position for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          // Continue to position update logic below
+        } else {
+          console.log(
+            `[PredictionMarketIndexer] Event exists but position not found for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
+          );
+          return;
+        }
+      } else {
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
+          },
+        });
+      }
 
       // Update Position status
       try {
@@ -1223,10 +1273,8 @@ class PredictionMarketIndexer implements IIndexer {
           where: {
             chainId: this.chainId,
             marketAddress: log.address.toLowerCase(),
-            OR: [
-              { predictorNftTokenId: eventData.makerNftTokenId },
-              { counterpartyNftTokenId: eventData.takerNftTokenId },
-            ],
+            predictorNftTokenId: eventData.makerNftTokenId,
+            counterpartyNftTokenId: eventData.takerNftTokenId,
           },
         });
         if (position) {
