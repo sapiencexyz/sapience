@@ -349,6 +349,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           prediction: leg.prediction,
           categorySlug: leg.condition.category?.slug,
           resolverAddress: leg.condition.resolver,
+          endTime: leg.condition.endTime,
         });
       });
     },

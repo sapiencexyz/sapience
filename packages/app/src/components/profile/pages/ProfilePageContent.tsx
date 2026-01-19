@@ -229,7 +229,7 @@ const ProfilePageContent = () => {
                 </div>
               ) : null}
 
-              <div className="-mx-3 md:-mx-6 lg:-mx-8 bg-brand-black flex-1">
+              <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black flex-1 mb-3 md:mb-6 lg:mb-8">
                 {shouldShowPositionsTab ? (
                   <TabsContent
                     value="positions"
@@ -242,7 +242,7 @@ const ProfilePageContent = () => {
                         chainId={chainId}
                       />
                     ) : (
-                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                      <div className="flex-1 flex items-center justify-center">
                         <EmptyTabState centered message="No positions found" />
                       </div>
                     )}
@@ -257,7 +257,7 @@ const ProfilePageContent = () => {
                     {hasForecasts ? (
                       <ForecastsTable attestations={attestations} />
                     ) : (
-                      <div className="flex-1 flex items-center justify-center border-t border-border">
+                      <div className="flex-1 flex items-center justify-center">
                         <EmptyTabState
                           centered
                           message={
