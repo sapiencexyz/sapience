@@ -1,7 +1,7 @@
 import {
   pythResolver,
   umaResolver,
-  lzPMResolver,
+  predictionMarketLZConditionalTokensResolver,
 } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
@@ -174,7 +174,9 @@ export function buildAuctionStartPayload(
   let resolverAddress: `0x${string}` | undefined;
 
   if (targetChainId === CHAIN_ID_ETHEREAL) {
-    resolverAddress = lzPMResolver[CHAIN_ID_ETHEREAL]?.address;
+    // Use Polymarket LZ resolver for Ethereal auctions
+    resolverAddress =
+      predictionMarketLZConditionalTokensResolver[CHAIN_ID_ETHEREAL]?.address;
   } else {
     resolverAddress = umaResolver[targetChainId]?.address as
       | `0x${string}`
