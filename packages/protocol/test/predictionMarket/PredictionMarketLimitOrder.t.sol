@@ -69,12 +69,14 @@ contract PredictionMarketLimitOrderTest is Test {
         unauthorizedUser = vm.addr(3);
 
         // Deploy prediction market
-        predictionMarket = new PredictionMarket("Prediction Market", "PM", address(collateralToken), MIN_COLLATERAL);
+        predictionMarket = new PredictionMarket(
+            "Prediction Market", "PM", address(collateralToken), MIN_COLLATERAL
+        );
 
         // Mint tokens to test accounts
-        collateralToken.mint(maker, 10000e18);
-        collateralToken.mint(taker, 10000e18);
-        collateralToken.mint(unauthorizedUser, 10000e18);
+        collateralToken.mint(maker, 10_000e18);
+        collateralToken.mint(taker, 10_000e18);
+        collateralToken.mint(unauthorizedUser, 10_000e18);
 
         // Approve prediction market to spend tokens
         vm.prank(maker);
@@ -85,7 +87,11 @@ contract PredictionMarketLimitOrderTest is Test {
         collateralToken.approve(address(predictionMarket), type(uint256).max);
     }
 
-    function _createValidOrderRequest() internal view returns (IPredictionStructs.OrderRequestData memory) {
+    function _createValidOrderRequest()
+        internal
+        view
+        returns (IPredictionStructs.OrderRequestData memory)
+    {
         return IPredictionStructs.OrderRequestData({
             encodedPredictedOutcomes: ENCODED_OUTCOMES,
             orderDeadline: block.timestamp + 1 hours,
@@ -99,10 +105,12 @@ contract PredictionMarketLimitOrderTest is Test {
     // ============ Place Order Tests ============
 
     function test_placeOrder_success() public {
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
 
         uint256 makerBalanceBefore = collateralToken.balanceOf(maker);
-        uint256 contractBalanceBefore = collateralToken.balanceOf(address(predictionMarket));
+        uint256 contractBalanceBefore =
+            collateralToken.balanceOf(address(predictionMarket));
 
         vm.expectEmit(true, true, false, true);
         emit OrderPlaced(
@@ -122,11 +130,18 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(orderId, 1);
 
         // Verify collateral transfer
-        assertEq(collateralToken.balanceOf(maker), makerBalanceBefore - MAKER_COLLATERAL);
-        assertEq(collateralToken.balanceOf(address(predictionMarket)), contractBalanceBefore + MAKER_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(maker),
+            makerBalanceBefore - MAKER_COLLATERAL
+        );
+        assertEq(
+            collateralToken.balanceOf(address(predictionMarket)),
+            contractBalanceBefore + MAKER_COLLATERAL
+        );
 
         // Verify order data
-        IPredictionStructs.LimitOrderData memory order = predictionMarket.getUnfilledOrder(orderId);
+        IPredictionStructs.LimitOrderData memory order =
+            predictionMarket.getUnfilledOrder(orderId);
         assertEq(order.orderId, orderId);
         assertEq(order.encodedPredictedOutcomes, ENCODED_OUTCOMES);
         assertEq(order.resolver, address(mockResolver));
@@ -141,7 +156,8 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(orderIds.length, 1);
         assertEq(orderIds[0], orderId);
 
-        uint256[] memory makerOrders = predictionMarket.getUnfilledOrderByMaker(maker);
+        uint256[] memory makerOrders =
+            predictionMarket.getUnfilledOrderByMaker(maker);
         assertEq(makerOrders.length, 1);
         assertEq(makerOrders[0], orderId);
 
@@ -149,20 +165,26 @@ contract PredictionMarketLimitOrderTest is Test {
     }
 
     function test_placeOrder_makerCollateralZero() public {
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         orderRequest.makerCollateral = 0;
 
         vm.prank(maker);
-        vm.expectRevert(PredictionMarket.MakerCollateralMustBeGreaterThanZero.selector);
+        vm.expectRevert(
+            PredictionMarket.MakerCollateralMustBeGreaterThanZero.selector
+        );
         predictionMarket.placeOrder(orderRequest);
     }
 
     function test_placeOrder_takerCollateralZero() public {
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         orderRequest.takerCollateral = 0;
 
         vm.prank(maker);
-        vm.expectRevert(PredictionMarket.TakerCollateralMustBeGreaterThanZero.selector);
+        vm.expectRevert(
+            PredictionMarket.TakerCollateralMustBeGreaterThanZero.selector
+        );
         predictionMarket.placeOrder(orderRequest);
     }
 
@@ -173,7 +195,8 @@ contract PredictionMarketLimitOrderTest is Test {
         vm.prank(poorMaker);
         collateralToken.approve(address(predictionMarket), type(uint256).max);
 
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
 
         vm.prank(poorMaker);
         vm.expectRevert(); // ERC20 transfer will fail
@@ -182,12 +205,14 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_placeOrder_multipleOrders() public {
         // Place first order
-        IPredictionStructs.OrderRequestData memory orderRequest1 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest1 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId1 = predictionMarket.placeOrder(orderRequest1);
 
         // Place second order
-        IPredictionStructs.OrderRequestData memory orderRequest2 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest2 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId2 = predictionMarket.placeOrder(orderRequest2);
 
@@ -201,7 +226,8 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(orderIds[0], 1);
         assertEq(orderIds[1], 2);
 
-        uint256[] memory makerOrders = predictionMarket.getUnfilledOrderByMaker(maker);
+        uint256[] memory makerOrders =
+            predictionMarket.getUnfilledOrderByMaker(maker);
         assertEq(makerOrders.length, 2);
         assertEq(makerOrders[0], 1);
         assertEq(makerOrders[1], 2);
@@ -211,30 +237,49 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_success() public {
         // First place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
         uint256 takerBalanceBefore = collateralToken.balanceOf(taker);
-        uint256 contractBalanceBefore = collateralToken.balanceOf(address(predictionMarket));
+        uint256 contractBalanceBefore =
+            collateralToken.balanceOf(address(predictionMarket));
 
         vm.expectEmit(true, true, true, true);
-        emit OrderFilled(orderId, maker, taker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL, FILL_REF_CODE);
+        emit OrderFilled(
+            orderId,
+            maker,
+            taker,
+            ENCODED_OUTCOMES,
+            MAKER_COLLATERAL,
+            TAKER_COLLATERAL,
+            FILL_REF_CODE
+        );
 
         vm.prank(taker);
         predictionMarket.fillOrder(orderId, FILL_REF_CODE);
 
         // Verify collateral transfer
-        assertEq(collateralToken.balanceOf(taker), takerBalanceBefore - TAKER_COLLATERAL);
-        assertEq(collateralToken.balanceOf(address(predictionMarket)), contractBalanceBefore + TAKER_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(taker),
+            takerBalanceBefore - TAKER_COLLATERAL
+        );
+        assertEq(
+            collateralToken.balanceOf(address(predictionMarket)),
+            contractBalanceBefore + TAKER_COLLATERAL
+        );
 
         // Verify order is marked as filled (orderId set to 0)
-        IPredictionStructs.LimitOrderData memory order = predictionMarket.getUnfilledOrder(orderId);
+        IPredictionStructs.LimitOrderData memory order =
+            predictionMarket.getUnfilledOrder(orderId);
         assertEq(order.orderId, 0);
 
         // Verify prediction was created
-        uint256[] memory makerPredictions = predictionMarket.getOwnedPredictions(maker);
-        uint256[] memory takerPredictions = predictionMarket.getOwnedPredictions(taker);
+        uint256[] memory makerPredictions =
+            predictionMarket.getOwnedPredictions(maker);
+        uint256[] memory takerPredictions =
+            predictionMarket.getOwnedPredictions(taker);
         assertEq(makerPredictions.length, 1);
         assertEq(takerPredictions.length, 1);
 
@@ -253,7 +298,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_orderExpired() public {
         // Place an order with expired deadline
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         orderRequest.orderDeadline = block.timestamp - 1; // Expired
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
@@ -265,7 +311,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_insufficientTakerBalance() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
@@ -282,7 +329,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_alreadyFilled() public {
         // Place and fill an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
@@ -297,15 +345,20 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_invalidMarketsAccordingToResolver() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
         // Make resolver return invalid
-        mockResolver.setValidationResult(false, IPredictionMarketResolver.Error.INVALID_MARKET);
+        mockResolver.setValidationResult(
+            false, IPredictionMarketResolver.Error.INVALID_MARKET
+        );
 
         vm.prank(taker);
-        vm.expectRevert(PredictionMarket.InvalidMarketsAccordingToResolver.selector);
+        vm.expectRevert(
+            PredictionMarket.InvalidMarketsAccordingToResolver.selector
+        );
         predictionMarket.fillOrder(orderId, FILL_REF_CODE);
     }
 
@@ -313,7 +366,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_cancelOrder_success() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
@@ -321,28 +375,39 @@ contract PredictionMarketLimitOrderTest is Test {
         vm.warp(block.timestamp + 2 hours);
 
         uint256 makerBalanceBefore = collateralToken.balanceOf(maker);
-        uint256 contractBalanceBefore = collateralToken.balanceOf(address(predictionMarket));
+        uint256 contractBalanceBefore =
+            collateralToken.balanceOf(address(predictionMarket));
 
         vm.expectEmit(true, true, false, true);
-        emit OrderCancelled(orderId, maker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL);
+        emit OrderCancelled(
+            orderId, maker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL
+        );
 
         vm.prank(maker);
         predictionMarket.cancelOrder(orderId);
 
         // Verify collateral refund
-        assertEq(collateralToken.balanceOf(maker), makerBalanceBefore + MAKER_COLLATERAL);
-        assertEq(collateralToken.balanceOf(address(predictionMarket)), contractBalanceBefore - MAKER_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(maker),
+            makerBalanceBefore + MAKER_COLLATERAL
+        );
+        assertEq(
+            collateralToken.balanceOf(address(predictionMarket)),
+            contractBalanceBefore - MAKER_COLLATERAL
+        );
 
         // Verify order is removed from tracking
         assertEq(predictionMarket.getUnfilledOrdersCount(), 0);
         uint256[] memory orderIds = predictionMarket.getUnfilledOrderIds();
         assertEq(orderIds.length, 0);
 
-        uint256[] memory makerOrders = predictionMarket.getUnfilledOrderByMaker(maker);
+        uint256[] memory makerOrders =
+            predictionMarket.getUnfilledOrderByMaker(maker);
         assertEq(makerOrders.length, 0);
 
         // Verify order is marked as cancelled (orderId set to 0)
-        IPredictionStructs.LimitOrderData memory order = predictionMarket.getUnfilledOrder(orderId);
+        IPredictionStructs.LimitOrderData memory order =
+            predictionMarket.getUnfilledOrder(orderId);
         assertEq(order.orderId, 0);
     }
 
@@ -354,23 +419,33 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_cancelOrder_beforeExpiration() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
         // Cancel before deadline - should succeed
         uint256 makerBalanceBefore = collateralToken.balanceOf(maker);
-        uint256 contractBalanceBefore = collateralToken.balanceOf(address(predictionMarket));
+        uint256 contractBalanceBefore =
+            collateralToken.balanceOf(address(predictionMarket));
 
         vm.expectEmit(true, true, false, true);
-        emit OrderCancelled(orderId, maker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL);
+        emit OrderCancelled(
+            orderId, maker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL
+        );
 
         vm.prank(maker);
         predictionMarket.cancelOrder(orderId);
 
         // Verify collateral refund
-        assertEq(collateralToken.balanceOf(maker), makerBalanceBefore + MAKER_COLLATERAL);
-        assertEq(collateralToken.balanceOf(address(predictionMarket)), contractBalanceBefore - MAKER_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(maker),
+            makerBalanceBefore + MAKER_COLLATERAL
+        );
+        assertEq(
+            collateralToken.balanceOf(address(predictionMarket)),
+            contractBalanceBefore - MAKER_COLLATERAL
+        );
 
         // Verify order is removed from tracking
         assertEq(predictionMarket.getUnfilledOrdersCount(), 0);
@@ -378,7 +453,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_cancelOrder_alreadyFilled() public {
         // Place and fill an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
@@ -396,11 +472,13 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_getUnfilledOrder() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
-        IPredictionStructs.LimitOrderData memory order = predictionMarket.getUnfilledOrder(orderId);
+        IPredictionStructs.LimitOrderData memory order =
+            predictionMarket.getUnfilledOrder(orderId);
         assertEq(order.orderId, orderId);
         assertEq(order.encodedPredictedOutcomes, ENCODED_OUTCOMES);
         assertEq(order.resolver, address(mockResolver));
@@ -417,11 +495,13 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(orderIds.length, 0);
 
         // Place multiple orders
-        IPredictionStructs.OrderRequestData memory orderRequest1 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest1 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId1 = predictionMarket.placeOrder(orderRequest1);
 
-        IPredictionStructs.OrderRequestData memory orderRequest2 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest2 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId2 = predictionMarket.placeOrder(orderRequest2);
 
@@ -434,7 +514,8 @@ contract PredictionMarketLimitOrderTest is Test {
     function test_getUnfilledOrdersCount() public {
         assertEq(predictionMarket.getUnfilledOrdersCount(), 0);
 
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         predictionMarket.placeOrder(orderRequest);
 
@@ -448,15 +529,18 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_getUnfilledOrderByMaker() public {
         // Initially no orders
-        uint256[] memory makerOrders = predictionMarket.getUnfilledOrderByMaker(maker);
+        uint256[] memory makerOrders =
+            predictionMarket.getUnfilledOrderByMaker(maker);
         assertEq(makerOrders.length, 0);
 
         // Place orders
-        IPredictionStructs.OrderRequestData memory orderRequest1 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest1 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId1 = predictionMarket.placeOrder(orderRequest1);
 
-        IPredictionStructs.OrderRequestData memory orderRequest2 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest2 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId2 = predictionMarket.placeOrder(orderRequest2);
 
@@ -466,7 +550,8 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(makerOrders[1], orderId2);
 
         // Check another maker has no orders
-        uint256[] memory otherMakerOrders = predictionMarket.getUnfilledOrderByMaker(taker);
+        uint256[] memory otherMakerOrders =
+            predictionMarket.getUnfilledOrderByMaker(taker);
         assertEq(otherMakerOrders.length, 0);
     }
 
@@ -476,7 +561,8 @@ contract PredictionMarketLimitOrderTest is Test {
         // Test complete order lifecycle
 
         // 1. Place order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
         assertEq(predictionMarket.getUnfilledOrdersCount(), 1);
@@ -487,8 +573,10 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(predictionMarket.getUnfilledOrdersCount(), 0); // Order removed from count
 
         // 3. Verify prediction was created
-        uint256[] memory makerPredictions = predictionMarket.getOwnedPredictions(maker);
-        uint256[] memory takerPredictions = predictionMarket.getOwnedPredictions(taker);
+        uint256[] memory makerPredictions =
+            predictionMarket.getOwnedPredictions(maker);
+        uint256[] memory takerPredictions =
+            predictionMarket.getOwnedPredictions(taker);
         assertEq(makerPredictions.length, 1);
         assertEq(takerPredictions.length, 1);
     }
@@ -497,7 +585,8 @@ contract PredictionMarketLimitOrderTest is Test {
         // Test order placement and cancellation
 
         // 1. Place order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
         assertEq(predictionMarket.getUnfilledOrdersCount(), 1);
@@ -511,8 +600,10 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(predictionMarket.getUnfilledOrdersCount(), 0);
 
         // 4. Verify no predictions were created
-        uint256[] memory makerPredictions = predictionMarket.getOwnedPredictions(maker);
-        uint256[] memory takerPredictions = predictionMarket.getOwnedPredictions(taker);
+        uint256[] memory makerPredictions =
+            predictionMarket.getOwnedPredictions(maker);
+        uint256[] memory takerPredictions =
+            predictionMarket.getOwnedPredictions(taker);
         assertEq(makerPredictions.length, 0);
         assertEq(takerPredictions.length, 0);
     }
@@ -522,16 +613,18 @@ contract PredictionMarketLimitOrderTest is Test {
 
         // Setup second maker
         address maker2 = vm.addr(4);
-        collateralToken.mint(maker2, 10000e18);
+        collateralToken.mint(maker2, 10_000e18);
         vm.prank(maker2);
         collateralToken.approve(address(predictionMarket), type(uint256).max);
 
         // Place orders from both makers
-        IPredictionStructs.OrderRequestData memory orderRequest1 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest1 =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId1 = predictionMarket.placeOrder(orderRequest1);
 
-        IPredictionStructs.OrderRequestData memory orderRequest2 = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest2 =
+            _createValidOrderRequest();
         vm.prank(maker2);
         uint256 orderId2 = predictionMarket.placeOrder(orderRequest2);
 
@@ -541,11 +634,13 @@ contract PredictionMarketLimitOrderTest is Test {
         uint256[] memory allOrders = predictionMarket.getUnfilledOrderIds();
         assertEq(allOrders.length, 2);
 
-        uint256[] memory maker1Orders = predictionMarket.getUnfilledOrderByMaker(maker);
+        uint256[] memory maker1Orders =
+            predictionMarket.getUnfilledOrderByMaker(maker);
         assertEq(maker1Orders.length, 1);
         assertEq(maker1Orders[0], orderId1);
 
-        uint256[] memory maker2Orders = predictionMarket.getUnfilledOrderByMaker(maker2);
+        uint256[] memory maker2Orders =
+            predictionMarket.getUnfilledOrderByMaker(maker2);
         assertEq(maker2Orders.length, 1);
         assertEq(maker2Orders[0], orderId2);
     }
@@ -554,14 +649,23 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_fillOrder_withDifferentRefCode() public {
         // Place an order
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
         bytes32 differentRefCode = keccak256("different-fill-ref-code");
 
         vm.expectEmit(true, true, true, true);
-        emit OrderFilled(orderId, maker, taker, ENCODED_OUTCOMES, MAKER_COLLATERAL, TAKER_COLLATERAL, differentRefCode);
+        emit OrderFilled(
+            orderId,
+            maker,
+            taker,
+            ENCODED_OUTCOMES,
+            MAKER_COLLATERAL,
+            TAKER_COLLATERAL,
+            differentRefCode
+        );
 
         vm.prank(taker);
         predictionMarket.fillOrder(orderId, differentRefCode);
@@ -569,7 +673,8 @@ contract PredictionMarketLimitOrderTest is Test {
 
     function test_orderIdCounterIncrement() public {
         // Verify order ID counter increments correctly
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
 
         vm.prank(maker);
         uint256 orderId1 = predictionMarket.placeOrder(orderRequest);
@@ -592,7 +697,8 @@ contract PredictionMarketLimitOrderTest is Test {
         assertEq(predictionMarket.getUserCollateralDeposits(taker), 0);
 
         // Place order (should not affect user collateral deposits)
-        IPredictionStructs.OrderRequestData memory orderRequest = _createValidOrderRequest();
+        IPredictionStructs.OrderRequestData memory orderRequest =
+            _createValidOrderRequest();
         vm.prank(maker);
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
 
@@ -603,7 +709,11 @@ contract PredictionMarketLimitOrderTest is Test {
         vm.prank(taker);
         predictionMarket.fillOrder(orderId, FILL_REF_CODE);
 
-        assertEq(predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL);
-        assertEq(predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL);
+        assertEq(
+            predictionMarket.getUserCollateralDeposits(maker), MAKER_COLLATERAL
+        );
+        assertEq(
+            predictionMarket.getUserCollateralDeposits(taker), TAKER_COLLATERAL
+        );
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title LZETHManagement
 /// @notice Abstract contract for ETH balance and gas management for LayerZero operations
@@ -18,7 +18,9 @@ abstract contract LZETHManagement is Ownable {
     event GasReserveLow(uint256 currentBalance);
     event GasReserveCritical(uint256 currentBalance);
     event LzReceiveCostUpdated(uint128 lzReceiveCost);
-    event GasThresholdsUpdated(uint256 warningThreshold, uint256 criticalThreshold);
+    event GasThresholdsUpdated(
+        uint256 warningThreshold, uint256 criticalThreshold
+    );
 
     // ============ Storage ============
     uint256 private _warningGasThreshold = 0.1 ether;
@@ -26,7 +28,7 @@ abstract contract LZETHManagement is Ownable {
     uint128 private _lzReceiveCost;
 
     // ============ Constructor ============
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _owner) Ownable(_owner) { }
 
     // ============ ETH Management ============
 
@@ -42,7 +44,7 @@ abstract contract LZETHManagement is Ownable {
             revert InsufficientETHBalance(amount, address(this).balance);
         }
 
-        (bool success,) = payable(owner()).call{value: amount}("");
+        (bool success,) = payable(owner()).call{ value: amount }("");
         if (!success) {
             revert ETHTransferFailed(owner(), amount);
         }
@@ -57,7 +59,7 @@ abstract contract LZETHManagement is Ownable {
     }
 
     /// @notice Receive function to accept ETH
-    receive() external payable virtual {}
+    receive() external payable virtual { }
 
     // ============ Gas Management ============
 
@@ -76,7 +78,10 @@ abstract contract LZETHManagement is Ownable {
     /// @notice Set gas thresholds for monitoring
     /// @param warningThreshold The threshold for warning alerts
     /// @param criticalThreshold The threshold for critical alerts
-    function setGasThresholds(uint256 warningThreshold, uint256 criticalThreshold) external onlyOwner {
+    function setGasThresholds(
+        uint256 warningThreshold,
+        uint256 criticalThreshold
+    ) external onlyOwner {
         if (warningThreshold <= criticalThreshold) {
             revert InvalidThresholdValues(warningThreshold, criticalThreshold);
         }
@@ -86,7 +91,11 @@ abstract contract LZETHManagement is Ownable {
     }
 
     /// @notice Get the current gas thresholds
-    function getGasThresholds() external view returns (uint256 warning, uint256 critical) {
+    function getGasThresholds()
+        external
+        view
+        returns (uint256 warning, uint256 critical)
+    {
         return (_warningGasThreshold, _criticalGasThreshold);
     }
 

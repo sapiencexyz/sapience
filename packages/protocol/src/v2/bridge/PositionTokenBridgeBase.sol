@@ -1,18 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {OApp, Origin, MessagingFee, MessagingReceipt} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {
+    OApp,
+    Origin,
+    MessagingFee,
+    MessagingReceipt
+} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./interfaces/IPositionTokenBridgeBase.sol";
 
 /// @title PositionTokenBridgeBase
 /// @notice Abstract base contract for position token bridges
 /// @dev Contains shared logic for both Ethereal and Arbitrum bridges
-abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTokenBridgeBase {
+abstract contract PositionTokenBridgeBase is
+    OApp,
+    ReentrancyGuard,
+    IPositionTokenBridgeBase
+{
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
 
@@ -44,7 +59,10 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     mapping(bytes32 => bool) internal _processedBridges;
 
     // ============ Constructor ============
-    constructor(address endpoint_, address owner_) OApp(endpoint_, owner_) Ownable(owner_) {}
+    constructor(address endpoint_, address owner_)
+        OApp(endpoint_, owner_)
+        Ownable(owner_)
+    { }
 
     // ============ Configuration (Owner only for LZ) ============
 
@@ -62,11 +80,17 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ Retry Function ============
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function retry(bytes32 bridgeId, bytes32 refCode) external payable nonReentrant {
+    function retry(bytes32 bridgeId, bytes32 refCode)
+        external
+        payable
+        nonReentrant
+    {
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
         if (pending.status != BridgeStatus.PENDING) {
-            revert InvalidBridgeStatus(bridgeId, BridgeStatus.PENDING, pending.status);
+            revert InvalidBridgeStatus(
+                bridgeId, BridgeStatus.PENDING, pending.status
+            );
         }
 
         // Check retry delay
@@ -79,19 +103,24 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         pending.lastRetryAt = uint64(block.timestamp);
 
         // Build message (chain-specific)
-        (bytes memory message, uint128 gasLimit) = _buildRetryMessage(bridgeId, pending);
+        (bytes memory message, uint128 gasLimit) =
+            _buildRetryMessage(bridgeId, pending);
 
         // Build options
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(gasLimit, 0);
+        bytes memory options =
+            OptionsBuilder.newOptions().addExecutorLzReceiveOption(gasLimit, 0);
 
         // Quote fee
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        MessagingFee memory fee =
+            _quote(_bridgeConfig.remoteEid, message, options, false);
         if (msg.value < fee.nativeFee) {
             revert InsufficientFee(fee.nativeFee, msg.value);
         }
 
         // Send message
-        _lzSend(_bridgeConfig.remoteEid, message, options, fee, payable(msg.sender));
+        _lzSend(
+            _bridgeConfig.remoteEid, message, options, fee, payable(msg.sender)
+        );
 
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
@@ -124,23 +153,33 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
 
         bytes memory ackPayload = abi.encode(bridgeId);
         bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
 
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+        MessagingFee memory fee =
+            _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
 
         // Check if contract has enough balance for ACK
         if (address(this).balance >= fee.nativeFee) {
-            _lzSend(_bridgeConfig.remoteEid, ackMessage, options, fee, payable(address(this)));
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                ackMessage,
+                options,
+                fee,
+                payable(address(this))
+            );
         }
     }
 
     // ============ LayerZero Receive ============
 
-    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
-        internal
-        override
-        nonReentrant
-    {
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32,
+        bytes calldata _message,
+        address,
+        bytes calldata
+    ) internal override nonReentrant {
         // Validate source
         if (_origin.srcEid != _bridgeConfig.remoteEid) {
             revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
@@ -151,7 +190,8 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         }
 
         // Decode command
-        (uint16 commandType, bytes memory data) = abi.decode(_message, (uint16, bytes));
+        (uint16 commandType, bytes memory data) =
+            abi.decode(_message, (uint16, bytes));
 
         if (commandType == CMD_BRIDGE) {
             _handleBridge(data);
@@ -165,12 +205,20 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ View Functions ============
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function getPendingBridge(bytes32 bridgeId) external view returns (PendingBridge memory) {
+    function getPendingBridge(bytes32 bridgeId)
+        external
+        view
+        returns (PendingBridge memory)
+    {
         return _pendingBridges[bridgeId];
     }
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function getPendingBridges(address sender) external view returns (bytes32[] memory bridgeIds) {
+    function getPendingBridges(address sender)
+        external
+        view
+        returns (bytes32[] memory bridgeIds)
+    {
         bytes32[] storage allBridges = _senderBridges[sender];
         uint256 pendingCount = 0;
 
@@ -231,7 +279,7 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ ETH Management (for ACK fees) ============
 
     /// @notice Receive ETH for ACK fee payments
-    receive() external payable {}
+    receive() external payable { }
 
     /// @notice Get ETH balance
     function getETHBalance() external view returns (uint256) {
@@ -244,14 +292,15 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     function _refundExcess(uint256 usedFee) internal {
         if (msg.value > usedFee) {
             uint256 excess = msg.value - usedFee;
-            (bool success,) = payable(msg.sender).call{value: excess}("");
+            (bool success,) = payable(msg.sender).call{ value: excess }("");
             if (!success) revert RefundFailed();
         }
     }
 
     /// @dev Generate unique bridge ID
     function _generateBridgeId() internal returns (bytes32) {
-        return keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
+        return
+            keccak256(abi.encode(block.chainid, address(this), ++_bridgeNonce));
     }
 
     // ============ Abstract Functions (chain-specific) ============

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IConditionResolver} from "../../../interfaces/IConditionResolver.sol";
-import {LZTypes} from "../LZTypes.sol";
+import { IConditionResolver } from "../../../interfaces/IConditionResolver.sol";
+import { LZTypes } from "../LZTypes.sol";
 
 /// @title ILZConditionResolver
 /// @notice Interface for LayerZero-based Condition Resolver (PM side)
@@ -10,13 +10,22 @@ import {LZTypes} from "../LZTypes.sol";
 interface ILZConditionResolver is IConditionResolver {
     // ============ Events ============
     event ConditionResolved(
-        bytes32 indexed conditionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime
+        bytes32 indexed conditionId,
+        bool resolvedToYes,
+        bool assertedTruthfully,
+        uint256 resolutionTime
     );
 
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
     // ============ Functions ============
     function setBridgeConfig(LZTypes.BridgeConfig calldata config) external;
-    function getBridgeConfig() external view returns (LZTypes.BridgeConfig memory);
-    function getCondition(bytes32 conditionId) external view returns (bool settled, bool resolvedToYes);
+    function getBridgeConfig()
+        external
+        view
+        returns (LZTypes.BridgeConfig memory);
+    function getCondition(bytes32 conditionId)
+        external
+        view
+        returns (bool settled, bool resolvedToYes);
 }

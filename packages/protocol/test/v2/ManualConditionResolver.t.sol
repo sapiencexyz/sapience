@@ -19,7 +19,12 @@ contract ManualConditionResolverTest is Test {
 
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(bytes32 indexed conditionId, uint256 yesWeight, uint256 noWeight, address indexed settler);
+    event ConditionSettled(
+        bytes32 indexed conditionId,
+        uint256 yesWeight,
+        uint256 noWeight,
+        address indexed settler
+    );
 
     function setUp() public {
         owner = vm.addr(1);
@@ -102,7 +107,8 @@ contract ManualConditionResolverTest is Test {
 
         assertTrue(resolver.isSettled(CONDITION_ID_1));
 
-        (bool isResolved, IV2Types.OutcomeVector memory result) = resolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory result) =
+            resolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(result.yesWeight, 1);
         assertEq(result.noWeight, 0);
@@ -117,7 +123,8 @@ contract ManualConditionResolverTest is Test {
         vm.prank(settler1);
         resolver.settleCondition(CONDITION_ID_1, outcome);
 
-        (bool isResolved, IV2Types.OutcomeVector memory result) = resolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory result) =
+            resolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(result.yesWeight, 0);
         assertEq(result.noWeight, 1);
@@ -132,7 +139,8 @@ contract ManualConditionResolverTest is Test {
         vm.prank(settler1);
         resolver.settleCondition(CONDITION_ID_1, outcome);
 
-        (bool isResolved, IV2Types.OutcomeVector memory result) = resolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory result) =
+            resolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(result.yesWeight, 1);
         assertEq(result.noWeight, 1);
@@ -156,7 +164,9 @@ contract ManualConditionResolverTest is Test {
         resolver.settleCondition(CONDITION_ID_1, outcome);
 
         vm.prank(settler1);
-        vm.expectRevert(ManualConditionResolver.ConditionAlreadySettled.selector);
+        vm.expectRevert(
+            ManualConditionResolver.ConditionAlreadySettled.selector
+        );
         resolver.settleCondition(CONDITION_ID_1, outcome);
     }
 
@@ -182,7 +192,8 @@ contract ManualConditionResolverTest is Test {
         conditionIds[1] = CONDITION_ID_2;
         conditionIds[2] = CONDITION_ID_3;
 
-        IV2Types.OutcomeVector[] memory outcomes = new IV2Types.OutcomeVector[](3);
+        IV2Types.OutcomeVector[] memory outcomes =
+            new IV2Types.OutcomeVector[](3);
         outcomes[0] = IV2Types.OutcomeVector(1, 0); // YES
         outcomes[1] = IV2Types.OutcomeVector(0, 1); // NO
         outcomes[2] = IV2Types.OutcomeVector(1, 1); // TIE
@@ -206,7 +217,8 @@ contract ManualConditionResolverTest is Test {
     }
 
     function test_getResolution_notSettled() public view {
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = resolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            resolver.getResolution(CONDITION_ID_1);
 
         assertFalse(isResolved);
         assertEq(outcome.yesWeight, 0);
@@ -226,7 +238,8 @@ contract ManualConditionResolverTest is Test {
         conditionIds[0] = CONDITION_ID_1;
         conditionIds[1] = CONDITION_ID_2;
 
-        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) = resolver.getResolutions(conditionIds);
+        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
+            resolver.getResolutions(conditionIds);
 
         assertTrue(resolved[0]);
         assertFalse(resolved[1]);
@@ -257,7 +270,8 @@ contract ManualConditionResolverTest is Test {
         vm.prank(settler1);
         resolver.settleCondition(CONDITION_ID_1, IV2Types.OutcomeVector(5, 3));
 
-        IV2Types.OutcomeVector memory outcome = resolver.getOutcome(CONDITION_ID_1);
+        IV2Types.OutcomeVector memory outcome =
+            resolver.getOutcome(CONDITION_ID_1);
         assertEq(outcome.yesWeight, 5);
         assertEq(outcome.noWeight, 3);
     }

@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PositionTokenBridgeBase.sol";
 import "./interfaces/IPositionTokenBridgeRemote.sol";
 import "./interfaces/IPositionTokenFactory.sol";
@@ -13,7 +17,10 @@ import "./interfaces/IBridgedPositionToken.sol";
 /// @title PositionTokenBridgeRemote
 /// @notice Bridge for position tokens on Arbitrum (remote chain)
 /// @dev Extends PositionTokenBridgeBase with Arbitrum-specific logic
-contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBridgeRemote {
+contract PositionTokenBridgeRemote is
+    PositionTokenBridgeBase,
+    IPositionTokenBridgeRemote
+{
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
 
@@ -35,7 +42,9 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     mapping(bytes32 => MintedBridge) private _mintedBridges;
 
     // ============ Constructor ============
-    constructor(address endpoint_, address owner_, address factory_) PositionTokenBridgeBase(endpoint_, owner_) {
+    constructor(address endpoint_, address owner_, address factory_)
+        PositionTokenBridgeBase(endpoint_, owner_)
+    {
         factory = IPositionTokenFactory(factory_);
     }
 
@@ -47,30 +56,44 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function isTokenDeployed(bytes32 pickConfigId, bool isPredictorToken) external view returns (bool) {
+    function isTokenDeployed(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        view
+        returns (bool)
+    {
         return factory.isDeployed(pickConfigId, isPredictorToken);
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function getTokenAddress(bytes32 pickConfigId, bool isPredictorToken) external view returns (address) {
+    function getTokenAddress(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        view
+        returns (address)
+    {
         return factory.predictAddress(pickConfigId, isPredictorToken);
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function getMintedBridge(bytes32 bridgeId) external view returns (MintedBridge memory) {
+    function getMintedBridge(bytes32 bridgeId)
+        external
+        view
+        returns (MintedBridge memory)
+    {
         return _mintedBridges[bridgeId];
     }
 
     // ============ Bridge Function ============
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function bridge(address token, address recipient, uint256 amount, bytes32 refCode)
-        external
-        payable
-        nonReentrant
-        returns (bytes32 bridgeId)
-    {
-        if (token == address(0) || recipient == address(0)) revert ZeroAddress();
+    function bridge(
+        address token,
+        address recipient,
+        uint256 amount,
+        bytes32 refCode
+    ) external payable nonReentrant returns (bytes32 bridgeId) {
+        if (token == address(0) || recipient == address(0)) {
+            revert ZeroAddress();
+        }
         if (amount == 0) revert ZeroAmount();
 
         address sourceToken = remoteToSource[token];
@@ -99,47 +122,67 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         _senderBridges[msg.sender].push(bridgeId);
 
         // Encode message - send the SOURCE token address so Ethereal knows which token to release
-        bytes memory payload = abi.encode(bridgeId, sourceToken, recipient, amount);
+        bytes memory payload =
+            abi.encode(bridgeId, sourceToken, recipient, amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
         // Build options
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
 
         // Quote fee
-        MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+        MessagingFee memory fee =
+            _quote(_bridgeConfig.remoteEid, message, options, false);
         if (msg.value < fee.nativeFee) {
             revert InsufficientFee(fee.nativeFee, msg.value);
         }
 
         // Send message
-        _lzSend(_bridgeConfig.remoteEid, message, options, fee, payable(msg.sender));
+        _lzSend(
+            _bridgeConfig.remoteEid, message, options, fee, payable(msg.sender)
+        );
 
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
 
-        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt, refCode);
+        emit BridgeInitiated(
+            bridgeId, token, msg.sender, recipient, amount, createdAt, refCode
+        );
     }
 
     // ============ Quote Functions ============
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function quoteBridge(address token, uint256 amount) external view returns (MessagingFee memory fee) {
+    function quoteBridge(address token, uint256 amount)
+        external
+        view
+        returns (MessagingFee memory fee)
+    {
         address sourceToken = remoteToSource[token];
         // Build sample message for quote
-        bytes memory payload = abi.encode(bytes32(0), sourceToken, address(0), amount);
+        bytes memory payload =
+            abi.encode(bytes32(0), sourceToken, address(0), amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function quoteRetry(bytes32 bridgeId) external view returns (MessagingFee memory fee) {
+    function quoteRetry(bytes32 bridgeId)
+        external
+        view
+        returns (MessagingFee memory fee)
+    {
         PendingBridge storage pending = _pendingBridges[bridgeId];
         address sourceToken = remoteToSource[pending.token];
         // Build sample message for quote
-        bytes memory payload = abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
+        bytes memory payload = abi.encode(
+            bridgeId, sourceToken, pending.recipient, pending.amount
+        );
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
@@ -153,7 +196,9 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         returns (bytes memory message, uint128 gasLimit)
     {
         address sourceToken = remoteToSource[pending.token];
-        bytes memory payload = abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
+        bytes memory payload = abi.encode(
+            bridgeId, sourceToken, pending.recipient, pending.amount
+        );
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;
     }
@@ -169,7 +214,10 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
             string memory symbol,
             address recipient,
             uint256 amount
-        ) = abi.decode(data, (bytes32, address, bytes32, bool, string, string, address, uint256));
+        ) = abi.decode(
+            data,
+            (bytes32, address, bytes32, bool, string, string, address, uint256)
+        );
 
         // Check if this bridge was already processed (idempotency)
         if (_processedBridges[bridgeId]) {
@@ -183,7 +231,8 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         _processedBridges[bridgeId] = true;
 
         // Check if token exists, deploy if not
-        address remoteToken = factory.predictAddress(pickConfigId, isPredictorToken);
+        address remoteToken =
+            factory.predictAddress(pickConfigId, isPredictorToken);
         bool isNewDeployment = false;
 
         if (remoteToken.code.length == 0) {
@@ -209,10 +258,14 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         IBridgedPositionToken(remoteToken).mint(recipient, amount);
 
         // Track minted tokens (for audit trail)
-        _mintedBridges[bridgeId] = MintedBridge({token: remoteToken, recipient: recipient, amount: amount});
+        _mintedBridges[bridgeId] = MintedBridge({
+            token: remoteToken, recipient: recipient, amount: amount
+        });
 
         emit BridgeProcessed(bridgeId, false);
-        emit TokensMinted(bridgeId, remoteToken, recipient, amount, isNewDeployment);
+        emit TokensMinted(
+            bridgeId, remoteToken, recipient, amount, isNewDeployment
+        );
 
         // Send ACK back to Ethereal (if contract has sufficient balance)
         _trySendAck(bridgeId);
@@ -228,7 +281,8 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IBridgedPositionToken(pending.token).burn(address(this), pending.amount);
+            IBridgedPositionToken(pending.token)
+                .burn(address(this), pending.amount);
 
             emit BridgeCompleted(bridgeId);
         }

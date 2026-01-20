@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IPredictionMarketResolver} from "../../interfaces/IPredictionMarketResolver.sol";
+import {
+    IPredictionMarketResolver
+} from "../../interfaces/IPredictionMarketResolver.sol";
 
 /**
  * @title IPredictionMarketLZResolver
@@ -14,5 +16,10 @@ interface IPredictionMarketLZResolver is IPredictionMarketResolver {
     error InvalidMarketId();
 
     // Events
-    event MarketResolved(bytes32 indexed marketId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime);
+    event MarketResolved(
+        bytes32 indexed marketId,
+        bool resolvedToYes,
+        bool assertedTruthfully,
+        uint256 resolutionTime
+    );
 }

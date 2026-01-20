@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IConditionResolver} from "../interfaces/IConditionResolver.sol";
-import {IV2Types} from "../interfaces/IV2Types.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IConditionResolver } from "../interfaces/IConditionResolver.sol";
+import { IV2Types } from "../interfaces/IV2Types.sol";
 
 /// @title ManualConditionResolver
 /// @notice Generic condition resolver where approved settlers can manually settle conditions
@@ -17,7 +17,12 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     // ============ Events ============
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(bytes32 indexed conditionId, uint256 yesWeight, uint256 noWeight, address indexed settler);
+    event ConditionSettled(
+        bytes32 indexed conditionId,
+        uint256 yesWeight,
+        uint256 noWeight,
+        address indexed settler
+    );
 
     // ============ Storage ============
     mapping(address => bool) public approvedSettlers;
@@ -25,7 +30,7 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     mapping(bytes32 => bool) public isSettled;
 
     // ============ Constructor ============
-    constructor(address _owner) Ownable(_owner) {}
+    constructor(address _owner) Ownable(_owner) { }
 
     // ============ Owner Functions ============
 
@@ -58,8 +63,13 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     /// @param conditionId The condition to settle
     /// @param outcome The outcome vector [yesWeight, noWeight]
     /// @dev Only approved settlers can call this
-    function settleCondition(bytes32 conditionId, IV2Types.OutcomeVector calldata outcome) external {
-        if (!approvedSettlers[msg.sender]) revert NotApprovedSettler();
+    function settleCondition(
+        bytes32 conditionId,
+        IV2Types.OutcomeVector calldata outcome
+    ) external {
+        if (!approvedSettlers[msg.sender]) {
+            revert NotApprovedSettler();
+        }
         if (isSettled[conditionId]) revert ConditionAlreadySettled();
 
         // At least one weight must be non-zero
@@ -70,13 +80,18 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
         _outcomes[conditionId] = outcome;
         isSettled[conditionId] = true;
 
-        emit ConditionSettled(conditionId, outcome.yesWeight, outcome.noWeight, msg.sender);
+        emit ConditionSettled(
+            conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
+        );
     }
 
     /// @notice Batch settle multiple conditions
     /// @param conditionIds Array of conditions to settle
     /// @param outcomes Array of outcome vectors
-    function settleConditions(bytes32[] calldata conditionIds, IV2Types.OutcomeVector[] calldata outcomes) external {
+    function settleConditions(
+        bytes32[] calldata conditionIds,
+        IV2Types.OutcomeVector[] calldata outcomes
+    ) external {
         if (!approvedSettlers[msg.sender]) revert NotApprovedSettler();
 
         uint256 length = conditionIds.length;
@@ -92,14 +107,20 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
             _outcomes[conditionId] = outcome;
             isSettled[conditionId] = true;
 
-            emit ConditionSettled(conditionId, outcome.yesWeight, outcome.noWeight, msg.sender);
+            emit ConditionSettled(
+                conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
+            );
         }
     }
 
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId) external pure returns (bool) {
+    function isValidCondition(bytes32 conditionId)
+        external
+        pure
+        returns (bool)
+    {
         return conditionId != bytes32(0);
     }
 
@@ -117,7 +138,10 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     function getResolutions(bytes32[] calldata conditionIds)
         external
         view
-        returns (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes)
+        returns (
+            bool[] memory resolved,
+            IV2Types.OutcomeVector[] memory outcomes
+        )
     {
         uint256 length = conditionIds.length;
         resolved = new bool[](length);
@@ -139,7 +163,11 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     /// @notice Get the outcome for a condition
     /// @param conditionId The condition identifier
     /// @return The outcome vector
-    function getOutcome(bytes32 conditionId) external view returns (IV2Types.OutcomeVector memory) {
+    function getOutcome(bytes32 conditionId)
+        external
+        view
+        returns (IV2Types.OutcomeVector memory)
+    {
         return _outcomes[conditionId];
     }
 }

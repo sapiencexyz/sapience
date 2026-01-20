@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {PredictionMarketV2} from "../../../v2/PredictionMarketV2.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
 
 /// @title Deploy Prediction Market V2
 /// @notice Deploys PredictionMarketV2 contract
@@ -17,7 +17,8 @@ contract DeployPredictionMarket is Script {
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        PredictionMarketV2 market = new PredictionMarketV2(collateralToken, deployer);
+        PredictionMarketV2 market =
+            new PredictionMarketV2(collateralToken, deployer);
 
         vm.stopBroadcast();
 

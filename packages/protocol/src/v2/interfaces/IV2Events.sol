@@ -40,10 +40,14 @@ interface IV2Events {
     );
 
     /// @notice Emitted when collateral is deposited into escrow
-    event CollateralDeposited(bytes32 indexed predictionId, uint256 totalAmount);
+    event CollateralDeposited(
+        bytes32 indexed predictionId, uint256 totalAmount
+    );
 
     /// @notice Emitted when collateral distribution is recorded after settlement
     event CollateralDistributed(
-        bytes32 indexed predictionId, uint256 predictorClaimable, uint256 counterpartyClaimable
+        bytes32 indexed predictionId,
+        uint256 predictorClaimable,
+        uint256 counterpartyClaimable
     );
 }

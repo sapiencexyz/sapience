@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title IPositionTokenBridgeBase
 /// @notice Base interface for position token bridges
@@ -88,10 +88,14 @@ interface IPositionTokenBridgeBase {
     error InsufficientEscrowBalance(uint256 requested, uint256 available);
 
     /// @notice Bridge not found or wrong status
-    error InvalidBridgeStatus(bytes32 bridgeId, BridgeStatus expected, BridgeStatus actual);
+    error InvalidBridgeStatus(
+        bytes32 bridgeId, BridgeStatus expected, BridgeStatus actual
+    );
 
     /// @notice Retry too soon
-    error RetryTooSoon(bytes32 bridgeId, uint64 lastRetryAt, uint64 minNextRetry);
+    error RetryTooSoon(
+        bytes32 bridgeId, uint64 lastRetryAt, uint64 minNextRetry
+    );
 
     /// @notice ETH transfer failed
     error ETHTransferFailed();
@@ -109,19 +113,28 @@ interface IPositionTokenBridgeBase {
     /// @notice Quote the fee for retrying a bridge
     /// @param bridgeId The bridge identifier
     /// @return fee The messaging fee
-    function quoteRetry(bytes32 bridgeId) external view returns (MessagingFee memory fee);
+    function quoteRetry(bytes32 bridgeId)
+        external
+        view
+        returns (MessagingFee memory fee);
 
     // ============ View Functions ============
 
     /// @notice Get pending bridge details
     /// @param bridgeId The bridge identifier
     /// @return The pending bridge record
-    function getPendingBridge(bytes32 bridgeId) external view returns (PendingBridge memory);
+    function getPendingBridge(bytes32 bridgeId)
+        external
+        view
+        returns (PendingBridge memory);
 
     /// @notice Get all pending bridge IDs for a sender
     /// @param sender The sender address
     /// @return bridgeIds Array of pending bridge IDs
-    function getPendingBridges(address sender) external view returns (bytes32[] memory bridgeIds);
+    function getPendingBridges(address sender)
+        external
+        view
+        returns (bytes32[] memory bridgeIds);
 
     /// @notice Check if a bridge has been processed (for idempotency)
     /// @param bridgeId The bridge identifier

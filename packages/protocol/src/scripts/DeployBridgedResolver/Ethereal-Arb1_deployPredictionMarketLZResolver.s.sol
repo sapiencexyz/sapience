@@ -2,7 +2,9 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolver} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import {
+    PredictionMarketLZResolver
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
 
 // Prediction Market is on Ethereal chain
 // Deploy this resolver on Ethereal (receives LZ messages from UMA side)
@@ -15,11 +17,17 @@ contract DeployPredictionMarketLZResolver is Script {
 
         vm.startBroadcast(vm.envUint("ETHEREAL_PRIVATE_KEY"));
         PredictionMarketLZResolver resolver = new PredictionMarketLZResolver(
-            endpoint, owner, PredictionMarketLZResolver.Settings({maxPredictionMarkets: maxPredictionMarkets})
+            endpoint,
+            owner,
+            PredictionMarketLZResolver.Settings({
+                maxPredictionMarkets: maxPredictionMarkets
+            })
         );
         vm.stopBroadcast();
 
-        console.log("PredictionMarketLZResolver deployed to:", address(resolver));
+        console.log(
+            "PredictionMarketLZResolver deployed to:", address(resolver)
+        );
     }
 }
 

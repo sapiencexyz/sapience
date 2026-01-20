@@ -15,13 +15,20 @@ import "../../src/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
 contract PythResolverEtherealForkTest is Test {
     using stdJson for string;
 
-    string internal constant DEFAULT_ETHEREAL_RPC = "https://rpc.ethereal.trade";
-    string internal constant DEFAULT_PYTH_LAZER_BASE = "https://pyth-lazer.dourolabs.app";
+    string internal constant DEFAULT_ETHEREAL_RPC =
+        "https://rpc.ethereal.trade";
+    string internal constant DEFAULT_PYTH_LAZER_BASE =
+        "https://pyth-lazer.dourolabs.app";
 
     // Deployed PythLazer verifier on Ethereal (provided by user).
-    address internal constant ETHEREAL_PYTH_LAZER_VERIFIER = 0x486908B534E34D1Ca04d12F01b5Bf47aC62A68F5;
+    address internal constant ETHEREAL_PYTH_LAZER_VERIFIER =
+        0x486908B534E34D1Ca04d12F01b5Bf47aC62A68F5;
 
-    function _requireUint64(uint256 v, string memory label) private pure returns (uint64) {
+    function _requireUint64(uint256 v, string memory label)
+        private
+        pure
+        returns (uint64)
+    {
         require(v <= type(uint64).max, label);
         return uint64(v);
     }
@@ -83,23 +90,28 @@ contract PythResolverEtherealForkTest is Test {
         require(updateBlob.length > 0, "empty update blob");
     }
 
-    function _decodePriceExpoFromVerifiedPayload(bytes memory payload, uint32 feedId)
-        internal
-        pure
-        returns (int64 price, int32 expo)
-    {
-        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
+    function _decodePriceExpoFromVerifiedPayload(
+        bytes memory payload,
+        uint32 feedId
+    ) internal pure returns (int64 price, int32 expo) {
+        PythLazerStructs.Update memory u =
+            PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
         (PythLazerStructs.Feed memory feed, bool found) = _findFeed(u, feedId);
         require(found, "feed not found");
         price = PythLazerLib.getPrice(feed);
         expo = int32(PythLazerLib.getExponent(feed));
     }
 
-    function _settleSingleMarket(IPythLazer lazer, uint256 fee, bytes memory updateBlob, uint64 endTime, uint32 feedId)
-        internal
-    {
+    function _settleSingleMarket(
+        IPythLazer lazer,
+        uint256 fee,
+        bytes memory updateBlob,
+        uint64 endTime,
+        uint32 feedId
+    ) internal {
         // Deploy resolver configured for Ethereal Lazer verifier and settle the market.
-        PythResolver.Settings memory settings = PythResolver.Settings({maxPredictionMarkets: 1, pythLazer: lazer});
+        PythResolver.Settings memory settings =
+            PythResolver.Settings({ maxPredictionMarkets: 1, pythLazer: lazer });
         PythResolver resolver = new PythResolver(settings);
 
         bytes[] memory updateData = new bytes[](1);
@@ -108,44 +120,62 @@ contract PythResolverEtherealForkTest is Test {
         vm.warp(endTime);
 
         // Verify once to get the payload for strike expo.
-        (bytes memory payload,) = lazer.verifyUpdate{value: fee}(updateBlob);
-        (int64 price, int32 expo) = _decodePriceExpoFromVerifiedPayload(payload, feedId);
+        (bytes memory payload,) = lazer.verifyUpdate{ value: fee }(updateBlob);
+        (int64 price, int32 expo) =
+            _decodePriceExpoFromVerifiedPayload(payload, feedId);
 
-        PythResolver.BinaryOptionMarket memory market = PythResolver.BinaryOptionMarket({
-            priceId: bytes32(uint256(feedId)),
-            endTime: endTime,
-            strikePrice: price - 1,
-            strikeExpo: expo,
-            overWinsOnTie: true
-        });
+        PythResolver.BinaryOptionMarket memory market =
+            PythResolver.BinaryOptionMarket({
+                priceId: bytes32(uint256(feedId)),
+                endTime: endTime,
+                strikePrice: price - 1,
+                strikeExpo: expo,
+                overWinsOnTie: true
+            });
 
-        (bytes32 marketId, bool resolvedToOver) = resolver.settleMarket{value: fee}(market, updateData);
+        (bytes32 marketId, bool resolvedToOver) =
+            resolver.settleMarket{ value: fee }(market, updateData);
         assertTrue(resolvedToOver);
         (bool settled,,,, uint64 publishTime) = resolver.settlements(marketId);
         assertTrue(settled);
         assertEq(publishTime, endTime);
     }
 
-    function _settleSingleMarketExternal(bytes calldata updateBlob, uint64 endTime, uint32 feedId) external {
+    function _settleSingleMarketExternal(
+        bytes calldata updateBlob,
+        uint64 endTime,
+        uint32 feedId
+    ) external {
         IPythLazer lazer = IPythLazer(ETHEREAL_PYTH_LAZER_VERIFIER);
         uint256 fee = lazer.verification_fee();
         _settleSingleMarket(lazer, fee, updateBlob, endTime, feedId);
     }
 
-    function _logVerifierDiagnostics(bytes memory fetchedBlob) internal returns (address recovered) {
+    function _logVerifierDiagnostics(bytes memory fetchedBlob)
+        internal
+        returns (address recovered)
+    {
         recovered = _recoverSignerFromUpdate(fetchedBlob);
         emit log_named_bytes("https update evm blob", fetchedBlob);
         emit log_named_address("https update recovered signer", recovered);
-        emit log_named_address("ethereal lazer verifier", ETHEREAL_PYTH_LAZER_VERIFIER);
+        emit log_named_address(
+            "ethereal lazer verifier", ETHEREAL_PYTH_LAZER_VERIFIER
+        );
 
-        (bool ownerOk, address owner) = _probeOwner(ETHEREAL_PYTH_LAZER_VERIFIER);
+        (bool ownerOk, address owner) =
+            _probeOwner(ETHEREAL_PYTH_LAZER_VERIFIER);
         if (ownerOk) emit log_named_address("verifier owner()", owner);
         else emit log_string("verifier owner() not readable");
 
         (bool trustOk, bool isTrusted, string memory trustMethod) =
             _probeIsTrustedSigner(ETHEREAL_PYTH_LAZER_VERIFIER, recovered);
         if (trustOk) {
-            emit log_string(string.concat("verifier ", trustMethod, " => ", isTrusted ? "true" : "false"));
+            emit log_string(string.concat(
+                    "verifier ",
+                    trustMethod,
+                    " => ",
+                    isTrusted ? "true" : "false"
+                ));
         } else {
             emit log_string("verifier trust check not readable (no isTrusted* view)");
         }
@@ -153,13 +183,22 @@ contract PythResolverEtherealForkTest is Test {
         (bool expOk, uint256 expiresAt, string memory expMethod) =
             _probeTrustedSignerExpiry(ETHEREAL_PYTH_LAZER_VERIFIER, recovered);
         if (expOk) {
-            emit log_string(string.concat("verifier ", expMethod, " => expiresAt=", vm.toString(expiresAt)));
+            emit log_string(string.concat(
+                    "verifier ",
+                    expMethod,
+                    " => expiresAt=",
+                    vm.toString(expiresAt)
+                ));
         } else {
             emit log_string("verifier expiry not readable (no trustedSigners* view)");
         }
     }
 
-    function _readU16BE(bytes memory b, uint256 pos) private pure returns (uint16 v) {
+    function _readU16BE(bytes memory b, uint256 pos)
+        private
+        pure
+        returns (uint16 v)
+    {
         require(pos + 2 <= b.length, "oob");
         uint256 w;
         assembly {
@@ -168,21 +207,33 @@ contract PythResolverEtherealForkTest is Test {
         v = uint16(w >> 240);
     }
 
-    function _readBytes32(bytes memory b, uint256 pos) private pure returns (bytes32 v) {
+    function _readBytes32(bytes memory b, uint256 pos)
+        private
+        pure
+        returns (bytes32 v)
+    {
         require(pos + 32 <= b.length, "oob");
         assembly {
             v := mload(add(add(b, 0x20), pos))
         }
     }
 
-    function _readU8(bytes memory b, uint256 pos) private pure returns (uint8 v) {
+    function _readU8(bytes memory b, uint256 pos)
+        private
+        pure
+        returns (uint8 v)
+    {
         require(pos + 1 <= b.length, "oob");
         assembly {
             v := byte(0, mload(add(add(b, 0x20), pos)))
         }
     }
 
-    function _recoverSignerFromUpdate(bytes memory update) private pure returns (address signer) {
+    function _recoverSignerFromUpdate(bytes memory update)
+        private
+        pure
+        returns (address signer)
+    {
         require(update.length >= 71, "input too short");
 
         // Layout per upstream `PythLazer.verifyUpdate`:
@@ -219,9 +270,15 @@ contract PythResolverEtherealForkTest is Test {
         return (feed, false);
     }
 
-    function _probeOwner(address lazer) internal view returns (bool ok, address owner) {
+    function _probeOwner(address lazer)
+        internal
+        view
+        returns (bool ok, address owner)
+    {
         bytes memory ret;
-        (ok, ret) = lazer.staticcall(abi.encodeWithSelector(bytes4(keccak256("owner()"))));
+        (ok, ret) = lazer.staticcall(
+            abi.encodeWithSelector(bytes4(keccak256("owner()")))
+        );
         if (!ok || ret.length < 32) return (false, address(0));
         owner = abi.decode(ret, (address));
         return (true, owner);
@@ -232,18 +289,23 @@ contract PythResolverEtherealForkTest is Test {
         view
         returns (bool ok, uint256 expiresAt, string memory method)
     {
-        bytes4[3] memory sels = [
-            bytes4(keccak256("trustedSigners(address)")),
-            bytes4(keccak256("trustedSignerExpiresAt(address)")),
-            bytes4(keccak256("trustedSignerExpirations(address)"))
+        bytes4[3] memory
+            sels = [
+                bytes4(keccak256("trustedSigners(address)")),
+                bytes4(keccak256("trustedSignerExpiresAt(address)")),
+                bytes4(keccak256("trustedSignerExpirations(address)"))
+            ];
+        string[3] memory names = [
+            "trustedSigners(address)",
+            "trustedSignerExpiresAt(address)",
+            "trustedSignerExpirations(address)"
         ];
-        string[3] memory names =
-            ["trustedSigners(address)", "trustedSignerExpiresAt(address)", "trustedSignerExpirations(address)"];
 
         for (uint256 i = 0; i < sels.length; i++) {
             bool okCall;
             bytes memory ret;
-            (okCall, ret) = lazer.staticcall(abi.encodeWithSelector(sels[i], signer));
+            (okCall, ret) =
+                lazer.staticcall(abi.encodeWithSelector(sels[i], signer));
             if (okCall && ret.length >= 32) {
                 expiresAt = abi.decode(ret, (uint256));
                 return (true, expiresAt, names[i]);
@@ -257,13 +319,18 @@ contract PythResolverEtherealForkTest is Test {
         view
         returns (bool ok, bool isTrusted, string memory method)
     {
-        bytes4[2] memory sels = [bytes4(keccak256("isTrustedSigner(address)")), bytes4(keccak256("isTrusted(address)"))];
-        string[2] memory names = ["isTrustedSigner(address)", "isTrusted(address)"];
+        bytes4[2] memory sels = [
+            bytes4(keccak256("isTrustedSigner(address)")),
+            bytes4(keccak256("isTrusted(address)"))
+        ];
+        string[2] memory names =
+            ["isTrustedSigner(address)", "isTrusted(address)"];
 
         for (uint256 i = 0; i < sels.length; i++) {
             bool okCall;
             bytes memory ret;
-            (okCall, ret) = lazer.staticcall(abi.encodeWithSelector(sels[i], signer));
+            (okCall, ret) =
+                lazer.staticcall(abi.encodeWithSelector(sels[i], signer));
             if (okCall && ret.length >= 32) {
                 isTrusted = abi.decode(ret, (bool));
                 return (true, isTrusted, names[i]);
@@ -283,7 +350,9 @@ contract PythResolverEtherealForkTest is Test {
     ///   PYTH_LAZER_TIMESTAMP_US=... \
     ///   forge test --ffi \
     ///     --match-path test/predictionMarket/PythResolverEtherealFork.t.sol -vvv
-    function test_e2e_etherealFork_settleMarket_fetchFromHttps_withoutWhitelisting() public {
+    function test_e2e_etherealFork_settleMarket_fetchFromHttps_withoutWhitelisting()
+        public
+    {
         bool runFork = vm.envOr("RUN_PYTH_ETHEREAL_FORK_TESTS", false);
         if (!runFork) vm.skip(true);
 
@@ -312,14 +381,20 @@ contract PythResolverEtherealForkTest is Test {
         }
 
         // Resolver requires exact second alignment.
-        assertEq(uint256(timestampUs) % 1_000_000, 0, "timestamp not second-aligned");
+        assertEq(
+            uint256(timestampUs) % 1_000_000, 0, "timestamp not second-aligned"
+        );
         uint64 endTime = uint64(timestampUs / 1_000_000);
 
         // Fetch a fresh signed blob for the same timestamp.
-        string memory baseUrl = vm.envOr("PYTH_LAZER_BASE_URL", DEFAULT_PYTH_LAZER_BASE);
+        string memory baseUrl =
+            vm.envOr("PYTH_LAZER_BASE_URL", DEFAULT_PYTH_LAZER_BASE);
         uint32 feedId = uint32(vm.envOr("PYTH_LAZER_FEED_ID", uint256(1)));
-        string memory channel = vm.envOr("PYTH_LAZER_CHANNEL", string("fixed_rate@50ms"));
-        bytes memory fetchedBlob = _fetchUpdateFromHttpsEndpoint(token, timestampUs, feedId, channel, baseUrl);
+        string memory channel =
+            vm.envOr("PYTH_LAZER_CHANNEL", string("fixed_rate@50ms"));
+        bytes memory fetchedBlob = _fetchUpdateFromHttpsEndpoint(
+            token, timestampUs, feedId, channel, baseUrl
+        );
 
         vm.deal(address(this), 1 ether);
 

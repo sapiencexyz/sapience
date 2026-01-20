@@ -21,9 +21,9 @@ interface IPredictionMarketLimitOrder {
      * @param orderRequestData The order request data including outcomes, collateral, deadline, etc.
      * @return orderId The unique identifier for this order
      */
-    function placeOrder(IPredictionStructs.OrderRequestData calldata orderRequestData)
-        external
-        returns (uint256 orderId);
+    function placeOrder(
+        IPredictionStructs.OrderRequestData calldata orderRequestData
+    ) external returns (uint256 orderId);
 
     /**
      * @notice Fill an existing limit order
@@ -56,7 +56,10 @@ interface IPredictionMarketLimitOrder {
      * @param orderId The order id
      * @return order The order
      */
-    function getUnfilledOrder(uint256 orderId) external view returns (IPredictionStructs.LimitOrderData memory);
+    function getUnfilledOrder(uint256 orderId)
+        external
+        view
+        returns (IPredictionStructs.LimitOrderData memory);
 
     /**
      * @notice Get unfilled orders
@@ -75,5 +78,8 @@ interface IPredictionMarketLimitOrder {
      * @param maker The maker
      * @return orders The orders
      */
-    function getUnfilledOrderByMaker(address maker) external view returns (uint256[] memory);
+    function getUnfilledOrderByMaker(address maker)
+        external
+        view
+        returns (uint256[] memory);
 }

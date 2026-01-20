@@ -1,22 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {Origin} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {
     ConditionalTokensConditionResolver
 } from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
-import {ConditionalTokensReader} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
+import {
+    ConditionalTokensReader
+} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
 import {
     IConditionalTokensConditionResolver
 } from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
 import {
     IConditionalTokensReader
 } from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
-import {IConditionResolver} from "../../src/v2/interfaces/IConditionResolver.sol";
-import {IV2Types} from "../../src/v2/interfaces/IV2Types.sol";
-import {LZTypes} from "../../src/v2/resolvers/lz/LZTypes.sol";
-import {MockConditionalTokens} from "./mocks/MockConditionalTokens.sol";
+import {
+    IConditionResolver
+} from "../../src/v2/interfaces/IConditionResolver.sol";
+import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
+import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+import { MockConditionalTokens } from "./mocks/MockConditionalTokens.sol";
 import "forge-std/Test.sol";
 
 /// @title ConditionalTokensConditionResolverTest
@@ -68,7 +74,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         // Deploy PM-side resolver
         pmResolver = ConditionalTokensConditionResolver(
             payable(_deployOApp(
-                    type(ConditionalTokensConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)
+                    type(ConditionalTokensConditionResolver).creationCode,
+                    abi.encode(address(endpoints[pmEid]), owner)
                 ))
         );
 
@@ -79,7 +86,9 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
                     abi.encode(
                         address(endpoints[polygonEid]),
                         owner,
-                        IConditionalTokensReader.Settings({conditionalTokens: address(mockCT)})
+                        IConditionalTokensReader.Settings({
+                            conditionalTokens: address(mockCT)
+                        })
                     )
                 ))
         );
@@ -91,8 +100,16 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         this.wireOApps(oapps);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: polygonEid, remoteBridge: address(polygonReader)}));
-        polygonReader.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: polygonEid, remoteBridge: address(polygonReader)
+            })
+        );
+        polygonReader.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: pmEid, remoteBridge: address(pmResolver)
+            })
+        );
     }
 
     // ============ Constructor Tests ============
@@ -104,7 +121,9 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
+            remoteEid: 999, remoteBridge: address(0x1234)
+        });
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -118,7 +137,11 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     function test_setBridgeConfig_revertIfNotOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)}));
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: 999, remoteBridge: address(0x1234)
+            })
+        );
     }
 
     // ============ IConditionResolver Tests ============
@@ -132,7 +155,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     }
 
     function test_getResolution_notSettled() public view {
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertFalse(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 0);
@@ -146,34 +170,46 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_lzReceive_yesWins() public {
         // Simulate message from Polygon
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload); // CMD_RESOLUTION_RESPONSE = 10
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
         assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
         assertTrue(pmResolver.isConditionSettled(CONDITION_ID_1));
         assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
     }
 
     function test_lzReceive_noWins() public {
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(1), uint256(1), uint256(0));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(1), uint256(0));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -181,12 +217,17 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_lzReceive_notResolvedYet() public {
         // payoutDenominator = 0 means not resolved
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(0), uint256(0), uint256(0));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(0), uint256(0), uint256(0));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -196,12 +237,17 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_lzReceive_tieMarkedAsInvalid() public {
         // Tie: noPayout == yesPayout
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(2), uint256(1), uint256(1));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(2), uint256(1), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -215,12 +261,17 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_lzReceive_invalidPayoutMarkedAsInvalid() public {
         // Invalid: noPayout + yesPayout != denom
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(10), uint256(3), uint256(5));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(10), uint256(3), uint256(5));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
         assertTrue(pmResolver.isConditionInvalid(CONDITION_ID_1));
@@ -228,32 +279,44 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_lzReceive_cannotOverwriteSettled() public {
         // First settlement: YES wins
-        bytes memory payload1 = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload1 =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message1 = abi.encode(uint16(10), payload1);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message1, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message1,
+            address(0),
+            bytes("")
         );
 
         // Try to overwrite with NO wins - should be ignored
-        bytes memory payload2 = abi.encode(CONDITION_ID_1, uint256(1), uint256(1), uint256(0));
+        bytes memory payload2 =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(1), uint256(0));
         bytes memory message2 = abi.encode(uint16(10), payload2);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message2, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message2,
+            address(0),
+            bytes("")
         );
 
         // Should still be YES
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
     }
 
     function test_lzReceive_revertIfInvalidSourceChain() public {
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
@@ -268,7 +331,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     }
 
     function test_lzReceive_revertIfInvalidSender() public {
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
@@ -283,13 +347,18 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     }
 
     function test_lzReceive_revertIfInvalidCommandType() public {
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message = abi.encode(uint16(999), payload); // Wrong command
 
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
     }
 
@@ -297,21 +366,31 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_getResolutions_batch() public {
         // Settle first condition as YES
-        bytes memory payload1 = abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory payload1 =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message1 = abi.encode(uint16(10), payload1);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message1, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message1,
+            address(0),
+            bytes("")
         );
 
         // Settle second condition as NO
-        bytes memory payload2 = abi.encode(CONDITION_ID_2, uint256(1), uint256(1), uint256(0));
+        bytes memory payload2 =
+            abi.encode(CONDITION_ID_2, uint256(1), uint256(1), uint256(0));
         bytes memory message2 = abi.encode(uint16(10), payload2);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message2, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message2,
+            address(0),
+            bytes("")
         );
 
         // Query batch
@@ -320,7 +399,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         conditionIds[1] = CONDITION_ID_2;
         conditionIds[2] = CONDITION_ID_3; // Not settled
 
-        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) = pmResolver.getResolutions(conditionIds);
+        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
+            pmResolver.getResolutions(conditionIds);
 
         assertTrue(resolved[0]);
         assertTrue(resolved[1]);
@@ -337,15 +417,21 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // ============ View Functions Tests ============
 
     function test_getCondition() public {
-        bytes memory payload = abi.encode(CONDITION_ID_1, uint256(100), uint256(30), uint256(70));
+        bytes memory payload =
+            abi.encode(CONDITION_ID_1, uint256(100), uint256(30), uint256(70));
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
         );
 
-        IConditionalTokensConditionResolver.ConditionState memory state = pmResolver.getCondition(CONDITION_ID_1);
+        IConditionalTokensConditionResolver.ConditionState memory state =
+            pmResolver.getCondition(CONDITION_ID_1);
 
         assertEq(state.conditionId, CONDITION_ID_1);
         assertTrue(state.settled);
@@ -358,7 +444,13 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     // ============ Helper Functions ============
 
-    function _createOrigin(uint32 srcEid, address sender) internal pure returns (Origin memory) {
-        return Origin({srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0});
+    function _createOrigin(uint32 srcEid, address sender)
+        internal
+        pure
+        returns (Origin memory)
+    {
+        return Origin({
+            srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0
+        });
     }
 }

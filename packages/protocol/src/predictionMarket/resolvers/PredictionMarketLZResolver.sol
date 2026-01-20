@@ -1,20 +1,35 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IPredictionMarketLZResolver} from "./interfaces/IPredictionMarketLZResolver.sol";
-import {Encoder} from "../../bridge/cmdEncoder.sol";
-import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
-import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import {ETHManagement} from "../../bridge/abstract/ETHManagement.sol";
+import {
+    OApp,
+    Origin,
+    MessagingFee
+} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    IPredictionMarketLZResolver
+} from "./interfaces/IPredictionMarketLZResolver.sol";
+import { Encoder } from "../../bridge/cmdEncoder.sol";
+import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { ETHManagement } from "../../bridge/abstract/ETHManagement.sol";
 
 /**
  * @title PredictionMarketLZResolver
  * @notice Simplified LayerZero-based resolver contract for Prediction Market system
  * @dev This contract only receives resolution messages from UMA side via LayerZero
  */
-contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, ReentrancyGuard, ETHManagement {
+contract PredictionMarketLZResolver is
+    OApp,
+    IPredictionMarketLZResolver,
+    ReentrancyGuard,
+    ETHManagement
+{
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
     using OptionsBuilder for bytes;
@@ -59,11 +74,18 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
     }
 
     // ============ Configuration Functions ============
-    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _bridgeConfig) external onlyOwner {
+    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _bridgeConfig)
+        external
+        onlyOwner
+    {
         bridgeConfig = _bridgeConfig;
     }
 
-    function getBridgeConfig() external view returns (BridgeTypes.BridgeConfig memory) {
+    function getBridgeConfig()
+        external
+        view
+        returns (BridgeTypes.BridgeConfig memory)
+    {
         return bridgeConfig;
     }
 
@@ -79,7 +101,8 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
     {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
         if (predictedOutcomes.length > config.maxPredictionMarkets) {
@@ -102,7 +125,10 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
         view
         returns (bool isResolved, Error error, bool parlaySuccess)
     {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory
+            predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -173,22 +199,32 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
     }
 
     // ============ LayerZero Message Handling ============
-    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
-        internal
-        override
-    {
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32,
+        bytes calldata _message,
+        address,
+        bytes calldata
+    ) internal override {
         if (_origin.srcEid != bridgeConfig.remoteEid) {
             revert InvalidSourceChain(bridgeConfig.remoteEid, _origin.srcEid);
         }
-        if (address(uint160(uint256(_origin.sender))) != bridgeConfig.remoteBridge) {
-            revert InvalidSender(bridgeConfig.remoteBridge, address(uint160(uint256(_origin.sender))));
+        if (
+            address(uint160(uint256(_origin.sender)))
+                != bridgeConfig.remoteBridge
+        ) {
+            revert InvalidSender(
+                bridgeConfig.remoteBridge,
+                address(uint160(uint256(_origin.sender)))
+            );
         }
 
         // Handle incoming messages from the UMA side
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
         if (commandType == Encoder.CMD_FROM_UMA_MARKET_RESOLVED) {
-            (bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) = data.decodeFromUMAMarketResolved();
+            (bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) =
+                data.decodeFromUMAMarketResolved();
             marketResolvedCallback(marketId, resolvedToYes, assertedTruthfully);
         } else {
             revert InvalidCommandType(commandType);
@@ -196,7 +232,11 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
     }
 
     // ============ internal UMA Callback Functions ============
-    function marketResolvedCallback(bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) internal {
+    function marketResolvedCallback(
+        bytes32 marketId,
+        bool resolvedToYes,
+        bool assertedTruthfully
+    ) internal {
         // Create or update the wrapped market
         WrappedMarket storage market = wrappedMarkets[marketId];
         if (market.marketId == bytes32(0)) {
@@ -214,13 +254,19 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
             market.resolvedToYes = resolvedToYes;
         }
 
-        emit MarketResolved(marketId, resolvedToYes, assertedTruthfully, block.timestamp);
+        emit MarketResolved(
+            marketId, resolvedToYes, assertedTruthfully, block.timestamp
+        );
     }
 
     // No disputed callback required on PM side per current interface
 
     // ============ View Functions ============
-    function getMarket(bytes32 marketId) external view returns (WrappedMarket memory) {
+    function getMarket(bytes32 marketId)
+        external
+        view
+        returns (WrappedMarket memory)
+    {
         return wrappedMarkets[marketId];
     }
 
@@ -228,7 +274,11 @@ contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, Reentr
         return wrappedMarkets[marketId].settled;
     }
 
-    function getMarketResolution(bytes32 marketId) external view returns (bool resolvedToYes) {
+    function getMarketResolution(bytes32 marketId)
+        external
+        view
+        returns (bool resolvedToYes)
+    {
         WrappedMarket memory market = wrappedMarkets[marketId];
         require(market.settled, "Market not settled");
         return market.resolvedToYes;

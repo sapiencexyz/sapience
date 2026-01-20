@@ -5,12 +5,20 @@ import "forge-std/Script.sol";
 import {
     PredictionMarketLZResolverUmaSide
 } from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
-import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
+import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
-import {ILayerZeroEndpointV2} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import {SetConfigParam} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import {UlnConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
-import {ExecutorConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
+import {
+    ILayerZeroEndpointV2
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    SetConfigParam
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {
+    UlnConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {
+    ExecutorConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
 
 // Configure the UMA-side resolver on Arbitrum to point to PM-side peer and UMA settings
 contract SetDVNPredictionMarketLZResolverUmaSide is Script {
@@ -86,7 +94,9 @@ contract SetDVNPredictionMarketLZResolverUmaSide is Script {
 
         /// @notice ExecutorConfig sets message size limit + fee‑paying executor for A → B
         ExecutorConfig memory exec = ExecutorConfig({
-            maxMessageSize: uint32(vm.envOr("MAX_MESSAGE_SIZE", uint256(10000))), // max bytes per cross-chain message
+            maxMessageSize: uint32(
+                vm.envOr("MAX_MESSAGE_SIZE", uint256(10_000))
+            ), // max bytes per cross-chain message
             executor: vm.envAddress("ARB_EXECUTOR") // address that pays destination execution fees on B
         });
 

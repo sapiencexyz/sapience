@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {Origin} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {LZConditionResolver} from "../../src/v2/resolvers/lz/LZConditionResolver.sol";
-import {LZTypes} from "../../src/v2/resolvers/lz/LZTypes.sol";
-import {IV2Types} from "../../src/v2/interfaces/IV2Types.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import {
+    LZConditionResolver
+} from "../../src/v2/resolvers/lz/LZConditionResolver.sol";
+import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
 import "forge-std/Test.sol";
 
 /// @title LZConditionResolverTest
@@ -29,7 +33,10 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
     // Events
     event ConditionResolved(
-        bytes32 indexed conditionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime
+        bytes32 indexed conditionId,
+        bool resolvedToYes,
+        bool assertedTruthfully,
+        uint256 resolutionTime
     );
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
@@ -45,12 +52,18 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = LZConditionResolver(
-            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)))
+            payable(_deployOApp(
+                    type(LZConditionResolver).creationCode,
+                    abi.encode(address(endpoints[pmEid]), owner)
+                ))
         );
 
         // Deploy mock UMA-side resolver (for sending messages)
         umaResolver = LZConditionResolver(
-            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[umaEid]), owner)))
+            payable(_deployOApp(
+                    type(LZConditionResolver).creationCode,
+                    abi.encode(address(endpoints[umaEid]), owner)
+                ))
         );
 
         // Wire OApps
@@ -60,9 +73,17 @@ contract LZConditionResolverTest is TestHelperOz5 {
         this.wireOApps(oapps);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)}));
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: umaEid, remoteBridge: address(umaResolver)
+            })
+        );
 
-        umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
+        umaResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: pmEid, remoteBridge: address(pmResolver)
+            })
+        );
     }
 
     // ============ Constructor Tests ============
@@ -74,7 +95,9 @@ contract LZConditionResolverTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
+            remoteEid: 999, remoteBridge: address(0x1234)
+        });
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -88,19 +111,23 @@ contract LZConditionResolverTest is TestHelperOz5 {
     function test_setBridgeConfig_revertIfNotOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)}));
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: 999, remoteBridge: address(0x1234)
+            })
+        );
     }
 
     // ============ ETH Management Tests ============
 
     function test_depositETH() public {
         uint256 balanceBefore = address(pmResolver).balance;
-        pmResolver.depositETH{value: 1 ether}();
+        pmResolver.depositETH{ value: 1 ether }();
         assertEq(address(pmResolver).balance, balanceBefore + 1 ether);
     }
 
     function test_withdrawETH() public {
-        pmResolver.depositETH{value: 1 ether}();
+        pmResolver.depositETH{ value: 1 ether }();
         uint256 ownerBalanceBefore = owner.balance;
 
         pmResolver.withdrawETH(0.5 ether);
@@ -109,7 +136,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
     }
 
     function test_withdrawETH_revertIfNotOwner() public {
-        pmResolver.depositETH{value: 1 ether}();
+        pmResolver.depositETH{ value: 1 ether }();
 
         vm.prank(unauthorizedUser);
         vm.expectRevert();
@@ -117,8 +144,8 @@ contract LZConditionResolverTest is TestHelperOz5 {
     }
 
     function test_setLzReceiveCost() public {
-        pmResolver.setLzReceiveCost(50000);
-        assertEq(pmResolver.getLzReceiveCost(), 50000);
+        pmResolver.setLzReceiveCost(50_000);
+        assertEq(pmResolver.getLzReceiveCost(), 50_000);
     }
 
     function test_setGasThresholds() public {
@@ -139,7 +166,8 @@ contract LZConditionResolverTest is TestHelperOz5 {
     }
 
     function test_getResolution_notSettled() public view {
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertFalse(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 0);
@@ -150,7 +178,8 @@ contract LZConditionResolverTest is TestHelperOz5 {
     }
 
     function test_getCondition_notSettled() public view {
-        (bool settled, bool resolvedToYes) = pmResolver.getCondition(CONDITION_ID_1);
+        (bool settled, bool resolvedToYes) =
+            pmResolver.getCondition(CONDITION_ID_1);
         assertFalse(settled);
         assertFalse(resolvedToYes);
     }
@@ -164,12 +193,19 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         // Use LZ test helper to simulate receive
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
 
         // Verify condition is resolved
         assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -180,9 +216,16 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -193,7 +236,13 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
 
         // Condition should NOT be settled since assertedTruthfully=false
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -236,7 +285,13 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
     }
 
     function test_lzReceive_revertIfAlreadySettled() public {
@@ -245,12 +300,24 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
 
         // Try to resolve again
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message,
+            address(0),
+            bytes("")
+        );
     }
 
     // ============ Batch Resolution Tests ============
@@ -261,14 +328,21 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message1 = abi.encode(uint16(8), payload1);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message1, address(0), bytes(""));
+        pmResolver.lzReceive(
+            _createOrigin(umaEid, address(umaResolver)),
+            bytes32(0),
+            message1,
+            address(0),
+            bytes("")
+        );
 
         // Query batch
         bytes32[] memory conditionIds = new bytes32[](2);
         conditionIds[0] = CONDITION_ID_1;
         conditionIds[1] = CONDITION_ID_2;
 
-        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) = pmResolver.getResolutions(conditionIds);
+        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
+            pmResolver.getResolutions(conditionIds);
 
         assertTrue(resolved[0]);
         assertFalse(resolved[1]);
@@ -280,7 +354,13 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
     // ============ Helper Functions ============
 
-    function _createOrigin(uint32 srcEid, address sender) internal pure returns (Origin memory) {
-        return Origin({srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0});
+    function _createOrigin(uint32 srcEid, address sender)
+        internal
+        pure
+        returns (Origin memory)
+    {
+        return Origin({
+            srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0
+        });
     }
 }

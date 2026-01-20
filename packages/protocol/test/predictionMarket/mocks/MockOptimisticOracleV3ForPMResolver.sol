@@ -33,24 +33,34 @@ contract MockOptimisticOracleV3ForPMResolver {
         return lastAssertionId;
     }
 
-    function getAssertionData(bytes32 assertionId) external view returns (AssertionData memory) {
+    function getAssertionData(bytes32 assertionId)
+        external
+        view
+        returns (AssertionData memory)
+    {
         return assertionData[assertionId];
     }
 
-    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully) external {
+    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully)
+        external
+    {
         if (resolver != address(0)) {
-            PredictionMarketLZResolverUmaSide(resolver).assertionResolvedCallback(assertionId, assertedTruthfully);
+            PredictionMarketLZResolverUmaSide(resolver)
+                .assertionResolvedCallback(assertionId, assertedTruthfully);
         }
     }
 
     function disputeAssertion(bytes32 assertionId) external {
         if (resolver != address(0)) {
-            PredictionMarketLZResolverUmaSide(resolver).assertionDisputedCallback(assertionId);
+            PredictionMarketLZResolverUmaSide(resolver)
+                .assertionDisputedCallback(assertionId);
         }
     }
 
     function defaultIdentifier() public pure returns (bytes32) {
-        return bytes32(0x1337000000000000000000000000000000000000000000000000000000000000);
+        return bytes32(
+            0x1337000000000000000000000000000000000000000000000000000000000000
+        );
     }
 
     function assertTruth(
@@ -65,8 +75,17 @@ contract MockOptimisticOracleV3ForPMResolver {
         bytes32 identifier,
         bytes32 /* domainId */
     ) public returns (bytes32 assertionId) {
-        assertionId =
-            keccak256(abi.encodePacked(claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp));
+        assertionId = keccak256(
+            abi.encodePacked(
+                claim,
+                asserter,
+                callbackRecipient,
+                liveness,
+                currency,
+                bond,
+                block.timestamp
+            )
+        );
 
         assertionData[assertionId] = AssertionData({
             claim: claim,

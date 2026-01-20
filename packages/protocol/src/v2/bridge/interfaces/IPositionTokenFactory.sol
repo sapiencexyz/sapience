@@ -7,7 +7,12 @@ interface IPositionTokenFactory {
     // ============ Events ============
 
     /// @notice Emitted when a token is deployed
-    event TokenDeployed(bytes32 indexed pickConfigId, bool indexed isPredictorToken, address token, bytes32 salt);
+    event TokenDeployed(
+        bytes32 indexed pickConfigId,
+        bool indexed isPredictorToken,
+        address token,
+        bytes32 salt
+    );
 
     // ============ Errors ============
 
@@ -43,19 +48,28 @@ interface IPositionTokenFactory {
     /// @param pickConfigId The prediction ID
     /// @param isPredictorToken True if predictor token
     /// @return The predicted token address
-    function predictAddress(bytes32 pickConfigId, bool isPredictorToken) external view returns (address);
+    function predictAddress(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        view
+        returns (address);
 
     /// @notice Compute the salt for a token
     /// @param pickConfigId The prediction ID
     /// @param isPredictorToken True if predictor token
     /// @return The computed salt
-    function computeSalt(bytes32 pickConfigId, bool isPredictorToken) external pure returns (bytes32);
+    function computeSalt(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        pure
+        returns (bytes32);
 
     /// @notice Check if a token exists at the predicted address
     /// @param pickConfigId The prediction ID
     /// @param isPredictorToken True if predictor token
     /// @return True if token already deployed
-    function isDeployed(bytes32 pickConfigId, bool isPredictorToken) external view returns (bool);
+    function isDeployed(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        view
+        returns (bool);
 
     // ============ Ownership Management ============
 

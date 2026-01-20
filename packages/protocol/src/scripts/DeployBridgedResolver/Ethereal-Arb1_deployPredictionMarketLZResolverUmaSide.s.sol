@@ -17,7 +17,8 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
 
         address bondCurrency = vm.envAddress("UMA_BOND_TOKEN");
         uint256 bondAmount = vm.envUint("UMA_BOND_AMOUNT");
-        uint64 assertionLiveness = uint64(vm.envOr("UMA_ASSERTION_LIVENESS", uint256(3600)));
+        uint64 assertionLiveness =
+            uint64(vm.envOr("UMA_ASSERTION_LIVENESS", uint256(3600)));
 
         vm.startBroadcast(vm.envUint("ARB_PRIVATE_KEY"));
         PredictionMarketLZResolverUmaSide resolver = new PredictionMarketLZResolverUmaSide(
@@ -25,12 +26,16 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
             owner,
             optimisticOracleV3,
             PredictionMarketLZResolverUmaSide.Settings({
-                bondCurrency: bondCurrency, bondAmount: bondAmount, assertionLiveness: assertionLiveness
+                bondCurrency: bondCurrency,
+                bondAmount: bondAmount,
+                assertionLiveness: assertionLiveness
             })
         );
         vm.stopBroadcast();
 
-        console.log("PredictionMarketLZResolverUmaSide deployed to:", address(resolver));
+        console.log(
+            "PredictionMarketLZResolverUmaSide deployed to:", address(resolver)
+        );
     }
 }
 

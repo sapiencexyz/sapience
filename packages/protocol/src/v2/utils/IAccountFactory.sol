@@ -9,5 +9,8 @@ interface IAccountFactory {
     /// @param owner The owner of the smart account
     /// @param index The account index/salt (usually 0 for primary account)
     /// @return account The predicted smart account address
-    function getAccountAddress(address owner, uint256 index) external view returns (address account);
+    function getAccountAddress(address owner, uint256 index)
+        external
+        view
+        returns (address account);
 }

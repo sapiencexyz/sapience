@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {IConditionResolver} from "../../../interfaces/IConditionResolver.sol";
-import {LZTypes} from "../../lz/LZTypes.sol";
+import { IConditionResolver } from "../../../interfaces/IConditionResolver.sol";
+import { LZTypes } from "../../lz/LZTypes.sol";
 
 /// @title IConditionalTokensConditionResolver
 /// @notice Interface for ConditionalTokens-based condition resolver (PM side)
@@ -45,8 +45,20 @@ interface IConditionalTokensConditionResolver is IConditionResolver {
     // ============ Functions ============
 
     function setBridgeConfig(LZTypes.BridgeConfig calldata config) external;
-    function getBridgeConfig() external view returns (LZTypes.BridgeConfig memory);
-    function getCondition(bytes32 conditionId) external view returns (ConditionState memory);
-    function isConditionSettled(bytes32 conditionId) external view returns (bool);
-    function isConditionInvalid(bytes32 conditionId) external view returns (bool);
+    function getBridgeConfig()
+        external
+        view
+        returns (LZTypes.BridgeConfig memory);
+    function getCondition(bytes32 conditionId)
+        external
+        view
+        returns (ConditionState memory);
+    function isConditionSettled(bytes32 conditionId)
+        external
+        view
+        returns (bool);
+    function isConditionInvalid(bytes32 conditionId)
+        external
+        view
+        returns (bool);
 }

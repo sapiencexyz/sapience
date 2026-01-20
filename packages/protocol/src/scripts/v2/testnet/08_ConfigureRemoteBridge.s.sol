@@ -1,26 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {PositionTokenBridgeRemote} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
-import {PositionTokenFactory} from "../../../v2/bridge/PositionTokenFactory.sol";
-import {IPositionTokenBridgeBase} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+import { Script, console } from "forge-std/Script.sol";
+import {
+    PositionTokenBridgeRemote
+} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+import {
+    PositionTokenFactory
+} from "../../../v2/bridge/PositionTokenFactory.sol";
+import {
+    IPositionTokenBridgeBase
+} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
 
-/// @title Configure Remote Bridge
-/// @notice Configure bridge on Arbitrum with Ethereal settings
+/// @title Configure SM Network Bridge
+/// @notice Configure bridge on SM Network with Ethereal settings
 contract ConfigureRemoteBridge is Script {
     function run() external {
-        address bridgeAddr = vm.envAddress("ARB_BRIDGE_ADDRESS");
-        address remoteBridge = vm.envAddress("ETHEREAL_BRIDGE_ADDRESS");
+        address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
+        address remoteBridge = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");
         address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
-        uint32 remoteEid = uint32(vm.envUint("ETHEREAL_LZ_EID"));
+        uint32 remoteEid = uint32(vm.envUint("PM_NETWORK_LZ_EID"));
 
-        PositionTokenBridgeRemote bridge = PositionTokenBridgeRemote(payable(bridgeAddr));
+        PositionTokenBridgeRemote bridge =
+            PositionTokenBridgeRemote(payable(bridgeAddr));
         PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
 
-        console.log("=== Configure Remote Bridge ===");
+        console.log("=== Configure SM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);
-        console.log("Remote Bridge:", remoteBridge);
+        console.log("SM Network Bridge:", remoteBridge);
         console.log("Remote EID:", remoteEid);
         console.log("Factory:", factoryAddr);
 
@@ -28,7 +35,9 @@ contract ConfigureRemoteBridge is Script {
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({remoteEid: remoteEid, remoteBridge: remoteBridge})
+            IPositionTokenBridgeBase.BridgeConfig({
+                remoteEid: remoteEid, remoteBridge: remoteBridge
+            })
         );
 
         // Set LZ peer
@@ -39,7 +48,7 @@ contract ConfigureRemoteBridge is Script {
         factory.setDeployer(bridgeAddr);
 
         // Fund bridge for ACK fees
-        (bool success,) = bridgeAddr.call{value: 0.01 ether}("");
+        (bool success,) = bridgeAddr.call{ value: 0.01 ether }("");
         require(success, "Failed to fund bridge");
 
         vm.stopBroadcast();

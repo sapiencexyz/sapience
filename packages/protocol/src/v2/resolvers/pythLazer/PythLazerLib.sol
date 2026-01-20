@@ -1,37 +1,56 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import {PythLazerStructs} from "./PythLazerStructs.sol";
+import { PythLazerStructs } from "./PythLazerStructs.sol";
 
 library PythLazerLib {
     // --- Internal tri-state helpers ---
     // triStateMap packs 2 bits per property at bit positions [2*p, 2*p+1]
-    function _setTriState(PythLazerStructs.Feed memory feed, uint8 propId, PythLazerStructs.PropertyState state)
-        private
-        pure
-    {
+    function _setTriState(
+        PythLazerStructs.Feed memory feed,
+        uint8 propId,
+        PythLazerStructs.PropertyState state
+    ) private pure {
         // Build a mask with zeros at the target 2-bit window and ones elsewhere
         //   uint256(3) is binary 11; shift it left into the window for this property
         //   ~ inverts the bits to create a clearing mask for just that window
         uint256 mask = ~(uint256(3) << (2 * propId));
         // Clear the window, then OR-in the desired state shifted into position
-        feed.triStateMap = (feed.triStateMap & mask) | (uint256(uint8(state)) << (2 * propId));
+        feed.triStateMap =
+            (feed.triStateMap & mask) | (uint256(uint8(state)) << (2 * propId));
     }
 
-    function _setApplicableButMissing(PythLazerStructs.Feed memory feed, uint8 propId) private pure {
-        _setTriState(feed, propId, PythLazerStructs.PropertyState.ApplicableButMissing);
+    function _setApplicableButMissing(
+        PythLazerStructs.Feed memory feed,
+        uint8 propId
+    ) private pure {
+        _setTriState(
+            feed, propId, PythLazerStructs.PropertyState.ApplicableButMissing
+        );
     }
 
-    function _setPresent(PythLazerStructs.Feed memory feed, uint8 propId) private pure {
+    function _setPresent(PythLazerStructs.Feed memory feed, uint8 propId)
+        private
+        pure
+    {
         _setTriState(feed, propId, PythLazerStructs.PropertyState.Present);
     }
 
-    function _hasValue(PythLazerStructs.Feed memory feed, uint8 propId) private pure returns (bool) {
+    function _hasValue(PythLazerStructs.Feed memory feed, uint8 propId)
+        private
+        pure
+        returns (bool)
+    {
         // Shift the property window down to bits [0,1], mask with 0b11 (3), compare to Present (2)
-        return ((feed.triStateMap >> (2 * propId)) & 3) == uint256(uint8(PythLazerStructs.PropertyState.Present));
+        return ((feed.triStateMap >> (2 * propId)) & 3)
+            == uint256(uint8(PythLazerStructs.PropertyState.Present));
     }
 
-    function _isRequested(PythLazerStructs.Feed memory feed, uint8 propId) private pure returns (bool) {
+    function _isRequested(PythLazerStructs.Feed memory feed, uint8 propId)
+        private
+        pure
+        returns (bool)
+    {
         // Requested if state != NotApplicable (i.e., any non-zero)
         return ((feed.triStateMap >> (2 * propId)) & 3) != 0;
     }
@@ -39,9 +58,14 @@ library PythLazerLib {
     function parsePayloadHeader(bytes calldata update)
         public
         pure
-        returns (uint64 timestamp, PythLazerStructs.Channel channel, uint8 feedsLen, uint16 pos)
+        returns (
+            uint64 timestamp,
+            PythLazerStructs.Channel channel,
+            uint8 feedsLen,
+            uint16 pos
+        )
     {
-        uint32 FORMAT_MAGIC = 2479346549;
+        uint32 FORMAT_MAGIC = 2_479_346_549;
 
         pos = 0;
         uint32 magic = uint32(bytes4(update[pos:pos + 4]));
@@ -143,7 +167,8 @@ library PythLazerLib {
         // Parse payload header
         uint16 pos;
         uint8 feedsLen;
-        (update.timestamp, update.channel, feedsLen, pos) = parsePayloadHeader(payload);
+        (update.timestamp, update.channel, feedsLen, pos) =
+            parsePayloadHeader(payload);
 
         // Initialize feeds array
         update.feeds = new PythLazerStructs.Feed[](feedsLen);
@@ -174,92 +199,209 @@ library PythLazerLib {
                     (feed._price, pos) = parseFeedValueInt64(payload, pos);
                     // Match upstream semantics: value==0 means ApplicableButMissing.
                     if (feed._price != 0) {
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.Price));
+                        _setPresent(
+                            feed,
+                            uint8(PythLazerStructs.PriceFeedProperty.Price)
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.Price));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(PythLazerStructs.PriceFeedProperty.Price)
+                        );
                     }
 
                     // Best Bid Price Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.BestBidPrice) {
-                    (feed._bestBidPrice, pos) = parseFeedValueInt64(payload, pos);
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.BestBidPrice
+                ) {
+                    (feed._bestBidPrice, pos) =
+                        parseFeedValueInt64(payload, pos);
                     if (feed._bestBidPrice != 0) {
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice));
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.BestBidPrice
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.BestBidPrice
+                            )
+                        );
                     }
 
                     // Best Ask Price Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.BestAskPrice) {
-                    (feed._bestAskPrice, pos) = parseFeedValueInt64(payload, pos);
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.BestAskPrice
+                ) {
+                    (feed._bestAskPrice, pos) =
+                        parseFeedValueInt64(payload, pos);
                     if (feed._bestAskPrice != 0) {
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice));
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.BestAskPrice
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.BestAskPrice
+                            )
+                        );
                     }
 
                     // Publisher Count Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.PublisherCount) {
-                    (feed._publisherCount, pos) = parseFeedValueUint16(payload, pos);
+                } else if (
+                    property
+                        == PythLazerStructs.PriceFeedProperty.PublisherCount
+                ) {
+                    (feed._publisherCount, pos) =
+                        parseFeedValueUint16(payload, pos);
                     if (feed._publisherCount != 0) {
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount));
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .PublisherCount
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .PublisherCount
+                            )
+                        );
                     }
 
                     // Exponent Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.Exponent) {
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.Exponent
+                ) {
                     (feed._exponent, pos) = parseFeedValueInt16(payload, pos);
-                    _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent));
+                    _setPresent(
+                        feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent)
+                    );
 
                     // Confidence Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.Confidence) {
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.Confidence
+                ) {
                     (feed._confidence, pos) = parseFeedValueUint64(payload, pos);
                     if (feed._confidence != 0) {
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence));
+                        _setPresent(
+                            feed,
+                            uint8(PythLazerStructs.PriceFeedProperty.Confidence)
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(PythLazerStructs.PriceFeedProperty.Confidence)
+                        );
                     }
 
                     // Funding Rate Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.FundingRate) {
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.FundingRate
+                ) {
                     uint8 exists;
                     (exists, pos) = parseFeedValueUint8(payload, pos);
                     if (exists != 0) {
-                        (feed._fundingRate, pos) = parseFeedValueInt64(payload, pos);
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate));
+                        (feed._fundingRate, pos) =
+                            parseFeedValueInt64(payload, pos);
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.FundingRate
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty.FundingRate
+                            )
+                        );
                     }
 
                     // Funding Timestamp Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.FundingTimestamp) {
+                } else if (
+                    property
+                        == PythLazerStructs.PriceFeedProperty.FundingTimestamp
+                ) {
                     uint8 exists;
                     (exists, pos) = parseFeedValueUint8(payload, pos);
                     if (exists != 0) {
-                        (feed._fundingTimestamp, pos) = parseFeedValueUint64(payload, pos);
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp));
+                        (feed._fundingTimestamp, pos) =
+                            parseFeedValueUint64(payload, pos);
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingTimestamp
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingTimestamp
+                            )
+                        );
                     }
 
                     // Funding Rate Interval Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.FundingRateInterval) {
+                } else if (
+                    property
+                        == PythLazerStructs.PriceFeedProperty
+                        .FundingRateInterval
+                ) {
                     uint8 exists;
                     (exists, pos) = parseFeedValueUint8(payload, pos);
                     if (exists != 0) {
-                        (feed._fundingRateInterval, pos) = parseFeedValueUint64(payload, pos);
-                        _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval));
+                        (feed._fundingRateInterval, pos) =
+                            parseFeedValueUint64(payload, pos);
+                        _setPresent(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingRateInterval
+                            )
+                        );
                     } else {
-                        _setApplicableButMissing(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval));
+                        _setApplicableButMissing(
+                            feed,
+                            uint8(
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingRateInterval
+                            )
+                        );
                     }
 
                     // Market Session Property
-                } else if (property == PythLazerStructs.PriceFeedProperty.MarketSession) {
+                } else if (
+                    property == PythLazerStructs.PriceFeedProperty.MarketSession
+                ) {
                     int16 marketSessionValue;
-                    (marketSessionValue, pos) = parseFeedValueInt16(payload, pos);
-                    require(marketSessionValue >= 0 && marketSessionValue <= 4, "Invalid market session value");
-                    feed._marketSession = PythLazerStructs.MarketSession(uint8(uint16(marketSessionValue)));
-                    _setPresent(feed, uint8(PythLazerStructs.PriceFeedProperty.MarketSession));
+                    (marketSessionValue, pos) =
+                        parseFeedValueInt16(payload, pos);
+                    require(
+                        marketSessionValue >= 0 && marketSessionValue <= 4,
+                        "Invalid market session value"
+                    );
+                    feed._marketSession = PythLazerStructs.MarketSession(
+                        uint8(uint16(marketSessionValue))
+                    );
+                    _setPresent(
+                        feed,
+                        uint8(PythLazerStructs.PriceFeedProperty.MarketSession)
+                    );
                 } else {
                     // This should never happen due to validation in parseFeedProperty
                     revert("Unexpected property");
@@ -277,170 +419,382 @@ library PythLazerLib {
     // Helper functions for existence checks
 
     /// @notice Check if price exists
-    function hasPrice(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
+    function hasPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
         return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.Price));
     }
 
     /// @notice Check if best bid price exists
-    function hasBestBidPrice(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice));
+    function hasBestBidPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice)
+        );
     }
 
     /// @notice Check if best ask price exists
-    function hasBestAskPrice(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice));
+    function hasBestAskPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice)
+        );
     }
 
     /// @notice Check if publisher count exists
-    function hasPublisherCount(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount));
+    function hasPublisherCount(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount)
+        );
     }
 
     /// @notice Check if exponent exists
-    function hasExponent(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent));
+    function hasExponent(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return
+            _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent));
     }
 
     /// @notice Check if confidence exists
-    function hasConfidence(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence));
+    function hasConfidence(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence)
+        );
     }
 
     /// @notice Check if funding rate exists
-    function hasFundingRate(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate));
+    function hasFundingRate(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate)
+        );
     }
 
     /// @notice Check if funding timestamp exists
-    function hasFundingTimestamp(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp));
+    function hasFundingTimestamp(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp)
+        );
     }
 
     /// @notice Check if funding rate interval exists
-    function hasFundingRateInterval(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval));
+    function hasFundingRateInterval(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval)
+        );
     }
 
     /// @notice Check if market session exists
-    function hasMarketSession(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _hasValue(feed, uint8(PythLazerStructs.PriceFeedProperty.MarketSession));
+    function hasMarketSession(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _hasValue(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.MarketSession)
+        );
     }
 
     // Requested helpers — property included in this update
-    function isPriceRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.Price));
+    function isPriceRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return
+            _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.Price));
     }
 
-    function isBestBidPriceRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice));
+    function isBestBidPriceRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.BestBidPrice)
+        );
     }
 
-    function isBestAskPriceRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice));
+    function isBestAskPriceRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.BestAskPrice)
+        );
     }
 
-    function isPublisherCountRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount));
+    function isPublisherCountRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.PublisherCount)
+        );
     }
 
-    function isExponentRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent));
+    function isExponentRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.Exponent)
+        );
     }
 
-    function isConfidenceRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence));
+    function isConfidenceRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.Confidence)
+        );
     }
 
-    function isFundingRateRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate));
+    function isFundingRateRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRate)
+        );
     }
 
-    function isFundingTimestampRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp));
+    function isFundingTimestampRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingTimestamp)
+        );
     }
 
-    function isFundingRateIntervalRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval));
+    function isFundingRateIntervalRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.FundingRateInterval)
+        );
     }
 
-    function isMarketSessionRequested(PythLazerStructs.Feed memory feed) internal pure returns (bool) {
-        return _isRequested(feed, uint8(PythLazerStructs.PriceFeedProperty.MarketSession));
+    function isMarketSessionRequested(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (bool)
+    {
+        return _isRequested(
+            feed, uint8(PythLazerStructs.PriceFeedProperty.MarketSession)
+        );
     }
 
     // Safe getter functions (revert if property doesn't exist)
 
     /// @notice Get price (reverts if not exists)
-    function getPrice(PythLazerStructs.Feed memory feed) internal pure returns (int64) {
-        require(isPriceRequested(feed), "Price is not requested for the timestamp");
+    function getPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (int64)
+    {
+        require(
+            isPriceRequested(feed), "Price is not requested for the timestamp"
+        );
         require(hasPrice(feed), "Price is not present for the timestamp");
         return feed._price;
     }
 
     /// @notice Get best bid price (reverts if not exists)
-    function getBestBidPrice(PythLazerStructs.Feed memory feed) internal pure returns (int64) {
-        require(isBestBidPriceRequested(feed), "Best bid price is not requested for the timestamp");
-        require(hasBestBidPrice(feed), "Best bid price is not present for the timestamp");
+    function getBestBidPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (int64)
+    {
+        require(
+            isBestBidPriceRequested(feed),
+            "Best bid price is not requested for the timestamp"
+        );
+        require(
+            hasBestBidPrice(feed),
+            "Best bid price is not present for the timestamp"
+        );
         return feed._bestBidPrice;
     }
 
     /// @notice Get best ask price (reverts if not exists)
-    function getBestAskPrice(PythLazerStructs.Feed memory feed) internal pure returns (int64) {
-        require(isBestAskPriceRequested(feed), "Best ask price is not requested for the timestamp");
-        require(hasBestAskPrice(feed), "Best ask price is not present for the timestamp");
+    function getBestAskPrice(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (int64)
+    {
+        require(
+            isBestAskPriceRequested(feed),
+            "Best ask price is not requested for the timestamp"
+        );
+        require(
+            hasBestAskPrice(feed),
+            "Best ask price is not present for the timestamp"
+        );
         return feed._bestAskPrice;
     }
 
     /// @notice Get publisher count (reverts if not exists)
-    function getPublisherCount(PythLazerStructs.Feed memory feed) internal pure returns (uint16) {
-        require(isPublisherCountRequested(feed), "Publisher count is not requested for the timestamp");
-        require(hasPublisherCount(feed), "Publisher count is not present for the timestamp");
+    function getPublisherCount(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (uint16)
+    {
+        require(
+            isPublisherCountRequested(feed),
+            "Publisher count is not requested for the timestamp"
+        );
+        require(
+            hasPublisherCount(feed),
+            "Publisher count is not present for the timestamp"
+        );
         return feed._publisherCount;
     }
 
     /// @notice Get exponent (reverts if not exists)
-    function getExponent(PythLazerStructs.Feed memory feed) internal pure returns (int16) {
-        require(isExponentRequested(feed), "Exponent is not requested for the timestamp");
+    function getExponent(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (int16)
+    {
+        require(
+            isExponentRequested(feed),
+            "Exponent is not requested for the timestamp"
+        );
         require(hasExponent(feed), "Exponent is not present for the timestamp");
         return feed._exponent;
     }
 
     /// @notice Get confidence (reverts if not exists)
-    function getConfidence(PythLazerStructs.Feed memory feed) internal pure returns (uint64) {
-        require(isConfidenceRequested(feed), "Confidence is not requested for the timestamp");
-        require(hasConfidence(feed), "Confidence is not present for the timestamp");
+    function getConfidence(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (uint64)
+    {
+        require(
+            isConfidenceRequested(feed),
+            "Confidence is not requested for the timestamp"
+        );
+        require(
+            hasConfidence(feed), "Confidence is not present for the timestamp"
+        );
         return feed._confidence;
     }
 
     /// @notice Get funding rate (reverts if not exists)
-    function getFundingRate(PythLazerStructs.Feed memory feed) internal pure returns (int64) {
-        require(isFundingRateRequested(feed), "Funding rate is not requested for the timestamp");
-        require(hasFundingRate(feed), "Funding rate is not present for the timestamp");
+    function getFundingRate(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (int64)
+    {
+        require(
+            isFundingRateRequested(feed),
+            "Funding rate is not requested for the timestamp"
+        );
+        require(
+            hasFundingRate(feed),
+            "Funding rate is not present for the timestamp"
+        );
         return feed._fundingRate;
     }
 
     /// @notice Get funding timestamp (reverts if not exists)
-    function getFundingTimestamp(PythLazerStructs.Feed memory feed) internal pure returns (uint64) {
-        require(isFundingTimestampRequested(feed), "Funding timestamp is not requested for the timestamp");
-        require(hasFundingTimestamp(feed), "Funding timestamp is not present for the timestamp");
+    function getFundingTimestamp(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (uint64)
+    {
+        require(
+            isFundingTimestampRequested(feed),
+            "Funding timestamp is not requested for the timestamp"
+        );
+        require(
+            hasFundingTimestamp(feed),
+            "Funding timestamp is not present for the timestamp"
+        );
         return feed._fundingTimestamp;
     }
 
     /// @notice Get funding rate interval (reverts if not exists)
-    function getFundingRateInterval(PythLazerStructs.Feed memory feed) internal pure returns (uint64) {
-        require(isFundingRateIntervalRequested(feed), "Funding rate interval is not requested for the timestamp");
-        require(hasFundingRateInterval(feed), "Funding rate interval is not present for the timestamp");
+    function getFundingRateInterval(PythLazerStructs.Feed memory feed)
+        internal
+        pure
+        returns (uint64)
+    {
+        require(
+            isFundingRateIntervalRequested(feed),
+            "Funding rate interval is not requested for the timestamp"
+        );
+        require(
+            hasFundingRateInterval(feed),
+            "Funding rate interval is not present for the timestamp"
+        );
         return feed._fundingRateInterval;
     }
 
     /// @notice Get market session (reverts if not exists)
-    function getMarketSession(PythLazerStructs.Feed memory feed) public pure returns (PythLazerStructs.MarketSession) {
-        require(isMarketSessionRequested(feed), "Market session is not requested for the timestamp");
-        require(hasMarketSession(feed), "Market session is not present for the timestamp");
+    function getMarketSession(PythLazerStructs.Feed memory feed)
+        public
+        pure
+        returns (PythLazerStructs.MarketSession)
+    {
+        require(
+            isMarketSessionRequested(feed),
+            "Market session is not requested for the timestamp"
+        );
+        require(
+            hasMarketSession(feed),
+            "Market session is not present for the timestamp"
+        );
         return feed._marketSession;
     }
 
     /// @notice Get feed ID
-    function getFeedId(PythLazerStructs.Feed memory feed) public pure returns (uint32) {
+    function getFeedId(PythLazerStructs.Feed memory feed)
+        public
+        pure
+        returns (uint32)
+    {
         return feed.feedId;
     }
 }

@@ -21,16 +21,32 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
 
     // ============ Events ============
 
-    event PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets);
-    event PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets);
-    event PendingRequestCancelled(address indexed user, bool direction, uint256 shares, uint256 assets);
+    event PendingRequestCreated(
+        address indexed user, bool direction, uint256 shares, uint256 assets
+    );
+    event PendingRequestProcessed(
+        address indexed user, bool direction, uint256 shares, uint256 assets
+    );
+    event PendingRequestCancelled(
+        address indexed user, bool direction, uint256 shares, uint256 assets
+    );
 
-    event FundsApproved(address indexed manager, uint256 assets, address targetProtocol);
-    event ProjectedUtilizationRateUpdated(uint256 currentUtilizationRate, uint256 newProjectedRate);
+    event FundsApproved(
+        address indexed manager, uint256 assets, address targetProtocol
+    );
+    event ProjectedUtilizationRateUpdated(
+        uint256 currentUtilizationRate, uint256 newProjectedRate
+    );
     event MaxUtilizationRateUpdated(uint256 oldRate, uint256 newRate);
-    event EmergencyWithdrawal(address indexed user, uint256 shares, uint256 assets);
-    event ManagerUpdated(address indexed oldManager, address indexed newManager);
-    event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
+    event EmergencyWithdrawal(
+        address indexed user, uint256 shares, uint256 assets
+    );
+    event ManagerUpdated(
+        address indexed oldManager, address indexed newManager
+    );
+    event ExpirationTimeUpdated(
+        uint256 oldExpirationTime, uint256 newExpirationTime
+    );
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
 

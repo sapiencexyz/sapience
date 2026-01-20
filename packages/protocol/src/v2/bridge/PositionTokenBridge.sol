@@ -1,11 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    IERC20Metadata
+} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PositionTokenBridgeBase.sol";
 import "./interfaces/IPositionTokenBridge.sol";
 import "../interfaces/IPositionToken.sol";
@@ -21,28 +27,32 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
     uint128 private constant GAS_FOR_BRIDGE = 2_000_000;
 
     // ============ Constructor ============
-    constructor(address endpoint_, address owner_) PositionTokenBridgeBase(endpoint_, owner_) {}
+    constructor(address endpoint_, address owner_)
+        PositionTokenBridgeBase(endpoint_, owner_)
+    { }
 
     // ============ Bridge Function ============
 
     /// @inheritdoc IPositionTokenBridge
-    function bridge(address token, address recipient, uint256 amount, bytes32 refCode)
-        external
-        payable
-        nonReentrant
-        returns (bytes32 bridgeId)
-    {
-        if (token == address(0) || recipient == address(0)) revert ZeroAddress();
+    function bridge(
+        address token,
+        address recipient,
+        uint256 amount,
+        bytes32 refCode
+    ) external payable nonReentrant returns (bytes32 bridgeId) {
+        if (token == address(0) || recipient == address(0)) {
+            revert ZeroAddress();
+        }
         if (amount == 0) revert ZeroAmount();
 
         // Validate token has required interface (must be a PositionToken)
-        try IPositionToken(token).pickConfigId() returns (bytes32) {}
-            catch {
+        try IPositionToken(token).pickConfigId() returns (bytes32) { }
+        catch {
             revert InvalidToken(token);
         }
 
-        try IPositionToken(token).isPredictorToken() returns (bool) {}
-            catch {
+        try IPositionToken(token).isPredictorToken() returns (bool) { }
+        catch {
             revert InvalidToken(token);
         }
 
@@ -84,28 +94,42 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
             bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
             // Build options
-            bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+            bytes memory options = OptionsBuilder.newOptions()
+                .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
 
             // Quote fee
-            MessagingFee memory fee = _quote(_bridgeConfig.remoteEid, message, options, false);
+            MessagingFee memory fee =
+                _quote(_bridgeConfig.remoteEid, message, options, false);
             if (msg.value < fee.nativeFee) {
                 revert InsufficientFee(fee.nativeFee, msg.value);
             }
 
             // Send message
-            _lzSend(_bridgeConfig.remoteEid, message, options, fee, payable(msg.sender));
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                message,
+                options,
+                fee,
+                payable(msg.sender)
+            );
 
             // Refund excess ETH
             _refundExcess(fee.nativeFee);
         }
 
-        emit BridgeInitiated(bridgeId, token, msg.sender, recipient, amount, createdAt, refCode);
+        emit BridgeInitiated(
+            bridgeId, token, msg.sender, recipient, amount, createdAt, refCode
+        );
     }
 
     // ============ Quote Functions ============
 
     /// @inheritdoc IPositionTokenBridge
-    function quoteBridge(address token, uint256 amount) external view returns (MessagingFee memory fee) {
+    function quoteBridge(address token, uint256 amount)
+        external
+        view
+        returns (MessagingFee memory fee)
+    {
         // Read actual token metadata for accurate quote
         string memory name = IERC20Metadata(token).name();
         string memory symbol = IERC20Metadata(token).symbol();
@@ -122,12 +146,17 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
             amount
         );
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
     /// @inheritdoc IPositionTokenBridgeBase
-    function quoteRetry(bytes32 bridgeId) external view returns (MessagingFee memory fee) {
+    function quoteRetry(bytes32 bridgeId)
+        external
+        view
+        returns (MessagingFee memory fee)
+    {
         PendingBridge storage pending = _pendingBridges[bridgeId];
 
         // Re-read token metadata for accurate quote
@@ -145,7 +174,8 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
             pending.amount
         );
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
-        bytes memory options = OptionsBuilder.newOptions().addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
@@ -166,7 +196,14 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
 
         // Encode same message as original bridge
         bytes memory payload = abi.encode(
-            bridgeId, pending.token, pickConfigId, isPredictorToken, name, symbol, pending.recipient, pending.amount
+            bridgeId,
+            pending.token,
+            pickConfigId,
+            isPredictorToken,
+            name,
+            symbol,
+            pending.recipient,
+            pending.amount
         );
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;

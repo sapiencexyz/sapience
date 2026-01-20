@@ -56,8 +56,8 @@ contract PredictionMarketV2Test is Test {
         conditionId2 = keccak256(abi.encode("condition-2"));
 
         // Mint tokens to users
-        collateralToken.mint(predictor, 10000e18);
-        collateralToken.mint(counterparty, 10000e18);
+        collateralToken.mint(predictor, 10_000e18);
+        collateralToken.mint(counterparty, 10_000e18);
 
         // Approve market to spend tokens
         vm.prank(predictor);
@@ -74,7 +74,9 @@ contract PredictionMarketV2Test is Test {
         returns (IV2Types.Pick memory)
     {
         return IV2Types.Pick({
-            conditionResolver: address(resolver), conditionId: _conditionId, predictedOutcome: _outcome
+            conditionResolver: address(resolver),
+            conditionId: _conditionId,
+            predictedOutcome: _outcome
         });
     }
 
@@ -86,7 +88,9 @@ contract PredictionMarketV2Test is Test {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = market.getMintApprovalHash(predictionHash, signer, wager, nonce, deadline);
+        bytes32 approvalHash = market.getMintApprovalHash(
+            predictionHash, signer, wager, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
     }
@@ -97,8 +101,15 @@ contract PredictionMarketV2Test is Test {
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 predictionId = keccak256(abi.encode(picks));
-        bytes32 predictionHash =
-            keccak256(abi.encode(predictionId, PREDICTOR_WAGER, COUNTERPARTY_WAGER, predictor, counterparty));
+        bytes32 predictionHash = keccak256(
+            abi.encode(
+                predictionId,
+                PREDICTOR_WAGER,
+                COUNTERPARTY_WAGER,
+                predictor,
+                counterparty
+            )
+        );
 
         uint256 pNonce = market.getNonce(predictor);
         uint256 cNonce = market.getNonce(counterparty);
@@ -113,10 +124,22 @@ contract PredictionMarketV2Test is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature =
-            _signApproval(predictionHash, predictor, PREDICTOR_WAGER, pNonce, deadline, predictorPk);
-        request.counterpartySignature =
-            _signApproval(predictionHash, counterparty, COUNTERPARTY_WAGER, cNonce, deadline, counterpartyPk);
+        request.predictorSignature = _signApproval(
+            predictionHash,
+            predictor,
+            PREDICTOR_WAGER,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            counterparty,
+            COUNTERPARTY_WAGER,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
@@ -124,7 +147,11 @@ contract PredictionMarketV2Test is Test {
 
     function _mintPrediction(IV2Types.Pick[] memory picks)
         internal
-        returns (bytes32 predictionId, address predictorToken, address counterpartyToken)
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
     {
         IV2Types.MintRequest memory request = _createMintRequest(picks);
         return market.mint(request);
@@ -143,9 +170,14 @@ contract PredictionMarketV2Test is Test {
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
-        uint256 counterpartyBalanceBefore = collateralToken.balanceOf(counterparty);
+        uint256 counterpartyBalanceBefore =
+            collateralToken.balanceOf(counterparty);
 
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = _mintPrediction(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
 
         // Check prediction was created
         assertTrue(predictionId != bytes32(0));
@@ -153,16 +185,31 @@ contract PredictionMarketV2Test is Test {
         assertTrue(counterpartyToken != address(0));
 
         // Check collateral was transferred
-        assertEq(collateralToken.balanceOf(predictor), predictorBalanceBefore - PREDICTOR_WAGER);
-        assertEq(collateralToken.balanceOf(counterparty), counterpartyBalanceBefore - COUNTERPARTY_WAGER);
-        assertEq(collateralToken.balanceOf(address(market)), PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalanceBefore - PREDICTOR_WAGER
+        );
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalanceBefore - COUNTERPARTY_WAGER
+        );
+        assertEq(
+            collateralToken.balanceOf(address(market)),
+            PREDICTOR_WAGER + COUNTERPARTY_WAGER
+        );
 
         // Check position tokens were minted (amount = wager in fungible model)
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER);
-        assertEq(IPositionToken(counterpartyToken).balanceOf(counterparty), COUNTERPARTY_WAGER);
+        assertEq(
+            IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER
+        );
+        assertEq(
+            IPositionToken(counterpartyToken).balanceOf(counterparty),
+            COUNTERPARTY_WAGER
+        );
 
         // Check prediction data
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
         assertEq(prediction.predictor, predictor);
         assertEq(prediction.counterparty, counterparty);
         assertEq(prediction.predictorWager, PREDICTOR_WAGER);
@@ -175,15 +222,21 @@ contract PredictionMarketV2Test is Test {
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
         picks[1] = _createPick(conditionId2, IV2Types.OutcomeSide.NO);
 
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = _mintPrediction(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
 
         assertTrue(predictionId != bytes32(0));
         assertTrue(predictorToken != address(0));
         assertTrue(counterpartyToken != address(0));
 
         // Verify picks were stored (getPicks uses pickConfigId)
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
-        IV2Types.Pick[] memory storedPicks = market.getPicks(prediction.pickConfigId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
+        IV2Types.Pick[] memory storedPicks =
+            market.getPicks(prediction.pickConfigId);
         assertEq(storedPicks.length, 2);
         assertEq(storedPicks[0].conditionId, conditionId1);
         assertEq(storedPicks[1].conditionId, conditionId2);
@@ -238,10 +291,15 @@ contract PredictionMarketV2Test is Test {
         market.settle(predictionId, REF_CODE);
 
         // Check prediction is settled (result is now on PickConfiguration)
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
-        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.PREDICTOR_WINS));
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.PREDICTOR_WINS)
+        );
     }
 
     function test_settle_counterpartyWins() public {
@@ -259,10 +317,15 @@ contract PredictionMarketV2Test is Test {
         market.settle(predictionId, REF_CODE);
 
         // Check prediction is settled (result is now on PickConfiguration)
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
-        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS));
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
     }
 
     function test_settle_tie() public {
@@ -280,10 +343,15 @@ contract PredictionMarketV2Test is Test {
         market.settle(predictionId, REF_CODE);
 
         // Check prediction is settled (result is now on PickConfiguration)
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
         assertTrue(prediction.settled);
-        IV2Types.PickConfiguration memory config = market.getPickConfiguration(prediction.pickConfigId);
-        assertEq(uint256(config.result), uint256(IV2Types.SettlementResult.NON_DECISIVE));
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.NON_DECISIVE)
+        );
     }
 
     function test_settle_revertIfNotFound() public {
@@ -336,18 +404,23 @@ contract PredictionMarketV2Test is Test {
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 
         vm.prank(predictor);
-        uint256 payout = market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+        uint256 payout =
+            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
 
         // Predictor should get all collateral
         assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
-        assertEq(collateralToken.balanceOf(predictor), predictorBalanceBefore + payout);
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalanceBefore + payout
+        );
     }
 
     function test_redeem_counterpartyWins_fullAmount() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        (bytes32 predictionId,, address counterpartyToken) = _mintPrediction(picks);
+        (bytes32 predictionId,, address counterpartyToken) =
+            _mintPrediction(picks);
 
         // Settle to counterparty wins
         vm.prank(settler);
@@ -355,21 +428,30 @@ contract PredictionMarketV2Test is Test {
         market.settle(predictionId, REF_CODE);
 
         // Counterparty redeems (full token balance = COUNTERPARTY_WAGER)
-        uint256 counterpartyBalanceBefore = collateralToken.balanceOf(counterparty);
+        uint256 counterpartyBalanceBefore =
+            collateralToken.balanceOf(counterparty);
 
         vm.prank(counterparty);
-        uint256 payout = market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+        uint256 payout =
+            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
 
         // Counterparty should get all collateral
         assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
-        assertEq(collateralToken.balanceOf(counterparty), counterpartyBalanceBefore + payout);
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalanceBefore + payout
+        );
     }
 
     function test_redeem_tie_proportional() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = _mintPrediction(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
 
         // Settle to tie
         vm.prank(settler);
@@ -378,10 +460,12 @@ contract PredictionMarketV2Test is Test {
 
         // Both redeem their full token balances
         vm.prank(predictor);
-        uint256 predictorPayout = market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+        uint256 predictorPayout =
+            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
 
         vm.prank(counterparty);
-        uint256 counterpartyPayout = market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+        uint256 counterpartyPayout =
+            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
 
         // Each gets their original wager back
         assertEq(predictorPayout, PREDICTOR_WAGER);
@@ -409,7 +493,10 @@ contract PredictionMarketV2Test is Test {
         assertEq(payout, totalCollateral / 2);
 
         // Should still have half the tokens
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER / 2);
+        assertEq(
+            IPositionToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER / 2
+        );
     }
 
     function test_redeem_revertIfNotSettled() public {
@@ -456,11 +543,17 @@ contract PredictionMarketV2Test is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = _mintPrediction(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
 
         // getTokenPair now takes pickConfigId
-        IV2Types.Prediction memory prediction = market.getPrediction(predictionId);
-        IV2Types.TokenPair memory pair = market.getTokenPair(prediction.pickConfigId);
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
+        IV2Types.TokenPair memory pair =
+            market.getTokenPair(prediction.pickConfigId);
         assertEq(pair.predictorToken, predictorToken);
         assertEq(pair.counterpartyToken, counterpartyToken);
     }

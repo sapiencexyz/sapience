@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {LZTypes} from "../../lz/LZTypes.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { LZTypes } from "../../lz/LZTypes.sol";
 
 /// @title IConditionalTokensReader
 /// @notice Interface for ConditionalTokensReader (Polygon side)
@@ -23,7 +23,9 @@ interface IConditionalTokensReader {
 
     // ============ Events ============
 
-    event ResolutionRequested(bytes32 indexed conditionId, bytes32 guid, uint256 timestamp);
+    event ResolutionRequested(
+        bytes32 indexed conditionId, bytes32 guid, uint256 timestamp
+    );
 
     event ResolutionSent(
         bytes32 indexed conditionId,
@@ -52,11 +54,23 @@ interface IConditionalTokensReader {
 
     function setConfig(Settings calldata config) external;
     function setBridgeConfig(LZTypes.BridgeConfig calldata config) external;
-    function getBridgeConfig() external view returns (LZTypes.BridgeConfig memory);
+    function getBridgeConfig()
+        external
+        view
+        returns (LZTypes.BridgeConfig memory);
     function requestResolution(bytes32 conditionId) external payable;
-    function quoteResolution(bytes32 conditionId) external view returns (MessagingFee memory fee);
-    function canRequestResolution(bytes32 conditionId) external view returns (bool);
-    function getConditionResolution(bytes32 conditionId) external view returns (ConditionData memory);
+    function quoteResolution(bytes32 conditionId)
+        external
+        view
+        returns (MessagingFee memory fee);
+    function canRequestResolution(bytes32 conditionId)
+        external
+        view
+        returns (bool);
+    function getConditionResolution(bytes32 conditionId)
+        external
+        view
+        returns (ConditionData memory);
     function withdrawETH(uint256 amount) external;
     function getETHBalance() external view returns (uint256);
 }

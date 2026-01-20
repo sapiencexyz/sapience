@@ -1,30 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {PositionTokenBridge} from "../../../v2/bridge/PositionTokenBridge.sol";
-import {IPositionTokenBridgeBase} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+import { Script, console } from "forge-std/Script.sol";
+import {
+    PositionTokenBridge
+} from "../../../v2/bridge/PositionTokenBridge.sol";
+import {
+    IPositionTokenBridgeBase
+} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
 
-/// @title Configure Ethereal Bridge
-/// @notice Configure bridge on Ethereal with remote settings
+/// @title Configure PM Network Bridge
+/// @notice Configure bridge on PM Network with remote settings
 contract ConfigureEtherealBridge is Script {
     function run() external {
-        address bridgeAddr = vm.envAddress("ETHEREAL_BRIDGE_ADDRESS");
-        address remoteBridge = vm.envAddress("ARB_BRIDGE_ADDRESS");
-        uint32 remoteEid = uint32(vm.envUint("ARB_LZ_EID"));
+        address bridgeAddr = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");
+        address remoteBridge = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
+        uint32 remoteEid = uint32(vm.envUint("SM_NETWORK_LZ_EID"));
 
         PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
 
-        console.log("=== Configure Ethereal Bridge ===");
+        console.log("=== Configure PM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);
-        console.log("Remote Bridge:", remoteBridge);
+        console.log("SM Network Bridge:", remoteBridge);
         console.log("Remote EID:", remoteEid);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({remoteEid: remoteEid, remoteBridge: remoteBridge})
+            IPositionTokenBridgeBase.BridgeConfig({
+                remoteEid: remoteEid, remoteBridge: remoteBridge
+            })
         );
 
         // Set LZ peer
@@ -32,7 +38,7 @@ contract ConfigureEtherealBridge is Script {
         bridge.setPeer(remoteEid, peer);
 
         // Fund bridge for ACK fees
-        (bool success,) = bridgeAddr.call{value: 0.01 ether}("");
+        (bool success,) = bridgeAddr.call{ value: 0.01 ether }("");
         require(success, "Failed to fund bridge");
 
         vm.stopBroadcast();

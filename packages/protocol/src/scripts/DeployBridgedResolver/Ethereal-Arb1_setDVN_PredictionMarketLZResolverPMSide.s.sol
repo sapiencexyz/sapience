@@ -2,12 +2,20 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolver} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
-import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
+import {
+    PredictionMarketLZResolver
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
-import {ILayerZeroEndpointV2} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import {SetConfigParam} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import {UlnConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {
+    ILayerZeroEndpointV2
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    SetConfigParam
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {
+    UlnConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 // Configure the PM-side LZ resolver on Ethereal to trust UMA-side peer and set gas params
 contract SetDVNredictionMarketLZResolverPMSide is Script {

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {LZConditionResolverUmaSide} from "../../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
+import {
+    LZConditionResolverUmaSide
+} from "../../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
 
 /// @title MockOptimisticOracleV3
 /// @notice Mock OptimisticOracleV3 for v2 LZ resolver testing
@@ -28,21 +30,29 @@ contract MockOptimisticOracleV3 {
         return lastAssertionId;
     }
 
-    function getAssertionData(bytes32 assertionId) external view returns (AssertionData memory) {
+    function getAssertionData(bytes32 assertionId)
+        external
+        view
+        returns (AssertionData memory)
+    {
         return assertions[assertionId];
     }
 
     /// @notice Simulate resolving an assertion
-    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully) external {
+    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully)
+        external
+    {
         if (_resolver != address(0)) {
-            LZConditionResolverUmaSide(_resolver).assertionResolvedCallback(assertionId, assertedTruthfully);
+            LZConditionResolverUmaSide(_resolver)
+                .assertionResolvedCallback(assertionId, assertedTruthfully);
         }
     }
 
     /// @notice Simulate disputing an assertion
     function disputeAssertion(bytes32 assertionId) external {
         if (_resolver != address(0)) {
-            LZConditionResolverUmaSide(_resolver).assertionDisputedCallback(assertionId);
+            LZConditionResolverUmaSide(_resolver)
+                .assertionDisputedCallback(assertionId);
         }
     }
 
@@ -57,8 +67,17 @@ contract MockOptimisticOracleV3 {
         bytes32, /* identifier */
         bytes32 /* domainId */
     ) public returns (bytes32 assertionId) {
-        assertionId =
-            keccak256(abi.encodePacked(claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp));
+        assertionId = keccak256(
+            abi.encodePacked(
+                claim,
+                asserter,
+                callbackRecipient,
+                liveness,
+                currency,
+                bond,
+                block.timestamp
+            )
+        );
 
         assertions[assertionId] = AssertionData({
             claim: claim,

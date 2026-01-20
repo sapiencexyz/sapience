@@ -34,17 +34,37 @@ contract PredictionMarketUmaResolver is
     error MarketAlreadySettled();
     error MarketNotEnded();
     error NotEnoughBondAmount(
-        address sender, address bondCurrency, uint256 bondAmount, uint256 initialBalance, uint256 finalBalance
+        address sender,
+        address bondCurrency,
+        uint256 bondAmount,
+        uint256 initialBalance,
+        uint256 finalBalance
     );
 
     // ============ Events ============
-    event MarketWrapped(address wrapper, bytes32 marketId, bytes claim, uint256 endTime, uint256 wrapTime);
-    event AssertionSubmitted(
-        address asserter, bytes32 marketId, bytes32 assertionId, bool resolvedToYes, uint256 submissionTime
+    event MarketWrapped(
+        address wrapper,
+        bytes32 marketId,
+        bytes claim,
+        uint256 endTime,
+        uint256 wrapTime
     );
-    event AssertionDisputed(bytes32 marketId, bytes32 assertionId, uint256 disputeTime);
+    event AssertionSubmitted(
+        address asserter,
+        bytes32 marketId,
+        bytes32 assertionId,
+        bool resolvedToYes,
+        uint256 submissionTime
+    );
+    event AssertionDisputed(
+        bytes32 marketId, bytes32 assertionId, uint256 disputeTime
+    );
     event AssertionResolved(
-        bytes32 marketId, bytes32 assertionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime
+        bytes32 marketId,
+        bytes32 assertionId,
+        bool resolvedToYes,
+        bool assertedTruthfully,
+        uint256 resolutionTime
     );
 
     // ============ Settings ============
@@ -106,7 +126,8 @@ contract PredictionMarketUmaResolver is
     {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
         if (predictedOutcomes.length > config.maxPredictionMarkets) {
@@ -129,7 +150,10 @@ contract PredictionMarketUmaResolver is
         view
         returns (bool isResolved, Error error, bool parlaySuccess)
     {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory
+            predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -204,7 +228,11 @@ contract PredictionMarketUmaResolver is
     }
 
     // ============ UMA Market Validation Functions ============
-    function submitAssertion(bytes calldata claim, uint256 endTime, bool resolvedToYes) external nonReentrant {
+    function submitAssertion(
+        bytes calldata claim,
+        uint256 endTime,
+        bool resolvedToYes
+    ) external nonReentrant {
         if (!approvedAsserters[msg.sender]) {
             revert OnlyApprovedAssertersCanCall();
         }
@@ -224,7 +252,9 @@ contract PredictionMarketUmaResolver is
                 resolvedToYes: false,
                 assertionId: bytes32(0)
             });
-            emit MarketWrapped(msg.sender, marketId, claim, endTime, block.timestamp);
+            emit MarketWrapped(
+                msg.sender, marketId, claim, endTime, block.timestamp
+            );
 
             // If not bytes32(0), Market already wrapped. Might be a re-submit of the same assertion in case it was disputed, or the weird InvalidMarketId.
         }
@@ -244,23 +274,34 @@ contract PredictionMarketUmaResolver is
         }
 
         IERC20 bondCurrency = IERC20(config.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(address(config.optimisticOracleV3));
+        OptimisticOracleV3Interface optimisticOracleV3 =
+            OptimisticOracleV3Interface(address(config.optimisticOracleV3));
 
-        uint256 minUMABond = optimisticOracleV3.getMinimumBond(config.bondCurrency);
-        uint256 effectiveBondAmount = config.bondAmount < minUMABond ? minUMABond : config.bondAmount;
+        uint256 minUMABond =
+            optimisticOracleV3.getMinimumBond(config.bondCurrency);
+        uint256 effectiveBondAmount =
+            config.bondAmount < minUMABond ? minUMABond : config.bondAmount;
 
         // Get the bond currency (with protection against tokens with fees on transfer)
         uint256 initialBalance = bondCurrency.balanceOf(address(this));
-        bondCurrency.safeTransferFrom(msg.sender, address(this), effectiveBondAmount);
+        bondCurrency.safeTransferFrom(
+            msg.sender, address(this), effectiveBondAmount
+        );
         uint256 finalBalance = bondCurrency.balanceOf(address(this));
         if (initialBalance + effectiveBondAmount != finalBalance) {
             revert NotEnoughBondAmount(
-                msg.sender, config.bondCurrency, effectiveBondAmount, initialBalance, finalBalance
+                msg.sender,
+                config.bondCurrency,
+                effectiveBondAmount,
+                initialBalance,
+                finalBalance
             );
         }
 
         // Approve the bond currency to the Optimistic Oracle V3
-        bondCurrency.forceApprove(address(config.optimisticOracleV3), effectiveBondAmount);
+        bondCurrency.forceApprove(
+            address(config.optimisticOracleV3), effectiveBondAmount
+        );
 
         // Get the "false" claim
         bytes memory falseClaim = abi.encodePacked("False: ", claim);
@@ -282,13 +323,21 @@ contract PredictionMarketUmaResolver is
         market.assertionId = assertionId;
         market.assertionSubmitted = true;
 
-        umaSettlements[assertionId] =
-            UMASettlement({marketId: marketId, resolvedToYes: resolvedToYes, submissionTime: block.timestamp});
+        umaSettlements[assertionId] = UMASettlement({
+            marketId: marketId,
+            resolvedToYes: resolvedToYes,
+            submissionTime: block.timestamp
+        });
 
-        emit AssertionSubmitted(msg.sender, marketId, assertionId, resolvedToYes, block.timestamp);
+        emit AssertionSubmitted(
+            msg.sender, marketId, assertionId, resolvedToYes, block.timestamp
+        );
     }
 
-    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external nonReentrant {
+    function assertionResolvedCallback(
+        bytes32 assertionId,
+        bool assertedTruthfully
+    ) external nonReentrant {
         if (msg.sender != address(config.optimisticOracleV3)) {
             revert OnlyOptimisticOracleV3CanCall();
         }
@@ -314,7 +363,13 @@ contract PredictionMarketUmaResolver is
         market.assertionId = bytes32(0);
         market.assertionSubmitted = false;
 
-        emit AssertionResolved(marketId, assertionId, market.resolvedToYes, assertedTruthfully, block.timestamp);
+        emit AssertionResolved(
+            marketId,
+            assertionId,
+            market.resolvedToYes,
+            assertedTruthfully,
+            block.timestamp
+        );
     }
 
     function assertionDisputedCallback(bytes32 assertionId) external {

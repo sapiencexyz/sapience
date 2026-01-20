@@ -1,24 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {PositionTokenBridgeRemote} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {
+    PositionTokenBridgeRemote
+} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Test Bridge Back
-/// @notice Bridge tokens from Arbitrum back to Ethereal
+/// @notice Bridge tokens from SM Network back to PM Network
 contract TestBridgeBack is Script {
     function run() external {
-        address bridgeAddr = vm.envAddress("ARB_BRIDGE_ADDRESS");
+        address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
         address recipient = vm.envAddress("DEPLOYER_ADDRESS");
         bytes32 pickConfigId = vm.envBytes32("PICK_CONFIG_ID");
         bool isPredictorToken = true;
 
-        PositionTokenBridgeRemote bridge = PositionTokenBridgeRemote(payable(bridgeAddr));
+        PositionTokenBridgeRemote bridge =
+            PositionTokenBridgeRemote(payable(bridgeAddr));
 
         // Get bridged token address
-        address tokenAddr = bridge.getTokenAddress(pickConfigId, isPredictorToken);
+        address tokenAddr =
+            bridge.getTokenAddress(pickConfigId, isPredictorToken);
         require(tokenAddr != address(0), "Token not deployed");
 
         IERC20 token = IERC20(tokenAddr);
@@ -48,7 +52,7 @@ contract TestBridgeBack is Script {
         console.log("Approved bridge to spend tokens");
 
         // Bridge back
-        bytes32 bridgeId = bridge.bridge{value: fee.nativeFee}(
+        bytes32 bridgeId = bridge.bridge{ value: fee.nativeFee }(
             tokenAddr,
             recipient,
             amount,
@@ -63,7 +67,7 @@ contract TestBridgeBack is Script {
         console.log("");
         console.log("Next steps:");
         console.log("1. Wait 1-2 minutes for LayerZero message delivery");
-        console.log("2. Check token balance on Ethereal");
+        console.log("2. Check token balance on PM Network");
         console.log("3. Track on https://testnet.layerzeroscan.com/");
     }
 }

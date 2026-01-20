@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {CREATE3} from "solady/utils/CREATE3.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import { CREATE3 } from "solady/utils/CREATE3.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IPositionTokenFactory.sol";
 import "./BridgedPositionToken.sol";
 
@@ -15,11 +15,13 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
 
     /// @notice Modifier to restrict deployment to authorized deployer
     modifier onlyDeployer() {
-        if (msg.sender != deployer && msg.sender != owner()) revert Unauthorized();
+        if (msg.sender != deployer && msg.sender != owner()) {
+            revert Unauthorized();
+        }
         _;
     }
 
-    constructor(address owner_) Ownable(owner_) {}
+    constructor(address owner_) Ownable(owner_) { }
 
     /// @notice Set the authorized deployer (bridge)
     /// @param deployer_ The deployer address
@@ -39,8 +41,13 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
 
         // Check if already deployed
-        if (CREATE3.predictDeterministicAddress(salt, address(this)).code.length > 0) {
-            revert TokenAlreadyExists(CREATE3.predictDeterministicAddress(salt, address(this)));
+        if (
+            CREATE3.predictDeterministicAddress(salt, address(this)).code.length
+                > 0
+        ) {
+            revert TokenAlreadyExists(CREATE3.predictDeterministicAddress(
+                    salt, address(this)
+                ));
         }
 
         // Deploy using CREATE3
@@ -56,18 +63,30 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function predictAddress(bytes32 pickConfigId, bool isPredictorToken) public view returns (address) {
+    function predictAddress(bytes32 pickConfigId, bool isPredictorToken)
+        public
+        view
+        returns (address)
+    {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
         return CREATE3.predictDeterministicAddress(salt, address(this));
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function computeSalt(bytes32 pickConfigId, bool isPredictorToken) public pure returns (bytes32) {
+    function computeSalt(bytes32 pickConfigId, bool isPredictorToken)
+        public
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encode(pickConfigId, isPredictorToken));
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function isDeployed(bytes32 pickConfigId, bool isPredictorToken) external view returns (bool) {
+    function isDeployed(bytes32 pickConfigId, bool isPredictorToken)
+        external
+        view
+        returns (bool)
+    {
         address predicted = predictAddress(pickConfigId, isPredictorToken);
         return predicted.code.length > 0;
     }

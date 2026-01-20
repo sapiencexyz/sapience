@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {ManualConditionResolver} from "../../../v2/resolvers/ManualConditionResolver.sol";
+import { Script, console } from "forge-std/Script.sol";
+import {
+    ManualConditionResolver
+} from "../../../v2/resolvers/ManualConditionResolver.sol";
 
 /// @title Deploy Manual Condition Resolver
 /// @notice Deploys a ManualConditionResolver for testing predictions

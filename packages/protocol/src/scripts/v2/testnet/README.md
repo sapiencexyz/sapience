@@ -1,6 +1,6 @@
 # V2 Bridge Testnet Deployment Scripts
 
-Scripts for deploying and testing the V2 position token bridge between Ethereal and Arbitrum testnets.
+Scripts for deploying and testing the V2 position token bridge between PM Network and SM Network testnets.
 
 ## Overview
 
@@ -8,13 +8,13 @@ This deployment uses real PredictionMarketV2 to mint position tokens, which are 
 
 ### Contracts Deployed
 
-**On Ethereal (Source Chain):**
+**On PM Network (Source Chain):**
 - CollateralToken (Mock USDC)
 - ManualConditionResolver
 - PredictionMarketV2
 - PositionTokenBridge
 
-**On Arbitrum (Remote Chain):**
+**On SM Network (Remote Chain):**
 - PositionTokenFactory
 - PositionTokenBridgeRemote
 
@@ -29,80 +29,101 @@ DEPLOYER_PRIVATE_KEY=0x...
 DEPLOYER_ADDRESS=0x...
 
 # LayerZero Endpoints (V2)
-# Ethereal Testnet
-ETHEREAL_RPC_URL=https://testnet.ethereal.network/rpc
-ETHEREAL_LZ_ENDPOINT=0x6F475642a6e85809B1c36Fa62763669b1b48DD5B
-ETHEREAL_LZ_EID=30391
+# PM Network
+PM_NETWORK_RPC_URL=https://testnet.ethereal.network/rpc
+PM_NETWORK_LZ_ENDPOINT=0x6F475642a6e85809B1c36Fa62763669b1b48DD5B
+PM_NETWORK_LZ_EID=30391
 
-# Arbitrum Sepolia
-ARB_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
-ARB_LZ_ENDPOINT=0x6EDCE65403992e310A62460808c4b910D972f10f
-ARB_LZ_EID=40231
+# SM Network
+SM_NETWORK_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+SM_NETWORK_LZ_ENDPOINT=0x6EDCE65403992e310A62460808c4b910D972f10f
+SM_NETWORK_LZ_EID=40231
+
+# LayerZero Library and DVN Configuration (required for cross-chain messaging)
+# PM Network
+PM_NETWORK_SEND_LIB=0x...       # SendUln302 address on PM Network
+PM_NETWORK_RECEIVE_LIB=0x...    # ReceiveUln302 address on PM Network
+PM_NETWORK_DVN=0x...            # DVN address on PM Network
+PM_NETWORK_EXECUTOR=0x...       # Executor address on PM Network (optional)
+
+# SM Network
+SM_NETWORK_SEND_LIB=0x...            # SendUln302 address on SM Network
+SM_NETWORK_RECEIVE_LIB=0x...         # ReceiveUln302 address on SM Network
+SM_NETWORK_DVN=0x...                 # DVN address on SM Network
+SM_NETWORK_EXECUTOR=0x...            # Executor address on SM Network
 ```
 
 3. Fund deployer address on both chains with native tokens for gas.
+
+**Finding LayerZero addresses:** Check https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts for endpoint addresses, and https://docs.layerzero.network/v2/developers/evm/technical-reference/dvn-addresses for DVN addresses.
 
 ## Deployment Steps
 
 ### Phase 1: Deploy Ethereal Infrastructure
 
-Run on **Ethereal Testnet**:
+Run on **PM Network**:
 
 ```bash
 # 1. Deploy collateral token (mock USDC)
-forge script src/scripts/v2/testnet/01_DeployCollateral.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/01_DeployCollateral.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: COLLATERAL_TOKEN_ADDRESS=...
 
 # 2. Deploy manual condition resolver
-forge script src/scripts/v2/testnet/02_DeployResolver.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/02_DeployResolver.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: RESOLVER_ADDRESS=...
 
 # 3. Deploy PredictionMarketV2
-forge script src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: PREDICTION_MARKET_ADDRESS=...
 
 # 5. Deploy Ethereal Bridge
-forge script src/scripts/v2/testnet/05_DeployEtherealBridge.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/05_DeployEtherealBridge.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
-# Add to .env: ETHEREAL_BRIDGE_ADDRESS=...
+# Add to .env: PM_NETWORK_BRIDGE_ADDRESS=...
 ```
 
 ### Phase 2: Deploy Arbitrum Infrastructure
 
-Run on **Arbitrum Sepolia**:
+Run on **SM Network**:
 
 ```bash
 # 4. Deploy Position Token Factory
-forge script src/scripts/v2/testnet/04_DeployFactory.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/04_DeployFactory.s.sol --rpc-url $SM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: FACTORY_ADDRESS=...
 
 # 6. Deploy Remote Bridge
-forge script src/scripts/v2/testnet/06_DeployRemoteBridge.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/06_DeployRemoteBridge.s.sol --rpc-url $SM_NETWORK_RPC_URL --broadcast -vvvv
 
-# Add to .env: ARB_BRIDGE_ADDRESS=...
+# Add to .env: SM_NETWORK_BRIDGE_ADDRESS=...
 ```
 
 ### Phase 3: Configure Bridges
 
 ```bash
-# 7. Configure Ethereal Bridge (run on Ethereal)
-forge script src/scripts/v2/testnet/07_ConfigureEtherealBridge.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+# 7. Configure Ethereal Bridge (run on PM Network)
+forge script src/scripts/v2/testnet/07_ConfigureEtherealBridge.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
-# 8. Configure Remote Bridge (run on Arbitrum)
-forge script src/scripts/v2/testnet/08_ConfigureRemoteBridge.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+# 7b. Set DVN/Libraries for Ethereal Bridge
+forge script src/scripts/v2/testnet/07b_SetDVN_EtherealBridge.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
+
+# 8. Configure Remote Bridge (run on SM Network)
+forge script src/scripts/v2/testnet/08_ConfigureRemoteBridge.s.sol --rpc-url $SM_NETWORK_RPC_URL --broadcast -vvvv
+
+# 8b. Set DVN/Libraries for Remote Bridge
+forge script src/scripts/v2/testnet/08b_SetDVN_RemoteBridge.s.sol --rpc-url $SM_NETWORK_RPC_URL --broadcast -vvvv
 ```
 
 ### Phase 4: Mint Position Tokens
 
-Run on **Ethereal Testnet**:
+Run on **PM Network**:
 
 ```bash
 # 9. Mint position tokens via PredictionMarketV2
-forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env:
 # PREDICTOR_TOKEN_ADDRESS=...
@@ -114,21 +135,21 @@ forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $ETHER
 ### Phase 5: Test Bridging
 
 ```bash
-# 10. Bridge tokens from Ethereal to Arbitrum
-forge script src/scripts/v2/testnet/10_TestBridgeToRemote.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+# 10. Bridge tokens from PM Network to SM Network
+forge script src/scripts/v2/testnet/10_TestBridgeToRemote.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Wait 1-2 minutes for LayerZero delivery...
 
-# 11. Bridge tokens back from Arbitrum to Ethereal
-forge script src/scripts/v2/testnet/11_TestBridgeBack.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+# 11. Bridge tokens back from SM Network to PM Network
+forge script src/scripts/v2/testnet/11_TestBridgeBack.s.sol --rpc-url $SM_NETWORK_RPC_URL --broadcast -vvvv
 ```
 
 ### Utilities
 
 ```bash
 # 12. Check deployment status
-forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $ETHEREAL_RPC_URL -vvvv
-forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $ARB_RPC_URL -vvvv
+forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $PM_NETWORK_RPC_URL -vvvv
+forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $SM_NETWORK_RPC_URL -vvvv
 ```
 
 ## Script Summary
@@ -142,11 +163,33 @@ forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $ARB_RPC_URL 
 | 05 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
 | 06 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
 | 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
+| 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
+| 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
 | 09 | MintPositionTokens | Ethereal | Mint tokens via PredictionMarketV2 |
-| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
-| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
+| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to SM Network |
+| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to PM Network |
 | 12 | CheckStatus | Both | View deployment status & balances |
+
+## Automated Deployment
+
+Use the `deploy-all.sh` script to run all steps automatically:
+
+```bash
+# Full deployment with DVN config and mint
+./src/scripts/v2/testnet/deploy-all.sh all
+
+# Deploy and configure only (no mint)
+./src/scripts/v2/testnet/deploy-all.sh deploy
+
+# Run individual phases
+./src/scripts/v2/testnet/deploy-all.sh phase1    # Ethereal infrastructure
+./src/scripts/v2/testnet/deploy-all.sh phase2    # Arbitrum infrastructure
+./src/scripts/v2/testnet/deploy-all.sh phase3    # Basic bridge config
+./src/scripts/v2/testnet/deploy-all.sh phase3b   # DVN/library config
+./src/scripts/v2/testnet/deploy-all.sh phase4    # Mint tokens
+./src/scripts/v2/testnet/deploy-all.sh status    # Check status
+```
 
 ## Environment Variables Reference
 
@@ -156,22 +199,42 @@ DEPLOYER_PRIVATE_KEY=
 DEPLOYER_ADDRESS=
 
 # RPC URLs
-ETHEREAL_RPC_URL=
-ARB_RPC_URL=
+PM_NETWORK_RPC_URL=
+SM_NETWORK_RPC_URL=
 
 # LayerZero Configuration
-ETHEREAL_LZ_ENDPOINT=
-ETHEREAL_LZ_EID=
-ARB_LZ_ENDPOINT=
-ARB_LZ_EID=
+PM_NETWORK_LZ_ENDPOINT=
+PM_NETWORK_LZ_EID=
+SM_NETWORK_LZ_ENDPOINT=
+SM_NETWORK_LZ_EID=
 
-# After deployments (add progressively)
+# LayerZero Library/DVN Configuration (required for cross-chain messaging)
+PM_NETWORK_SEND_LIB=
+PM_NETWORK_RECEIVE_LIB=
+PM_NETWORK_DVN=
+PM_NETWORK_EXECUTOR=          # Optional on PM Network
+
+SM_NETWORK_SEND_LIB=
+SM_NETWORK_RECEIVE_LIB=
+SM_NETWORK_DVN=
+SM_NETWORK_EXECUTOR=               # Required on SM Network
+
+# Contract Verification (optional - if API key is set, contracts will be verified on deploy)
+# Forge auto-detects verifier URL for known chains (Sepolia, Arbitrum Sepolia, etc.)
+PM_NETWORK_ETHERSCAN_API_KEY=your_etherscan_api_key
+SM_NETWORK_ETHERSCAN_API_KEY=your_arbiscan_api_key
+
+# Custom verifier URLs (optional - only needed for unknown chains)
+# PM_NETWORK_VERIFIER_URL=https://api-sepolia.etherscan.io/api
+# SM_NETWORK_VERIFIER_URL=https://api-sepolia.arbiscan.io/api
+
+# After deployments (add progressively, or let deploy-all.sh update automatically)
 COLLATERAL_TOKEN_ADDRESS=
 RESOLVER_ADDRESS=
 PREDICTION_MARKET_ADDRESS=
 FACTORY_ADDRESS=
-ETHEREAL_BRIDGE_ADDRESS=
-ARB_BRIDGE_ADDRESS=
+PM_NETWORK_BRIDGE_ADDRESS=
+SM_NETWORK_BRIDGE_ADDRESS=
 PREDICTOR_TOKEN_ADDRESS=
 COUNTERPARTY_TOKEN_ADDRESS=
 PICK_CONFIG_ID=
@@ -179,6 +242,9 @@ CONDITION_ID=
 
 # Optional
 BRIDGE_AMOUNT=10000000000000000000  # 10 tokens in wei
+ULN_CONFIRMATIONS=1                 # Block confirmations for DVN
+GRACE_PERIOD=0                      # Grace period for library switch
+MAX_MESSAGE_SIZE=10000              # Max message size for executor
 ```
 
 ## Monitoring
@@ -193,10 +259,10 @@ If bridge doesn't complete after 1 hour, retry:
 
 ```bash
 # Get quote for retry
-cast call $ETHEREAL_BRIDGE_ADDRESS "quoteRetry(bytes32)" $BRIDGE_ID --rpc-url $ETHEREAL_RPC_URL
+cast call $PM_NETWORK_BRIDGE_ADDRESS "quoteRetry(bytes32)" $BRIDGE_ID --rpc-url $PM_NETWORK_RPC_URL
 
 # Retry (anyone can call)
-cast send $ETHEREAL_BRIDGE_ADDRESS "retry(bytes32,bytes32)" $BRIDGE_ID 0x0 --value 0.01ether --rpc-url $ETHEREAL_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
+cast send $PM_NETWORK_BRIDGE_ADDRESS "retry(bytes32,bytes32)" $BRIDGE_ID 0x0 --value 0.01ether --rpc-url $PM_NETWORK_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
 ```
 
 ### Check LayerZero Message Status

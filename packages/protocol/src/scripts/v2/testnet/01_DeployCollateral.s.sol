@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {MockERC20} from "../../../../test/v2/mocks/MockERC20.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { MockERC20 } from "../../../../test/v2/mocks/MockERC20.sol";
 
 /// @title Deploy Collateral Token
 /// @notice Deploys a mock ERC20 token for collateral (simulating USDC/WUSDe)

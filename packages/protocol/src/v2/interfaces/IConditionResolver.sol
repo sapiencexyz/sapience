@@ -14,7 +14,10 @@ interface IConditionResolver {
     /// @notice Check if a condition ID is valid for this resolver
     /// @param conditionId The opaque condition identifier
     /// @return isValid True if the condition exists and is valid
-    function isValidCondition(bytes32 conditionId) external view returns (bool isValid);
+    function isValidCondition(bytes32 conditionId)
+        external
+        view
+        returns (bool isValid);
 
     /// @notice Get the resolution status and outcome vector for a condition
     /// @param conditionId The opaque condition identifier
@@ -33,7 +36,10 @@ interface IConditionResolver {
     /// @notice Check if a condition resolution is finalized (cannot change)
     /// @param conditionId The opaque condition identifier
     /// @return isFinalized True if the resolution is final
-    function isFinalized(bytes32 conditionId) external view returns (bool isFinalized);
+    function isFinalized(bytes32 conditionId)
+        external
+        view
+        returns (bool isFinalized);
 
     /// @notice Batch get resolution status and outcome vectors for multiple conditions
     /// @param conditionIds Array of opaque condition identifiers
@@ -43,5 +49,8 @@ interface IConditionResolver {
     function getResolutions(bytes32[] calldata conditionIds)
         external
         view
-        returns (bool[] memory isResolved, IV2Types.OutcomeVector[] memory outcomes);
+        returns (
+            bool[] memory isResolved,
+            IV2Types.OutcomeVector[] memory outcomes
+        );
 }

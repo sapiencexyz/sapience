@@ -20,8 +20,9 @@ import "./IAccountFactory.sol";
  */
 abstract contract SignatureValidator is EIP712 {
     /// @notice EIP-712 typehash for mint approval
-    bytes32 public constant MINT_APPROVAL_TYPEHASH =
-        keccak256("MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)");
+    bytes32 public constant MINT_APPROVAL_TYPEHASH = keccak256(
+        "MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)"
+    );
 
     /// @notice EIP-712 typehash for session key approval (owner authorizing a session key)
     bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
@@ -33,15 +34,19 @@ abstract contract SignatureValidator is EIP712 {
     IAccountFactory public accountFactory;
 
     /// @notice Emitted when the account factory is updated
-    event AccountFactoryUpdated(address indexed oldFactory, address indexed newFactory);
+    event AccountFactoryUpdated(
+        address indexed oldFactory, address indexed newFactory
+    );
 
     /// @notice Error when smart account verification fails
-    error SmartAccountVerificationFailed(address owner, address claimedAccount, address expectedAccount);
+    error SmartAccountVerificationFailed(
+        address owner, address claimedAccount, address expectedAccount
+    );
 
     /// @notice Error when account factory is not set but session key validation is attempted
     error AccountFactoryNotSet();
 
-    constructor() EIP712("PredictionMarketV2", "1") {}
+    constructor() EIP712("PredictionMarketV2", "1") { }
 
     /// @notice Set the trusted account factory for smart account verification
     /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
@@ -73,8 +78,16 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        bytes32 structHash =
-            keccak256(abi.encode(MINT_APPROVAL_TYPEHASH, predictionHash, signer, wager, nonce, deadline));
+        bytes32 structHash = keccak256(
+            abi.encode(
+                MINT_APPROVAL_TYPEHASH,
+                predictionHash,
+                signer,
+                wager,
+                nonce,
+                deadline
+            )
+        );
 
         bytes32 hash = _hashTypedDataV4(structHash);
         address recoveredSigner = ECDSA.recover(hash, signature);
@@ -93,13 +106,23 @@ abstract contract SignatureValidator is EIP712 {
     /// @param nonce Nonce
     /// @param deadline Deadline timestamp
     /// @return hash The EIP-712 typed data hash to sign
-    function getMintApprovalHash(bytes32 predictionHash, address signer, uint256 wager, uint256 nonce, uint256 deadline)
-        public
-        view
-        returns (bytes32 hash)
-    {
-        bytes32 structHash =
-            keccak256(abi.encode(MINT_APPROVAL_TYPEHASH, predictionHash, signer, wager, nonce, deadline));
+    function getMintApprovalHash(
+        bytes32 predictionHash,
+        address signer,
+        uint256 wager,
+        uint256 nonce,
+        uint256 deadline
+    ) public view returns (bytes32 hash) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                MINT_APPROVAL_TYPEHASH,
+                predictionHash,
+                signer,
+                wager,
+                nonce,
+                deadline
+            )
+        );
         return _hashTypedDataV4(structHash);
     }
 
@@ -155,12 +178,24 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // 1. Verify the session key signed the message
-        bytes32 mintStructHash =
-            keccak256(abi.encode(MINT_APPROVAL_TYPEHASH, predictionHash, smartAccount, wager, nonce, deadline));
+        bytes32 mintStructHash = keccak256(
+            abi.encode(
+                MINT_APPROVAL_TYPEHASH,
+                predictionHash,
+                smartAccount,
+                wager,
+                nonce,
+                deadline
+            )
+        );
         bytes32 mintHash = _hashTypedDataV4(mintStructHash);
-        address recoveredSessionKey = ECDSA.recover(mintHash, sessionKeySignature);
+        address recoveredSessionKey =
+            ECDSA.recover(mintHash, sessionKeySignature);
 
-        if (recoveredSessionKey == address(0) || recoveredSessionKey != sessionApproval.sessionKey) {
+        if (
+            recoveredSessionKey == address(0)
+                || recoveredSessionKey != sessionApproval.sessionKey
+        ) {
             return false;
         }
 
@@ -175,9 +210,13 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        address recoveredOwner = ECDSA.recover(sessionHash, sessionApproval.ownerSignature);
+        address recoveredOwner =
+            ECDSA.recover(sessionHash, sessionApproval.ownerSignature);
 
-        if (recoveredOwner == address(0) || recoveredOwner != sessionApproval.owner) {
+        if (
+            recoveredOwner == address(0)
+                || recoveredOwner != sessionApproval.owner
+        ) {
             return false;
         }
 
@@ -185,10 +224,12 @@ abstract contract SignatureValidator is EIP712 {
         // This ensures the owner actually controls the smart account they claim to
         if (address(accountFactory) != address(0)) {
             // Try index 0 first (primary account), then index 1 as fallback
-            address expectedAccount = accountFactory.getAccountAddress(sessionApproval.owner, 0);
+            address expectedAccount =
+                accountFactory.getAccountAddress(sessionApproval.owner, 0);
             if (expectedAccount != smartAccount) {
                 // Try index 1 for users with multiple accounts
-                expectedAccount = accountFactory.getAccountAddress(sessionApproval.owner, 1);
+                expectedAccount =
+                    accountFactory.getAccountAddress(sessionApproval.owner, 1);
                 if (expectedAccount != smartAccount) {
                     return false;
                 }
@@ -213,7 +254,13 @@ abstract contract SignatureValidator is EIP712 {
         bytes32 permissionsHash
     ) public view returns (bytes32 hash) {
         bytes32 structHash = keccak256(
-            abi.encode(SESSION_KEY_APPROVAL_TYPEHASH, sessionKey, smartAccount, validUntil, permissionsHash)
+            abi.encode(
+                SESSION_KEY_APPROVAL_TYPEHASH,
+                sessionKey,
+                smartAccount,
+                validUntil,
+                permissionsHash
+            )
         );
         return _hashTypedDataV4(structHash);
     }

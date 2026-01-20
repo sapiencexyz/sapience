@@ -35,7 +35,11 @@ interface IPredictionMarketV2 {
     /// @return counterpartyToken Address of the counterparty position token (may be existing)
     function mint(IV2Types.MintRequest calldata request)
         external
-        returns (bytes32 predictionId, address predictorToken, address counterpartyToken);
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        );
 
     /// @notice Settle a prediction based on condition resolver outcomes
     /// @param predictionId The prediction to settle
@@ -48,24 +52,35 @@ interface IPredictionMarketV2 {
     /// @param amount Amount of tokens to redeem
     /// @param refCode Referral code for integrator tracking
     /// @return payout Amount of collateral received
-    function redeem(address positionToken, uint256 amount, bytes32 refCode) external returns (uint256 payout);
+    function redeem(address positionToken, uint256 amount, bytes32 refCode)
+        external
+        returns (uint256 payout);
 
     // ============ View Functions ============
 
     /// @notice Get prediction data
     /// @param predictionId The prediction identifier
     /// @return prediction The prediction data
-    function getPrediction(bytes32 predictionId) external view returns (IV2Types.Prediction memory prediction);
+    function getPrediction(bytes32 predictionId)
+        external
+        view
+        returns (IV2Types.Prediction memory prediction);
 
     /// @notice Get the pick configuration for a set of picks
     /// @param pickConfigId The pick configuration identifier
     /// @return config The pick configuration data
-    function getPickConfiguration(bytes32 pickConfigId) external view returns (IV2Types.PickConfiguration memory config);
+    function getPickConfiguration(bytes32 pickConfigId)
+        external
+        view
+        returns (IV2Types.PickConfiguration memory config);
 
     /// @notice Get the token pair for a pick configuration
     /// @param pickConfigId The pick configuration identifier
     /// @return tokenPair The predictor and counterparty token addresses
-    function getTokenPair(bytes32 pickConfigId) external view returns (IV2Types.TokenPair memory tokenPair);
+    function getTokenPair(bytes32 pickConfigId)
+        external
+        view
+        returns (IV2Types.TokenPair memory tokenPair);
 
     /// @notice Get the current nonce for an account
     /// @param account The account address
@@ -75,15 +90,24 @@ interface IPredictionMarketV2 {
     /// @notice Check if a prediction can be settled
     /// @param predictionId The prediction identifier
     /// @return canSettle True if the prediction can be settled
-    function canSettle(bytes32 predictionId) external view returns (bool canSettle);
+    function canSettle(bytes32 predictionId)
+        external
+        view
+        returns (bool canSettle);
 
     /// @notice Get the picks for a pick configuration
     /// @param pickConfigId The pick configuration identifier
     /// @return picks The array of picks
-    function getPicks(bytes32 pickConfigId) external view returns (IV2Types.Pick[] memory picks);
+    function getPicks(bytes32 pickConfigId)
+        external
+        view
+        returns (IV2Types.Pick[] memory picks);
 
     /// @notice Compute the pick configuration ID for a set of picks
     /// @param picks The array of picks
     /// @return pickConfigId The computed pick configuration identifier
-    function computePickConfigId(IV2Types.Pick[] calldata picks) external pure returns (bytes32 pickConfigId);
+    function computePickConfigId(IV2Types.Pick[] calldata picks)
+        external
+        pure
+        returns (bytes32 pickConfigId);
 }

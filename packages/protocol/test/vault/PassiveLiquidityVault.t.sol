@@ -12,7 +12,9 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract MockERC20 is ERC20 {
     uint8 private _decimals;
 
-    constructor(string memory name, string memory symbol, uint8 decimals_) ERC20(name, symbol) {
+    constructor(string memory name, string memory symbol, uint8 decimals_)
+        ERC20(name, symbol)
+    {
         _decimals = decimals_;
     }
 
@@ -135,11 +137,19 @@ contract MockPredictionMarket {
     }
 
     // IPredictionMarket interface functions
-    function getOwnedPredictions(address owner) external view returns (uint256[] memory) {
+    function getOwnedPredictions(address owner)
+        external
+        view
+        returns (uint256[] memory)
+    {
         return ownedTokens[owner];
     }
 
-    function getPrediction(uint256 tokenId) external view returns (IPredictionStructs.PredictionData memory) {
+    function getPrediction(uint256 tokenId)
+        external
+        view
+        returns (IPredictionStructs.PredictionData memory)
+    {
         return predictions[tokenId];
     }
 
@@ -153,11 +163,16 @@ contract MockPredictionMarket {
     }
 
     // Add the new getUserCollateralDeposits function to match the real PredictionMarket
-    function getUserCollateralDeposits(address user) external view returns (uint256) {
+    function getUserCollateralDeposits(address user)
+        external
+        view
+        returns (uint256)
+    {
         uint256 totalCollateral = 0;
         uint256[] memory tokens = ownedTokens[user];
         for (uint256 i = 0; i < tokens.length; i++) {
-            IPredictionStructs.PredictionData memory prediction = predictions[tokens[i]];
+            IPredictionStructs.PredictionData memory prediction =
+                predictions[tokens[i]];
             if (prediction.maker == user) {
                 totalCollateral += prediction.makerCollateral;
             }
@@ -182,8 +197,8 @@ contract PassiveLiquidityVaultTest is Test {
     address public user2 = address(0x4);
     address public user3 = address(0x5);
 
-    uint256 public constant INITIAL_SUPPLY = 1000000e18; // 1M tokens
-    uint256 public constant DEPOSIT_AMOUNT = 100000e18; // 100K tokens (above MIN_DEPOSIT of 100e18)
+    uint256 public constant INITIAL_SUPPLY = 1_000_000e18; // 1M tokens
+    uint256 public constant DEPOSIT_AMOUNT = 100_000e18; // 100K tokens (above MIN_DEPOSIT of 100e18)
 
     function setUp() public {
         vm.startPrank(owner);
@@ -192,7 +207,9 @@ contract PassiveLiquidityVaultTest is Test {
         asset = new MockERC20("Test Token", "TEST", 18);
 
         // Deploy vault
-        vault = new PassiveLiquidityVault(address(asset), manager, "Passive Liquidity Vault", "PLV");
+        vault = new PassiveLiquidityVault(
+            address(asset), manager, "Passive Liquidity Vault", "PLV"
+        );
 
         // Deploy mock protocols
         protocol1 = new MockPredictionMarket(address(asset), address(vault));
@@ -212,7 +229,10 @@ contract PassiveLiquidityVaultTest is Test {
 
     // ============ Helper Functions ============
 
-    function _approveAndDeposit(address user, uint256 amount) internal returns (uint256 shares) {
+    function _approveAndDeposit(address user, uint256 amount)
+        internal
+        returns (uint256 shares)
+    {
         vm.startPrank(user);
         asset.approve(address(vault), amount);
         vault.requestDeposit(amount, amount); // 1:1 ratio initially
@@ -360,8 +380,13 @@ contract PassiveLiquidityVaultTest is Test {
         assertEq(vault.balanceOf(user1), shares); // Shares are not burned until processing
 
         // Check pending request details
-        (uint256 requestShares, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) =
-            vault.pendingRequests(user1);
+        (
+            uint256 requestShares,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(user1);
         assertEq(requestUser, user1);
         assertEq(requestShares, shares);
         assertEq(requestAssets, depositAmount);
@@ -394,7 +419,11 @@ contract PassiveLiquidityVaultTest is Test {
         // The exact balance depends on the initial balance and the withdrawal amount
         uint256 expectedBalance = INITIAL_SUPPLY - depositAmount + depositAmount; // Initial - deposit + withdrawal
         uint256 actualBalance = asset.balanceOf(user1);
-        assertEq(actualBalance, expectedBalance, "User balance should match expected amount");
+        assertEq(
+            actualBalance,
+            expectedBalance,
+            "User balance should match expected amount"
+        );
     }
 
     // Tests that withdrawal requests can be processed immediately by manager
@@ -465,7 +494,9 @@ contract PassiveLiquidityVaultTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVault.InsufficientAvailableAssets.selector, deployAmount, vault.availableAssets()
+                PassiveLiquidityVault.InsufficientAvailableAssets.selector,
+                deployAmount,
+                vault.availableAssets()
             )
         );
         vault.approveFundsUsage(address(protocol1), deployAmount);
@@ -483,12 +514,18 @@ contract PassiveLiquidityVaultTest is Test {
         vault.setMaxUtilizationRate(0.5e18); // 50% in WAD
         vm.stopPrank();
 
-        uint256 deployAmount = (depositAmount * 6000) / 10000; // 60% utilization
+        uint256 deployAmount = (depositAmount * 6000) / 10_000; // 60% utilization
 
         vm.startPrank(manager);
         asset.approve(address(protocol1), deployAmount);
 
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.6e18, 0.5e18));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.ExceedsMaxUtilization.selector,
+                0.6e18,
+                0.5e18
+            )
+        );
         vault.approveFundsUsage(address(protocol1), deployAmount);
 
         vm.stopPrank();
@@ -507,21 +544,29 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
 
         // First approval: 50% to protocol1 - should succeed
-        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        uint256 firstApproval = (depositAmount * 5000) / 10_000; // 50%
         vault.approveFundsUsage(address(protocol1), firstApproval);
 
         // Second approval: 40% to protocol2 - should fail because 50% + 40% = 90% > 80%
-        uint256 secondApproval = (depositAmount * 4000) / 10000; // 40%
+        uint256 secondApproval = (depositAmount * 4000) / 10_000; // 40%
 
         // Expected: 90% utilization, max: 80%
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.9e18, 0.8e18));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.ExceedsMaxUtilization.selector,
+                0.9e18,
+                0.8e18
+            )
+        );
         vault.approveFundsUsage(address(protocol2), secondApproval);
 
         vm.stopPrank();
     }
 
     // Tests that approveFundsUsage fails when deployed liquidity + previous approval + new approval exceeds max utilization
-    function testApproveFundsUsageWithDeployedLiquidityExceedsMaxUtilization() public {
+    function testApproveFundsUsageWithDeployedLiquidityExceedsMaxUtilization()
+        public
+    {
         uint256 depositAmount = DEPOSIT_AMOUNT * 2; // 200K tokens
         _approveAndDeposit(user1, depositAmount);
 
@@ -533,27 +578,35 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
 
         // Step 1: Deploy 30% of funds to protocol1 (this creates deployed liquidity)
-        uint256 deployAmount = (depositAmount * 3000) / 10000; // 30% = 60K tokens
+        uint256 deployAmount = (depositAmount * 3000) / 10_000; // 30% = 60K tokens
         vault.approveFundsUsage(address(protocol1), deployAmount);
         // Simulate the protocol using the approved funds (creating deployed liquidity)
         protocol1.simulateApprovalUsage(deployAmount);
 
         // Step 2: Approve 40% to protocol2 (this should succeed: 30% deployed + 40% approved = 70% < 80%)
-        uint256 secondApproval = (depositAmount * 4000) / 10000; // 40% = 80K tokens
+        uint256 secondApproval = (depositAmount * 4000) / 10_000; // 40% = 80K tokens
         vault.approveFundsUsage(address(protocol2), secondApproval);
 
         // Step 3: Try to approve 20% to protocol3 (this should fail)
         // Total would be: 30% deployed + 40% existing approval + 20% new approval = 90% > 80%
-        uint256 additionalApproval = (depositAmount * 2000) / 10000; // 20% = 40K tokens
+        uint256 additionalApproval = (depositAmount * 2000) / 10_000; // 20% = 40K tokens
 
         // Expected: 90% utilization (0.9e18), max: 80% (0.8e18)
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.9e18, 0.8e18));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.ExceedsMaxUtilization.selector,
+                0.9e18,
+                0.8e18
+            )
+        );
         vault.approveFundsUsage(address(protocol3), additionalApproval);
 
         vm.stopPrank();
 
         // Verify the state after the failed attempt
-        assertEq(vault.totalDeployed(), deployAmount, "Deployed amount should be 30%");
+        assertEq(
+            vault.totalDeployed(), deployAmount, "Deployed amount should be 30%"
+        );
         assertEq(
             asset.allowance(address(vault), address(protocol2)),
             secondApproval,
@@ -579,17 +632,17 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
 
         // Step 1: Deploy 30% of funds to protocol1 (this creates deployed liquidity)
-        uint256 deployAmount = (depositAmount * 3000) / 10000; // 30% = 60K tokens
+        uint256 deployAmount = (depositAmount * 3000) / 10_000; // 30% = 60K tokens
         vault.approveFundsUsage(address(protocol1), deployAmount);
         protocol1.simulateApprovalUsage(deployAmount);
 
         // Step 2: Approve 40% to protocol2
-        uint256 firstApproval = (depositAmount * 4000) / 10000; // 40% = 80K tokens
+        uint256 firstApproval = (depositAmount * 4000) / 10_000; // 40% = 80K tokens
         vault.approveFundsUsage(address(protocol2), firstApproval);
 
         // Step 3: Re-approve protocol2 with 50% (this should succeed because it replaces the 40%, not adds to it)
         // Total would be: 30% deployed + 50% new approval = 80% = max utilization
-        uint256 reApproval = (depositAmount * 5000) / 10000; // 50% = 100K tokens
+        uint256 reApproval = (depositAmount * 5000) / 10_000; // 50% = 100K tokens
         vault.approveFundsUsage(address(protocol2), reApproval);
 
         vm.stopPrank();
@@ -600,11 +653,17 @@ contract PassiveLiquidityVaultTest is Test {
             reApproval,
             "Protocol2 allowance should be updated to 50%"
         );
-        assertEq(vault.totalDeployed(), deployAmount, "Deployed amount should remain 30%");
+        assertEq(
+            vault.totalDeployed(),
+            deployAmount,
+            "Deployed amount should remain 30%"
+        );
     }
 
     // Tests multiple protocols with deployed liquidity and approvals to ensure cumulative limits work correctly
-    function testApproveFundsUsageMultipleProtocolsWithDeployedLiquidity() public {
+    function testApproveFundsUsageMultipleProtocolsWithDeployedLiquidity()
+        public
+    {
         uint256 depositAmount = DEPOSIT_AMOUNT * 3; // 300K tokens
         _approveAndDeposit(user1, depositAmount);
 
@@ -616,32 +675,46 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
 
         // Step 1: Deploy 20% to protocol1 (creates deployed liquidity)
-        uint256 deployAmount1 = (depositAmount * 2000) / 10000; // 20% = 60K tokens
+        uint256 deployAmount1 = (depositAmount * 2000) / 10_000; // 20% = 60K tokens
         vault.approveFundsUsage(address(protocol1), deployAmount1);
         protocol1.simulateApprovalUsage(deployAmount1);
 
         // Step 2: Deploy 30% to protocol2 (creates more deployed liquidity)
-        uint256 deployAmount2 = (depositAmount * 3000) / 10000; // 30% = 90K tokens
+        uint256 deployAmount2 = (depositAmount * 3000) / 10_000; // 30% = 90K tokens
         vault.approveFundsUsage(address(protocol2), deployAmount2);
         protocol2.simulateApprovalUsage(deployAmount2);
 
         // Step 3: Approve 35% to protocol1 (this should succeed: 20% + 30% deployed + 35% approved = 85% < 90%)
-        uint256 approval1 = (depositAmount * 3500) / 10000; // 35% = 105K tokens
+        uint256 approval1 = (depositAmount * 3500) / 10_000; // 35% = 105K tokens
         vault.approveFundsUsage(address(protocol1), approval1);
 
         // Step 4: Try to approve 10% to protocol2 (this should fail)
         // Total would be: 20% + 30% deployed + 35% + 10% approved = 95% > 90%
-        uint256 additionalApproval = (depositAmount * 1000) / 10000; // 10% = 30K tokens
+        uint256 additionalApproval = (depositAmount * 1000) / 10_000; // 10% = 30K tokens
 
         // Expected: 95% utilization (0.95e18), max: 90% (0.9e18)
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.ExceedsMaxUtilization.selector, 0.95e18, 0.9e18));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.ExceedsMaxUtilization.selector,
+                0.95e18,
+                0.9e18
+            )
+        );
         vault.approveFundsUsage(address(protocol2), additionalApproval);
 
         vm.stopPrank();
 
         // Verify the state
-        assertEq(vault.totalDeployed(), deployAmount1 + deployAmount2, "Total deployed should be 50%");
-        assertEq(asset.allowance(address(vault), address(protocol1)), approval1, "Protocol1 allowance should be 35%");
+        assertEq(
+            vault.totalDeployed(),
+            deployAmount1 + deployAmount2,
+            "Total deployed should be 50%"
+        );
+        assertEq(
+            asset.allowance(address(vault), address(protocol1)),
+            approval1,
+            "Protocol1 allowance should be 35%"
+        );
         assertEq(
             asset.allowance(address(vault), address(protocol2)),
             0,
@@ -662,15 +735,17 @@ contract PassiveLiquidityVaultTest is Test {
         vm.startPrank(manager);
 
         // First approval: 50% to protocol1
-        uint256 firstApproval = (depositAmount * 5000) / 10000; // 50%
+        uint256 firstApproval = (depositAmount * 5000) / 10_000; // 50%
         vault.approveFundsUsage(address(protocol1), firstApproval);
 
         // Re-approve protocol1 with 70% - should succeed because it replaces the 50%, not adds to it
-        uint256 reApproval = (depositAmount * 7000) / 10000; // 70%
+        uint256 reApproval = (depositAmount * 7000) / 10_000; // 70%
         vault.approveFundsUsage(address(protocol1), reApproval);
 
         // Verify the approval was updated (should be 70%, not 120%)
-        assertEq(asset.allowance(address(vault), address(protocol1)), reApproval);
+        assertEq(
+            asset.allowance(address(vault), address(protocol1)), reApproval
+        );
 
         vm.stopPrank();
     }
@@ -687,7 +762,10 @@ contract PassiveLiquidityVaultTest is Test {
         // The vault only approves funds, the protocol manages withdrawals
         // This test verifies that the deployment was successful
         assertEq(vault.totalDeployed(), deployAmount);
-        assertTrue(vault.utilizationRate() > 0, "Utilization rate should be greater than 0");
+        assertTrue(
+            vault.utilizationRate() > 0,
+            "Utilization rate should be greater than 0"
+        );
         assertEq(protocol1.getBalance(), deployAmount);
     }
 
@@ -703,7 +781,10 @@ contract PassiveLiquidityVaultTest is Test {
         // The vault only approves funds, the protocol manages withdrawals
         // This test verifies that the deployment was successful
         assertEq(vault.totalDeployed(), deployAmount);
-        assertTrue(vault.utilizationRate() > 0, "Utilization rate should be greater than 0");
+        assertTrue(
+            vault.utilizationRate() > 0,
+            "Utilization rate should be greater than 0"
+        );
         assertEq(vault.getActiveProtocolsCount(), 1);
     }
 
@@ -720,18 +801,19 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
 
         // Deploy 80% of funds
-        uint256 deployAmount = (depositAmount * 8000) / 10000;
+        uint256 deployAmount = (depositAmount * 8000) / 10_000;
         _deployFunds(address(protocol1), deployAmount);
 
         assertEq(vault.utilizationRate(), 0.8e18); // 80% in WAD
 
         // Deploy more to reach 90% (but stay within max utilization)
-        uint256 additionalDeploy = (depositAmount * 1000) / 10000;
+        uint256 additionalDeploy = (depositAmount * 1000) / 10_000;
         _deployFunds(address(protocol2), additionalDeploy);
 
         // Should be 90% utilization (0.89e18 to 0.91e18 in WAD)
         assertTrue(
-            vault.utilizationRate() >= 0.89e18 && vault.utilizationRate() <= 0.91e18,
+            vault.utilizationRate() >= 0.89e18
+                && vault.utilizationRate() <= 0.91e18,
             "Utilization rate out of expected range"
         );
     }
@@ -826,11 +908,17 @@ contract PassiveLiquidityVaultTest is Test {
 
         vm.startPrank(owner);
         vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVault.MaxUtilizationRateUpdated(vault.maxUtilizationRate(), newMaxRate);
+        emit IPassiveLiquidityVault.MaxUtilizationRateUpdated(
+            vault.maxUtilizationRate(), newMaxRate
+        );
         vault.setMaxUtilizationRate(newMaxRate);
         vm.stopPrank();
 
-        assertEq(vault.maxUtilizationRate(), newMaxRate, "Max utilization rate should be updated");
+        assertEq(
+            vault.maxUtilizationRate(),
+            newMaxRate,
+            "Max utilization rate should be updated"
+        );
     }
 
     // Tests that the ProjectedUtilizationRateUpdated event is properly emitted when approving funds usage
@@ -848,18 +936,28 @@ contract PassiveLiquidityVaultTest is Test {
 
         // Calculate projected utilization rate after deployment
         uint256 utilizedPlusApprovals = deployedLiquidity + deployAmount;
-        uint256 projectedUtilizationRate =
-            totalAssetsValue > 0 ? (utilizedPlusApprovals * vault.WAD()) / totalAssetsValue : 0;
+        uint256 projectedUtilizationRate = totalAssetsValue > 0
+            ? (utilizedPlusApprovals * vault.WAD()) / totalAssetsValue
+            : 0;
 
         vm.startPrank(manager);
         vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVault.ProjectedUtilizationRateUpdated(currentUtilizationRate, projectedUtilizationRate);
+        emit IPassiveLiquidityVault.ProjectedUtilizationRateUpdated(
+            currentUtilizationRate, projectedUtilizationRate
+        );
         vault.approveFundsUsage(address(protocol1), deployAmount);
         vm.stopPrank();
 
         // Verify the approval was successful by checking the protocol is in active protocols
-        assertTrue(vault.getActiveProtocolsCount() > 0, "Protocol should be added to active protocols");
-        assertEq(vault.getActiveProtocol(0), address(protocol1), "Protocol should be the first active protocol");
+        assertTrue(
+            vault.getActiveProtocolsCount() > 0,
+            "Protocol should be added to active protocols"
+        );
+        assertEq(
+            vault.getActiveProtocol(0),
+            address(protocol1),
+            "Protocol should be the first active protocol"
+        );
     }
 
     // ============ Access Control Tests ============
@@ -870,7 +968,11 @@ contract PassiveLiquidityVaultTest is Test {
         _approveAndDeposit(user1, depositAmount);
 
         vm.startPrank(user1);
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.OnlyManager.selector, user1, manager));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.OnlyManager.selector, user1, manager
+            )
+        );
         vault.approveFundsUsage(address(protocol1), DEPOSIT_AMOUNT / 2);
         vm.stopPrank();
     }
@@ -885,7 +987,10 @@ contract PassiveLiquidityVaultTest is Test {
         // The vault only approves funds, the protocol manages withdrawals
         // This test verifies that the deployment was successful
         assertEq(vault.totalDeployed(), DEPOSIT_AMOUNT / 2);
-        assertTrue(vault.utilizationRate() > 0, "Utilization rate should be greater than 0");
+        assertTrue(
+            vault.utilizationRate() > 0,
+            "Utilization rate should be greater than 0"
+        );
     }
 
     // Tests that only the owner can set a new manager address
@@ -936,7 +1041,8 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 actualBalance1 = asset.balanceOf(user1);
         uint256 tolerance1 = expectedBalance1 / 50; // 2% tolerance for rounding differences in multi-user scenarios
         assertTrue(
-            actualBalance1 >= expectedBalance1 - tolerance1 && actualBalance1 <= expectedBalance1 + tolerance1,
+            actualBalance1 >= expectedBalance1 - tolerance1
+                && actualBalance1 <= expectedBalance1 + tolerance1,
             "User1 balance incorrect"
         );
 
@@ -944,7 +1050,8 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 actualBalance2 = asset.balanceOf(user2);
         uint256 tolerance2 = expectedBalance2 / 50; // 2% tolerance for rounding differences in multi-user scenarios
         assertTrue(
-            actualBalance2 >= expectedBalance2 - tolerance2 && actualBalance2 <= expectedBalance2 + tolerance2,
+            actualBalance2 >= expectedBalance2 - tolerance2
+                && actualBalance2 <= expectedBalance2 + tolerance2,
             "User2 balance incorrect"
         );
 
@@ -952,7 +1059,8 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 actualBalance3 = asset.balanceOf(user3);
         uint256 tolerance3 = expectedBalance3 / 50; // 2% tolerance for rounding differences in multi-user scenarios
         assertTrue(
-            actualBalance3 >= expectedBalance3 - tolerance3 && actualBalance3 <= expectedBalance3 + tolerance3,
+            actualBalance3 >= expectedBalance3 - tolerance3
+                && actualBalance3 <= expectedBalance3 + tolerance3,
             "User3 balance incorrect"
         );
     }
@@ -977,13 +1085,19 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
 
         // User should have received the available amount
-        uint256 expectedBalance = INITIAL_SUPPLY - depositAmount + availableAmount; // Initial - deposit + withdrawal
+        uint256 expectedBalance =
+            INITIAL_SUPPLY - depositAmount + availableAmount; // Initial - deposit + withdrawal
         uint256 actualBalance = asset.balanceOf(user1);
 
         // Allow for small rounding differences (2% tolerance)
         uint256 tolerance = expectedBalance / 50; // 2% of expected balance
-        assertTrue(actualBalance >= expectedBalance - tolerance, "User balance too low");
-        assertTrue(actualBalance <= expectedBalance + tolerance, "User balance too high");
+        assertTrue(
+            actualBalance >= expectedBalance - tolerance, "User balance too low"
+        );
+        assertTrue(
+            actualBalance <= expectedBalance + tolerance,
+            "User balance too high"
+        );
     }
 
     // Test that emergency withdrawal correctly excludes unconfirmed assets from share calculations
@@ -1010,7 +1124,9 @@ contract PassiveLiquidityVaultTest is Test {
 
         uint256 vaultBalanceBeforeEmergency = asset.balanceOf(address(vault));
         assertEq(
-            vaultBalanceBeforeEmergency, user1DepositAmount + user2DepositAmount, "Vault should have both deposits"
+            vaultBalanceBeforeEmergency,
+            user1DepositAmount + user2DepositAmount,
+            "Vault should have both deposits"
         );
 
         // Enable emergency mode
@@ -1042,7 +1158,10 @@ contract PassiveLiquidityVaultTest is Test {
         uint256 expectedMax = user1DepositAmount + 1e18;
 
         assertTrue(user1Received >= expectedMin, "User1 received too little");
-        assertTrue(user1Received <= expectedMax, "User1 received too much - unconfirmed assets were included!");
+        assertTrue(
+            user1Received <= expectedMax,
+            "User1 received too much - unconfirmed assets were included!"
+        );
 
         // User2's deposit should still be in the vault (protected)
         uint256 vaultBalanceAfter = asset.balanceOf(address(vault));
@@ -1050,19 +1169,37 @@ contract PassiveLiquidityVaultTest is Test {
 
         // Allow small rounding tolerance
         assertTrue(
-            vaultBalanceAfter >= expectedVaultBalance - 1e18, "Vault should still have user2's unconfirmed deposit"
+            vaultBalanceAfter >= expectedVaultBalance - 1e18,
+            "Vault should still have user2's unconfirmed deposit"
         );
-        assertTrue(vaultBalanceAfter <= expectedVaultBalance + 1e18, "Vault balance higher than expected");
+        assertTrue(
+            vaultBalanceAfter <= expectedVaultBalance + 1e18,
+            "Vault balance higher than expected"
+        );
 
         // Verify user2's pending request is still intact
-        (, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) = vault.pendingRequests(user2);
+        (
+            ,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(user2);
         assertEq(requestUser, user2, "User2's request should still exist");
         assertTrue(isDeposit, "Should be a deposit request");
-        assertEq(requestAssets, user2DepositAmount, "User2's request assets should be intact");
+        assertEq(
+            requestAssets,
+            user2DepositAmount,
+            "User2's request assets should be intact"
+        );
         assertFalse(processed, "User2's request should not be processed yet");
 
-        console.log("SUCCESS: Emergency withdrawal correctly excluded unconfirmed assets");
-        console.log("User1 got their fair share without touching user2's pending deposit");
+        console.log(
+            "SUCCESS: Emergency withdrawal correctly excluded unconfirmed assets"
+        );
+        console.log(
+            "User1 got their fair share without touching user2's pending deposit"
+        );
     }
 
     // ============ ERC721 Receiver Tests ============
@@ -1071,7 +1208,8 @@ contract PassiveLiquidityVaultTest is Test {
         console.log("\n=== Testing Vault Can Receive ERC721 NFT ===");
 
         // Deploy a mock ERC721 that uses _safeMint
-        MockERC721WithSafeMint mockNFT = new MockERC721WithSafeMint("Test NFT", "TNFT");
+        MockERC721WithSafeMint mockNFT =
+            new MockERC721WithSafeMint("Test NFT", "TNFT");
 
         // Mint an NFT to the vault using _safeMint
         // This should succeed because the vault implements onERC721Received
@@ -1081,25 +1219,40 @@ contract PassiveLiquidityVaultTest is Test {
         console.log("NFT owner:", mockNFT.ownerOf(tokenId));
 
         // Verify the vault received the NFT
-        assertEq(mockNFT.ownerOf(tokenId), address(vault), "Vault should own the NFT");
-        assertEq(mockNFT.balanceOf(address(vault)), 1, "Vault should have 1 NFT");
+        assertEq(
+            mockNFT.ownerOf(tokenId), address(vault), "Vault should own the NFT"
+        );
+        assertEq(
+            mockNFT.balanceOf(address(vault)), 1, "Vault should have 1 NFT"
+        );
 
-        console.log("SUCCESS: Vault successfully received ERC721 NFT via _safeMint");
+        console.log(
+            "SUCCESS: Vault successfully received ERC721 NFT via _safeMint"
+        );
     }
 
     function test_onERC721ReceivedReturnsCorrectSelector() public {
         // Test that onERC721Received returns the correct selector
         bytes4 expectedSelector = 0x150b7a02; // IERC721Receiver.onERC721Received.selector
 
-        bytes4 returnedSelector = vault.onERC721Received(address(this), address(user1), 1, "");
+        bytes4 returnedSelector =
+            vault.onERC721Received(address(this), address(user1), 1, "");
 
-        assertEq(returnedSelector, expectedSelector, "Should return correct ERC721Receiver selector");
+        assertEq(
+            returnedSelector,
+            expectedSelector,
+            "Should return correct ERC721Receiver selector"
+        );
     }
 
     // ============ Interaction Delay Tests ============
 
-    function test_userCanMakeNewRequestImmediatelyAfterCancelingDeposit() public {
-        console.log("\n=== Testing User Can Make New Request After Canceling Deposit ===");
+    function test_userCanMakeNewRequestImmediatelyAfterCancelingDeposit()
+        public
+    {
+        console.log(
+            "\n=== Testing User Can Make New Request After Canceling Deposit ==="
+        );
 
         // Use a fresh user to avoid any previous interactions
         address freshUser = address(0x999);
@@ -1122,7 +1275,8 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
 
         // Debug: Check timestamp after first request
-        uint256 afterFirstRequest = vault.lastUserInteractionTimestamp(freshUser);
+        uint256 afterFirstRequest =
+            vault.lastUserInteractionTimestamp(freshUser);
         console.log("Timestamp after first request:", afterFirstRequest);
 
         // 2. Wait for request to expire (10 minutes by default)
@@ -1144,18 +1298,29 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
 
         // Verify the request was created successfully
-        (, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) =
-            vault.pendingRequests(freshUser);
+        (
+            ,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(freshUser);
         assertEq(requestUser, freshUser, "User should have a pending request");
         assertTrue(isDeposit, "Should be a deposit request");
         assertEq(requestAssets, depositAmount, "Request assets should match");
         assertFalse(processed, "Request should not be processed yet");
 
-        console.log("SUCCESS: User can make new deposit request immediately after canceling");
+        console.log(
+            "SUCCESS: User can make new deposit request immediately after canceling"
+        );
     }
 
-    function test_userCanMakeNewRequestImmediatelyAfterCancelingWithdrawal() public {
-        console.log("\n=== Testing User Can Make New Request After Canceling Withdrawal ===");
+    function test_userCanMakeNewRequestImmediatelyAfterCancelingWithdrawal()
+        public
+    {
+        console.log(
+            "\n=== Testing User Can Make New Request After Canceling Withdrawal ==="
+        );
 
         // Use a fresh user to avoid any previous interactions
         address freshUser = address(0x888);
@@ -1198,18 +1363,29 @@ contract PassiveLiquidityVaultTest is Test {
         vault.requestWithdrawal(userShares / 4, depositAmount / 4);
 
         // Verify the request was created successfully
-        (, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) =
-            vault.pendingRequests(freshUser);
+        (
+            ,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(freshUser);
         assertEq(requestUser, freshUser, "User should have a pending request");
         assertFalse(isDeposit, "Should be a withdrawal request");
-        assertEq(requestAssets, depositAmount / 4, "Request assets should match");
+        assertEq(
+            requestAssets, depositAmount / 4, "Request assets should match"
+        );
         assertFalse(processed, "Request should not be processed yet");
 
-        console.log("SUCCESS: User can make new withdrawal request immediately after canceling");
+        console.log(
+            "SUCCESS: User can make new withdrawal request immediately after canceling"
+        );
     }
 
     function test_interactionDelayEnforcedForActiveRequests() public {
-        console.log("\n=== Testing Interaction Delay Enforced For Active Requests ===");
+        console.log(
+            "\n=== Testing Interaction Delay Enforced For Active Requests ==="
+        );
 
         // Use a fresh user to avoid any previous interactions
         address freshUser = address(0x777);
@@ -1235,7 +1411,9 @@ contract PassiveLiquidityVaultTest is Test {
         // This should fail with InteractionDelayNotExpired
         vm.startPrank(freshUser);
         asset.approve(address(vault), depositAmount);
-        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vm.expectRevert(
+            PassiveLiquidityVault.InteractionDelayNotExpired.selector
+        );
         vault.requestDeposit(depositAmount, depositAmount);
         vm.stopPrank();
 
@@ -1248,11 +1426,15 @@ contract PassiveLiquidityVaultTest is Test {
         vault.requestDeposit(depositAmount, depositAmount);
         vm.stopPrank();
 
-        console.log("SUCCESS: Interaction delay properly enforced for active requests");
+        console.log(
+            "SUCCESS: Interaction delay properly enforced for active requests"
+        );
     }
 
     function test_interactionDelayEnforcedAfterProcessedRequest() public {
-        console.log("\n=== Testing Interaction Delay Enforced After Processed Request ===");
+        console.log(
+            "\n=== Testing Interaction Delay Enforced After Processed Request ==="
+        );
 
         // Use a fresh user to avoid any previous interactions
         address freshUser = address(0x666);
@@ -1277,7 +1459,9 @@ contract PassiveLiquidityVaultTest is Test {
         // 3. User tries to make another request immediately (should fail due to delay)
         vm.startPrank(freshUser);
         asset.approve(address(vault), depositAmount);
-        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vm.expectRevert(
+            PassiveLiquidityVault.InteractionDelayNotExpired.selector
+        );
         vault.requestDeposit(depositAmount, depositAmount);
         vm.stopPrank();
 
@@ -1291,18 +1475,29 @@ contract PassiveLiquidityVaultTest is Test {
         vm.stopPrank();
 
         // Verify the request was created successfully
-        (, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) =
-            vault.pendingRequests(freshUser);
+        (
+            ,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(freshUser);
         assertEq(requestUser, freshUser, "User should have a pending request");
         assertTrue(isDeposit, "Should be a deposit request");
         assertEq(requestAssets, depositAmount, "Request assets should match");
         assertFalse(processed, "Request should not be processed yet");
 
-        console.log("SUCCESS: Interaction delay properly enforced after processed request");
+        console.log(
+            "SUCCESS: Interaction delay properly enforced after processed request"
+        );
     }
 
-    function test_interactionDelayEnforcedForWithdrawalAfterProcessedDeposit() public {
-        console.log("\n=== Testing Interaction Delay Enforced For Withdrawal After Processed Deposit ===");
+    function test_interactionDelayEnforcedForWithdrawalAfterProcessedDeposit()
+        public
+    {
+        console.log(
+            "\n=== Testing Interaction Delay Enforced For Withdrawal After Processed Deposit ==="
+        );
 
         // Use a fresh user to avoid any previous interactions
         address freshUser = address(0x555);
@@ -1329,7 +1524,9 @@ contract PassiveLiquidityVaultTest is Test {
 
         // 3. User tries to make a withdrawal request immediately (should fail due to delay)
         vm.prank(freshUser);
-        vm.expectRevert(PassiveLiquidityVault.InteractionDelayNotExpired.selector);
+        vm.expectRevert(
+            PassiveLiquidityVault.InteractionDelayNotExpired.selector
+        );
         vault.requestWithdrawal(userShares / 2, depositAmount / 2);
 
         // 4. Wait for interaction delay to expire
@@ -1340,14 +1537,23 @@ contract PassiveLiquidityVaultTest is Test {
         vault.requestWithdrawal(userShares / 2, depositAmount / 2);
 
         // Verify the request was created successfully
-        (, uint256 requestAssets,, address requestUser, bool isDeposit, bool processed) =
-            vault.pendingRequests(freshUser);
+        (
+            ,
+            uint256 requestAssets,,
+            address requestUser,
+            bool isDeposit,
+            bool processed
+        ) = vault.pendingRequests(freshUser);
         assertEq(requestUser, freshUser, "User should have a pending request");
         assertFalse(isDeposit, "Should be a withdrawal request");
-        assertEq(requestAssets, depositAmount / 2, "Request assets should match");
+        assertEq(
+            requestAssets, depositAmount / 2, "Request assets should match"
+        );
         assertFalse(processed, "Request should not be processed yet");
 
-        console.log("SUCCESS: Interaction delay properly enforced for withdrawal after processed deposit");
+        console.log(
+            "SUCCESS: Interaction delay properly enforced for withdrawal after processed deposit"
+        );
     }
 
     // ============ Batch Processing Tests ============
@@ -1458,7 +1664,11 @@ contract PassiveLiquidityVaultTest is Test {
 
         // Expect revert on user1's expired request
         vm.prank(manager);
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.RequestExpired.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.RequestExpired.selector
+            )
+        );
         vault.batchProcessDeposit(requesters);
 
         // Verify no one got shares (batch reverted)
@@ -1482,7 +1692,11 @@ contract PassiveLiquidityVaultTest is Test {
         requesters[1] = user2; // No request - will cause revert
 
         vm.prank(manager);
-        vm.expectRevert(abi.encodeWithSelector(PassiveLiquidityVault.NoPendingRequests.selector, user2));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                PassiveLiquidityVault.NoPendingRequests.selector, user2
+            )
+        );
         vault.batchProcessDeposit(requesters);
 
         // Verify no one got shares (entire batch reverted, rolling back user1's processing)
@@ -1522,13 +1736,18 @@ contract PassiveLiquidityVaultTest is Test {
         vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVault.SharesLockedForWithdrawal.selector, user1, userShares, userShares
+                PassiveLiquidityVault.SharesLockedForWithdrawal.selector,
+                user1,
+                userShares,
+                userShares
             )
         );
         vault.transfer(user2, userShares);
     }
 
-    function test_partialTransferBlockedWhenInsufficientUnlockedShares() public {
+    function test_partialTransferBlockedWhenInsufficientUnlockedShares()
+        public
+    {
         // Setup: User deposits and receives shares
         uint256 depositAmount = 1000 * 10 ** 18;
         asset.mint(user1, depositAmount);
@@ -1558,7 +1777,10 @@ contract PassiveLiquidityVaultTest is Test {
         vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVault.SharesLockedForWithdrawal.selector, user1, withdrawalShares, withdrawalShares + 1
+                PassiveLiquidityVault.SharesLockedForWithdrawal.selector,
+                user1,
+                withdrawalShares,
+                withdrawalShares + 1
             )
         );
         vault.transfer(user2, withdrawalShares + 1);
@@ -1751,9 +1973,17 @@ contract MockERC721WithSafeMint {
         _owners[tokenId] = to;
     }
 
-    function _checkOnERC721Received(address from, address to, uint256 tokenId, bytes memory data) private {
+    function _checkOnERC721Received(
+        address from,
+        address to,
+        uint256 tokenId,
+        bytes memory data
+    ) private {
         if (to.code.length > 0) {
-            try IERC721Receiver(to).onERC721Received(msg.sender, from, tokenId, data) returns (bytes4 retval) {
+            try IERC721Receiver(to)
+                .onERC721Received(msg.sender, from, tokenId, data) returns (
+                bytes4 retval
+            ) {
                 require(
                     retval == IERC721Receiver.onERC721Received.selector,
                     "ERC721: transfer to non ERC721Receiver implementer"
@@ -1777,7 +2007,9 @@ contract MockERC721WithSafeMint {
     }
 
     function balanceOf(address owner) external view returns (uint256) {
-        require(owner != address(0), "ERC721: address zero is not a valid owner");
+        require(
+            owner != address(0), "ERC721: address zero is not a valid owner"
+        );
         return _balances[owner];
     }
 }

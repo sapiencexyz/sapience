@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {PositionTokenFactory} from "../../../v2/bridge/PositionTokenFactory.sol";
+import { Script, console } from "forge-std/Script.sol";
+import {
+    PositionTokenFactory
+} from "../../../v2/bridge/PositionTokenFactory.sol";
 
 /// @title Deploy PositionTokenFactory
-/// @notice Deploy factory on Arbitrum Sepolia (remote chain)
+/// @notice Deploy factory on SM Network Sepolia (remote chain)
 contract DeployFactory is Script {
     function run() external {
         address owner = vm.envAddress("DEPLOYER_ADDRESS");

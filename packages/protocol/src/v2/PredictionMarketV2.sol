@@ -18,7 +18,13 @@ import "./utils/SignatureValidator.sol";
  * @notice Unified prediction market contract with fungible betting pools
  * @dev Same picks share tokens. Token supply = total wagers. Parimutuel model.
  */
-contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, SignatureValidator, Ownable {
+contract PredictionMarketV2 is
+    IPredictionMarketV2,
+    IV2Events,
+    ReentrancyGuard,
+    SignatureValidator,
+    Ownable
+{
     using SafeERC20 for IERC20;
 
     // ============ Immutables ============
@@ -88,7 +94,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     function mint(IV2Types.MintRequest calldata request)
         external
         nonReentrant
-        returns (bytes32 predictionId, address predictorToken, address counterpartyToken)
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
     {
         // Validate basic parameters
         if (request.picks.length == 0) {
@@ -105,12 +115,23 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         bytes32 pickConfigId = _computePickConfigId(request.picks);
 
         // Compute unique predictionId for this specific bet
-        predictionId = keccak256(abi.encode(pickConfigId, request.predictor, request.counterparty, ++_globalNonce));
+        predictionId = keccak256(
+            abi.encode(
+                pickConfigId,
+                request.predictor,
+                request.counterparty,
+                ++_globalNonce
+            )
+        );
 
         // Compute prediction hash for signatures (includes wagers and addresses)
         bytes32 predictionHash = keccak256(
             abi.encode(
-                pickConfigId, request.predictorWager, request.counterpartyWager, request.predictor, request.counterparty
+                pickConfigId,
+                request.predictorWager,
+                request.counterpartyWager,
+                request.predictor,
+                request.counterparty
             )
         );
 
@@ -178,7 +199,13 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         }
 
         // Transfer collateral from both parties and execute remaining logic
-        _executeMint(request, pickConfigId, predictionId, predictorToken, counterpartyToken);
+        _executeMint(
+            request,
+            pickConfigId,
+            predictionId,
+            predictorToken,
+            counterpartyToken
+        );
     }
 
     /// @dev Internal function to execute mint logic and avoid stack too deep
@@ -190,19 +217,27 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         address counterpartyToken
     ) internal {
         // Transfer collateral from both parties
-        collateralToken.safeTransferFrom(request.predictor, address(this), request.predictorWager);
-        collateralToken.safeTransferFrom(request.counterparty, address(this), request.counterpartyWager);
+        collateralToken.safeTransferFrom(
+            request.predictor, address(this), request.predictorWager
+        );
+        collateralToken.safeTransferFrom(
+            request.counterparty, address(this), request.counterpartyWager
+        );
 
         // Mint tokens proportional to wager (1:1 ratio)
-        IPositionToken(predictorToken).mint(request.predictor, request.predictorWager);
-        IPositionToken(counterpartyToken).mint(request.counterparty, request.counterpartyWager);
+        IPositionToken(predictorToken)
+            .mint(request.predictor, request.predictorWager);
+        IPositionToken(counterpartyToken)
+            .mint(request.counterparty, request.counterpartyWager);
 
         // Update pick configuration totals
-        IV2Types.PickConfiguration storage config = _pickConfigurations[pickConfigId];
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
         config.totalPredictorCollateral += request.predictorWager;
         config.totalCounterpartyCollateral += request.counterpartyWager;
 
-        uint256 totalCollateral = request.predictorWager + request.counterpartyWager;
+        uint256 totalCollateral =
+            request.predictorWager + request.counterpartyWager;
 
         // Store escrow record for this specific bet (audit trail)
         _escrowRecords[predictionId] = IV2Types.EscrowRecord({
@@ -243,7 +278,10 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function settle(bytes32 predictionId, bytes32 refCode) external nonReentrant {
+    function settle(bytes32 predictionId, bytes32 refCode)
+        external
+        nonReentrant
+    {
         IV2Types.Prediction storage prediction = _predictions[predictionId];
 
         if (prediction.predictionId == bytes32(0)) {
@@ -254,11 +292,13 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         }
 
         bytes32 pickConfigId = prediction.pickConfigId;
-        IV2Types.PickConfiguration storage config = _pickConfigurations[pickConfigId];
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
 
         // Resolve pick configuration if not already resolved
         if (!config.resolved) {
-            (bool canResolve, IV2Types.SettlementResult result) = _resolvePrediction(pickConfigId);
+            (bool canResolve, IV2Types.SettlementResult result) =
+                _resolvePrediction(pickConfigId);
 
             if (!canResolve) {
                 revert PredictionNotResolvable();
@@ -273,10 +313,19 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         _escrowRecords[predictionId].settled = true;
 
         // Calculate claimable amounts for this prediction's contribution
-        (uint256 predictorClaimable, uint256 counterpartyClaimable) =
-            _calculateClaimableForPrediction(config.result, prediction.predictorWager, prediction.counterpartyWager);
+        (uint256 predictorClaimable, uint256 counterpartyClaimable) = _calculateClaimableForPrediction(
+            config.result,
+            prediction.predictorWager,
+            prediction.counterpartyWager
+        );
 
-        emit PredictionSettled(predictionId, config.result, predictorClaimable, counterpartyClaimable, refCode);
+        emit PredictionSettled(
+            predictionId,
+            config.result,
+            predictorClaimable,
+            counterpartyClaimable,
+            refCode
+        );
     }
 
     /// @inheritdoc IPredictionMarketV2
@@ -290,7 +339,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         }
 
         bytes32 pickConfigId = _tokenToPickConfig[positionToken];
-        IV2Types.PickConfiguration storage config = _pickConfigurations[pickConfigId];
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
 
         if (!config.resolved) {
             revert PickConfigNotResolved();
@@ -305,19 +355,25 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
         // Use ORIGINAL total tokens (= collateral in 1:1 ratio), not current totalSupply
         // This ensures consistent payouts even after partial redemptions
-        uint256 originalTotalTokens = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
+        uint256 originalTotalTokens = isPredictor
+            ? config.totalPredictorCollateral
+            : config.totalCounterpartyCollateral;
 
         // Calculate claimable pool based on result
         uint256 claimablePool;
-        uint256 totalCollateral = config.totalPredictorCollateral + config.totalCounterpartyCollateral;
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
 
         if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             claimablePool = isPredictor ? totalCollateral : 0;
-        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        {
             claimablePool = isPredictor ? 0 : totalCollateral;
         } else {
             // NON_DECISIVE (tie) - each side gets their original collateral back
-            claimablePool = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
+            claimablePool = isPredictor
+                ? config.totalPredictorCollateral
+                : config.totalCounterpartyCollateral;
         }
 
         // Proportional payout: (amount / originalTotalTokens) * claimablePool
@@ -331,14 +387,20 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             collateralToken.safeTransfer(msg.sender, payout);
 
             // Note: We emit with pickConfigId since tokens are shared
-            emit TokensRedeemed(pickConfigId, msg.sender, positionToken, amount, payout, refCode);
+            emit TokensRedeemed(
+                pickConfigId, msg.sender, positionToken, amount, payout, refCode
+            );
         }
     }
 
     // ============ View Functions ============
 
     /// @inheritdoc IPredictionMarketV2
-    function getPrediction(bytes32 predictionId) external view returns (IV2Types.Prediction memory prediction) {
+    function getPrediction(bytes32 predictionId)
+        external
+        view
+        returns (IV2Types.Prediction memory prediction)
+    {
         return _predictions[predictionId];
     }
 
@@ -352,7 +414,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function getTokenPair(bytes32 pickConfigId) external view returns (IV2Types.TokenPair memory tokenPair) {
+    function getTokenPair(bytes32 pickConfigId)
+        external
+        view
+        returns (IV2Types.TokenPair memory tokenPair)
+    {
         return _tokenPairs[pickConfigId];
     }
 
@@ -368,7 +434,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             return false;
         }
 
-        IV2Types.PickConfiguration storage config = _pickConfigurations[prediction.pickConfigId];
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[prediction.pickConfigId];
         if (config.resolved) {
             return true; // Already resolved, just need to mark this prediction
         }
@@ -378,27 +445,40 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function getPicks(bytes32 pickConfigId) external view returns (IV2Types.Pick[] memory picks) {
+    function getPicks(bytes32 pickConfigId)
+        external
+        view
+        returns (IV2Types.Pick[] memory picks)
+    {
         return _pickConfigPicks[pickConfigId];
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function computePickConfigId(IV2Types.Pick[] calldata picks) external pure returns (bytes32 pickConfigId) {
+    function computePickConfigId(IV2Types.Pick[] calldata picks)
+        external
+        pure
+        returns (bytes32 pickConfigId)
+    {
         return _computePickConfigId(picks);
     }
 
     /// @notice Get the escrow record for a prediction
-    function getEscrowRecord(bytes32 predictionId) external view returns (IV2Types.EscrowRecord memory record) {
+    function getEscrowRecord(bytes32 predictionId)
+        external
+        view
+        returns (IV2Types.EscrowRecord memory record)
+    {
         return _escrowRecords[predictionId];
     }
 
     /// @notice Calculate claimable amount for a given token amount
-    function getClaimableAmount(bytes32 pickConfigId, address positionToken, uint256 tokenAmount)
-        external
-        view
-        returns (uint256 claimable)
-    {
-        IV2Types.PickConfiguration storage config = _pickConfigurations[pickConfigId];
+    function getClaimableAmount(
+        bytes32 pickConfigId,
+        address positionToken,
+        uint256 tokenAmount
+    ) external view returns (uint256 claimable) {
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
         if (!config.resolved || tokenAmount == 0) {
             return 0;
         }
@@ -406,17 +486,23 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         bool isPredictor = _isPredictorToken[positionToken];
 
         // Use ORIGINAL total tokens (= collateral in 1:1 ratio)
-        uint256 originalTotalTokens = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
+        uint256 originalTotalTokens = isPredictor
+            ? config.totalPredictorCollateral
+            : config.totalCounterpartyCollateral;
 
-        uint256 totalCollateral = config.totalPredictorCollateral + config.totalCounterpartyCollateral;
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
 
         uint256 claimablePool;
         if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             claimablePool = isPredictor ? totalCollateral : 0;
-        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        {
             claimablePool = isPredictor ? 0 : totalCollateral;
         } else {
-            claimablePool = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
+            claimablePool = isPredictor
+                ? config.totalPredictorCollateral
+                : config.totalCounterpartyCollateral;
         }
 
         return (tokenAmount * claimablePool) / originalTotalTokens;
@@ -433,7 +519,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Get pickConfigId from token address
-    function getPickConfigIdFromToken(address token) external view returns (bytes32) {
+    function getPickConfigIdFromToken(address token)
+        external
+        view
+        returns (bytes32)
+    {
         return _tokenToPickConfig[token];
     }
 
@@ -447,7 +537,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         // Create predictor token with CREATE2
         bytes32 predictorSalt = keccak256(abi.encode(pickConfigId, true));
         predictorToken = address(
-            new PositionToken{salt: predictorSalt}(
+            new PositionToken{ salt: predictorSalt }(
                 _generateTokenName(pickConfigId, true),
                 _generateTokenSymbol(pickConfigId, true),
                 pickConfigId,
@@ -459,7 +549,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         // Create counterparty token with CREATE2
         bytes32 counterpartySalt = keccak256(abi.encode(pickConfigId, false));
         counterpartyToken = address(
-            new PositionToken{salt: counterpartySalt}(
+            new PositionToken{ salt: counterpartySalt }(
                 _generateTokenName(pickConfigId, false),
                 _generateTokenSymbol(pickConfigId, false),
                 pickConfigId,
@@ -469,7 +559,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         );
 
         // Store mappings
-        _tokenPairs[pickConfigId] = IV2Types.TokenPair(predictorToken, counterpartyToken);
+        _tokenPairs[pickConfigId] =
+            IV2Types.TokenPair(predictorToken, counterpartyToken);
         _tokenToPickConfig[predictorToken] = pickConfigId;
         _tokenToPickConfig[counterpartyToken] = pickConfigId;
         _isPredictorToken[predictorToken] = true;
@@ -479,20 +570,33 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Generate token name
-    function _generateTokenName(bytes32 pickConfigId, bool isPredictor) internal pure returns (string memory) {
+    function _generateTokenName(bytes32 pickConfigId, bool isPredictor)
+        internal
+        pure
+        returns (string memory)
+    {
         string memory prefix = isPredictor ? "Predictor-" : "Counterparty-";
-        return string(abi.encodePacked(prefix, _bytes32ToHexString(pickConfigId)));
+        return
+            string(abi.encodePacked(prefix, _bytes32ToHexString(pickConfigId)));
     }
 
     /// @notice Generate token symbol
-    function _generateTokenSymbol(bytes32 pickConfigId, bool isPredictor) internal pure returns (string memory) {
+    function _generateTokenSymbol(bytes32 pickConfigId, bool isPredictor)
+        internal
+        pure
+        returns (string memory)
+    {
         string memory prefix = isPredictor ? "PRD-" : "CTR-";
         bytes4 short = bytes4(pickConfigId);
         return string(abi.encodePacked(prefix, _bytes4ToHexString(short)));
     }
 
     /// @notice Convert bytes32 to hex string (first 4 bytes)
-    function _bytes32ToHexString(bytes32 data) internal pure returns (string memory) {
+    function _bytes32ToHexString(bytes32 data)
+        internal
+        pure
+        returns (string memory)
+    {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(8);
         for (uint256 i = 0; i < 4; i++) {
@@ -503,7 +607,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Convert bytes4 to hex string
-    function _bytes4ToHexString(bytes4 data) internal pure returns (string memory) {
+    function _bytes4ToHexString(bytes4 data)
+        internal
+        pure
+        returns (string memory)
+    {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(8);
         for (uint256 i = 0; i < 4; i++) {
@@ -519,7 +627,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     function _validatePicks(IV2Types.Pick[] calldata picks) internal view {
         for (uint256 i = 0; i < picks.length; i++) {
             // Check condition is valid
-            if (!IConditionResolver(picks[i].conditionResolver).isValidCondition(picks[i].conditionId)) {
+            if (!IConditionResolver(picks[i].conditionResolver)
+                    .isValidCondition(picks[i].conditionId)) {
                 revert InvalidPicks();
             }
 
@@ -545,7 +654,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Compute pick configuration ID from picks
-    function _computePickConfigId(IV2Types.Pick[] calldata picks) internal pure returns (bytes32) {
+    function _computePickConfigId(IV2Types.Pick[] calldata picks)
+        internal
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encode(picks));
     }
 
@@ -554,7 +667,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         IV2Types.SettlementResult result,
         uint256 predictorWager,
         uint256 counterpartyWager
-    ) internal pure returns (uint256 predictorClaimable, uint256 counterpartyClaimable) {
+    )
+        internal
+        pure
+        returns (uint256 predictorClaimable, uint256 counterpartyClaimable)
+    {
         uint256 totalCollateral = predictorWager + counterpartyWager;
 
         if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
@@ -599,7 +716,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Resolve using batch call when all picks use the same resolver
-    function _resolveBatch(IV2Types.Pick[] storage picks, uint256 numPicks, address resolver)
+    function _resolveBatch(
+        IV2Types.Pick[] storage picks,
+        uint256 numPicks,
+        address resolver
+    )
         internal
         view
         returns (bool canResolve, IV2Types.SettlementResult result)
@@ -621,7 +742,8 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
                 return (false, IV2Types.SettlementResult.UNRESOLVED);
             }
 
-            (bool isLoss, bool isNonDecisive) = _evaluatePick(picks[i].predictedOutcome, outcomes[i]);
+            (bool isLoss, bool isNonDecisive) =
+                _evaluatePick(picks[i].predictedOutcome, outcomes[i]);
             if (isLoss) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
             }
@@ -647,14 +769,16 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
-            (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-                IConditionResolver(pick.conditionResolver).getResolution(pick.conditionId);
+            (bool isResolved, IV2Types.OutcomeVector memory outcome) = IConditionResolver(
+                    pick.conditionResolver
+                ).getResolution(pick.conditionId);
 
             if (!isResolved) {
                 return (false, IV2Types.SettlementResult.UNRESOLVED);
             }
 
-            (bool isLoss, bool isNonDecisive) = _evaluatePick(pick.predictedOutcome, outcome);
+            (bool isLoss, bool isNonDecisive) =
+                _evaluatePick(pick.predictedOutcome, outcome);
             if (isLoss) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
             }
@@ -672,11 +796,10 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     /// @notice Evaluate a single pick against its outcome
     /// @return isLoss True if predictor decisively lost this pick
     /// @return isNonDecisive True if outcome is a tie
-    function _evaluatePick(IV2Types.OutcomeSide predictedOutcome, IV2Types.OutcomeVector memory outcome)
-        internal
-        pure
-        returns (bool isLoss, bool isNonDecisive)
-    {
+    function _evaluatePick(
+        IV2Types.OutcomeSide predictedOutcome,
+        IV2Types.OutcomeVector memory outcome
+    ) internal pure returns (bool isLoss, bool isNonDecisive) {
         bool isDecisiveYes = outcome.yesWeight > 0 && outcome.noWeight == 0;
         bool isDecisiveNo = outcome.yesWeight == 0 && outcome.noWeight > 0;
 
@@ -684,8 +807,10 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
             return (false, true); // Non-decisive (tie)
         }
 
-        bool pickMatchesYes = predictedOutcome == IV2Types.OutcomeSide.YES && isDecisiveYes;
-        bool pickMatchesNo = predictedOutcome == IV2Types.OutcomeSide.NO && isDecisiveNo;
+        bool pickMatchesYes =
+            predictedOutcome == IV2Types.OutcomeSide.YES && isDecisiveYes;
+        bool pickMatchesNo =
+            predictedOutcome == IV2Types.OutcomeSide.NO && isDecisiveNo;
 
         if (!pickMatchesYes && !pickMatchesNo) {
             return (true, false); // Decisive loss
@@ -708,10 +833,13 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     ) internal view returns (bool isValid) {
         if (sessionKeyData.length == 0) {
             // EOA signature - use standard validation
-            return _isApprovalValid(predictionHash, signer, wager, nonce, deadline, signature);
+            return _isApprovalValid(
+                predictionHash, signer, wager, nonce, deadline, signature
+            );
         } else {
             // Session key signature - decode and validate
-            IV2Types.SessionKeyData memory skData = abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
+            IV2Types.SessionKeyData memory skData =
+                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
 
             SessionKeyApproval memory approval = SessionKeyApproval({
                 sessionKey: skData.sessionKey,
@@ -722,7 +850,15 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
                 ownerSignature: skData.ownerSignature
             });
 
-            return _isSessionKeyApprovalValid(predictionHash, signer, wager, nonce, deadline, signature, approval);
+            return _isSessionKeyApprovalValid(
+                predictionHash,
+                signer,
+                wager,
+                nonce,
+                deadline,
+                signature,
+                approval
+            );
         }
     }
 }

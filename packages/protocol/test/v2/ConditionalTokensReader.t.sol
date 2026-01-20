@@ -1,20 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {
     ConditionalTokensConditionResolver
 } from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
-import {ConditionalTokensReader} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
+import {
+    ConditionalTokensReader
+} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
 import {
     IConditionalTokensConditionResolver
 } from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
 import {
     IConditionalTokensReader
 } from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
-import {IV2Types} from "../../src/v2/interfaces/IV2Types.sol";
-import {LZTypes} from "../../src/v2/resolvers/lz/LZTypes.sol";
-import {MockConditionalTokens} from "./mocks/MockConditionalTokens.sol";
+import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
+import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+import { MockConditionalTokens } from "./mocks/MockConditionalTokens.sol";
 import "forge-std/Test.sol";
 
 /// @title ConditionalTokensReaderTest
@@ -39,7 +43,9 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
     bytes32 public constant CONDITION_ID_2 = keccak256("condition-2");
 
     // Events
-    event ResolutionRequested(bytes32 indexed conditionId, bytes32 guid, uint256 timestamp);
+    event ResolutionRequested(
+        bytes32 indexed conditionId, bytes32 guid, uint256 timestamp
+    );
     event ResolutionSent(
         bytes32 indexed conditionId,
         uint256 payoutDenominator,
@@ -69,7 +75,8 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         // Deploy PM-side resolver
         pmResolver = ConditionalTokensConditionResolver(
             payable(_deployOApp(
-                    type(ConditionalTokensConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)
+                    type(ConditionalTokensConditionResolver).creationCode,
+                    abi.encode(address(endpoints[pmEid]), owner)
                 ))
         );
 
@@ -80,7 +87,9 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
                     abi.encode(
                         address(endpoints[polygonEid]),
                         owner,
-                        IConditionalTokensReader.Settings({conditionalTokens: address(mockCT)})
+                        IConditionalTokensReader.Settings({
+                            conditionalTokens: address(mockCT)
+                        })
                     )
                 ))
         );
@@ -92,8 +101,16 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         this.wireOApps(oapps);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: polygonEid, remoteBridge: address(polygonReader)}));
-        polygonReader.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: polygonEid, remoteBridge: address(polygonReader)
+            })
+        );
+        polygonReader.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: pmEid, remoteBridge: address(pmResolver)
+            })
+        );
 
         // Set up a resolved YES condition
         mockCT.setYesCondition(CONDITION_ID_1);
@@ -117,7 +134,9 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 
         vm.expectEmit(true, false, false, false);
         emit ConfigUpdated(newCT);
-        polygonReader.setConfig(IConditionalTokensReader.Settings({conditionalTokens: newCT}));
+        polygonReader.setConfig(
+            IConditionalTokensReader.Settings({ conditionalTokens: newCT })
+        );
 
         (address ct) = polygonReader.config();
         assertEq(ct, newCT);
@@ -126,11 +145,17 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
     function test_setConfig_revertIfNotOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        polygonReader.setConfig(IConditionalTokensReader.Settings({conditionalTokens: address(0x1)}));
+        polygonReader.setConfig(
+            IConditionalTokensReader.Settings({
+                conditionalTokens: address(0x1)
+            })
+        );
     }
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
+            remoteEid: 999, remoteBridge: address(0x1234)
+        });
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -169,7 +194,8 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
     // ============ getConditionResolution Tests ============
 
     function test_getConditionResolution() public view {
-        IConditionalTokensReader.ConditionData memory data = polygonReader.getConditionResolution(CONDITION_ID_1);
+        IConditionalTokensReader.ConditionData memory data =
+            polygonReader.getConditionResolution(CONDITION_ID_1);
 
         assertEq(data.slotCount, 2);
         assertEq(data.payoutDenominator, 1);
@@ -188,40 +214,54 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 
     function test_requestResolution_revertIfZeroConditionId() public {
         vm.expectRevert(IConditionalTokensReader.InvalidConditionId.selector);
-        polygonReader.requestResolution{value: 1 ether}(bytes32(0));
+        polygonReader.requestResolution{ value: 1 ether }(bytes32(0));
     }
 
     function test_requestResolution_revertIfNotBinary() public {
         mockCT.setNonBinaryCondition(CONDITION_ID_2);
 
-        vm.expectRevert(abi.encodeWithSelector(IConditionalTokensReader.ConditionIsNotBinary.selector, CONDITION_ID_2));
-        polygonReader.requestResolution{value: 1 ether}(CONDITION_ID_2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IConditionalTokensReader.ConditionIsNotBinary.selector,
+                CONDITION_ID_2
+            )
+        );
+        polygonReader.requestResolution{ value: 1 ether }(CONDITION_ID_2);
     }
 
     function test_requestResolution_revertIfNotResolved() public {
         mockCT.setUnresolvedCondition(CONDITION_ID_2);
 
-        vm.expectRevert(abi.encodeWithSelector(IConditionalTokensReader.ConditionNotResolved.selector, CONDITION_ID_2));
-        polygonReader.requestResolution{value: 1 ether}(CONDITION_ID_2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IConditionalTokensReader.ConditionNotResolved.selector,
+                CONDITION_ID_2
+            )
+        );
+        polygonReader.requestResolution{ value: 1 ether }(CONDITION_ID_2);
     }
 
     function test_requestResolution_revertIfTie() public {
         mockCT.setTieCondition(CONDITION_ID_2);
 
-        vm.expectRevert(abi.encodeWithSelector(IConditionalTokensReader.InvalidPayout.selector, CONDITION_ID_2));
-        polygonReader.requestResolution{value: 1 ether}(CONDITION_ID_2);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IConditionalTokensReader.InvalidPayout.selector, CONDITION_ID_2
+            )
+        );
+        polygonReader.requestResolution{ value: 1 ether }(CONDITION_ID_2);
     }
 
     function test_requestResolution_revertIfInsufficientFee() public {
         vm.expectRevert();
-        polygonReader.requestResolution{value: 0}(CONDITION_ID_1);
+        polygonReader.requestResolution{ value: 0 }(CONDITION_ID_1);
     }
 
     function test_requestResolution_success() public {
         MessagingFee memory fee = polygonReader.quoteResolution(CONDITION_ID_1);
 
         vm.prank(user);
-        polygonReader.requestResolution{value: fee.nativeFee}(CONDITION_ID_1);
+        polygonReader.requestResolution{ value: fee.nativeFee }(CONDITION_ID_1);
 
         // Message should be pending
     }
@@ -230,13 +270,13 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 
     function test_depositETH() public {
         uint256 balanceBefore = polygonReader.getETHBalance();
-        (bool success,) = address(polygonReader).call{value: 1 ether}("");
+        (bool success,) = address(polygonReader).call{ value: 1 ether }("");
         assertTrue(success);
         assertEq(polygonReader.getETHBalance(), balanceBefore + 1 ether);
     }
 
     function test_withdrawETH() public {
-        (bool success,) = address(polygonReader).call{value: 1 ether}("");
+        (bool success,) = address(polygonReader).call{ value: 1 ether }("");
         assertTrue(success);
 
         uint256 ownerBalanceBefore = owner.balance;
@@ -245,7 +285,7 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
     }
 
     function test_withdrawETH_revertIfNotOwner() public {
-        (bool success,) = address(polygonReader).call{value: 1 ether}("");
+        (bool success,) = address(polygonReader).call{ value: 1 ether }("");
         assertTrue(success);
 
         vm.prank(unauthorizedUser);
@@ -269,7 +309,7 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 
         // Request resolution
         vm.prank(user);
-        polygonReader.requestResolution{value: fee.nativeFee}(CONDITION_ID_1);
+        polygonReader.requestResolution{ value: fee.nativeFee }(CONDITION_ID_1);
 
         // Verify and deliver packets
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
@@ -277,7 +317,8 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         // Check PM resolver received the resolution
         assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -289,11 +330,12 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         MessagingFee memory fee = polygonReader.quoteResolution(CONDITION_ID_2);
 
         vm.prank(user);
-        polygonReader.requestResolution{value: fee.nativeFee}(CONDITION_ID_2);
+        polygonReader.requestResolution{ value: fee.nativeFee }(CONDITION_ID_2);
 
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_2);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_2);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -301,4 +343,4 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 }
 
 // Need to import MessagingFee for the test
-import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";

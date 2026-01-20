@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {IConditionResolver} from "../interfaces/IConditionResolver.sol";
-import {IV2Types} from "../interfaces/IV2Types.sol";
-import {IPythLazer} from "./pythLazer/IPythLazer.sol";
-import {PythLazerLib} from "./pythLazer/PythLazerLib.sol";
-import {PythLazerLibBytes} from "./pythLazer/PythLazerLibBytes.sol";
-import {PythLazerStructs} from "./pythLazer/PythLazerStructs.sol";
+import { IConditionResolver } from "../interfaces/IConditionResolver.sol";
+import { IV2Types } from "../interfaces/IV2Types.sol";
+import { IPythLazer } from "./pythLazer/IPythLazer.sol";
+import { PythLazerLib } from "./pythLazer/PythLazerLib.sol";
+import { PythLazerLibBytes } from "./pythLazer/PythLazerLibBytes.sol";
+import { PythLazerStructs } from "./pythLazer/PythLazerStructs.sol";
 
 /// @title PythConditionResolver
 /// @notice V2 condition resolver for binary options settled using Pyth Lazer verified historical updates
@@ -64,7 +66,11 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId) external pure returns (bool) {
+    function isValidCondition(bytes32 conditionId)
+        external
+        pure
+        returns (bool)
+    {
         // Any non-zero conditionId is potentially valid (we can't validate without market data)
         // The actual validation happens during settlement
         return conditionId != bytes32(0);
@@ -95,7 +101,10 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     function getResolutions(bytes32[] calldata conditionIds)
         external
         view
-        returns (bool[] memory isResolved, IV2Types.OutcomeVector[] memory outcomes)
+        returns (
+            bool[] memory isResolved,
+            IV2Types.OutcomeVector[] memory outcomes
+        )
     {
         uint256 length = conditionIds.length;
         isResolved = new bool[](length);
@@ -109,7 +118,9 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
                 outcomes[i] = IV2Types.OutcomeVector(0, 0);
             } else {
                 isResolved[i] = true;
-                outcomes[i] = s.resolvedToOver ? IV2Types.OutcomeVector(1, 0) : IV2Types.OutcomeVector(0, 1);
+                outcomes[i] = s.resolvedToOver
+                    ? IV2Types.OutcomeVector(1, 0)
+                    : IV2Types.OutcomeVector(0, 1);
             }
         }
     }
@@ -127,13 +138,18 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     /// @param updateData The Pyth Lazer update data (single element array)
     /// @return conditionId The unique condition identifier
     /// @return resolvedToOver True if the condition resolved to OVER (YES)
-    function settleCondition(BinaryOptionMarket calldata market, bytes[] calldata updateData)
+    function settleCondition(
+        BinaryOptionMarket calldata market,
+        bytes[] calldata updateData
+    )
         external
         payable
         nonReentrant
         returns (bytes32 conditionId, bool resolvedToOver)
     {
-        if (market.priceId == bytes32(0)) revert InvalidMarketData();
+        if (market.priceId == bytes32(0)) {
+            revert InvalidMarketData();
+        }
         uint32 feedId = _asFeedId(market.priceId);
         if (market.strikePrice <= 0) revert InvalidMarketData();
         if (block.timestamp < market.endTime) revert MarketNotEnded();
@@ -152,7 +168,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         uint64 publishTimeSec;
         uint64 publishTimeMicros;
         {
-            (bytes memory payload,) = pythLazer.verifyUpdate{value: fee}(updateData[0]);
+            (bytes memory payload,) =
+                pythLazer.verifyUpdate{ value: fee }(updateData[0]);
             (benchmarkPrice, benchmarkExpo, publishTimeSec, publishTimeMicros) =
                 _benchmarkFromVerifiedPayload(payload, feedId);
         }
@@ -166,8 +183,9 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
             revert StrikeExpoMismatch(market.strikeExpo, benchmarkExpo);
         }
 
-        resolvedToOver =
-            market.overWinsOnTie ? (benchmarkPrice >= market.strikePrice) : (benchmarkPrice > market.strikePrice);
+        resolvedToOver = market.overWinsOnTie
+            ? (benchmarkPrice >= market.strikePrice)
+            : (benchmarkPrice > market.strikePrice);
 
         settlements[conditionId] = MarketSettlement({
             settled: true,
@@ -178,12 +196,18 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         });
 
         emit MarketSettled(
-            conditionId, market.priceId, market.endTime, resolvedToOver, benchmarkPrice, benchmarkExpo, publishTimeSec
+            conditionId,
+            market.priceId,
+            market.endTime,
+            resolvedToOver,
+            benchmarkPrice,
+            benchmarkExpo,
+            publishTimeSec
         );
 
         // Refund excess ETH
         if (msg.value > fee) {
-            (bool ok,) = msg.sender.call{value: msg.value - fee}("");
+            (bool ok,) = msg.sender.call{ value: msg.value - fee }("");
             if (!ok) revert RefundFailed();
         }
     }
@@ -193,16 +217,30 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     /// @notice Compute the conditionId for a market
     /// @param market The market parameters
     /// @return The unique condition identifier
-    function getConditionId(BinaryOptionMarket memory market) public pure returns (bytes32) {
+    function getConditionId(BinaryOptionMarket memory market)
+        public
+        pure
+        returns (bytes32)
+    {
         return keccak256(
-            abi.encode(market.priceId, market.endTime, market.strikePrice, market.strikeExpo, market.overWinsOnTie)
+            abi.encode(
+                market.priceId,
+                market.endTime,
+                market.strikePrice,
+                market.strikeExpo,
+                market.overWinsOnTie
+            )
         );
     }
 
     /// @notice Get the settlement data for a condition
     /// @param conditionId The condition identifier
     /// @return The settlement data
-    function getSettlement(bytes32 conditionId) external view returns (MarketSettlement memory) {
+    function getSettlement(bytes32 conditionId)
+        external
+        view
+        returns (MarketSettlement memory)
+    {
         return settlements[conditionId];
     }
 
@@ -214,12 +252,22 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         feedId = uint32(raw);
     }
 
-    function _benchmarkFromVerifiedPayload(bytes memory payload, uint32 targetFeedId)
+    function _benchmarkFromVerifiedPayload(
+        bytes memory payload,
+        uint32 targetFeedId
+    )
         internal
         pure
-        returns (int64 benchmarkPrice, int32 benchmarkExpo, uint64 publishTimeSec, uint64 publishTimeMicros)
+        returns (
+            int64 benchmarkPrice,
+            int32 benchmarkExpo,
+            uint64 publishTimeSec,
+            uint64 publishTimeMicros
+        )
     {
-        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
+        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(
+                payload
+            );
 
         publishTimeMicros = u.timestamp;
         publishTimeSec = uint64(u.timestamp / 1_000_000);

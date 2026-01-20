@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Script, console} from "forge-std/Script.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {PredictionMarketV2} from "../../../v2/PredictionMarketV2.sol";
-import {IV2Types} from "../../../v2/interfaces/IV2Types.sol";
+import { Script, console } from "forge-std/Script.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 
 /// @title Mint Position Tokens
 /// @notice Mint position tokens via PredictionMarketV2 for bridge testing
@@ -40,8 +40,13 @@ contract MintPositionTokens is Script {
         console.log("Condition ID:", vm.toString(conditionId));
         console.log("");
         console.log("Token Balances:");
-        console.log("  Predictor Token:", IERC20(predictorToken).balanceOf(deployer));
-        console.log("  Counterparty Token:", IERC20(counterpartyToken).balanceOf(deployer));
+        console.log(
+            "  Predictor Token:", IERC20(predictorToken).balanceOf(deployer)
+        );
+        console.log(
+            "  Counterparty Token:",
+            IERC20(counterpartyToken).balanceOf(deployer)
+        );
         console.log("");
         console.log("Add to .env:");
         console.log("PREDICTOR_TOKEN_ADDRESS=", predictorToken);
@@ -60,7 +65,9 @@ contract MintPositionTokens is Script {
             bytes32 conditionId
         )
     {
-        PredictionMarketV2 market = PredictionMarketV2(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
+        PredictionMarketV2 market = PredictionMarketV2(
+            vm.envAddress("PREDICTION_MARKET_ADDRESS")
+        );
         IERC20 collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
         address resolverAddr = vm.envAddress("RESOLVER_ADDRESS");
 
@@ -70,12 +77,15 @@ contract MintPositionTokens is Script {
         // Build pick and compute pickConfigId
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: resolverAddr, conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: resolverAddr,
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.YES
         });
         pickConfigId = keccak256(abi.encode(picks));
 
         // Build mint request
-        IV2Types.MintRequest memory request = _buildRequest(market, picks, deployer, deployerPk);
+        IV2Types.MintRequest memory request =
+            _buildRequest(market, picks, deployer, deployerPk);
 
         vm.startBroadcast(deployerPk);
 
@@ -94,14 +104,18 @@ contract MintPositionTokens is Script {
     ) internal view returns (IV2Types.MintRequest memory request) {
         // Compute prediction hash
         bytes32 pickConfigId = keccak256(abi.encode(picks));
-        bytes32 predictionHash = keccak256(abi.encode(pickConfigId, WAGER, WAGER, deployer, deployer));
+        bytes32 predictionHash = keccak256(
+            abi.encode(pickConfigId, WAGER, WAGER, deployer, deployer)
+        );
 
         // Get nonces and deadline
         uint256 nonce = market.getNonce(deployer);
         uint256 deadline = block.timestamp + 1 hours;
 
         // Sign (same sig for both since same signer)
-        bytes memory sig = _sign(market, predictionHash, deployer, WAGER, nonce, deadline, deployerPk);
+        bytes memory sig = _sign(
+            market, predictionHash, deployer, WAGER, nonce, deadline, deployerPk
+        );
 
         request = IV2Types.MintRequest({
             picks: picks,
@@ -130,7 +144,9 @@ contract MintPositionTokens is Script {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = market.getMintApprovalHash(predictionHash, signer, wager, nonce, deadline);
+        bytes32 approvalHash = market.getMintApprovalHash(
+            predictionHash, signer, wager, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
     }

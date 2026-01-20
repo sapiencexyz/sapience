@@ -54,7 +54,9 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         eoaUser = vm.addr(3);
 
         // Deploy prediction market
-        predictionMarket = new PredictionMarket("Prediction Market", "PM", address(collateralToken), MIN_COLLATERAL);
+        predictionMarket = new PredictionMarket(
+            "Prediction Market", "PM", address(collateralToken), MIN_COLLATERAL
+        );
 
         // Deploy PassiveLiquidityVault
         vault = new PassiveLiquidityVault(
@@ -69,9 +71,9 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         mockVault = new MockPassiveLiquidityVault();
 
         // Mint tokens to test accounts
-        collateralToken.mint(maker, 10000e18);
-        collateralToken.mint(taker, 10000e18);
-        collateralToken.mint(eoaUser, 10000e18);
+        collateralToken.mint(maker, 10_000e18);
+        collateralToken.mint(taker, 10_000e18);
+        collateralToken.mint(eoaUser, 10_000e18);
 
         // Approve prediction market to spend tokens
         vm.prank(maker);
@@ -80,12 +82,17 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         collateralToken.approve(address(predictionMarket), type(uint256).max);
 
         // Create a prediction to get NFTs for testing
-        IPredictionStructs.MintPredictionRequestData memory request = _createValidMintRequest();
+        IPredictionStructs.MintPredictionRequestData memory request =
+            _createValidMintRequest();
         vm.prank(maker);
         (makerNftTokenId, takerNftTokenId) = predictionMarket.mint(request);
     }
 
-    function _createValidMintRequest() internal view returns (IPredictionStructs.MintPredictionRequestData memory) {
+    function _createValidMintRequest()
+        internal
+        view
+        returns (IPredictionStructs.MintPredictionRequestData memory)
+    {
         // Create the message hash that will be signed
         bytes32 messageHash = keccak256(
             abi.encode(
@@ -100,7 +107,8 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         );
 
         // Get the EIP-712 approval hash that needs to be signed
-        bytes32 approvalHash = predictionMarket.getApprovalHash(messageHash, taker);
+        bytes32 approvalHash =
+            predictionMarket.getApprovalHash(messageHash, taker);
 
         // Sign the approval hash with the taker's private key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(2, approvalHash); // Use key 2 for taker
@@ -134,7 +142,8 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         assertEq(predictionMarket.ownerOf(makerNftTokenId), eoaUser);
 
         // Verify prediction maker was updated
-        IPredictionStructs.PredictionData memory prediction = predictionMarket.getPrediction(makerNftTokenId);
+        IPredictionStructs.PredictionData memory prediction =
+            predictionMarket.getPrediction(makerNftTokenId);
         assertEq(prediction.maker, eoaUser);
     }
 
@@ -150,7 +159,8 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         assertEq(predictionMarket.ownerOf(takerNftTokenId), eoaUser);
 
         // Verify prediction taker was updated
-        IPredictionStructs.PredictionData memory prediction = predictionMarket.getPrediction(takerNftTokenId);
+        IPredictionStructs.PredictionData memory prediction =
+            predictionMarket.getPrediction(takerNftTokenId);
         assertEq(prediction.taker, eoaUser);
     }
 
@@ -160,13 +170,18 @@ contract PredictionMarketTransferRestrictionsTest is Test {
 
         // Transfer to generic contract
         vm.prank(maker);
-        predictionMarket.transferFrom(maker, address(genericContract), makerNftTokenId);
+        predictionMarket.transferFrom(
+            maker, address(genericContract), makerNftTokenId
+        );
 
         // Verify transfer succeeded
-        assertEq(predictionMarket.ownerOf(makerNftTokenId), address(genericContract));
+        assertEq(
+            predictionMarket.ownerOf(makerNftTokenId), address(genericContract)
+        );
 
         // Verify prediction maker was updated
-        IPredictionStructs.PredictionData memory prediction = predictionMarket.getPrediction(makerNftTokenId);
+        IPredictionStructs.PredictionData memory prediction =
+            predictionMarket.getPrediction(makerNftTokenId);
         assertEq(prediction.maker, address(genericContract));
     }
 
@@ -176,13 +191,18 @@ contract PredictionMarketTransferRestrictionsTest is Test {
 
         // Transfer to generic contract
         vm.prank(taker);
-        predictionMarket.transferFrom(taker, address(genericContract), takerNftTokenId);
+        predictionMarket.transferFrom(
+            taker, address(genericContract), takerNftTokenId
+        );
 
         // Verify transfer succeeded
-        assertEq(predictionMarket.ownerOf(takerNftTokenId), address(genericContract));
+        assertEq(
+            predictionMarket.ownerOf(takerNftTokenId), address(genericContract)
+        );
 
         // Verify prediction taker was updated
-        IPredictionStructs.PredictionData memory prediction = predictionMarket.getPrediction(takerNftTokenId);
+        IPredictionStructs.PredictionData memory prediction =
+            predictionMarket.getPrediction(takerNftTokenId);
         assertEq(prediction.taker, address(genericContract));
     }
 
@@ -192,10 +212,14 @@ contract PredictionMarketTransferRestrictionsTest is Test {
 
         // Safe transfer to generic contract
         vm.prank(maker);
-        predictionMarket.safeTransferFrom(maker, address(genericContract), makerNftTokenId);
+        predictionMarket.safeTransferFrom(
+            maker, address(genericContract), makerNftTokenId
+        );
 
         // Verify transfer succeeded
-        assertEq(predictionMarket.ownerOf(makerNftTokenId), address(genericContract));
+        assertEq(
+            predictionMarket.ownerOf(makerNftTokenId), address(genericContract)
+        );
     }
 
     // ============ Failed Transfer Tests (to PassiveLiquidityVault) ============
@@ -226,40 +250,52 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
     }
 
-    function test_safeTransferMakerNft_toPassiveLiquidityVault_reverts() public {
+    function test_safeTransferMakerNft_toPassiveLiquidityVault_reverts()
+        public
+    {
         // Verify initial ownership
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
 
         // Attempt safe transfer to PassiveLiquidityVault should revert
         vm.prank(maker);
         vm.expectRevert(PredictionMarket.TransferNotAllowed.selector);
-        predictionMarket.safeTransferFrom(maker, address(vault), makerNftTokenId);
+        predictionMarket.safeTransferFrom(
+            maker, address(vault), makerNftTokenId
+        );
 
         // Verify ownership unchanged
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
     }
 
-    function test_safeTransferTakerNft_toPassiveLiquidityVault_reverts() public {
+    function test_safeTransferTakerNft_toPassiveLiquidityVault_reverts()
+        public
+    {
         // Verify initial ownership
         assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
 
         // Attempt safe transfer to PassiveLiquidityVault should revert
         vm.prank(taker);
         vm.expectRevert(PredictionMarket.TransferNotAllowed.selector);
-        predictionMarket.safeTransferFrom(taker, address(vault), takerNftTokenId);
+        predictionMarket.safeTransferFrom(
+            taker, address(vault), takerNftTokenId
+        );
 
         // Verify ownership unchanged
         assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
     }
 
-    function test_safeTransferMakerNft_withData_toPassiveLiquidityVault_reverts() public {
+    function test_safeTransferMakerNft_withData_toPassiveLiquidityVault_reverts()
+        public
+    {
         // Verify initial ownership
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
 
         // Attempt safe transfer with data to PassiveLiquidityVault should revert
         vm.prank(maker);
         vm.expectRevert(PredictionMarket.TransferNotAllowed.selector);
-        predictionMarket.safeTransferFrom(maker, address(vault), makerNftTokenId, "0x");
+        predictionMarket.safeTransferFrom(
+            maker, address(vault), makerNftTokenId, "0x"
+        );
 
         // Verify ownership unchanged
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
@@ -274,7 +310,9 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         // Attempt transfer to mock vault (implements IPassiveLiquidityVault) should revert
         vm.prank(maker);
         vm.expectRevert(PredictionMarket.TransferNotAllowed.selector);
-        predictionMarket.transferFrom(maker, address(mockVault), makerNftTokenId);
+        predictionMarket.transferFrom(
+            maker, address(mockVault), makerNftTokenId
+        );
 
         // Verify ownership unchanged
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
@@ -287,7 +325,9 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         // Attempt transfer to mock vault (implements IPassiveLiquidityVault) should revert
         vm.prank(taker);
         vm.expectRevert(PredictionMarket.TransferNotAllowed.selector);
-        predictionMarket.transferFrom(taker, address(mockVault), takerNftTokenId);
+        predictionMarket.transferFrom(
+            taker, address(mockVault), takerNftTokenId
+        );
 
         // Verify ownership unchanged
         assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
@@ -297,44 +337,62 @@ contract PredictionMarketTransferRestrictionsTest is Test {
 
     function test_passiveLiquidityVault_implementsCorrectInterface() public {
         // Verify that the vault implements IPassiveLiquidityVault interface
-        assertTrue(vault.supportsInterface(type(IPassiveLiquidityVault).interfaceId));
+        assertTrue(
+            vault.supportsInterface(type(IPassiveLiquidityVault).interfaceId)
+        );
     }
 
     function test_mockVault_implementsCorrectInterface() public {
         // Verify that the mock vault implements IPassiveLiquidityVault interface
-        assertTrue(mockVault.supportsInterface(type(IPassiveLiquidityVault).interfaceId));
+        assertTrue(
+            mockVault.supportsInterface(
+                type(IPassiveLiquidityVault).interfaceId
+            )
+        );
     }
 
     function test_genericContract_doesNotImplementVaultInterface() public {
         // Verify that the generic contract does not implement IPassiveLiquidityVault interface
-        assertFalse(genericContract.supportsInterface(type(IPassiveLiquidityVault).interfaceId));
+        assertFalse(
+            genericContract.supportsInterface(
+                type(IPassiveLiquidityVault).interfaceId
+            )
+        );
     }
 
     // ============ Edge Case Tests ============
 
-    function test_transferToZeroAddress_revertsWithStandardERC721Error() public {
+    function test_transferToZeroAddress_revertsWithStandardERC721Error()
+        public
+    {
         // Transfer to zero address should revert with standard ERC721 error, not our custom error
         vm.prank(maker);
         vm.expectRevert(); // ERC721InvalidReceiver error
         predictionMarket.transferFrom(maker, address(0), makerNftTokenId);
     }
 
-    function test_transferFromZeroAddress_revertsWithStandardERC721Error() public {
+    function test_transferFromZeroAddress_revertsWithStandardERC721Error()
+        public
+    {
         // Transfer from zero address should revert with standard ERC721 error, not our custom error
         vm.prank(maker);
         vm.expectRevert(); // ERC721InvalidSender error
         predictionMarket.transferFrom(address(0), maker, makerNftTokenId);
     }
 
-    function test_transferNonExistentToken_revertsWithStandardERC721Error() public {
+    function test_transferNonExistentToken_revertsWithStandardERC721Error()
+        public
+    {
         // Transfer non-existent token should revert with standard ERC721 error
-        uint256 nonExistentTokenId = 999999;
+        uint256 nonExistentTokenId = 999_999;
         vm.prank(maker);
         vm.expectRevert(); // ERC721NonexistentToken error
         predictionMarket.transferFrom(maker, eoaUser, nonExistentTokenId);
     }
 
-    function test_transferWithoutApproval_revertsWithStandardERC721Error() public {
+    function test_transferWithoutApproval_revertsWithStandardERC721Error()
+        public
+    {
         // Transfer without approval should revert with standard ERC721 error
         vm.prank(eoaUser); // Not the owner
         vm.expectRevert(); // ERC721InsufficientApproval error
@@ -347,11 +405,23 @@ contract PredictionMarketTransferRestrictionsTest is Test {
  * @notice Mock contract that implements ERC165 but not IPassiveLiquidityVault
  */
 contract MockGenericContract is ERC165, IERC721Receiver {
-    function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-        return interfaceId == type(IERC721Receiver).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override
+        returns (bool)
+    {
+        return interfaceId == type(IERC721Receiver).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
-    function onERC721Received(address, address, uint256, bytes calldata) external pure override returns (bytes4) {
+    function onERC721Received(address, address, uint256, bytes calldata)
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return IERC721Receiver.onERC721Received.selector;
     }
 }
@@ -361,8 +431,15 @@ contract MockGenericContract is ERC165, IERC721Receiver {
  * @notice Mock contract that implements IPassiveLiquidityVault interface
  */
 contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC165, IERC165) returns (bool) {
-        return interfaceId == type(IPassiveLiquidityVault).interfaceId || super.supportsInterface(interfaceId);
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC165, IERC165)
+        returns (bool)
+    {
+        return interfaceId == type(IPassiveLiquidityVault).interfaceId
+            || super.supportsInterface(interfaceId);
     }
 
     // Minimal implementation of IPassiveLiquidityVault interface functions
@@ -394,17 +471,23 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
         return false;
     }
 
-    function requestDeposit(uint256 assets, uint256 expectedShares) external pure {}
-    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external pure {}
-    function cancelWithdrawal() external pure {}
-    function cancelDeposit() external pure {}
-    function emergencyWithdraw(uint256 shares) external pure {}
-    function processDeposit(address requestedBy) external pure {}
-    function processWithdrawal(address requestedBy) external pure {}
-    function batchProcessDeposit(address[] calldata) external pure {}
-    function batchProcessWithdrawal(address[] calldata) external pure {}
-    function approveFundsUsage(address protocol, uint256 amount) external pure {}
-    function cleanInactiveProtocols() external pure {}
+    function requestDeposit(uint256 assets, uint256 expectedShares)
+        external
+        pure { }
+    function requestWithdrawal(uint256 shares, uint256 expectedAssets)
+        external
+        pure { }
+    function cancelWithdrawal() external pure { }
+    function cancelDeposit() external pure { }
+    function emergencyWithdraw(uint256 shares) external pure { }
+    function processDeposit(address requestedBy) external pure { }
+    function processWithdrawal(address requestedBy) external pure { }
+    function batchProcessDeposit(address[] calldata) external pure { }
+    function batchProcessWithdrawal(address[] calldata) external pure { }
+    function approveFundsUsage(address protocol, uint256 amount)
+        external
+        pure { }
+    function cleanInactiveProtocols() external pure { }
 
     function getActiveProtocolsCount() external pure returns (uint256) {
         return 0;
@@ -425,16 +508,20 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function getAvailableShares(address) external view returns (uint256) {
         return 0;
     }
-    function setManager(address) external pure {}
-    function setMaxUtilizationRate(uint256) external pure {}
-    function setExpirationTime(uint256) external pure {}
-    function setInteractionDelay(uint256) external pure {}
-    function toggleEmergencyMode() external pure {}
-    function pause() external pure {}
-    function unpause() external pure {}
+    function setManager(address) external pure { }
+    function setMaxUtilizationRate(uint256) external pure { }
+    function setExpirationTime(uint256) external pure { }
+    function setInteractionDelay(uint256) external pure { }
+    function toggleEmergencyMode() external pure { }
+    function pause() external pure { }
+    function unpause() external pure { }
 
     // IERC1271 function
-    function isValidSignature(bytes32, bytes memory) external pure returns (bytes4) {
+    function isValidSignature(bytes32, bytes memory)
+        external
+        pure
+        returns (bytes4)
+    {
         return 0xFFFFFFFF;
     }
 }

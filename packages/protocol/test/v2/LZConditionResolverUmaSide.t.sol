@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {LZConditionResolverUmaSide} from "../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
-import {LZConditionResolver} from "../../src/v2/resolvers/lz/LZConditionResolver.sol";
-import {ILZConditionResolverUmaSide} from "../../src/v2/resolvers/lz/interfaces/ILZConditionResolverUmaSide.sol";
-import {LZTypes} from "../../src/v2/resolvers/lz/LZTypes.sol";
-import {MockOptimisticOracleV3} from "./mocks/MockOptimisticOracleV3.sol";
-import {MockERC20} from "./mocks/MockERC20.sol";
-import {IV2Types} from "../../src/v2/interfaces/IV2Types.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {
+    LZConditionResolverUmaSide
+} from "../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
+import {
+    LZConditionResolver
+} from "../../src/v2/resolvers/lz/LZConditionResolver.sol";
+import {
+    ILZConditionResolverUmaSide
+} from "../../src/v2/resolvers/lz/interfaces/ILZConditionResolverUmaSide.sol";
+import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+import { MockOptimisticOracleV3 } from "./mocks/MockOptimisticOracleV3.sol";
+import { MockERC20 } from "./mocks/MockERC20.sol";
+import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
 import "forge-std/Test.sol";
 
 /// @title LZConditionResolverUmaSideTest
@@ -33,23 +41,38 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     uint256 public constant BOND_AMOUNT = 1 ether;
     uint64 public constant ASSERTION_LIVENESS = 3600;
     bytes public constant TEST_CLAIM = "Will ETH reach $10,000 by end of 2025?";
-    uint256 public constant TEST_END_TIME = 1735689600; // Dec 31, 2025
+    uint256 public constant TEST_END_TIME = 1_735_689_600; // Dec 31, 2025
     bytes32 public conditionId;
 
     // Events
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
-    event ConfigUpdated(address indexed bondCurrency, uint256 bondAmount, uint64 assertionLiveness);
+    event ConfigUpdated(
+        address indexed bondCurrency,
+        uint256 bondAmount,
+        uint64 assertionLiveness
+    );
     event OptimisticOracleV3Updated(address indexed optimisticOracleV3);
     event AsserterApproved(address indexed asserter);
     event AsserterRevoked(address indexed asserter);
-    event BondWithdrawn(address indexed token, uint256 amount, address indexed to);
+    event BondWithdrawn(
+        address indexed token, uint256 amount, address indexed to
+    );
     event ConditionSubmittedToUMA(
-        bytes32 indexed conditionId, bytes32 indexed assertionId, address asserter, bytes claim, bool resolvedToYes
+        bytes32 indexed conditionId,
+        bytes32 indexed assertionId,
+        address asserter,
+        bytes claim,
+        bool resolvedToYes
     );
     event ConditionResolvedFromUMA(
-        bytes32 indexed conditionId, bytes32 indexed assertionId, bool resolvedToYes, bool assertedTruthfully
+        bytes32 indexed conditionId,
+        bytes32 indexed assertionId,
+        bool resolvedToYes,
+        bool assertedTruthfully
     );
-    event ConditionDisputedFromUMA(bytes32 indexed conditionId, bytes32 indexed assertionId);
+    event ConditionDisputedFromUMA(
+        bytes32 indexed conditionId, bytes32 indexed assertionId
+    );
 
     function setUp() public override {
         owner = address(this);
@@ -89,7 +112,10 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = LZConditionResolver(
-            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)))
+            payable(_deployOApp(
+                    type(LZConditionResolver).creationCode,
+                    abi.encode(address(endpoints[pmEid]), owner)
+                ))
         );
 
         // Wire OApps
@@ -102,8 +128,16 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         vm.deal(address(umaResolver), 100 ether);
 
         // Configure bridge
-        umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
-        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)}));
+        umaResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: pmEid, remoteBridge: address(pmResolver)
+            })
+        );
+        pmResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({
+                remoteEid: umaEid, remoteBridge: address(umaResolver)
+            })
+        );
 
         // Configure mock oracle callback
         mockOracle.setResolver(address(umaResolver));
@@ -115,10 +149,11 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         bondToken.transfer(address(umaResolver), 100 ether);
 
         // Calculate condition ID
-        conditionId = keccak256(abi.encodePacked(TEST_CLAIM, ":", TEST_END_TIME));
+        conditionId =
+            keccak256(abi.encodePacked(TEST_CLAIM, ":", TEST_END_TIME));
 
         // Set LZ receive cost (needs to be high enough for lzReceive execution)
-        umaResolver.setLzReceiveCost(200000);
+        umaResolver.setLzReceiveCost(200_000);
     }
 
     // ============ Constructor Tests ============
@@ -132,7 +167,8 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     }
 
     function test_constructor_setsConfig() public view {
-        ILZConditionResolverUmaSide.Settings memory cfg = umaResolver.getConfig();
+        ILZConditionResolverUmaSide.Settings memory cfg =
+            umaResolver.getConfig();
         assertEq(cfg.bondCurrency, address(bondToken));
         assertEq(cfg.bondAmount, BOND_AMOUNT);
         assertEq(cfg.assertionLiveness, ASSERTION_LIVENESS);
@@ -141,7 +177,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
+            remoteEid: 999, remoteBridge: address(0x1234)
+        });
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -154,15 +192,19 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
     function test_setConfig_success() public {
         address newBondCurrency = address(0xBEEF);
-        ILZConditionResolverUmaSide.Settings memory newConfig = ILZConditionResolverUmaSide.Settings({
-            bondCurrency: newBondCurrency, bondAmount: 2 ether, assertionLiveness: 7200
-        });
+        ILZConditionResolverUmaSide.Settings memory newConfig =
+            ILZConditionResolverUmaSide.Settings({
+                bondCurrency: newBondCurrency,
+                bondAmount: 2 ether,
+                assertionLiveness: 7200
+            });
 
         vm.expectEmit(true, false, false, true);
         emit ConfigUpdated(newBondCurrency, 2 ether, 7200);
         umaResolver.setConfig(newConfig);
 
-        ILZConditionResolverUmaSide.Settings memory retrieved = umaResolver.getConfig();
+        ILZConditionResolverUmaSide.Settings memory retrieved =
+            umaResolver.getConfig();
         assertEq(retrieved.bondCurrency, newBondCurrency);
         assertEq(retrieved.bondAmount, 2 ether);
         assertEq(retrieved.assertionLiveness, 7200);
@@ -182,11 +224,15 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         vm.startPrank(unauthorizedUser);
 
         vm.expectRevert();
-        umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 1, remoteBridge: address(0x1)}));
+        umaResolver.setBridgeConfig(
+            LZTypes.BridgeConfig({ remoteEid: 1, remoteBridge: address(0x1) })
+        );
 
         vm.expectRevert();
         umaResolver.setConfig(
-            ILZConditionResolverUmaSide.Settings({bondCurrency: address(0x1), bondAmount: 1, assertionLiveness: 1})
+            ILZConditionResolverUmaSide.Settings({
+                bondCurrency: address(0x1), bondAmount: 1, assertionLiveness: 1
+            })
         );
 
         vm.expectRevert();
@@ -259,7 +305,8 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         bytes32 assertionId = umaResolver.getConditionAssertionId(conditionId);
         assertTrue(assertionId != bytes32(0));
 
-        bytes32 mappedConditionId = umaResolver.getAssertionConditionId(assertionId);
+        bytes32 mappedConditionId =
+            umaResolver.getAssertionConditionId(assertionId);
         assertEq(mappedConditionId, conditionId);
     }
 
@@ -277,7 +324,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         vm.warp(TEST_END_TIME + 1);
 
         vm.prank(unauthorizedUser);
-        vm.expectRevert(ILZConditionResolverUmaSide.OnlyApprovedAssertersCanCall.selector);
+        vm.expectRevert(
+            ILZConditionResolverUmaSide.OnlyApprovedAssertersCanCall.selector
+        );
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
     }
 
@@ -296,7 +345,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
 
         vm.prank(asserter);
-        vm.expectRevert(ILZConditionResolverUmaSide.AssertionAlreadySubmitted.selector);
+        vm.expectRevert(
+            ILZConditionResolverUmaSide.AssertionAlreadySubmitted.selector
+        );
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, false);
     }
 
@@ -373,7 +424,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         bytes32 assertionId = umaResolver.getConditionAssertionId(conditionId);
 
         vm.prank(unauthorizedUser);
-        vm.expectRevert(ILZConditionResolverUmaSide.OnlyOptimisticOracleV3CanCall.selector);
+        vm.expectRevert(
+            ILZConditionResolverUmaSide.OnlyOptimisticOracleV3CanCall.selector
+        );
         umaResolver.assertionResolvedCallback(assertionId, true);
     }
 
@@ -401,7 +454,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
     function test_assertionDisputedCallback_revertIfNotOracle() public {
         vm.prank(unauthorizedUser);
-        vm.expectRevert(ILZConditionResolverUmaSide.OnlyOptimisticOracleV3CanCall.selector);
+        vm.expectRevert(
+            ILZConditionResolverUmaSide.OnlyOptimisticOracleV3CanCall.selector
+        );
         umaResolver.assertionDisputedCallback(keccak256("any"));
     }
 
@@ -414,17 +469,23 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     // ============ View Functions Tests ============
 
     function test_getConditionAssertionId_notExists() public view {
-        assertEq(umaResolver.getConditionAssertionId(keccak256("nonexistent")), bytes32(0));
+        assertEq(
+            umaResolver.getConditionAssertionId(keccak256("nonexistent")),
+            bytes32(0)
+        );
     }
 
     function test_getAssertionConditionId_notExists() public view {
-        assertEq(umaResolver.getAssertionConditionId(keccak256("nonexistent")), bytes32(0));
+        assertEq(
+            umaResolver.getAssertionConditionId(keccak256("nonexistent")),
+            bytes32(0)
+        );
     }
 
     // ============ ETH Management Tests ============
 
     function test_ethManagement_depositAndWithdraw() public {
-        umaResolver.depositETH{value: 1 ether}();
+        umaResolver.depositETH{ value: 1 ether }();
         assertEq(umaResolver.getETHBalance(), 101 ether); // 100 from setup + 1
 
         uint256 ownerBalanceBefore = owner.balance;
@@ -452,7 +513,8 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         // Check PM resolver received the resolution
         assertTrue(pmResolver.isFinalized(conditionId));
 
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(conditionId);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(conditionId);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -474,7 +536,8 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
         // Check resolution
-        (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(conditionId);
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(conditionId);
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);

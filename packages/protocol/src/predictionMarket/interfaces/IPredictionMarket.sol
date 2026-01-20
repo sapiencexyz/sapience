@@ -38,7 +38,10 @@ interface IPredictionMarket is
      * @notice Get the pool configuration
      * @return config Pool configuration
      */
-    function getConfig() external view returns (IPredictionStructs.Settings memory config);
+    function getConfig()
+        external
+        view
+        returns (IPredictionStructs.Settings memory config);
 
     /**
      * @notice Get prediction information
@@ -54,20 +57,29 @@ interface IPredictionMarket is
      * @notice Get total number of NFT IDs where `account` is the maker or taker
      * @param account Address to filter by
      */
-    function getOwnedPredictionsCount(address account) external view returns (uint256 count);
+    function getOwnedPredictionsCount(address account)
+        external
+        view
+        returns (uint256 count);
 
     /**
      * @notice Get all NFT IDs where `account` is the maker or taker
      * @param account Address to filter by
      */
-    function getOwnedPredictions(address account) external view returns (uint256[] memory nftTokenIds);
+    function getOwnedPredictions(address account)
+        external
+        view
+        returns (uint256[] memory nftTokenIds);
 
     /**
      * @notice Get the total collateral deposited by a user
      * @param user The address of the user
      * @return The total amount of collateral deposited by the user
      */
-    function getUserCollateralDeposits(address user) external view returns (uint256);
+    function getUserCollateralDeposits(address user)
+        external
+        view
+        returns (uint256);
 
     /**
      * @notice Get the current nonce for a maker address

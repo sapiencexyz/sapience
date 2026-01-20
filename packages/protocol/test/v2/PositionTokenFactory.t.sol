@@ -2,8 +2,12 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {PositionTokenFactory} from "../../src/v2/bridge/PositionTokenFactory.sol";
-import {BridgedPositionToken} from "../../src/v2/bridge/BridgedPositionToken.sol";
+import {
+    PositionTokenFactory
+} from "../../src/v2/bridge/PositionTokenFactory.sol";
+import {
+    BridgedPositionToken
+} from "../../src/v2/bridge/BridgedPositionToken.sol";
 
 /// @title PositionTokenFactoryTest
 /// @notice Test suite for CREATE3-based position token factory
@@ -29,7 +33,8 @@ contract PositionTokenFactoryTest is Test {
     }
 
     function test_predictAddress() public view {
-        address predicted = factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+        address predicted =
+            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
         assertTrue(predicted != address(0));
     }
 
@@ -38,19 +43,33 @@ contract PositionTokenFactoryTest is Test {
     }
 
     function test_deploy_byOwner() public {
-        address token =
-            factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "Test Token", "TEST", address(0), address(this));
+        address token = factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Test Token",
+            "TEST",
+            address(0),
+            address(this)
+        );
 
         // Verify deployment
         assertTrue(token.code.length > 0);
         assertTrue(factory.isDeployed(PREDICTION_ID, IS_PREDICTOR_TOKEN));
-        assertEq(token, factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN));
+        assertEq(
+            token, factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN)
+        );
     }
 
     function test_deploy_byDeployer() public {
         vm.prank(deployer);
-        address token =
-            factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "Test Token", "TEST", address(0), address(this));
+        address token = factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Test Token",
+            "TEST",
+            address(0),
+            address(this)
+        );
 
         assertTrue(token.code.length > 0);
     }
@@ -58,11 +77,25 @@ contract PositionTokenFactoryTest is Test {
     function test_deploy_revertIfUnauthorized() public {
         vm.prank(address(0x9999));
         vm.expectRevert();
-        factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "Test Token", "TEST", address(0), address(this));
+        factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Test Token",
+            "TEST",
+            address(0),
+            address(this)
+        );
     }
 
     function test_deploy_tokenProperties() public {
-        address token = factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "My Token", "MTK", address(0), address(this));
+        address token = factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "My Token",
+            "MTK",
+            address(0),
+            address(this)
+        );
 
         BridgedPositionToken bridged = BridgedPositionToken(token);
         assertEq(bridged.name(), "My Token");
@@ -76,9 +109,23 @@ contract PositionTokenFactoryTest is Test {
     }
 
     function test_deploy_revertIfAlreadyDeployed() public {
-        factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "Test Token", "TEST", address(0), address(this));
+        factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Test Token",
+            "TEST",
+            address(0),
+            address(this)
+        );
 
         vm.expectRevert();
-        factory.deploy(PREDICTION_ID, IS_PREDICTOR_TOKEN, "Test Token 2", "TEST2", address(0), address(this));
+        factory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Test Token 2",
+            "TEST2",
+            address(0),
+            address(this)
+        );
     }
 }

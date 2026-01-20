@@ -1,20 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {OAppReceiver, Origin} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppReceiver.sol";
-import {OAppCore} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppCore.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {IConditionalTokensConditionResolver} from "./interfaces/IConditionalTokensConditionResolver.sol";
-import {IConditionResolver} from "../../interfaces/IConditionResolver.sol";
-import {IV2Types} from "../../interfaces/IV2Types.sol";
-import {LZTypes} from "../lz/LZTypes.sol";
+import {
+    OAppReceiver,
+    Origin
+} from "@layerzerolabs/oapp-evm/contracts/oapp/OAppReceiver.sol";
+import { OAppCore } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppCore.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    IConditionalTokensConditionResolver
+} from "./interfaces/IConditionalTokensConditionResolver.sol";
+import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { IV2Types } from "../../interfaces/IV2Types.sol";
+import { LZTypes } from "../lz/LZTypes.sol";
 
 /// @title ConditionalTokensConditionResolver
 /// @notice Resolver that receives ConditionalTokens resolution data via LayerZero
 /// @dev Implements IConditionResolver and caches binary YES/NO outcomes for conditionIds.
 ///      Receives resolution data from ConditionalTokensReader on Polygon.
-contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IConditionalTokensConditionResolver {
+contract ConditionalTokensConditionResolver is
+    OAppReceiver,
+    ReentrancyGuard,
+    IConditionalTokensConditionResolver
+{
     // ============ Constants ============
     uint16 private constant CMD_RESOLUTION_RESPONSE = 10;
 
@@ -23,25 +34,39 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
     mapping(bytes32 => ConditionState) public conditions;
 
     // ============ Constructor ============
-    constructor(address endpoint_, address owner_) OAppCore(endpoint_, owner_) Ownable(owner_) {}
+    constructor(address endpoint_, address owner_)
+        OAppCore(endpoint_, owner_)
+        Ownable(owner_)
+    { }
 
     // ============ Configuration Functions ============
 
     /// @notice Set the bridge configuration
-    function setBridgeConfig(LZTypes.BridgeConfig calldata config) external onlyOwner {
+    function setBridgeConfig(LZTypes.BridgeConfig calldata config)
+        external
+        onlyOwner
+    {
         _bridgeConfig = config;
         emit BridgeConfigUpdated(config);
     }
 
     /// @notice Get the bridge configuration
-    function getBridgeConfig() external view returns (LZTypes.BridgeConfig memory) {
+    function getBridgeConfig()
+        external
+        view
+        returns (LZTypes.BridgeConfig memory)
+    {
         return _bridgeConfig;
     }
 
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId) external pure returns (bool) {
+    function isValidCondition(bytes32 conditionId)
+        external
+        pure
+        returns (bool)
+    {
         return conditionId != bytes32(0);
     }
 
@@ -70,7 +95,10 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
     function getResolutions(bytes32[] calldata conditionIds)
         external
         view
-        returns (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes)
+        returns (
+            bool[] memory resolved,
+            IV2Types.OutcomeVector[] memory outcomes
+        )
     {
         uint256 length = conditionIds.length;
         resolved = new bool[](length);
@@ -102,27 +130,41 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
     // ============ View Functions ============
 
     /// @notice Get the full condition state
-    function getCondition(bytes32 conditionId) external view returns (ConditionState memory) {
+    function getCondition(bytes32 conditionId)
+        external
+        view
+        returns (ConditionState memory)
+    {
         return conditions[conditionId];
     }
 
     /// @notice Check if a condition is settled
-    function isConditionSettled(bytes32 conditionId) external view returns (bool) {
+    function isConditionSettled(bytes32 conditionId)
+        external
+        view
+        returns (bool)
+    {
         return conditions[conditionId].settled;
     }
 
     /// @notice Check if a condition is invalid (non-binary)
-    function isConditionInvalid(bytes32 conditionId) external view returns (bool) {
+    function isConditionInvalid(bytes32 conditionId)
+        external
+        view
+        returns (bool)
+    {
         return conditions[conditionId].invalid;
     }
 
     // ============ LayerZero Receive Handler ============
 
-    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
-        internal
-        override
-        nonReentrant
-    {
+    function _lzReceive(
+        Origin calldata _origin,
+        bytes32,
+        bytes calldata _message,
+        address,
+        bytes calldata
+    ) internal override nonReentrant {
         // Validate source chain
         if (_origin.srcEid != _bridgeConfig.remoteEid) {
             revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
@@ -135,15 +177,20 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
         }
 
         // Decode message
-        (uint16 commandType, bytes memory data) = abi.decode(_message, (uint16, bytes));
+        (uint16 commandType, bytes memory data) =
+            abi.decode(_message, (uint16, bytes));
 
         if (commandType != CMD_RESOLUTION_RESPONSE) {
             revert InvalidCommandType(commandType);
         }
 
         // Decode resolution data
-        (bytes32 conditionId, uint256 payoutDenominator, uint256 noPayout, uint256 yesPayout) =
-            abi.decode(data, (bytes32, uint256, uint256, uint256));
+        (
+            bytes32 conditionId,
+            uint256 payoutDenominator,
+            uint256 noPayout,
+            uint256 yesPayout
+        ) = abi.decode(data, (bytes32, uint256, uint256, uint256));
 
         // Finalize resolution
         _finalizeResolution(conditionId, payoutDenominator, noPayout, yesPayout);
@@ -152,7 +199,12 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
     // ============ Internal Functions ============
 
     /// @dev Finalize resolution - never reverts, marks invalid state if non-binary
-    function _finalizeResolution(bytes32 conditionId, uint256 denom, uint256 noPayout, uint256 yesPayout) internal {
+    function _finalizeResolution(
+        bytes32 conditionId,
+        uint256 denom,
+        uint256 noPayout,
+        uint256 yesPayout
+    ) internal {
         ConditionState storage condition = conditions[conditionId];
 
         // Prevent overwriting already-settled conditions
@@ -176,7 +228,15 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
             // Not resolved yet on the remote chain
             condition.settled = false;
             condition.invalid = false;
-            emit ConditionResolved(conditionId, false, false, denom, noPayout, yesPayout, block.timestamp);
+            emit ConditionResolved(
+                conditionId,
+                false,
+                false,
+                denom,
+                noPayout,
+                yesPayout,
+                block.timestamp
+            );
             return;
         }
 
@@ -186,7 +246,15 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
             // Not a strict binary outcome - mark as invalid, don't revert
             condition.settled = false;
             condition.invalid = true;
-            emit ConditionResolved(conditionId, false, true, denom, noPayout, yesPayout, block.timestamp);
+            emit ConditionResolved(
+                conditionId,
+                false,
+                true,
+                denom,
+                noPayout,
+                yesPayout,
+                block.timestamp
+            );
             return;
         }
 
@@ -195,6 +263,14 @@ contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IC
         condition.invalid = false;
         condition.resolvedToYes = yesPayout > noPayout;
 
-        emit ConditionResolved(conditionId, condition.resolvedToYes, false, denom, noPayout, yesPayout, block.timestamp);
+        emit ConditionResolved(
+            conditionId,
+            condition.resolvedToYes,
+            false,
+            denom,
+            noPayout,
+            yesPayout,
+            block.timestamp
+        );
     }
 }

@@ -2,8 +2,10 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolver} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
-import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
+import {
+    PredictionMarketLZResolver
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
 // Configure the PM-side LZ resolver on Ethereal to trust UMA-side peer and set gas params
 contract ConfigurePredictionMarketLZResolver is Script {
@@ -17,13 +19,19 @@ contract ConfigurePredictionMarketLZResolver is Script {
         uint32 umaSideEid = uint32(vm.envUint("UMA_SIDE_EID"));
 
         vm.startBroadcast(vm.envUint("ETHEREAL_PRIVATE_KEY"));
-        PredictionMarketLZResolver resolver = PredictionMarketLZResolver(payable(pmLzResolver));
+        PredictionMarketLZResolver resolver =
+            PredictionMarketLZResolver(payable(pmLzResolver));
 
         // eid of other network
-        (uint32 peerEid, bytes32 peerResolver) = (uint32(umaSideEid), bytes32(uint256(uint160(umaSideResolver))));
+        (uint32 peerEid, bytes32 peerResolver) =
+            (uint32(umaSideEid), bytes32(uint256(uint160(umaSideResolver))));
         resolver.setPeer(peerEid, peerResolver);
 
-        resolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaSideEid, remoteBridge: umaSideResolver}));
+        resolver.setBridgeConfig(
+            BridgeTypes.BridgeConfig({
+                remoteEid: umaSideEid, remoteBridge: umaSideResolver
+            })
+        );
 
         vm.stopBroadcast();
     }

@@ -21,7 +21,12 @@ import "../vault/interfaces/IPassiveLiquidityVault.sol";
  * @dev This contract implements ERC721 for prediction NFTs but take into account those NFTs are not transferable to contracts implementing IPassiveLiquidityVault.
  * @dev Also notice that, on transfers, it will attempt to call `IERC165(destination_address).supportsInterface(type( )`
  */
-contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, SignatureProcessor {
+contract PredictionMarket is
+    ERC721,
+    IPredictionMarket,
+    ReentrancyGuard,
+    SignatureProcessor
+{
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.UintSet;
 
@@ -74,7 +79,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
     // ============ Limit Order ============
     uint256 private orderIdCounter = 1; // initialize the order id counter to 1 (zero means no order)
 
-    mapping(uint256 => IPredictionStructs.LimitOrderData) private unfilledOrders;
+    mapping(uint256 => IPredictionStructs.LimitOrderData) private
+        unfilledOrders;
 
     mapping(address => EnumerableSet.UintSet) private unfilledOrdersByMaker;
 
@@ -84,13 +90,20 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
 
     // ============ Constructor ============
 
-    constructor(string memory name, string memory symbol, address _collateralToken, uint256 _minCollateral)
-        ERC721(name, symbol)
-    {
-        if (_collateralToken == address(0)) revert InvalidCollateralToken();
+    constructor(
+        string memory name,
+        string memory symbol,
+        address _collateralToken,
+        uint256 _minCollateral
+    ) ERC721(name, symbol) {
+        if (_collateralToken == address(0)) {
+            revert InvalidCollateralToken();
+        }
         if (_minCollateral == 0) revert InvalidMinCollateral();
 
-        config = IPredictionStructs.Settings({collateralToken: _collateralToken, minCollateral: _minCollateral});
+        config = IPredictionStructs.Settings({
+            collateralToken: _collateralToken, minCollateral: _minCollateral
+        });
 
         _predictionIdCounter = 1;
         _nftTokenIdCounter = 1;
@@ -98,7 +111,10 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
 
     // ============ Prediction Functions ============
 
-    function mint(IPredictionStructs.MintPredictionRequestData calldata mintPredictionRequestData)
+    function mint(
+        IPredictionStructs
+                .MintPredictionRequestData calldata mintPredictionRequestData
+    )
         external
         nonReentrant
         returns (uint256 makerNftTokenId, uint256 takerNftTokenId)
@@ -126,7 +142,10 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
 
         // 2- Confirm the taker signature is valid for this prediction (hash of predicted outcomes, taker collateral and maker collateral, resolver and maker address)
         //    and enforce per-maker nonce replay protection
-        if (mintPredictionRequestData.makerNonce != nonces[mintPredictionRequestData.maker]) {
+        if (
+            mintPredictionRequestData.makerNonce
+                != nonces[mintPredictionRequestData.maker]
+        ) {
             revert InvalidMakerNonce();
         }
         // Increment the maker nonce
@@ -143,11 +162,17 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
             )
         );
 
-        if (!_isApprovalValid(messageHash, mintPredictionRequestData.taker, mintPredictionRequestData.takerSignature)) {
+        if (!_isApprovalValid(
+                messageHash,
+                mintPredictionRequestData.taker,
+                mintPredictionRequestData.takerSignature
+            )) {
             // Not valid signature for EOA (ERC-712),
             // Check if it's a contract that implements ERC-1271
             try IERC1271(mintPredictionRequestData.taker)
-                .isValidSignature(messageHash, mintPredictionRequestData.takerSignature) returns (
+                .isValidSignature(
+                    messageHash, mintPredictionRequestData.takerSignature
+                ) returns (
                 bytes4 magicValue
             ) {
                 if (magicValue != IERC1271.isValidSignature.selector) {
@@ -161,10 +186,14 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
 
         // 3- Collect collateral
         _safeTransferIn(
-            config.collateralToken, mintPredictionRequestData.maker, mintPredictionRequestData.makerCollateral
+            config.collateralToken,
+            mintPredictionRequestData.maker,
+            mintPredictionRequestData.makerCollateral
         );
         _safeTransferIn(
-            config.collateralToken, mintPredictionRequestData.taker, mintPredictionRequestData.takerCollateral
+            config.collateralToken,
+            mintPredictionRequestData.taker,
+            mintPredictionRequestData.takerCollateral
         );
 
         // 4- Create prediction using internal function
@@ -187,7 +216,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from Store
-        IPredictionStructs.PredictionData storage prediction = predictions[predictionId];
+        IPredictionStructs.PredictionData storage prediction =
+            predictions[predictionId];
 
         // 2- Initial checks
         if (prediction.maker == address(0)) revert PredictionNotFound();
@@ -195,8 +225,9 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         if (prediction.settled) revert PredictionAlreadySettled();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isResolved,, bool parlaySuccess) =
-            IPredictionMarketResolver(prediction.resolver).getPredictionResolution(prediction.encodedPredictedOutcomes);
+        (bool isResolved,, bool parlaySuccess) = IPredictionMarketResolver(
+                prediction.resolver
+            ).getPredictionResolution(prediction.encodedPredictedOutcomes);
 
         if (!isResolved) revert PredictionResolutionFailed();
 
@@ -230,13 +261,17 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         );
     }
 
-    function consolidatePrediction(uint256 tokenId, bytes32 refCode) external nonReentrant {
+    function consolidatePrediction(uint256 tokenId, bytes32 refCode)
+        external
+        nonReentrant
+    {
         if (_verifyTransferInProcess) revert TransferInProcess(); // Prevent reentrancy from transfer verification
 
         uint256 predictionId = nftToPredictionId[tokenId];
 
         // 1- Get prediction from store
-        IPredictionStructs.PredictionData storage prediction = predictions[predictionId];
+        IPredictionStructs.PredictionData storage prediction =
+            predictions[predictionId];
 
         // 2- Initial checks
         if (prediction.maker == address(0)) revert PredictionNotFound();
@@ -262,16 +297,19 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         _burn(prediction.makerNftTokenId);
         _burn(prediction.takerNftTokenId);
 
-        emit PredictionConsolidated(prediction.makerNftTokenId, prediction.takerNftTokenId, payout, refCode);
+        emit PredictionConsolidated(
+            prediction.makerNftTokenId,
+            prediction.takerNftTokenId,
+            payout,
+            refCode
+        );
     }
 
     // ============ Limit Order ============
 
-    function placeOrder(IPredictionStructs.OrderRequestData calldata orderRequestData)
-        external
-        nonReentrant
-        returns (uint256 orderId)
-    {
+    function placeOrder(
+        IPredictionStructs.OrderRequestData calldata orderRequestData
+    ) external nonReentrant returns (uint256 orderId) {
         address maker = msg.sender;
 
         if (orderRequestData.makerCollateral == 0) {
@@ -285,7 +323,9 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         }
 
         // 1- Transfer collateral to the contract
-        _safeTransferIn(config.collateralToken, maker, orderRequestData.makerCollateral);
+        _safeTransferIn(
+            config.collateralToken, maker, orderRequestData.makerCollateral
+        );
 
         orderId = orderIdCounter++;
 
@@ -314,7 +354,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
     }
 
     function fillOrder(uint256 orderId, bytes32 refCode) external nonReentrant {
-        IPredictionStructs.LimitOrderData storage order = unfilledOrders[orderId];
+        IPredictionStructs.LimitOrderData storage order =
+            unfilledOrders[orderId];
         if (order.orderId != orderId) revert OrderNotFound();
         if (order.orderDeadline < block.timestamp) revert OrderExpired();
 
@@ -351,22 +392,33 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
     }
 
     function cancelOrder(uint256 orderId) external nonReentrant {
-        IPredictionStructs.LimitOrderData storage order = unfilledOrders[orderId];
+        IPredictionStructs.LimitOrderData storage order =
+            unfilledOrders[orderId];
         if (order.orderId != orderId) revert OrderNotFound();
         if (order.maker != msg.sender) revert MakerIsNotCaller();
 
-        _safeTransferOut(config.collateralToken, order.maker, order.makerCollateral);
+        _safeTransferOut(
+            config.collateralToken, order.maker, order.makerCollateral
+        );
 
         order.orderId = 0; // zero means no order
         unfilledOrderIds.remove(orderId);
         unfilledOrdersByMaker[order.maker].remove(orderId);
 
         emit OrderCancelled(
-            orderId, order.maker, order.encodedPredictedOutcomes, order.makerCollateral, order.takerCollateral
+            orderId,
+            order.maker,
+            order.encodedPredictedOutcomes,
+            order.makerCollateral,
+            order.takerCollateral
         );
     }
 
-    function getUnfilledOrder(uint256 orderId) external view returns (IPredictionStructs.LimitOrderData memory) {
+    function getUnfilledOrder(uint256 orderId)
+        external
+        view
+        returns (IPredictionStructs.LimitOrderData memory)
+    {
         return unfilledOrders[orderId];
     }
 
@@ -378,13 +430,21 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         return unfilledOrderIds.length();
     }
 
-    function getUnfilledOrderByMaker(address maker) external view returns (uint256[] memory) {
+    function getUnfilledOrderByMaker(address maker)
+        external
+        view
+        returns (uint256[] memory)
+    {
         return unfilledOrdersByMaker[maker].values();
     }
 
     // ============ View Functions ============
 
-    function getConfig() external view returns (IPredictionStructs.Settings memory) {
+    function getConfig()
+        external
+        view
+        returns (IPredictionStructs.Settings memory)
+    {
         return config;
     }
 
@@ -406,7 +466,11 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      * @dev Includes both unfilled and filled orders. Canceled orders are excluded (maker reset to address(0)).
      * @param account Address to filter by
      */
-    function getOwnedPredictions(address account) external view returns (uint256[] memory nftTokenIds) {
+    function getOwnedPredictions(address account)
+        external
+        view
+        returns (uint256[] memory nftTokenIds)
+    {
         // Get all nft by maker
         uint256[] memory makerNftTokenIds = nftByMakerAddress[account].values();
         uint256 makerNftTokenIdsLength = makerNftTokenIds.length;
@@ -419,13 +483,19 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         nftTokenIds = new uint256[](totalCount);
 
         for (uint256 i = 0; i < totalCount; i++) {
-            nftTokenIds[i] =
-                i < makerNftTokenIdsLength ? makerNftTokenIds[i] : takerNftTokenIds[i - makerNftTokenIdsLength];
+            nftTokenIds[i] = i < makerNftTokenIdsLength
+                ? makerNftTokenIds[i]
+                : takerNftTokenIds[i - makerNftTokenIdsLength];
         }
     }
 
-    function getOwnedPredictionsCount(address account) external view returns (uint256 count) {
-        return nftByMakerAddress[account].length() + nftByTakerAddress[account].length();
+    function getOwnedPredictionsCount(address account)
+        external
+        view
+        returns (uint256 count)
+    {
+        return nftByMakerAddress[account].length()
+            + nftByTakerAddress[account].length();
     }
 
     /**
@@ -433,7 +503,11 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      * @param user The address of the user
      * @return The total amount of collateral deposited by the user
      */
-    function getUserCollateralDeposits(address user) external view returns (uint256) {
+    function getUserCollateralDeposits(address user)
+        external
+        view
+        returns (uint256)
+    {
         return userCollateralDeposits[user];
     }
 
@@ -463,7 +537,11 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      *   - The role-based NFT ownership indexes (nftByMakerAddress, nftByTakerAddress)
      *   - User collateral deposit tracking (for user-to-user transfers)
      */
-    function _update(address to, uint256 tokenId, address auth) internal override returns (address from) {
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override
+        returns (address from)
+    {
         from = super._update(to, tokenId, auth);
 
         uint256 predictionId = nftToPredictionId[tokenId];
@@ -471,7 +549,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
             return from;
         }
 
-        IPredictionStructs.PredictionData storage prediction = predictions[predictionId];
+        IPredictionStructs.PredictionData storage prediction =
+            predictions[predictionId];
 
         bool isMakerToken = tokenId == prediction.makerNftTokenId;
         bool isTakerToken = tokenId == prediction.takerNftTokenId;
@@ -525,7 +604,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
     }
 
     function _isPrediction(uint256 id) internal view returns (bool) {
-        return predictions[id].maker != address(0) && predictions[id].taker != address(0);
+        return predictions[id].maker != address(0)
+            && predictions[id].taker != address(0);
     }
 
     /**
@@ -534,14 +614,23 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      * @param addr The address to check
      * @return True if the address is a PassiveLiquidityVault contract
      */
-    function _isPassiveLiquidityVault(address addr) internal view returns (bool) {
+    function _isPassiveLiquidityVault(address addr)
+        internal
+        view
+        returns (bool)
+    {
         // Check if the address is a contract
         if (addr.code.length == 0) {
             return false;
         }
 
         // Use ERC-165 standard interface detection
-        try IERC165(addr).supportsInterface(type(IPassiveLiquidityVault).interfaceId) returns (bool supported) {
+        try IERC165(addr)
+            .supportsInterface(
+                type(IPassiveLiquidityVault).interfaceId
+            ) returns (
+            bool supported
+        ) {
             return supported;
         } catch {
             return false;
@@ -571,7 +660,8 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
         bytes32 refCode
     ) internal returns (uint256 makerNftTokenId, uint256 takerNftTokenId) {
         // 1- Ask resolver if markets are OK
-        (bool isValid,) = IPredictionMarketResolver(resolver).validatePredictionMarkets(encodedPredictedOutcomes);
+        (bool isValid,) = IPredictionMarketResolver(resolver)
+            .validatePredictionMarkets(encodedPredictedOutcomes);
 
         if (!isValid) revert InvalidMarketsAccordingToResolver();
 
@@ -627,7 +717,9 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      * @param from The address to transfer from
      * @param amount The expected amount to receive
      */
-    function _safeTransferIn(address token, address from, uint256 amount) internal {
+    function _safeTransferIn(address token, address from, uint256 amount)
+        internal
+    {
         uint256 initialBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransferFrom(from, address(this), amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
@@ -643,7 +735,9 @@ contract PredictionMarket is ERC721, IPredictionMarket, ReentrancyGuard, Signatu
      * @param to The address to transfer to
      * @param amount The amount to send
      */
-    function _safeTransferOut(address token, address to, uint256 amount) internal {
+    function _safeTransferOut(address token, address to, uint256 amount)
+        internal
+    {
         uint256 initialBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransfer(to, amount);
         uint256 finalBalance = IERC20(token).balanceOf(address(this));
