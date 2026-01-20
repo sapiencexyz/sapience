@@ -114,6 +114,7 @@ type RFQTabProps = {
 };
 
 type ConditionFilter = 'all' | 'needs-settlement' | 'upcoming' | 'settled';
+type VisibilityFilter = 'all' | 'public' | 'private';
 
 const RFQTab = ({
   createOpen,
@@ -132,14 +133,7 @@ const RFQTab = ({
   const currentChainName =
     currentChainId === CHAIN_ID_ETHEREAL ? 'Ethereal' : 'Arbitrum';
 
-  const {
-    data: conditions,
-    isLoading,
-    refetch,
-  } = useConditions({
-    take: 500,
-    chainId: currentChainId,
-  });
+ 
 
   const [question, setQuestion] = useState('');
   const [shortName, setShortName] = useState('');
@@ -157,7 +151,20 @@ const RFQTab = ({
   );
   const [filter, setFilter] = useState<ConditionFilter>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [visibilityFilter, setVisibilityFilter] =
+    useState<VisibilityFilter>('all');
 
+  const {
+    data: conditions,
+    isLoading,
+    refetch,
+  } = useConditions({
+    take: 500,
+    chainId: currentChainId,
+    filters: {
+      visibility: visibilityFilter,
+    },
+  });
   const umaWrappedMarketAbi = [
     {
       inputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
@@ -928,7 +935,26 @@ const RFQTab = ({
             </SelectContent>
           </Select>
 
-          {(filter !== 'all' || categoryFilter !== 'all') && (
+          <span className="text-sm font-medium">Visibility:</span>
+          <Select
+            value={visibilityFilter}
+            onValueChange={(value) =>
+              setVisibilityFilter(value as VisibilityFilter)
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="public">Public Only</SelectItem>
+              <SelectItem value="private">Private Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {(filter !== 'all' ||
+            categoryFilter !== 'all' ||
+            visibilityFilter !== 'all') && (
             <span className="text-sm text-muted-foreground">
               ({rows.length} {rows.length === 1 ? 'condition' : 'conditions'})
             </span>

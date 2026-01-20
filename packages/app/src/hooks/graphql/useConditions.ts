@@ -32,6 +32,8 @@ export interface ConditionFilters {
   endTimeLte?: number; // Unix timestamp in seconds
   publicOnly?: boolean;
   ungroupedOnly?: boolean; // Filter to only conditions without a group
+  /** Filter by visibility: 'all' shows both public and private, 'public' shows only public, 'private' shows only private */
+  visibility?: 'all' | 'public' | 'private';
 }
 
 const GET_CONDITIONS = /* GraphQL */ `
@@ -84,10 +86,20 @@ function buildWhereClause(
     andConditions.push({ chainId: { equals: chainId } });
   }
 
-  // Public only filter
-  if (filters?.publicOnly) {
+  // Visibility filter (public/private/all)
+  // Note: 'all' explicitly requests both public and private conditions
+  if (filters?.visibility === 'all') {
+    // Explicitly include both to bypass the backend's default public filter
+    andConditions.push({
+      OR: [{ public: { equals: true } }, { public: { equals: false } }],
+    });
+  } else if (filters?.visibility === 'private') {
+    andConditions.push({ public: { equals: false } });
+  } else if (filters?.visibility === 'public' || filters?.publicOnly) {
+    // 'public' visibility or legacy publicOnly filter
     andConditions.push({ public: { equals: true } });
   }
+  // If no visibility filter specified, backend defaults to public only
 
   // Search filter - search across question, shortName, description, claimStatement
   if (filters?.search?.trim()) {

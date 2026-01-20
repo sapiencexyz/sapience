@@ -1843,7 +1843,10 @@ class PredictionMarketIndexer implements IIndexer {
                   marketAddress,
                   condition.id
                 );
-                await computeAndStoreMarketTwErrors(marketAddress, condition.id);
+                await computeAndStoreMarketTwErrors(
+                  marketAddress,
+                  condition.id
+                );
                 console.log(
                   `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${eventData.marketId}`
                 );
