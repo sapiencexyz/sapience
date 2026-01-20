@@ -3,10 +3,16 @@ pragma solidity ^0.8.19;
 
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {Origin} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {ConditionalTokensConditionResolver} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
+import {
+    ConditionalTokensConditionResolver
+} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
 import {ConditionalTokensReader} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
-import {IConditionalTokensConditionResolver} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
-import {IConditionalTokensReader} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
+import {
+    IConditionalTokensConditionResolver
+} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
+import {
+    IConditionalTokensReader
+} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
 import {IConditionResolver} from "../../src/v2/interfaces/IConditionResolver.sol";
 import {IV2Types} from "../../src/v2/interfaces/IV2Types.sol";
 import {LZTypes} from "../../src/v2/resolvers/lz/LZTypes.sol";
@@ -61,26 +67,21 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = ConditionalTokensConditionResolver(
-            payable(
-                _deployOApp(
-                    type(ConditionalTokensConditionResolver).creationCode,
-                    abi.encode(address(endpoints[pmEid]), owner)
-                )
-            )
+            payable(_deployOApp(
+                    type(ConditionalTokensConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)
+                ))
         );
 
         // Deploy Polygon-side reader
         polygonReader = ConditionalTokensReader(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(ConditionalTokensReader).creationCode,
                     abi.encode(
                         address(endpoints[polygonEid]),
                         owner,
                         IConditionalTokensReader.Settings({conditionalTokens: address(mockCT)})
                     )
-                )
-            )
+                ))
         );
 
         // Wire OApps
@@ -90,12 +91,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         this.wireOApps(oapps);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: polygonEid, remoteBridge: address(polygonReader)})
-        );
-        polygonReader.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)})
-        );
+        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: polygonEid, remoteBridge: address(polygonReader)}));
+        polygonReader.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
     }
 
     // ============ Constructor Tests ============
@@ -107,10 +104,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -124,9 +118,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     function test_setBridgeConfig_revertIfNotOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        pmResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)})
-        );
+        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)}));
     }
 
     // ============ IConditionResolver Tests ============
@@ -159,11 +151,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
@@ -182,11 +170,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
@@ -202,11 +186,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -221,11 +201,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -244,11 +220,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         assertTrue(pmResolver.isConditionInvalid(CONDITION_ID_1));
@@ -261,11 +233,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message1,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message1, address(0), bytes("")
         );
 
         // Try to overwrite with NO wins - should be ignored
@@ -274,11 +242,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message2,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message2, address(0), bytes("")
         );
 
         // Should still be YES
@@ -325,11 +289,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
     }
 
@@ -342,11 +302,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message1,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message1, address(0), bytes("")
         );
 
         // Settle second condition as NO
@@ -355,11 +311,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message2,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message2, address(0), bytes("")
         );
 
         // Query batch
@@ -390,11 +342,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
-            _createOrigin(polygonEid, address(polygonReader)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
+            _createOrigin(polygonEid, address(polygonReader)), bytes32(0), message, address(0), bytes("")
         );
 
         IConditionalTokensConditionResolver.ConditionState memory state = pmResolver.getCondition(CONDITION_ID_1);
@@ -411,10 +359,6 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // ============ Helper Functions ============
 
     function _createOrigin(uint32 srcEid, address sender) internal pure returns (Origin memory) {
-        return Origin({
-            srcEid: srcEid,
-            sender: bytes32(uint256(uint160(sender))),
-            nonce: 0
-        });
+        return Origin({srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0});
     }
 }

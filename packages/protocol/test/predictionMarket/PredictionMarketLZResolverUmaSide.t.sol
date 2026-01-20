@@ -2,8 +2,12 @@
 pragma solidity ^0.8.19;
 
 import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {PredictionMarketLZResolverUmaSide} from "../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
-import {IPredictionMarketLZResolverUmaSide} from "../../src/predictionMarket/resolvers/interfaces/IPredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    IPredictionMarketLZResolverUmaSide
+} from "../../src/predictionMarket/resolvers/interfaces/IPredictionMarketLZResolverUmaSide.sol";
 import {Encoder} from "../../src/bridge/cmdEncoder.sol";
 import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
 import {MockOptimisticOracleV3ForPMResolver} from "./mocks/MockOptimisticOracleV3ForPMResolver.sol";
@@ -62,8 +66,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         // Deploy UMA-side resolver
         umaResolver = PredictionMarketLZResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(PredictionMarketLZResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEiD]),
@@ -75,14 +78,12 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         // Deploy mock PM-side resolver (just for message simulation)
         pmResolver = PredictionMarketLZResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(PredictionMarketLZResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[pmEiD]),
@@ -94,8 +95,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         address[] memory oapps = new address[](2);
@@ -112,9 +112,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         marketId = keccak256(abi.encodePacked(TEST_CLAIM, ":", TEST_END_TIME));
 
         // Configure bridge
-        umaResolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)})
-        );
+        umaResolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)}));
 
         // Configure mock oracle
         mockOptimisticOracleV3.setResolver(address(umaResolver));
@@ -153,9 +151,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
     function test_setConfig() public {
         address newBondCurrency = address(0x1111111111111111111111111111111111111112);
         PredictionMarketLZResolverUmaSide.Settings memory newConfig = PredictionMarketLZResolverUmaSide.Settings({
-            bondCurrency: newBondCurrency,
-            bondAmount: 2 ether,
-            assertionLiveness: 7200
+            bondCurrency: newBondCurrency, bondAmount: 2 ether, assertionLiveness: 7200
         });
 
         umaResolver.setConfig(newConfig);
@@ -177,17 +173,13 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
     function test_configuration_onlyOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        umaResolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)})
-        );
+        umaResolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)}));
 
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         umaResolver.setConfig(
             PredictionMarketLZResolverUmaSide.Settings({
-                bondCurrency: address(bondCurrency),
-                bondAmount: BOND_AMOUNT,
-                assertionLiveness: ASSERTION_LIVENESS
+                bondCurrency: address(bondCurrency), bondAmount: BOND_AMOUNT, assertionLiveness: ASSERTION_LIVENESS
             })
         );
 
@@ -273,7 +265,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
     function test_submitAssertion_marketNotEnded() public {
         // Reset block timestamp to ensure it's before TEST_END_TIME
         vm.warp(0);
-        
+
         vm.prank(asserter);
         vm.expectRevert(IPredictionMarketLZResolverUmaSide.MarketNotEnded.selector);
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
@@ -293,8 +285,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
     function test_submitAssertion_insufficientBond() public {
         // Create new resolver without bond funding
         PredictionMarketLZResolverUmaSide newResolver = PredictionMarketLZResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(PredictionMarketLZResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEiD]),
@@ -306,14 +297,11 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         newResolver.approveAsserter(asserter);
-        newResolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)})
-        );
+        newResolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: pmEiD, remoteBridge: address(pmResolver)}));
 
         vm.warp(TEST_END_TIME + 1);
 
@@ -330,7 +318,7 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         uint256 balance = bondCurrency.balanceOf(address(umaResolver));
         // Use vm. assume we already have approval or can do a direct transfer hack
         // For now, just test with a new resolver without funds
-        
+
         // Create a new resolver without bond funding as in test_submitAssertion_insufficientBond
         // This test is essentially duplicate, so we skip the complex transfer logic
         vm.skip(true); // Skip this test as it's covered by test_submitAssertion_insufficientBond
@@ -452,5 +440,4 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         assertTrue(true);
     }
 }
-
 

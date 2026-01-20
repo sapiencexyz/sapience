@@ -29,10 +29,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
     // Events
     event ConditionResolved(
-        bytes32 indexed conditionId,
-        bool resolvedToYes,
-        bool assertedTruthfully,
-        uint256 resolutionTime
+        bytes32 indexed conditionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime
     );
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
@@ -48,22 +45,12 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = LZConditionResolver(
-            payable(
-                _deployOApp(
-                    type(LZConditionResolver).creationCode,
-                    abi.encode(address(endpoints[pmEid]), owner)
-                )
-            )
+            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)))
         );
 
         // Deploy mock UMA-side resolver (for sending messages)
         umaResolver = LZConditionResolver(
-            payable(
-                _deployOApp(
-                    type(LZConditionResolver).creationCode,
-                    abi.encode(address(endpoints[umaEid]), owner)
-                )
-            )
+            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[umaEid]), owner)))
         );
 
         // Wire OApps
@@ -73,13 +60,9 @@ contract LZConditionResolverTest is TestHelperOz5 {
         this.wireOApps(oapps);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)})
-        );
+        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)}));
 
-        umaResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)})
-        );
+        umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
     }
 
     // ============ Constructor Tests ============
@@ -91,10 +74,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -108,9 +88,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
     function test_setBridgeConfig_revertIfNotOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        pmResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)})
-        );
+        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)}));
     }
 
     // ============ ETH Management Tests ============
@@ -186,13 +164,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         // Use LZ test helper to simulate receive
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
 
         // Verify condition is resolved
         assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
@@ -208,13 +180,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) = pmResolver.getResolution(CONDITION_ID_1);
         assertTrue(isResolved);
@@ -227,13 +193,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
 
         // Condition should NOT be settled since assertedTruthfully=false
         assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
@@ -276,13 +236,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
     }
 
     function test_lzReceive_revertIfAlreadySettled() public {
@@ -291,24 +245,12 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
 
         // Try to resolve again
         vm.prank(address(endpoints[pmEid]));
         vm.expectRevert();
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message, address(0), bytes(""));
     }
 
     // ============ Batch Resolution Tests ============
@@ -319,13 +261,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message1 = abi.encode(uint16(8), payload1);
 
         vm.prank(address(endpoints[pmEid]));
-        pmResolver.lzReceive(
-            _createOrigin(umaEid, address(umaResolver)),
-            bytes32(0),
-            message1,
-            address(0),
-            bytes("")
-        );
+        pmResolver.lzReceive(_createOrigin(umaEid, address(umaResolver)), bytes32(0), message1, address(0), bytes(""));
 
         // Query batch
         bytes32[] memory conditionIds = new bytes32[](2);
@@ -345,10 +281,6 @@ contract LZConditionResolverTest is TestHelperOz5 {
     // ============ Helper Functions ============
 
     function _createOrigin(uint32 srcEid, address sender) internal pure returns (Origin memory) {
-        return Origin({
-            srcEid: srcEid,
-            sender: bytes32(uint256(uint160(sender))),
-            nonce: 0
-        });
+        return Origin({srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0});
     }
 }

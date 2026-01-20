@@ -75,15 +75,13 @@ contract PredictionMarketV2IntegrationTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createMintRequest(
-        IV2Types.Pick[] memory picks,
-        uint256 pWager,
-        uint256 cWager
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    function _createMintRequest(IV2Types.Pick[] memory picks, uint256 pWager, uint256 cWager)
+        internal
+        view
+        returns (IV2Types.MintRequest memory request)
+    {
         bytes32 predictionId = keccak256(abi.encode(picks));
-        bytes32 predictionHash = keccak256(
-            abi.encode(predictionId, pWager, cWager, predictor, counterparty)
-        );
+        bytes32 predictionHash = keccak256(abi.encode(predictionId, pWager, cWager, predictor, counterparty));
 
         uint256 pNonce = market.getNonce(predictor);
         uint256 cNonce = market.getNonce(counterparty);
@@ -99,7 +97,8 @@ contract PredictionMarketV2IntegrationTest is Test {
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
         request.predictorSignature = _signApproval(predictionHash, predictor, pWager, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, cWager, cNonce, deadline, counterpartyPk);
+        request.counterpartySignature =
+            _signApproval(predictionHash, counterparty, cWager, cNonce, deadline, counterpartyPk);
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
@@ -117,9 +116,7 @@ contract PredictionMarketV2IntegrationTest is Test {
         // 1. Create prediction (predictor bets YES on Team A)
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: conditionId,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         uint256 pWager = 1000e18;
@@ -173,14 +170,10 @@ contract PredictionMarketV2IntegrationTest is Test {
         // 1. Create parlay prediction
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: first,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: first, predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: second,
-            predictedOutcome: IV2Types.OutcomeSide.NO
+            conditionResolver: address(resolver), conditionId: second, predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
         uint256 pWager = 500e18;
@@ -215,14 +208,10 @@ contract PredictionMarketV2IntegrationTest is Test {
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: first,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: first, predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: second,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: second, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         uint256 pWager = 500e18;
@@ -257,9 +246,7 @@ contract PredictionMarketV2IntegrationTest is Test {
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: conditionId,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         uint256 pWager = 1000e18;
@@ -296,9 +283,7 @@ contract PredictionMarketV2IntegrationTest is Test {
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: conditionId,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         uint256 pWager = 1000e18;
@@ -341,16 +326,12 @@ contract PredictionMarketV2IntegrationTest is Test {
         // Create two separate predictions
         IV2Types.Pick[] memory picks1 = new IV2Types.Pick[](1);
         picks1[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: condition1,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: condition1, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
         picks2[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: condition2,
-            predictedOutcome: IV2Types.OutcomeSide.NO
+            conditionResolver: address(resolver), conditionId: condition2, predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
         IV2Types.MintRequest memory request1 = _createMintRequest(picks1, 100e18, 100e18);
@@ -447,9 +428,7 @@ contract PredictionMarketV2IntegrationTest is Test {
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: conditionId,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: address(resolver), conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         // Predictor bets 100, counterparty bets 10000 (100:1 odds)

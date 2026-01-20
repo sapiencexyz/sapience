@@ -14,11 +14,7 @@ import {LZTypes} from "../lz/LZTypes.sol";
 /// @notice Resolver that receives ConditionalTokens resolution data via LayerZero
 /// @dev Implements IConditionResolver and caches binary YES/NO outcomes for conditionIds.
 ///      Receives resolution data from ConditionalTokensReader on Polygon.
-contract ConditionalTokensConditionResolver is
-    OAppReceiver,
-    ReentrancyGuard,
-    IConditionalTokensConditionResolver
-{
+contract ConditionalTokensConditionResolver is OAppReceiver, ReentrancyGuard, IConditionalTokensConditionResolver {
     // ============ Constants ============
     uint16 private constant CMD_RESOLUTION_RESPONSE = 10;
 
@@ -27,10 +23,7 @@ contract ConditionalTokensConditionResolver is
     mapping(bytes32 => ConditionState) public conditions;
 
     // ============ Constructor ============
-    constructor(
-        address endpoint_,
-        address owner_
-    ) OAppCore(endpoint_, owner_) Ownable(owner_) {}
+    constructor(address endpoint_, address owner_) OAppCore(endpoint_, owner_) Ownable(owner_) {}
 
     // ============ Configuration Functions ============
 
@@ -125,13 +118,11 @@ contract ConditionalTokensConditionResolver is
 
     // ============ LayerZero Receive Handler ============
 
-    function _lzReceive(
-        Origin calldata _origin,
-        bytes32,
-        bytes calldata _message,
-        address,
-        bytes calldata
-    ) internal override nonReentrant {
+    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
+        internal
+        override
+        nonReentrant
+    {
         // Validate source chain
         if (_origin.srcEid != _bridgeConfig.remoteEid) {
             revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
@@ -161,12 +152,7 @@ contract ConditionalTokensConditionResolver is
     // ============ Internal Functions ============
 
     /// @dev Finalize resolution - never reverts, marks invalid state if non-binary
-    function _finalizeResolution(
-        bytes32 conditionId,
-        uint256 denom,
-        uint256 noPayout,
-        uint256 yesPayout
-    ) internal {
+    function _finalizeResolution(bytes32 conditionId, uint256 denom, uint256 noPayout, uint256 yesPayout) internal {
         ConditionState storage condition = conditions[conditionId];
 
         // Prevent overwriting already-settled conditions
@@ -209,14 +195,6 @@ contract ConditionalTokensConditionResolver is
         condition.invalid = false;
         condition.resolvedToYes = yesPayout > noPayout;
 
-        emit ConditionResolved(
-            conditionId,
-            condition.resolvedToYes,
-            false,
-            denom,
-            noPayout,
-            yesPayout,
-            block.timestamp
-        );
+        emit ConditionResolved(conditionId, condition.resolvedToYes, false, denom, noPayout, yesPayout, block.timestamp);
     }
 }

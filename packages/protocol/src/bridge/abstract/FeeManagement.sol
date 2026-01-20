@@ -49,10 +49,7 @@ abstract contract FeeManagement is
      * @param _warningGasThreshold The threshold for warning alerts
      * @param _criticalGasThreshold The threshold for critical alerts
      */
-    function setGasThresholds(
-        uint256 _warningGasThreshold,
-        uint256 _criticalGasThreshold
-    ) external onlyOwner {
+    function setGasThresholds(uint256 _warningGasThreshold, uint256 _criticalGasThreshold) external onlyOwner {
         if (_warningGasThreshold <= _criticalGasThreshold) {
             revert InvalidThresholdValues(_warningGasThreshold, _criticalGasThreshold);
         }

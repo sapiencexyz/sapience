@@ -70,17 +70,10 @@ library PythLazerLibBytes {
         }
     }
 
-    function _parsePayloadHeader(
-        bytes memory payload
-    )
+    function _parsePayloadHeader(bytes memory payload)
         private
         pure
-        returns (
-            uint64 timestampUs,
-            PythLazerStructs.Channel channel,
-            uint8 feedsLen,
-            uint16 pos
-        )
+        returns (uint64 timestampUs, PythLazerStructs.Channel channel, uint8 feedsLen, uint16 pos)
     {
         pos = 0;
         uint32 magic = _readU32BE(payload, pos);
@@ -97,10 +90,11 @@ library PythLazerLibBytes {
         pos += 1;
     }
 
-    function _parseFeedHeader(
-        bytes memory payload,
-        uint16 pos
-    ) private pure returns (uint32 feedId, uint8 numProperties, uint16 newPos) {
+    function _parseFeedHeader(bytes memory payload, uint16 pos)
+        private
+        pure
+        returns (uint32 feedId, uint8 numProperties, uint16 newPos)
+    {
         feedId = _readU32BE(payload, pos);
         pos += 4;
         numProperties = _readU8(payload, pos);
@@ -108,10 +102,7 @@ library PythLazerLibBytes {
         newPos = pos;
     }
 
-    function _parseProperty(
-        bytes memory payload,
-        uint16 pos
-    )
+    function _parseProperty(bytes memory payload, uint16 pos)
         private
         pure
         returns (PythLazerStructs.PriceFeedProperty property, uint16 newPos)
@@ -124,14 +115,14 @@ library PythLazerLibBytes {
     }
 
     /// @notice Parse complete update from payload bytes (memory).
-    function parseUpdateFromPayloadBytes(
-        bytes memory payload
-    ) internal pure returns (PythLazerStructs.Update memory update) {
+    function parseUpdateFromPayloadBytes(bytes memory payload)
+        internal
+        pure
+        returns (PythLazerStructs.Update memory update)
+    {
         uint16 pos;
         uint8 feedsLen;
-        (update.timestamp, update.channel, feedsLen, pos) = _parsePayloadHeader(
-            payload
-        );
+        (update.timestamp, update.channel, feedsLen, pos) = _parsePayloadHeader(payload);
 
         update.feeds = new PythLazerStructs.Feed[](feedsLen);
 
@@ -158,9 +149,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.BestBidPrice
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.BestBidPrice) {
                     feed._bestBidPrice = _readI64BE(payload, pos);
                     pos += 8;
                     if (feed._bestBidPrice != 0) {
@@ -168,9 +157,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.BestAskPrice
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.BestAskPrice) {
                     feed._bestAskPrice = _readI64BE(payload, pos);
                     pos += 8;
                     if (feed._bestAskPrice != 0) {
@@ -178,9 +165,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.PublisherCount
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.PublisherCount) {
                     feed._publisherCount = _readU16BE(payload, pos);
                     pos += 2;
                     if (feed._publisherCount != 0) {
@@ -188,15 +173,11 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.Exponent
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.Exponent) {
                     feed._exponent = _readI16BE(payload, pos);
                     pos += 2;
                     feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.Confidence
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.Confidence) {
                     feed._confidence = _readU64BE(payload, pos);
                     pos += 8;
                     if (feed._confidence != 0) {
@@ -204,9 +185,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.FundingRate
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.FundingRate) {
                     uint8 exists = _readU8(payload, pos);
                     pos += 1;
                     if (exists != 0) {
@@ -216,9 +195,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.FundingTimestamp
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.FundingTimestamp) {
                     uint8 exists = _readU8(payload, pos);
                     pos += 1;
                     if (exists != 0) {
@@ -228,10 +205,7 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop ==
-                    PythLazerStructs.PriceFeedProperty.FundingRateInterval
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.FundingRateInterval) {
                     uint8 exists = _readU8(payload, pos);
                     pos += 1;
                     if (exists != 0) {
@@ -241,15 +215,11 @@ library PythLazerLibBytes {
                     } else {
                         feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
                     }
-                } else if (
-                    prop == PythLazerStructs.PriceFeedProperty.MarketSession
-                ) {
+                } else if (prop == PythLazerStructs.PriceFeedProperty.MarketSession) {
                     int16 v = _readI16BE(payload, pos);
                     pos += 2;
                     if (v < 0 || v > 4) revert InvalidMarketSessionValue();
-                    feed._marketSession = PythLazerStructs.MarketSession(
-                        uint8(uint16(v))
-                    );
+                    feed._marketSession = PythLazerStructs.MarketSession(uint8(uint16(v)));
                     feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
                 } else {
                     // Should be unreachable due to enum bound check

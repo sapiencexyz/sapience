@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {PredictionMarketLZResolverUmaSide} from "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 /**
  * @title MockOptimisticOracleV3ForPMResolver
@@ -55,18 +57,16 @@ contract MockOptimisticOracleV3ForPMResolver {
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address /* escalationManager */,
+        address,
+        /* escalationManager */
         uint64 liveness,
         address currency,
         uint256 bond,
         bytes32 identifier,
         bytes32 /* domainId */
     ) public returns (bytes32 assertionId) {
-        assertionId = keccak256(
-            abi.encodePacked(
-                claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp
-            )
-        );
+        assertionId =
+            keccak256(abi.encodePacked(claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp));
 
         assertionData[assertionId] = AssertionData({
             claim: claim,
@@ -82,11 +82,22 @@ contract MockOptimisticOracleV3ForPMResolver {
         return assertionId;
     }
 
-    function getAssertion(bytes32 /* assertionId */ ) external pure returns (bytes memory) {
+    function getAssertion(
+        bytes32 /* assertionId */
+    )
+        external
+        pure
+        returns (bytes memory)
+    {
         return "";
     }
 
-    function syncUmaParams(bytes32 /* identifier */, address /* currency */ ) external {
+    function syncUmaParams(
+        bytes32,
+        /* identifier */
+        address /* currency */
+    )
+        external {
         // Mock implementation
     }
 

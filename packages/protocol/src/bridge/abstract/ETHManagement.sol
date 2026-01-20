@@ -38,7 +38,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
             revert InsufficientETHBalance(amount, address(this).balance);
         }
 
-        (bool success, ) = payable(owner()).call{value: amount}("");
+        (bool success,) = payable(owner()).call{value: amount}("");
         if (!success) {
             revert ETHTransferFailed(owner(), amount);
         }

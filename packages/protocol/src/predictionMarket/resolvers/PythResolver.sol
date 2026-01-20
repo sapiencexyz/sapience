@@ -25,10 +25,7 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
     error RefundFailed();
 
     // ============ Events ============
-    event ConfigInitialized(
-        address indexed pythLazer,
-        uint256 maxPredictionMarkets
-    );
+    event ConfigInitialized(address indexed pythLazer, uint256 maxPredictionMarkets);
 
     event MarketSettled(
         bytes32 indexed marketId,
@@ -87,21 +84,12 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         feedId = uint32(raw);
     }
 
-    function _benchmarkFromVerifiedPayload(
-        bytes memory payload,
-        uint32 targetFeedId
-    )
+    function _benchmarkFromVerifiedPayload(bytes memory payload, uint32 targetFeedId)
         internal
         pure
-        returns (
-            int64 benchmarkPrice,
-            int32 benchmarkExpo,
-            uint64 publishTimeSec,
-            uint64 publishTimeMicros
-        )
+        returns (int64 benchmarkPrice, int32 benchmarkExpo, uint64 publishTimeSec, uint64 publishTimeMicros)
     {
-        PythLazerStructs.Update memory u = PythLazerLibBytes
-            .parseUpdateFromPayloadBytes(payload);
+        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
 
         // Payload header timestamp is microseconds.
         publishTimeMicros = u.timestamp;
@@ -130,15 +118,15 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
     }
 
     // ============ Resolver Interface ============
-    function validatePredictionMarkets(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error) {
+    function validatePredictionMarkets(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isValid, Error error)
+    {
         isValid = true;
         error = Error.NO_ERROR;
 
-        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
 
         if (outcomes.length == 0) revert MustHaveAtLeastOneMarket();
         if (outcomes.length > maxPredictionMarkets) revert TooManyMarkets();
@@ -162,12 +150,12 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         }
     }
 
-    function getPredictionResolution(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isResolved, Error error, bool parlaySuccess) {
-        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+    function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isResolved, Error error, bool parlaySuccess)
+    {
+        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
 
         parlaySuccess = true;
         isResolved = true;
@@ -220,10 +208,7 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
     }
 
     // ============ Settlement ============
-    function settleMarket(
-        BinaryOptionMarket calldata market,
-        bytes[] calldata updateData
-    )
+    function settleMarket(BinaryOptionMarket calldata market, bytes[] calldata updateData)
         external
         payable
         nonReentrant
@@ -254,13 +239,9 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         uint64 publishTimeSec;
         uint64 publishTimeMicros;
         {
-            (bytes memory payload, ) = pythLazer.verifyUpdate{value: fee}(
-                updateData[0]
-            );
-            (benchmarkPrice, benchmarkExpo, publishTimeSec, publishTimeMicros) = _benchmarkFromVerifiedPayload(
-                payload,
-                feedId
-            );
+            (bytes memory payload,) = pythLazer.verifyUpdate{value: fee}(updateData[0]);
+            (benchmarkPrice, benchmarkExpo, publishTimeSec, publishTimeMicros) =
+                _benchmarkFromVerifiedPayload(payload, feedId);
         }
 
         // Enforce exact-second alignment: timestamp must be divisible by 1,000,000 (microseconds per second)
@@ -274,9 +255,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
             revert StrikeExpoMismatch(market.strikeExpo, benchmarkExpo);
         }
 
-        resolvedToOver = market.overWinsOnTie
-            ? (benchmarkPrice >= market.strikePrice)
-            : (benchmarkPrice > market.strikePrice);
+        resolvedToOver =
+            market.overWinsOnTie ? (benchmarkPrice >= market.strikePrice) : (benchmarkPrice > market.strikePrice);
 
         settlements[marketId] = MarketSettlement({
             settled: true,
@@ -287,49 +267,33 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         });
 
         emit MarketSettled(
-            marketId,
-            market.priceId,
-            market.endTime,
-            resolvedToOver,
-            benchmarkPrice,
-            benchmarkExpo,
-            publishTimeSec
+            marketId, market.priceId, market.endTime, resolvedToOver, benchmarkPrice, benchmarkExpo, publishTimeSec
         );
 
         // Refund excess ETH (if any)
         if (msg.value > fee) {
-            (bool ok, ) = msg.sender.call{value: msg.value - fee}("");
+            (bool ok,) = msg.sender.call{value: msg.value - fee}("");
             if (!ok) revert RefundFailed();
         }
     }
 
     // ============ Encoding / Decoding ============
-    function encodePredictionOutcomes(
-        BinaryOptionOutcome[] calldata outcomes
-    ) external pure returns (bytes memory) {
+    function encodePredictionOutcomes(BinaryOptionOutcome[] calldata outcomes) external pure returns (bytes memory) {
         return abi.encode(outcomes);
     }
 
-    function decodePredictionOutcomes(
-        bytes calldata encodedPredictedOutcomes
-    ) public pure returns (BinaryOptionOutcome[] memory) {
+    function decodePredictionOutcomes(bytes calldata encodedPredictedOutcomes)
+        public
+        pure
+        returns (BinaryOptionOutcome[] memory)
+    {
         return abi.decode(encodedPredictedOutcomes, (BinaryOptionOutcome[]));
     }
 
-    function getMarketId(
-        BinaryOptionMarket memory market
-    ) public pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    market.priceId,
-                    market.endTime,
-                    market.strikePrice,
-                    market.strikeExpo,
-                    market.overWinsOnTie
-                )
-            );
+    function getMarketId(BinaryOptionMarket memory market) public pure returns (bytes32) {
+        return keccak256(
+            abi.encode(market.priceId, market.endTime, market.strikePrice, market.strikeExpo, market.overWinsOnTie)
+        );
     }
 }
-
 

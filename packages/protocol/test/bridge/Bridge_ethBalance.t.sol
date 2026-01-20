@@ -43,12 +43,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         setUpEndpoints(1, LibraryType.UltraLightNode);
 
         testContract = TestETHManagement(
-            payable(
-                _deployOApp(
-                    type(TestETHManagement).creationCode,
-                    abi.encode(address(endpoints[eid]), owner)
-                )
-            )
+            payable(_deployOApp(type(TestETHManagement).creationCode, abi.encode(address(endpoints[eid]), owner)))
         );
 
         vm.deal(address(testContract), 100 ether);
@@ -63,11 +58,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.prank(user);
         testContract.depositETH{value: depositAmount}();
 
-        assertEq(
-            address(testContract).balance,
-            initialBalance + depositAmount,
-            "Contract balance should increase"
-        );
+        assertEq(address(testContract).balance, initialBalance + depositAmount, "Contract balance should increase");
     }
 
     function test_depositETH_emitsEvent() public {
@@ -99,15 +90,9 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         testContract.withdrawETH(withdrawAmount);
 
+        assertEq(owner.balance, initialOwnerBalance + withdrawAmount, "Owner balance should increase");
         assertEq(
-            owner.balance,
-            initialOwnerBalance + withdrawAmount,
-            "Owner balance should increase"
-        );
-        assertEq(
-            address(testContract).balance,
-            initialContractBalance - withdrawAmount,
-            "Contract balance should decrease"
+            address(testContract).balance, initialContractBalance - withdrawAmount, "Contract balance should decrease"
         );
     }
 
@@ -124,11 +109,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 withdrawAmount = contractBalance + 1 ether;
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IFeeManagement.InsufficientETHBalance.selector,
-                withdrawAmount,
-                contractBalance
-            )
+            abi.encodeWithSelector(IFeeManagement.InsufficientETHBalance.selector, withdrawAmount, contractBalance)
         );
         testContract.withdrawETH(withdrawAmount);
     }
@@ -147,19 +128,14 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(address(receiver), 0);
 
         TestETHManagement revertingContract = TestETHManagement(
-            payable(
-                _deployOApp(
-                    type(TestETHManagement).creationCode,
-                    abi.encode(address(endpoints[eid]), address(receiver))
-                )
-            )
+            payable(_deployOApp(
+                    type(TestETHManagement).creationCode, abi.encode(address(endpoints[eid]), address(receiver))
+                ))
         );
 
         vm.deal(address(revertingContract), 10 ether);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IETHManagement.ETHTransferFailed.selector, address(receiver), 5 ether)
-        );
+        vm.expectRevert(abi.encodeWithSelector(IETHManagement.ETHTransferFailed.selector, address(receiver), 5 ether));
 
         vm.prank(address(receiver));
         revertingContract.withdrawETH(5 ether);
@@ -186,14 +162,10 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 initialBalance = address(testContract).balance;
         uint256 sendAmount = 5 ether;
 
-        (bool success, ) = address(testContract).call{value: sendAmount}("");
+        (bool success,) = address(testContract).call{value: sendAmount}("");
         assertTrue(success, "Receive should succeed");
 
-        assertEq(
-            address(testContract).balance,
-            initialBalance + sendAmount,
-            "Balance should increase"
-        );
+        assertEq(address(testContract).balance, initialBalance + sendAmount, "Balance should increase");
     }
 
     // ============ Fee Management Tests ============
@@ -243,11 +215,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 criticalThreshold = 0.5 ether; // Critical > Warning (invalid)
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IFeeManagement.InvalidThresholdValues.selector,
-                warningThreshold,
-                criticalThreshold
-            )
+            abi.encodeWithSelector(IFeeManagement.InvalidThresholdValues.selector, warningThreshold, criticalThreshold)
         );
         testContract.setGasThresholds(warningThreshold, criticalThreshold);
     }
@@ -255,13 +223,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     function test_setGasThresholds_revertsIfEqual() public {
         uint256 threshold = 0.5 ether;
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IFeeManagement.InvalidThresholdValues.selector,
-                threshold,
-                threshold
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(IFeeManagement.InvalidThresholdValues.selector, threshold, threshold));
         testContract.setGasThresholds(threshold, threshold);
     }
 
@@ -319,10 +281,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     // ============ Bridge Config Tests ============
 
     function test_setBridgeConfig() public {
-        BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        BridgeTypes.BridgeConfig memory newConfig =
+            BridgeTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         testContract.setBridgeConfig(newConfig);
 
@@ -332,10 +292,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     }
 
     function test_setBridgeConfig_onlyOwner() public {
-        BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        BridgeTypes.BridgeConfig memory newConfig =
+            BridgeTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         vm.prank(user);
         vm.expectRevert();
@@ -343,10 +301,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     }
 
     function test_setBridgeConfig_emitsEvent() public {
-        BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        BridgeTypes.BridgeConfig memory newConfig =
+            BridgeTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         vm.expectEmit(true, true, false, true);
         emit ILayerZeroBridge.BridgeConfigUpdated(newConfig);

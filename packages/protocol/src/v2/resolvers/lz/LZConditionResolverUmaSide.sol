@@ -6,8 +6,12 @@ import {OptionsBuilder} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/Option
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import {OptimisticOracleV3CallbackRecipientInterface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {
+    OptimisticOracleV3Interface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {
+    OptimisticOracleV3CallbackRecipientInterface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 import {ILZConditionResolverUmaSide} from "./interfaces/ILZConditionResolverUmaSide.sol";
 import {LZTypes} from "./LZTypes.sol";
 import {LZETHManagement} from "./LZETHManagement.sol";
@@ -42,12 +46,10 @@ contract LZConditionResolverUmaSide is
     mapping(bytes32 => bool) private _conditionResolvedToYes; // conditionId => resolvedToYes
 
     // ============ Constructor ============
-    constructor(
-        address endpoint_,
-        address owner_,
-        address optimisticOracleV3_,
-        Settings memory config_
-    ) OApp(endpoint_, owner_) LZETHManagement(owner_) {
+    constructor(address endpoint_, address owner_, address optimisticOracleV3_, Settings memory config_)
+        OApp(endpoint_, owner_)
+        LZETHManagement(owner_)
+    {
         _optimisticOracleV3 = optimisticOracleV3_;
         config = config_;
     }
@@ -120,11 +122,7 @@ contract LZConditionResolverUmaSide is
     /// @param claim The claim bytes
     /// @param endTime The condition end time
     /// @param resolvedToYes Whether the condition resolved to YES
-    function submitAssertion(
-        bytes calldata claim,
-        uint256 endTime,
-        bool resolvedToYes
-    ) external nonReentrant {
+    function submitAssertion(bytes calldata claim, uint256 endTime, bool resolvedToYes) external nonReentrant {
         if (!_approvedAsserters[msg.sender]) {
             revert OnlyApprovedAssertersCanCall();
         }
@@ -171,22 +169,13 @@ contract LZConditionResolverUmaSide is
         _assertionToCondition[assertionId] = conditionId;
         _conditionResolvedToYes[conditionId] = resolvedToYes;
 
-        emit ConditionSubmittedToUMA(
-            conditionId,
-            assertionId,
-            msg.sender,
-            claim,
-            resolvedToYes
-        );
+        emit ConditionSubmittedToUMA(conditionId, assertionId, msg.sender, claim, resolvedToYes);
     }
 
     // ============ UMA Callbacks ============
 
     /// @notice Callback when assertion is resolved
-    function assertionResolvedCallback(
-        bytes32 assertionId,
-        bool assertedTruthfully
-    ) external nonReentrant override {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external override nonReentrant {
         if (msg.sender != _optimisticOracleV3) {
             revert OnlyOptimisticOracleV3CanCall();
         }
@@ -203,12 +192,7 @@ contract LZConditionResolverUmaSide is
             _sendConditionResolved(conditionId, resolvedToYes, assertedTruthfully);
         }
 
-        emit ConditionResolvedFromUMA(
-            conditionId,
-            assertionId,
-            resolvedToYes,
-            assertedTruthfully
-        );
+        emit ConditionResolvedFromUMA(conditionId, assertionId, resolvedToYes, assertedTruthfully);
 
         // Clean up (allows re-submission if assertion was disputed/rejected)
         delete _conditionToAssertion[conditionId];
@@ -245,22 +229,12 @@ contract LZConditionResolverUmaSide is
     // ============ LayerZero Functions ============
 
     /// @notice LayerZero receive (not used on UMA side)
-    function _lzReceive(
-        Origin calldata,
-        bytes32,
-        bytes calldata,
-        address,
-        bytes calldata
-    ) internal override {
+    function _lzReceive(Origin calldata, bytes32, bytes calldata, address, bytes calldata) internal override {
         // UMA side doesn't receive messages
     }
 
     /// @notice Send condition resolved message to PM side
-    function _sendConditionResolved(
-        bytes32 conditionId,
-        bool resolvedToYes,
-        bool assertedTruthfully
-    ) internal {
+    function _sendConditionResolved(bytes32 conditionId, bool resolvedToYes, bool assertedTruthfully) internal {
         bytes memory payload = abi.encode(conditionId, resolvedToYes, assertedTruthfully);
         bytes memory message = abi.encode(CMD_CONDITION_RESOLVED, payload);
 
@@ -273,22 +247,16 @@ contract LZConditionResolverUmaSide is
         _requireSufficientETH(fee.nativeFee);
 
         // Send via self-call to use contract's ETH
-        this._sendMessageWithETH{value: fee.nativeFee}(
-            _bridgeConfig.remoteEid,
-            message,
-            options,
-            fee
-        );
+        this._sendMessageWithETH{value: fee.nativeFee}(_bridgeConfig.remoteEid, message, options, fee);
     }
 
     /// @notice External function to send LayerZero messages with ETH from contract balance
     /// @dev Only callable by this contract
-    function _sendMessageWithETH(
-        uint32 dstEid,
-        bytes memory message,
-        bytes memory options,
-        MessagingFee memory fee
-    ) external payable returns (MessagingReceipt memory) {
+    function _sendMessageWithETH(uint32 dstEid, bytes memory message, bytes memory options, MessagingFee memory fee)
+        external
+        payable
+        returns (MessagingReceipt memory)
+    {
         if (msg.sender != address(this)) {
             revert OnlySelfCallAllowed(msg.sender);
         }

@@ -20,12 +20,7 @@ interface ILZConditionResolverUmaSide {
     error InvalidAssertionId();
     error ConditionNotEnded();
     error AssertionAlreadySubmitted();
-    error NotEnoughBondAmount(
-        address sender,
-        address bondCurrency,
-        uint256 bondAmount,
-        uint256 balance
-    );
+    error NotEnoughBondAmount(address sender, address bondCurrency, uint256 bondAmount, uint256 balance);
     error InvalidSourceChain(uint32 expected, uint32 actual);
     error InvalidSender(address expected, address actual);
     error OnlySelfCallAllowed(address caller);
@@ -38,31 +33,17 @@ interface ILZConditionResolverUmaSide {
     event AsserterRevoked(address indexed asserter);
     event BondWithdrawn(address indexed token, uint256 amount, address indexed to);
     event ConditionSubmittedToUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId,
-        address asserter,
-        bytes claim,
-        bool resolvedToYes
+        bytes32 indexed conditionId, bytes32 indexed assertionId, address asserter, bytes claim, bool resolvedToYes
     );
     event ConditionResolvedFromUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId,
-        bool resolvedToYes,
-        bool assertedTruthfully
+        bytes32 indexed conditionId, bytes32 indexed assertionId, bool resolvedToYes, bool assertedTruthfully
     );
-    event ConditionDisputedFromUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId
-    );
+    event ConditionDisputedFromUMA(bytes32 indexed conditionId, bytes32 indexed assertionId);
 
     // ============ Functions ============
 
     // Assertion submission
-    function submitAssertion(
-        bytes calldata claim,
-        uint256 endTime,
-        bool resolvedToYes
-    ) external;
+    function submitAssertion(bytes calldata claim, uint256 endTime, bool resolvedToYes) external;
 
     // Configuration
     function setBridgeConfig(LZTypes.BridgeConfig calldata config) external;

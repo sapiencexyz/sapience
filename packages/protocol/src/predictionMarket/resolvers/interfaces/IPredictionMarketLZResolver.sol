@@ -14,10 +14,5 @@ interface IPredictionMarketLZResolver is IPredictionMarketResolver {
     error InvalidMarketId();
 
     // Events
-    event MarketResolved(
-        bytes32 indexed marketId,
-        bool resolvedToYes,
-        bool assertedTruthfully,
-        uint256 resolutionTime
-    );
+    event MarketResolved(bytes32 indexed marketId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime);
 }

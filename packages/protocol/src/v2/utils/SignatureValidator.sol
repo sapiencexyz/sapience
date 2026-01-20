@@ -20,9 +20,8 @@ import "./IAccountFactory.sol";
  */
 abstract contract SignatureValidator is EIP712 {
     /// @notice EIP-712 typehash for mint approval
-    bytes32 public constant MINT_APPROVAL_TYPEHASH = keccak256(
-        "MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)"
-    );
+    bytes32 public constant MINT_APPROVAL_TYPEHASH =
+        keccak256("MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)");
 
     /// @notice EIP-712 typehash for session key approval (owner authorizing a session key)
     bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
@@ -94,13 +93,11 @@ abstract contract SignatureValidator is EIP712 {
     /// @param nonce Nonce
     /// @param deadline Deadline timestamp
     /// @return hash The EIP-712 typed data hash to sign
-    function getMintApprovalHash(
-        bytes32 predictionHash,
-        address signer,
-        uint256 wager,
-        uint256 nonce,
-        uint256 deadline
-    ) public view returns (bytes32 hash) {
+    function getMintApprovalHash(bytes32 predictionHash, address signer, uint256 wager, uint256 nonce, uint256 deadline)
+        public
+        view
+        returns (bytes32 hash)
+    {
         bytes32 structHash =
             keccak256(abi.encode(MINT_APPROVAL_TYPEHASH, predictionHash, signer, wager, nonce, deadline));
         return _hashTypedDataV4(structHash);

@@ -20,4 +20,3 @@ interface IPyth {
     ) external payable returns (PythStructs.PriceFeed[] memory priceFeeds);
 }
 
-

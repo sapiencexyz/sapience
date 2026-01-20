@@ -25,10 +25,7 @@ contract TestETHManagement is OApp, ETHManagement, ILayerZeroBridge {
         return bridgeConfig;
     }
 
-    function _lzReceive(Origin calldata, bytes32, bytes calldata, address, bytes calldata)
-        internal
-        override
-    {
+    function _lzReceive(Origin calldata, bytes32, bytes calldata, address, bytes calldata) internal override {
         // Stub implementation for testing
     }
 }

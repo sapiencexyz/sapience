@@ -34,10 +34,7 @@ interface IPredictionEvents {
     );
 
     event PredictionConsolidated(
-        uint256 indexed makerNftTokenId,
-        uint256 indexed takerNftTokenId,
-        uint256 totalCollateral,
-        bytes32 refCode
+        uint256 indexed makerNftTokenId, uint256 indexed takerNftTokenId, uint256 totalCollateral, bytes32 refCode
     );
 
     // ============ Limit Order Events ============

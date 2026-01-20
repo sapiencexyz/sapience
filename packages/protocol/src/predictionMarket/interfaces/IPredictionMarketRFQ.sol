@@ -22,10 +22,9 @@ interface IPredictionMarketRFQ {
      *   7- Emit a PredictionMinted event
      * @param mintPredictionRequestData Struct containing the mint prediction request data
      */
-    function mint(
-        IPredictionStructs.MintPredictionRequestData
-            calldata mintPredictionRequestData
-    ) external returns (uint256 makerNftTokenId, uint256 takerNftTokenId);
+    function mint(IPredictionStructs.MintPredictionRequestData calldata mintPredictionRequestData)
+        external
+        returns (uint256 makerNftTokenId, uint256 takerNftTokenId);
 
     /**
      * @notice Burn a prediction NFT and release any remaining collateral
@@ -39,5 +38,4 @@ interface IPredictionMarketRFQ {
      * @param tokenId The NFT token ID to burn
      */
     function burn(uint256 tokenId, bytes32 refCode) external;
-
 }

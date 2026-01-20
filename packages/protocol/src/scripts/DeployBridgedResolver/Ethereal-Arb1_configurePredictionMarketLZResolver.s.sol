@@ -19,19 +19,13 @@ contract ConfigurePredictionMarketLZResolver is Script {
         vm.startBroadcast(vm.envUint("ETHEREAL_PRIVATE_KEY"));
         PredictionMarketLZResolver resolver = PredictionMarketLZResolver(payable(pmLzResolver));
 
-        // eid of other network 
+        // eid of other network
         (uint32 peerEid, bytes32 peerResolver) = (uint32(umaSideEid), bytes32(uint256(uint160(umaSideResolver))));
         resolver.setPeer(peerEid, peerResolver);
-        
-        resolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: umaSideEid,
-                remoteBridge: umaSideResolver
-            })
-        );
+
+        resolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaSideEid, remoteBridge: umaSideResolver}));
 
         vm.stopBroadcast();
     }
 }
-
 

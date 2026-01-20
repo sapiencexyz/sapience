@@ -35,11 +35,7 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     mapping(bytes32 => MintedBridge) private _mintedBridges;
 
     // ============ Constructor ============
-    constructor(
-        address endpoint_,
-        address owner_,
-        address factory_
-    ) PositionTokenBridgeBase(endpoint_, owner_) {
+    constructor(address endpoint_, address owner_, address factory_) PositionTokenBridgeBase(endpoint_, owner_) {
         factory = IPositionTokenFactory(factory_);
     }
 
@@ -51,18 +47,12 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function isTokenDeployed(
-        bytes32 pickConfigId,
-        bool isPredictorToken
-    ) external view returns (bool) {
+    function isTokenDeployed(bytes32 pickConfigId, bool isPredictorToken) external view returns (bool) {
         return factory.isDeployed(pickConfigId, isPredictorToken);
     }
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function getTokenAddress(
-        bytes32 pickConfigId,
-        bool isPredictorToken
-    ) external view returns (address) {
+    function getTokenAddress(bytes32 pickConfigId, bool isPredictorToken) external view returns (address) {
         return factory.predictAddress(pickConfigId, isPredictorToken);
     }
 
@@ -74,12 +64,12 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     // ============ Bridge Function ============
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function bridge(
-        address token,
-        address recipient,
-        uint256 amount,
-        bytes32 refCode
-    ) external payable nonReentrant returns (bytes32 bridgeId) {
+    function bridge(address token, address recipient, uint256 amount, bytes32 refCode)
+        external
+        payable
+        nonReentrant
+        returns (bytes32 bridgeId)
+    {
         if (token == address(0) || recipient == address(0)) revert ZeroAddress();
         if (amount == 0) revert ZeroAmount();
 
@@ -122,13 +112,7 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         }
 
         // Send message
-        _lzSend(
-            _bridgeConfig.remoteEid,
-            message,
-            options,
-            fee,
-            payable(msg.sender)
-        );
+        _lzSend(_bridgeConfig.remoteEid, message, options, fee, payable(msg.sender));
 
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
@@ -139,10 +123,7 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     // ============ Quote Functions ============
 
     /// @inheritdoc IPositionTokenBridgeRemote
-    function quoteBridge(
-        address token,
-        uint256 amount
-    ) external view returns (MessagingFee memory fee) {
+    function quoteBridge(address token, uint256 amount) external view returns (MessagingFee memory fee) {
         address sourceToken = remoteToSource[token];
         // Build sample message for quote
         bytes memory payload = abi.encode(bytes32(0), sourceToken, address(0), amount);
@@ -165,10 +146,12 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
     // ============ Abstract Implementation ============
 
     /// @dev Build retry message for Remote -> Ethereal bridge
-    function _buildRetryMessage(
-        bytes32 bridgeId,
-        PendingBridge storage pending
-    ) internal view override returns (bytes memory message, uint128 gasLimit) {
+    function _buildRetryMessage(bytes32 bridgeId, PendingBridge storage pending)
+        internal
+        view
+        override
+        returns (bytes memory message, uint128 gasLimit)
+    {
         address sourceToken = remoteToSource[pending.token];
         bytes memory payload = abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
         message = abi.encode(CMD_BRIDGE, payload);
@@ -226,11 +209,7 @@ contract PositionTokenBridgeRemote is PositionTokenBridgeBase, IPositionTokenBri
         IBridgedPositionToken(remoteToken).mint(recipient, amount);
 
         // Track minted tokens (for audit trail)
-        _mintedBridges[bridgeId] = MintedBridge({
-            token: remoteToken,
-            recipient: recipient,
-            amount: amount
-        });
+        _mintedBridges[bridgeId] = MintedBridge({token: remoteToken, recipient: recipient, amount: amount});
 
         emit BridgeProcessed(bridgeId, false);
         emit TokensMinted(bridgeId, remoteToken, recipient, amount, isNewDeployment);

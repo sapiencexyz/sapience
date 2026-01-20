@@ -44,10 +44,7 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     mapping(bytes32 => bool) internal _processedBridges;
 
     // ============ Constructor ============
-    constructor(
-        address endpoint_,
-        address owner_
-    ) OApp(endpoint_, owner_) Ownable(owner_) {}
+    constructor(address endpoint_, address owner_) OApp(endpoint_, owner_) Ownable(owner_) {}
 
     // ============ Configuration (Owner only for LZ) ============
 
@@ -94,13 +91,7 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         }
 
         // Send message
-        _lzSend(
-            _bridgeConfig.remoteEid,
-            message,
-            options,
-            fee,
-            payable(msg.sender)
-        );
+        _lzSend(_bridgeConfig.remoteEid, message, options, fee, payable(msg.sender));
 
         // Refund excess ETH
         _refundExcess(fee.nativeFee);
@@ -119,8 +110,9 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
         }
 
         try this.sendAckInternal(bridgeId) {
-            // ACK sent successfully
-        } catch {
+        // ACK sent successfully
+        }
+        catch {
             // ACK failed - emit event for monitoring
             emit AckSendFailed(bridgeId);
         }
@@ -138,25 +130,17 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
 
         // Check if contract has enough balance for ACK
         if (address(this).balance >= fee.nativeFee) {
-            _lzSend(
-                _bridgeConfig.remoteEid,
-                ackMessage,
-                options,
-                fee,
-                payable(address(this))
-            );
+            _lzSend(_bridgeConfig.remoteEid, ackMessage, options, fee, payable(address(this)));
         }
     }
 
     // ============ LayerZero Receive ============
 
-    function _lzReceive(
-        Origin calldata _origin,
-        bytes32,
-        bytes calldata _message,
-        address,
-        bytes calldata
-    ) internal override nonReentrant {
+    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
+        internal
+        override
+        nonReentrant
+    {
         // Validate source
         if (_origin.srcEid != _bridgeConfig.remoteEid) {
             revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
@@ -273,10 +257,11 @@ abstract contract PositionTokenBridgeBase is OApp, ReentrancyGuard, IPositionTok
     // ============ Abstract Functions (chain-specific) ============
 
     /// @dev Build retry message (chain-specific payload format)
-    function _buildRetryMessage(
-        bytes32 bridgeId,
-        PendingBridge storage pending
-    ) internal view virtual returns (bytes memory message, uint128 gasLimit);
+    function _buildRetryMessage(bytes32 bridgeId, PendingBridge storage pending)
+        internal
+        view
+        virtual
+        returns (bytes memory message, uint128 gasLimit);
 
     /// @dev Handle incoming bridge from remote chain
     function _handleBridge(bytes memory data) internal virtual;

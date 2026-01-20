@@ -24,10 +24,7 @@ contract ConfigureEtherealBridge is Script {
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
-                remoteEid: remoteEid,
-                remoteBridge: remoteBridge
-            })
+            IPositionTokenBridgeBase.BridgeConfig({remoteEid: remoteEid, remoteBridge: remoteBridge})
         );
 
         // Set LZ peer

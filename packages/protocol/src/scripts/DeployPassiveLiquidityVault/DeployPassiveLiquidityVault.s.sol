@@ -16,14 +16,9 @@ contract DeployPassiveLiquidityVault is Script {
 
         // Deploy the contract
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-        
-        PassiveLiquidityVault vault = new PassiveLiquidityVault(
-            asset,
-            manager,
-            name,
-            symbol
-        );
-        
+
+        PassiveLiquidityVault vault = new PassiveLiquidityVault(asset, manager, name, symbol);
+
         vm.stopBroadcast();
 
         // Log deployment info

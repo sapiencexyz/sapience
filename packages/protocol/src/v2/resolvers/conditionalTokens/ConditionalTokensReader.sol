@@ -19,11 +19,7 @@ interface IConditionalTokens {
 /// @title ConditionalTokensReader
 /// @notice Reads ConditionalTokens data and sends resolution via LayerZero
 /// @dev Deployed on Polygon, reads Gnosis ConditionalTokens and sends to PM side
-contract ConditionalTokensReader is
-    OAppSender,
-    ReentrancyGuard,
-    IConditionalTokensReader
-{
+contract ConditionalTokensReader is OAppSender, ReentrancyGuard, IConditionalTokensReader {
     using OptionsBuilder for bytes;
 
     // ============ Constants ============
@@ -36,11 +32,10 @@ contract ConditionalTokensReader is
     LZTypes.BridgeConfig private _bridgeConfig;
 
     // ============ Constructor ============
-    constructor(
-        address endpoint_,
-        address owner_,
-        Settings memory config_
-    ) OAppCore(endpoint_, owner_) Ownable(owner_) {
+    constructor(address endpoint_, address owner_, Settings memory config_)
+        OAppCore(endpoint_, owner_)
+        Ownable(owner_)
+    {
         config = config_;
     }
 
@@ -78,12 +73,7 @@ contract ConditionalTokensReader is
         _validateConditionAndResolvedState(conditionId, data);
 
         // Encode resolution response
-        bytes memory payload = abi.encode(
-            conditionId,
-            data.payoutDenominator,
-            data.noPayout,
-            data.yesPayout
-        );
+        bytes memory payload = abi.encode(conditionId, data.payoutDenominator, data.noPayout, data.yesPayout);
         bytes memory message = abi.encode(CMD_RESOLUTION_RESPONSE, payload);
 
         // Build options - 200k gas for lzReceive + _finalizeResolution
@@ -115,12 +105,7 @@ contract ConditionalTokensReader is
 
         emit ResolutionRequested(conditionId, receipt.guid, block.timestamp);
         emit ResolutionSent(
-            conditionId,
-            data.payoutDenominator,
-            data.noPayout,
-            data.yesPayout,
-            receipt.guid,
-            block.timestamp
+            conditionId, data.payoutDenominator, data.noPayout, data.yesPayout, receipt.guid, block.timestamp
         );
     }
 

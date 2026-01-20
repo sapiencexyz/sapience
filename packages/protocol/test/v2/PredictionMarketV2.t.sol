@@ -74,9 +74,7 @@ contract PredictionMarketV2Test is Test {
         returns (IV2Types.Pick memory)
     {
         return IV2Types.Pick({
-            conditionResolver: address(resolver),
-            conditionId: _conditionId,
-            predictedOutcome: _outcome
+            conditionResolver: address(resolver), conditionId: _conditionId, predictedOutcome: _outcome
         });
     }
 
@@ -99,9 +97,8 @@ contract PredictionMarketV2Test is Test {
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 predictionId = keccak256(abi.encode(picks));
-        bytes32 predictionHash = keccak256(
-            abi.encode(predictionId, PREDICTOR_WAGER, COUNTERPARTY_WAGER, predictor, counterparty)
-        );
+        bytes32 predictionHash =
+            keccak256(abi.encode(predictionId, PREDICTOR_WAGER, COUNTERPARTY_WAGER, predictor, counterparty));
 
         uint256 pNonce = market.getNonce(predictor);
         uint256 cNonce = market.getNonce(counterparty);
@@ -116,8 +113,10 @@ contract PredictionMarketV2Test is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, PREDICTOR_WAGER, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, COUNTERPARTY_WAGER, cNonce, deadline, counterpartyPk);
+        request.predictorSignature =
+            _signApproval(predictionHash, predictor, PREDICTOR_WAGER, pNonce, deadline, predictorPk);
+        request.counterpartySignature =
+            _signApproval(predictionHash, counterparty, COUNTERPARTY_WAGER, cNonce, deadline, counterpartyPk);
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";

@@ -57,9 +57,8 @@ contract MockOptimisticOracleV3 {
         bytes32, /* identifier */
         bytes32 /* domainId */
     ) public returns (bytes32 assertionId) {
-        assertionId = keccak256(
-            abi.encodePacked(claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp)
-        );
+        assertionId =
+            keccak256(abi.encodePacked(claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp));
 
         assertions[assertionId] = AssertionData({
             claim: claim,

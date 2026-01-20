@@ -12,12 +12,7 @@ import {LZETHManagement} from "./LZETHManagement.sol";
 /// @title LZConditionResolver
 /// @notice LayerZero-based condition resolver for Prediction Market V2
 /// @dev Receives resolution messages from UMA side via LayerZero and implements IConditionResolver
-contract LZConditionResolver is
-    OApp,
-    ILZConditionResolver,
-    ReentrancyGuard,
-    LZETHManagement
-{
+contract LZConditionResolver is OApp, ILZConditionResolver, ReentrancyGuard, LZETHManagement {
     // ============ Constants ============
     uint16 private constant CMD_CONDITION_RESOLVED = 8;
 
@@ -38,10 +33,7 @@ contract LZConditionResolver is
     mapping(bytes32 => ConditionState) public conditions;
 
     // ============ Constructor ============
-    constructor(
-        address _endpoint,
-        address _owner
-    ) OApp(_endpoint, _owner) LZETHManagement(_owner) {}
+    constructor(address _endpoint, address _owner) OApp(_endpoint, _owner) LZETHManagement(_owner) {}
 
     // ============ Configuration Functions ============
 
@@ -129,13 +121,10 @@ contract LZConditionResolver is
 
     // ============ LayerZero Message Handling ============
 
-    function _lzReceive(
-        Origin calldata _origin,
-        bytes32,
-        bytes calldata _message,
-        address,
-        bytes calldata
-    ) internal override {
+    function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
+        internal
+        override
+    {
         // Validate source chain
         if (_origin.srcEid != _bridgeConfig.remoteEid) {
             revert InvalidSourceChain(_bridgeConfig.remoteEid, _origin.srcEid);
@@ -151,8 +140,7 @@ contract LZConditionResolver is
         (uint16 commandType, bytes memory data) = abi.decode(_message, (uint16, bytes));
 
         if (commandType == CMD_CONDITION_RESOLVED) {
-            (bytes32 conditionId, bool resolvedToYes, bool assertedTruthfully) =
-                abi.decode(data, (bytes32, bool, bool));
+            (bytes32 conditionId, bool resolvedToYes, bool assertedTruthfully) = abi.decode(data, (bytes32, bool, bool));
             _handleConditionResolved(conditionId, resolvedToYes, assertedTruthfully);
         } else {
             revert InvalidCommandType(commandType);
@@ -161,11 +149,7 @@ contract LZConditionResolver is
 
     // ============ Internal Functions ============
 
-    function _handleConditionResolved(
-        bytes32 conditionId,
-        bool resolvedToYes,
-        bool assertedTruthfully
-    ) internal {
+    function _handleConditionResolved(bytes32 conditionId, bool resolvedToYes, bool assertedTruthfully) internal {
         ConditionState storage condition = conditions[conditionId];
 
         // Initialize if new
@@ -182,11 +166,6 @@ contract LZConditionResolver is
             condition.resolvedToYes = resolvedToYes;
         }
 
-        emit ConditionResolved(
-            conditionId,
-            resolvedToYes,
-            assertedTruthfully,
-            block.timestamp
-        );
+        emit ConditionResolved(conditionId, resolvedToYes, assertedTruthfully, block.timestamp);
     }
 }

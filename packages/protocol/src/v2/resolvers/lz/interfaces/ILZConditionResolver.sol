@@ -10,10 +10,7 @@ import {LZTypes} from "../LZTypes.sol";
 interface ILZConditionResolver is IConditionResolver {
     // ============ Events ============
     event ConditionResolved(
-        bytes32 indexed conditionId,
-        bool resolvedToYes,
-        bool assertedTruthfully,
-        uint256 resolutionTime
+        bytes32 indexed conditionId, bool resolvedToYes, bool assertedTruthfully, uint256 resolutionTime
     );
 
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);

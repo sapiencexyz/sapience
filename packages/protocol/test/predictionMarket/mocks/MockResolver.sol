@@ -29,15 +29,11 @@ contract MockResolver is IPredictionMarketResolver {
         parlaySuccess = _parlaySuccess;
     }
 
-    function validatePredictionMarkets(
-        bytes calldata
-    ) external view returns (bool, Error) {
+    function validatePredictionMarkets(bytes calldata) external view returns (bool, Error) {
         return (shouldValidate, validationError);
     }
 
-    function getPredictionResolution(
-        bytes calldata
-    ) external view returns (bool, Error, bool) {
+    function getPredictionResolution(bytes calldata) external view returns (bool, Error, bool) {
         return (shouldValidate, resolutionError, parlaySuccess);
     }
 }

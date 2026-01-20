@@ -56,27 +56,18 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function predictAddress(
-        bytes32 pickConfigId,
-        bool isPredictorToken
-    ) public view returns (address) {
+    function predictAddress(bytes32 pickConfigId, bool isPredictorToken) public view returns (address) {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
         return CREATE3.predictDeterministicAddress(salt, address(this));
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function computeSalt(
-        bytes32 pickConfigId,
-        bool isPredictorToken
-    ) public pure returns (bytes32) {
+    function computeSalt(bytes32 pickConfigId, bool isPredictorToken) public pure returns (bytes32) {
         return keccak256(abi.encode(pickConfigId, isPredictorToken));
     }
 
     /// @inheritdoc IPositionTokenFactory
-    function isDeployed(
-        bytes32 pickConfigId,
-        bool isPredictorToken
-    ) external view returns (bool) {
+    function isDeployed(bytes32 pickConfigId, bool isPredictorToken) external view returns (bool) {
         address predicted = predictAddress(pickConfigId, isPredictorToken);
         return predicted.code.length > 0;
     }

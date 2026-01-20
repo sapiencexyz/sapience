@@ -23,11 +23,7 @@ interface IConditionalTokensReader {
 
     // ============ Events ============
 
-    event ResolutionRequested(
-        bytes32 indexed conditionId,
-        bytes32 guid,
-        uint256 timestamp
-    );
+    event ResolutionRequested(bytes32 indexed conditionId, bytes32 guid, uint256 timestamp);
 
     event ResolutionSent(
         bytes32 indexed conditionId,

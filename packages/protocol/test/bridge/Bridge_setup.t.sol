@@ -23,12 +23,7 @@ contract BridgeTestSetup is TestHelperOz5 {
         setUpEndpoints(1, LibraryType.UltraLightNode);
 
         testContract = TestETHManagement(
-            payable(
-                _deployOApp(
-                    type(TestETHManagement).creationCode,
-                    abi.encode(address(endpoints[eid]), owner)
-                )
-            )
+            payable(_deployOApp(type(TestETHManagement).creationCode, abi.encode(address(endpoints[eid]), owner)))
         );
 
         vm.deal(address(testContract), 100 ether);

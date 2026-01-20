@@ -5,8 +5,12 @@ import {OApp, Origin, MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OptimisticOracleV3Interface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import {OptimisticOracleV3CallbackRecipientInterface} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {
+    OptimisticOracleV3Interface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {
+    OptimisticOracleV3CallbackRecipientInterface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 import {IPredictionMarketLZResolverUmaSide} from "./interfaces/IPredictionMarketLZResolverUmaSide.sol";
 import {Encoder} from "../../bridge/cmdEncoder.sol";
 import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
@@ -53,12 +57,10 @@ contract PredictionMarketLZResolverUmaSide is
     // No internal bond accounting; this contract expects bond tokens to be pre-funded via ERC20 transfers
 
     // ============ Constructor ============
-    constructor(
-        address _endpoint,
-        address _owner,
-        address _optimisticOracleV3,
-        Settings memory _config
-    ) OApp(_endpoint, _owner) ETHManagement(_owner) {
+    constructor(address _endpoint, address _owner, address _optimisticOracleV3, Settings memory _config)
+        OApp(_endpoint, _owner)
+        ETHManagement(_owner)
+    {
         optimisticOracleV3Address = _optimisticOracleV3;
         config = _config;
     }
@@ -112,11 +114,7 @@ contract PredictionMarketLZResolverUmaSide is
     // Bond tokens should be transferred to this contract directly via ERC20 transfers.
 
     // ============ UMA Market Validation Functions ============
-    function submitAssertion(
-        bytes calldata claim,
-        uint256 endTime,
-        bool resolvedToYes
-    ) external nonReentrant {
+    function submitAssertion(bytes calldata claim, uint256 endTime, bool resolvedToYes) external nonReentrant {
         if (!approvedAsserters[msg.sender]) {
             revert OnlyApprovedAssertersCanCall();
         }
@@ -159,7 +157,7 @@ contract PredictionMarketLZResolverUmaSide is
             config.assertionLiveness,
             bondCurrency,
             config.bondAmount,
-            bytes32('ASSERT_TRUTH2'),
+            bytes32("ASSERT_TRUTH2"),
             bytes32(0)
         );
 
@@ -168,20 +166,11 @@ contract PredictionMarketLZResolverUmaSide is
         assertionIdToMarketId[umaAssertionId] = marketId;
         marketResolvedToYes[marketId] = resolvedToYes;
 
-        emit MarketSubmittedToUMA(
-            marketId,
-            umaAssertionId,
-            msg.sender,
-            claim,
-            resolvedToYes
-        );
+        emit MarketSubmittedToUMA(marketId, umaAssertionId, msg.sender, claim, resolvedToYes);
     }
 
     // ============ UMA Callback Functions ============
-    function assertionResolvedCallback(
-        bytes32 assertionId,
-        bool assertedTruthfully
-    ) external nonReentrant override {
+    function assertionResolvedCallback(bytes32 assertionId, bool assertedTruthfully) external override nonReentrant {
         if (msg.sender != optimisticOracleV3Address) {
             revert OnlyOptimisticOracleV3CanCall();
         }
@@ -195,20 +184,12 @@ contract PredictionMarketLZResolverUmaSide is
 
         // Only forward resolution via LayerZero if UMA confirmed the assertion as truthful
         if (assertedTruthfully) {
-            bytes memory commandPayload = Encoder.encodeFromUMAMarketResolved(
-                marketId,
-                resolvedToYes,
-                assertedTruthfully
-            );
+            bytes memory commandPayload =
+                Encoder.encodeFromUMAMarketResolved(marketId, resolvedToYes, assertedTruthfully);
             _sendLayerZeroMessageWithQuote(Encoder.CMD_FROM_UMA_MARKET_RESOLVED, commandPayload, false);
         }
 
-        emit MarketResolvedFromUMA(
-            marketId,
-            assertionId,
-            resolvedToYes,
-            assertedTruthfully
-        );
+        emit MarketResolvedFromUMA(marketId, assertionId, resolvedToYes, assertedTruthfully);
 
         // Clean up mappings (if asserted truthfully is false, it will allow for new assertions to be submitted)
         delete marketIdToAssertionId[marketId];
@@ -286,7 +267,8 @@ contract PredictionMarketLZResolverUmaSide is
 
     function _lzReceive(Origin calldata _origin, bytes32, bytes calldata _message, address, bytes calldata)
         internal
-        override {
+        override
+    {
         // Do nothing, this is just to satisfy the OApp interface
     }
 }

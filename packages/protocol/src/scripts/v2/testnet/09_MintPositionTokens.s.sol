@@ -23,8 +23,13 @@ contract MintPositionTokens is Script {
         console.log("Wager per side:", WAGER);
 
         // Execute mint
-        (bytes32 predictionId, address predictorToken, address counterpartyToken, bytes32 pickConfigId, bytes32 conditionId) =
-            _executeMint(deployerPk, deployer);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken,
+            bytes32 pickConfigId,
+            bytes32 conditionId
+        ) = _executeMint(deployerPk, deployer);
 
         console.log("");
         console.log("=== Minted Successfully ===");
@@ -45,13 +50,16 @@ contract MintPositionTokens is Script {
         console.log("CONDITION_ID=", vm.toString(conditionId));
     }
 
-    function _executeMint(uint256 deployerPk, address deployer) internal returns (
-        bytes32 predictionId,
-        address predictorToken,
-        address counterpartyToken,
-        bytes32 pickConfigId,
-        bytes32 conditionId
-    ) {
+    function _executeMint(uint256 deployerPk, address deployer)
+        internal
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken,
+            bytes32 pickConfigId,
+            bytes32 conditionId
+        )
+    {
         PredictionMarketV2 market = PredictionMarketV2(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         IERC20 collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
         address resolverAddr = vm.envAddress("RESOLVER_ADDRESS");
@@ -62,9 +70,7 @@ contract MintPositionTokens is Script {
         // Build pick and compute pickConfigId
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
-            conditionResolver: resolverAddr,
-            conditionId: conditionId,
-            predictedOutcome: IV2Types.OutcomeSide.YES
+            conditionResolver: resolverAddr, conditionId: conditionId, predictedOutcome: IV2Types.OutcomeSide.YES
         });
         pickConfigId = keccak256(abi.encode(picks));
 
@@ -88,9 +94,7 @@ contract MintPositionTokens is Script {
     ) internal view returns (IV2Types.MintRequest memory request) {
         // Compute prediction hash
         bytes32 pickConfigId = keccak256(abi.encode(picks));
-        bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, WAGER, WAGER, deployer, deployer)
-        );
+        bytes32 predictionHash = keccak256(abi.encode(pickConfigId, WAGER, WAGER, deployer, deployer));
 
         // Get nonces and deadline
         uint256 nonce = market.getNonce(deployer);

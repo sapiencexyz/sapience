@@ -60,10 +60,7 @@ interface IPredictionMarketV2 {
     /// @notice Get the pick configuration for a set of picks
     /// @param pickConfigId The pick configuration identifier
     /// @return config The pick configuration data
-    function getPickConfiguration(bytes32 pickConfigId)
-        external
-        view
-        returns (IV2Types.PickConfiguration memory config);
+    function getPickConfiguration(bytes32 pickConfigId) external view returns (IV2Types.PickConfiguration memory config);
 
     /// @notice Get the token pair for a pick configuration
     /// @param pickConfigId The pick configuration identifier

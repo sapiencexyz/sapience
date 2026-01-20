@@ -2,7 +2,9 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolverUmaSide} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
 
 // Configure the UMA-side resolver on Arbitrum to point to PM-side peer and UMA settings
@@ -27,16 +29,11 @@ contract ConfigurePredictionMarketLZResolverUmaSide is Script {
         vm.startBroadcast(vm.envUint("ARB_PRIVATE_KEY"));
         PredictionMarketLZResolverUmaSide resolver = PredictionMarketLZResolverUmaSide(payable(umaSideResolver));
 
-        // eid of other network 
+        // eid of other network
         (uint32 peerEid, bytes32 peerResolver) = (uint32(pmSideEid), bytes32(uint256(uint160(pmLzResolver))));
         resolver.setPeer(peerEid, peerResolver);
 
-        resolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({
-                remoteEid: pmSideEid,
-                remoteBridge: pmLzResolver
-            })
-        );
+        resolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: pmSideEid, remoteBridge: pmLzResolver}));
 
         // Optional tuning via env
         resolver.setLzReceiveCost(uint128(vm.envUint("UMA_LZ_RECEIVE_COST")));
@@ -50,6 +47,4 @@ contract ConfigurePredictionMarketLZResolverUmaSide is Script {
         vm.stopBroadcast();
     }
 }
-
-
 

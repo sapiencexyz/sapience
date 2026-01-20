@@ -70,19 +70,15 @@ library Encoder {
     }
 
     // Prediction Market Resolver commands
-    function encodeFromUMAMarketResolved(
-        bytes32 marketId,
-        bool resolvedToYes,
-        bool assertedTruthfully
-    ) internal pure returns (bytes memory) {
+    function encodeFromUMAMarketResolved(bytes32 marketId, bool resolvedToYes, bool assertedTruthfully)
+        internal
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(marketId, resolvedToYes, assertedTruthfully);
     }
 
-    function decodeFromUMAMarketResolved(bytes memory data)
-        internal
-        pure
-        returns (bytes32, bool, bool)
-    {
+    function decodeFromUMAMarketResolved(bytes memory data) internal pure returns (bytes32, bool, bool) {
         return abi.decode(data, (bytes32, bool, bool));
     }
 

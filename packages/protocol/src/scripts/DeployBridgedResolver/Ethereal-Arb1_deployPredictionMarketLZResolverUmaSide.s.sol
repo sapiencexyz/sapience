@@ -2,7 +2,9 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolverUmaSide} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 // UMA side is on Arbitrum One
 // Deploy this UMA-side resolver on Arbitrum One (sends LZ messages to PM side)
@@ -23,9 +25,7 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
             owner,
             optimisticOracleV3,
             PredictionMarketLZResolverUmaSide.Settings({
-                bondCurrency: bondCurrency,
-                bondAmount: bondAmount,
-                assertionLiveness: assertionLiveness
+                bondCurrency: bondCurrency, bondAmount: bondAmount, assertionLiveness: assertionLiveness
             })
         );
         vm.stopBroadcast();
@@ -33,6 +33,4 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
         console.log("PredictionMarketLZResolverUmaSide deployed to:", address(resolver));
     }
 }
-
-
 

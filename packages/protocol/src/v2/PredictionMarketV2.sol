@@ -105,25 +105,25 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         bytes32 pickConfigId = _computePickConfigId(request.picks);
 
         // Compute unique predictionId for this specific bet
-        predictionId = keccak256(
-            abi.encode(pickConfigId, request.predictor, request.counterparty, ++_globalNonce)
-        );
+        predictionId = keccak256(abi.encode(pickConfigId, request.predictor, request.counterparty, ++_globalNonce));
 
         // Compute prediction hash for signatures (includes wagers and addresses)
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, request.predictorWager, request.counterpartyWager, request.predictor, request.counterparty)
+            abi.encode(
+                pickConfigId, request.predictorWager, request.counterpartyWager, request.predictor, request.counterparty
+            )
         );
 
         // Validate predictor signature (EOA or session key)
         if (!_validatePartySignature(
-            predictionHash,
-            request.predictor,
-            request.predictorWager,
-            request.predictorNonce,
-            request.predictorDeadline,
-            request.predictorSignature,
-            request.predictorSessionKeyData
-        )) {
+                predictionHash,
+                request.predictor,
+                request.predictorWager,
+                request.predictorNonce,
+                request.predictorDeadline,
+                request.predictorSignature,
+                request.predictorSessionKeyData
+            )) {
             revert InvalidSignature();
         }
         if (request.predictorNonce != _nonces[request.predictor]) {
@@ -132,14 +132,14 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
         // Validate counterparty signature (EOA or session key)
         if (!_validatePartySignature(
-            predictionHash,
-            request.counterparty,
-            request.counterpartyWager,
-            request.counterpartyNonce,
-            request.counterpartyDeadline,
-            request.counterpartySignature,
-            request.counterpartySessionKeyData
-        )) {
+                predictionHash,
+                request.counterparty,
+                request.counterpartyWager,
+                request.counterpartyNonce,
+                request.counterpartyDeadline,
+                request.counterpartySignature,
+                request.counterpartySessionKeyData
+            )) {
             revert InvalidSignature();
         }
         if (request.counterpartyNonce != _nonces[request.counterparty]) {
@@ -273,17 +273,18 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         _escrowRecords[predictionId].settled = true;
 
         // Calculate claimable amounts for this prediction's contribution
-        (uint256 predictorClaimable, uint256 counterpartyClaimable) = _calculateClaimableForPrediction(
-            config.result,
-            prediction.predictorWager,
-            prediction.counterpartyWager
-        );
+        (uint256 predictorClaimable, uint256 counterpartyClaimable) =
+            _calculateClaimableForPrediction(config.result, prediction.predictorWager, prediction.counterpartyWager);
 
         emit PredictionSettled(predictionId, config.result, predictorClaimable, counterpartyClaimable, refCode);
     }
 
     /// @inheritdoc IPredictionMarketV2
-    function redeem(address positionToken, uint256 amount, bytes32 refCode) external nonReentrant returns (uint256 payout) {
+    function redeem(address positionToken, uint256 amount, bytes32 refCode)
+        external
+        nonReentrant
+        returns (uint256 payout)
+    {
         if (!_isPositionToken[positionToken]) {
             revert InvalidToken();
         }
@@ -304,9 +305,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
 
         // Use ORIGINAL total tokens (= collateral in 1:1 ratio), not current totalSupply
         // This ensures consistent payouts even after partial redemptions
-        uint256 originalTotalTokens = isPredictor
-            ? config.totalPredictorCollateral
-            : config.totalCounterpartyCollateral;
+        uint256 originalTotalTokens = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
 
         // Calculate claimable pool based on result
         uint256 claimablePool;
@@ -407,9 +406,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
         bool isPredictor = _isPredictorToken[positionToken];
 
         // Use ORIGINAL total tokens (= collateral in 1:1 ratio)
-        uint256 originalTotalTokens = isPredictor
-            ? config.totalPredictorCollateral
-            : config.totalCounterpartyCollateral;
+        uint256 originalTotalTokens = isPredictor ? config.totalPredictorCollateral : config.totalCounterpartyCollateral;
 
         uint256 totalCollateral = config.totalPredictorCollateral + config.totalCounterpartyCollateral;
 
@@ -602,11 +599,11 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
     }
 
     /// @notice Resolve using batch call when all picks use the same resolver
-    function _resolveBatch(
-        IV2Types.Pick[] storage picks,
-        uint256 numPicks,
-        address resolver
-    ) internal view returns (bool canResolve, IV2Types.SettlementResult result) {
+    function _resolveBatch(IV2Types.Pick[] storage picks, uint256 numPicks, address resolver)
+        internal
+        view
+        returns (bool canResolve, IV2Types.SettlementResult result)
+    {
         // Build array of condition IDs
         bytes32[] memory conditionIds = new bytes32[](numPicks);
         for (uint256 i = 0; i < numPicks; i++) {
@@ -725,15 +722,7 @@ contract PredictionMarketV2 is IPredictionMarketV2, IV2Events, ReentrancyGuard, 
                 ownerSignature: skData.ownerSignature
             });
 
-            return _isSessionKeyApprovalValid(
-                predictionHash,
-                signer,
-                wager,
-                nonce,
-                deadline,
-                signature,
-                approval
-            );
+            return _isSessionKeyApprovalValid(predictionHash, signer, wager, nonce, deadline, signature, approval);
         }
     }
 }

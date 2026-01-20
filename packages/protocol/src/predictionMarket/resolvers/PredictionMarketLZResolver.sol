@@ -14,12 +14,7 @@ import {ETHManagement} from "../../bridge/abstract/ETHManagement.sol";
  * @notice Simplified LayerZero-based resolver contract for Prediction Market system
  * @dev This contract only receives resolution messages from UMA side via LayerZero
  */
-contract PredictionMarketLZResolver is
-    OApp,
-    IPredictionMarketLZResolver,
-    ReentrancyGuard,
-    ETHManagement
-{
+contract PredictionMarketLZResolver is OApp, IPredictionMarketLZResolver, ReentrancyGuard, ETHManagement {
     using Encoder for bytes;
     using BridgeTypes for BridgeTypes.BridgeConfig;
     using OptionsBuilder for bytes;
@@ -56,11 +51,10 @@ contract PredictionMarketLZResolver is
 
     mapping(bytes32 => WrappedMarket) public wrappedMarkets;
 
-    constructor(
-        address _endpoint,
-        address _owner,
-        Settings memory _config
-    ) OApp(_endpoint, _owner) ETHManagement(_owner) {
+    constructor(address _endpoint, address _owner, Settings memory _config)
+        OApp(_endpoint, _owner)
+        ETHManagement(_owner)
+    {
         config = _config;
     }
 
@@ -78,18 +72,19 @@ contract PredictionMarketLZResolver is
     }
 
     // ============ Resolver Functions ============
-    function validatePredictionMarkets(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error) {
+    function validatePredictionMarkets(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isValid, Error error)
+    {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
-        if (predictedOutcomes.length > config.maxPredictionMarkets)
+        if (predictedOutcomes.length > config.maxPredictionMarkets) {
             revert TooManyMarkets();
+        }
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             bytes32 currentMarketId = predictedOutcomes[i].marketId;
@@ -102,12 +97,12 @@ contract PredictionMarketLZResolver is
         return (isValid, error);
     }
 
-    function getPredictionResolution(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isResolved, Error error, bool parlaySuccess) {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+    function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isResolved, Error error, bool parlaySuccess)
+    {
+        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -118,8 +113,7 @@ contract PredictionMarketLZResolver is
             error = Error.MUST_HAVE_AT_LEAST_ONE_MARKET;
             return (isResolved, error, parlaySuccess);
         }
-        if (predictedOutcomes.length > config.maxPredictionMarkets)
-        {
+        if (predictedOutcomes.length > config.maxPredictionMarkets) {
             isResolved = false;
             error = Error.TOO_MANY_MARKETS;
             return (isResolved, error, parlaySuccess);
@@ -162,15 +156,19 @@ contract PredictionMarketLZResolver is
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
-    function encodePredictionOutcomes(
-        PredictedOutcome[] calldata predictedOutcomes
-    ) external pure returns (bytes memory) {
+    function encodePredictionOutcomes(PredictedOutcome[] calldata predictedOutcomes)
+        external
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(predictedOutcomes);
     }
 
-    function decodePredictionOutcomes(
-        bytes calldata encodedPredictedOutcomes
-    ) public pure returns (PredictedOutcome[] memory) {
+    function decodePredictionOutcomes(bytes calldata encodedPredictedOutcomes)
+        public
+        pure
+        returns (PredictedOutcome[] memory)
+    {
         return abi.decode(encodedPredictedOutcomes, (PredictedOutcome[]));
     }
 
@@ -190,8 +188,7 @@ contract PredictionMarketLZResolver is
         (uint16 commandType, bytes memory data) = _message.decodeType();
 
         if (commandType == Encoder.CMD_FROM_UMA_MARKET_RESOLVED) {
-            (bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) = 
-                data.decodeFromUMAMarketResolved();
+            (bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) = data.decodeFromUMAMarketResolved();
             marketResolvedCallback(marketId, resolvedToYes, assertedTruthfully);
         } else {
             revert InvalidCommandType(commandType);
@@ -199,11 +196,7 @@ contract PredictionMarketLZResolver is
     }
 
     // ============ internal UMA Callback Functions ============
-    function marketResolvedCallback(
-        bytes32 marketId,
-        bool resolvedToYes,
-        bool assertedTruthfully
-    ) internal {
+    function marketResolvedCallback(bytes32 marketId, bool resolvedToYes, bool assertedTruthfully) internal {
         // Create or update the wrapped market
         WrappedMarket storage market = wrappedMarkets[marketId];
         if (market.marketId == bytes32(0)) {
@@ -211,8 +204,9 @@ contract PredictionMarketLZResolver is
             market.marketId = marketId;
         }
 
-        if (assertedTruthfully) { // checking it just in case, the counterpart shouldn't send false, but if the implementation changes this protect setting the wrong values
-            if(market.settled) {
+        if (assertedTruthfully) {
+            // checking it just in case, the counterpart shouldn't send false, but if the implementation changes this protect setting the wrong values
+            if (market.settled) {
                 // This should never happen, but if we reached this point it means the counterpart re-sent a assertedTruthfully message for an already settled market. So, something was missconfigred or changed on the other side.
                 revert MarketAlreadySettled();
             }
@@ -220,12 +214,7 @@ contract PredictionMarketLZResolver is
             market.resolvedToYes = resolvedToYes;
         }
 
-        emit MarketResolved(
-            marketId,
-            resolvedToYes,
-            assertedTruthfully,
-            block.timestamp
-        );
+        emit MarketResolved(marketId, resolvedToYes, assertedTruthfully, block.timestamp);
     }
 
     // No disputed callback required on PM side per current interface

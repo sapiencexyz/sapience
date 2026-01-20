@@ -20,9 +20,7 @@ contract MockConditionalTokens {
         uint256[] memory payoutNumerators
     ) external {
         _conditions[conditionId] = ConditionData({
-            slotCount: slotCount,
-            payoutDenominator: payoutDenominator,
-            payoutNumerators: payoutNumerators
+            slotCount: slotCount, payoutDenominator: payoutDenominator, payoutNumerators: payoutNumerators
         });
     }
 
@@ -31,11 +29,7 @@ contract MockConditionalTokens {
         uint256[] memory numerators = new uint256[](2);
         numerators[0] = 1; // YES (index 0)
         numerators[1] = 0; // NO (index 1)
-        _conditions[conditionId] = ConditionData({
-            slotCount: 2,
-            payoutDenominator: 1,
-            payoutNumerators: numerators
-        });
+        _conditions[conditionId] = ConditionData({slotCount: 2, payoutDenominator: 1, payoutNumerators: numerators});
     }
 
     /// @notice Set up a binary NO condition (NO wins)
@@ -43,11 +37,7 @@ contract MockConditionalTokens {
         uint256[] memory numerators = new uint256[](2);
         numerators[0] = 0; // YES (index 0)
         numerators[1] = 1; // NO (index 1)
-        _conditions[conditionId] = ConditionData({
-            slotCount: 2,
-            payoutDenominator: 1,
-            payoutNumerators: numerators
-        });
+        _conditions[conditionId] = ConditionData({slotCount: 2, payoutDenominator: 1, payoutNumerators: numerators});
     }
 
     /// @notice Set up an unresolved condition
@@ -55,11 +45,7 @@ contract MockConditionalTokens {
         uint256[] memory numerators = new uint256[](2);
         numerators[0] = 0;
         numerators[1] = 0;
-        _conditions[conditionId] = ConditionData({
-            slotCount: 2,
-            payoutDenominator: 0,
-            payoutNumerators: numerators
-        });
+        _conditions[conditionId] = ConditionData({slotCount: 2, payoutDenominator: 0, payoutNumerators: numerators});
     }
 
     /// @notice Set up a tie/split condition (invalid for binary)
@@ -67,11 +53,7 @@ contract MockConditionalTokens {
         uint256[] memory numerators = new uint256[](2);
         numerators[0] = 1; // YES
         numerators[1] = 1; // NO (equal = tie)
-        _conditions[conditionId] = ConditionData({
-            slotCount: 2,
-            payoutDenominator: 2,
-            payoutNumerators: numerators
-        });
+        _conditions[conditionId] = ConditionData({slotCount: 2, payoutDenominator: 2, payoutNumerators: numerators});
     }
 
     /// @notice Set up a non-binary condition (invalid)
@@ -80,11 +62,7 @@ contract MockConditionalTokens {
         numerators[0] = 1;
         numerators[1] = 0;
         numerators[2] = 0;
-        _conditions[conditionId] = ConditionData({
-            slotCount: 3,
-            payoutDenominator: 1,
-            payoutNumerators: numerators
-        });
+        _conditions[conditionId] = ConditionData({slotCount: 3, payoutDenominator: 1, payoutNumerators: numerators});
     }
 
     // ============ IConditionalTokens Interface ============

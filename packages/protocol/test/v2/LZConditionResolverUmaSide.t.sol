@@ -44,22 +44,12 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     event AsserterRevoked(address indexed asserter);
     event BondWithdrawn(address indexed token, uint256 amount, address indexed to);
     event ConditionSubmittedToUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId,
-        address asserter,
-        bytes claim,
-        bool resolvedToYes
+        bytes32 indexed conditionId, bytes32 indexed assertionId, address asserter, bytes claim, bool resolvedToYes
     );
     event ConditionResolvedFromUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId,
-        bool resolvedToYes,
-        bool assertedTruthfully
+        bytes32 indexed conditionId, bytes32 indexed assertionId, bool resolvedToYes, bool assertedTruthfully
     );
-    event ConditionDisputedFromUMA(
-        bytes32 indexed conditionId,
-        bytes32 indexed assertionId
-    );
+    event ConditionDisputedFromUMA(bytes32 indexed conditionId, bytes32 indexed assertionId);
 
     function setUp() public override {
         owner = address(this);
@@ -82,8 +72,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
         // Deploy UMA-side resolver
         umaResolver = LZConditionResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(LZConditionResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEid]),
@@ -95,18 +84,12 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         // Deploy PM-side resolver
         pmResolver = LZConditionResolver(
-            payable(
-                _deployOApp(
-                    type(LZConditionResolver).creationCode,
-                    abi.encode(address(endpoints[pmEid]), owner)
-                )
-            )
+            payable(_deployOApp(type(LZConditionResolver).creationCode, abi.encode(address(endpoints[pmEid]), owner)))
         );
 
         // Wire OApps
@@ -119,12 +102,8 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         vm.deal(address(umaResolver), 100 ether);
 
         // Configure bridge
-        umaResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)})
-        );
-        pmResolver.setBridgeConfig(
-            LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)})
-        );
+        umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: pmEid, remoteBridge: address(pmResolver)}));
+        pmResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: umaEid, remoteBridge: address(umaResolver)}));
 
         // Configure mock oracle callback
         mockOracle.setResolver(address(umaResolver));
@@ -162,10 +141,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
-        });
+        LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({remoteEid: 999, remoteBridge: address(0x1234)});
 
         vm.expectEmit(false, false, false, true);
         emit BridgeConfigUpdated(newConfig);
@@ -179,9 +155,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     function test_setConfig_success() public {
         address newBondCurrency = address(0xBEEF);
         ILZConditionResolverUmaSide.Settings memory newConfig = ILZConditionResolverUmaSide.Settings({
-            bondCurrency: newBondCurrency,
-            bondAmount: 2 ether,
-            assertionLiveness: 7200
+            bondCurrency: newBondCurrency, bondAmount: 2 ether, assertionLiveness: 7200
         });
 
         vm.expectEmit(true, false, false, true);
@@ -211,11 +185,9 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         umaResolver.setBridgeConfig(LZTypes.BridgeConfig({remoteEid: 1, remoteBridge: address(0x1)}));
 
         vm.expectRevert();
-        umaResolver.setConfig(ILZConditionResolverUmaSide.Settings({
-            bondCurrency: address(0x1),
-            bondAmount: 1,
-            assertionLiveness: 1
-        }));
+        umaResolver.setConfig(
+            ILZConditionResolverUmaSide.Settings({bondCurrency: address(0x1), bondAmount: 1, assertionLiveness: 1})
+        );
 
         vm.expectRevert();
         umaResolver.setOptimisticOracleV3(address(0x1));
@@ -331,8 +303,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     function test_submitAssertion_revertIfInsufficientBond() public {
         // Create new resolver without bond funding
         LZConditionResolverUmaSide newResolver = LZConditionResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(LZConditionResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEid]),
@@ -344,8 +315,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         newResolver.approveAsserter(asserter);

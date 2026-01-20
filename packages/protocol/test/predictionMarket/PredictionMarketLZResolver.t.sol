@@ -16,11 +16,9 @@ import "cannon-std/Cannon.sol";
  * @notice Wrapper to expose lzReceive for testing
  */
 contract PredictionMarketLZResolverTestWrapper is PredictionMarketLZResolver {
-    constructor(
-        address _endpoint,
-        address _owner,
-        Settings memory _config
-    ) PredictionMarketLZResolver(_endpoint, _owner, _config) {}
+    constructor(address _endpoint, address _owner, Settings memory _config)
+        PredictionMarketLZResolver(_endpoint, _owner, _config)
+    {}
 
     function exposed_lzReceive(
         Origin calldata _origin,
@@ -68,30 +66,26 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = PredictionMarketLZResolverTestWrapper(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(PredictionMarketLZResolverTestWrapper).creationCode,
                     abi.encode(
                         address(endpoints[pmEiD]),
                         owner,
                         PredictionMarketLZResolver.Settings({maxPredictionMarkets: MAX_PREDICTION_MARKETS})
                     )
-                )
-            )
+                ))
         );
 
         // Deploy mock UMA-side resolver (just for message simulation)
         umaResolver = PredictionMarketLZResolverTestWrapper(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(PredictionMarketLZResolverTestWrapper).creationCode,
                     abi.encode(
                         address(endpoints[umaEiD]),
                         owner,
                         PredictionMarketLZResolver.Settings({maxPredictionMarkets: MAX_PREDICTION_MARKETS})
                     )
-                )
-            )
+                ))
         );
 
         address[] memory oapps = new address[](2);
@@ -105,9 +99,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
         vm.deal(address(pmResolver), 100 ether);
 
         // Configure bridge
-        pmResolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaResolver)})
-        );
+        pmResolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaResolver)}));
     }
 
     // ============ Constructor Tests ============
@@ -144,9 +136,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_configuration_onlyOwner() public {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
-        pmResolver.setBridgeConfig(
-            BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaResolver)})
-        );
+        pmResolver.setBridgeConfig(BridgeTypes.BridgeConfig({remoteEid: umaEiD, remoteBridge: address(umaResolver)}));
 
         vm.prank(unauthorizedUser);
         vm.expectRevert();
@@ -158,10 +148,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_validatePredictionMarkets_success() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: TEST_MARKET_ID,
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: TEST_MARKET_ID, prediction: true});
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -185,8 +172,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
             new PredictionMarketLZResolver.PredictedOutcome[](MAX_PREDICTION_MARKETS + 1);
         for (uint256 i = 0; i < MAX_PREDICTION_MARKETS + 1; i++) {
             outcomes[i] = PredictionMarketLZResolver.PredictedOutcome({
-                marketId: keccak256(abi.encodePacked("market", i)),
-                prediction: true
+                marketId: keccak256(abi.encodePacked("market", i)), prediction: true
             });
         }
 
@@ -199,17 +185,16 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_validatePredictionMarkets_invalidMarket() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: bytes32(0),
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: bytes32(0), prediction: true});
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
         (bool isValid, IPredictionMarketResolver.Error error) = pmResolver.validatePredictionMarkets(encodedOutcomes);
 
         assertFalse(isValid, "Should be invalid");
-        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.INVALID_MARKET), "Should have invalid market error");
+        assertEq(
+            uint256(error), uint256(IPredictionMarketResolver.Error.INVALID_MARKET), "Should have invalid market error"
+        );
     }
 
     function test_validatePredictionMarkets_multipleMarkets() public view {
@@ -217,8 +202,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
             new PredictionMarketLZResolver.PredictedOutcome[](3);
         for (uint256 i = 0; i < 3; i++) {
             outcomes[i] = PredictionMarketLZResolver.PredictedOutcome({
-                marketId: keccak256(abi.encodePacked("market", i)),
-                prediction: i % 2 == 0
+                marketId: keccak256(abi.encodePacked("market", i)), prediction: i % 2 == 0
             });
         }
 
@@ -235,10 +219,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_getPredictionResolution_noMarketsWrapped() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: TEST_MARKET_ID,
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: TEST_MARKET_ID, prediction: true});
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -246,17 +227,18 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
             pmResolver.getPredictionResolution(encodedOutcomes);
 
         assertFalse(isResolved, "Should not be resolved");
-        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED), "Should have MARKET_NOT_SETTLED error");
+        assertEq(
+            uint256(error),
+            uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED),
+            "Should have MARKET_NOT_SETTLED error"
+        );
         assertTrue(parlaySuccess, "Parlay success should default to true");
     }
 
     function test_getPredictionResolution_invalidMarket() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: bytes32(0),
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: bytes32(0), prediction: true});
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -264,7 +246,9 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
             pmResolver.getPredictionResolution(encodedOutcomes);
 
         assertFalse(isResolved, "Should not be resolved");
-        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.INVALID_MARKET), "Should have invalid market error");
+        assertEq(
+            uint256(error), uint256(IPredictionMarketResolver.Error.INVALID_MARKET), "Should have invalid market error"
+        );
         assertTrue(parlaySuccess, "Parlay success should default to true");
     }
 
@@ -274,10 +258,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
 
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: TEST_MARKET_ID,
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: TEST_MARKET_ID, prediction: true});
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -285,7 +266,11 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
             pmResolver.getPredictionResolution(encodedOutcomes);
 
         assertFalse(isResolved, "Should not be resolved");
-        assertEq(uint256(error), uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED), "Should have MARKET_NOT_SETTLED error");
+        assertEq(
+            uint256(error),
+            uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED),
+            "Should have MARKET_NOT_SETTLED error"
+        );
         assertTrue(parlaySuccess, "Parlay success should default to true");
     }
 
@@ -386,14 +371,8 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_encodePredictionOutcomes() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](2);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: keccak256("market1"),
-            prediction: true
-        });
-        outcomes[1] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: keccak256("market2"),
-            prediction: false
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: keccak256("market1"), prediction: true});
+        outcomes[1] = PredictionMarketLZResolver.PredictedOutcome({marketId: keccak256("market2"), prediction: false});
 
         bytes memory encoded = pmResolver.encodePredictionOutcomes(outcomes);
 
@@ -410,10 +389,7 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     function test_decodePredictionOutcomes() public view {
         PredictionMarketLZResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketLZResolver.PredictedOutcome[](1);
-        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({
-            marketId: TEST_MARKET_ID,
-            prediction: true
-        });
+        outcomes[0] = PredictionMarketLZResolver.PredictedOutcome({marketId: TEST_MARKET_ID, prediction: true});
 
         bytes memory encoded = abi.encode(outcomes);
         PredictionMarketLZResolver.PredictedOutcome[] memory decoded = pmResolver.decodePredictionOutcomes(encoded);
@@ -473,21 +449,14 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
         bytes memory message = _buildMarketResolvedMessage(TEST_MARKET_ID, true, true, true);
         bytes memory options = "";
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                PredictionMarketLZResolver.InvalidSourceChain.selector, umaEiD, 999
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(PredictionMarketLZResolver.InvalidSourceChain.selector, umaEiD, 999));
 
         pmResolver.exposed_lzReceive(wrongOrigin, bytes32(0), message, address(0), options);
     }
 
     function test_lzReceive_invalidSender() public {
-        Origin memory wrongOrigin = Origin({
-            srcEid: umaEiD,
-            sender: bytes32(uint256(uint160(address(0xBAD)))),
-            nonce: 1
-        });
+        Origin memory wrongOrigin =
+            Origin({srcEid: umaEiD, sender: bytes32(uint256(uint160(address(0xBAD)))), nonce: 1});
 
         bytes memory message = _buildMarketResolvedMessage(TEST_MARKET_ID, true, true, true);
         bytes memory options = "";
@@ -506,11 +475,8 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
         bytes memory commandPayload = Encoder.encodeFromUMAMarketResolved(TEST_MARKET_ID, true, true);
         bytes memory message = abi.encode(uint16(999), commandPayload); // Invalid command
 
-        Origin memory origin = Origin({
-            srcEid: umaEiD,
-            sender: bytes32(uint256(uint160(address(umaResolver)))),
-            nonce: 1
-        });
+        Origin memory origin =
+            Origin({srcEid: umaEiD, sender: bytes32(uint256(uint160(address(umaResolver)))), nonce: 1});
 
         vm.expectRevert(abi.encodeWithSelector(PredictionMarketLZResolver.InvalidCommandType.selector, 999));
 
@@ -524,28 +490,25 @@ contract PredictionMarketLZResolverTest is TestHelperOz5 {
     {
         bytes memory message = _buildMarketResolvedMessage(marketId, resolvedToYes, assertedTruthfully, sendToResolver);
 
-        Origin memory origin = Origin({
-            srcEid: umaEiD,
-            sender: bytes32(uint256(uint160(address(umaResolver)))),
-            nonce: 1
-        });
+        Origin memory origin =
+            Origin({srcEid: umaEiD, sender: bytes32(uint256(uint160(address(umaResolver)))), nonce: 1});
 
         if (sendToResolver) {
             pmResolver.exposed_lzReceive(origin, bytes32(0), message, address(0), "");
         }
     }
 
-    function _buildMarketResolvedMessage(bytes32 marketId, bool resolvedToYes, bool assertedTruthfully, bool encodeMessage)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function _buildMarketResolvedMessage(
+        bytes32 marketId,
+        bool resolvedToYes,
+        bool assertedTruthfully,
+        bool encodeMessage
+    ) internal pure returns (bytes memory) {
         bytes memory commandPayload = Encoder.encodeFromUMAMarketResolved(marketId, resolvedToYes, assertedTruthfully);
         if (encodeMessage) {
             return abi.encode(Encoder.CMD_FROM_UMA_MARKET_RESOLVED, commandPayload);
         }
         return commandPayload;
     }
-
 }
 

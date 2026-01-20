@@ -2,19 +2,21 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolverUmaSide} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
 
-import { ILayerZeroEndpointV2 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { SetConfigParam } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
-import { ExecutorConfig } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
+import {ILayerZeroEndpointV2} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {SetConfigParam} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {UlnConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {ExecutorConfig} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
 
 // Configure the UMA-side resolver on Arbitrum to point to PM-side peer and UMA settings
 contract SetDVNPredictionMarketLZResolverUmaSide is Script {
     uint32 constant EXECUTOR_CONFIG_TYPE = 1;
     uint32 constant ULN_CONFIG_TYPE = 2;
-    
+
     function run() external {
         // Read from environment:
         //   UMA_SIDE_RESOLVER - Deployed UMA-side resolver (Arbitrum)
@@ -35,34 +37,35 @@ contract SetDVNPredictionMarketLZResolverUmaSide is Script {
 
         // Load environment variables
         address endpoint = vm.envAddress("ARB_LZ_ENDPOINT");
-        address oapp = umaSideResolver;           // Your OApp contract address
+        address oapp = umaSideResolver; // Your OApp contract address
 
         // Library addresses
         address sendLib = vm.envAddress("ARB_SEND_LIB");
         address receiveLib = vm.envAddress("ARB_RECEIVE_LIB");
 
         // Chain configurations
-        uint32 AEid = umaSideEid;         // Source chain EID (Arbitrum)
-        uint32 BEid = pmSideEid;         // Destination chain EID (Ethereal)
+        uint32 AEid = umaSideEid; // Source chain EID (Arbitrum)
+        uint32 BEid = pmSideEid; // Destination chain EID (Ethereal)
         uint32 gracePeriod = uint32(vm.envOr("GRACE_PERIOD", uint256(0))); // Grace period for library switch
-        
 
         vm.startBroadcast(vm.envUint("ARB_PRIVATE_KEY"));
 
         // Set send library for outbound messages
-        ILayerZeroEndpointV2(endpoint).setSendLibrary(
-            oapp,    // OApp address
-            BEid,  // Destination chain EID
-            sendLib  // SendUln302 address
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setSendLibrary(
+                oapp, // OApp address
+                BEid, // Destination chain EID
+                sendLib // SendUln302 address
+            );
 
         // Set receive library for inbound messages
-        ILayerZeroEndpointV2(endpoint).setReceiveLibrary(
-            oapp,        // OApp address
-            AEid,      // Source chain EID
-            receiveLib,  // ReceiveUln302 address
-            gracePeriod  // Grace period for library switch
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setReceiveLibrary(
+                oapp, // OApp address
+                AEid, // Source chain EID
+                receiveLib, // ReceiveUln302 address
+                gracePeriod // Grace period for library switch
+            );
 
         // Set executor config and EVM
         /// @notice ULNConfig defines security parameters (DVNs + confirmation threshold) for A → B
@@ -73,23 +76,22 @@ contract SetDVNPredictionMarketLZResolverUmaSide is Script {
         address[] memory requiredDVNs = new address[](1);
         requiredDVNs[0] = vm.envAddress("ARB_DVN");
         UlnConfig memory uln = UlnConfig({
-            confirmations:        uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(20))),                                      // minimum block confirmations required on A before sending to B
-            requiredDVNCount:     uint8(vm.envOr("REQUIRED_DVN_COUNT", uint256(1))),                                       // number of DVNs required
-            optionalDVNCount:     type(uint8).max,                         // optional DVNs count, uint8
-            optionalDVNThreshold: 0,                                       // optional DVN threshold
-            requiredDVNs:        requiredDVNs, // sorted list of required DVN addresses
-            optionalDVNs:        new address[](0)                                       // sorted list of optional DVNs
+            confirmations: uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(20))), // minimum block confirmations required on A before sending to B
+            requiredDVNCount: uint8(vm.envOr("REQUIRED_DVN_COUNT", uint256(1))), // number of DVNs required
+            optionalDVNCount: type(uint8).max, // optional DVNs count, uint8
+            optionalDVNThreshold: 0, // optional DVN threshold
+            requiredDVNs: requiredDVNs, // sorted list of required DVN addresses
+            optionalDVNs: new address[](0) // sorted list of optional DVNs
         });
 
         /// @notice ExecutorConfig sets message size limit + fee‑paying executor for A → B
         ExecutorConfig memory exec = ExecutorConfig({
-            maxMessageSize: uint32(vm.envOr("MAX_MESSAGE_SIZE", uint256(10000))),                                       // max bytes per cross-chain message
-            executor:       vm.envAddress("ARB_EXECUTOR")                           // address that pays destination execution fees on B
+            maxMessageSize: uint32(vm.envOr("MAX_MESSAGE_SIZE", uint256(10000))), // max bytes per cross-chain message
+            executor: vm.envAddress("ARB_EXECUTOR") // address that pays destination execution fees on B
         });
 
-        bytes memory encodedUln  = abi.encode(uln);
+        bytes memory encodedUln = abi.encode(uln);
         bytes memory encodedExec = abi.encode(exec);
-
 
         SetConfigParam[] memory params = new SetConfigParam[](2);
         params[0] = SetConfigParam(BEid, EXECUTOR_CONFIG_TYPE, encodedExec);
@@ -99,7 +101,4 @@ contract SetDVNPredictionMarketLZResolverUmaSide is Script {
         vm.stopBroadcast();
     }
 }
-
-
-
 

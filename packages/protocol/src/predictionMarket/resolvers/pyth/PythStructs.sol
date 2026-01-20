@@ -25,4 +25,3 @@ library PythStructs {
     }
 }
 
-

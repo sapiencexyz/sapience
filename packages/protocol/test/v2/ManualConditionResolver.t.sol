@@ -19,12 +19,7 @@ contract ManualConditionResolverTest is Test {
 
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(
-        bytes32 indexed conditionId,
-        uint256 yesWeight,
-        uint256 noWeight,
-        address indexed settler
-    );
+    event ConditionSettled(bytes32 indexed conditionId, uint256 yesWeight, uint256 noWeight, address indexed settler);
 
     function setUp() public {
         owner = vm.addr(1);
