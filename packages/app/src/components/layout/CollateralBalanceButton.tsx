@@ -430,25 +430,39 @@ export default function CollateralBalanceButton({
             <DialogTitle>Fund Your Account</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              <a
-                href={STARGATE_DEPOSIT_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="gold-link"
-              >
-                Get USDe on Ethereal via Stargate
-              </a>{' '}
-              and then transfer it to your account.
-            </p>
+            <ul className="text-sm text-muted-foreground leading-relaxed list-disc list-inside space-y-1">
+              <li>
+                <a
+                  href="https://www.bungee.exchange/?fromChainId=1&fromTokenAddress=0x4c9edd5852cd905f086c759e8383e09bff1e68b3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gold-link"
+                >
+                  Get USDe
+                </a>
+              </li>
+              <li>
+                <a
+                  href={STARGATE_DEPOSIT_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gold-link"
+                >
+                  Bridge to Ethereal
+                </a>
+              </li>
+              <li className="text-brand-white">
+                Transfer to your Sapience Account
+              </li>
+            </ul>
 
             {/* Two Account Cards */}
             <div className="flex items-stretch gap-3">
-              {/* Ethereum Account Card */}
+              {/* Ethereal Account Card */}
               <div className="flex-1 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">
-                    Ethereum Account
+                    Ethereal Account
                   </p>
                   {eoaAddress ? (
                     <div className="flex items-center gap-2">
@@ -643,8 +657,7 @@ export default function CollateralBalanceButton({
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Withdraw USDe from your Sapience account back to your Ethereum
-              wallet.
+              Withdraw USDe from your Sapience Account to your Ethereal Account.
             </p>
 
             {/* Two Account Cards (reversed from deposit) */}
@@ -716,11 +729,11 @@ export default function CollateralBalanceButton({
                 <ArrowRight className="h-5 w-5 text-muted-foreground" />
               </div>
 
-              {/* Ethereum Account Card */}
+              {/* Ethereal Account Card */}
               <div className="flex-1 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
                 <div>
                   <p className="text-xs text-muted-foreground mb-1">
-                    Ethereum Account
+                    Ethereal Account
                   </p>
                   {eoaAddress ? (
                     <div className="flex items-center gap-2">

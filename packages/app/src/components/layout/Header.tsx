@@ -545,9 +545,7 @@ const Header = () => {
                       onClick={handleStartSession}
                       disabled={isStartingSession || !smartAccountAddress}
                     >
-                      {isStartingSession
-                        ? 'Establishing Connection...'
-                        : 'Establish Connection'}
+                      {isStartingSession ? 'Logging in...' : 'Log in'}
                     </Button>
                   )}
                   <DropdownMenu>
