@@ -1,10 +1,9 @@
 # CLAUDE.md
 
-Welcome! Before making any changes in this repository, please review the agent guides and claude.md files:
+Before making any changes in this repository:
 
-- `AGENTS.md` at the repository root for a high-level overview of the monorepo.
-- Package-specific guides such as `packages/api/AGENTS.md` or `packages/api/CLAUDE.md` (and any future `AGENTS.md` or `CLAUDE.md` files) for workflow details, commands, and constraints.
+1. **Always read the package-specific `CLAUDE.md`** before working on any package. For example, before working on `packages/protocol`, read `packages/protocol/CLAUDE.md` first.
 
-Always read the relevant `AGENTS.md` before editing code so you understand required tooling, environment variables, and deployment expectations.
+2. Review `AGENTS.md` files when available for additional context on tooling, environment variables, and deployment expectations.
 
-Once you have the context, follow the instructions inside those guides when working on tasks. Thanks!
+Follow the instructions inside those guides when working on tasks.
