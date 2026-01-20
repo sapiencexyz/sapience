@@ -19,7 +19,7 @@ import {
   useUserPositions,
   type Position,
 } from '~/hooks/graphql/useUserPositions';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';
 
@@ -120,7 +120,7 @@ export default function OgShareDialogBase({
   const { toast } = useToast();
   const { address } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const [positionResolved, setPositionResolved] = useState(false);
   // Store resolved position data for share URL
   const [resolvedPositionData, setResolvedPositionData] = useState<{

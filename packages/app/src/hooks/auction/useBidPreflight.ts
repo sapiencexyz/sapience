@@ -6,9 +6,9 @@ import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 type PreflightBlockedReason =
   | 'chain_switch_failed'
@@ -64,7 +64,7 @@ export function useBidPreflight(
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
   const { address } = useAccount();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   const {
     balance,

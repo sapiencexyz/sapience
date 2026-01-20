@@ -39,8 +39,7 @@ import { useReadContracts } from 'wagmi';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 
@@ -56,7 +55,7 @@ interface AuctionStartedData {
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   // Ensure bids hub is connected regardless of whether any rows are rendered.

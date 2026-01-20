@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { useBannerHeight } from '~/hooks/useBannerHeight';
 
@@ -21,7 +21,7 @@ const LowBalanceBanner: React.FC<LowBalanceBannerProps> = ({
   onVisibilityChange,
 }) => {
   const { address, isConnected } = useAccount();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { balance, isLoading } = useCollateralBalance({
     address,
     chainId,

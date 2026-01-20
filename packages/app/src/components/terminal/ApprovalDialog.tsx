@@ -27,7 +27,6 @@ import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
@@ -58,7 +57,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { address } = useAccount();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();

@@ -28,7 +28,6 @@ import { useConnectorClient } from 'wagmi';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -81,7 +80,7 @@ export default function CollateralBalanceButton({
   buttonClassName,
 }: CollateralBalanceButtonProps) {
   const { address: eoaAddress } = useAccount();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   // Get smart account address from session context
   const { smartAccountAddress, isCalculatingAddress } = useSession();

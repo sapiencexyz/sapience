@@ -28,7 +28,6 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useCollateralBalanceContext } from '~/lib/context/CollateralBalanceContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
@@ -95,8 +94,7 @@ export default function PositionForm({
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const selectedChainId = useChainIdFromLocalStorage();
-  const isEtherealChain = selectedChainId === CHAIN_ID_ETHEREAL;
+  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL;
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );

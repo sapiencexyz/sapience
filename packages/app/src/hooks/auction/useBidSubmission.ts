@@ -11,13 +11,13 @@ import {
   formatUnits,
 } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 // Note: Owner's wallet signs bid requests (not session key) so relayer can verify
 // smart account ownership by computing the smart account address from the recovered signer.
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 export type BidSubmissionParams = {
   auctionId: string;
@@ -80,7 +80,7 @@ export function useBidSubmission(
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { apiBaseUrl } = useSettings();
   const { isSessionActive, smartAccountAddress } = useSession();
 

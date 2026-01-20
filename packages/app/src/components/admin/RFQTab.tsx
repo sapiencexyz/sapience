@@ -52,7 +52,6 @@ import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
 import ResolveConditionCell from './ResolveConditionCell';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useCategories';
@@ -127,13 +126,8 @@ const RFQTab = ({
   const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
 
-  // Read chainId from localStorage with event monitoring
-  const currentChainId = useChainIdFromLocalStorage();
-
-  const currentChainName =
-    currentChainId === CHAIN_ID_ETHEREAL ? 'Ethereal' : 'Arbitrum';
-
- 
+  const currentChainId = CHAIN_ID_ETHEREAL;
+  const currentChainName = 'Ethereal';
 
   const [question, setQuestion] = useState('');
   const [shortName, setShortName] = useState('');
