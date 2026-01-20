@@ -391,10 +391,10 @@ importers:
         specifier: 0.3.2
         version: 0.3.2(wtanjgypsod3qwylrniuqirj2i)
       '@layerzerolabs/test-devtools-evm-foundry':
-        specifier: ^8.0.1
+        specifier: 8.0.1
         version: 8.0.1(ojgxbu2b3x6zlfenuvecxhcn74)
       '@layerzerolabs/toolbox-foundry':
-        specifier: ^0.1.13
+        specifier: 0.1.13
         version: 0.1.13
       '@openzeppelin/contracts':
         specifier: ^5.0.2
@@ -418,7 +418,7 @@ importers:
         specifier: 2.24.1
         version: 2.24.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.8.3)(utf-8-validate@5.0.10)
       solady:
-        specifier: ^0.1.26
+        specifier: 0.1.26
         version: 0.1.26
     devDependencies:
       '@layerzerolabs/lz-evm-messagelib-v2':
@@ -560,7 +560,7 @@ importers:
         version: 9.31.0(jiti@2.6.1)
       eslint-plugin-import:
         specifier: 2.32.0
-        version: 2.32.0(@typescript-eslint/parser@8.21.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint@9.31.0(jiti@2.6.1))
+        version: 2.32.0(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       prettier:
         specifier: 3.3.3
         version: 3.3.3
@@ -31401,7 +31401,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -31423,7 +31423,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.31.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.31.0(jiti@2.6.1)))(eslint@9.31.0(jiti@2.6.1))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@7.18.0(eslint@9.31.0(jiti@2.6.1))(typescript@5.8.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.31.0(jiti@2.6.1))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
