@@ -27,6 +27,7 @@ type SettingsContextValue = {
   researchAgentTemperature: number | null;
   // Appearance settings
   showAmericanOdds: boolean | null;
+  connectionDurationHours: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
@@ -37,6 +38,7 @@ type SettingsContextValue = {
   setResearchAgentModel: (value: string | null) => void;
   setResearchAgentTemperature: (value: number | null) => void;
   setShowAmericanOdds: (value: boolean | null) => void;
+  setConnectionDurationHours: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -47,6 +49,7 @@ type SettingsContextValue = {
     researchAgentModel: string;
     researchAgentTemperature: number;
     showAmericanOdds: boolean;
+    connectionDurationHours: number;
   };
 };
 
@@ -64,7 +67,10 @@ const STORAGE_KEYS = {
   researchAgentModel: 'sapience.settings.researchAgentModel',
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
+  connectionDurationHours: 'sapience.settings.connectionDurationHours',
 } as const;
+
+export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -182,6 +188,8 @@ export const SettingsProvider = ({
   const [showAmericanOddsOverride, setShowAmericanOddsOverride] = useState<
     boolean | null
   >(null);
+  const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
+    useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -226,6 +234,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.showAmericanOdds)
           : null;
+      const cdh =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
+          : null;
       if (g && isHttpUrl(g)) setGraphqlOverride(g);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
@@ -248,6 +260,11 @@ export const SettingsProvider = ({
         const val = lowered === '1' || lowered === 'true';
         setShowAmericanOddsOverride(val);
       }
+      if (cdh) {
+        const parsed = parseInt(cdh, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setConnectionDurationHoursOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -265,6 +282,7 @@ export const SettingsProvider = ({
       researchAgentModel: 'anthropic/claude-sonnet-4:online',
       researchAgentTemperature: 0.7,
       showAmericanOdds: false,
+      connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
     }),
     []
   );
@@ -308,6 +326,9 @@ export const SettingsProvider = ({
     : null;
   const showAmericanOdds = mounted
     ? (showAmericanOddsOverride ?? defaults.showAmericanOdds)
+    : null;
+  const connectionDurationHours = mounted
+    ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -480,6 +501,26 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setConnectionDurationHours = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.connectionDurationHours);
+        setConnectionDurationHoursOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.floor(Number(value)));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(
+        STORAGE_KEYS.connectionDurationHours,
+        String(clamped)
+      );
+      setConnectionDurationHoursOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -491,6 +532,7 @@ export const SettingsProvider = ({
     researchAgentModel,
     researchAgentTemperature,
     showAmericanOdds,
+    connectionDurationHours,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -501,6 +543,7 @@ export const SettingsProvider = ({
     setResearchAgentModel,
     setResearchAgentTemperature,
     setShowAmericanOdds,
+    setConnectionDurationHours,
     defaults,
   };
 

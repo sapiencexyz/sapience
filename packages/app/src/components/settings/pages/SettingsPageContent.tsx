@@ -23,7 +23,10 @@ import { Monitor, Share2, Bot } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useChat } from '~/lib/context/ChatContext';
-import { useSettings } from '~/lib/context/SettingsContext';
+import {
+  useSettings,
+  DEFAULT_CONNECTION_DURATION_HOURS,
+} from '~/lib/context/SettingsContext';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -169,6 +172,7 @@ const SettingsPageContent = () => {
     researchAgentModel,
     researchAgentTemperature,
     showAmericanOdds,
+    connectionDurationHours,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -178,6 +182,7 @@ const SettingsPageContent = () => {
     setResearchAgentModel,
     setResearchAgentTemperature,
     setShowAmericanOdds,
+    setConnectionDurationHours,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -189,10 +194,12 @@ const SettingsPageContent = () => {
   const [systemMessageInput, setSystemMessageInput] = useState('');
   const [modelInput, setModelInput] = useState('');
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
+  const [connectionDurationInput, setConnectionDurationInput] =
+    useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [isModelFocused, setIsModelFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    'network' | 'appearance' | 'agent'
-  >('network');
+  const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
+    'network'
+  );
   const [selectedChain, setSelectedChain] = useState<
     'arbitrum' | 'ethereal' | null
   >(null);
@@ -257,8 +264,8 @@ const SettingsPageContent = () => {
       const hash = window.location.hash;
       if (hash === '#agent') {
         setActiveTab('agent');
-      } else if (hash === '#appearance') {
-        setActiveTab('appearance');
+      } else if (hash === '#interface' || hash === '#appearance') {
+        setActiveTab('interface');
       } else {
         // Support legacy '#configuration' by mapping to 'network'
         setActiveTab('network');
@@ -284,6 +291,9 @@ const SettingsPageContent = () => {
     setModelInput(researchAgentModel ?? defaults.researchAgentModel);
     setTemperatureInput(
       researchAgentTemperature ?? defaults.researchAgentTemperature
+    );
+    setConnectionDurationInput(
+      String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,14 +360,14 @@ const SettingsPageContent = () => {
           <Tabs
             value={activeTab}
             onValueChange={(val) => {
-              setActiveTab(val as 'network' | 'appearance' | 'agent');
+              setActiveTab(val as 'network' | 'interface' | 'agent');
               try {
                 if (typeof window === 'undefined') return;
                 const url = new URL(window.location.href);
                 if (val === 'agent') {
                   url.hash = '#agent';
-                } else if (val === 'appearance') {
-                  url.hash = '#appearance';
+                } else if (val === 'interface') {
+                  url.hash = '#interface';
                 } else {
                   url.hash = '#network';
                 }
@@ -382,10 +392,10 @@ const SettingsPageContent = () => {
                     Agent
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="appearance">
+                <TabsTrigger value="interface">
                   <span className="inline-flex items-center gap-1.5">
                     <Monitor className="w-4 h-4" />
-                    Appearance
+                    Interface
                   </span>
                 </TabsTrigger>
               </SegmentedTabsList>
@@ -510,10 +520,44 @@ const SettingsPageContent = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="appearance">
+            <TabsContent value="interface">
               <Card className="bg-background">
                 <CardContent className="p-8">
                   <div className="space-y-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="connection-duration">
+                        Connection Duration
+                      </Label>
+                      <div className="relative w-32">
+                        <Input
+                          id="connection-duration"
+                          type="number"
+                          min={1}
+                          className="pr-14"
+                          value={connectionDurationInput}
+                          onChange={(e) => {
+                            setConnectionDurationInput(e.target.value);
+                          }}
+                          onBlur={() => {
+                            const parsed = parseInt(
+                              connectionDurationInput,
+                              10
+                            );
+                            if (Number.isFinite(parsed) && parsed >= 1) {
+                              setConnectionDurationHours(parsed);
+                            } else {
+                              setConnectionDurationInput(
+                                String(defaults.connectionDurationHours)
+                              );
+                              setConnectionDurationHours(null);
+                            }
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          hours
+                        </span>
+                      </div>
+                    </div>
                     <div className="grid gap-1">
                       <Label htmlFor="show-american-odds">
                         Show American Odds

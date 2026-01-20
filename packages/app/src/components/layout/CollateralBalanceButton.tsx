@@ -168,9 +168,14 @@ export default function CollateralBalanceButton({
     }
 
     setIsTransferLoading(true);
-    setTransferStatus('');
+    setTransferStatus('Switching to Ethereal...');
 
     try {
+      // Switch to Ethereal chain first
+      await switchChainAsync({ chainId: CHAIN_ID_ETHEREAL });
+
+      setTransferStatus('Preparing transaction...');
+
       // Build the calls array for batched execution
       const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
         [];
@@ -423,20 +428,19 @@ export default function CollateralBalanceButton({
       <Dialog open={isGetUsdeOpen} onOpenChange={setIsGetUsdeOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Get USDe</DialogTitle>
+            <DialogTitle>Fund Your Account</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Transfer{' '}
               <a
                 href={STARGATE_DEPOSIT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gold-link"
               >
-                USDe on Ethereal
+                Get USDe on Ethereal via Stargate
               </a>{' '}
-              to your Sapience account to get started.
+              and then transfer it to your account.
             </p>
 
             {/* Two Account Cards */}
@@ -580,8 +584,9 @@ export default function CollateralBalanceButton({
                       <HoverCardTrigger asChild>
                         <button
                           type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground flex items-center gap-1"
                         >
+                          <span className="text-lg">USDe</span>
                           <Info className="h-4 w-4" />
                         </button>
                       </HoverCardTrigger>
