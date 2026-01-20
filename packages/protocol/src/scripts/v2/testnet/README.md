@@ -24,9 +24,13 @@ This deployment uses real PredictionMarketV2 to mint position tokens, which are 
 2. Set up environment variables in `.env`:
 
 ```bash
-# Deployer
+# Deployer (deploys contracts and funds predictor/counterparty)
 DEPLOYER_PRIVATE_KEY=0x...
 DEPLOYER_ADDRESS=0x...
+
+# Predictor and Counterparty (separate addresses for testing mint/bridge)
+PREDICTOR_PRIVATE_KEY=0x...
+COUNTERPARTY_PRIVATE_KEY=0x...
 
 # LayerZero Endpoints (V2)
 # PM Network
@@ -147,9 +151,11 @@ forge script src/scripts/v2/testnet/11_TestBridgeBack.s.sol --rpc-url $SM_NETWOR
 ### Utilities
 
 ```bash
-# 12. Check deployment status
-forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $PM_NETWORK_RPC_URL -vvvv
-forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $SM_NETWORK_RPC_URL -vvvv
+# 12a. Check PM Network status
+forge script src/scripts/v2/testnet/12a_CheckStatus_PMNetwork.s.sol --rpc-url $PM_NETWORK_RPC_URL -vvvv
+
+# 12b. Check SM Network status
+forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $SM_NETWORK_RPC_URL -vvvv
 ```
 
 ## Script Summary
@@ -166,10 +172,11 @@ forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $SM_NETWORK_R
 | 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
 | 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
-| 09 | MintPositionTokens | Ethereal | Mint tokens via PredictionMarketV2 |
-| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to SM Network |
-| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to PM Network |
-| 12 | CheckStatus | Both | View deployment status & balances |
+| 09 | MintPositionTokens | Ethereal | Mint tokens (predictor/counterparty wager) |
+| 10 | TestBridgeToRemote | Ethereal | Predictor bridges tokens to SM Network |
+| 11 | TestBridgeBack | Arbitrum | Predictor bridges tokens back to PM Network |
+| 12a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status & balances |
+| 12b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status & balances |
 
 ## Automated Deployment
 
@@ -197,6 +204,10 @@ Use the `deploy-all.sh` script to run all steps automatically:
 # Required for all scripts
 DEPLOYER_PRIVATE_KEY=
 DEPLOYER_ADDRESS=
+
+# Required for mint and bridge testing (scripts 09-11)
+PREDICTOR_PRIVATE_KEY=
+COUNTERPARTY_PRIVATE_KEY=
 
 # RPC URLs
 PM_NETWORK_RPC_URL=
@@ -272,7 +283,9 @@ Use LayerZero Scan to track messages:
 
 ## Notes
 
-- The mint script uses the deployer as both predictor and counterparty for simplicity
+- The mint script uses separate predictor and counterparty addresses (deployer funds both with collateral)
+- Predictor and counterparty each sign their own approvals for mint
+- Bridge testing uses the predictor's tokens and private key
 - Position tokens represent real prediction market positions
 - Bridge flow: Ethereal (escrow) -> Arbitrum (mint) -> Ethereal (release)
 - ACK mechanism ensures atomic bridging

@@ -110,8 +110,9 @@ contract PythResolverEtherealForkTest is Test {
         uint32 feedId
     ) internal {
         // Deploy resolver configured for Ethereal Lazer verifier and settle the market.
-        PythResolver.Settings memory settings =
-            PythResolver.Settings({ maxPredictionMarkets: 1, pythLazer: lazer });
+        PythResolver.Settings memory settings = PythResolver.Settings({
+            maxPredictionMarkets: 1, pythLazer: lazer
+        });
         PythResolver resolver = new PythResolver(settings);
 
         bytes[] memory updateData = new bytes[](1);

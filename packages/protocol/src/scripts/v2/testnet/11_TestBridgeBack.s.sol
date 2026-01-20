@@ -10,12 +10,16 @@ import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Test Bridge Back
 /// @notice Bridge tokens from SM Network back to PM Network
+/// @dev Uses PREDICTOR_PRIVATE_KEY to bridge predictor tokens back
 contract TestBridgeBack is Script {
     function run() external {
         address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
-        address recipient = vm.envAddress("DEPLOYER_ADDRESS");
         bytes32 pickConfigId = vm.envBytes32("PICK_CONFIG_ID");
         bool isPredictorToken = true;
+
+        // Predictor bridges their own tokens back
+        uint256 predictorPk = vm.envUint("PREDICTOR_PRIVATE_KEY");
+        address predictor = vm.addr(predictorPk);
 
         PositionTokenBridgeRemote bridge =
             PositionTokenBridgeRemote(payable(bridgeAddr));
@@ -26,12 +30,12 @@ contract TestBridgeBack is Script {
         require(tokenAddr != address(0), "Token not deployed");
 
         IERC20 token = IERC20(tokenAddr);
-        uint256 balance = token.balanceOf(recipient);
+        uint256 balance = token.balanceOf(predictor);
 
-        console.log("=== Bridge Test: Arbitrum -> Ethereal ===");
+        console.log("=== Bridge Test: SM Network -> PM Network ===");
         console.log("Bridge:", bridgeAddr);
         console.log("Bridged Token:", tokenAddr);
-        console.log("Recipient:", recipient);
+        console.log("Predictor (sender):", predictor);
         console.log("Current balance:", balance);
 
         require(balance > 0, "No bridged tokens to bridge back");
@@ -45,16 +49,16 @@ contract TestBridgeBack is Script {
         MessagingFee memory fee = bridge.quoteBridge(tokenAddr, amount);
         console.log("LZ Fee (native):", fee.nativeFee);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(predictorPk);
 
         // Approve
         token.approve(bridgeAddr, amount);
         console.log("Approved bridge to spend tokens");
 
-        // Bridge back
+        // Bridge back - predictor sends to themselves on PM Network
         bytes32 bridgeId = bridge.bridge{ value: fee.nativeFee }(
             tokenAddr,
-            recipient,
+            predictor, // recipient on PM Network
             amount,
             bytes32(0) // refCode
         );
