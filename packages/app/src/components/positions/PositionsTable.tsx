@@ -1081,11 +1081,8 @@ export default function PositionsTable({
                 Profit/Loss
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-                <span className="tabular-nums text-brand-white font-mono">
-                  {pnlValue < 0 ? '-' : ''}
-                </span>
                 <NumberDisplay
-                  value={Math.abs(pnlValue)}
+                  value={pnlValue}
                   className="tabular-nums text-brand-white font-mono"
                 />{' '}
                 <span className="tabular-nums text-brand-white font-mono">

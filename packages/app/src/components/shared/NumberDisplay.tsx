@@ -20,7 +20,20 @@ const NumberDisplay = ({
   appendedText,
   decimals,
 }: NumberDisplayProps) => {
-  const formattedValue = formatNumber(value, decimals ?? 2);
+  const precision = decimals ?? 2;
+  const threshold = 1 / 10 ** precision;
+
+  // Handle small non-zero values
+  let formattedValue: string;
+  if (value !== 0 && Math.abs(value) < threshold) {
+    formattedValue =
+      value > 0
+        ? `<${threshold.toFixed(precision)}`
+        : `>-${threshold.toFixed(precision)}`;
+  } else {
+    formattedValue = formatNumber(value, precision);
+  }
+
   const originalValue = value.toString();
   const textToDisplay = appendedText ? ` ${appendedText}` : '';
 

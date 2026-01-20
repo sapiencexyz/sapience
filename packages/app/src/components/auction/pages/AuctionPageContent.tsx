@@ -11,7 +11,7 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 import {
   TransactionTimeCell,
   TransactionAmountCell,
@@ -471,8 +471,8 @@ const AuctionPageContent: React.FC = () => {
                             {row.quote != null ? (
                               <span className="whitespace-nowrap inline-flex items-center gap-1">
                                 <NumberDisplay
-                                  value={row.quote}
-                                  precision={6}
+                                  value={Number(row.quote)}
+                                  decimals={6}
                                 />{' '}
                                 {collateralAssetTicker} per share
                               </span>

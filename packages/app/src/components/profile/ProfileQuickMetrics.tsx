@@ -20,6 +20,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 
 import type { Position } from '~/hooks/graphql/useUserPositions';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
@@ -247,9 +248,7 @@ export default function ProfileQuickMetrics({
   const { data: accuracy, isLoading: accuracyLoading } =
     useForecasterRank(address);
 
-  const pnlValue = profitLoading
-    ? '—'
-    : Number(profit?.totalPnL || 0).toFixed(2);
+  const pnlNumber = Number(profit?.totalPnL || 0);
 
   const pnlRank = profitLoading
     ? undefined
@@ -280,7 +279,7 @@ export default function ProfileQuickMetrics({
           <MetricBadge
             icon={<BarChart2 className="h-4 w-4 opacity-70" />}
             label="Realized PnL"
-            value={pnlValue}
+            value={profitLoading ? '—' : <NumberDisplay value={pnlNumber} />}
             sublabel={pnlRank}
             size="normal"
             highlighted
