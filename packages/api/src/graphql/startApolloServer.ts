@@ -31,11 +31,10 @@ import {
   FindUniqueAttestationOrThrowResolver,
   GroupByAttestationResolver,
 
-  // Condition queries
+  // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
+  // are replaced by custom ConditionResolver which defaults public: true)
   AggregateConditionResolver,
-  FindFirstConditionResolver,
   FindFirstConditionOrThrowResolver,
-  FindManyConditionResolver,
   FindUniqueConditionResolver,
   FindUniqueConditionOrThrowResolver,
   GroupByConditionResolver,
@@ -65,6 +64,7 @@ import {
   ScoreResolver,
   PositionResolver,
   AnalyticsResolver,
+  ConditionResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -93,11 +93,10 @@ export const initializeApolloServer = async () => {
     FindUniqueAttestationOrThrowResolver,
     GroupByAttestationResolver,
 
-    // Condition queries
+    // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
+    // replaced by custom ConditionResolver which defaults public: true)
     AggregateConditionResolver,
-    FindFirstConditionResolver,
     FindFirstConditionOrThrowResolver,
-    FindManyConditionResolver,
     FindUniqueConditionResolver,
     FindUniqueConditionOrThrowResolver,
     GroupByConditionResolver,
@@ -124,7 +123,13 @@ export const initializeApolloServer = async () => {
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
   const allResolvers = queryResolvers
     .concat(relationResolvers)
-    .concat([PnLResolver, ScoreResolver, PositionResolver, AnalyticsResolver]);
+    .concat([
+      PnLResolver,
+      ScoreResolver,
+      PositionResolver,
+      AnalyticsResolver,
+      ConditionResolver,
+    ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolvers: allResolvers as any,
