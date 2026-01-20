@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized marketplace for onchain computing resources, specifically focused on prediction markets. The protocol uses Solidity smart contracts built with Foundry framework and deployed using Cannon CLI.
+Foil Protocol is a decentralized prediction market protocol with fungible betting pools using a parimutuel model and cross-chain bridge support.
 
 ## Commands
 
@@ -35,52 +35,110 @@ forge test --match-path test/market/modules/LiquidityModule/CreateLiquidityPosit
 forge test --match-test test_revertWhen_invalidEpoch -vvv
 ```
 
-## Architecture
-
-### Module System
-The protocol uses a diamond-like modular architecture where functionality is split into separate modules combined via a router pattern:
-
-- **ConfigurationModule**: Market initialization, epoch creation, ownership
-- **LiquidityModule**: LP position management (create, increase, decrease)
-- **TradeModule**: Trading operations
-- **SettlementModule**: Core settlement functionality
-- **UMASettlementModule**: UMA Optimistic Oracle V3 integration
-- **ViewsModule**: Read-only view functions
-- **NftModule**: ERC721 position NFTs
-
-### Storage Pattern
-Uses diamond storage pattern with deterministic slots:
-```solidity
-bytes32 slot = keccak256("foil.gas.market");
+### Linting and Formatting
+```bash
+pnpm lint # lint solidity source files
+pnpm fmt  # format solidity source files
 ```
 
-Key storage contracts:
-- `Market.sol`: Core market configuration and state
-- `Position.sol`: Position data (trades and liquidity)
-- `Epoch.sol`: Time-bound trading periods with Uniswap V3 pools
-- `Debt.sol`: Borrowing and collateral tracking
+## Directory Structure
 
-### Virtual Token System
-- Each epoch has virtual tokens (vETH and vGAS) representing long/short positions
-- Tokens are minted/burned for trades and liquidity provision
-- Integrated with Uniswap V3 for price discovery
+```
+src/
+├── v2/                  # Main protocol
+│   ├── bridge/          # Position token bridge (Ethereal <-> Arbitrum)
+│   ├── interfaces/      # V2 interfaces
+│   ├── resolvers/       # Condition resolvers
+│   ├── utils/           # Signature validation, account factory
+│   ├── PredictionMarketV2.sol
+│   ├── PositionToken.sol
+│   └── v2.md            # Detailed specification
+├── predictionMarket/    # Legacy prediction market
+├── bridge/              # LayerZero bridge utilities
+├── vault/               # Passive liquidity vault
+└── external/            # External interfaces
+```
 
-### Settlement Flow
-1. Epochs run for a predetermined period
-2. After epoch ends, UMA oracle submits settlement price
-3. Positions can be settled based on final price
-4. Special handling for fee collectors and liquidations
+## Architecture
+
+See `src/v2/v2.md` for the complete specification.
+
+### Core Concepts
+
+- **Pick**: A single prediction (conditionResolver, conditionId, predictedOutcome)
+- **Pick Configuration**: Set of picks that share fungible tokens, identified by `pickConfigId = keccak256(picks)`
+- **Prediction**: Individual bet with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, nonce)`
+- **Position Tokens**: ERC20 tokens representing shares in the collateral pool (1:1 ratio with wager)
+
+### Parimutuel Model
+
+Users with the same picks share tokens. Token supply equals total wagers:
+- Mint 50 USDE -> receive 50 predictor tokens
+- Winner side gets all collateral proportionally
+
+### Main Contracts
+
+- **PredictionMarketV2.sol**: Core contract handling mint, settle, redeem
+- **PositionToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
+- **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
+
+### Condition Resolvers
+
+Located in `src/v2/resolvers/`:
+- **PythConditionResolver**: Pyth oracle-based resolution
+- **ManualConditionResolver**: Admin-controlled resolution
+- **LZConditionResolver**: Cross-chain resolution via LayerZero
+- **ConditionalTokensConditionResolver**: Gnosis conditional tokens integration
+
+### Resolution Flow
+
+1. Condition resolvers return `OutcomeVector [yesWeight, noWeight]`
+   - `[1,0]` = YES wins, `[0,1]` = NO wins, `[1,1]` = tie
+2. PredictionMarketV2 applies parlay logic:
+   - All picks match predicted outcome -> PREDICTOR_WINS
+   - Any pick decisively against -> COUNTERPARTY_WINS
+   - Any non-decisive pick -> NON_DECISIVE (tie)
+
+### Bridge (Position Token Bridge)
+
+Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-phase commit (ACK).
+
+**Architecture:**
+```
+PositionTokenBridgeBase (abstract)
+├── PositionTokenBridge (Ethereal - source chain)
+└── PositionTokenBridgeRemote (Arbitrum - remote chain)
+```
+
+**Key Features:**
+- Unified interface: `bridge()`, `retry()` on both chains
+- Permissionless retry after 1 hour delay
+- Idempotent processing prevents double-mint/release
+- CREATE3 for deterministic token addresses across chains
+- Automatic token deployment on first bridge
+
+**Contracts:**
+- `PositionTokenBridgeBase.sol`: Abstract base with shared logic
+- `PositionTokenBridge.sol`: Ethereal side (escrow, release)
+- `PositionTokenBridgeRemote.sol`: Arbitrum side (mint, burn)
+- `PositionTokenFactory.sol`: CREATE3 factory
+- `BridgedPositionToken.sol`: Mintable/burnable ERC20 on Arbitrum
 
 ### Deployment Configuration
+
 Cannon deployment system using TOML files in `deployments/tomls/`:
 - `cannonfile.dev.toml`: Local development
 - `cannonfile.test.toml`: Test configuration
 - `cannonfile.sepolia.toml`: Sepolia testnet
-- `cannonfile.base.blobs.toml`: Base mainnet with blob storage
+- `cannonfile.base.blobs.toml`: Base mainnet
+
+## Rules
+
+- Run lint and format before commit
+- All tests must pass before commit
 
 ## Key Dependencies
-- **@synthetixio/core-contracts**: Core infrastructure patterns
-- **@uma/core**: Optimistic Oracle V3 for price discovery
-- **@uniswap/v3-core & v3-periphery**: AMM functionality
+
 - **@openzeppelin/contracts**: Standard implementations
+- **@layerzerolabs/lz-evm-oapp-v2**: Cross-chain messaging
 - **cannon-std**: Deployment and testing utilities
