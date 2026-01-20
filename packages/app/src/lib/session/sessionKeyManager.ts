@@ -8,6 +8,7 @@ import {
   type Address,
   type Hex,
   type Chain,
+  type Hash,
 } from 'viem';
 import { arbitrum } from 'viem/chains';
 import {
@@ -750,4 +751,73 @@ export function clearSession(): void {
   if (typeof window === 'undefined') return;
   console.debug('[SessionKeyManager] Clearing session from localStorage');
   localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+/**
+ * Execute a transaction using the owner's wallet (sudo validator).
+ * This bypasses session key permissions and requires an explicit wallet signature.
+ * Use this for sensitive operations like withdrawals that shouldn't be allowed via session keys.
+ */
+export async function executeSudoTransaction(
+  ownerSigner: OwnerSigner,
+  calls: { to: Address; data: Hex; value: bigint }[],
+  chainId: number
+): Promise<Hash> {
+  console.debug(
+    '[SessionKeyManager] Executing sudo transaction with owner signature...'
+  );
+
+  // Get the appropriate chain config and public client
+  const chain = chainId === etherealChain.id ? etherealChain : arbitrum;
+  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
+  const publicClient =
+    chainId === etherealChain.id ? etherealPublicClient : arbitrumPublicClient;
+
+  // Switch to the correct chain
+  console.debug(`[SessionKeyManager] Switching to chain ${chainId}...`);
+  await ownerSigner.switchChain(chainId);
+
+  // Create ECDSA validator for owner (sudo)
+  const ownerValidator = await signerToEcdsaValidator(publicClient, {
+    signer: ownerSigner.provider,
+    entryPoint: ENTRY_POINT,
+    kernelVersion: KERNEL_VERSION,
+  });
+
+  // Create kernel account with sudo validator only
+  const account = await createKernelAccount(publicClient, {
+    plugins: {
+      sudo: ownerValidator,
+    },
+    entryPoint: ENTRY_POINT,
+    kernelVersion: KERNEL_VERSION,
+  });
+
+  console.debug('[SessionKeyManager] Smart account address:', account.address);
+
+  // Create kernel client for the chain (with paymaster for gas sponsorship)
+  const client = createChainClient(chain, account);
+
+  // Execute the calls
+  console.debug(
+    `[SessionKeyManager] Sending ${calls.length} call(s) with owner signature...`
+  );
+
+  const txHash = await client.sendUserOperation({
+    callData: await account.encodeCalls(calls),
+  });
+
+  console.debug('[SessionKeyManager] UserOperation hash:', txHash);
+
+  // Wait for the transaction to be mined
+  const receipt = await client.waitForUserOperationReceipt({
+    hash: txHash,
+  });
+
+  console.debug(
+    '[SessionKeyManager] Transaction mined:',
+    receipt.receipt.transactionHash
+  );
+
+  return receipt.receipt.transactionHash;
 }
