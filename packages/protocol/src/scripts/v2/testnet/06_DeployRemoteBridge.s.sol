@@ -12,24 +12,22 @@ contract DeployRemoteBridge is Script {
         address owner = vm.envAddress("DEPLOYER_ADDRESS");
         address factory = vm.envAddress("FACTORY_ADDRESS");
 
-        console.log("Deploying PositionTokenBridgeRemote on Arbitrum...");
+        console.log("=== Deploy PositionTokenBridgeRemote on Arbitrum ===");
         console.log("LZ Endpoint:", endpoint);
         console.log("Owner:", owner);
         console.log("Factory:", factory);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        PositionTokenBridgeRemote bridge = new PositionTokenBridgeRemote(
-            endpoint,
-            owner,
-            factory
-        );
+        PositionTokenBridgeRemote bridge = new PositionTokenBridgeRemote(endpoint, owner, factory);
 
         vm.stopBroadcast();
 
-        console.log("PositionTokenBridgeRemote deployed at:", address(bridge));
+        console.log("");
+        console.log("=== Deployed ===");
+        console.log("PositionTokenBridgeRemote:", address(bridge));
         console.log("");
         console.log("Add to .env:");
-        console.log("ARB_BRIDGE_ADDRESS=%s", address(bridge));
+        console.log("ARB_BRIDGE_ADDRESS=", address(bridge));
     }
 }

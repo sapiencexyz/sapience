@@ -1,170 +1,189 @@
-# V2 Bridge Testnet Deployment
+# V2 Bridge Testnet Deployment Scripts
 
-Scripts to deploy and test the V2 position token bridge on testnets (Ethereal Testnet + Arbitrum Sepolia).
+Scripts for deploying and testing the V2 position token bridge between Ethereal and Arbitrum testnets.
+
+## Overview
+
+This deployment uses real PredictionMarketV2 to mint position tokens, which are then bridged between chains.
+
+### Contracts Deployed
+
+**On Ethereal (Source Chain):**
+- CollateralToken (Mock USDC)
+- ManualConditionResolver
+- PredictionMarketV2
+- PositionTokenBridge
+
+**On Arbitrum (Remote Chain):**
+- PositionTokenFactory
+- PositionTokenBridgeRemote
 
 ## Prerequisites
 
-1. Set environment variables in `.env`:
+1. Install Foundry
+2. Set up environment variables in `.env`:
 
 ```bash
-# RPC URLs
-ETHEREAL_RPC=https://testnet.ethereal.network/rpc
-ARB_SEPOLIA_RPC=https://sepolia-rollup.arbitrum.io/rpc
-
-# LayerZero Endpoints
-ETHEREAL_LZ_ENDPOINT=0x6F475642a6e85809B1c36Fa62763669b1b48DD5B
-ARB_LZ_ENDPOINT=0x6EDCE65403992e310A62460808c4b910D972f10f
-
-# Chain EIDs (LayerZero endpoint IDs)
-ETHEREAL_EID=30391
-ARB_SEPOLIA_EID=40231
-
 # Deployer
 DEPLOYER_PRIVATE_KEY=0x...
 DEPLOYER_ADDRESS=0x...
+
+# LayerZero Endpoints (V2)
+# Ethereal Testnet
+ETHEREAL_RPC_URL=https://testnet.ethereal.network/rpc
+ETHEREAL_LZ_ENDPOINT=0x6F475642a6e85809B1c36Fa62763669b1b48DD5B
+ETHEREAL_LZ_EID=30391
+
+# Arbitrum Sepolia
+ARB_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+ARB_LZ_ENDPOINT=0x6EDCE65403992e310A62460808c4b910D972f10f
+ARB_LZ_EID=40231
 ```
 
-2. Fund deployer address on both chains with native tokens for gas.
+3. Fund deployer address on both chains with native tokens for gas.
 
 ## Deployment Steps
 
-### Step 1: Deploy Factory on Arbitrum Sepolia
+### Phase 1: Deploy Ethereal Infrastructure
+
+Run on **Ethereal Testnet**:
 
 ```bash
-forge script src/scripts/v2/testnet/01_DeployFactory.s.sol \
-  --rpc-url $ARB_SEPOLIA_RPC \
-  --broadcast \
-  --verify
+# 1. Deploy collateral token (mock USDC)
+forge script src/scripts/v2/testnet/01_DeployCollateral.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# Add to .env: COLLATERAL_TOKEN_ADDRESS=...
+
+# 2. Deploy manual condition resolver
+forge script src/scripts/v2/testnet/02_DeployResolver.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# Add to .env: RESOLVER_ADDRESS=...
+
+# 3. Deploy PredictionMarketV2
+forge script src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# Add to .env: PREDICTION_MARKET_ADDRESS=...
+
+# 5. Deploy Ethereal Bridge
+forge script src/scripts/v2/testnet/05_DeployEtherealBridge.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# Add to .env: ETHEREAL_BRIDGE_ADDRESS=...
 ```
 
-Save the factory address to `.env`:
-```bash
-FACTORY_ADDRESS=0x...
-```
+### Phase 2: Deploy Arbitrum Infrastructure
 
-### Step 2: Deploy Bridge on Ethereal
-
-```bash
-forge script src/scripts/v2/testnet/02_DeployEtherealBridge.s.sol \
-  --rpc-url $ETHEREAL_RPC \
-  --broadcast
-```
-
-Save the bridge address to `.env`:
-```bash
-ETHEREAL_BRIDGE_ADDRESS=0x...
-```
-
-### Step 3: Deploy Remote Bridge on Arbitrum Sepolia
-
-```bash
-forge script src/scripts/v2/testnet/03_DeployRemoteBridge.s.sol \
-  --rpc-url $ARB_SEPOLIA_RPC \
-  --broadcast \
-  --verify
-```
-
-Save the bridge address to `.env`:
-```bash
-ARB_BRIDGE_ADDRESS=0x...
-```
-
-### Step 4: Configure Bridges (run on both chains)
-
-Configure Ethereal bridge:
-```bash
-forge script src/scripts/v2/testnet/04_ConfigureEtherealBridge.s.sol \
-  --rpc-url $ETHEREAL_RPC \
-  --broadcast
-```
-
-Configure Arbitrum bridge:
-```bash
-forge script src/scripts/v2/testnet/05_ConfigureRemoteBridge.s.sol \
-  --rpc-url $ARB_SEPOLIA_RPC \
-  --broadcast
-```
-
-### Step 5: Deploy Test Token on Ethereal
+Run on **Arbitrum Sepolia**:
 
 ```bash
-forge script src/scripts/v2/testnet/06_DeployTestToken.s.sol \
-  --rpc-url $ETHEREAL_RPC \
-  --broadcast
+# 4. Deploy Position Token Factory
+forge script src/scripts/v2/testnet/04_DeployFactory.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+
+# Add to .env: FACTORY_ADDRESS=...
+
+# 6. Deploy Remote Bridge
+forge script src/scripts/v2/testnet/06_DeployRemoteBridge.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
+
+# Add to .env: ARB_BRIDGE_ADDRESS=...
 ```
 
-Save the token address to `.env`:
-```bash
-TEST_TOKEN_ADDRESS=0x...
-```
-
-### Step 6: Fund Bridges for ACK Fees
-
-Send ETH to both bridges for ACK message fees:
-```bash
-# On Ethereal
-cast send $ETHEREAL_BRIDGE_ADDRESS --value 0.1ether --rpc-url $ETHEREAL_RPC --private-key $DEPLOYER_PRIVATE_KEY
-
-# On Arbitrum Sepolia
-cast send $ARB_BRIDGE_ADDRESS --value 0.01ether --rpc-url $ARB_SEPOLIA_RPC --private-key $DEPLOYER_PRIVATE_KEY
-```
-
-## Testing the Bridge
-
-### Test 1: Bridge Ethereal → Arbitrum
+### Phase 3: Configure Bridges
 
 ```bash
-forge script src/scripts/v2/testnet/07_TestBridgeToRemote.s.sol \
-  --rpc-url $ETHEREAL_RPC \
-  --broadcast
+# 7. Configure Ethereal Bridge (run on Ethereal)
+forge script src/scripts/v2/testnet/07_ConfigureEtherealBridge.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# 8. Configure Remote Bridge (run on Arbitrum)
+forge script src/scripts/v2/testnet/08_ConfigureRemoteBridge.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
 ```
 
-This will:
-1. Approve tokens to bridge
-2. Quote the bridge fee
-3. Call `bridge()` to send tokens to Arbitrum
-4. Print the bridgeId for tracking
+### Phase 4: Mint Position Tokens
 
-### Test 2: Check Bridge Status
-
-After ~1-2 minutes (LayerZero message delivery), check on Arbitrum:
+Run on **Ethereal Testnet**:
 
 ```bash
-# Check if token was deployed
-cast call $ARB_BRIDGE_ADDRESS "isTokenDeployed(bytes32,bool)" $PICK_CONFIG_ID true --rpc-url $ARB_SEPOLIA_RPC
+# 9. Mint position tokens via PredictionMarketV2
+forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
 
-# Get bridged token address
-cast call $ARB_BRIDGE_ADDRESS "getTokenAddress(bytes32,bool)" $PICK_CONFIG_ID true --rpc-url $ARB_SEPOLIA_RPC
-
-# Check recipient balance
-cast call $BRIDGED_TOKEN "balanceOf(address)" $RECIPIENT --rpc-url $ARB_SEPOLIA_RPC
+# Add to .env:
+# PREDICTOR_TOKEN_ADDRESS=...
+# COUNTERPARTY_TOKEN_ADDRESS=...
+# PICK_CONFIG_ID=...
+# CONDITION_ID=...
 ```
 
-### Test 3: Bridge Back Arbitrum → Ethereal
+### Phase 5: Test Bridging
 
 ```bash
-forge script src/scripts/v2/testnet/08_TestBridgeBack.s.sol \
-  --rpc-url $ARB_SEPOLIA_RPC \
-  --broadcast
+# 10. Bridge tokens from Ethereal to Arbitrum
+forge script src/scripts/v2/testnet/10_TestBridgeToRemote.s.sol --rpc-url $ETHEREAL_RPC_URL --broadcast -vvvv
+
+# Wait 1-2 minutes for LayerZero delivery...
+
+# 11. Bridge tokens back from Arbitrum to Ethereal
+forge script src/scripts/v2/testnet/11_TestBridgeBack.s.sol --rpc-url $ARB_RPC_URL --broadcast -vvvv
 ```
 
-## Verification
-
-Check bridge configuration is complete:
+### Utilities
 
 ```bash
-# Ethereal bridge
-cast call $ETHEREAL_BRIDGE_ADDRESS "isConfigComplete()" --rpc-url $ETHEREAL_RPC
-
-# Arbitrum bridge
-cast call $ARB_BRIDGE_ADDRESS "isConfigComplete()" --rpc-url $ARB_SEPOLIA_RPC
+# 12. Check deployment status
+forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $ETHEREAL_RPC_URL -vvvv
+forge script src/scripts/v2/testnet/12_CheckStatus.s.sol --rpc-url $ARB_RPC_URL -vvvv
 ```
 
-Check pending bridges:
+## Script Summary
+
+| # | Script | Chain | Description |
+|---|--------|-------|-------------|
+| 01 | DeployCollateral | Ethereal | Deploy mock USDC collateral token |
+| 02 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
+| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketV2 |
+| 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
+| 05 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
+| 06 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
+| 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
+| 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
+| 09 | MintPositionTokens | Ethereal | Mint tokens via PredictionMarketV2 |
+| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
+| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
+| 12 | CheckStatus | Both | View deployment status & balances |
+
+## Environment Variables Reference
 
 ```bash
-cast call $ETHEREAL_BRIDGE_ADDRESS "getPendingBridges(address)" $DEPLOYER_ADDRESS --rpc-url $ETHEREAL_RPC
+# Required for all scripts
+DEPLOYER_PRIVATE_KEY=
+DEPLOYER_ADDRESS=
+
+# RPC URLs
+ETHEREAL_RPC_URL=
+ARB_RPC_URL=
+
+# LayerZero Configuration
+ETHEREAL_LZ_ENDPOINT=
+ETHEREAL_LZ_EID=
+ARB_LZ_ENDPOINT=
+ARB_LZ_EID=
+
+# After deployments (add progressively)
+COLLATERAL_TOKEN_ADDRESS=
+RESOLVER_ADDRESS=
+PREDICTION_MARKET_ADDRESS=
+FACTORY_ADDRESS=
+ETHEREAL_BRIDGE_ADDRESS=
+ARB_BRIDGE_ADDRESS=
+PREDICTOR_TOKEN_ADDRESS=
+COUNTERPARTY_TOKEN_ADDRESS=
+PICK_CONFIG_ID=
+CONDITION_ID=
+
+# Optional
+BRIDGE_AMOUNT=10000000000000000000  # 10 tokens in wei
 ```
+
+## Monitoring
+
+Track cross-chain messages: https://testnet.layerzeroscan.com/
 
 ## Troubleshooting
 
@@ -174,10 +193,10 @@ If bridge doesn't complete after 1 hour, retry:
 
 ```bash
 # Get quote for retry
-cast call $ETHEREAL_BRIDGE_ADDRESS "quoteRetry(bytes32)" $BRIDGE_ID --rpc-url $ETHEREAL_RPC
+cast call $ETHEREAL_BRIDGE_ADDRESS "quoteRetry(bytes32)" $BRIDGE_ID --rpc-url $ETHEREAL_RPC_URL
 
 # Retry (anyone can call)
-cast send $ETHEREAL_BRIDGE_ADDRESS "retry(bytes32)" $BRIDGE_ID --value 0.01ether --rpc-url $ETHEREAL_RPC --private-key $DEPLOYER_PRIVATE_KEY
+cast send $ETHEREAL_BRIDGE_ADDRESS "retry(bytes32,bytes32)" $BRIDGE_ID 0x0 --value 0.01ether --rpc-url $ETHEREAL_RPC_URL --private-key $DEPLOYER_PRIVATE_KEY
 ```
 
 ### Check LayerZero Message Status
@@ -185,11 +204,20 @@ cast send $ETHEREAL_BRIDGE_ADDRESS "retry(bytes32)" $BRIDGE_ID --value 0.01ether
 Use LayerZero Scan to track messages:
 - https://testnet.layerzeroscan.com/
 
+## Notes
+
+- The mint script uses the deployer as both predictor and counterparty for simplicity
+- Position tokens represent real prediction market positions
+- Bridge flow: Ethereal (escrow) -> Arbitrum (mint) -> Ethereal (release)
+- ACK mechanism ensures atomic bridging
+
 ## Contract Addresses (fill after deployment)
 
 | Contract | Chain | Address |
 |----------|-------|---------|
-| PositionTokenFactory | Arbitrum Sepolia | |
-| PositionTokenBridge | Ethereal Testnet | |
-| PositionTokenBridgeRemote | Arbitrum Sepolia | |
-| MockPositionToken | Ethereal Testnet | |
+| CollateralToken | Ethereal | |
+| ManualConditionResolver | Ethereal | |
+| PredictionMarketV2 | Ethereal | |
+| PositionTokenFactory | Arbitrum | |
+| PositionTokenBridge | Ethereal | |
+| PositionTokenBridgeRemote | Arbitrum | |

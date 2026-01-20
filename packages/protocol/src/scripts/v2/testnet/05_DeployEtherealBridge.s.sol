@@ -11,7 +11,7 @@ contract DeployEtherealBridge is Script {
         address endpoint = vm.envAddress("ETHEREAL_LZ_ENDPOINT");
         address owner = vm.envAddress("DEPLOYER_ADDRESS");
 
-        console.log("Deploying PositionTokenBridge on Ethereal...");
+        console.log("=== Deploy PositionTokenBridge on Ethereal ===");
         console.log("LZ Endpoint:", endpoint);
         console.log("Owner:", owner);
 
@@ -21,9 +21,11 @@ contract DeployEtherealBridge is Script {
 
         vm.stopBroadcast();
 
-        console.log("PositionTokenBridge deployed at:", address(bridge));
+        console.log("");
+        console.log("=== Deployed ===");
+        console.log("PositionTokenBridge:", address(bridge));
         console.log("");
         console.log("Add to .env:");
-        console.log("ETHEREAL_BRIDGE_ADDRESS=%s", address(bridge));
+        console.log("ETHEREAL_BRIDGE_ADDRESS=", address(bridge));
     }
 }

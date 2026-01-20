@@ -5,12 +5,12 @@ import {Script, console} from "forge-std/Script.sol";
 import {PositionTokenFactory} from "../../../v2/bridge/PositionTokenFactory.sol";
 
 /// @title Deploy PositionTokenFactory
-/// @notice Deploy factory on Arbitrum Sepolia
+/// @notice Deploy factory on Arbitrum Sepolia (remote chain)
 contract DeployFactory is Script {
     function run() external {
         address owner = vm.envAddress("DEPLOYER_ADDRESS");
 
-        console.log("Deploying PositionTokenFactory...");
+        console.log("=== Deploy PositionTokenFactory ===");
         console.log("Owner:", owner);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
@@ -19,9 +19,11 @@ contract DeployFactory is Script {
 
         vm.stopBroadcast();
 
-        console.log("PositionTokenFactory deployed at:", address(factory));
+        console.log("");
+        console.log("=== Deployed ===");
+        console.log("PositionTokenFactory:", address(factory));
         console.log("");
         console.log("Add to .env:");
-        console.log("FACTORY_ADDRESS=%s", address(factory));
+        console.log("FACTORY_ADDRESS=", address(factory));
     }
 }

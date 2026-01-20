@@ -7,22 +7,22 @@ import {PositionTokenFactory} from "../../../v2/bridge/PositionTokenFactory.sol"
 import {IPositionTokenBridgeBase} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
 
 /// @title Configure Remote Bridge
-/// @notice Set bridge config, LayerZero peer, and factory deployer on Arbitrum
+/// @notice Configure bridge on Arbitrum with Ethereal settings
 contract ConfigureRemoteBridge is Script {
     function run() external {
         address bridgeAddr = vm.envAddress("ARB_BRIDGE_ADDRESS");
-        address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
         address remoteBridge = vm.envAddress("ETHEREAL_BRIDGE_ADDRESS");
-        uint32 remoteEid = uint32(vm.envUint("ETHEREAL_EID"));
+        address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
+        uint32 remoteEid = uint32(vm.envUint("ETHEREAL_LZ_EID"));
 
         PositionTokenBridgeRemote bridge = PositionTokenBridgeRemote(payable(bridgeAddr));
         PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
 
-        console.log("Configuring Remote Bridge on Arbitrum...");
+        console.log("=== Configure Remote Bridge ===");
         console.log("Bridge:", bridgeAddr);
-        console.log("Factory:", factoryAddr);
-        console.log("Remote Bridge (Ethereal):", remoteBridge);
+        console.log("Remote Bridge:", remoteBridge);
         console.log("Remote EID:", remoteEid);
+        console.log("Factory:", factoryAddr);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
@@ -33,23 +33,28 @@ contract ConfigureRemoteBridge is Script {
                 remoteBridge: remoteBridge
             })
         );
-        console.log("Bridge config set");
 
-        // Set LayerZero peer
-        bytes32 peerBytes = bytes32(uint256(uint160(remoteBridge)));
-        bridge.setPeer(remoteEid, peerBytes);
-        console.log("LZ peer set");
+        // Set LZ peer
+        bytes32 peer = bytes32(uint256(uint160(remoteBridge)));
+        bridge.setPeer(remoteEid, peer);
 
         // Set factory deployer to bridge
         factory.setDeployer(bridgeAddr);
-        console.log("Factory deployer set to bridge");
+
+        // Fund bridge for ACK fees
+        (bool success,) = bridgeAddr.call{value: 0.01 ether}("");
+        require(success, "Failed to fund bridge");
 
         vm.stopBroadcast();
 
-        // Verify config
-        bool bridgeComplete = bridge.isConfigComplete();
-        bool factoryComplete = factory.isConfigComplete();
-        console.log("Bridge config complete:", bridgeComplete);
-        console.log("Factory config complete:", factoryComplete);
+        console.log("");
+        console.log("=== Configured ===");
+        console.log("Bridge config set");
+        console.log("LZ peer set");
+        console.log("Factory deployer set to bridge");
+        console.log("Funded with 0.01 ETH for ACK fees");
+        console.log("");
+        console.log("Config complete:", bridge.isConfigComplete());
+        console.log("Factory config complete:", factory.isConfigComplete());
     }
 }

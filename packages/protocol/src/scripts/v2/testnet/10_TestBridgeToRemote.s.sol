@@ -7,13 +7,13 @@ import {PositionTokenBridge} from "../../../v2/bridge/PositionTokenBridge.sol";
 import {MessagingFee} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Test Bridge to Remote
-/// @notice Bridge tokens from Ethereal to Arbitrum
+/// @notice Bridge position tokens from Ethereal to Arbitrum
 contract TestBridgeToRemote is Script {
     function run() external {
         address bridgeAddr = vm.envAddress("ETHEREAL_BRIDGE_ADDRESS");
-        address tokenAddr = vm.envAddress("TEST_TOKEN_ADDRESS");
+        address tokenAddr = vm.envAddress("PREDICTOR_TOKEN_ADDRESS"); // Use predictor token
         address recipient = vm.envAddress("DEPLOYER_ADDRESS");
-        uint256 amount = 0.1 ether; // 0.1 tokens (18 decimals)
+        uint256 amount = vm.envOr("BRIDGE_AMOUNT", uint256(10 ether)); // Default 10 tokens
 
         PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
         IERC20 token = IERC20(tokenAddr);
