@@ -23,14 +23,12 @@ import { Monitor, Share2, Bot } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useChat } from '~/lib/context/ChatContext';
-import { useSettings } from '~/lib/context/SettingsContext';
+import {
+  useSettings,
+  DEFAULT_CONNECTION_DURATION_HOURS,
+} from '~/lib/context/SettingsContext';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-
-const CHAIN_ID_ARBITRUM = '42161';
-const CHAIN_ID_ETHEREAL = '5064014';
-const CHAIN_ID_STORAGE_KEY = 'sapience.settings.selectedChainId';
-const RPC_STORAGE_KEY = 'sapience.settings.selectedRpcURL';
 
 type SettingFieldProps = {
   id: string;
@@ -163,88 +161,46 @@ const SettingsPageContent = () => {
     graphqlEndpoint,
     apiBaseUrl,
     chatBaseUrl,
-    rpcURL,
+    etherealRpcURL,
+    arbitrumRpcURL,
     openrouterApiKey,
     researchAgentSystemMessage,
     researchAgentModel,
     researchAgentTemperature,
     showAmericanOdds,
+    connectionDurationHours,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
-    setRpcUrl,
+    setEtherealRpcUrl,
+    setArbitrumRpcUrl,
     setOpenrouterApiKey,
     setResearchAgentSystemMessage,
     setResearchAgentModel,
     setResearchAgentTemperature,
     setShowAmericanOdds,
+    setConnectionDurationHours,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
   const [gqlInput, setGqlInput] = useState('');
   const [apiInput, setApiInput] = useState('');
   const [chatInput, setChatInput] = useState('');
-  const [rpcInput, setRpcInput] = useState('');
+  const [etherealRpcInput, setEtherealRpcInput] = useState('');
+  const [arbitrumRpcInput, setArbitrumRpcInput] = useState('');
   const [openrouterKeyInput, setOpenrouterKeyInput] = useState('');
   const [systemMessageInput, setSystemMessageInput] = useState('');
   const [modelInput, setModelInput] = useState('');
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
+  const [connectionDurationInput, setConnectionDurationInput] =
+    useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [isModelFocused, setIsModelFocused] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    'network' | 'appearance' | 'agent'
-  >('network');
-  const [selectedChain, setSelectedChain] = useState<
-    'arbitrum' | 'ethereal' | null
-  >(null);
+  const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
+    'network'
+  );
 
   // Validation hints handled within SettingField to avoid parent re-renders breaking focus
   const [hydrated, setHydrated] = useState(false);
-
-  // Initialize selectedChain from localStorage on mount
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const chainIdLocalStorage =
-      window.localStorage.getItem(CHAIN_ID_STORAGE_KEY);
-
-    if (chainIdLocalStorage === CHAIN_ID_ETHEREAL) {
-      setSelectedChain('ethereal');
-    } else if (chainIdLocalStorage === CHAIN_ID_ARBITRUM) {
-      setSelectedChain('arbitrum');
-    } else {
-      // Default to Ethereal when there is no stored value or an unknown value
-      setSelectedChain('ethereal');
-    }
-    setRpcInput(
-      window.localStorage.getItem(RPC_STORAGE_KEY) || defaults.rpcURL
-    );
-  }, []);
-
-  // Update RPC input, selected chain ID, and persisted RPC override when the selection changes
-  useEffect(() => {
-    const ETHEREAL_RPC = 'https://rpc.ethereal.trade';
-    if (typeof window === 'undefined' || !selectedChain) return;
-
-    const nextChainId =
-      selectedChain === 'ethereal' ? CHAIN_ID_ETHEREAL : CHAIN_ID_ARBITRUM;
-    const nextRpcUrl =
-      selectedChain === 'ethereal' ? ETHEREAL_RPC : defaults.rpcURL;
-
-    try {
-      setRpcInput(nextRpcUrl);
-      setRpcUrl(nextRpcUrl);
-      window.localStorage.setItem(CHAIN_ID_STORAGE_KEY, nextChainId);
-    } catch {
-      // no-op
-    }
-  }, [selectedChain, defaults.rpcURL, setRpcUrl]);
-
-  // override from SettingsContext if exists for first render after mount
-  useEffect(() => {
-    if (!mounted) return;
-    if (typeof window === 'undefined') return;
-    setRpcInput(rpcURL || '');
-    window.localStorage.setItem(RPC_STORAGE_KEY, rpcURL || '');
-  }, [rpcURL, mounted]);
 
   useEffect(() => {
     setMounted(true);
@@ -257,8 +213,8 @@ const SettingsPageContent = () => {
       const hash = window.location.hash;
       if (hash === '#agent') {
         setActiveTab('agent');
-      } else if (hash === '#appearance') {
-        setActiveTab('appearance');
+      } else if (hash === '#interface' || hash === '#appearance') {
+        setActiveTab('interface');
       } else {
         // Support legacy '#configuration' by mapping to 'network'
         setActiveTab('network');
@@ -274,6 +230,8 @@ const SettingsPageContent = () => {
     setGqlInput(graphqlEndpoint || defaults.graphqlEndpoint);
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
+    setEtherealRpcInput(etherealRpcURL ?? defaults.etherealRpcURL);
+    setArbitrumRpcInput(arbitrumRpcURL ?? defaults.arbitrumRpcURL);
     // If a key exists, show masked dots and disable input
     setOpenrouterKeyInput(
       openrouterApiKey
@@ -284,6 +242,9 @@ const SettingsPageContent = () => {
     setModelInput(researchAgentModel ?? defaults.researchAgentModel);
     setTemperatureInput(
       researchAgentTemperature ?? defaults.researchAgentTemperature
+    );
+    setConnectionDurationInput(
+      String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -350,14 +311,14 @@ const SettingsPageContent = () => {
           <Tabs
             value={activeTab}
             onValueChange={(val) => {
-              setActiveTab(val as 'network' | 'appearance' | 'agent');
+              setActiveTab(val as 'network' | 'interface' | 'agent');
               try {
                 if (typeof window === 'undefined') return;
                 const url = new URL(window.location.href);
                 if (val === 'agent') {
                   url.hash = '#agent';
-                } else if (val === 'appearance') {
-                  url.hash = '#appearance';
+                } else if (val === 'interface') {
+                  url.hash = '#interface';
                 } else {
                   url.hash = '#network';
                 }
@@ -382,10 +343,10 @@ const SettingsPageContent = () => {
                     Agent
                   </span>
                 </TabsTrigger>
-                <TabsTrigger value="appearance">
+                <TabsTrigger value="interface">
                   <span className="inline-flex items-center gap-1.5">
                     <Monitor className="w-4 h-4" />
-                    Appearance
+                    Interface
                   </span>
                 </TabsTrigger>
               </SegmentedTabsList>
@@ -396,54 +357,49 @@ const SettingsPageContent = () => {
                 <CardContent className="p-8">
                   <div className="space-y-6">
                     <div className="grid gap-2">
-                      <Label htmlFor="chain-selector">Chain</Label>
-                      <div id="chain-selector">
-                        <Tabs
-                          value={selectedChain ?? 'ethereal'}
-                          onValueChange={(v) => {
-                            const next = v as 'arbitrum' | 'ethereal';
-                            setSelectedChain(next);
-                          }}
-                        >
-                          <SegmentedTabsList>
-                            <TabsTrigger value="ethereal">Ethereal</TabsTrigger>
-                            <TabsTrigger value="arbitrum">Arbitrum</TabsTrigger>
-                          </SegmentedTabsList>
-                        </Tabs>
-                      </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="network-rpc-endpoint">
-                        Network RPC Endpoint
+                      <Label htmlFor="ethereal-rpc-endpoint">
+                        Ethereal RPC Endpoint
                       </Label>
                       <SettingField
-                        id="network-rpc-endpoint"
-                        value={rpcInput}
-                        setValue={setRpcInput}
-                        defaultValue={defaults.rpcURL}
-                        onPersist={setRpcUrl}
+                        id="ethereal-rpc-endpoint"
+                        value={etherealRpcInput}
+                        setValue={setEtherealRpcInput}
+                        defaultValue={defaults.etherealRpcURL}
+                        onPersist={setEtherealRpcUrl}
                         validate={isHttpUrl}
                         normalizeOnChange={(s) => s.trim()}
                         invalidMessage="Must be an absolute http(s) URL"
-                        showResetButton={false}
                       />
                       <p className="text-xs text-muted-foreground">
-                        {selectedChain === 'arbitrum' ? (
-                          <>
-                            JSON-RPC URL for the{' '}
-                            <a
-                              href="https://chainlist.org/chain/42161"
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              Arbitrum
-                            </a>{' '}
-                            network
-                          </>
-                        ) : (
-                          <>JSON-RPC URL for the Ethereal network</>
-                        )}
+                        JSON-RPC URL for the Ethereal network (trading)
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="arbitrum-rpc-endpoint">
+                        Arbitrum RPC Endpoint
+                      </Label>
+                      <SettingField
+                        id="arbitrum-rpc-endpoint"
+                        value={arbitrumRpcInput}
+                        setValue={setArbitrumRpcInput}
+                        defaultValue={defaults.arbitrumRpcURL}
+                        onPersist={setArbitrumRpcUrl}
+                        validate={isHttpUrl}
+                        normalizeOnChange={(s) => s.trim()}
+                        invalidMessage="Must be an absolute http(s) URL"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        JSON-RPC URL for{' '}
+                        <a
+                          href="https://chainlist.org/chain/42161"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Arbitrum
+                        </a>{' '}
+                        (forecasting)
                       </p>
                     </div>
 
@@ -510,10 +466,44 @@ const SettingsPageContent = () => {
               </Card>
             </TabsContent>
 
-            <TabsContent value="appearance">
+            <TabsContent value="interface">
               <Card className="bg-background">
                 <CardContent className="p-8">
                   <div className="space-y-6">
+                    <div className="grid gap-2">
+                      <Label htmlFor="connection-duration">
+                        Connection Duration
+                      </Label>
+                      <div className="relative w-32">
+                        <Input
+                          id="connection-duration"
+                          type="number"
+                          min={1}
+                          className="pr-14"
+                          value={connectionDurationInput}
+                          onChange={(e) => {
+                            setConnectionDurationInput(e.target.value);
+                          }}
+                          onBlur={() => {
+                            const parsed = parseInt(
+                              connectionDurationInput,
+                              10
+                            );
+                            if (Number.isFinite(parsed) && parsed >= 1) {
+                              setConnectionDurationHours(parsed);
+                            } else {
+                              setConnectionDurationInput(
+                                String(defaults.connectionDurationHours)
+                              );
+                              setConnectionDurationHours(null);
+                            }
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          hours
+                        </span>
+                      </div>
+                    </div>
                     <div className="grid gap-1">
                       <Label htmlFor="show-american-odds">
                         Show American Odds

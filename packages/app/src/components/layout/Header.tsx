@@ -1,14 +1,6 @@
 'use client';
 
 import { Button } from '@sapience/ui/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@sapience/ui/components/ui/dialog';
-import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
   DropdownMenu,
@@ -34,7 +26,6 @@ import {
   Bot,
   Trophy,
   Users,
-  Copy,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -52,6 +43,10 @@ import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCode
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
+import {
+  useSettings,
+  DEFAULT_CONNECTION_DURATION_HOURS,
+} from '~/lib/context/SettingsContext';
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
@@ -197,8 +192,6 @@ const Header = () => {
   const headerRef = useRef<HTMLElement | null>(null);
   const [isReferralsOpen, setIsReferralsOpen] = useState(false);
   const [isReferralRequiredOpen, setIsReferralRequiredOpen] = useState(false);
-  const [isStartSessionOpen, setIsStartSessionOpen] = useState(false);
-  const [sessionDuration, setSessionDuration] = useState('24');
   const lastWalletAddressRef = useRef<string | null>(null);
 
   // Session context for smart account sessions
@@ -208,8 +201,9 @@ const Header = () => {
     endSession,
     isStartingSession,
     smartAccountAddress,
-    isCalculatingAddress,
   } = useSession();
+
+  const { connectionDurationHours } = useSettings();
 
   useEffect(() => {
     const recalcThreshold = () => {
@@ -358,11 +352,11 @@ const Header = () => {
   const handleStartSession = async () => {
     try {
       await startSession({
-        durationHours: parseInt(sessionDuration, 10) || 24,
+        durationHours:
+          connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
       });
-      setIsStartSessionOpen(false);
       toast({
-        title: 'Session Started',
+        title: 'Connection Established',
         description: 'You can now use the app without signing transactions.',
         duration: 5000,
       });
@@ -375,16 +369,6 @@ const Header = () => {
         duration: 5000,
       });
     }
-  };
-
-  const handleCopyAddress = async () => {
-    if (!smartAccountAddress) return;
-    await navigator.clipboard.writeText(smartAccountAddress);
-    toast({
-      title: 'Copied to clipboard',
-      description: 'Smart account address copied successfully',
-      duration: 2000,
-    });
   };
 
   const handleLogout = () => {
@@ -558,9 +542,12 @@ const Header = () => {
                   {!isSessionActive && (
                     <Button
                       className="rounded-md h-10 xl:h-9 px-4"
-                      onClick={() => setIsStartSessionOpen(true)}
+                      onClick={handleStartSession}
+                      disabled={isStartingSession || !smartAccountAddress}
                     >
-                      Start Session
+                      {isStartingSession
+                        ? 'Establishing Connection...'
+                        : 'Establish Connection'}
                     </Button>
                   )}
                   <DropdownMenu>
@@ -612,82 +599,6 @@ const Header = () => {
                     onOpenChange={setIsReferralsOpen}
                     walletAddress={connectedWallet?.address}
                   />
-                  <Dialog
-                    open={isStartSessionOpen}
-                    onOpenChange={setIsStartSessionOpen}
-                  >
-                    <DialogContent className="sm:max-w-[480px]">
-                      <DialogHeader>
-                        <DialogTitle>Log in</DialogTitle>
-                      </DialogHeader>
-                      <div className="space-y-6">
-                        <p className="text-base text-foreground/90 leading-relaxed">
-                          You will sign one transaction to start a session in
-                          this browser. Then you will be able to use the app
-                          with no further authentication/signing required.
-                        </p>
-
-                        <hr className="gold-hr" />
-
-                        <div className="space-y-3">
-                          <p className="text-base text-foreground/90 leading-relaxed">
-                            To start a session, you will use a smart account
-                            owned by your wallet deployed at:
-                          </p>
-                          <div className="flex items-center gap-2 py-3 px-4 rounded-md bg-brand-black border border-border/50">
-                            <span className="font-mono text-sm flex-1 break-all text-brand-white">
-                              {isCalculatingAddress
-                                ? 'Calculating...'
-                                : smartAccountAddress || 'Connect wallet'}
-                            </span>
-                            {smartAccountAddress && (
-                              <button
-                                type="button"
-                                onClick={handleCopyAddress}
-                                className="text-muted-foreground hover:text-brand-white transition-colors shrink-0"
-                                title="Copy smart account address"
-                              >
-                                <Copy className="h-4 w-4" />
-                              </button>
-                            )}
-                          </div>
-                          <p className="text-base text-foreground/90 leading-relaxed">
-                            This will need to be funded with USDe for use in the
-                            markets.
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="duration">Session Duration</Label>
-                          <div className="relative">
-                            <Input
-                              id="duration"
-                              type="number"
-                              value={sessionDuration}
-                              onChange={(e) =>
-                                setSessionDuration(e.target.value)
-                              }
-                              className="pr-16"
-                              placeholder="24"
-                            />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                              hours
-                            </span>
-                          </div>
-                        </div>
-
-                        <Button
-                          className="w-full mb-0 h-12 text-base"
-                          onClick={handleStartSession}
-                          disabled={isStartingSession || !smartAccountAddress}
-                        >
-                          {isStartingSession
-                            ? 'Starting Session...'
-                            : 'Start Session'}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                 </>
               )}
               {/* Address now displayed inside the black default button on desktop */}

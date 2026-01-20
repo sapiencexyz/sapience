@@ -19,7 +19,8 @@ type SettingsContextValue = {
   apiBaseUrl: string | null;
   chatBaseUrl: string | null;
   adminBaseUrl: string | null;
-  rpcURL: string | null;
+  etherealRpcURL: string | null;
+  arbitrumRpcURL: string | null;
   // Research Agent settings
   openrouterApiKey: string | null;
   researchAgentSystemMessage: string | null;
@@ -27,26 +28,31 @@ type SettingsContextValue = {
   researchAgentTemperature: number | null;
   // Appearance settings
   showAmericanOdds: boolean | null;
+  connectionDurationHours: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
   setAdminBaseUrl: (value: string | null) => void;
-  setRpcUrl: (value: string | null) => void;
+  setEtherealRpcUrl: (value: string | null) => void;
+  setArbitrumRpcUrl: (value: string | null) => void;
   setOpenrouterApiKey: (value: string | null) => void;
   setResearchAgentSystemMessage: (value: string | null) => void;
   setResearchAgentModel: (value: string | null) => void;
   setResearchAgentTemperature: (value: number | null) => void;
   setShowAmericanOdds: (value: boolean | null) => void;
+  setConnectionDurationHours: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
     chatBaseUrl: string;
     adminBaseUrl: string;
-    rpcURL: string;
+    etherealRpcURL: string;
+    arbitrumRpcURL: string;
     researchAgentSystemMessage: string;
     researchAgentModel: string;
     researchAgentTemperature: number;
     showAmericanOdds: boolean;
+    connectionDurationHours: number;
   };
 };
 
@@ -55,16 +61,17 @@ const STORAGE_KEYS = {
   api: 'sapience.settings.apiBaseUrl',
   chat: 'sapience.settings.chatBaseUrl',
   admin: 'sapience.settings.adminBaseUrl',
-  // NOTE: `rpcURL` is a legacy key that is intentionally ignored in favor of
-  // `selectedRpcURL` so that old Arbitrum-specific overrides do not persist.
-  rpcURL: 'sapience.settings.rpcURL',
-  selectedRpcURL: 'sapience.settings.selectedRpcURL',
+  etherealRpcURL: 'sapience.settings.etherealRpcURL',
+  arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
   openrouterApiKey: 'sapience.settings.openrouterApiKey',
   researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
   researchAgentModel: 'sapience.settings.researchAgentModel',
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
+  connectionDurationHours: 'sapience.settings.connectionDurationHours',
 } as const;
+
+export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
 
 function isHttpUrl(value: string): boolean {
   try {
@@ -141,7 +148,11 @@ function getDefaultAdminBase(): string {
   }
 }
 
-function getDefaultRpcURL(): string {
+function getDefaultEtherealRpcURL(): string {
+  return 'https://rpc.ethereal.trade';
+}
+
+function getDefaultArbitrumRpcURL(): string {
   const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
   return infuraKey
     ? `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`
@@ -163,7 +174,12 @@ export const SettingsProvider = ({
   const [adminBaseOverride, setAdminBaseOverride] = useState<string | null>(
     null
   );
-  const [rpcOverride, setRpcOverride] = useState<string | null>(null);
+  const [etherealRpcOverride, setEtherealRpcOverride] = useState<string | null>(
+    null
+  );
+  const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
+    null
+  );
   const [openrouterApiKeyOverride, setOpenrouterApiKeyOverride] = useState<
     string | null
   >(null);
@@ -182,6 +198,8 @@ export const SettingsProvider = ({
   const [showAmericanOddsOverride, setShowAmericanOddsOverride] = useState<
     boolean | null
   >(null);
+  const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
+    useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -202,9 +220,13 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.admin)
           : null;
-      const rSelected =
+      const etherealRpc =
         typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.selectedRpcURL)
+          ? window.localStorage.getItem(STORAGE_KEYS.etherealRpcURL)
+          : null;
+      const arbitrumRpc =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.arbitrumRpcURL)
           : null;
       const ork =
         typeof window !== 'undefined'
@@ -226,6 +248,10 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.showAmericanOdds)
           : null;
+      const cdh =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
+          : null;
       if (g && isHttpUrl(g)) setGraphqlOverride(g);
       if (a && isHttpUrl(a))
         setApiBaseOverride(normalizeBaseUrlPreservePath(a));
@@ -233,7 +259,10 @@ export const SettingsProvider = ({
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
-      if (rSelected && isHttpUrl(rSelected)) setRpcOverride(rSelected);
+      if (etherealRpc && isHttpUrl(etherealRpc))
+        setEtherealRpcOverride(etherealRpc);
+      if (arbitrumRpc && isHttpUrl(arbitrumRpc))
+        setArbitrumRpcOverride(arbitrumRpc);
       if (ork) setOpenrouterApiKeyOverride(ork);
       if (rsm) setResearchAgentSystemMessageOverride(rsm);
       if (rmodel) setResearchAgentModelOverride(rmodel);
@@ -248,6 +277,11 @@ export const SettingsProvider = ({
         const val = lowered === '1' || lowered === 'true';
         setShowAmericanOddsOverride(val);
       }
+      if (cdh) {
+        const parsed = parseInt(cdh, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setConnectionDurationHoursOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -259,12 +293,14 @@ export const SettingsProvider = ({
       apiBaseUrl: getDefaultRelayerBase(),
       chatBaseUrl: getDefaultChatBase(),
       adminBaseUrl: getDefaultAdminBase(),
-      rpcURL: getDefaultRpcURL(),
+      etherealRpcURL: getDefaultEtherealRpcURL(),
+      arbitrumRpcURL: getDefaultArbitrumRpcURL(),
       researchAgentSystemMessage:
         'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, curious, succinct, and analytical. You proactively search the web for the most recent information relevant to the questions being discussed.',
       researchAgentModel: 'anthropic/claude-sonnet-4:online',
       researchAgentTemperature: 0.7,
       showAmericanOdds: false,
+      connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
     }),
     []
   );
@@ -295,7 +331,12 @@ export const SettingsProvider = ({
   const adminBaseUrl = mounted
     ? adminBaseOverride || defaults.adminBaseUrl
     : null;
-  const rpcURL = mounted ? rpcOverride || defaults.rpcURL : null;
+  const etherealRpcURL = mounted
+    ? etherealRpcOverride || defaults.etherealRpcURL
+    : null;
+  const arbitrumRpcURL = mounted
+    ? arbitrumRpcOverride || defaults.arbitrumRpcURL
+    : null;
   const openrouterApiKey = mounted ? openrouterApiKeyOverride || '' : null;
   const researchAgentSystemMessage = mounted
     ? researchAgentSystemMessageOverride || defaults.researchAgentSystemMessage
@@ -308,6 +349,9 @@ export const SettingsProvider = ({
     : null;
   const showAmericanOdds = mounted
     ? (showAmericanOddsOverride ?? defaults.showAmericanOdds)
+    : null;
+  const connectionDurationHours = mounted
+    ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -378,18 +422,35 @@ export const SettingsProvider = ({
     }
   }, []);
 
-  const setRpcUrl = useCallback((value: string | null) => {
+  const setEtherealRpcUrl = useCallback((value: string | null) => {
     try {
       if (typeof window === 'undefined') return;
       if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.selectedRpcURL);
-        setRpcOverride(null);
+        window.localStorage.removeItem(STORAGE_KEYS.etherealRpcURL);
+        setEtherealRpcOverride(null);
         return;
       }
       const v = value.trim();
       if (!isHttpUrl(v)) return;
-      window.localStorage.setItem(STORAGE_KEYS.selectedRpcURL, v);
-      setRpcOverride(v);
+      window.localStorage.setItem(STORAGE_KEYS.etherealRpcURL, v);
+      setEtherealRpcOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setArbitrumRpcUrl = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.arbitrumRpcURL);
+        setArbitrumRpcOverride(null);
+        return;
+      }
+      const v = value.trim();
+      if (!isHttpUrl(v)) return;
+      window.localStorage.setItem(STORAGE_KEYS.arbitrumRpcURL, v);
+      setArbitrumRpcOverride(v);
     } catch {
       /* noop */
     }
@@ -480,27 +541,51 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setConnectionDurationHours = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.connectionDurationHours);
+        setConnectionDurationHoursOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.floor(Number(value)));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(
+        STORAGE_KEYS.connectionDurationHours,
+        String(clamped)
+      );
+      setConnectionDurationHoursOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
     chatBaseUrl,
     adminBaseUrl,
-    rpcURL,
+    etherealRpcURL,
+    arbitrumRpcURL,
     openrouterApiKey,
     researchAgentSystemMessage,
     researchAgentModel,
     researchAgentTemperature,
     showAmericanOdds,
+    connectionDurationHours,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
     setAdminBaseUrl,
-    setRpcUrl,
+    setEtherealRpcUrl,
+    setArbitrumRpcUrl,
     setOpenrouterApiKey,
     setResearchAgentSystemMessage,
     setResearchAgentModel,
     setResearchAgentTemperature,
     setShowAmericanOdds,
+    setConnectionDurationHours,
     defaults,
   };
 

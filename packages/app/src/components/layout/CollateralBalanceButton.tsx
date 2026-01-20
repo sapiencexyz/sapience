@@ -28,7 +28,6 @@ import { useConnectorClient } from 'wagmi';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -81,7 +80,7 @@ export default function CollateralBalanceButton({
   buttonClassName,
 }: CollateralBalanceButtonProps) {
   const { address: eoaAddress } = useAccount();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   // Get smart account address from session context
   const { smartAccountAddress, isCalculatingAddress } = useSession();
@@ -168,9 +167,14 @@ export default function CollateralBalanceButton({
     }
 
     setIsTransferLoading(true);
-    setTransferStatus('');
+    setTransferStatus('Switching to Ethereal...');
 
     try {
+      // Switch to Ethereal chain first
+      await switchChainAsync({ chainId: CHAIN_ID_ETHEREAL });
+
+      setTransferStatus('Preparing transaction...');
+
       // Build the calls array for batched execution
       const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
         [];
@@ -423,20 +427,19 @@ export default function CollateralBalanceButton({
       <Dialog open={isGetUsdeOpen} onOpenChange={setIsGetUsdeOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>
-            <DialogTitle>Get USDe</DialogTitle>
+            <DialogTitle>Fund Your Account</DialogTitle>
           </DialogHeader>
           <div className="space-y-5">
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Transfer{' '}
               <a
                 href={STARGATE_DEPOSIT_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gold-link"
               >
-                USDe on Ethereal
+                Get USDe on Ethereal via Stargate
               </a>{' '}
-              to your Sapience account to get started.
+              and then transfer it to your account.
             </p>
 
             {/* Two Account Cards */}
@@ -580,8 +583,9 @@ export default function CollateralBalanceButton({
                       <HoverCardTrigger asChild>
                         <button
                           type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground flex items-center gap-1"
                         >
+                          <span className="text-lg">USDe</span>
                           <Info className="h-4 w-4" />
                         </button>
                       </HoverCardTrigger>

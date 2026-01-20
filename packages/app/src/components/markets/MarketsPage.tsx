@@ -13,7 +13,7 @@ import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import MarketsDataTable from '~/components/markets/MarketsDataTable';
 import type { FilterState } from '~/components/markets/TableFilters';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
   useConditionGroups,
@@ -38,8 +38,7 @@ const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
 
-  // Read chainId from localStorage with event monitoring
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);

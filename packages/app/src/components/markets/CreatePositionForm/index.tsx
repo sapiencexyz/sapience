@@ -58,7 +58,7 @@ import {
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,
@@ -100,7 +100,7 @@ const CreatePositionFormInner = ({
   const { address } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
   const { toast } = useToast();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   // Track whether wager has been initialized and for which address
   const [isWagerInitialized, setIsWagerInitialized] = useState(false);

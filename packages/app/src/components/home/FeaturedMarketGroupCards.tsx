@@ -14,7 +14,7 @@ import TickerMarketCard from './ticker/TickerMarketCard';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { getActivePublicConditions } from './featuredConditions';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 // Removed Loader in favor of simple fade-in cards and fixed-height placeholder
@@ -34,7 +34,7 @@ interface FeaturedCondition {
 
 export default function FeaturedMarketGroupCards() {
   // Fetch recent conditions for the currently selected chain
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { data: conditions, isLoading: isLoadingConditions } = useConditions({
     take: 100,
     chainId,
