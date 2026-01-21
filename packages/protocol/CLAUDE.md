@@ -134,8 +134,9 @@ Cannon deployment system using TOML files in `deployments/tomls/`:
 
 ## Rules
 
-- Run lint and format before commit
 - All tests must pass before commit
+- Run lint and format before commit 
+- To run lint and format, execute `pnpm format && pnpm lint` inside protocol package folder
 
 ## Key Dependencies
 
