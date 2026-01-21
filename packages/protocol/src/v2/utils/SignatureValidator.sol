@@ -100,6 +100,10 @@ abstract contract SignatureValidator is EIP712 {
         return recoveredSigner == signer;
     }
 
+    /// @notice Gas limit for EIP-1271 signature validation calls
+    /// @dev Prevents malicious contracts from consuming all gas
+    uint256 internal constant EIP1271_GAS_LIMIT = 500_000;
+
     /// @notice Validate signature using EIP-1271 (for smart contract signers)
     /// @param signer The smart contract address that should validate the signature
     /// @param hash The hash that was signed
@@ -113,7 +117,7 @@ abstract contract SignatureValidator is EIP712 {
         if (signer.code.length == 0) {
             return false;
         }
-        try IERC1271(signer).isValidSignature(hash, signature) returns (
+        try IERC1271(signer).isValidSignature{gas: EIP1271_GAS_LIMIT}(hash, signature) returns (
             bytes4 magicValue
         ) {
             return magicValue == IERC1271.isValidSignature.selector;
@@ -291,21 +295,21 @@ abstract contract SignatureValidator is EIP712 {
 
         // 3. Verify the smart account is derived from the owner
         // This ensures the owner actually controls the smart account they claim to
-        if (address(accountFactory) != address(0)) {
-            // Try index 0 first (primary account), then index 1 as fallback
-            address expectedAccount =
-                accountFactory.getAccountAddress(sessionApproval.owner, 0);
+        if (address(accountFactory) == address(0)) {
+            revert AccountFactoryNotSet();
+        }
+
+        // Try index 0 first (primary account), then index 1 as fallback
+        address expectedAccount =
+            accountFactory.getAccountAddress(sessionApproval.owner, 0);
+        if (expectedAccount != smartAccount) {
+            // Try index 1 for users with multiple accounts
+            expectedAccount =
+                accountFactory.getAccountAddress(sessionApproval.owner, 1);
             if (expectedAccount != smartAccount) {
-                // Try index 1 for users with multiple accounts
-                expectedAccount =
-                    accountFactory.getAccountAddress(sessionApproval.owner, 1);
-                if (expectedAccount != smartAccount) {
-                    return false;
-                }
+                return false;
             }
         }
-        // Note: If accountFactory is not set, we fall back to trusting the owner's signature
-        // This allows gradual migration - set accountFactory for stricter verification
 
         return true;
     }
