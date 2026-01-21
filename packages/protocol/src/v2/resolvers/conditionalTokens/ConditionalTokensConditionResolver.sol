@@ -76,24 +76,7 @@ contract ConditionalTokensConditionResolver is
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        ConditionState memory condition = conditions[conditionId];
-
-        // Not resolved if: not settled, or marked as invalid
-        if (!condition.settled || condition.invalid) {
-            return (false, IV2Types.OutcomeVector(0, 0));
-        }
-
-        // Non-decisive (tie) = [1,1]
-        if (condition.nonDecisive) {
-            return (true, IV2Types.OutcomeVector(1, 1));
-        }
-
-        // YES = [1,0], NO = [0,1]
-        if (condition.resolvedToYes) {
-            return (true, IV2Types.OutcomeVector(1, 0));
-        } else {
-            return (true, IV2Types.OutcomeVector(0, 1));
-        }
+        return _getResolution(conditions[conditionId]);
     }
 
     /// @inheritdoc IConditionResolver
@@ -110,21 +93,8 @@ contract ConditionalTokensConditionResolver is
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            ConditionState memory condition = conditions[conditionIds[i]];
-
-            if (condition.settled && !condition.invalid) {
-                resolved[i] = true;
-                if (condition.nonDecisive) {
-                    outcomes[i] = IV2Types.OutcomeVector(1, 1);
-                } else if (condition.resolvedToYes) {
-                    outcomes[i] = IV2Types.OutcomeVector(1, 0);
-                } else {
-                    outcomes[i] = IV2Types.OutcomeVector(0, 1);
-                }
-            } else {
-                resolved[i] = false;
-                outcomes[i] = IV2Types.OutcomeVector(0, 0);
-            }
+            (resolved[i], outcomes[i]) =
+                _getResolution(conditions[conditionIds[i]]);
         }
     }
 
@@ -204,6 +174,30 @@ contract ConditionalTokensConditionResolver is
     }
 
     // ============ Internal Functions ============
+
+    /// @dev Get resolution for a condition state
+    function _getResolution(ConditionState memory condition)
+        internal
+        pure
+        returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
+    {
+        // Not resolved if: not settled, or marked as invalid
+        if (!condition.settled || condition.invalid) {
+            return (false, IV2Types.OutcomeVector(0, 0));
+        }
+
+        // Non-decisive (tie) = [1,1]
+        if (condition.nonDecisive) {
+            return (true, IV2Types.OutcomeVector(1, 1));
+        }
+
+        // YES = [1,0], NO = [0,1]
+        if (condition.resolvedToYes) {
+            return (true, IV2Types.OutcomeVector(1, 0));
+        } else {
+            return (true, IV2Types.OutcomeVector(0, 1));
+        }
+    }
 
     /// @dev Finalize resolution - never reverts, marks invalid state if payouts don't sum to denom
     function _finalizeResolution(
