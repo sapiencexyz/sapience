@@ -19,7 +19,7 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const TAB_VALUES = ['positions', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -27,7 +27,7 @@ type TabValue = (typeof TAB_VALUES)[number];
 const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
     attesterAddress: address,

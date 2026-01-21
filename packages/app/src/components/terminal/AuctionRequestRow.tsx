@@ -12,8 +12,7 @@ import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -58,7 +57,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   const terminalLogs = useTerminalLogsOptional();

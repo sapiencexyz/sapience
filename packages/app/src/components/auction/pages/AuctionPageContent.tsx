@@ -11,7 +11,7 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import { NumberDisplay } from '@sapience/ui/components/NumberDisplay';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 import {
   TransactionTimeCell,
   TransactionAmountCell,
@@ -24,11 +24,10 @@ import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const AuctionPageContent: React.FC = () => {
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const TAB_VALUES = ['auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];
@@ -471,8 +470,8 @@ const AuctionPageContent: React.FC = () => {
                             {row.quote != null ? (
                               <span className="whitespace-nowrap inline-flex items-center gap-1">
                                 <NumberDisplay
-                                  value={row.quote}
-                                  precision={6}
+                                  value={Number(row.quote)}
+                                  decimals={6}
                                 />{' '}
                                 {collateralAssetTicker} per share
                               </span>

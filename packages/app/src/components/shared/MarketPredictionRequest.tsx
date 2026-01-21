@@ -6,14 +6,13 @@ import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import {
   buildAuctionStartPayload,
   type PredictedOutcomeInputStub,
 } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 // Use one as the default wager for prediction requests
 
 const FADE_VARIANTS = {
@@ -96,7 +95,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
   const { address: takerAddress } = useAccount();
   const { requestQuotes, bids } = useAuctionStart();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;

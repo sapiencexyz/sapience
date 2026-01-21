@@ -6,11 +6,10 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useConditions } from '~/hooks/graphql/useConditions';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { formatFiveSigFigs } from '~/lib/utils/util';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
@@ -34,7 +33,7 @@ import OrderBuilderDialog from './components/OrderBuilderDialog';
 
 const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { messages: auctionMessages } = useAuctionRelayerFeed();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
@@ -107,10 +106,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     });
   }, [conditionCatalog]);
 
-  const balanceDisplay = useMemo(() => {
-    return formatFiveSigFigs(balance);
-  }, [balance]);
-
   const { allowance, refetchAllowance } = useTokenApproval({
     tokenAddress: COLLATERAL_ADDRESS,
     spenderAddress: (spenderAddressInput || SPENDER_ADDRESS) as
@@ -142,14 +137,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
       return 0;
     }
   }, [allowance, tokenDecimals]);
-
-  const allowanceDisplay = useMemo(() => {
-    try {
-      return formatFiveSigFigs(allowanceValue);
-    } catch {
-      return '0';
-    }
-  }, [allowanceValue]);
 
   const formatCollateralAmount = useCallback(
     (value?: string | null) => {
@@ -325,7 +312,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     [createDraftFromOrder]
   );
 
-  const handleCreateOrder = useCallback(() => {
+  const _handleCreateOrder = useCallback(() => {
     setInitialDraft({
       durationValue: '',
       strategy: 'conditions',
@@ -392,8 +379,8 @@ const AutoBid: React.FC<AutoBidProps> = () => {
       </div>
       <div className="pl-3 pr-4 py-4 sm:pl-4 flex-1 min-h-0 flex flex-col">
         <AutoBidHeader
-          allowanceDisplay={allowanceDisplay}
-          balanceDisplay={balanceDisplay}
+          allowanceValue={allowanceValue}
+          balanceValue={balance}
           collateralSymbol={collateralSymbol}
           onOpenApproval={openApproval}
         />
@@ -408,7 +395,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
             describeAutoPauseStatus={describeAutoPauseStatus}
             onToggleStatus={toggleOrderStatus}
             onEdit={handleEdit}
-            onCreateOrder={handleCreateOrder}
           />
 
           <LogsPanel logs={logs} orderLabelById={orderLabelById} />

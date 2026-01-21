@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@sapience/ui/components/ui/button';
 
 type SharePageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
 type TokenData = {
@@ -92,7 +92,10 @@ function buildPositionImageUrl(nftId: string, marketAddress: string): string {
   return `/og/position?${qp.toString()}`;
 }
 
-export function generateMetadata({ searchParams }: SharePageProps): Metadata {
+export async function generateMetadata(
+  props: SharePageProps
+): Promise<Metadata> {
+  const searchParams = await props.searchParams;
   const token = coerceString(searchParams?.t);
   const nftId = coerceString(searchParams?.nftId);
   const marketAddress = coerceString(searchParams?.marketAddress);
@@ -152,7 +155,8 @@ export function generateMetadata({ searchParams }: SharePageProps): Metadata {
   };
 }
 
-export default function SharePage({ searchParams }: SharePageProps) {
+export default async function SharePage(props: SharePageProps) {
+  const searchParams = await props.searchParams;
   const token = coerceString(searchParams?.t);
   const nftId = coerceString(searchParams?.nftId);
   const marketAddress = coerceString(searchParams?.marketAddress);

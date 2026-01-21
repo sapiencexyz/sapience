@@ -18,6 +18,7 @@ import {
 import { Vault } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits } from 'viem';
+import { formatDuration, intervalToDuration } from 'date-fns';
 import { useAccount } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import Link from 'next/link';
@@ -26,16 +27,15 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  // Constants for vault integration - use chain ID from localStorage
-  const VAULT_CHAIN_ID = useChainIdFromLocalStorage();
+  // Constants for vault integration
+  const VAULT_CHAIN_ID = CHAIN_ID_ETHEREAL;
   const VAULT_ADDRESS = passiveLiquidityVault[VAULT_CHAIN_ID]?.address;
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
@@ -333,25 +333,38 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          {depositAmount &&
-          estDepositShares > 0n &&
-          ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+          {interactionDelay > 0n && (
             <div className="sm:text-right">
-              Requested Shares:{' '}
-              {formatDecimalWithCommasFixed2(
-                formatSharesAmount(estDepositShares)
-              )}{' '}
-              sapLP
+              Minimum Deposit Duration:{' '}
+              {formatDuration(
+                intervalToDuration({
+                  start: 0,
+                  end: Number(interactionDelay) * 1000,
+                }),
+                { format: ['days', 'hours', 'minutes'] }
+              )}
             </div>
-          ) : (
-            (minDeposit ?? 0n) > 0n && (
-              <div className="sm:text-right">
-                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
-                {collateralSymbol}
-              </div>
-            )
           )}
         </div>
+        {/* Requested/Minimum row */}
+        {depositAmount &&
+        estDepositShares > 0n &&
+        ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+          <div className="text-sm text-muted-foreground sm:text-right">
+            Requested Shares:{' '}
+            {formatDecimalWithCommasFixed2(
+              formatSharesAmount(estDepositShares)
+            )}{' '}
+            sapLP
+          </div>
+        ) : (
+          (minDeposit ?? 0n) > 0n && (
+            <div className="text-sm text-muted-foreground sm:text-right">
+              Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
+              {collateralSymbol}
+            </div>
+          )
+        )}
 
         {/* Cooldown + Deposit Button Group */}
         <div className="space-y-2 pt-3 md:pt-4">

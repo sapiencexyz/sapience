@@ -6,7 +6,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -16,7 +16,6 @@ import {
   type ConditionType,
 } from '~/hooks/graphql/useConditions';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -49,7 +48,7 @@ const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 3000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const { data: allConditions = [], isLoading } = useConditions({
     take: 200,
     chainId,

@@ -1,4 +1,3 @@
-@uniswap/=node_modules/@uniswap
 @uma/=node_modules/@uma
 @openzeppelin/=node_modules/@openzeppelin
 @synthetixio/=node_modules/@synthetixio

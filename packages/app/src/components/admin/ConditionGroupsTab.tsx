@@ -39,7 +39,7 @@ import type {
   ConditionGroupConditionType,
 } from '~/hooks/graphql/useConditionGroups';
 import { useConditions } from '~/hooks/graphql/useConditions';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const CATEGORY_NONE_VALUE = '__none__';
 
@@ -99,7 +99,7 @@ const ConditionGroupsTab = ({
   const { toast } = useToast();
   const { postJson, putJson, deleteJson, getJson } = useAdminApi();
   const { data: categories } = useCategories();
-  const currentChainId = useChainIdFromLocalStorage();
+  const currentChainId = CHAIN_ID_ETHEREAL;
 
   const {
     data: conditionGroups,

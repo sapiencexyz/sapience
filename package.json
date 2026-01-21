@@ -24,14 +24,14 @@
   },
   "keywords": [],
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "8.2.2"
   },
   "engines": {
     "node": ">=20.14.x",
     "pnpm": "9.x"
   },
   "resolutions": {
-    "@openzeppelin/contracts": "^5.0.2"
+    "@openzeppelin/contracts": "5.0.2"
   },
   "pnpm": {
     "overrides": {

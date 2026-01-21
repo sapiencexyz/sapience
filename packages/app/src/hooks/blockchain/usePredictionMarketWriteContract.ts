@@ -1,6 +1,6 @@
 import { predictionMarket } from '@sapience/sdk/contracts';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 
 const predictionMarketAbi = [
   {
@@ -28,8 +28,7 @@ export function usePredictionMarketWriteContract(opts?: {
     onError: opts?.onError,
   });
 
-  // Use the currently selected chain from localStorage
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
 
   function burn(tokenId: bigint, refCode: `0x${string}`) {

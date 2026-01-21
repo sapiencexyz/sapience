@@ -4,7 +4,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 interface CollateralBalanceContextValue {
   /** User's collateral balance in human-readable units */
@@ -49,7 +49,7 @@ export function CollateralBalanceProvider({
 }: CollateralBalanceProviderProps): React.ReactElement {
   const { address: eoaAddress, isConnected } = useAccount();
   const { isSessionActive, smartAccountAddress } = useSession();
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
 
   // Use smart account address when session is active, otherwise EOA
   // This ensures we show the balance of the address that will execute transactions

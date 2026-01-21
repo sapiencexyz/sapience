@@ -1,16 +1,17 @@
 import type React from 'react';
 import { Pencil } from 'lucide-react';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 
 type AutoBidHeaderProps = {
-  allowanceDisplay: string;
-  balanceDisplay: string;
+  allowanceValue: number;
+  balanceValue: number;
   collateralSymbol: string;
   onOpenApproval: () => void;
 };
 
 const AutoBidHeader: React.FC<AutoBidHeaderProps> = ({
-  allowanceDisplay,
-  balanceDisplay,
+  allowanceValue,
+  balanceValue,
   collateralSymbol,
   onOpenApproval,
 }) => {
@@ -23,7 +24,11 @@ const AutoBidHeader: React.FC<AutoBidHeaderProps> = ({
             Approved Spend
           </div>
           <div className="font-mono text-[13px] text-brand-white inline-flex items-center gap-1">
-            {allowanceDisplay} {collateralSymbol}
+            <NumberDisplay
+              value={allowanceValue}
+              appendedText={collateralSymbol}
+              decimals={2}
+            />
             <button
               type="button"
               className="inline-flex items-center justify-center"
@@ -41,7 +46,11 @@ const AutoBidHeader: React.FC<AutoBidHeaderProps> = ({
             Account Balance
           </div>
           <div className="font-mono text-[13px] text-brand-white inline-flex items-center gap-1">
-            {balanceDisplay} {collateralSymbol}
+            <NumberDisplay
+              value={balanceValue}
+              appendedText={collateralSymbol}
+              decimals={2}
+            />
           </div>
         </div>
       </div>

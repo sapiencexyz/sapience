@@ -18,7 +18,6 @@
   },
   "devDependencies": {
     "@layerzerolabs/lz-evm-messagelib-v2": "3.0.123",
-    "@layerzerolabs/lz-evm-v1-0.7": "3.0.123",
     "@types/node": "20.16.5",
     "forge-std": "https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e01ca7ba958b8d9818a25b0a10031b0ba3c4c59",
     "typescript": "5.8.3"
@@ -29,11 +28,8 @@
     "@layerzerolabs/test-devtools-evm-foundry": "8.0.1",
     "@layerzerolabs/toolbox-foundry": "0.1.13",
     "@openzeppelin/contracts": "5.0.2",
-    "@openzeppelin/contracts-upgradeable": "5.0.2",
     "@synthetixio/core-contracts": "3.6.4",
     "@uma/core": "2.59.1",
-    "@uniswap/v3-core": "1.0.1",
-    "@uniswap/v3-periphery": "1.4.4",
     "@usecannon/cli": "2.24.1",
     "solady": "0.1.26"
   }

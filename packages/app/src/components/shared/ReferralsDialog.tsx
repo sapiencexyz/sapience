@@ -17,8 +17,7 @@ import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface ReferralsDialogProps {
   open: boolean;
@@ -34,7 +33,7 @@ type ReferralRow = {
 };
 
 const ReferralVolumeCell = ({ address }: { address: string }) => {
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
   const lowerAddress = address.toLowerCase();
 
@@ -240,6 +239,9 @@ const ReferralsDialog = ({
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
+            <h3 className="text-sm font-medium text-foreground">
+              Create an Invite Code
+            </h3>
             <div className="flex gap-3">
               <Input
                 value={code}

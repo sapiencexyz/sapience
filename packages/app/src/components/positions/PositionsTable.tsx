@@ -236,11 +236,28 @@ export default function PositionsTable({
   });
 
   // Append new data when it arrives
+  // Use a ref to track what we've already processed to avoid infinite loops
+  // (rawData may be a new reference on every render even with same contents)
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
+
   React.useEffect(() => {
+    const dataLength = rawData?.length ?? 0;
+
+    // Skip if we've already processed this exact data
+    if (
+      processedRef.current?.skip === skip &&
+      processedRef.current?.length === dataLength
+    ) {
+      return;
+    }
+    processedRef.current = { skip, length: dataLength };
+
     if (!rawData || rawData.length === 0) {
       if (skip === 0) {
-        setAllLoadedData([]);
-        setHasMore(false);
+        setAllLoadedData((prev) => (prev.length === 0 ? prev : []));
+        setHasMore((prev) => (prev === false ? prev : false));
       }
       return;
     }
@@ -1081,11 +1098,8 @@ export default function PositionsTable({
                 Profit/Loss
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-                <span className="tabular-nums text-brand-white font-mono">
-                  {pnlValue < 0 ? '-' : ''}
-                </span>
                 <NumberDisplay
-                  value={Math.abs(pnlValue)}
+                  value={pnlValue}
                   className="tabular-nums text-brand-white font-mono"
                 />{' '}
                 <span className="tabular-nums text-brand-white font-mono">

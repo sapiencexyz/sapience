@@ -10,15 +10,13 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Input } from '@sapience/ui/components/ui/input';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
 import { Wallet } from 'lucide-react';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
+import {
+  useSettings,
+  DEFAULT_CONNECTION_DURATION_HOURS,
+} from '~/lib/context/SettingsContext';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 const USER_REFERRAL_STATUS_QUERY = `
@@ -91,13 +89,13 @@ export default function ConnectDialog({
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
   const { startSession } = useSession();
+  const { connectionDurationHours } = useSettings();
 
-  // Session duration state
-  const [duration, setDuration] = useState('24');
+  // Track if we're creating a session after wallet connection
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
 
   // Track if we just connected a wallet (to trigger auto-session)
   // Use a ref to track previous connection state to avoid race conditions
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const prevConnectedRef = useRef(isConnected);
 
   const { connect, isPending, connectors } = useConnect();
@@ -150,8 +148,8 @@ export default function ConnectDialog({
       console.debug(
         '[ConnectDialog] Fresh wallet connection detected, checking referral status...'
       );
-      setIsCreatingSession(true);
       clearLoggedOut();
+      setIsCreatingSession(true);
 
       const createSessionAsync = async () => {
         try {
@@ -196,12 +194,11 @@ export default function ConnectDialog({
             return;
           }
 
-          const durationHours = parseInt(duration || '24', 10);
-
-          console.debug('[ConnectDialog] Starting session with:', {
-            durationHours,
+          console.debug('[ConnectDialog] Starting session');
+          await startSession({
+            durationHours:
+              connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
           });
-          await startSession({ durationHours });
           console.debug('[ConnectDialog] Session created successfully');
         } catch (error) {
           console.error(
@@ -223,8 +220,8 @@ export default function ConnectDialog({
     onOpenChange,
     clearLoggedOut,
     startSession,
-    duration,
     address,
+    connectionDurationHours,
   ]);
 
   const handleEIP6963Connect = useCallback(
@@ -348,7 +345,16 @@ export default function ConnectDialog({
         </DialogHeader>
 
         {/* Wallet Options */}
-        <div className="flex flex-col gap-3">
+        <div className="relative flex flex-col gap-3">
+          {/* Establishing connection overlay */}
+          {isCreatingSession && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
+              <span className="font-mono text-sm tracking-wide text-accent-gold">
+                ESTABLISHING CONNECTION...
+              </span>
+            </div>
+          )}
+
           {/* Loading state */}
           {!isClient && (
             <p className="text-sm text-muted-foreground text-center py-2">
@@ -370,7 +376,11 @@ export default function ConnectDialog({
                   variant="outline"
                   className="w-full h-14 justify-start gap-3 px-4 text-base font-medium bg-[hsl(var(--muted)/0.3)] border-border/50 hover:bg-[hsl(var(--muted)/0.5)] disabled:opacity-50"
                   onClick={() => handleWalletClick(wallet)}
-                  disabled={!isInstalled || (isPending && isInstalled)}
+                  disabled={
+                    isCreatingSession ||
+                    !isInstalled ||
+                    (isPending && isInstalled)
+                  }
                 >
                   <div className="flex items-center justify-center w-7 h-7 rounded overflow-hidden shrink-0">
                     {wallet.icon ? (
@@ -392,43 +402,6 @@ export default function ConnectDialog({
               );
             })}
         </div>
-
-        {/* Session duration / Creating session status */}
-        <p className="text-xs text-muted-foreground text-center mt-6">
-          {isCreatingSession ? (
-            'Creating session...'
-          ) : (
-            <>
-              Log in for the next{' '}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button
-                    type="button"
-                    className="underline decoration-dotted underline-offset-2 hover:opacity-80"
-                  >
-                    {duration} hours
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-64 p-2">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium">Duration</label>
-                    <div className="relative">
-                      <Input
-                        type="number"
-                        value={duration}
-                        onChange={(e) => setDuration(e.target.value)}
-                        className="w-full pr-16"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        hours
-                      </span>
-                    </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </>
-          )}
-        </p>
       </DialogContent>
     </Dialog>
   );

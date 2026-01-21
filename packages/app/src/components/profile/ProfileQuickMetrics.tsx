@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import * as React from 'react';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   Calendar,
   TrendingUp,
@@ -20,9 +20,9 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 
 import type { Position } from '~/hooks/graphql/useUserPositions';
+import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
-import { useChainIdFromLocalStorage } from '~/hooks/blockchain/useChainIdFromLocalStorage';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
@@ -230,7 +230,7 @@ export default function ProfileQuickMetrics({
   positions,
   className,
 }: ProfileQuickMetricsProps) {
-  const chainId = useChainIdFromLocalStorage();
+  const chainId = CHAIN_ID_ETHEREAL;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(positions, address);
@@ -247,9 +247,7 @@ export default function ProfileQuickMetrics({
   const { data: accuracy, isLoading: accuracyLoading } =
     useForecasterRank(address);
 
-  const pnlValue = profitLoading
-    ? '—'
-    : Number(profit?.totalPnL || 0).toFixed(2);
+  const pnlNumber = Number(profit?.totalPnL || 0);
 
   const pnlRank = profitLoading
     ? undefined
@@ -280,7 +278,7 @@ export default function ProfileQuickMetrics({
           <MetricBadge
             icon={<BarChart2 className="h-4 w-4 opacity-70" />}
             label="Realized PnL"
-            value={pnlValue}
+            value={profitLoading ? '—' : <NumberDisplay value={pnlNumber} />}
             sublabel={pnlRank}
             size="normal"
             highlighted
