@@ -242,7 +242,6 @@ contract PositionTokenBridgeRemote is
                 isPredictorToken,
                 name,
                 symbol,
-                address(0), // No initial recipient
                 address(this) // Bridge is authorized to mint/burn
             );
             isNewDeployment = true;

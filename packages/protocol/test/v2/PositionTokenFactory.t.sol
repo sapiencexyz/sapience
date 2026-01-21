@@ -48,7 +48,6 @@ contract PositionTokenFactoryTest is Test {
             IS_PREDICTOR_TOKEN,
             "Test Token",
             "TEST",
-            address(0),
             address(this)
         );
 
@@ -67,7 +66,6 @@ contract PositionTokenFactoryTest is Test {
             IS_PREDICTOR_TOKEN,
             "Test Token",
             "TEST",
-            address(0),
             address(this)
         );
 
@@ -82,19 +80,13 @@ contract PositionTokenFactoryTest is Test {
             IS_PREDICTOR_TOKEN,
             "Test Token",
             "TEST",
-            address(0),
             address(this)
         );
     }
 
     function test_deploy_tokenProperties() public {
         address token = factory.deploy(
-            PREDICTION_ID,
-            IS_PREDICTOR_TOKEN,
-            "My Token",
-            "MTK",
-            address(0),
-            address(this)
+            PREDICTION_ID, IS_PREDICTOR_TOKEN, "My Token", "MTK", address(this)
         );
 
         BridgedPositionToken bridged = BridgedPositionToken(token);
@@ -103,9 +95,6 @@ contract PositionTokenFactoryTest is Test {
         assertEq(bridged.pickConfigId(), PREDICTION_ID);
         assertEq(bridged.isPredictorToken(), IS_PREDICTOR_TOKEN);
         assertEq(bridged.bridge(), address(this));
-        // Factory address from token's perspective is the CREATE3 proxy, not the factory contract
-        // Just verify factory is non-zero
-        assertTrue(bridged.factory() != address(0));
     }
 
     function test_deploy_revertIfAlreadyDeployed() public {
@@ -114,7 +103,6 @@ contract PositionTokenFactoryTest is Test {
             IS_PREDICTOR_TOKEN,
             "Test Token",
             "TEST",
-            address(0),
             address(this)
         );
 
@@ -124,7 +112,6 @@ contract PositionTokenFactoryTest is Test {
             IS_PREDICTOR_TOKEN,
             "Test Token 2",
             "TEST2",
-            address(0),
             address(this)
         );
     }

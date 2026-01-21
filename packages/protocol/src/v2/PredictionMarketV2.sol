@@ -360,21 +360,12 @@ contract PredictionMarketV2 is
             : config.totalCounterpartyCollateral;
 
         // Calculate claimable pool based on result
-        uint256 claimablePool;
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
-
-        if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
-            claimablePool = isPredictor ? totalCollateral : 0;
-        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
-        {
-            claimablePool = isPredictor ? 0 : totalCollateral;
-        } else {
-            // NON_DECISIVE (tie) - each side gets their original collateral back
-            claimablePool = isPredictor
-                ? config.totalPredictorCollateral
-                : config.totalCounterpartyCollateral;
-        }
+        uint256 claimablePool = _calculateClaimablePool(
+            config.result,
+            config.totalPredictorCollateral,
+            config.totalCounterpartyCollateral,
+            isPredictor
+        );
 
         // Proportional payout: (amount / originalTotalTokens) * claimablePool
         payout = (amount * claimablePool) / originalTotalTokens;
@@ -497,20 +488,12 @@ contract PredictionMarketV2 is
             ? config.totalPredictorCollateral
             : config.totalCounterpartyCollateral;
 
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
-
-        uint256 claimablePool;
-        if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
-            claimablePool = isPredictor ? totalCollateral : 0;
-        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
-        {
-            claimablePool = isPredictor ? 0 : totalCollateral;
-        } else {
-            claimablePool = isPredictor
-                ? config.totalPredictorCollateral
-                : config.totalCounterpartyCollateral;
-        }
+        uint256 claimablePool = _calculateClaimablePool(
+            config.result,
+            config.totalPredictorCollateral,
+            config.totalCounterpartyCollateral,
+            isPredictor
+        );
 
         return (tokenAmount * claimablePool) / originalTotalTokens;
     }
@@ -583,8 +566,9 @@ contract PredictionMarketV2 is
         returns (string memory)
     {
         string memory prefix = isPredictor ? "Predictor-" : "Counterparty-";
-        return
-            string(abi.encodePacked(prefix, _bytes32ToHexString(pickConfigId)));
+        return string(
+            abi.encodePacked(prefix, _bytesToHexString(bytes4(pickConfigId)))
+        );
     }
 
     /// @notice Generate token symbol
@@ -594,27 +578,13 @@ contract PredictionMarketV2 is
         returns (string memory)
     {
         string memory prefix = isPredictor ? "PRD-" : "CTR-";
-        bytes4 short = bytes4(pickConfigId);
-        return string(abi.encodePacked(prefix, _bytes4ToHexString(short)));
-    }
-
-    /// @notice Convert bytes32 to hex string (first 4 bytes)
-    function _bytes32ToHexString(bytes32 data)
-        internal
-        pure
-        returns (string memory)
-    {
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory str = new bytes(8);
-        for (uint256 i = 0; i < 4; i++) {
-            str[i * 2] = alphabet[uint8(data[i] >> 4)];
-            str[i * 2 + 1] = alphabet[uint8(data[i] & 0x0f)];
-        }
-        return string(str);
+        return string(
+            abi.encodePacked(prefix, _bytesToHexString(bytes4(pickConfigId)))
+        );
     }
 
     /// @notice Convert bytes4 to hex string
-    function _bytes4ToHexString(bytes4 data)
+    function _bytesToHexString(bytes4 data)
         internal
         pure
         returns (string memory)
@@ -690,6 +660,33 @@ contract PredictionMarketV2 is
         } else if (result == IV2Types.SettlementResult.NON_DECISIVE) {
             predictorClaimable = predictorWager;
             counterpartyClaimable = counterpartyWager;
+        }
+    }
+
+    /// @notice Calculate the claimable pool for a position holder
+    /// @param result The settlement result
+    /// @param totalPredictorCollateral Total collateral from predictors
+    /// @param totalCounterpartyCollateral Total collateral from counterparties
+    /// @param isPredictor True if calculating for predictor side
+    /// @return claimablePool The total pool claimable by this side
+    function _calculateClaimablePool(
+        IV2Types.SettlementResult result,
+        uint256 totalPredictorCollateral,
+        uint256 totalCounterpartyCollateral,
+        bool isPredictor
+    ) internal pure returns (uint256 claimablePool) {
+        uint256 totalCollateral = totalPredictorCollateral
+            + totalCounterpartyCollateral;
+
+        if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
+            claimablePool = isPredictor ? totalCollateral : 0;
+        } else if (result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+            claimablePool = isPredictor ? 0 : totalCollateral;
+        } else {
+            // NON_DECISIVE (tie) - each side gets their original collateral back
+            claimablePool = isPredictor
+                ? totalPredictorCollateral
+                : totalCounterpartyCollateral;
         }
     }
 

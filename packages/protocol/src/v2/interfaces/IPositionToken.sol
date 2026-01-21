@@ -13,9 +13,6 @@ interface IPositionToken is IERC20 {
     /// @notice Get the pick configuration ID this token belongs to
     function pickConfigId() external view returns (bytes32);
 
-    /// @notice Get the factory that created this token
-    function factory() external view returns (address);
-
     /// @notice Check if this is the predictor token (vs counterparty)
     function isPredictorToken() external view returns (bool);
 

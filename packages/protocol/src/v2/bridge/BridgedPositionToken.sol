@@ -17,9 +17,6 @@ contract BridgedPositionToken is ERC20, IBridgedPositionToken {
     /// @inheritdoc IBridgedPositionToken
     address public immutable bridge;
 
-    /// @inheritdoc IBridgedPositionToken
-    address public immutable factory;
-
     /// @notice Create a new bridged position token
     /// @param name_ Token name
     /// @param symbol_ Token symbol
@@ -36,7 +33,6 @@ contract BridgedPositionToken is ERC20, IBridgedPositionToken {
         pickConfigId = pickConfigId_;
         isPredictorToken = isPredictorToken_;
         bridge = bridge_;
-        factory = msg.sender; // Factory deploys via CREATE3
     }
 
     /// @inheritdoc IBridgedPositionToken

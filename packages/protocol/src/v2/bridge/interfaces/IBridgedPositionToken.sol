@@ -22,9 +22,6 @@ interface IBridgedPositionToken is IERC20 {
     /// @notice The bridge contract authorized for mint/burn
     function bridge() external view returns (address);
 
-    /// @notice The factory that deployed this token
-    function factory() external view returns (address);
-
     // ============ Bridge Functions ============
 
     /// @notice Mint tokens (only bridge)

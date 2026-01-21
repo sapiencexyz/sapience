@@ -35,7 +35,6 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
-        address, // recipient - unused, minting done by bridge
         address burner
     ) external onlyDeployer returns (address token) {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);

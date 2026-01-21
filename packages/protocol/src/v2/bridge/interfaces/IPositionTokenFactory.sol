@@ -32,7 +32,6 @@ interface IPositionTokenFactory {
     /// @param isPredictorToken True if this is the predictor token
     /// @param name Token name
     /// @param symbol Token symbol
-    /// @param recipient Initial token recipient
     /// @param burner Address authorized to burn tokens
     /// @return token The deployed token address
     function deploy(
@@ -40,7 +39,6 @@ interface IPositionTokenFactory {
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
-        address recipient,
         address burner
     ) external returns (address token);
 

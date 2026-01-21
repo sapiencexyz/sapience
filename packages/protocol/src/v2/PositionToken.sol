@@ -15,9 +15,6 @@ contract PositionToken is ERC20, IPositionToken {
     bytes32 public immutable pickConfigId;
 
     /// @inheritdoc IPositionToken
-    address public immutable factory;
-
-    /// @inheritdoc IPositionToken
     bool public immutable isPredictorToken;
 
     /// @notice Address authorized to mint/burn tokens (market contract)
@@ -39,7 +36,6 @@ contract PositionToken is ERC20, IPositionToken {
         address market_
     ) ERC20(name_, symbol_) {
         pickConfigId = pickConfigId_;
-        factory = msg.sender; // The market is also the factory now
         isPredictorToken = isPredictorToken_;
         market = market_;
         // No initial mint - tokens are minted dynamically when bets are placed

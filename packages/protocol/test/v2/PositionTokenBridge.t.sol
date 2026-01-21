@@ -627,7 +627,6 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
             IS_PREDICTOR_TOKEN,
             "Test Token",
             "TEST",
-            address(0),
             address(arbitrumBridge)
         );
         assertTrue(token.code.length > 0);
