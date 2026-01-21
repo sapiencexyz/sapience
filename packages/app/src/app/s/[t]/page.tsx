@@ -3,14 +3,18 @@ import SharePage, {
   generateMetadata as shareGenerateMetadata,
 } from '~/app/share/page';
 
-export function generateMetadata({
-  params,
-}: {
-  params: { t: string };
-}): Metadata {
-  return shareGenerateMetadata({ searchParams: { t: params.t } });
+type PageProps = {
+  params: Promise<{ t: string }>;
+};
+
+export async function generateMetadata(props: PageProps): Promise<Metadata> {
+  const params = await props.params;
+  return shareGenerateMetadata({
+    searchParams: Promise.resolve({ t: params.t }),
+  });
 }
 
-export default function ShortSharePage({ params }: { params: { t: string } }) {
-  return <SharePage searchParams={{ t: params.t }} />;
+export default async function ShortSharePage(props: PageProps) {
+  const params = await props.params;
+  return <SharePage searchParams={Promise.resolve({ t: params.t })} />;
 }

@@ -81,6 +81,6 @@ Cannon deployment system using TOML files in `deployments/tomls/`:
 ## Key Dependencies
 - **@synthetixio/core-contracts**: Core infrastructure patterns
 - **@uma/core**: Optimistic Oracle V3 for price discovery
-- **@uniswap/v3-core & v3-periphery**: AMM functionality
 - **@openzeppelin/contracts**: Standard implementations
+- **@layerzerolabs**: Cross-chain messaging (oapp-evm, lz-evm-protocol-v2)
 - **cannon-std**: Deployment and testing utilities

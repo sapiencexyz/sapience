@@ -399,8 +399,13 @@ export default function BidDisplay({
         variant="default"
         onClick={buttonState.onClick}
       >
-        {uiState === 'submitting' || uiState === 'pending' ? (
+        {uiState === 'submitting' ? (
           <Loader size={12} />
+        ) : uiState === 'pending' ? (
+          <span className="flex items-center gap-2">
+            <Loader size={12} />
+            <span>LISTENING FOR BIDS...</span>
+          </span>
         ) : (
           buttonState.text
         )}
