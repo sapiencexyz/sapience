@@ -238,7 +238,9 @@ export default function PositionsTable({
   // Append new data when it arrives
   // Use a ref to track what we've already processed to avoid infinite loops
   // (rawData may be a new reference on every render even with same contents)
-  const processedRef = React.useRef<{ skip: number; length: number } | null>(null);
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
 
   React.useEffect(() => {
     const dataLength = rawData?.length ?? 0;
