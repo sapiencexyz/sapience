@@ -117,7 +117,9 @@ abstract contract SignatureValidator is EIP712 {
         if (signer.code.length == 0) {
             return false;
         }
-        try IERC1271(signer).isValidSignature{gas: EIP1271_GAS_LIMIT}(hash, signature) returns (
+        try IERC1271(signer).isValidSignature{ gas: EIP1271_GAS_LIMIT }(
+            hash, signature
+        ) returns (
             bytes4 magicValue
         ) {
             return magicValue == IERC1271.isValidSignature.selector;

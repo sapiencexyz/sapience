@@ -8,6 +8,7 @@
     "docgen": "forge doc",
     "test": "forge build --ast && cannon test deployments/tomls/cannonfile.test.toml --forge.vv",
     "lint": "forge lint",
+    "fmt": "forge fmt",
     "format": "forge fmt",
     "format:check": "forge fmt --check",
     "deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/outputs/11155111",
