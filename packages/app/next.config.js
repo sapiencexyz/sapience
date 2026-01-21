@@ -1,13 +1,5 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  // add your own icons to src/app/manifest.ts
-  // to re-generate manifest.json, you can visit https://tomitm.github.io/appmanifest/
-});
-
 /** @type {import('next').NextConfig} */
-module.exports = withPWA({
-  swcMinify: true,
+const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: true,
   transpilePackages: ['@sapience/ui'],
@@ -44,15 +36,14 @@ module.exports = withPWA({
       },
     ];
   }
-});
-
+};
 
 // Injected content via Sentry wizard below
 
 const { withSentryConfig } = require("@sentry/nextjs");
 
 module.exports = withSentryConfig(
-  module.exports,
+  nextConfig,
   {
     // For all available options, see:
     // https://github.com/getsentry/sentry-webpack-plugin#options

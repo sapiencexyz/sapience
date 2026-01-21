@@ -1,14 +1,6 @@
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
 import PageContainer from '~/components/layout/PageContainer';
-
-const MarketsPageSkeleton = () => <div className="space-y-4" />;
-
-// Dynamically import MarketsPage
-const MarketsPage = dynamic(() => import('~/components/markets/MarketsPage'), {
-  ssr: false, // Disable server-side rendering
-  loading: () => <MarketsPageSkeleton />, // Show skeleton while loading
-});
+import MarketsPageClient from './MarketsPageClient';
 
 export const metadata: Metadata = {
   title: 'Prediction Markets',
@@ -18,7 +10,7 @@ export const metadata: Metadata = {
 const ForecastingPage = () => {
   return (
     <PageContainer>
-      <MarketsPage />
+      <MarketsPageClient />
     </PageContainer>
   );
 };
