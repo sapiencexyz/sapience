@@ -239,6 +239,9 @@ const ReferralsDialog = ({
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
+            <h3 className="text-sm font-medium text-foreground">
+              Create an Invite Code
+            </h3>
             <div className="flex gap-3">
               <Input
                 value={code}

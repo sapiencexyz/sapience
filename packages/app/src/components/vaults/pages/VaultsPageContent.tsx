@@ -18,6 +18,7 @@ import {
 import { Vault } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits } from 'viem';
+import { formatDuration, intervalToDuration } from 'date-fns';
 import { useAccount } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import Link from 'next/link';
@@ -332,25 +333,38 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          {depositAmount &&
-          estDepositShares > 0n &&
-          ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+          {interactionDelay > 0n && (
             <div className="sm:text-right">
-              Requested Shares:{' '}
-              {formatDecimalWithCommasFixed2(
-                formatSharesAmount(estDepositShares)
-              )}{' '}
-              sapLP
+              Minimum Deposit Duration:{' '}
+              {formatDuration(
+                intervalToDuration({
+                  start: 0,
+                  end: Number(interactionDelay) * 1000,
+                }),
+                { format: ['days', 'hours', 'minutes'] }
+              )}
             </div>
-          ) : (
-            (minDeposit ?? 0n) > 0n && (
-              <div className="sm:text-right">
-                Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
-                {collateralSymbol}
-              </div>
-            )
           )}
         </div>
+        {/* Requested/Minimum row */}
+        {depositAmount &&
+        estDepositShares > 0n &&
+        ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
+          <div className="text-sm text-muted-foreground sm:text-right">
+            Requested Shares:{' '}
+            {formatDecimalWithCommasFixed2(
+              formatSharesAmount(estDepositShares)
+            )}{' '}
+            sapLP
+          </div>
+        ) : (
+          (minDeposit ?? 0n) > 0n && (
+            <div className="text-sm text-muted-foreground sm:text-right">
+              Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
+              {collateralSymbol}
+            </div>
+          )
+        )}
 
         {/* Cooldown + Deposit Button Group */}
         <div className="space-y-2 pt-3 md:pt-4">
