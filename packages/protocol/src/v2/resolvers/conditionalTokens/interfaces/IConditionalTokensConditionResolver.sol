@@ -13,8 +13,9 @@ interface IConditionalTokensConditionResolver is IConditionResolver {
     struct ConditionState {
         bytes32 conditionId;
         bool settled;
+        bool invalid; // True if condition has invalid payouts (no + yes != denom)
+        bool nonDecisive; // True if condition resolved to a tie (no == yes)
         bool resolvedToYes;
-        bool invalid; // True if condition is non-binary or has invalid payouts
         uint256 payoutDenominator;
         uint256 noPayout;
         uint256 yesPayout;
@@ -25,8 +26,9 @@ interface IConditionalTokensConditionResolver is IConditionResolver {
 
     event ConditionResolved(
         bytes32 indexed conditionId,
-        bool resolvedToYes,
         bool invalid,
+        bool nonDecisive,
+        bool resolvedToYes,
         uint256 payoutDenominator,
         uint256 noPayout,
         uint256 yesPayout,

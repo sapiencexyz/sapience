@@ -169,7 +169,7 @@ contract ConditionalTokensReader is
 
     /// @notice Check if a condition can be requested for resolution
     /// @param conditionId The conditionId to check
-    /// @return True if condition is valid, binary, and resolved
+    /// @return True if condition is valid, has 2 outcomes, and resolved
     function canRequestResolution(bytes32 conditionId)
         external
         view
@@ -246,7 +246,6 @@ contract ConditionalTokensReader is
         if (data.noPayout + data.yesPayout != data.payoutDenominator) {
             return false;
         }
-        if (data.noPayout == data.yesPayout) return false;
         return true;
     }
 
@@ -263,6 +262,5 @@ contract ConditionalTokensReader is
         if (data.noPayout + data.yesPayout != data.payoutDenominator) {
             revert InvalidPayout(conditionId);
         }
-        if (data.noPayout == data.yesPayout) revert InvalidPayout(conditionId);
     }
 }

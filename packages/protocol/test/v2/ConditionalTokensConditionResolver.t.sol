@@ -49,8 +49,9 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // Events
     event ConditionResolved(
         bytes32 indexed conditionId,
-        bool resolvedToYes,
         bool invalid,
+        bool nonDecisive,
+        bool resolvedToYes,
         uint256 payoutDenominator,
         uint256 noPayout,
         uint256 yesPayout,
@@ -235,7 +236,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
     }
 
-    function test_lzReceive_tieMarkedAsInvalid() public {
+    function test_lzReceive_tieMarkedAsNonDecisive() public {
         // Tie: noPayout == yesPayout
         bytes memory payload =
             abi.encode(CONDITION_ID_1, uint256(2), uint256(1), uint256(1));
@@ -250,13 +251,23 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
             bytes("")
         );
 
-        assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
-        assertFalse(pmResolver.isConditionSettled(CONDITION_ID_1));
-        assertTrue(pmResolver.isConditionInvalid(CONDITION_ID_1));
+        // Tie is now valid and non-decisive
+        assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
+        assertTrue(pmResolver.isConditionSettled(CONDITION_ID_1));
+        assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
 
-        // getResolution should return not resolved for invalid
-        (bool isResolved,) = pmResolver.getResolution(CONDITION_ID_1);
-        assertFalse(isResolved);
+        // getResolution should return [1,1] for non-decisive
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_1);
+        assertTrue(isResolved);
+        assertEq(outcome.yesWeight, 1);
+        assertEq(outcome.noWeight, 1);
+
+        // Verify condition state
+        IConditionalTokensConditionResolver.ConditionState memory state =
+            pmResolver.getCondition(CONDITION_ID_1);
+        assertTrue(state.nonDecisive);
+        assertFalse(state.resolvedToYes);
     }
 
     function test_lzReceive_invalidPayoutMarkedAsInvalid() public {
@@ -414,6 +425,73 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         assertEq(outcomes[2].noWeight, 0);
     }
 
+    function test_getResolutions_batchWithNonDecisive() public {
+        // Settle first condition as YES
+        bytes memory payload1 =
+            abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
+        bytes memory message1 = abi.encode(uint16(10), payload1);
+
+        vm.prank(address(endpoints[pmEid]));
+        pmResolver.lzReceive(
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message1,
+            address(0),
+            bytes("")
+        );
+
+        // Settle second condition as non-decisive (tie)
+        bytes memory payload2 =
+            abi.encode(CONDITION_ID_2, uint256(2), uint256(1), uint256(1));
+        bytes memory message2 = abi.encode(uint16(10), payload2);
+
+        vm.prank(address(endpoints[pmEid]));
+        pmResolver.lzReceive(
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message2,
+            address(0),
+            bytes("")
+        );
+
+        // Settle third condition as NO
+        bytes memory payload3 =
+            abi.encode(CONDITION_ID_3, uint256(1), uint256(1), uint256(0));
+        bytes memory message3 = abi.encode(uint16(10), payload3);
+
+        vm.prank(address(endpoints[pmEid]));
+        pmResolver.lzReceive(
+            _createOrigin(polygonEid, address(polygonReader)),
+            bytes32(0),
+            message3,
+            address(0),
+            bytes("")
+        );
+
+        // Query batch
+        bytes32[] memory conditionIds = new bytes32[](3);
+        conditionIds[0] = CONDITION_ID_1;
+        conditionIds[1] = CONDITION_ID_2;
+        conditionIds[2] = CONDITION_ID_3;
+
+        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
+            pmResolver.getResolutions(conditionIds);
+
+        assertTrue(resolved[0]);
+        assertTrue(resolved[1]);
+        assertTrue(resolved[2]);
+
+        // YES wins
+        assertEq(outcomes[0].yesWeight, 1);
+        assertEq(outcomes[0].noWeight, 0);
+        // Non-decisive (tie)
+        assertEq(outcomes[1].yesWeight, 1);
+        assertEq(outcomes[1].noWeight, 1);
+        // NO wins
+        assertEq(outcomes[2].yesWeight, 0);
+        assertEq(outcomes[2].noWeight, 1);
+    }
+
     // ============ View Functions Tests ============
 
     function test_getCondition() public {
@@ -435,8 +513,9 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         assertEq(state.conditionId, CONDITION_ID_1);
         assertTrue(state.settled);
-        assertTrue(state.resolvedToYes); // 70 > 30
         assertFalse(state.invalid);
+        assertFalse(state.nonDecisive);
+        assertTrue(state.resolvedToYes); // 70 > 30
         assertEq(state.payoutDenominator, 100);
         assertEq(state.noPayout, 30);
         assertEq(state.yesPayout, 70);

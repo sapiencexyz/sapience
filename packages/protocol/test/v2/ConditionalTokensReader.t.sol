@@ -188,7 +188,7 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
 
     function test_canRequestResolution_tie() public {
         mockCT.setTieCondition(CONDITION_ID_2);
-        assertFalse(polygonReader.canRequestResolution(CONDITION_ID_2));
+        assertTrue(polygonReader.canRequestResolution(CONDITION_ID_2));
     }
 
     // ============ getConditionResolution Tests ============
@@ -241,15 +241,13 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         polygonReader.requestResolution{ value: 1 ether }(CONDITION_ID_2);
     }
 
-    function test_requestResolution_revertIfTie() public {
+    function test_requestResolution_tieAllowed() public {
         mockCT.setTieCondition(CONDITION_ID_2);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                IConditionalTokensReader.InvalidPayout.selector, CONDITION_ID_2
-            )
-        );
-        polygonReader.requestResolution{ value: 1 ether }(CONDITION_ID_2);
+        MessagingFee memory fee = polygonReader.quoteResolution(CONDITION_ID_2);
+        vm.prank(user);
+        polygonReader.requestResolution{ value: fee.nativeFee }(CONDITION_ID_2);
+        // Should not revert - ties are now allowed
     }
 
     function test_requestResolution_revertIfInsufficientFee() public {
@@ -339,6 +337,33 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
+    }
+
+    function test_fullFlow_tie() public {
+        mockCT.setTieCondition(CONDITION_ID_2);
+
+        MessagingFee memory fee = polygonReader.quoteResolution(CONDITION_ID_2);
+
+        vm.prank(user);
+        polygonReader.requestResolution{ value: fee.nativeFee }(CONDITION_ID_2);
+
+        verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
+
+        // Should be finalized as non-decisive
+        assertTrue(pmResolver.isFinalized(CONDITION_ID_2));
+
+        (bool isResolved, IV2Types.OutcomeVector memory outcome) =
+            pmResolver.getResolution(CONDITION_ID_2);
+        assertTrue(isResolved);
+        // Non-decisive: both weights are 1
+        assertEq(outcome.yesWeight, 1);
+        assertEq(outcome.noWeight, 1);
+
+        // Verify condition state
+        IConditionalTokensConditionResolver.ConditionState memory state =
+            pmResolver.getCondition(CONDITION_ID_2);
+        assertTrue(state.nonDecisive);
+        assertFalse(state.invalid);
     }
 }
 

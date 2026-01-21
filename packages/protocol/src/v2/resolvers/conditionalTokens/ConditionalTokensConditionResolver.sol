@@ -78,9 +78,14 @@ contract ConditionalTokensConditionResolver is
     {
         ConditionState memory condition = conditions[conditionId];
 
-        // Not resolved if: not settled, or marked as invalid (non-binary)
+        // Not resolved if: not settled, or marked as invalid
         if (!condition.settled || condition.invalid) {
             return (false, IV2Types.OutcomeVector(0, 0));
+        }
+
+        // Non-decisive (tie) = [1,1]
+        if (condition.nonDecisive) {
+            return (true, IV2Types.OutcomeVector(1, 1));
         }
 
         // YES = [1,0], NO = [0,1]
@@ -109,7 +114,9 @@ contract ConditionalTokensConditionResolver is
 
             if (condition.settled && !condition.invalid) {
                 resolved[i] = true;
-                if (condition.resolvedToYes) {
+                if (condition.nonDecisive) {
+                    outcomes[i] = IV2Types.OutcomeVector(1, 1);
+                } else if (condition.resolvedToYes) {
                     outcomes[i] = IV2Types.OutcomeVector(1, 0);
                 } else {
                     outcomes[i] = IV2Types.OutcomeVector(0, 1);
@@ -198,7 +205,7 @@ contract ConditionalTokensConditionResolver is
 
     // ============ Internal Functions ============
 
-    /// @dev Finalize resolution - never reverts, marks invalid state if non-binary
+    /// @dev Finalize resolution - never reverts, marks invalid state if payouts don't sum to denom
     function _finalizeResolution(
         bytes32 conditionId,
         uint256 denom,
@@ -228,8 +235,10 @@ contract ConditionalTokensConditionResolver is
             // Not resolved yet on the remote chain
             condition.settled = false;
             condition.invalid = false;
+            condition.nonDecisive = false;
             emit ConditionResolved(
                 conditionId,
+                false,
                 false,
                 false,
                 denom,
@@ -240,16 +249,36 @@ contract ConditionalTokensConditionResolver is
             return;
         }
 
-        // Validate strict binary condition
-        // For a strict binary: no + yes == denom AND no != yes
-        if (noPayout + yesPayout != denom || noPayout == yesPayout) {
-            // Not a strict binary outcome - mark as invalid, don't revert
+        // Validate payouts sum to denominator
+        if (noPayout + yesPayout != denom) {
+            // Invalid payouts - mark as invalid, don't revert
             condition.settled = false;
             condition.invalid = true;
+            condition.nonDecisive = false;
+            emit ConditionResolved(
+                conditionId,
+                true,
+                false,
+                false,
+                denom,
+                noPayout,
+                yesPayout,
+                block.timestamp
+            );
+            return;
+        }
+
+        // Check for tie (non-decisive)
+        if (noPayout == yesPayout) {
+            condition.settled = true;
+            condition.invalid = false;
+            condition.nonDecisive = true;
+            condition.resolvedToYes = false;
             emit ConditionResolved(
                 conditionId,
                 false,
                 true,
+                false,
                 denom,
                 noPayout,
                 yesPayout,
@@ -261,12 +290,14 @@ contract ConditionalTokensConditionResolver is
         // Valid binary outcome
         condition.settled = true;
         condition.invalid = false;
+        condition.nonDecisive = false;
         condition.resolvedToYes = yesPayout > noPayout;
 
         emit ConditionResolved(
             conditionId,
-            condition.resolvedToYes,
             false,
+            false,
+            condition.resolvedToYes,
             denom,
             noPayout,
             yesPayout,
