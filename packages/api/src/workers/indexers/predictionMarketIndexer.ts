@@ -2075,6 +2075,29 @@ class PredictionMarketIndexer implements IIndexer {
             console.log(
               `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
             );
+
+            // Score forecasts and compute TW errors for the accuracy leaderboard
+            const marketAddress = condition.resolver?.toLowerCase();
+            if (marketAddress) {
+              try {
+                await scoreSelectedForecastsForSettledMarket(
+                  marketAddress,
+                  condition.id
+                );
+                await computeAndStoreMarketTwErrors(
+                  marketAddress,
+                  condition.id
+                );
+                console.log(
+                  `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${conditionId}`
+                );
+              } catch (scoringError) {
+                console.error(
+                  `[PredictionMarketIndexer] Error scoring forecasts for ${conditionId}:`,
+                  scoringError
+                );
+              }
+            }
           }
         } else {
           console.warn(
