@@ -386,6 +386,13 @@ contract PredictionMarketV2 is
             // Transfer collateral to holder
             collateralToken.safeTransfer(msg.sender, payout);
 
+            // Track claimed collateral for accounting
+            if (isPredictor) {
+                config.claimedPredictorCollateral += payout;
+            } else {
+                config.claimedCounterpartyCollateral += payout;
+            }
+
             // Note: We emit with pickConfigId since tokens are shared
             emit TokensRedeemed(
                 pickConfigId, msg.sender, positionToken, amount, payout, refCode
