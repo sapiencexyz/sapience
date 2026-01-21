@@ -3,8 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Order } from '../types';
 import OrderCard from './OrderCard';
 import { cn } from '~/lib/utils/util';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 
 type OrdersListProps = {
   orders: Order[];
@@ -15,7 +14,6 @@ type OrdersListProps = {
   describeAutoPauseStatus: (order: Order) => string;
   onToggleStatus: (id: string) => void;
   onEdit: (order: Order) => void;
-  onCreateOrder: () => void;
 };
 
 const OrdersList: React.FC<OrdersListProps> = ({
@@ -27,20 +25,17 @@ const OrdersList: React.FC<OrdersListProps> = ({
   describeAutoPauseStatus,
   onToggleStatus,
   onEdit,
-  onCreateOrder,
 }) => {
   const ordersScrollRef = useRef<HTMLDivElement | null>(null);
   const [showOrdersScrollShadow, setShowOrdersScrollShadow] = useState(false);
-  const { hasConnectedWallet } = useConnectedWallet();
-  const { openConnectDialog } = useConnectDialog();
+  const { toast } = useToast();
 
   const handleCreateOrder = useCallback(() => {
-    if (!hasConnectedWallet) {
-      openConnectDialog();
-      return;
-    }
-    onCreateOrder();
-  }, [hasConnectedWallet, openConnectDialog, onCreateOrder]);
+    toast({
+      title: 'Auto-bid Coming Soon',
+      description: 'Request early access in Discord.',
+    });
+  }, [toast]);
 
   useEffect(() => {
     const node = ordersScrollRef.current;

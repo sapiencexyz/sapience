@@ -325,7 +325,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     [createDraftFromOrder]
   );
 
-  const handleCreateOrder = useCallback(() => {
+  const _handleCreateOrder = useCallback(() => {
     setInitialDraft({
       durationValue: '',
       strategy: 'conditions',
@@ -408,7 +408,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
             describeAutoPauseStatus={describeAutoPauseStatus}
             onToggleStatus={toggleOrderStatus}
             onEdit={handleEdit}
-            onCreateOrder={handleCreateOrder}
           />
 
           <LogsPanel logs={logs} orderLabelById={orderLabelById} />
