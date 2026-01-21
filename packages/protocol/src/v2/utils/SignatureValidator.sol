@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./IAccountFactory.sol";
 
 /**
@@ -97,6 +98,74 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         return recoveredSigner == signer;
+    }
+
+    /// @notice Validate signature using EIP-1271 (for smart contract signers)
+    /// @param signer The smart contract address that should validate the signature
+    /// @param hash The hash that was signed
+    /// @param signature The signature to validate
+    /// @return isValid True if the signature is valid according to EIP-1271
+    function _isEIP1271SignatureValid(
+        address signer,
+        bytes32 hash,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        if (signer.code.length == 0) {
+            return false;
+        }
+        try IERC1271(signer).isValidSignature(hash, signature) returns (
+            bytes4 magicValue
+        ) {
+            return magicValue == IERC1271.isValidSignature.selector;
+        } catch {
+            return false;
+        }
+    }
+
+    /// @notice Validate signature for EOA or smart contract with EIP-1271 fallback
+    /// @param predictionHash Hash of the prediction parameters
+    /// @param signer Expected signer address (EOA or smart contract)
+    /// @param wager Wager amount for this signer
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The signature (ECDSA for EOA, or signature validated by EIP-1271)
+    /// @return isValid True if the signature is valid
+    function _isApprovalValidWithEIP1271Fallback(
+        bytes32 predictionHash,
+        address signer,
+        uint256 wager,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        if (block.timestamp > deadline) {
+            return false;
+        }
+
+        // Try ECDSA first (for EOAs)
+        if (_isApprovalValid(
+                predictionHash, signer, wager, nonce, deadline, signature
+            )) {
+            return true;
+        }
+
+        // Fallback to EIP-1271 for contracts
+        if (signer.code.length > 0) {
+            bytes32 structHash = keccak256(
+                abi.encode(
+                    MINT_APPROVAL_TYPEHASH,
+                    predictionHash,
+                    signer,
+                    wager,
+                    nonce,
+                    deadline
+                )
+            );
+            bytes32 hash = _hashTypedDataV4(structHash);
+            return _isEIP1271SignatureValid(signer, hash, signature);
+        }
+
+        return false;
     }
 
     /// @notice Get the hash that should be signed offchain for mint approval

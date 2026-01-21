@@ -832,8 +832,8 @@ contract PredictionMarketV2 is
         bytes calldata sessionKeyData
     ) internal view returns (bool isValid) {
         if (sessionKeyData.length == 0) {
-            // EOA signature - use standard validation
-            return _isApprovalValid(
+            // EOA or EIP-1271 (smart account) signature
+            return _isApprovalValidWithEIP1271Fallback(
                 predictionHash, signer, wager, nonce, deadline, signature
             );
         } else {
