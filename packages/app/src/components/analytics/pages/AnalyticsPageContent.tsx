@@ -17,8 +17,8 @@ import {
 import {
   useAnalyticsSummary,
   useAnalyticsTimeSeries,
-  useProtocolTVLSummary,
-  useProtocolTVLTimeSeries,
+  useProtocolStatsSummary,
+  useProtocolStatsTimeSeries,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 
@@ -103,7 +103,20 @@ function ChartTooltip({
   let dateLabel = '';
   if (label) {
     const date = new Date(label + 'T00:00:00Z'); // Parse as UTC
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
   }
 
@@ -139,10 +152,12 @@ function AnalyticsPageContent(): React.ReactElement {
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
   const { data: timeSeries, isLoading: timeSeriesLoading } =
     useAnalyticsTimeSeries();
-  const { data: protocolTVLSummary, isLoading: protocolTVLSummaryLoading } =
-    useProtocolTVLSummary();
-  const { data: protocolTVLTimeSeries, isLoading: protocolTVLTimeSeriesLoading } =
-    useProtocolTVLTimeSeries();
+  const { data: protocolStatsSummary, isLoading: protocolStatsSummaryLoading } =
+    useProtocolStatsSummary();
+  const {
+    data: protocolStatsTimeSeries,
+    isLoading: protocolStatsTimeSeriesLoading,
+  } = useProtocolStatsTimeSeries();
 
   const chartData = useMemo(() => {
     if (!timeSeries) return [];
@@ -154,19 +169,20 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [timeSeries]);
 
-  const protocolTVLChartData = useMemo(() => {
-    if (!protocolTVLTimeSeries) return [];
+  const protocolStatsChartData = useMemo(() => {
+    if (!protocolStatsTimeSeries) return [];
 
-    return protocolTVLTimeSeries.map((point) => ({
+    return protocolStatsTimeSeries.map((point) => ({
       date: point.date,
       totalTVL: parseFloat(point.totalTVL) / 1e18,
       vaultTVL: parseFloat(point.vaultTVL) / 1e18,
       predictionMarketTVL: parseFloat(point.predictionMarketTVL) / 1e18,
     }));
-  }, [protocolTVLTimeSeries]);
+  }, [protocolStatsTimeSeries]);
 
   const isLoading = summaryLoading || timeSeriesLoading;
-  const isProtocolTVLLoading = protocolTVLSummaryLoading || protocolTVLTimeSeriesLoading;
+  const isProtocolStatsLoading =
+    protocolStatsSummaryLoading || protocolStatsTimeSeriesLoading;
 
   return (
     <div className="relative">
@@ -186,21 +202,28 @@ function AnalyticsPageContent(): React.ReactElement {
                 Protocol TVL
               </div>
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
-                {isProtocolTVLLoading ? (
+                {isProtocolStatsLoading ? (
                   <div className="w-full flex justify-center pt-3">
                     <Loader size={24} />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(protocolTVLSummary?.totalTVL || '0')}{' '}
+                    {formatNumber(protocolStatsSummary?.totalTVL || '0')}{' '}
                     {collateralSymbol}
                   </span>
                 )}
               </div>
-              {!isProtocolTVLLoading && protocolTVLSummary && (
+              {!isProtocolStatsLoading && protocolStatsSummary && (
                 <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                  <div>Vault: {formatNumber(protocolTVLSummary.vaultTVL)} {collateralSymbol}</div>
-                  <div>Markets: {formatNumber(protocolTVLSummary.predictionMarketTVL)} {collateralSymbol}</div>
+                  <div>
+                    Vault: {formatNumber(protocolStatsSummary.vaultTVL)}{' '}
+                    {collateralSymbol}
+                  </div>
+                  <div>
+                    Markets:{' '}
+                    {formatNumber(protocolStatsSummary.predictionMarketTVL)}{' '}
+                    {collateralSymbol}
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -381,22 +404,23 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Protocol TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">
-                Protocol TVL
-              </h3>
+              <h3 className="sc-heading text-foreground mb-4">Protocol TVL</h3>
               <div className="h-[300px]">
-                {isProtocolTVLLoading ? (
+                {isProtocolStatsLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : protocolTVLChartData.length === 0 ? (
+                ) : protocolStatsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={protocolTVLChartData} margin={CHART_MARGIN}>
+                      <AreaChart
+                        data={protocolStatsChartData}
+                        margin={CHART_MARGIN}
+                      >
                         <defs>
                           <linearGradient
                             id="protocolTVLGradient"

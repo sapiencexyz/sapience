@@ -1870,14 +1870,14 @@ type ProfitRankType {
   totalPnL: Float!
 }
 
-type ProtocolTVLSummary {
+type ProtocolStatsSummary {
   lastUpdated: String
   predictionMarketTVL: String!
   totalTVL: String!
   vaultTVL: String!
 }
 
-type ProtocolTVLTimeSeriesPoint {
+type ProtocolStatsTimeSeriesPoint {
   date: String!
   predictionMarketTVL: String!
   totalTVL: String!
@@ -1928,8 +1928,8 @@ type Query {
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
-  protocolTVLSummary: ProtocolTVLSummary!
-  protocolTVLTimeSeries: [ProtocolTVLTimeSeriesPoint!]!
+  protocolStatsSummary: ProtocolStatsSummary!
+  protocolStatsTimeSeries: [ProtocolStatsTimeSeriesPoint!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!

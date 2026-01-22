@@ -2,11 +2,11 @@ import { Field, ObjectType, Query, Resolver } from 'type-graphql';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import {
-  getLatestProtocolTVL,
-  getProtocolTVLTimeSeries,
+  getLatestProtocolStats,
+  getProtocolStatsTimeSeries,
   fetchVaultTVL,
   fetchPredictionMarketTVL,
-} from '../../helpers/protocolTVL';
+} from '../../helpers/protocolStats';
 
 @ObjectType()
 class AnalyticsSummary {
@@ -49,7 +49,7 @@ interface DailyOIRow {
 }
 
 @ObjectType()
-class ProtocolTVLSummary {
+class ProtocolStatsSummary {
   @Field(() => String)
   totalTVL!: string;
 
@@ -64,7 +64,7 @@ class ProtocolTVLSummary {
 }
 
 @ObjectType()
-class ProtocolTVLTimeSeriesPoint {
+class ProtocolStatsTimeSeriesPoint {
   @Field(() => String)
   date!: string;
 
@@ -175,14 +175,18 @@ export class AnalyticsResolver {
     }));
   }
 
-  @Query(() => ProtocolTVLSummary)
-  async protocolTVLSummary(): Promise<ProtocolTVLSummary> {
+  @Query(() => ProtocolStatsSummary)
+  async protocolStatsSummary(): Promise<ProtocolStatsSummary> {
     // First try to get from database snapshot
-    const latestSnapshot = await getLatestProtocolTVL(CHAIN_ID_ETHEREAL);
+    const latestSnapshot = await getLatestProtocolStats(CHAIN_ID_ETHEREAL);
 
     if (latestSnapshot) {
+      // Calculate totalTVL on-the-fly
+      const totalTVL =
+        BigInt(latestSnapshot.vaultTVL) +
+        BigInt(latestSnapshot.predictionMarketTVL);
       return {
-        totalTVL: latestSnapshot.totalTVL,
+        totalTVL: totalTVL.toString(),
         vaultTVL: latestSnapshot.vaultTVL,
         predictionMarketTVL: latestSnapshot.predictionMarketTVL,
         lastUpdated: latestSnapshot.computedAt.toISOString(),
@@ -205,14 +209,13 @@ export class AnalyticsResolver {
     };
   }
 
-  @Query(() => [ProtocolTVLTimeSeriesPoint])
-  async protocolTVLTimeSeries(): Promise<ProtocolTVLTimeSeriesPoint[]> {
-    const snapshots = await getProtocolTVLTimeSeries(CHAIN_ID_ETHEREAL, 90);
+  @Query(() => [ProtocolStatsTimeSeriesPoint])
+  async protocolStatsTimeSeries(): Promise<ProtocolStatsTimeSeriesPoint[]> {
+    const snapshots = await getProtocolStatsTimeSeries(CHAIN_ID_ETHEREAL, 90);
 
     return snapshots.map(
       (snapshot: {
         snapshotDate: Date;
-        totalTVL: string;
         vaultTVL: string;
         predictionMarketTVL: string;
       }) => {
@@ -221,9 +224,12 @@ export class AnalyticsResolver {
         const year = d.getUTCFullYear();
         const month = String(d.getUTCMonth() + 1).padStart(2, '0');
         const day = String(d.getUTCDate()).padStart(2, '0');
+        // Calculate totalTVL on-the-fly
+        const totalTVL =
+          BigInt(snapshot.vaultTVL) + BigInt(snapshot.predictionMarketTVL);
         return {
           date: `${year}-${month}-${day}`,
-          totalTVL: snapshot.totalTVL,
+          totalTVL: totalTVL.toString(),
           vaultTVL: snapshot.vaultTVL,
           predictionMarketTVL: snapshot.predictionMarketTVL,
         };

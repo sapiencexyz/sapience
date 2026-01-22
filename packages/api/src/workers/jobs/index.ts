@@ -2,7 +2,10 @@ import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexPredictionMarket } from './reindexPredictionMarket';
-import { computeAndStoreProtocolTVL } from '../../helpers/protocolTVL';
+import {
+  computeAndStoreProtocolStats,
+  backfillProtocolStats,
+} from '../../helpers/protocolStats';
 
 const callReindexEAS = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -96,10 +99,18 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       await callReindexPredictionMarket(argv);
       return true;
     }
-    case 'computeProtocolTVL': {
+    case 'computeProtocolStats': {
       const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
-      await computeAndStoreProtocolTVL(chainId);
-      console.log('Done computing protocol TVL');
+      await computeAndStoreProtocolStats(chainId);
+      console.log('Done computing protocol stats');
+      process.exit(0);
+      return true;
+    }
+    case 'backfillProtocolStats': {
+      const days = argv[3] ? parseInt(argv[3], 10) : 90;
+      const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
+      await backfillProtocolStats(chainId, days);
+      console.log('Done backfilling protocol stats');
       process.exit(0);
       return true;
     }

@@ -2059,16 +2059,16 @@ export type ProfitRankType = {
   totalPnL: Scalars['Float']['output'];
 };
 
-export type ProtocolTvlSummary = {
-  __typename?: 'ProtocolTVLSummary';
+export type ProtocolStatsSummary = {
+  __typename?: 'ProtocolStatsSummary';
   lastUpdated?: Maybe<Scalars['String']['output']>;
   predictionMarketTVL: Scalars['String']['output'];
   totalTVL: Scalars['String']['output'];
   vaultTVL: Scalars['String']['output'];
 };
 
-export type ProtocolTvlTimeSeriesPoint = {
-  __typename?: 'ProtocolTVLTimeSeriesPoint';
+export type ProtocolStatsTimeSeriesPoint = {
+  __typename?: 'ProtocolStatsTimeSeriesPoint';
   date: Scalars['String']['output'];
   predictionMarketTVL: Scalars['String']['output'];
   totalTVL: Scalars['String']['output'];
@@ -2120,8 +2120,8 @@ export type Query = {
   positionsByConditionId: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
-  protocolTVLSummary: ProtocolTvlSummary;
-  protocolTVLTimeSeries: Array<ProtocolTvlTimeSeriesPoint>;
+  protocolStatsSummary: ProtocolStatsSummary;
+  protocolStatsTimeSeries: Array<ProtocolStatsTimeSeriesPoint>;
   topForecasters: Array<ForecasterScoreType>;
   user?: Maybe<User>;
   users: Array<User>;

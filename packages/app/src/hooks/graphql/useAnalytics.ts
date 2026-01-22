@@ -63,25 +63,25 @@ export function useAnalyticsTimeSeries() {
   });
 }
 
-// Protocol TVL types and hooks
+// Protocol Stats types and hooks
 
-interface ProtocolTVLSummary {
+interface ProtocolStatsSummary {
   totalTVL: string;
   vaultTVL: string;
   predictionMarketTVL: string;
   lastUpdated: string | null;
 }
 
-interface ProtocolTVLTimeSeriesPoint {
+interface ProtocolStatsTimeSeriesPoint {
   date: string;
   totalTVL: string;
   vaultTVL: string;
   predictionMarketTVL: string;
 }
 
-const GET_PROTOCOL_TVL_SUMMARY = /* GraphQL */ `
-  query ProtocolTVLSummary {
-    protocolTVLSummary {
+const GET_PROTOCOL_STATS_SUMMARY = /* GraphQL */ `
+  query ProtocolStatsSummary {
+    protocolStatsSummary {
       totalTVL
       vaultTVL
       predictionMarketTVL
@@ -90,9 +90,9 @@ const GET_PROTOCOL_TVL_SUMMARY = /* GraphQL */ `
   }
 `;
 
-const GET_PROTOCOL_TVL_TIME_SERIES = /* GraphQL */ `
-  query ProtocolTVLTimeSeries {
-    protocolTVLTimeSeries {
+const GET_PROTOCOL_STATS_TIME_SERIES = /* GraphQL */ `
+  query ProtocolStatsTimeSeries {
+    protocolStatsTimeSeries {
       date
       totalTVL
       vaultTVL
@@ -101,28 +101,28 @@ const GET_PROTOCOL_TVL_TIME_SERIES = /* GraphQL */ `
   }
 `;
 
-export function useProtocolTVLSummary() {
-  return useQuery<ProtocolTVLSummary | null>({
-    queryKey: ['protocolTVLSummary'],
+export function useProtocolStatsSummary() {
+  return useQuery<ProtocolStatsSummary | null>({
+    queryKey: ['protocolStatsSummary'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        protocolTVLSummary: ProtocolTVLSummary;
-      }>(GET_PROTOCOL_TVL_SUMMARY);
-      return data?.protocolTVLSummary ?? null;
+        protocolStatsSummary: ProtocolStatsSummary;
+      }>(GET_PROTOCOL_STATS_SUMMARY);
+      return data?.protocolStatsSummary ?? null;
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export function useProtocolTVLTimeSeries() {
-  return useQuery<ProtocolTVLTimeSeriesPoint[]>({
-    queryKey: ['protocolTVLTimeSeries'],
+export function useProtocolStatsTimeSeries() {
+  return useQuery<ProtocolStatsTimeSeriesPoint[]>({
+    queryKey: ['protocolStatsTimeSeries'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        protocolTVLTimeSeries: ProtocolTVLTimeSeriesPoint[];
-      }>(GET_PROTOCOL_TVL_TIME_SERIES);
-      return data?.protocolTVLTimeSeries ?? [];
+        protocolStatsTimeSeries: ProtocolStatsTimeSeriesPoint[];
+      }>(GET_PROTOCOL_STATS_TIME_SERIES);
+      return data?.protocolStatsTimeSeries ?? [];
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
@@ -132,6 +132,6 @@ export function useProtocolTVLTimeSeries() {
 export type {
   AnalyticsSummary,
   AnalyticsTimeSeriesPoint,
-  ProtocolTVLSummary,
-  ProtocolTVLTimeSeriesPoint,
+  ProtocolStatsSummary,
+  ProtocolStatsTimeSeriesPoint,
 };
