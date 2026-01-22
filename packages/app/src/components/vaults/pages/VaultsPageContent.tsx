@@ -30,6 +30,9 @@ import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
+import { useAnalyticsSummary } from '~/hooks/graphql/useAnalytics';
+import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
+import Loader from '~/components/shared/Loader';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
@@ -74,6 +77,8 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
+  const { data: analyticsSummary, isLoading: isAnalyticsLoading } =
+    useAnalyticsSummary();
 
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
@@ -333,38 +338,22 @@ const VaultsPageContent = () => {
               MAX
             </Button>
           </div>
-          {interactionDelay > 0n && (
-            <div className="sm:text-right">
-              Minimum Deposit Duration:{' '}
-              {formatDuration(
-                intervalToDuration({
-                  start: 0,
-                  end: Number(interactionDelay) * 1000,
-                }),
-                { format: ['days', 'hours', 'minutes'] }
-              )}
-            </div>
-          )}
-        </div>
-        {/* Requested/Minimum row */}
-        {depositAmount &&
-        estDepositShares > 0n &&
-        ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n)) ? (
-          <div className="text-sm text-muted-foreground sm:text-right">
+          <div
+            className={`transition-opacity duration-300 ${
+              depositAmount &&
+              estDepositShares > 0n &&
+              ((minDeposit ?? 0n) === 0n || depositWei >= (minDeposit ?? 0n))
+                ? 'opacity-100'
+                : 'opacity-0'
+            }`}
+          >
             Requested Shares:{' '}
             {formatDecimalWithCommasFixed2(
               formatSharesAmount(estDepositShares)
             )}{' '}
             sapLP
           </div>
-        ) : (
-          (minDeposit ?? 0n) > 0n && (
-            <div className="text-sm text-muted-foreground sm:text-right">
-              Minimum Deposit: {formatAssetAmount(minDeposit ?? 0n)}{' '}
-              {collateralSymbol}
-            </div>
-          )
-        )}
+        </div>
 
         {/* Cooldown + Deposit Button Group */}
         <div className="space-y-2 pt-3 md:pt-4">
@@ -431,6 +420,35 @@ const VaultsPageContent = () => {
                             ? 'Approve & Deposit'
                             : 'Submit Deposit'}
           </Button>
+        </div>
+        <div className="h-1" />
+        <div className="relative h-4">
+          <div
+            className={`absolute inset-0 transition-opacity duration-300 ${
+              depositAmount ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            <WagerDisclaimer
+              className="!text-sm"
+              message="Do not deposit more than you can afford to lose"
+            />
+          </div>
+          {interactionDelay > 0n && (
+            <div
+              className={`absolute inset-0 text-sm text-muted-foreground text-center transition-opacity duration-300 ${
+                depositAmount ? 'opacity-100' : 'opacity-0'
+              }`}
+            >
+              Minimum Deposit Duration:{' '}
+              {formatDuration(
+                intervalToDuration({
+                  start: 0,
+                  end: Number(interactionDelay) * 1000,
+                }),
+                { format: ['days', 'hours', 'minutes'] }
+              )}
+            </div>
+          )}
         </div>
 
         {/* Consolidated pending section rendered below tabs */}
@@ -697,11 +715,34 @@ const VaultsPageContent = () => {
     }
   }, [utilizationPercent]);
 
+  const yieldMetrics = useMemo(() => {
+    // Protocol TVL is the total collateral in all positions (in wei, 18 decimals)
+    const protocolTvlWei = BigInt(analyticsSummary?.tvl ?? '0');
+    const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
+    // Vault TVL is this vault's assets
+    const vaultTvlNum = Number(formatAssetAmount(tvlWei));
+
+    // 5% APY is earned on the protocol TVL but distributed to vault depositors
+    const annualYieldToVault = protocolTvlNum * 0.05;
+    const dailyYield = annualYieldToVault / 365;
+
+    // Effective APY for vault depositors = (annual yield to vault / vault TVL) * 100
+    const effectiveApy =
+      vaultTvlNum > 0 ? (annualYieldToVault / vaultTvlNum) * 100 : 0;
+
+    return {
+      protocolTvl: formatDecimalWithCommasFixed2(protocolTvlNum.toString()),
+      annualYield: formatDecimalWithCommasFixed2(annualYieldToVault.toString()),
+      dailyYield: formatDecimalWithCommasFixed2(dailyYield.toString()),
+      effectiveApy: effectiveApy.toFixed(2),
+    };
+  }, [tvlWei, formatAssetAmount, analyticsSummary]);
+
   return (
     <div className="relative">
       {/* Main Content */}
       <div className="container max-w-[600px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
-        <div className="mb-5 md:mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 md:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
@@ -725,6 +766,46 @@ const VaultsPageContent = () => {
                 <p>Coming soon</p>
               </TooltipContent>
             </Tooltip>
+          </div>
+        </div>
+
+        {/* Vault Rewards Info */}
+        <div className="mb-8 bg-brand-black border border-ethena/40 rounded-md p-6 shadow-[0_0_12px_rgba(136,180,245,0.3)]">
+          <div className="flex flex-col gap-4">
+            <div>
+              <div className="text-sm font-mono uppercase tracking-wider text-accent-gold">
+                VAULT REWARDS
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Ethena rewards are automatically distributed into the vault for
+                depositors. This is separate from any profit or loss realized by
+                participating in prediction markets.
+              </p>
+            </div>
+            {isAnalyticsLoading || !vaultData ? (
+              <div className="flex justify-center py-4">
+                <Loader size={24} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="pr-4 border-r border-brand-white/20">
+                  <div className="text-3xl font-medium font-mono">
+                    {yieldMetrics.effectiveApy}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Approximate APY
+                  </div>
+                </div>
+                <div className="pl-4">
+                  <div className="text-3xl font-medium font-mono">
+                    {yieldMetrics.dailyYield} {collateralSymbol}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Approximate Daily Distribution
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -4,7 +4,6 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useAccount, useSendCalls } from 'wagmi';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   HoverCard,
   HoverCardContent,
@@ -367,14 +366,6 @@ export default function CollateralBalanceButton({
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                 {smartAccountBalance.toFixed(2)} {symbol}
               </span>
-            </div>
-            <div className="inline-flex items-center ml-1 w-fit -mr-1">
-              <Badge
-                variant="outline"
-                className="rounded-md border-ethena/80 bg-ethena/20 font-normal text-xs h-5 flex items-center px-2 tracking-[0.08em] shadow-[0_0_10px_rgba(136,180,245,0.25)]"
-              >
-                5% APY
-              </Badge>
             </div>
           </div>
         </HoverCardTrigger>
