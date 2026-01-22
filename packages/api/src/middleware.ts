@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { recoverMessageAddress } from 'viem';
+import rateLimit from 'express-rate-limit';
 import { config } from './config';
 
 // TODO: Update monorepo structure so that we can import this from packages/app/src/lib/constants/constants.ts
@@ -78,3 +79,10 @@ export async function adminAuth(
 
   return next();
 }
+
+export const rateLimiter = rateLimit({
+  windowMs: config.RATE_LIMIT_WINDOW_MS,
+  max: config.RATE_LIMIT_MAX_REQUESTS,
+  standardHeaders: true,
+  legacyHeaders: false,
+});

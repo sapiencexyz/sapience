@@ -35,13 +35,16 @@ function registerTools(server: McpServer, tools: Record<string, any>): void {
 
 export function registerAllMcpTools(server: McpServer): void {
   // Register GraphQL tools individually
-  server.tool(
+  // Note: Type assertion needed due to MCP SDK types incompatibility with zod 3.25.76
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (server as any).tool(
     introspectSchema.name,
     introspectSchema.description,
     introspectSchema.parameters.properties,
     wrapToolFunction(introspectSchema.function)
   );
-  server.tool(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (server as any).tool(
     queryGraphQL.name,
     queryGraphQL.description,
     queryGraphQL.parameters.properties,

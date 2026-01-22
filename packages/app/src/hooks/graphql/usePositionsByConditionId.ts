@@ -91,13 +91,14 @@ export function usePositionsByConditionId(params: {
 
       if (conditionIds.length === 0) return base;
 
-      // Fetch shortName, description, category values for these condition IDs and join client-side
+      // Fetch shortName, description, category, resolver values for these condition IDs and join client-side
       const CONDITIONS_BY_IDS = /* GraphQL */ `
         query ConditionsByIds($ids: [String!]!) {
           conditions(where: { id: { in: $ids } }, take: 1000) {
             id
             shortName
             description
+            resolver
             category {
               slug
             }
@@ -109,6 +110,7 @@ export function usePositionsByConditionId(params: {
         id: string;
         shortName?: string | null;
         description?: string | null;
+        resolver?: string | null;
         category?: { slug: string } | null;
       };
       const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
@@ -119,7 +121,7 @@ export function usePositionsByConditionId(params: {
         (condResp?.conditions || []).map((c) => [c.id, c])
       );
 
-      // Enrich predictions.condition with shortName, description, category if available
+      // Enrich predictions.condition with shortName, description, category, resolver if available
       return base.map((p) => ({
         ...p,
         predictions: (p.predictions || []).map((o) => {
@@ -133,6 +135,7 @@ export function usePositionsByConditionId(params: {
                   shortName: condData.shortName ?? o.condition.shortName,
                   description: condData.description ?? o.condition.description,
                   category: condData.category ?? o.condition.category,
+                  resolver: condData.resolver ?? o.condition.resolver,
                 }
               : undefined,
           };
