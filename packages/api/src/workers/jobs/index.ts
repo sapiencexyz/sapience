@@ -2,6 +2,7 @@ import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexPredictionMarket } from './reindexPredictionMarket';
+import { computeAndStoreProtocolTVL } from '../../helpers/protocolTVL';
 
 const callReindexEAS = async (argv: string[]) => {
   const chainId = parseInt(argv[3], 10);
@@ -93,6 +94,13 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     }
     case 'reindexPredictionMarket': {
       await callReindexPredictionMarket(argv);
+      return true;
+    }
+    case 'computeProtocolTVL': {
+      const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
+      await computeAndStoreProtocolTVL(chainId);
+      console.log('Done computing protocol TVL');
+      process.exit(0);
       return true;
     }
     default: {

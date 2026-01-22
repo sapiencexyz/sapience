@@ -87,7 +87,6 @@ export type AnalyticsTimeSeriesPoint = {
   dailyVolume: Scalars['String']['output'];
   date: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  tvl: Scalars['String']['output'];
 };
 
 export type Attestation = {
@@ -2060,6 +2059,22 @@ export type ProfitRankType = {
   totalPnL: Scalars['Float']['output'];
 };
 
+export type ProtocolTvlSummary = {
+  __typename?: 'ProtocolTVLSummary';
+  lastUpdated?: Maybe<Scalars['String']['output']>;
+  predictionMarketTVL: Scalars['String']['output'];
+  totalTVL: Scalars['String']['output'];
+  vaultTVL: Scalars['String']['output'];
+};
+
+export type ProtocolTvlTimeSeriesPoint = {
+  __typename?: 'ProtocolTVLTimeSeriesPoint';
+  date: Scalars['String']['output'];
+  predictionMarketTVL: Scalars['String']['output'];
+  totalTVL: Scalars['String']['output'];
+  vaultTVL: Scalars['String']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
   accuracyRankByAddress: AccuracyRankType;
@@ -2105,6 +2120,8 @@ export type Query = {
   positionsByConditionId: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
+  protocolTVLSummary: ProtocolTvlSummary;
+  protocolTVLTimeSeries: Array<ProtocolTvlTimeSeriesPoint>;
   topForecasters: Array<ForecasterScoreType>;
   user?: Maybe<User>;
   users: Array<User>;
@@ -2158,16 +2175,6 @@ export type QueryAggregateUserArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
-};
-
-
-export type QueryAnalyticsSummaryArgs = {
-  chainId: Scalars['Int']['input'];
-};
-
-
-export type QueryAnalyticsTimeSeriesArgs = {
-  chainId: Scalars['Int']['input'];
 };
 
 

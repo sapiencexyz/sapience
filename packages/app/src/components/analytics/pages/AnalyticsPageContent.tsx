@@ -17,6 +17,8 @@ import {
 import {
   useAnalyticsSummary,
   useAnalyticsTimeSeries,
+  useProtocolTVLSummary,
+  useProtocolTVLTimeSeries,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 
@@ -97,13 +99,13 @@ function ChartTooltip({
     maximumFractionDigits: 2,
   });
 
-  const dateLabel = label
-    ? new Date(label).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '';
+  // Format date in UTC to avoid timezone shifts
+  let dateLabel = '';
+  if (label) {
+    const date = new Date(label + 'T00:00:00Z'); // Parse as UTC
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+  }
 
   return (
     <div className="bg-background border border-border rounded-md px-3 py-2">
@@ -118,8 +120,9 @@ function ChartTooltip({
 }
 
 function formatDateTick(value: string): string {
-  const date = new Date(value);
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  // Parse as UTC to avoid timezone shifts
+  const date = new Date(value + 'T00:00:00Z');
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
 const CHART_AXIS_STYLE = {
@@ -136,6 +139,10 @@ function AnalyticsPageContent(): React.ReactElement {
   const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
   const { data: timeSeries, isLoading: timeSeriesLoading } =
     useAnalyticsTimeSeries();
+  const { data: protocolTVLSummary, isLoading: protocolTVLSummaryLoading } =
+    useProtocolTVLSummary();
+  const { data: protocolTVLTimeSeries, isLoading: protocolTVLTimeSeriesLoading } =
+    useProtocolTVLTimeSeries();
 
   const chartData = useMemo(() => {
     if (!timeSeries) return [];
@@ -144,11 +151,22 @@ function AnalyticsPageContent(): React.ReactElement {
       date: point.date,
       dailyVolume: parseFloat(point.dailyVolume) / 1e18,
       openInterest: parseFloat(point.openInterest) / 1e18,
-      tvl: parseFloat(point.tvl) / 1e18,
     }));
   }, [timeSeries]);
 
+  const protocolTVLChartData = useMemo(() => {
+    if (!protocolTVLTimeSeries) return [];
+
+    return protocolTVLTimeSeries.map((point) => ({
+      date: point.date,
+      totalTVL: parseFloat(point.totalTVL) / 1e18,
+      vaultTVL: parseFloat(point.vaultTVL) / 1e18,
+      predictionMarketTVL: parseFloat(point.predictionMarketTVL) / 1e18,
+    }));
+  }, [protocolTVLTimeSeries]);
+
   const isLoading = summaryLoading || timeSeriesLoading;
+  const isProtocolTVLLoading = protocolTVLSummaryLoading || protocolTVLTimeSeriesLoading;
 
   return (
     <div className="relative">
@@ -165,6 +183,32 @@ function AnalyticsPageContent(): React.ReactElement {
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2">
+                Protocol TVL
+              </div>
+              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+                {isProtocolTVLLoading ? (
+                  <div className="w-full flex justify-center pt-3">
+                    <Loader size={24} />
+                  </div>
+                ) : (
+                  <span className="transition-opacity duration-300">
+                    {formatNumber(protocolTVLSummary?.totalTVL || '0')}{' '}
+                    {collateralSymbol}
+                  </span>
+                )}
+              </div>
+              {!isProtocolTVLLoading && protocolTVLSummary && (
+                <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  <div>Vault: {formatNumber(protocolTVLSummary.vaultTVL)} {collateralSymbol}</div>
+                  <div>Markets: {formatNumber(protocolTVLSummary.predictionMarketTVL)} {collateralSymbol}</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="p-6">
+              <div className="sc-heading text-foreground mb-2">
                 Open Interest
               </div>
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
@@ -176,25 +220,6 @@ function AnalyticsPageContent(): React.ReactElement {
                   <span className="transition-opacity duration-300">
                     {formatNumber(summary?.openInterest || '0')}{' '}
                     {collateralSymbol}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
-                Total Value Locked
-              </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
-                {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
-                  </div>
-                ) : (
-                  <span className="transition-opacity duration-300">
-                    {formatNumber(summary?.tvl || '0')} {collateralSymbol}
                   </span>
                 )}
               </div>
@@ -353,28 +378,28 @@ function AnalyticsPageContent(): React.ReactElement {
             </CardContent>
           </Card>
 
-          {/* TVL Chart */}
+          {/* Protocol TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <h3 className="sc-heading text-foreground mb-4">
-                Total Value Locked
+                Protocol TVL
               </h3>
               <div className="h-[300px]">
-                {isLoading ? (
+                {isProtocolTVLLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : protocolTVLChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                      <AreaChart data={protocolTVLChartData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
-                            id="tvlGradient"
+                            id="protocolTVLGradient"
                             x1="0"
                             y1="0"
                             x2="0"
@@ -410,17 +435,17 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="tvl"
+                              dataKey="totalTVL"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Area
                           type="monotone"
-                          dataKey="tvl"
+                          dataKey="totalTVL"
                           stroke="hsl(var(--accent-gold))"
                           strokeWidth={2}
-                          fill="url(#tvlGradient)"
+                          fill="url(#protocolTVLGradient)"
                           activeDot={{ r: 4, strokeWidth: 0 }}
                         />
                       </AreaChart>

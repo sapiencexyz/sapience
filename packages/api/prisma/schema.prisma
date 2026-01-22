@@ -362,3 +362,32 @@ model User {
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
 }
+
+/// Daily snapshot of protocol TVL from Vault and PredictionMarket contracts
+model ProtocolTVLSnapshot {
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now()) @db.Timestamp(6)
+
+  /// Date of the snapshot (UTC midnight)
+  snapshotDate        DateTime @db.Date
+
+  /// Chain ID (5064014 for Ethereal)
+  chainId             Int
+
+  /// Vault TVL: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
+  vaultTVL            String   @db.VarChar
+
+  /// PredictionMarket TVL: wUSDe.balanceOf(predictionMarket) (in wei)
+  predictionMarketTVL String   @db.VarChar
+
+  /// Total TVL: sum of all components (in wei)
+  totalTVL            String   @db.VarChar
+
+  /// When this snapshot was computed
+  computedAt          DateTime @db.Timestamp(6)
+
+  @@unique([snapshotDate, chainId], map: "UQ_protocol_tvl_snapshot_date_chain")
+  @@index([chainId], map: "IDX_protocol_tvl_snapshot_chain")
+  @@index([snapshotDate], map: "IDX_protocol_tvl_snapshot_date")
+  @@map("protocol_tvl_snapshot")
+}

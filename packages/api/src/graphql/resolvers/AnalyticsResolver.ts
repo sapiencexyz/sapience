@@ -1,6 +1,12 @@
 import { Field, ObjectType, Query, Resolver } from 'type-graphql';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import prisma from '../../db';
+import {
+  getLatestProtocolTVL,
+  getProtocolTVLTimeSeries,
+  fetchVaultTVL,
+  fetchPredictionMarketTVL,
+} from '../../helpers/protocolTVL';
 
 @ObjectType()
 class AnalyticsSummary {
@@ -24,9 +30,6 @@ class AnalyticsTimeSeriesPoint {
 
   @Field(() => String)
   openInterest!: string;
-
-  @Field(() => String)
-  tvl!: string;
 }
 
 interface AnalyticsSummaryRow {
@@ -45,9 +48,34 @@ interface DailyOIRow {
   open_interest: string | null;
 }
 
-interface DailyTVLRow {
-  date: Date;
-  tvl: string | null;
+@ObjectType()
+class ProtocolTVLSummary {
+  @Field(() => String)
+  totalTVL!: string;
+
+  @Field(() => String)
+  vaultTVL!: string;
+
+  @Field(() => String)
+  predictionMarketTVL!: string;
+
+  @Field(() => String, { nullable: true })
+  lastUpdated!: string | null;
+}
+
+@ObjectType()
+class ProtocolTVLTimeSeriesPoint {
+  @Field(() => String)
+  date!: string;
+
+  @Field(() => String)
+  totalTVL!: string;
+
+  @Field(() => String)
+  vaultTVL!: string;
+
+  @Field(() => String)
+  predictionMarketTVL!: string;
 }
 
 function buildDateMap<T extends { date: Date }>(
@@ -56,7 +84,12 @@ function buildDateMap<T extends { date: Date }>(
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const row of rows) {
-    const dateStr = row.date.toISOString().split('T')[0];
+    // Use UTC methods to avoid timezone shifts with Prisma DATE type
+    const d = row.date;
+    const year = d.getUTCFullYear();
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     const value = row[key];
     map.set(dateStr, value?.toString() || '0');
   }
@@ -129,45 +162,72 @@ export class AnalyticsResolver {
       ORDER BY d.date
     `;
 
-    // Get daily TVL from positions - last 90 days
-    // For each day, TVL = sum of positions that were active (not yet settled)
-    // Active on day D means: mintedAt <= D AND (settledAt IS NULL OR settledAt > D)
-    const dailyTVL = await prisma.$queryRaw<DailyTVLRow[]>`
-      WITH date_series AS (
-        SELECT generate_series(
-          CURRENT_DATE - INTERVAL '90 days',
-          CURRENT_DATE,
-          '1 day'::interval
-        )::date as date
-      )
-      SELECT
-        d.date,
-        COALESCE(SUM(CAST(p."totalCollateral" AS DECIMAL)), 0)::TEXT as tvl
-      FROM date_series d
-      LEFT JOIN position p ON
-        DATE_TRUNC('day', TO_TIMESTAMP(p."mintedAt"))::date <= d.date
-        AND (p."settledAt" IS NULL OR DATE_TRUNC('day', TO_TIMESTAMP(p."settledAt"))::date > d.date)
-        AND p."chainId" = ${chainId}
-      GROUP BY d.date
-      ORDER BY d.date
-    `;
-
     const volumeMap = buildDateMap(dailyVolumes, 'daily_volume');
     const oiMap = buildDateMap(dailyOI, 'open_interest');
-    const tvlMap = buildDateMap(dailyTVL, 'tvl');
 
-    const allDates = new Set([
-      ...volumeMap.keys(),
-      ...oiMap.keys(),
-      ...tvlMap.keys(),
-    ]);
+    const allDates = new Set([...volumeMap.keys(), ...oiMap.keys()]);
     const sortedDates = Array.from(allDates).sort();
 
     return sortedDates.map((dateStr) => ({
       date: dateStr,
       dailyVolume: volumeMap.get(dateStr) || '0',
       openInterest: oiMap.get(dateStr) || '0',
-      tvl: tvlMap.get(dateStr) || '0',
     }));
+  }
+
+  @Query(() => ProtocolTVLSummary)
+  async protocolTVLSummary(): Promise<ProtocolTVLSummary> {
+    // First try to get from database snapshot
+    const latestSnapshot = await getLatestProtocolTVL(CHAIN_ID_ETHEREAL);
+
+    if (latestSnapshot) {
+      return {
+        totalTVL: latestSnapshot.totalTVL,
+        vaultTVL: latestSnapshot.vaultTVL,
+        predictionMarketTVL: latestSnapshot.predictionMarketTVL,
+        lastUpdated: latestSnapshot.computedAt.toISOString(),
+      };
+    }
+
+    // If no snapshot exists, fetch live data
+    const [vaultTVL, predictionMarketTVL] = await Promise.all([
+      fetchVaultTVL(CHAIN_ID_ETHEREAL),
+      fetchPredictionMarketTVL(CHAIN_ID_ETHEREAL),
+    ]);
+
+    const totalTVL = vaultTVL + predictionMarketTVL;
+
+    return {
+      totalTVL: totalTVL.toString(),
+      vaultTVL: vaultTVL.toString(),
+      predictionMarketTVL: predictionMarketTVL.toString(),
+      lastUpdated: null,
+    };
+  }
+
+  @Query(() => [ProtocolTVLTimeSeriesPoint])
+  async protocolTVLTimeSeries(): Promise<ProtocolTVLTimeSeriesPoint[]> {
+    const snapshots = await getProtocolTVLTimeSeries(CHAIN_ID_ETHEREAL, 90);
+
+    return snapshots.map(
+      (snapshot: {
+        snapshotDate: Date;
+        totalTVL: string;
+        vaultTVL: string;
+        predictionMarketTVL: string;
+      }) => {
+        // Format date as YYYY-MM-DD using UTC to avoid timezone shifts
+        const d = snapshot.snapshotDate;
+        const year = d.getUTCFullYear();
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        return {
+          date: `${year}-${month}-${day}`,
+          totalTVL: snapshot.totalTVL,
+          vaultTVL: snapshot.vaultTVL,
+          predictionMarketTVL: snapshot.predictionMarketTVL,
+        };
+      }
+    );
   }
 }

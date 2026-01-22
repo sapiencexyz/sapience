@@ -65,7 +65,6 @@ type AnalyticsTimeSeriesPoint {
   dailyVolume: String!
   date: String!
   openInterest: String!
-  tvl: String!
 }
 
 type Attestation {
@@ -1871,6 +1870,20 @@ type ProfitRankType {
   totalPnL: Float!
 }
 
+type ProtocolTVLSummary {
+  lastUpdated: String
+  predictionMarketTVL: String!
+  totalTVL: String!
+  vaultTVL: String!
+}
+
+type ProtocolTVLTimeSeriesPoint {
+  date: String!
+  predictionMarketTVL: String!
+  totalTVL: String!
+  vaultTVL: String!
+}
+
 type Query {
   accuracyRankByAddress(attester: String!): AccuracyRankType!
   aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
@@ -1915,6 +1928,8 @@ type Query {
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
+  protocolTVLSummary: ProtocolTVLSummary!
+  protocolTVLTimeSeries: [ProtocolTVLTimeSeriesPoint!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
