@@ -778,8 +778,8 @@ const VaultsPageContent = () => {
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Ethena rewards are automatically distributed into the vault for
-                depositors. This is separate from any profit or loss realized by
-                participating in prediction markets.
+                depositors. This is separate from profit or loss realized from
+                its participation in prediction markets.
               </p>
             </div>
             {isAnalyticsLoading || !vaultData ? (
