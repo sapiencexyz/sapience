@@ -7,6 +7,7 @@ export * from './onchain/tx';
 export * from './onchain/eas';
 export * from './onchain/attest';
 export * from './onchain/trading';
+export * from './onchain/claim';
 export * from './auction/signing';
 export * from './auction/encoding';
 export * from './relayer/auctionWs';
