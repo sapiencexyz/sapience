@@ -244,6 +244,8 @@ export default function QuestionPageContent({
           const combinedPredictions: CombinedPrediction[] | undefined =
             otherOutcomes.length > 0
               ? otherOutcomes.map((outcome) => ({
+                  conditionId: outcome.conditionId,
+                  resolverAddress: outcome.condition?.resolver ?? undefined,
                   question:
                     outcome.condition?.shortName ||
                     outcome.condition?.question ||

@@ -54,11 +54,11 @@ export function TechSpecTable({
             {marketAddress ? (
               <span className="inline-flex items-center gap-1.5 align-middle leading-none">
                 <a
-                  href="https://explorer.ethereal.trade/"
+                  href="https://ethereal.trade"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center hover:opacity-90 transition-opacity"
-                  aria-label="Visit Ethereal explorer"
+                  aria-label="Visit Ethereal"
                 >
                   <Image
                     src="/ethereal-logomark.svg"
