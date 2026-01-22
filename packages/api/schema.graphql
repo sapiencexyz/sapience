@@ -56,15 +56,19 @@ type AggregatedProfitEntryType {
 }
 
 type AnalyticsSummary {
+  escrowBalance: String!
+  lastUpdated: String
   openInterest: String!
   totalVolume: String!
-  tvl: String!
+  vaultBalance: String!
 }
 
 type AnalyticsTimeSeriesPoint {
   dailyVolume: String!
   date: String!
+  escrowBalance: String!
   openInterest: String!
+  vaultBalance: String!
 }
 
 type Attestation {
@@ -1870,20 +1874,6 @@ type ProfitRankType {
   totalPnL: Float!
 }
 
-type ProtocolStatsSummary {
-  lastUpdated: String
-  predictionMarketTVL: String!
-  totalTVL: String!
-  vaultTVL: String!
-}
-
-type ProtocolStatsTimeSeriesPoint {
-  date: String!
-  predictionMarketTVL: String!
-  totalTVL: String!
-  vaultTVL: String!
-}
-
 type Query {
   accuracyRankByAddress(attester: String!): AccuracyRankType!
   aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
@@ -1928,8 +1918,6 @@ type Query {
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
-  protocolStatsSummary: ProtocolStatsSummary!
-  protocolStatsTimeSeries: [ProtocolStatsTimeSeriesPoint!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!

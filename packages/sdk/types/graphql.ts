@@ -77,16 +77,20 @@ export type AggregatedProfitEntryType = {
 
 export type AnalyticsSummary = {
   __typename?: 'AnalyticsSummary';
+  escrowBalance: Scalars['String']['output'];
+  lastUpdated?: Maybe<Scalars['String']['output']>;
   openInterest: Scalars['String']['output'];
   totalVolume: Scalars['String']['output'];
-  tvl: Scalars['String']['output'];
+  vaultBalance: Scalars['String']['output'];
 };
 
 export type AnalyticsTimeSeriesPoint = {
   __typename?: 'AnalyticsTimeSeriesPoint';
   dailyVolume: Scalars['String']['output'];
   date: Scalars['String']['output'];
+  escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  vaultBalance: Scalars['String']['output'];
 };
 
 export type Attestation = {
@@ -2059,22 +2063,6 @@ export type ProfitRankType = {
   totalPnL: Scalars['Float']['output'];
 };
 
-export type ProtocolStatsSummary = {
-  __typename?: 'ProtocolStatsSummary';
-  lastUpdated?: Maybe<Scalars['String']['output']>;
-  predictionMarketTVL: Scalars['String']['output'];
-  totalTVL: Scalars['String']['output'];
-  vaultTVL: Scalars['String']['output'];
-};
-
-export type ProtocolStatsTimeSeriesPoint = {
-  __typename?: 'ProtocolStatsTimeSeriesPoint';
-  date: Scalars['String']['output'];
-  predictionMarketTVL: Scalars['String']['output'];
-  totalTVL: Scalars['String']['output'];
-  vaultTVL: Scalars['String']['output'];
-};
-
 export type Query = {
   __typename?: 'Query';
   accuracyRankByAddress: AccuracyRankType;
@@ -2120,8 +2108,6 @@ export type Query = {
   positionsByConditionId: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
-  protocolStatsSummary: ProtocolStatsSummary;
-  protocolStatsTimeSeries: Array<ProtocolStatsTimeSeriesPoint>;
   topForecasters: Array<ForecasterScoreType>;
   user?: Maybe<User>;
   users: Array<User>;

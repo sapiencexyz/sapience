@@ -1,16 +1,26 @@
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 
+// Unified analytics summary including position metrics and protocol balances
 interface AnalyticsSummary {
+  // Position-based metrics
   totalVolume: string;
   openInterest: string;
-  tvl: string;
+  // Protocol balance metrics (on-chain balances)
+  vaultBalance: string;
+  escrowBalance: string;
+  lastUpdated: string | null;
 }
 
+// Unified time series point including position metrics and protocol balances
 interface AnalyticsTimeSeriesPoint {
   date: string;
+  // Position-based metrics
   dailyVolume: string;
   openInterest: string;
+  // Protocol balance metrics (on-chain balances)
+  vaultBalance: string;
+  escrowBalance: string;
 }
 
 const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
@@ -18,7 +28,9 @@ const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
     analyticsSummary {
       totalVolume
       openInterest
-      tvl
+      vaultBalance
+      escrowBalance
+      lastUpdated
     }
   }
 `;
@@ -29,6 +41,8 @@ const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
       date
       dailyVolume
       openInterest
+      vaultBalance
+      escrowBalance
     }
   }
 `;
@@ -63,75 +77,4 @@ export function useAnalyticsTimeSeries() {
   });
 }
 
-// Protocol Stats types and hooks
-
-interface ProtocolStatsSummary {
-  totalTVL: string;
-  vaultTVL: string;
-  predictionMarketTVL: string;
-  lastUpdated: string | null;
-}
-
-interface ProtocolStatsTimeSeriesPoint {
-  date: string;
-  totalTVL: string;
-  vaultTVL: string;
-  predictionMarketTVL: string;
-}
-
-const GET_PROTOCOL_STATS_SUMMARY = /* GraphQL */ `
-  query ProtocolStatsSummary {
-    protocolStatsSummary {
-      totalTVL
-      vaultTVL
-      predictionMarketTVL
-      lastUpdated
-    }
-  }
-`;
-
-const GET_PROTOCOL_STATS_TIME_SERIES = /* GraphQL */ `
-  query ProtocolStatsTimeSeries {
-    protocolStatsTimeSeries {
-      date
-      totalTVL
-      vaultTVL
-      predictionMarketTVL
-    }
-  }
-`;
-
-export function useProtocolStatsSummary() {
-  return useQuery<ProtocolStatsSummary | null>({
-    queryKey: ['protocolStatsSummary'],
-    queryFn: async () => {
-      const data = await graphqlRequest<{
-        protocolStatsSummary: ProtocolStatsSummary;
-      }>(GET_PROTOCOL_STATS_SUMMARY);
-      return data?.protocolStatsSummary ?? null;
-    },
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
-  });
-}
-
-export function useProtocolStatsTimeSeries() {
-  return useQuery<ProtocolStatsTimeSeriesPoint[]>({
-    queryKey: ['protocolStatsTimeSeries'],
-    queryFn: async () => {
-      const data = await graphqlRequest<{
-        protocolStatsTimeSeries: ProtocolStatsTimeSeriesPoint[];
-      }>(GET_PROTOCOL_STATS_TIME_SERIES);
-      return data?.protocolStatsTimeSeries ?? [];
-    },
-    staleTime: CACHE_TIME_MS,
-    refetchInterval: CACHE_TIME_MS,
-  });
-}
-
-export type {
-  AnalyticsSummary,
-  AnalyticsTimeSeriesPoint,
-  ProtocolStatsSummary,
-  ProtocolStatsTimeSeriesPoint,
-};
+export type { AnalyticsSummary, AnalyticsTimeSeriesPoint };
