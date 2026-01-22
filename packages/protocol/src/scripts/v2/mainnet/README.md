@@ -192,6 +192,110 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 07b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
 | 08a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status |
 | 08b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status |
+| 09 | MintPositionTokens | Ethereal | Mint position tokens for testing |
+| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
+| 10b | ResolvePrediction | Ethereal | Resolve condition and settle prediction |
+| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
+
+## Testing: Mint and Bridge
+
+After deployment, you can test the system by minting position tokens and bridging them.
+
+### Prerequisites for Testing
+
+Add these environment variables for testing:
+
+```bash
+# Test accounts (two separate EOAs for predictor and counterparty)
+PREDICTOR_PRIVATE_KEY=0x...
+COUNTERPARTY_PRIVATE_KEY=0x...
+
+# Optional: customize wager amounts (in wei, default 100 tokens / 33 tokens)
+PREDICTOR_WAGER=100000000000000000000
+COUNTERPARTY_WAGER=33333333333333333333
+
+# Optional: bridge amount (default 10 tokens)
+BRIDGE_AMOUNT=10000000000000000000
+```
+
+### Step 1: Mint Position Tokens
+
+Mint position tokens using two EOAs (predictor and counterparty):
+
+```bash
+forge script src/scripts/v2/mainnet/09_MintPositionTokens.s.sol \
+  --rpc-url $PM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+
+# Save the output to .env:
+# PREDICTION_ID=...
+# PREDICTOR_TOKEN_ADDRESS=...
+# COUNTERPARTY_TOKEN_ADDRESS=...
+# PICK_CONFIG_ID=...
+# CONDITION_ID=...
+```
+
+### Step 2: Bridge Tokens to Arbitrum
+
+Bridge predictor tokens from Ethereal to Arbitrum:
+
+```bash
+forge script src/scripts/v2/mainnet/10_TestBridgeToRemote.s.sol \
+  --rpc-url $PM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+
+# Track the message: https://layerzeroscan.com/
+```
+
+### Step 3: Resolve the Prediction
+
+Resolve the condition and allow settlement:
+
+```bash
+# Resolve with YES wins (predictor wins)
+OUTCOME=yes forge script src/scripts/v2/mainnet/10b_ResolvePrediction.s.sol \
+  --rpc-url $PM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+
+# Or resolve with NO wins (counterparty wins)
+OUTCOME=no forge script src/scripts/v2/mainnet/10b_ResolvePrediction.s.sol \
+  --rpc-url $PM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+
+# Or resolve as TIE (refund both sides)
+OUTCOME=tie forge script src/scripts/v2/mainnet/10b_ResolvePrediction.s.sol \
+  --rpc-url $PM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+```
+
+### Step 4: Bridge Tokens Back to Ethereal
+
+After tokens arrive on Arbitrum, bridge them back:
+
+```bash
+forge script src/scripts/v2/mainnet/11_TestBridgeBack.s.sol \
+  --rpc-url $SM_NETWORK_RPC_URL \
+  --broadcast \
+  -vvvv
+
+# Track the message: https://layerzeroscan.com/
+```
+
+### Test Script Options
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PREDICTOR_WAGER` | Predictor's wager amount | 100 tokens |
+| `COUNTERPARTY_WAGER` | Counterparty's wager amount | 33.33 tokens |
+| `BRIDGE_AMOUNT` | Amount to bridge | 10 tokens |
+| `BRIDGE_RECIPIENT` | Override recipient address | sender |
+| `IS_PREDICTOR_TOKEN` | Bridge predictor (true) or counterparty (false) token | true |
+| `OUTCOME` | Resolution outcome: "yes", "no", or "tie" | yes |
 
 ## Automated Deployment
 
