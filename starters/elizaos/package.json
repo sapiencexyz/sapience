@@ -34,7 +34,7 @@
     "@elizaos/core": "latest",
     "@elizaos/plugin-bootstrap": "latest",
     "@elizaos/plugin-openai": "^1.5.15",
-    "@elizaos/plugin-openrouter": "^1.5.14",
+    "@elizaos/plugin-openrouter": "^1.5.17",
     "@elizaos/plugin-sql": "latest",
     "@elizaos/server": "latest",
     "@sapience/sdk": "latest",
