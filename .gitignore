@@ -18,6 +18,7 @@ packages/protocol/deployments/outputs/test
 **/coverage.json
 
 .DS_Store
+CLAUDE.local.md
 
 .vscode
 
