@@ -23,6 +23,7 @@ interface IPositionTokenBridgeBase {
     struct BridgeConfig {
         uint32 remoteEid;
         address remoteBridge;
+        uint128 ackFeeEstimate; // Estimated fee for ACK message on remote chain
     }
 
     /// @notice Pending bridge record
@@ -63,6 +64,9 @@ interface IPositionTokenBridgeBase {
 
     /// @notice Emitted when ACK send fails (for monitoring)
     event AckSendFailed(bytes32 indexed bridgeId);
+
+    /// @notice Emitted when ETH is withdrawn from the contract
+    event ETHWithdrawn(address indexed to, uint256 amount);
 
     // ============ Errors ============
 
@@ -163,4 +167,11 @@ interface IPositionTokenBridgeBase {
     /// @notice Renounce ownership after verifying config is complete
     /// @dev Reverts if config is incomplete
     function renounceOwnershipSafe() external;
+
+    // ============ ETH Management ============
+
+    /// @notice Withdraw accumulated ETH from the contract
+    /// @param to Address to receive the ETH
+    /// @param amount Amount to withdraw (use 0 for full balance)
+    function withdrawETH(address payable to, uint256 amount) external;
 }

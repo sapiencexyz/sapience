@@ -128,15 +128,19 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         oapps[1] = address(arbitrumBridge);
         this.wireOApps(oapps);
 
-        // Configure bridges
+        // Configure bridges with ACK fee estimate (0.0001 ETH)
         etherealBridge.setBridgeConfig(
             IPositionTokenBridgeBase.BridgeConfig({
-                remoteEid: arbitrumEid, remoteBridge: address(arbitrumBridge)
+                remoteEid: arbitrumEid,
+                remoteBridge: address(arbitrumBridge),
+                ackFeeEstimate: 0.0001 ether
             })
         );
         arbitrumBridge.setBridgeConfig(
             IPositionTokenBridgeBase.BridgeConfig({
-                remoteEid: etherealEid, remoteBridge: address(etherealBridge)
+                remoteEid: etherealEid,
+                remoteBridge: address(etherealBridge),
+                ackFeeEstimate: 0.0001 ether
             })
         );
 
@@ -170,7 +174,9 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     function test_setBridgeConfig_success() public {
         IPositionTokenBridgeBase.BridgeConfig memory newConfig =
             IPositionTokenBridgeBase.BridgeConfig({
-                remoteEid: 999, remoteBridge: address(0x1234)
+                remoteEid: 999,
+                remoteBridge: address(0x1234),
+                ackFeeEstimate: 0.0002 ether
             });
 
         vm.expectEmit(false, false, false, true);
@@ -181,6 +187,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
             etherealBridge.getBridgeConfig();
         assertEq(retrieved.remoteEid, 999);
         assertEq(retrieved.remoteBridge, address(0x1234));
+        assertEq(retrieved.ackFeeEstimate, 0.0002 ether);
     }
 
     function test_setBridgeConfig_revertIfNotOwner() public {
@@ -188,7 +195,9 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.expectRevert();
         etherealBridge.setBridgeConfig(
             IPositionTokenBridgeBase.BridgeConfig({
-                remoteEid: 999, remoteBridge: address(0x1234)
+                remoteEid: 999,
+                remoteBridge: address(0x1234),
+                ackFeeEstimate: 0.0001 ether
             })
         );
     }

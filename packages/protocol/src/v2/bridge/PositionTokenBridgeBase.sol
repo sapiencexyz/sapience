@@ -37,6 +37,9 @@ abstract contract PositionTokenBridgeBase is
 
     uint128 internal constant GAS_FOR_ACK = 100_000;
 
+    /// @notice Buffer percentage for ACK fee (in basis points, 1500 = 15%)
+    uint128 internal constant ACK_FEE_BUFFER_BPS = 1500;
+
     /// @notice Minimum delay between retry attempts
     uint64 public constant MIN_RETRY_DELAY = 1 hours;
 
@@ -106,9 +109,12 @@ abstract contract PositionTokenBridgeBase is
         (bytes memory message, uint128 gasLimit) =
             _buildRetryMessage(bridgeId, pending);
 
-        // Build options
-        bytes memory options =
-            OptionsBuilder.newOptions().addExecutorLzReceiveOption(gasLimit, 0);
+        // Calculate ACK fee with buffer to prepay on remote chain
+        uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
+
+        // Build options - include ACK fee as value to send to remote
+        bytes memory options = OptionsBuilder.newOptions()
+            .addExecutorLzReceiveOption(gasLimit, ackFeeWithBuffer);
 
         // Quote fee
         MessagingFee memory fee =
@@ -284,6 +290,33 @@ abstract contract PositionTokenBridgeBase is
     /// @notice Get ETH balance
     function getETHBalance() external view returns (uint256) {
         return address(this).balance;
+    }
+
+    /// @inheritdoc IPositionTokenBridgeBase
+    function withdrawETH(address payable to, uint256 amount)
+        external
+        onlyOwner
+    {
+        if (to == address(0)) revert ZeroAddress();
+
+        uint256 balance = address(this).balance;
+        uint256 withdrawAmount = amount == 0 ? balance : amount;
+
+        if (withdrawAmount > balance) {
+            revert InsufficientEscrowBalance(withdrawAmount, balance);
+        }
+
+        (bool success,) = to.call{ value: withdrawAmount }("");
+        if (!success) revert ETHTransferFailed();
+
+        emit ETHWithdrawn(to, withdrawAmount);
+    }
+
+    /// @dev Calculate ACK fee with buffer
+    function _getAckFeeWithBuffer() internal view returns (uint128) {
+        uint128 baseFee = _bridgeConfig.ackFeeEstimate;
+        if (baseFee == 0) return 0;
+        return baseFee + (baseFee * ACK_FEE_BUFFER_BPS) / 10_000;
     }
 
     // ============ Internal Helpers ============

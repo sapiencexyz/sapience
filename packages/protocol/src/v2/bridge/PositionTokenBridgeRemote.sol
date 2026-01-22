@@ -126,9 +126,12 @@ contract PositionTokenBridgeRemote is
             abi.encode(bridgeId, sourceToken, recipient, amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
-        // Build options
+        // Calculate ACK fee with buffer to prepay on remote chain
+        uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
+
+        // Build options - include ACK fee as value to send to remote
         bytes memory options = OptionsBuilder.newOptions()
-            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, ackFeeWithBuffer);
 
         // Quote fee
         MessagingFee memory fee =
@@ -163,8 +166,11 @@ contract PositionTokenBridgeRemote is
         bytes memory payload =
             abi.encode(bytes32(0), sourceToken, address(0), amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
+
+        // Include ACK fee with buffer in the quote
+        uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
         bytes memory options = OptionsBuilder.newOptions()
-            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, ackFeeWithBuffer);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
@@ -181,8 +187,11 @@ contract PositionTokenBridgeRemote is
             bridgeId, sourceToken, pending.recipient, pending.amount
         );
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
+
+        // Include ACK fee with buffer in the quote
+        uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
         bytes memory options = OptionsBuilder.newOptions()
-            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, 0);
+            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, ackFeeWithBuffer);
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
