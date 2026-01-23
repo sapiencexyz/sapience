@@ -12,8 +12,8 @@ import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 /// @notice Bridge position tokens from PM Network (Ethereal) to SM Network (Arbitrum)
 /// @dev Uses PREDICTOR_PRIVATE_KEY to bridge predictor tokens
 contract TestBridgeToRemote is Script {
-    uint32 constant ETHEREAL_EID = 30391;
-    uint32 constant ARBITRUM_EID = 30110;
+    uint32 constant ETHEREAL_EID = 30_391;
+    uint32 constant ARBITRUM_EID = 30_110;
 
     function run() external {
         address bridgeAddr = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");

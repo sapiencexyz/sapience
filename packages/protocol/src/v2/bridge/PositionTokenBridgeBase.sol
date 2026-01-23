@@ -136,42 +136,45 @@ abstract contract PositionTokenBridgeBase is
 
     // ============ ACK Handling ============
 
-    /// @dev Attempt to send ACK - gracefully handles send failures
+    /// @dev Attempt to send ACK using prepaid msg.value (LayerZero ABA pattern)
     function _trySendAck(bytes32 bridgeId) internal {
-        try this.sendAckInternal(bridgeId) {
-            // ACK sent successfully
-        } catch {
-            // ACK failed - emit event for monitoring
+        // Skip ACK if no prepaid value from source chain
+        if (msg.value == 0) {
             emit AckSendFailed(bridgeId);
+            return;
         }
-    }
-
-    /// @dev Internal function to send ACK (callable via this.sendAckInternal for try/catch)
-    function sendAckInternal(bytes32 bridgeId) external {
-        require(msg.sender == address(this), "Only self");
 
         bytes memory ackPayload = abi.encode(bridgeId);
         bytes memory ackMessage = abi.encode(CMD_ACK, ackPayload);
         bytes memory options = OptionsBuilder.newOptions()
             .addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
 
-        MessagingFee memory fee =
-            _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
+        // Use msg.value directly as the fee (already prepaid by source)
+        MessagingFee memory fee = MessagingFee(msg.value, 0);
 
-        // Check if contract has enough balance for ACK
-        if (address(this).balance >= fee.nativeFee) {
-            _lzSend(
-                _bridgeConfig.remoteEid,
-                ackMessage,
-                options,
-                fee,
-                payable(address(this))
-            );
-        } else {
-            emit AckInsufficientBalance(
-                bridgeId, fee.nativeFee, address(this).balance
-            );
+        // Pass msg.value to external call for try/catch pattern
+        try this.sendAckWithFee{ value: msg.value }(ackMessage, options, fee) {
+        // ACK sent successfully
         }
+        catch {
+            emit AckSendFailed(bridgeId);
+        }
+    }
+
+    /// @dev Send ACK message (external for try/catch with value)
+    function sendAckWithFee(
+        bytes memory message,
+        bytes memory options,
+        MessagingFee memory fee
+    ) external payable {
+        require(msg.sender == address(this), "Only self");
+        _lzSend(
+            _bridgeConfig.remoteEid,
+            message,
+            options,
+            fee,
+            payable(address(this))
+        );
     }
 
     // ============ LayerZero Receive ============

@@ -14,8 +14,8 @@ import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 /// @notice Retry a pending bridge from Arbitrum to Ethereal
 /// @dev Use this when the original bridge or ACK failed
 contract RetryBridgeSM is Script {
-    uint32 constant ETHEREAL_EID = 30391;
-    uint32 constant ARBITRUM_EID = 30110;
+    uint32 constant ETHEREAL_EID = 30_391;
+    uint32 constant ARBITRUM_EID = 30_110;
 
     function run() external {
         address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");

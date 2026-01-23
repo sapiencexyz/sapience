@@ -65,11 +65,6 @@ interface IPositionTokenBridgeBase {
     /// @notice Emitted when ACK send fails (for monitoring)
     event AckSendFailed(bytes32 indexed bridgeId);
 
-    /// @notice Emitted when ACK cannot be sent due to insufficient balance
-    event AckInsufficientBalance(
-        bytes32 indexed bridgeId, uint256 required, uint256 available
-    );
-
     /// @notice Emitted when ETH is withdrawn from the contract
     event ETHWithdrawn(address indexed to, uint256 amount);
 
