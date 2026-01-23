@@ -37,24 +37,6 @@ const cannonAtLocalhost = {
   },
 };
 
-const converge = {
-  id: 432,
-  name: 'Converge',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'Converge',
-    symbol: 'CONVERGE',
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.NEXT_PUBLIC_RPC_URL || ''],
-    },
-    public: {
-      http: [process.env.NEXT_PUBLIC_RPC_URL || ''],
-    },
-  },
-} as const satisfies Chain;
-
 // Build chains and transports
 const buildChainsAndTransports = () => {
   const transports: Record<number, HttpTransport> = {
