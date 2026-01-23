@@ -561,7 +561,7 @@ const Header = () => {
                         variant="outline"
                         className="rounded-md h-9 w-9 p-0 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90"
                       >
-                        {effectiveAddress ?? connectedWallet?.address ? (
+                        {(effectiveAddress ?? connectedWallet?.address) ? (
                           <EnsAvatar
                             address={
                               effectiveAddress ?? connectedWallet!.address

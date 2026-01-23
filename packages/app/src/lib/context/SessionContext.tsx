@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
-import type { Address, Hex } from 'viem';
+import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
 import {
@@ -85,8 +85,8 @@ function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
 
 // Chain clients type
 interface ChainClients {
-  ethereal: KernelAccountClient<any, any, any> | null;
-  arbitrum: KernelAccountClient<any, any, any> | null;
+  ethereal: KernelAccountClient | null;
+  arbitrum: KernelAccountClient | null;
 }
 
 // Type for signTypedData parameters
@@ -177,11 +177,7 @@ interface SessionContextValue {
   hasArbitrumSession: boolean;
   isCreatingArbitrumSession: boolean;
   // Returns the created/existing client directly to avoid race conditions with state updates
-  createArbitrumSessionIfNeeded: () => Promise<KernelAccountClient<
-    any,
-    any,
-    any
-  > | null>;
+  createArbitrumSessionIfNeeded: () => Promise<KernelAccountClient | null>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -235,7 +231,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Account mode state - always initialize to default, then sync from localStorage in useEffect
   // This avoids SSR hydration mismatches since server always sees the same initial value
-  const [accountMode, setAccountModeInternal] = useState<AccountMode>('smart-account');
+  const [accountMode, setAccountModeInternal] =
+    useState<AccountMode>('smart-account');
 
   // Sync account mode from localStorage after mount (client-side only)
   useEffect(() => {
@@ -495,7 +492,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         try {
           endSessionInternal();
         } catch (error) {
-          console.error('[SessionContext] Failed to end session when switching to EOA:', error);
+          console.error(
+            '[SessionContext] Failed to end session when switching to EOA:',
+            error
+          );
           // Continue with mode switch even if session cleanup fails
         }
       }
@@ -525,7 +525,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionError(null);
 
       try {
-        const provider = await connector.getProvider();
+        const provider = (await connector.getProvider()) as EIP1193Provider;
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
@@ -578,11 +578,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates
   const createArbitrumSessionIfNeeded =
-    useCallback(async (): Promise<KernelAccountClient<
-      any,
-      any,
-      any
-    > | null> => {
+    useCallback(async (): Promise<KernelAccountClient | null> => {
       // Already has Arbitrum session - return existing client
       if (arbitrumSessionApproval || chainClients.arbitrum) {
         console.debug('[SessionContext] Arbitrum session already exists');
@@ -603,7 +599,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       try {
         console.debug('[SessionContext] Creating Arbitrum session lazily...');
 
-        const provider = await connector.getProvider();
+        const provider = (await connector.getProvider()) as EIP1193Provider;
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
@@ -673,12 +669,24 @@ export function SessionProvider({ children }: SessionProviderProps) {
       switchChainAsync,
     ]);
 
-  // Clear session when wallet disconnects
+  // Clear session when wallet disconnects or changes to a different address
   useEffect(() => {
     if (!walletAddress && isSessionActive) {
+      // Wallet disconnected
+      endSessionInternal();
+    } else if (
+      walletAddress &&
+      isSessionActive &&
+      sessionConfig &&
+      walletAddress.toLowerCase() !== sessionConfig.ownerAddress.toLowerCase()
+    ) {
+      // Wallet changed to a different address than session owner
+      console.debug(
+        '[SessionContext] Wallet changed, clearing session for previous owner'
+      );
       endSessionInternal();
     }
-  }, [walletAddress, isSessionActive, endSessionInternal]);
+  }, [walletAddress, isSessionActive, sessionConfig, endSessionInternal]);
 
   // Compute hasArbitrumSession from state
   const hasArbitrumSession = Boolean(

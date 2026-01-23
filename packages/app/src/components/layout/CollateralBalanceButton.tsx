@@ -22,9 +22,9 @@ import {
   encodeFunctionData,
   parseAbi,
   type Address,
+  type EIP1193Provider,
   type Hex,
 } from 'viem';
-import { useConnectorClient } from 'wagmi';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
@@ -79,7 +79,7 @@ export default function CollateralBalanceButton({
   className,
   buttonClassName,
 }: CollateralBalanceButtonProps) {
-  const { address: eoaAddress } = useAccount();
+  const { address: eoaAddress, connector } = useAccount();
   const chainId = CHAIN_ID_ETHEREAL;
 
   // Get smart account address and mode from session context
@@ -123,8 +123,6 @@ export default function CollateralBalanceButton({
   // useSendCalls for batching wrap + transfer (with fallback for wallets like Rabby)
   const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
 
-  // Get connector client for sudo transactions
-  const { data: connectorClient } = useConnectorClient();
   const { switchChainAsync } = useSwitchChain();
 
   // Calculate max transferable amount (wrapped + native)
@@ -279,7 +277,7 @@ export default function CollateralBalanceButton({
       return;
     }
 
-    if (!connectorClient) {
+    if (!connector) {
       toast({
         title: 'Cannot withdraw',
         description: 'Wallet not connected',
@@ -309,10 +307,11 @@ export default function CollateralBalanceButton({
         },
       ];
 
-      // Create owner signer from connector client
+      // Create owner signer from connector
+      const provider = (await connector.getProvider()) as EIP1193Provider;
       const ownerSigner: OwnerSigner = {
         address: eoaAddress,
-        provider: connectorClient,
+        provider,
         switchChain: async (chainId: number) => {
           await switchChainAsync({ chainId });
         },

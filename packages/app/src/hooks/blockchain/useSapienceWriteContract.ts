@@ -7,7 +7,7 @@ import {
   useConnectorClient,
   useAccount,
 } from 'wagmi';
-import type { Hash, Hex } from 'viem';
+import type { Abi, EIP1193Provider, Hash, Hex } from 'viem';
 import { encodeFunctionData, parseAbi } from 'viem';
 
 // Type for transaction calls used in batch operations
@@ -16,6 +16,29 @@ type TransactionCall = {
   data: Hex;
   value: bigint;
 };
+
+// Type for write contract parameters extracted from wagmi
+interface WriteContractParams {
+  address: `0x${string}`;
+  abi: Abi;
+  functionName: string;
+  args?: readonly unknown[];
+  value?: bigint;
+  chainId?: number;
+}
+
+// Type for individual call in send calls
+interface SendCall {
+  to: `0x${string}`;
+  data?: Hex;
+  value?: bigint;
+}
+
+// Type for send calls parameters
+interface SendCallsParams {
+  chainId?: number;
+  calls?: SendCall[];
+}
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -47,8 +70,13 @@ function formatSuccessDescription(message?: string): string {
   return message ? `${message}\n\n${SUCCESS_SUFFIX}` : SUCCESS_SUFFIX;
 }
 
-function formatSessionError(error: any): string {
-  return error?.shortMessage || error?.message || 'Session transaction failed';
+function formatSessionError(error: unknown): string {
+  if (error instanceof Error) {
+    return (
+      (error as Error & { shortMessage?: string }).shortMessage || error.message
+    );
+  }
+  return String(error) || 'Session transaction failed';
 }
 
 interface useSapienceWriteContractProps {
@@ -181,7 +209,7 @@ export function useSapienceWriteContract({
       if (!connector) {
         throw new Error('No wallet connector available');
       }
-      const provider = await connector.getProvider();
+      const provider = (await connector.getProvider()) as EIP1193Provider;
       return {
         address,
         provider,
@@ -444,6 +472,9 @@ export function useSapienceWriteContract({
       }
 
       // Step 1: Encode calls
+      if (!sessionClient.account) {
+        throw new Error('Session client account not available');
+      }
       const encodeStart = Date.now();
       const encodedCalls = await sessionClient.account.encodeCalls(calls);
       timings.encodeCallsMs = Date.now() - encodeStart;
@@ -521,8 +552,8 @@ export function useSapienceWriteContract({
         // if user toggles account mode while transaction is in-flight
         transactionAddressRef.current =
           executionPath === 'eoa'
-            ? wagmiAddress ?? null
-            : smartAccountAddress ?? wagmiAddress ?? null;
+            ? (wagmiAddress ?? null)
+            : (smartAccountAddress ?? wagmiAddress ?? null);
 
         // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
         if (executionPath === 'session') {
@@ -548,14 +579,8 @@ export function useSapienceWriteContract({
 
           if (sessionClient) {
             setIsSubmitting(true);
-            const params = args[0];
-            const {
-              address,
-              abi,
-              functionName,
-              args: fnArgs,
-              value,
-            } = params as any;
+            const params = args[0] as WriteContractParams;
+            const { address, abi, functionName, args: fnArgs, value } = params;
 
             try {
               const calldata = encodeFunctionData({
@@ -563,13 +588,29 @@ export function useSapienceWriteContract({
                 functionName,
                 args: fnArgs,
               });
-              const calls = [
-                {
-                  to: address as `0x${string}`,
-                  data: calldata,
-                  value: value ? BigInt(value) : BigInt(0),
-                },
-              ];
+
+              let calls: TransactionCall[];
+
+              // For Ethereal chain with value, wrap USDe first (same logic as EOA path)
+              if (isEtherealChain(_chainId) && value && BigInt(value) > 0n) {
+                const wrapTx = createWrapTransaction(BigInt(value));
+                calls = [
+                  wrapTx,
+                  {
+                    to: address,
+                    data: calldata,
+                    value: 0n, // No value for main tx since we wrapped
+                  },
+                ];
+              } else {
+                calls = [
+                  {
+                    to: address,
+                    data: calldata,
+                    value: value ? BigInt(value) : BigInt(0),
+                  },
+                ];
+              }
 
               const txHashFromSession = await executeViaSessionKey(
                 sessionClient,
@@ -589,20 +630,11 @@ export function useSapienceWriteContract({
         }
 
         // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
-        // Note: Unlike EOA path, we don't wrap native USDe here. Smart accounts are expected
-        // to hold wUSDe (wrapped), not native USDe. If value is passed, it uses the account's
-        // native balance directly. For Ethereal transactions requiring wUSDe, users should
-        // deposit wUSDe to their smart account first via the CollateralBalanceButton.
+        // For Ethereal transactions with value, we wrap native USDe automatically (same as EOA path)
         if (executionPath === 'owner') {
           setIsSubmitting(true);
-          const params = args[0];
-          const {
-            address,
-            abi,
-            functionName,
-            args: fnArgs,
-            value,
-          } = params as any;
+          const params = args[0] as WriteContractParams;
+          const { address, abi, functionName, args: fnArgs, value } = params;
 
           try {
             const calldata = encodeFunctionData({
@@ -610,13 +642,29 @@ export function useSapienceWriteContract({
               functionName,
               args: fnArgs,
             });
-            const calls: TransactionCall[] = [
-              {
-                to: address as `0x${string}`,
-                data: calldata,
-                value: value ? BigInt(value) : BigInt(0),
-              },
-            ];
+
+            let calls: TransactionCall[];
+
+            // For Ethereal chain with value, wrap USDe first (same logic as EOA path)
+            if (isEtherealChain(_chainId) && value && BigInt(value) > 0n) {
+              const wrapTx = createWrapTransaction(BigInt(value));
+              calls = [
+                wrapTx,
+                {
+                  to: address,
+                  data: calldata,
+                  value: 0n, // No value for main tx since we wrapped
+                },
+              ];
+            } else {
+              calls = [
+                {
+                  to: address,
+                  data: calldata,
+                  value: value ? BigInt(value) : BigInt(0),
+                },
+              ];
+            }
 
             const txHashFromOwner = await executeViaOwnerSigning(
               calls,
@@ -637,23 +685,23 @@ export function useSapienceWriteContract({
 
         // For external wallets on Ethereal chain with value, wrap USDe first
         if (isEtherealChain(_chainId)) {
-          const params = args[0];
-          const { value } = params as any;
+          const params = args[0] as WriteContractParams;
+          const { value, abi, functionName, args: fnArgs, address } = params;
 
           if (value && BigInt(value) > 0n) {
             // Wrap USDe first, then execute main transaction in atomic batch
             const wrapTx = createWrapTransaction(BigInt(value));
 
             const mainCalldata = encodeFunctionData({
-              abi: (params as any).abi,
-              functionName: (params as any).functionName,
-              args: (params as any).args,
+              abi,
+              functionName,
+              args: fnArgs,
             });
 
             const calls = [
               wrapTx,
               {
-                to: (params as any).address as `0x${string}`,
+                to: address,
                 data: mainCalldata,
                 value: 0n, // No value for main tx since we wrapped
               },
@@ -740,8 +788,8 @@ export function useSapienceWriteContract({
         // if user toggles account mode while transaction is in-flight
         transactionAddressRef.current =
           executionPath === 'eoa'
-            ? wagmiAddress ?? null
-            : smartAccountAddress ?? wagmiAddress ?? null;
+            ? (wagmiAddress ?? null)
+            : (smartAccountAddress ?? wagmiAddress ?? null);
 
         // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
         if (executionPath === 'session') {
@@ -767,19 +815,52 @@ export function useSapienceWriteContract({
 
           if (sessionClient) {
             setIsSubmitting(true);
-            const body = (args[0] as any) ?? {};
-            const calls = Array.isArray(body?.calls) ? body.calls : [];
+            const body = (args[0] ?? {}) as SendCallsParams;
+            const calls: SendCall[] = Array.isArray(body?.calls)
+              ? body.calls
+              : [];
 
             if (calls.length === 0) {
               throw new Error('No calls to execute');
             }
 
             try {
-              const formattedCalls = calls.map((call: any) => ({
-                to: call.to as `0x${string}`,
-                data: call.data as `0x${string}`,
-                value: call.value ? BigInt(call.value) : BigInt(0),
-              }));
+              // For Ethereal chain, check if any calls have value and need wrapping
+              let formattedCalls: TransactionCall[];
+
+              if (isEtherealChain(_chainId)) {
+                // Calculate total value that needs wrapping
+                const totalValue = calls.reduce(
+                  (sum: bigint, call: SendCall) =>
+                    sum + (call.value ? BigInt(call.value) : 0n),
+                  0n
+                );
+
+                if (totalValue > 0n) {
+                  // Prepend wrap transaction, then all calls with value zeroed
+                  const wrapTx = createWrapTransaction(totalValue);
+                  formattedCalls = [
+                    wrapTx,
+                    ...calls.map((call: SendCall) => ({
+                      to: call.to,
+                      data: call.data ?? '0x',
+                      value: 0n, // Zero out value since we wrapped upfront
+                    })),
+                  ];
+                } else {
+                  formattedCalls = calls.map((call: SendCall) => ({
+                    to: call.to,
+                    data: call.data ?? '0x',
+                    value: call.value ? BigInt(call.value) : BigInt(0),
+                  }));
+                }
+              } else {
+                formattedCalls = calls.map((call: SendCall) => ({
+                  to: call.to,
+                  data: call.data ?? '0x',
+                  value: call.value ? BigInt(call.value) : BigInt(0),
+                }));
+              }
 
               const txHashFromSession = await executeViaSessionKey(
                 sessionClient,
@@ -805,21 +886,55 @@ export function useSapienceWriteContract({
         }
 
         // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
+        // For Ethereal transactions with value, we wrap native USDe automatically (same as EOA path)
         if (executionPath === 'owner') {
           setIsSubmitting(true);
-          const body = (args[0] as any) ?? {};
-          const calls = Array.isArray(body?.calls) ? body.calls : [];
+          const body = (args[0] ?? {}) as SendCallsParams;
+          const calls: SendCall[] = Array.isArray(body?.calls)
+            ? body.calls
+            : [];
 
           if (calls.length === 0) {
             throw new Error('No calls to execute');
           }
 
           try {
-            const formattedCalls = calls.map((call: any) => ({
-              to: call.to as `0x${string}`,
-              data: call.data as `0x${string}`,
-              value: call.value ? BigInt(call.value) : BigInt(0),
-            }));
+            // For Ethereal chain, check if any calls have value and need wrapping
+            let formattedCalls: TransactionCall[];
+
+            if (isEtherealChain(_chainId)) {
+              // Calculate total value that needs wrapping
+              const totalValue = calls.reduce(
+                (sum: bigint, call: SendCall) =>
+                  sum + (call.value ? BigInt(call.value) : 0n),
+                0n
+              );
+
+              if (totalValue > 0n) {
+                // Prepend wrap transaction, then all calls with value zeroed
+                const wrapTx = createWrapTransaction(totalValue);
+                formattedCalls = [
+                  wrapTx,
+                  ...calls.map((call: SendCall) => ({
+                    to: call.to,
+                    data: call.data ?? '0x',
+                    value: 0n, // Zero out value since we wrapped upfront
+                  })),
+                ];
+              } else {
+                formattedCalls = calls.map((call: SendCall) => ({
+                  to: call.to,
+                  data: call.data ?? '0x',
+                  value: call.value ? BigInt(call.value) : BigInt(0),
+                }));
+              }
+            } else {
+              formattedCalls = calls.map((call: SendCall) => ({
+                to: call.to,
+                data: call.data ?? '0x',
+                value: call.value ? BigInt(call.value) : BigInt(0),
+              }));
+            }
 
             const txHashFromOwner = await executeViaOwnerSigning(
               formattedCalls,
@@ -844,7 +959,7 @@ export function useSapienceWriteContract({
         await validateAndSwitchChain(_chainId);
         // Execute the batch calls using wallet_sendCalls with fallback
         const data = await sendCallsAsync({
-          ...(args[0] as any),
+          ...args[0],
           experimental_fallback: true,
         });
         // Handle response - try to get tx hash from EIP-5792 or fallback
@@ -896,6 +1011,7 @@ export function useSapienceWriteContract({
       createArbitrumSessionIfNeeded,
       executeViaSessionKey,
       executeViaOwnerSigning,
+      createWrapTransaction,
       completeSendCallsWithHash,
       completeSendCallsWithoutHash,
       showSuccessToast,
