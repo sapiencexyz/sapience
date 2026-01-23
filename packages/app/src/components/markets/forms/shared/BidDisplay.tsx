@@ -299,9 +299,52 @@ export default function BidDisplay({
         </div>
       )}
 
-      {/* Show "Listening for bids..." hint when waiting for bids */}
-      {uiState === 'pending' && (
-        <div className="mb-4 -mt-1">
+      {/* Show "Add more predictions" hint for single-pick betslips */}
+      {((uiState === 'idle' && !estimateBid) || uiState === 'pending') &&
+        showAddPredictionsHint && (
+          <div className="mt-4 mb-4">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
+              <div className="flex items-center justify-center gap-2 min-h-[41px]">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
+                  Add more predictions for bids
+                </span>
+              </div>
+            </div>
+            {/* Listening for bids row - inside hint container to match TO WIN spacing */}
+            {uiState === 'pending' && (
+              <div className="flex items-center justify-between mt-2 px-1 text-xs">
+                <span
+                  className="text-muted-foreground"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                    backgroundSize: '200% 100%',
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    animation: 'shimmer 2s linear infinite',
+                  }}
+                >
+                  Listening for bids...
+                </span>
+                <button
+                  type="button"
+                  onClick={onRequestBids}
+                  className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+                >
+                  <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                    Restart auction
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      {/* Show "Listening for bids..." when pending but no hint (multi-pick) */}
+      {uiState === 'pending' && !showAddPredictionsHint && (
+        <div className="mb-4 mt-4">
           <div className="flex items-center justify-between px-1 text-xs">
             <span
               className="text-muted-foreground"
@@ -370,18 +413,6 @@ export default function BidDisplay({
                 Restart auction
               </span>
             </button>
-          </div>
-        </div>
-      )}
-      {uiState === 'idle' && !estimateBid && showAddPredictionsHint && (
-        <div className="mt-4 mb-4">
-          <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
-            <div className="flex items-center justify-center gap-2 min-h-[40px]">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
-                Add more predictions for bids
-              </span>
-            </div>
           </div>
         </div>
       )}
