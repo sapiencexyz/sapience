@@ -25,7 +25,8 @@ contract PositionTokenBridgeRemote is
     using OptionsBuilder for bytes;
 
     // ============ Constants ============
-    uint128 private constant GAS_FOR_BRIDGE = 200_000;
+    /// @dev Gas for bridge execution on Ethereal (token release + ACK send)
+    uint128 private constant GAS_FOR_BRIDGE = 500_000;
 
     // ============ Storage ============
 
