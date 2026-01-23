@@ -196,6 +196,8 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
 | 10b | ResolvePrediction | Ethereal | Resolve condition and settle prediction |
 | 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
+| 12 | RetryBridgePM | Ethereal | Retry a pending bridge from PM Network |
+| 13 | RetryBridgeSM | Arbitrum | Retry a pending bridge from SM Network |
 
 ## Testing: Mint and Bridge
 
@@ -328,6 +330,10 @@ SKIP_VERIFY=1 ./src/scripts/v2/mainnet/deploy-all.sh all
 ./src/scripts/v2/mainnet/deploy-all.sh bridge-to    # Bridge to Arbitrum
 OUTCOME=yes ./src/scripts/v2/mainnet/deploy-all.sh resolve  # Resolve prediction
 ./src/scripts/v2/mainnet/deploy-all.sh bridge-back  # Bridge back to Ethereal
+
+# Retry failed bridges (use when ACK failed or message didn't arrive)
+BRIDGE_ID=0x... ./src/scripts/v2/mainnet/deploy-all.sh retry-pm  # Retry from Ethereal
+BRIDGE_ID=0x... ./src/scripts/v2/mainnet/deploy-all.sh retry-sm  # Retry from Arbitrum
 ```
 
 ## Environment Variables Reference

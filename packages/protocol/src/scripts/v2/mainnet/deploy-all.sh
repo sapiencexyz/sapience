@@ -333,6 +333,28 @@ test_bridge_back() {
     log_success "Bridge back initiated - check https://layerzeroscan.com/ for status"
 }
 
+# Retry: Bridge from PM Network (Ethereal)
+retry_bridge_pm() {
+    log_info "=== Retry Bridge from PM Network (Ethereal) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_ID || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/12_RetryBridgePM.s.sol:RetryBridgePM" "$PM_NETWORK_RPC_URL" "Retrying bridge from PM Network"
+
+    log_success "Retry initiated - check https://layerzeroscan.com/ for status"
+}
+
+# Retry: Bridge from SM Network (Arbitrum)
+retry_bridge_sm() {
+    log_info "=== Retry Bridge from SM Network (Arbitrum) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_ID || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/13_RetryBridgeSM.s.sol:RetryBridgeSM" "$SM_NETWORK_RPC_URL" "Retrying bridge from SM Network"
+
+    log_success "Retry initiated - check https://layerzeroscan.com/ for status"
+}
+
 # Verify contract on explorer
 verify_contract() {
     local address=$1
@@ -439,6 +461,10 @@ usage() {
     echo "  resolve               Resolve prediction (set OUTCOME=yes|no|tie)"
     echo "  bridge-back           Bridge tokens back from Arbitrum to Ethereal"
     echo ""
+    echo "Retry Commands:"
+    echo "  retry-pm              Retry a pending bridge from PM Network (set BRIDGE_ID)"
+    echo "  retry-sm              Retry a pending bridge from SM Network (set BRIDGE_ID)"
+    echo ""
     echo "Examples:"
     echo "  $0 all                       # Full deployment with verification"
     echo "  SKIP_VERIFY=1 $0 all         # Full deployment WITHOUT verification"
@@ -451,6 +477,8 @@ usage() {
     echo "  $0 bridge-to                 # Bridge to Arbitrum"
     echo "  OUTCOME=yes $0 resolve       # Resolve prediction (predictor wins)"
     echo "  $0 bridge-back               # Bridge back to Ethereal"
+    echo "  BRIDGE_ID=0x... $0 retry-pm  # Retry bridge from Ethereal"
+    echo "  BRIDGE_ID=0x... $0 retry-sm  # Retry bridge from Arbitrum"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
@@ -464,6 +492,7 @@ usage() {
     echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY (for test collateral)"
     echo "  PREDICTOR_WAGER, COUNTERPARTY_WAGER, BRIDGE_AMOUNT (for testing)"
     echo "  OUTCOME (yes|no|tie for resolve)"
+    echo "  BRIDGE_ID (for retry commands)"
     echo ""
     echo "IMPORTANT: This is a MAINNET deployment script. Double-check all addresses!"
 }
@@ -539,6 +568,12 @@ main() {
             ;;
         bridge-back)
             test_bridge_back
+            ;;
+        retry-pm)
+            retry_bridge_pm
+            ;;
+        retry-sm)
+            retry_bridge_sm
             ;;
         help|--help|-h)
             usage

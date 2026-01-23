@@ -136,18 +136,11 @@ abstract contract PositionTokenBridgeBase is
 
     // ============ ACK Handling ============
 
-    /// @dev Attempt to send ACK - gracefully handles insufficient balance or send failures
+    /// @dev Attempt to send ACK - gracefully handles send failures
     function _trySendAck(bytes32 bridgeId) internal {
-        // Skip ACK if no balance (common in test environments)
-        if (address(this).balance == 0) {
-            emit AckSendFailed(bridgeId);
-            return;
-        }
-
         try this.sendAckInternal(bridgeId) {
-        // ACK sent successfully
-        }
-        catch {
+            // ACK sent successfully
+        } catch {
             // ACK failed - emit event for monitoring
             emit AckSendFailed(bridgeId);
         }
@@ -173,6 +166,10 @@ abstract contract PositionTokenBridgeBase is
                 options,
                 fee,
                 payable(address(this))
+            );
+        } else {
+            emit AckInsufficientBalance(
+                bridgeId, fee.nativeFee, address(this).balance
             );
         }
     }
