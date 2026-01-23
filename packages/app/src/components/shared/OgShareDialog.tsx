@@ -11,7 +11,6 @@ import {
 import Link from 'next/link';
 import { Image as ImageIcon, Share2, User } from 'lucide-react';
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
-import { useAccount } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 import PositionProgressBar from '~/components/shared/PositionProgressBar';
@@ -118,8 +117,7 @@ export default function OgShareDialogBase({
 
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
-  const { address } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
   const chainId = CHAIN_ID_ETHEREAL;
   const [positionResolved, setPositionResolved] = useState(false);
   // Store resolved position data for share URL
@@ -130,10 +128,8 @@ export default function OgShareDialogBase({
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
-  // Get user address for position tracking - use smart account when session is active
-  const userAddress = (
-    isSessionActive && smartAccountAddress ? smartAccountAddress : address
-  )?.toLowerCase();
+  // Use effectiveAddress from session context for position tracking
+  const userAddress = effectiveAddress?.toLowerCase();
 
   // Fetch positions for tracking
   const { data: positions, refetch: refetchPositions } = useUserPositions({

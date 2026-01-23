@@ -7,8 +7,15 @@ import {
   useConnectorClient,
   useAccount,
 } from 'wagmi';
-import type { Hash } from 'viem';
+import type { Hash, Hex } from 'viem';
 import { encodeFunctionData, parseAbi } from 'viem';
+
+// Type for transaction calls used in batch operations
+type TransactionCall = {
+  to: `0x${string}`;
+  data: Hex;
+  value: bigint;
+};
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -18,8 +25,13 @@ import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { ethereal } from '~/lib/session/sessionKeyManager';
+import {
+  ethereal,
+  executeSudoTransaction,
+  type OwnerSigner,
+} from '~/lib/session/sessionKeyManager';
 import { arbitrum } from 'viem/chains';
+import { useSwitchChain } from 'wagmi';
 
 // Ethereal chain configuration
 const CHAIN_ID_ETHEREAL = 5064014;
@@ -92,10 +104,15 @@ export function useSapienceWriteContract({
   onReceiptConfirmed,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
+  const { address: wagmiAddress, connector } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   // Session key support for gasless transactions
   const {
     isSessionActive,
+    isUsingSession,
+    isUsingSmartAccount,
+    smartAccountAddress,
     chainClients,
     sessionConfig,
     hasArbitrumSession,
@@ -103,17 +120,20 @@ export function useSapienceWriteContract({
   } = useSession();
 
   // Check if session can handle a specific chain
+  // Returns true ONLY if user is in smart-account mode AND session is active
   // For Arbitrum, returns true even if session doesn't exist yet (will be created lazily)
   const canUseSessionForChain = useCallback(
     (chainId: number): boolean => {
-      if (!isSessionActive || !sessionConfig) return false;
+      // CRITICAL: Only use session if user is in smart-account mode AND session is active
+      if (!isUsingSession) return false;
+      if (!sessionConfig) return false;
       if (Date.now() > sessionConfig.expiresAt) return false;
       if (chainId === ethereal.id && chainClients.ethereal) return true;
       // For Arbitrum, we can use session even if it doesn't exist yet (lazy creation)
       if (chainId === arbitrum.id) return true;
       return false;
     },
-    [isSessionActive, sessionConfig, chainClients]
+    [isUsingSession, sessionConfig, chainClients]
   );
 
   // Check if Arbitrum session needs to be created
@@ -135,11 +155,79 @@ export function useSapienceWriteContract({
     },
     [chainClients]
   );
+
+  // Determine execution path: 'session' | 'owner' | 'eoa'
+  // - 'session': Smart account mode with active session (gasless, auto-sign)
+  // - 'owner': Smart account mode without session (paymaster-sponsored, user signs as owner)
+  // - 'eoa': EOA mode (user's wallet directly, user pays gas)
+  const getExecutionPath = useCallback(
+    (chainId: number): 'session' | 'owner' | 'eoa' => {
+      if (!isUsingSmartAccount) return 'eoa';
+
+      // Smart account mode - check if session is available
+      if (canUseSessionForChain(chainId)) {
+        return 'session';
+      }
+
+      // Smart account mode but no session - use owner signing
+      return 'owner';
+    },
+    [isUsingSmartAccount, canUseSessionForChain]
+  );
+
+  // Create chain switcher for owner signer
+  const createOwnerSigner = useCallback(
+    async (address: `0x${string}`): Promise<OwnerSigner> => {
+      if (!connector) {
+        throw new Error('No wallet connector available');
+      }
+      const provider = await connector.getProvider();
+      return {
+        address,
+        provider,
+        switchChain: async (chainId: number) => {
+          try {
+            await switchChainAsync({ chainId });
+          } catch (error: unknown) {
+            const err = error as { code?: number; message?: string };
+            if (
+              err?.code === 4902 ||
+              err?.message?.includes('Unrecognized chain')
+            ) {
+              throw new Error(
+                `Please add chain ${chainId} to your wallet first`
+              );
+            }
+            throw error;
+          }
+        },
+      };
+    },
+    [connector, switchChainAsync]
+  );
+
+  // Execute transaction via owner signing (smart account mode without session)
+  const executeViaOwnerSigning = useCallback(
+    async (calls: TransactionCall[], chainId: number): Promise<Hash> => {
+      if (!wagmiAddress) {
+        throw new Error('No wallet connected');
+      }
+
+      const ownerSigner = await createOwnerSigner(wagmiAddress);
+
+      onTxSending?.();
+      const txHash = await executeSudoTransaction(ownerSigner, calls, chainId);
+      onTxSent?.(txHash);
+      onReceiptConfirmed?.();
+
+      return txHash;
+    },
+    [wagmiAddress, createOwnerSigner, onTxSending, onTxSent, onReceiptConfirmed]
+  );
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const { address: wagmiAddress } = useAccount();
   const router = useRouter();
   const didRedirectRef = useRef(false);
   const didShowSuccessToastRef = useRef(false);
@@ -184,10 +272,10 @@ export function useSapienceWriteContract({
           createPositionContext.clearSelections();
         }
       } else if (shouldRedirectToProfile) {
-        // When session is active, redirect to smart account profile since that's where the attestation appears
+        // When using smart account, redirect to smart account profile since that's where the attestation appears
         const connectedAddress =
-          isSessionActive && sessionConfig?.smartAccountAddress
-            ? sessionConfig.smartAccountAddress
+          isUsingSmartAccount && smartAccountAddress
+            ? smartAccountAddress
             : wagmiAddress;
         if (!connectedAddress) return; // No address available yet
         const addressLower = String(connectedAddress).toLowerCase();
@@ -204,8 +292,8 @@ export function useSapienceWriteContract({
     wagmiAddress,
     router,
     createPositionContext,
-    isSessionActive,
-    sessionConfig,
+    isUsingSmartAccount,
+    smartAccountAddress,
   ]);
 
   // Common success handler
@@ -332,7 +420,7 @@ export function useSapienceWriteContract({
   const executeViaSessionKey = useCallback(
     async (
       sessionClient: NonNullable<typeof chainClients.ethereal>,
-      calls: Array<{ to: `0x${string}`; data: `0x${string}`; value: bigint }>,
+      calls: TransactionCall[],
       _chainId: number
     ): Promise<Hash> => {
       const timings: Record<string, number> = {};
@@ -421,8 +509,11 @@ export function useSapienceWriteContract({
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
 
-        // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
-        if (canUseSessionForChain(_chainId)) {
+        // Determine execution path based on account mode and session state
+        const executionPath = getExecutionPath(_chainId);
+
+        // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
+        if (executionPath === 'session') {
           // Get session client, creating Arbitrum session lazily if needed
           let sessionClient = getSessionClient(_chainId);
 
@@ -482,10 +573,50 @@ export function useSapienceWriteContract({
               );
             }
           }
-          // If sessionClient is null after lazy creation attempt, fall through to non-session path
+          // If sessionClient is null after lazy creation attempt, fall through to owner path
         }
 
-        // Validate and switch chain if needed (only for non-session paths)
+        // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
+        if (executionPath === 'owner') {
+          setIsSubmitting(true);
+          const params = args[0];
+          const {
+            address,
+            abi,
+            functionName,
+            args: fnArgs,
+            value,
+          } = params as any;
+
+          try {
+            const calldata = encodeFunctionData({
+              abi,
+              functionName,
+              args: fnArgs,
+            });
+            const calls = [
+              {
+                to: address as `0x${string}`,
+                data: calldata,
+                value: value ? BigInt(value) : BigInt(0),
+              },
+            ];
+
+            const txHashFromOwner = await executeViaOwnerSigning(
+              calls,
+              _chainId
+            );
+            handleTransactionSuccess(txHashFromOwner);
+            return;
+          } catch (ownerError: any) {
+            console.error('[Owner] Transaction failed:', ownerError);
+            throw new Error(
+              `Smart account transaction failed: ${formatSessionError(ownerError)}`
+            );
+          }
+        }
+
+        // EOA PATH: Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
 
         // For external wallets on Ethereal chain with value, wrap USDe first
@@ -561,11 +692,12 @@ export function useSapienceWriteContract({
       createWrapTransaction,
       sendCallsAsync,
       pickFinalTransactionHash,
-      canUseSessionForChain,
+      getExecutionPath,
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
       executeViaSessionKey,
+      executeViaOwnerSigning,
     ]
   );
 
@@ -585,8 +717,11 @@ export function useSapienceWriteContract({
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
 
-        // SESSION KEY PATH: If session is active and supports this chain, use gasless execution
-        if (canUseSessionForChain(_chainId)) {
+        // Determine execution path based on account mode and session state
+        const executionPath = getExecutionPath(_chainId);
+
+        // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
+        if (executionPath === 'session') {
           // Get session client, creating Arbitrum session lazily if needed
           let sessionClient = getSessionClient(_chainId);
 
@@ -643,10 +778,46 @@ export function useSapienceWriteContract({
               );
             }
           }
-          // If sessionClient is null after lazy creation attempt, fall through to non-session path
+          // If sessionClient is null after lazy creation attempt, fall through to owner path
         }
 
-        // Validate and switch chain if needed (only for non-session paths)
+        // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
+        if (executionPath === 'owner') {
+          setIsSubmitting(true);
+          const body = (args[0] as any) ?? {};
+          const calls = Array.isArray(body?.calls) ? body.calls : [];
+
+          if (calls.length === 0) {
+            throw new Error('No calls to execute');
+          }
+
+          try {
+            const formattedCalls = calls.map((call: any) => ({
+              to: call.to as `0x${string}`,
+              data: call.data as `0x${string}`,
+              value: call.value ? BigInt(call.value) : BigInt(0),
+            }));
+
+            const txHashFromOwner = await executeViaOwnerSigning(
+              formattedCalls,
+              _chainId
+            );
+
+            // Complete transaction - redirect and show success
+            maybeRedirect();
+            showSuccessToast();
+            setTxHash(txHashFromOwner);
+            setIsSubmitting(false);
+            return;
+          } catch (ownerError: any) {
+            console.error('[Owner] Transaction failed:', ownerError);
+            throw new Error(
+              `Smart account transaction failed: ${formatSessionError(ownerError)}`
+            );
+          }
+        }
+
+        // EOA PATH: Validate and switch chain if needed
         await validateAndSwitchChain(_chainId);
         // Execute the batch calls using wallet_sendCalls with fallback
         const data = await sendCallsAsync({
@@ -696,11 +867,12 @@ export function useSapienceWriteContract({
       fallbackErrorMessage,
       onError,
       pickFinalTransactionHash,
-      canUseSessionForChain,
+      getExecutionPath,
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
       executeViaSessionKey,
+      executeViaOwnerSigning,
       completeSendCallsWithHash,
       completeSendCallsWithoutHash,
       showSuccessToast,

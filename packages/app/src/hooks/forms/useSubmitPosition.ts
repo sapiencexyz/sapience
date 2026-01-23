@@ -90,13 +90,7 @@ export function useSubmitPosition({
   onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
-
-  // Use smart account address when session is active, otherwise use EOA
-  // This ensures contract reads (balance, allowance, nonce) query the correct address
-  // that will be executing the transaction
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+  const { effectiveAddress } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({

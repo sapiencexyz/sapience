@@ -82,8 +82,9 @@ export default function CollateralBalanceButton({
   const { address: eoaAddress } = useAccount();
   const chainId = CHAIN_ID_ETHEREAL;
 
-  // Get smart account address from session context
-  const { smartAccountAddress, isCalculatingAddress } = useSession();
+  // Get smart account address and mode from session context
+  const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
+    useSession();
 
   // Get EOA balance (connected wallet)
   const {
@@ -349,6 +350,11 @@ export default function CollateralBalanceButton({
     }
   };
 
+  // Display the balance based on the current mode
+  const displayedBalance = isUsingSmartAccount
+    ? smartAccountBalance
+    : eoaBalance;
+
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
       <HoverCard openDelay={100} closeDelay={200}>
@@ -365,7 +371,7 @@ export default function CollateralBalanceButton({
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                {smartAccountBalance.toFixed(2)} {symbol}
+                {displayedBalance.toFixed(2)} {symbol}
               </span>
             </div>
             <div className="inline-flex items-center ml-1 w-fit -mr-1">
@@ -384,15 +390,22 @@ export default function CollateralBalanceButton({
             <div className="flex flex-col items-center justify-center space-y-3">
               <div className="space-y-1 text-center">
                 <p className="font-medium text-sm whitespace-nowrap">
-                  Sapience Account Balance
+                  {isUsingSmartAccount
+                    ? 'Sapience Account Balance'
+                    : 'Wallet Balance'}
                 </p>
-                {smartAccountAddress && (
+                {isUsingSmartAccount && smartAccountAddress && (
                   <div className="flex justify-center">
                     <AddressDisplay address={smartAccountAddress} compact />
                   </div>
                 )}
+                {!isUsingSmartAccount && eoaAddress && (
+                  <div className="flex justify-center">
+                    <AddressDisplay address={eoaAddress} compact />
+                  </div>
+                )}
                 <p className="text-2xl font-mono pt-1">
-                  {smartAccountBalance.toFixed(2)} {symbol}
+                  {displayedBalance.toFixed(2)} {symbol}
                 </p>
               </div>
               <Button

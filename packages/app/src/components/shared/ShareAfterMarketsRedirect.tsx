@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { formatUnits } from 'viem';
-import { useAccount } from 'wagmi';
 
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { useSession } from '~/lib/context/SessionContext';
@@ -49,12 +48,9 @@ export default function ShareAfterMarketsRedirect() {
   const imageSrcRef = useRef<string | null>(null);
   const storedLastNftIdRef = useRef<string | undefined>(undefined);
   const positionsRef = useRef<Position[]>([]);
-  const { address } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
 
-  // Use smart account address when session is active, otherwise use EOA
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+  // Use effectiveAddress from session context
   const lowerAddress = effectiveAddress
     ? String(effectiveAddress).toLowerCase()
     : null;

@@ -26,6 +26,9 @@ import {
   Bot,
   Trophy,
   Users,
+  Wallet,
+  XCircle,
+  Key,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -75,7 +78,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
   const pathname = usePathname();
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
   const { setOpenMobile, isMobile } = useSidebar();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
   const linkClass = 'sc-heading justify-start rounded-full';
   const activeClass = 'text-accent-gold';
 
@@ -166,7 +169,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
             onClick={handleLinkClick}
           >
             <Link
-              href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
+              href={`/profile/${effectiveAddress ?? connectedWallet.address}`}
               className="flex items-center gap-2"
             >
               <User className="h-4 w-4" />
@@ -201,6 +204,10 @@ const Header = () => {
     endSession,
     isStartingSession,
     smartAccountAddress,
+    accountMode,
+    setAccountMode,
+    isUsingSmartAccount,
+    effectiveAddress,
   } = useSession();
 
   const { connectionDurationHours } = useSettings();
@@ -465,7 +472,7 @@ const Header = () => {
               </Link>
               {ready && hasConnectedWallet && connectedWallet?.address && (
                 <Link
-                  href={`/profile/${isSessionActive && smartAccountAddress ? smartAccountAddress : connectedWallet.address}`}
+                  href={`/profile/${effectiveAddress ?? connectedWallet.address}`}
                   className={`sc-heading text-foreground transition-colors px-3 py-2 rounded-full hover:bg-transparent hover:text-accent-gold`}
                 >
                   Profile
@@ -554,13 +561,10 @@ const Header = () => {
                         variant="outline"
                         className="rounded-md h-9 w-9 p-0 overflow-hidden bg-brand-black text-brand-white border border-brand-white/10 hover:bg-brand-black/90"
                       >
-                        {(isSessionActive && smartAccountAddress) ||
-                        connectedWallet?.address ? (
+                        {effectiveAddress ?? connectedWallet?.address ? (
                           <EnsAvatar
                             address={
-                              isSessionActive && smartAccountAddress
-                                ? smartAccountAddress
-                                : connectedWallet!.address
+                              effectiveAddress ?? connectedWallet!.address
                             }
                             className="h-9 w-9 rounded-md"
                             width={36}
@@ -583,9 +587,51 @@ const Header = () => {
                         <Users className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Referrals</span>
                       </DropdownMenuItem>
+                      {/* Account mode toggle - switch between smart account and wallet */}
+                      {smartAccountAddress && (
+                        <DropdownMenuItem
+                          className="flex items-center cursor-pointer"
+                          onSelect={() =>
+                            setAccountMode(
+                              accountMode === 'smart-account'
+                                ? 'eoa'
+                                : 'smart-account'
+                            )
+                          }
+                        >
+                          <Wallet className="mr-0.5 opacity-75 h-4 w-4" />
+                          <span>
+                            {accountMode === 'smart-account'
+                              ? 'Use wallet'
+                              : 'Use account'}
+                          </span>
+                        </DropdownMenuItem>
+                      )}
+                      {/* Session controls - only show when in smart account mode */}
+                      {isUsingSmartAccount && (
+                        <>
+                          {isSessionActive ? (
+                            <DropdownMenuItem
+                              className="flex items-center cursor-pointer"
+                              onSelect={endSession}
+                            >
+                              <XCircle className="mr-0.5 opacity-75 h-4 w-4" />
+                              <span>End session</span>
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="flex items-center cursor-pointer"
+                              onSelect={handleStartSession}
+                            >
+                              <Key className="mr-0.5 opacity-75 h-4 w-4" />
+                              <span>Start session</span>
+                            </DropdownMenuItem>
+                          )}
+                        </>
+                      )}
                       <DropdownMenuItem
-                        onClick={handleLogout}
                         className="flex items-center cursor-pointer"
+                        onClick={handleLogout}
                       >
                         <LogOut className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Log out</span>
