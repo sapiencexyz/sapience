@@ -2,10 +2,10 @@
 CREATE TABLE "protocol_stats_snapshot" (
     "id" SERIAL NOT NULL,
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "snapshotTimestamp" INTEGER NOT NULL,
+    "timestamp" INTEGER NOT NULL,
     "chainId" INTEGER NOT NULL,
-    "vaultTVL" VARCHAR NOT NULL,
-    "predictionMarketTVL" VARCHAR NOT NULL,
+    "vaultBalance" VARCHAR NOT NULL,
+    "escrowBalance" VARCHAR NOT NULL,
 
     CONSTRAINT "protocol_stats_snapshot_pkey" PRIMARY KEY ("id")
 );
@@ -14,7 +14,7 @@ CREATE TABLE "protocol_stats_snapshot" (
 CREATE INDEX "IDX_protocol_stats_snapshot_chain" ON "protocol_stats_snapshot"("chainId");
 
 -- CreateIndex
-CREATE INDEX "IDX_protocol_stats_snapshot_timestamp" ON "protocol_stats_snapshot"("snapshotTimestamp");
+CREATE INDEX "IDX_protocol_stats_snapshot_timestamp" ON "protocol_stats_snapshot"("timestamp");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "UQ_protocol_stats_snapshot_timestamp_chain" ON "protocol_stats_snapshot"("snapshotTimestamp", "chainId");
+CREATE UNIQUE INDEX "UQ_protocol_stats_snapshot_timestamp_chain" ON "protocol_stats_snapshot"("timestamp", "chainId");

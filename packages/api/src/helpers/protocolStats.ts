@@ -149,26 +149,26 @@ function getUtcMidnightTimestamp(date: Date): number {
  */
 export async function upsertProtocolStatsSnapshot(
   chainId: number,
-  snapshotTimestamp: number,
-  vaultTVL: bigint,
-  predictionMarketTVL: bigint
+  timestamp: number,
+  vaultBalance: bigint,
+  escrowBalance: bigint
 ): Promise<void> {
   await prisma.protocolStatsSnapshot.upsert({
     where: {
-      snapshotTimestamp_chainId: {
-        snapshotTimestamp,
+      timestamp_chainId: {
+        timestamp,
         chainId,
       },
     },
     create: {
-      snapshotTimestamp,
+      timestamp,
       chainId,
-      vaultTVL: vaultTVL.toString(),
-      predictionMarketTVL: predictionMarketTVL.toString(),
+      vaultBalance: vaultBalance.toString(),
+      escrowBalance: escrowBalance.toString(),
     },
     update: {
-      vaultTVL: vaultTVL.toString(),
-      predictionMarketTVL: predictionMarketTVL.toString(),
+      vaultBalance: vaultBalance.toString(),
+      escrowBalance: escrowBalance.toString(),
     },
   });
 }
@@ -179,41 +179,34 @@ export async function upsertProtocolStatsSnapshot(
 export async function computeAndStoreProtocolStats(
   chainId: number = CHAIN_ID_ETHEREAL
 ): Promise<{
-  vaultTVL: bigint;
-  predictionMarketTVL: bigint;
-  totalTVL: bigint;
+  vaultBalance: bigint;
+  escrowBalance: bigint;
+  totalBalance: bigint;
 }> {
   console.log(
     `[ProtocolStats] Starting stats computation for chain ${chainId}`
   );
 
-  // 1. Fetch Vault TVL
-  const vaultTVL = await fetchVaultTVL(chainId);
-  console.log(`[ProtocolStats] Vault TVL: ${formatUnits(vaultTVL, 18)} USDe`);
+  // 1. Fetch Vault balance
+  const vaultBalance = await fetchVaultTVL(chainId);
+  console.log(`[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} USDe`);
 
-  // 2. Fetch PredictionMarket TVL
-  const predictionMarketTVL = await fetchPredictionMarketTVL(chainId);
-  console.log(
-    `[ProtocolStats] PredictionMarket TVL: ${formatUnits(predictionMarketTVL, 18)} USDe`
-  );
+  // 2. Fetch Escrow balance
+  const escrowBalance = await fetchPredictionMarketTVL(chainId);
+  console.log(`[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe`);
 
   // 3. Calculate total
-  const totalTVL = vaultTVL + predictionMarketTVL;
+  const totalBalance = vaultBalance + escrowBalance;
   console.log(
-    `[ProtocolStats] Total Protocol TVL: ${formatUnits(totalTVL, 18)} USDe`
+    `[ProtocolStats] Total: ${formatUnits(totalBalance, 18)} USDe`
   );
 
   // 4. Store snapshot with today's UTC midnight timestamp
-  const snapshotTimestamp = getUtcMidnightTimestamp(new Date());
-  await upsertProtocolStatsSnapshot(
-    chainId,
-    snapshotTimestamp,
-    vaultTVL,
-    predictionMarketTVL
-  );
+  const timestamp = getUtcMidnightTimestamp(new Date());
+  await upsertProtocolStatsSnapshot(chainId, timestamp, vaultBalance, escrowBalance);
   console.log(`[ProtocolStats] Snapshot stored successfully`);
 
-  return { vaultTVL, predictionMarketTVL, totalTVL };
+  return { vaultBalance, escrowBalance, totalBalance };
 }
 
 /**
@@ -224,7 +217,7 @@ export async function getLatestProtocolStats(
 ) {
   return prisma.protocolStatsSnapshot.findFirst({
     where: { chainId },
-    orderBy: { snapshotTimestamp: 'desc' },
+    orderBy: { timestamp: 'desc' },
   });
 }
 
@@ -240,9 +233,9 @@ export async function getProtocolStatsTimeSeries(
   return prisma.protocolStatsSnapshot.findMany({
     where: {
       chainId,
-      snapshotTimestamp: { gte: startTimestamp },
+      timestamp: { gte: startTimestamp },
     },
-    orderBy: { snapshotTimestamp: 'asc' },
+    orderBy: { timestamp: 'asc' },
   });
 }
 
@@ -271,13 +264,11 @@ export async function backfillProtocolStats(
   let skipCount = 0;
 
   for (let idx = 0; idx < timestamps.length; idx++) {
-    const snapshotTimestamp = timestamps[idx];
-    const dateStr = new Date(snapshotTimestamp * 1000)
-      .toISOString()
-      .split('T')[0];
+    const timestamp = timestamps[idx];
+    const dateStr = new Date(timestamp * 1000).toISOString().split('T')[0];
 
     // Find block at this timestamp using binary search
-    const block = await getBlockByTimestamp(client, snapshotTimestamp);
+    const block = await getBlockByTimestamp(client, timestamp);
     const blockNumber = block.number;
 
     if (blockNumber === null) {
@@ -291,9 +282,9 @@ export async function backfillProtocolStats(
     );
 
     try {
-      // Query historical TVL
-      const vaultTVL = await fetchVaultTVLAtBlock(chainId, blockNumber);
-      const predictionMarketTVL = await fetchPredictionMarketTVLAtBlock(
+      // Query historical balances
+      const vaultBalance = await fetchVaultTVLAtBlock(chainId, blockNumber);
+      const escrowBalance = await fetchPredictionMarketTVLAtBlock(
         chainId,
         blockNumber
       );
@@ -301,13 +292,13 @@ export async function backfillProtocolStats(
       // Store snapshot (upsert handles existing records)
       await upsertProtocolStatsSnapshot(
         chainId,
-        snapshotTimestamp,
-        vaultTVL,
-        predictionMarketTVL
+        timestamp,
+        vaultBalance,
+        escrowBalance
       );
 
       console.log(
-        `[ProtocolStats]   Vault: ${formatUnits(vaultTVL, 18)}, PM: ${formatUnits(predictionMarketTVL, 18)}`
+        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)}, Escrow: ${formatUnits(escrowBalance, 18)}`
       );
       successCount++;
     } catch (error) {

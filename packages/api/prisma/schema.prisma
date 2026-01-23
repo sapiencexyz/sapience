@@ -365,23 +365,23 @@ model User {
 
 /// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
 model ProtocolStatsSnapshot {
-  id                  Int      @id @default(autoincrement())
-  createdAt           DateTime @default(now()) @db.Timestamp(6)
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
-  snapshotTimestamp   Int
+  timestamp     Int
 
   /// Chain ID (5064014 for Ethereal)
-  chainId             Int
+  chainId       Int
 
-  /// Vault TVL: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
-  vaultTVL            String   @db.VarChar
+  /// Vault balance: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
+  vaultBalance  String   @db.VarChar
 
-  /// PredictionMarket TVL: wUSDe.balanceOf(predictionMarket) (in wei)
-  predictionMarketTVL String   @db.VarChar
+  /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
+  escrowBalance String   @db.VarChar
 
-  @@unique([snapshotTimestamp, chainId], map: "UQ_protocol_stats_snapshot_timestamp_chain")
+  @@unique([timestamp, chainId], map: "UQ_protocol_stats_snapshot_timestamp_chain")
   @@index([chainId], map: "IDX_protocol_stats_snapshot_chain")
-  @@index([snapshotTimestamp], map: "IDX_protocol_stats_snapshot_timestamp")
+  @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
   @@map("protocol_stats_snapshot")
 }

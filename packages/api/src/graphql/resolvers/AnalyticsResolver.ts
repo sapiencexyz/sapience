@@ -157,9 +157,9 @@ export class AnalyticsResolver {
       { vaultBalance: string; escrowBalance: string }
     >();
     for (const snapshot of protocolSnapshots) {
-      balanceMap.set(snapshot.snapshotTimestamp, {
-        vaultBalance: snapshot.vaultTVL,
-        escrowBalance: snapshot.predictionMarketTVL,
+      balanceMap.set(snapshot.timestamp, {
+        vaultBalance: snapshot.vaultBalance,
+        escrowBalance: snapshot.escrowBalance,
       });
     }
 
@@ -194,9 +194,9 @@ export class AnalyticsResolver {
 
     if (latestSnapshot) {
       return {
-        vaultBalance: latestSnapshot.vaultTVL,
-        escrowBalance: latestSnapshot.predictionMarketTVL,
-        lastUpdated: latestSnapshot.snapshotTimestamp.toString(),
+        vaultBalance: latestSnapshot.vaultBalance,
+        escrowBalance: latestSnapshot.escrowBalance,
+        lastUpdated: latestSnapshot.timestamp.toString(),
       };
     }
 
