@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import HackathonBanner from './HackathonBanner';
+import BetaBanner from './BetaBanner';
 import LowBalanceBanner from './LowBalanceBanner';
 
 /**
  * Coordinates banner visibility and height tracking.
- * LowBalanceBanner takes priority over HackathonBanner.
+ * LowBalanceBanner takes priority over BetaBanner.
  */
 const BannerCoordinator = () => {
   const [isLowBalanceVisible, setIsLowBalanceVisible] = useState(false);
@@ -21,7 +21,7 @@ const BannerCoordinator = () => {
       <LowBalanceBanner
         onVisibilityChange={(isVisible) => setIsLowBalanceVisible(isVisible)}
       />
-      <HackathonBanner showWhenLowBalanceHidden={!isLowBalanceVisible} />
+      <BetaBanner showWhenLowBalanceHidden={!isLowBalanceVisible} />
     </>
   );
 };
