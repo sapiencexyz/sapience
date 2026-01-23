@@ -62,6 +62,9 @@ interface IPositionTokenBridgeBase {
     /// @notice Emitted when bridge config is updated
     event BridgeConfigUpdated(BridgeConfig config);
 
+    /// @notice Emitted when ACK is sent successfully
+    event AckSent(bytes32 indexed bridgeId, uint256 fee);
+
     /// @notice Emitted when ACK send fails (for monitoring)
     event AckSendFailed(bytes32 indexed bridgeId);
 

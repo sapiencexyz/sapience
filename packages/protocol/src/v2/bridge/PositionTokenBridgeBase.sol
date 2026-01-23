@@ -167,9 +167,8 @@ abstract contract PositionTokenBridgeBase is
         try this.sendAckWithFee{ value: fee.nativeFee }(
             ackMessage, options, fee
         ) {
-        // ACK sent successfully
-        }
-        catch {
+            emit AckSent(bridgeId, fee.nativeFee);
+        } catch {
             emit AckSendFailed(bridgeId);
         }
     }
