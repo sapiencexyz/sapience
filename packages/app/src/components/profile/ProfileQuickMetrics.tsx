@@ -233,7 +233,7 @@ export default function ProfileQuickMetrics({
   const chainId = CHAIN_ID_ETHEREAL;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
-  const volume = useProfileVolume(positions, address);
+  const volume = useProfileVolume(address);
   const first = useFirstActivity(positions);
   const forecastsIsFinite = Number.isFinite(forecastsCount);
   const forecastsUnit = forecastsIsFinite

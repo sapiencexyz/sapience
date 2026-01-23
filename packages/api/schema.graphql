@@ -2032,6 +2032,7 @@ type User {
   referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
   referredBy(where: UserWhereInput): User
   referredById: Int
+  tradingVolume: String!
   updatedAt: DateTimeISO!
 }
 

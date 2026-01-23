@@ -15,7 +15,6 @@ import { createWalletClient, custom, http, keccak256, stringToHex } from 'viem';
 import { mainnet } from 'viem/chains';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
@@ -37,19 +36,12 @@ type ReferralRow = {
 const ReferralVolumeCell = ({ address }: { address: string }) => {
   const chainId = CHAIN_ID_ETHEREAL;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
-  const lowerAddress = address.toLowerCase();
 
-  const { data: positions, isLoading: positionsLoading } = useUserPositions({
-    address: lowerAddress,
-    chainId,
-  });
-
-  const volume = useProfileVolume(positions, address);
-  const loading = positionsLoading;
+  const { display, isLoading } = useProfileVolume(address);
 
   return (
     <span className="tabular-nums">
-      {loading ? '—' : `${volume.display} ${collateralSymbol}`}
+      {isLoading ? '—' : `${display} ${collateralSymbol}`}
     </span>
   );
 };
@@ -67,14 +59,9 @@ const ReferralsDialog = ({
   const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const chainId = CHAIN_ID_ETHEREAL;
-  const { data: userPositions, isLoading: volumeLoading } = useUserPositions({
-    address: walletAddress?.toLowerCase() ?? '',
-    chainId,
-  });
-  const userVolume = useProfileVolume(userPositions, walletAddress ?? undefined);
+  const userVolume = useProfileVolume(walletAddress ?? undefined);
   const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
-  const inviteCodeDisabled = volumeLoading || !hasEnoughVolume;
+  const inviteCodeDisabled = userVolume.isLoading || !hasEnoughVolume;
 
   const invitesRemaining =
     maxReferrals !== null
