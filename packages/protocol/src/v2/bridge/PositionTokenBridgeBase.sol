@@ -136,10 +136,14 @@ abstract contract PositionTokenBridgeBase is
 
     // ============ ACK Handling ============
 
-    /// @dev Attempt to send ACK using prepaid msg.value (LayerZero ABA pattern)
+    /// @dev Attempt to send ACK using prepaid value (hybrid approach for cross-chain compatibility)
+    /// @notice On Arbitrum, LayerZero delivers value as msg.value
+    /// @notice On Ethereal, LayerZero delivers value separately to contract balance
     function _trySendAck(bytes32 bridgeId) internal {
-        // Skip ACK if no prepaid value from source chain
-        if (msg.value == 0) {
+        // Try msg.value first (Arbitrum), fallback to balance (Ethereal)
+        uint256 availableFee = msg.value > 0 ? msg.value : address(this).balance;
+
+        if (availableFee == 0) {
             emit AckSendFailed(bridgeId);
             return;
         }
@@ -149,11 +153,13 @@ abstract contract PositionTokenBridgeBase is
         bytes memory options = OptionsBuilder.newOptions()
             .addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
 
-        // Use msg.value directly as the fee (already prepaid by source)
-        MessagingFee memory fee = MessagingFee(msg.value, 0);
+        // Use available fee (from msg.value or balance)
+        MessagingFee memory fee = MessagingFee(availableFee, 0);
 
-        // Pass msg.value to external call for try/catch pattern
-        try this.sendAckWithFee{ value: msg.value }(ackMessage, options, fee) {
+        // Pass availableFee to external call for try/catch pattern
+        try this.sendAckWithFee{ value: availableFee }(
+            ackMessage, options, fee
+        ) {
         // ACK sent successfully
         }
         catch {
