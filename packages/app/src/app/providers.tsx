@@ -73,11 +73,10 @@ const buildChainsAndTransports = () => {
         ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
         : 'https://arbitrum-rpc.publicnode.com'
     ),
-    [converge.id]: http(process.env.NEXT_PUBLIC_RPC_URL || ''),
     [etherealChain.id]: http('https://rpc.ethereal.trade'),
   };
 
-  const chains: Chain[] = [arbitrum, base, converge, etherealChain];
+  const chains: Chain[] = [arbitrum, base, etherealChain];
 
   if (process.env.NODE_ENV !== 'production') {
     transports[cannonAtLocalhost.id] = http('http://localhost:8545');
