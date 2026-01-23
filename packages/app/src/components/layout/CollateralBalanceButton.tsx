@@ -22,9 +22,9 @@ import {
   encodeFunctionData,
   parseAbi,
   type Address,
+  type EIP1193Provider,
   type Hex,
 } from 'viem';
-import { useConnectorClient } from 'wagmi';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
@@ -79,11 +79,12 @@ export default function CollateralBalanceButton({
   className,
   buttonClassName,
 }: CollateralBalanceButtonProps) {
-  const { address: eoaAddress } = useAccount();
+  const { address: eoaAddress, connector } = useAccount();
   const chainId = CHAIN_ID_ETHEREAL;
 
-  // Get smart account address from session context
-  const { smartAccountAddress, isCalculatingAddress } = useSession();
+  // Get smart account address and mode from session context
+  const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
+    useSession();
 
   // Get EOA balance (connected wallet)
   const {
@@ -122,8 +123,6 @@ export default function CollateralBalanceButton({
   // useSendCalls for batching wrap + transfer (with fallback for wallets like Rabby)
   const { sendCallsAsync, isPending: isSendingCalls } = useSendCalls();
 
-  // Get connector client for sudo transactions
-  const { data: connectorClient } = useConnectorClient();
   const { switchChainAsync } = useSwitchChain();
 
   // Calculate max transferable amount (wrapped + native)
@@ -278,7 +277,7 @@ export default function CollateralBalanceButton({
       return;
     }
 
-    if (!connectorClient) {
+    if (!connector) {
       toast({
         title: 'Cannot withdraw',
         description: 'Wallet not connected',
@@ -308,10 +307,11 @@ export default function CollateralBalanceButton({
         },
       ];
 
-      // Create owner signer from connector client
+      // Create owner signer from connector
+      const provider = (await connector.getProvider()) as EIP1193Provider;
       const ownerSigner: OwnerSigner = {
         address: eoaAddress,
-        provider: connectorClient,
+        provider,
         switchChain: async (chainId: number) => {
           await switchChainAsync({ chainId });
         },
@@ -349,6 +349,11 @@ export default function CollateralBalanceButton({
     }
   };
 
+  // Display the balance based on the current mode
+  const displayedBalance = isUsingSmartAccount
+    ? smartAccountBalance
+    : eoaBalance;
+
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
       <HoverCard openDelay={100} closeDelay={200}>
@@ -365,7 +370,7 @@ export default function CollateralBalanceButton({
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                {smartAccountBalance.toFixed(2)} {symbol}
+                {displayedBalance.toFixed(2)} {symbol}
               </span>
             </div>
             <div className="inline-flex items-center ml-1 w-fit -mr-1">
@@ -384,15 +389,22 @@ export default function CollateralBalanceButton({
             <div className="flex flex-col items-center justify-center space-y-3">
               <div className="space-y-1 text-center">
                 <p className="font-medium text-sm whitespace-nowrap">
-                  Sapience Account Balance
+                  {isUsingSmartAccount
+                    ? 'Sapience Account Balance'
+                    : 'Wallet Balance'}
                 </p>
-                {smartAccountAddress && (
+                {isUsingSmartAccount && smartAccountAddress && (
                   <div className="flex justify-center">
                     <AddressDisplay address={smartAccountAddress} compact />
                   </div>
                 )}
+                {!isUsingSmartAccount && eoaAddress && (
+                  <div className="flex justify-center">
+                    <AddressDisplay address={eoaAddress} compact />
+                  </div>
+                )}
                 <p className="text-2xl font-mono pt-1">
-                  {smartAccountBalance.toFixed(2)} {symbol}
+                  {displayedBalance.toFixed(2)} {symbol}
                 </p>
               </div>
               <Button
@@ -409,13 +421,15 @@ export default function CollateralBalanceButton({
                 />
                 Get USDe
               </Button>
+              {/* Withdraw button shown when smart account has balance, regardless of mode */}
+              {/* This allows users to recover funds from smart account even when using EOA */}
               {smartAccountBalance > 0 && (
                 <button
                   type="button"
                   onClick={() => setIsWithdrawOpen(true)}
                   className="text-xs text-muted-foreground hover:text-foreground underline"
                 >
-                  Withdraw USDe
+                  Withdraw from Sapience Account
                 </button>
               )}
             </div>

@@ -9,6 +9,7 @@ import {
   type Hex,
   type Chain,
   type Hash,
+  type EIP1193Provider,
 } from 'viem';
 import { arbitrum } from 'viem/chains';
 import {
@@ -31,7 +32,11 @@ import {
   ParamCondition,
 } from '@zerodev/permissions/policies';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
-import { predictionMarketAbi, collateralTokenAbi } from '@sapience/sdk/abis';
+import {
+  predictionMarketAbi,
+  collateralTokenAbi,
+  liquidityVaultAbi,
+} from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
   collateralToken as collateralTokenAddresses,
@@ -157,8 +162,8 @@ export interface SerializedSession {
 // Session result with chain clients
 export interface SessionResult {
   config: SessionConfig;
-  etherealClient: KernelAccountClient<any, any, any>; // required - created on login
-  arbitrumClient: KernelAccountClient<any, any, any> | null; // null until first EAS attestation
+  etherealClient: KernelAccountClient; // required - created on login
+  arbitrumClient: KernelAccountClient | null; // null until first EAS attestation
   serialized: SerializedSession;
 }
 
@@ -166,8 +171,7 @@ export interface SessionResult {
 // The provider should be an EIP-1193 compatible Ethereum provider
 export interface OwnerSigner {
   address: Address;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  provider: any; // EIP-1193 provider - ZeroDev accepts this via toSigner
+  provider: EIP1193Provider;
   // Function to switch chains - needed for multi-chain session creation
   switchChain: (chainId: number) => Promise<void>;
 }
@@ -303,6 +307,27 @@ export async function createSession(
         target: PREDICTION_MARKET_ETHEREAL,
         abi: predictionMarketAbi,
         functionName: 'consolidatePrediction',
+      },
+      // Vault functions for gasless deposits/withdrawals
+      {
+        target: VAULT_ETHEREAL,
+        abi: liquidityVaultAbi,
+        functionName: 'requestDeposit',
+      },
+      {
+        target: VAULT_ETHEREAL,
+        abi: liquidityVaultAbi,
+        functionName: 'requestWithdrawal',
+      },
+      {
+        target: VAULT_ETHEREAL,
+        abi: liquidityVaultAbi,
+        functionName: 'cancelDeposit',
+      },
+      {
+        target: VAULT_ETHEREAL,
+        abi: liquidityVaultAbi,
+        functionName: 'cancelWithdrawal',
       },
     ],
   });
@@ -444,7 +469,7 @@ export async function createSession(
 // Result from lazy Arbitrum session creation
 export interface ArbitrumSessionResult {
   arbitrumApproval: string;
-  arbitrumClient: KernelAccountClient<any, any, any>;
+  arbitrumClient: KernelAccountClient;
   arbitrumEnableTypedData?: EnableTypedData;
 }
 
@@ -617,7 +642,7 @@ export async function restoreSession(
   console.debug('[SessionKeyManager] Ethereal session restored');
 
   // Restore Arbitrum session (optional - may not exist yet)
-  let arbitrumClient: KernelAccountClient<any, any, any> | null = null;
+  let arbitrumClient: KernelAccountClient | null = null;
   if (serialized.arbitrumApproval) {
     const arbitrumAccount = await deserializePermissionAccount(
       arbitrumPublicClient,
@@ -650,7 +675,7 @@ export async function restoreSession(
 function createChainClient(
   chain: Chain,
   account: Awaited<ReturnType<typeof createKernelAccount>>
-): KernelAccountClient<any, any, any> {
+): KernelAccountClient {
   const { bundlerUrl, paymasterUrl } = getZeroDevUrls(chain.id);
 
   console.debug(
@@ -683,11 +708,13 @@ function createChainClient(
             `[SessionKeyManager] Paymaster sponsorship received in ${paymasterMs}ms`
           );
           return result;
-        } catch (error: any) {
+        } catch (error: unknown) {
           const paymasterMs = Date.now() - paymasterStart;
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
           console.error(
             `[SessionKeyManager] Paymaster error after ${paymasterMs}ms:`,
-            error?.message || error
+            errorMessage
           );
           throw error;
         }

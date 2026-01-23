@@ -78,10 +78,10 @@ export function useAuctionStart() {
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
   const {
-    isSessionActive,
-    smartAccountAddress,
     etherealSessionApproval,
     signMessage: sessionSignMessage,
+    effectiveAddress,
+    isUsingSmartAccount,
   } = useSession();
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
@@ -176,11 +176,8 @@ export function useAuctionStart() {
     ) => {
       if (!params || !wsUrl) return;
 
-      // Use smart account address as taker when session is active
-      const effectiveTaker =
-        isSessionActive && smartAccountAddress
-          ? smartAccountAddress
-          : params.taker;
+      // Use effectiveAddress from session context if available, otherwise use params.taker
+      const effectiveTaker = effectiveAddress ?? params.taker;
 
       const requestPayload = {
         wager: params.wager,
@@ -229,9 +226,9 @@ export function useAuctionStart() {
               issuedAt
             );
 
-            // Use session key signing when session is active (no wallet popup)
+            // Use session key signing when using smart account (no wallet popup)
             // Otherwise fall back to owner's wallet signing
-            if (isSessionActive && sessionSignMessage) {
+            if (isUsingSmartAccount && sessionSignMessage) {
               takerSignature = await sessionSignMessage(message);
             } else {
               takerSignature = await signMessageAsync({ message });
@@ -253,8 +250,8 @@ export function useAuctionStart() {
           ...(takerSignature && takerSignedAt
             ? { takerSignature, takerSignedAt }
             : {}),
-          // Add session approval data for smart account authentication
-          ...(isSessionActive && etherealSessionApproval
+          // Add session approval data for smart account authentication (only when using smart account)
+          ...(isUsingSmartAccount && etherealSessionApproval
             ? {
                 sessionApproval: etherealSessionApproval.approval,
                 sessionTypedData: etherealSessionApproval.typedData,
@@ -292,8 +289,8 @@ export function useAuctionStart() {
     [
       wsUrl,
       signMessageAsync,
-      isSessionActive,
-      smartAccountAddress,
+      isUsingSmartAccount,
+      effectiveAddress,
       etherealSessionApproval,
       sessionSignMessage,
     ]

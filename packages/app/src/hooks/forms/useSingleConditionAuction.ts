@@ -63,7 +63,7 @@ export function useSingleConditionAuction({
   requestQuotes,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
   const { address: takerAddress } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
@@ -73,12 +73,9 @@ export function useSingleConditionAuction({
   const guestTakerAddress: `0x${string}` =
     '0x0000000000000000000000000000000000000000';
 
-  // Use smart account address when session is active, otherwise use EOA
-  // This ensures the correct nonce is fetched for the address that will execute the transaction
+  // Use effectiveAddress from session context, falling back to guest address
   const selectedTakerAddress =
-    isSessionActive && smartAccountAddress
-      ? smartAccountAddress
-      : (takerAddress ?? guestTakerAddress);
+    effectiveAddress ?? takerAddress ?? guestTakerAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
