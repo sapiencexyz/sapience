@@ -27,14 +27,6 @@ import {
   useSettings,
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
-import { useSession, type AccountMode } from '~/lib/context/SessionContext';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@sapience/ui/components/ui/select';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -190,7 +182,6 @@ const SettingsPageContent = () => {
     setConnectionDurationHours,
     defaults,
   } = useSettings();
-  const { accountMode, setAccountMode, smartAccountAddress } = useSession();
   const [mounted, setMounted] = useState(false);
   const [gqlInput, setGqlInput] = useState('');
   const [apiInput, setApiInput] = useState('');
@@ -512,35 +503,6 @@ const SettingsPageContent = () => {
                           hours
                         </span>
                       </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="account-type">Account Type</Label>
-                      <Select
-                        value={accountMode}
-                        onValueChange={(value) =>
-                          setAccountMode(value as AccountMode)
-                        }
-                        disabled={!smartAccountAddress}
-                      >
-                        <SelectTrigger id="account-type" className="w-48">
-                          <SelectValue placeholder="Select account type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="smart-account">
-                            Sapience Account
-                          </SelectItem>
-                          <SelectItem value="eoa">Wallet (EOA)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Choose whether to use your Sapience smart account
-                        (gasless transactions) or your wallet directly.
-                        {!smartAccountAddress && (
-                          <span className="block mt-1 text-amber-500">
-                            Connect your wallet to enable this setting.
-                          </span>
-                        )}
-                      </p>
                     </div>
                     <div className="grid gap-1">
                       <Label htmlFor="show-american-odds">

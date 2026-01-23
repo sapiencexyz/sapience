@@ -28,7 +28,6 @@ import {
   Users,
   Wallet,
   XCircle,
-  Key,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -546,13 +545,16 @@ const Header = () => {
               )}
               {ready && hasConnectedWallet && (
                 <>
-                  {!isSessionActive && (
+                  {/* In smart-account mode without session: show "Establish Connection" to start session */}
+                  {accountMode === 'smart-account' && !isSessionActive && (
                     <Button
                       className="rounded-md h-10 xl:h-9 px-4"
                       onClick={handleStartSession}
                       disabled={isStartingSession || !smartAccountAddress}
                     >
-                      {isStartingSession ? 'Logging in...' : 'Log in'}
+                      {isStartingSession
+                        ? 'Connecting...'
+                        : 'Establish Connection'}
                     </Button>
                   )}
                   <DropdownMenu>
@@ -591,13 +593,16 @@ const Header = () => {
                       {smartAccountAddress && (
                         <DropdownMenuItem
                           className="flex items-center cursor-pointer"
-                          onSelect={() =>
-                            setAccountMode(
-                              accountMode === 'smart-account'
-                                ? 'eoa'
-                                : 'smart-account'
-                            )
-                          }
+                          onSelect={async () => {
+                            if (accountMode === 'smart-account') {
+                              // Switching to EOA mode
+                              setAccountMode('eoa');
+                            } else {
+                              // Switching to smart-account mode - also start session
+                              setAccountMode('smart-account');
+                              await handleStartSession();
+                            }
+                          }}
                         >
                           <Wallet className="mr-0.5 opacity-75 h-4 w-4" />
                           <span>
@@ -607,27 +612,15 @@ const Header = () => {
                           </span>
                         </DropdownMenuItem>
                       )}
-                      {/* Session controls - only show when in smart account mode */}
-                      {isUsingSmartAccount && (
-                        <>
-                          {isSessionActive ? (
-                            <DropdownMenuItem
-                              className="flex items-center cursor-pointer"
-                              onSelect={endSession}
-                            >
-                              <XCircle className="mr-0.5 opacity-75 h-4 w-4" />
-                              <span>End session</span>
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem
-                              className="flex items-center cursor-pointer"
-                              onSelect={handleStartSession}
-                            >
-                              <Key className="mr-0.5 opacity-75 h-4 w-4" />
-                              <span>Start session</span>
-                            </DropdownMenuItem>
-                          )}
-                        </>
+                      {/* End session - only show when in smart account mode with active session */}
+                      {isUsingSmartAccount && isSessionActive && (
+                        <DropdownMenuItem
+                          className="flex items-center cursor-pointer"
+                          onSelect={endSession}
+                        >
+                          <XCircle className="mr-0.5 opacity-75 h-4 w-4" />
+                          <span>End session</span>
+                        </DropdownMenuItem>
                       )}
                       <DropdownMenuItem
                         className="flex items-center cursor-pointer"

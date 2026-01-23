@@ -27,14 +27,14 @@ interface WriteContractParams {
   chainId?: number;
 }
 
-// Type for individual call in send calls
+// Type for individual call in send calls (simplified from wagmi's complex generic type)
 interface SendCall {
   to: `0x${string}`;
   data?: Hex;
   value?: bigint;
 }
 
-// Type for send calls parameters
+// Simplified type for send calls parameters (wagmi's type has complex generics we don't need)
 interface SendCallsParams {
   chainId?: number;
   calls?: SendCall[];
@@ -271,7 +271,7 @@ export function useSapienceWriteContract({
 
   // Helper to create WUSDe wrap transaction for Ethereal chain
   const createWrapTransaction = useCallback(
-    (amount: bigint) => ({
+    (amount: bigint): TransactionCall => ({
       to: WUSDE_ADDRESS as `0x${string}`,
       data: encodeFunctionData({
         abi: WUSDE_ABI,
@@ -280,6 +280,33 @@ export function useSapienceWriteContract({
       value: amount,
     }),
     []
+  );
+
+  // Helper to prepare calls with USDe wrapping for Ethereal chain
+  // This centralizes the wrapping logic used across session, owner, and EOA paths
+  const prepareCallsWithWrapping = useCallback(
+    (calls: TransactionCall[], chainId: number): TransactionCall[] => {
+      if (!isEtherealChain(chainId)) return calls;
+
+      // Calculate total value that needs wrapping
+      const totalValue = calls.reduce(
+        (sum, call) => sum + (call.value ?? 0n),
+        0n
+      );
+
+      if (totalValue === 0n) return calls;
+
+      // Prepend wrap transaction, then all calls with value zeroed
+      const wrapTx = createWrapTransaction(totalValue);
+      return [
+        wrapTx,
+        ...calls.map((call) => ({
+          ...call,
+          value: 0n, // Zero out value since we wrapped upfront
+        })),
+      ];
+    },
+    [createWrapTransaction]
   );
 
   const maybeRedirect = useCallback(() => {
@@ -589,28 +616,14 @@ export function useSapienceWriteContract({
                 args: fnArgs,
               });
 
-              let calls: TransactionCall[];
-
-              // For Ethereal chain with value, wrap USDe first (same logic as EOA path)
-              if (isEtherealChain(_chainId) && value && BigInt(value) > 0n) {
-                const wrapTx = createWrapTransaction(BigInt(value));
-                calls = [
-                  wrapTx,
-                  {
-                    to: address,
-                    data: calldata,
-                    value: 0n, // No value for main tx since we wrapped
-                  },
-                ];
-              } else {
-                calls = [
-                  {
-                    to: address,
-                    data: calldata,
-                    value: value ? BigInt(value) : BigInt(0),
-                  },
-                ];
-              }
+              const baseCalls: TransactionCall[] = [
+                {
+                  to: address,
+                  data: calldata,
+                  value: value ? BigInt(value) : 0n,
+                },
+              ];
+              const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
               const txHashFromSession = await executeViaSessionKey(
                 sessionClient,
@@ -619,7 +632,7 @@ export function useSapienceWriteContract({
               );
               handleTransactionSuccess(txHashFromSession);
               return;
-            } catch (sessionError: any) {
+            } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
               throw new Error(
                 `Session key transaction failed: ${formatSessionError(sessionError)}`
@@ -630,7 +643,7 @@ export function useSapienceWriteContract({
         }
 
         // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
-        // For Ethereal transactions with value, we wrap native USDe automatically (same as EOA path)
+        // For Ethereal transactions with value, we wrap native USDe automatically
         if (executionPath === 'owner') {
           setIsSubmitting(true);
           const params = args[0] as WriteContractParams;
@@ -643,28 +656,14 @@ export function useSapienceWriteContract({
               args: fnArgs,
             });
 
-            let calls: TransactionCall[];
-
-            // For Ethereal chain with value, wrap USDe first (same logic as EOA path)
-            if (isEtherealChain(_chainId) && value && BigInt(value) > 0n) {
-              const wrapTx = createWrapTransaction(BigInt(value));
-              calls = [
-                wrapTx,
-                {
-                  to: address,
-                  data: calldata,
-                  value: 0n, // No value for main tx since we wrapped
-                },
-              ];
-            } else {
-              calls = [
-                {
-                  to: address,
-                  data: calldata,
-                  value: value ? BigInt(value) : BigInt(0),
-                },
-              ];
-            }
+            const baseCalls: TransactionCall[] = [
+              {
+                to: address,
+                data: calldata,
+                value: value ? BigInt(value) : 0n,
+              },
+            ];
+            const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
             const txHashFromOwner = await executeViaOwnerSigning(
               calls,
@@ -672,7 +671,7 @@ export function useSapienceWriteContract({
             );
             handleTransactionSuccess(txHashFromOwner);
             return;
-          } catch (ownerError: any) {
+          } catch (ownerError: unknown) {
             console.error('[Owner] Transaction failed:', ownerError);
             throw new Error(
               `Smart account transaction failed: ${formatSessionError(ownerError)}`
@@ -753,7 +752,7 @@ export function useSapienceWriteContract({
       fallbackErrorMessage,
       onError,
       handleTransactionSuccess,
-      createWrapTransaction,
+      prepareCallsWithWrapping,
       sendCallsAsync,
       pickFinalTransactionHash,
       getExecutionPath,
@@ -825,42 +824,18 @@ export function useSapienceWriteContract({
             }
 
             try {
-              // For Ethereal chain, check if any calls have value and need wrapping
-              let formattedCalls: TransactionCall[];
-
-              if (isEtherealChain(_chainId)) {
-                // Calculate total value that needs wrapping
-                const totalValue = calls.reduce(
-                  (sum: bigint, call: SendCall) =>
-                    sum + (call.value ? BigInt(call.value) : 0n),
-                  0n
-                );
-
-                if (totalValue > 0n) {
-                  // Prepend wrap transaction, then all calls with value zeroed
-                  const wrapTx = createWrapTransaction(totalValue);
-                  formattedCalls = [
-                    wrapTx,
-                    ...calls.map((call: SendCall) => ({
-                      to: call.to,
-                      data: call.data ?? '0x',
-                      value: 0n, // Zero out value since we wrapped upfront
-                    })),
-                  ];
-                } else {
-                  formattedCalls = calls.map((call: SendCall) => ({
-                    to: call.to,
-                    data: call.data ?? '0x',
-                    value: call.value ? BigInt(call.value) : BigInt(0),
-                  }));
-                }
-              } else {
-                formattedCalls = calls.map((call: SendCall) => ({
+              // Convert SendCall[] to TransactionCall[] and apply wrapping
+              const baseCalls: TransactionCall[] = calls.map(
+                (call: SendCall) => ({
                   to: call.to,
-                  data: call.data ?? '0x',
-                  value: call.value ? BigInt(call.value) : BigInt(0),
-                }));
-              }
+                  data: call.data ?? ('0x' as Hex),
+                  value: call.value ? BigInt(call.value) : 0n,
+                })
+              );
+              const formattedCalls = prepareCallsWithWrapping(
+                baseCalls,
+                _chainId
+              );
 
               const txHashFromSession = await executeViaSessionKey(
                 sessionClient,
@@ -868,14 +843,10 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              // Complete transaction - redirect and show success
-              // Note: Don't call onTxHash here - onTxSent was already called in executeViaSessionKey
-              maybeRedirect();
-              showSuccessToast();
-              setTxHash(txHashFromSession);
-              setIsSubmitting(false);
+              // Use consistent completion handler (same as EOA path)
+              completeSendCallsWithHash(txHashFromSession);
               return;
-            } catch (sessionError: any) {
+            } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
               throw new Error(
                 `Session key transaction failed: ${formatSessionError(sessionError)}`
@@ -886,7 +857,7 @@ export function useSapienceWriteContract({
         }
 
         // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
-        // For Ethereal transactions with value, we wrap native USDe automatically (same as EOA path)
+        // For Ethereal transactions with value, we wrap native USDe automatically
         if (executionPath === 'owner') {
           setIsSubmitting(true);
           const body = (args[0] ?? {}) as SendCallsParams;
@@ -899,55 +870,28 @@ export function useSapienceWriteContract({
           }
 
           try {
-            // For Ethereal chain, check if any calls have value and need wrapping
-            let formattedCalls: TransactionCall[];
-
-            if (isEtherealChain(_chainId)) {
-              // Calculate total value that needs wrapping
-              const totalValue = calls.reduce(
-                (sum: bigint, call: SendCall) =>
-                  sum + (call.value ? BigInt(call.value) : 0n),
-                0n
-              );
-
-              if (totalValue > 0n) {
-                // Prepend wrap transaction, then all calls with value zeroed
-                const wrapTx = createWrapTransaction(totalValue);
-                formattedCalls = [
-                  wrapTx,
-                  ...calls.map((call: SendCall) => ({
-                    to: call.to,
-                    data: call.data ?? '0x',
-                    value: 0n, // Zero out value since we wrapped upfront
-                  })),
-                ];
-              } else {
-                formattedCalls = calls.map((call: SendCall) => ({
-                  to: call.to,
-                  data: call.data ?? '0x',
-                  value: call.value ? BigInt(call.value) : BigInt(0),
-                }));
-              }
-            } else {
-              formattedCalls = calls.map((call: SendCall) => ({
+            // Convert SendCall[] to TransactionCall[] and apply wrapping
+            const baseCalls: TransactionCall[] = calls.map(
+              (call: SendCall) => ({
                 to: call.to,
-                data: call.data ?? '0x',
-                value: call.value ? BigInt(call.value) : BigInt(0),
-              }));
-            }
+                data: call.data ?? ('0x' as Hex),
+                value: call.value ? BigInt(call.value) : 0n,
+              })
+            );
+            const formattedCalls = prepareCallsWithWrapping(
+              baseCalls,
+              _chainId
+            );
 
             const txHashFromOwner = await executeViaOwnerSigning(
               formattedCalls,
               _chainId
             );
 
-            // Complete transaction - redirect and show success
-            maybeRedirect();
-            showSuccessToast();
-            setTxHash(txHashFromOwner);
-            setIsSubmitting(false);
+            // Use consistent completion handler (same as EOA path)
+            completeSendCallsWithHash(txHashFromOwner);
             return;
-          } catch (ownerError: any) {
+          } catch (ownerError: unknown) {
             console.error('[Owner] Transaction failed:', ownerError);
             throw new Error(
               `Smart account transaction failed: ${formatSessionError(ownerError)}`
@@ -1011,13 +955,9 @@ export function useSapienceWriteContract({
       createArbitrumSessionIfNeeded,
       executeViaSessionKey,
       executeViaOwnerSigning,
-      createWrapTransaction,
+      prepareCallsWithWrapping,
       completeSendCallsWithHash,
       completeSendCallsWithoutHash,
-      showSuccessToast,
-      maybeRedirect,
-      successMessage,
-      disableSuccessToast,
     ]
   );
 
