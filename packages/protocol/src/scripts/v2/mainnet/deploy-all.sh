@@ -268,14 +268,73 @@ check_status() {
     run_script_no_verify "src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol:CheckStatus_SMNetwork" "$SM_NETWORK_RPC_URL" "Checking SM Network status"
 }
 
+# Test: Mint Position Tokens
+test_mint() {
+    log_info "=== Test: Mint Position Tokens ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PREDICTOR_PRIVATE_KEY COUNTERPARTY_PRIVATE_KEY || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/09_MintPositionTokens.s.sol:MintPositionTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
+
+    # Extract and save token addresses
+    local prediction_id=$(echo "$LAST_OUTPUT" | grep "PREDICTION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    local predictor_token=$(extract_address "$LAST_OUTPUT" "PREDICTOR_TOKEN_ADDRESS=")
+    local counterparty_token=$(extract_address "$LAST_OUTPUT" "COUNTERPARTY_TOKEN_ADDRESS=")
+    local pick_config_id=$(echo "$LAST_OUTPUT" | grep "PICK_CONFIG_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    local condition_id=$(echo "$LAST_OUTPUT" | grep "CONDITION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+
+    [ -n "$prediction_id" ] && update_env "PREDICTION_ID" "$prediction_id"
+    [ -n "$predictor_token" ] && update_env "PREDICTOR_TOKEN_ADDRESS" "$predictor_token"
+    [ -n "$counterparty_token" ] && update_env "COUNTERPARTY_TOKEN_ADDRESS" "$counterparty_token"
+    [ -n "$pick_config_id" ] && update_env "PICK_CONFIG_ID" "$pick_config_id"
+    [ -n "$condition_id" ] && update_env "CONDITION_ID" "$condition_id"
+
+    log_success "Position tokens minted"
+}
+
+# Test: Bridge to Remote (Ethereal -> Arbitrum)
+test_bridge_to_remote() {
+    log_info "=== Test: Bridge to Remote (Ethereal -> Arbitrum) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PREDICTOR_TOKEN_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/10_TestBridgeToRemote.s.sol:TestBridgeToRemote" "$PM_NETWORK_RPC_URL" "Bridging tokens to Arbitrum"
+
+    log_success "Bridge initiated - check https://layerzeroscan.com/ for status"
+}
+
+# Test: Resolve Prediction
+test_resolve() {
+    log_info "=== Test: Resolve Prediction ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY RESOLVER_ADDRESS CONDITION_ID || exit 1
+
+    local outcome="${OUTCOME:-yes}"
+    log_info "Resolving with outcome: $outcome"
+
+    run_script_no_verify "src/scripts/v2/mainnet/10b_ResolvePrediction.s.sol:ResolvePrediction" "$PM_NETWORK_RPC_URL" "Resolving prediction (outcome: $outcome)"
+
+    log_success "Prediction resolved"
+}
+
+# Test: Bridge Back (Arbitrum -> Ethereal)
+test_bridge_back() {
+    log_info "=== Test: Bridge Back (Arbitrum -> Ethereal) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/11_TestBridgeBack.s.sol:TestBridgeBack" "$SM_NETWORK_RPC_URL" "Bridging tokens back to Ethereal"
+
+    log_success "Bridge back initiated - check https://layerzeroscan.com/ for status"
+}
+
 # Print usage
 usage() {
     echo "Usage: $0 [command]"
     echo ""
-    echo "Commands:"
+    echo "Deployment Commands:"
     echo "  all                   Run full deployment (phases 1-3b)"
     echo "  all-with-collateral   Run full deployment with test collateral (for testing)"
-    echo "  deploy                Run deployment only (phases 1-3b)"
     echo "  collateral            Deploy test collateral token (optional, for testing)"
     echo "  phase1                Deploy Ethereal infrastructure"
     echo "  phase2                Deploy Arbitrum infrastructure"
@@ -283,20 +342,33 @@ usage() {
     echo "  phase3b               Configure DVN and libraries"
     echo "  status                Check deployment status"
     echo ""
+    echo "Test Commands:"
+    echo "  mint                  Mint position tokens for testing"
+    echo "  bridge-to             Bridge tokens from Ethereal to Arbitrum"
+    echo "  resolve               Resolve prediction (set OUTCOME=yes|no|tie)"
+    echo "  bridge-back           Bridge tokens back from Arbitrum to Ethereal"
+    echo ""
     echo "Examples:"
     echo "  $0 all                    # Full deployment with DVN config"
     echo "  $0 all-with-collateral    # Full deployment with test collateral"
-    echo "  $0 deploy                 # Deploy and configure"
-    echo "  $0 collateral             # Deploy test collateral only"
     echo "  $0 phase3b                # Just configure DVN/libraries"
     echo "  $0 status                 # Check current status"
+    echo "  $0 mint                   # Mint position tokens"
+    echo "  $0 bridge-to              # Bridge to Arbitrum"
+    echo "  OUTCOME=yes $0 resolve    # Resolve prediction (predictor wins)"
+    echo "  $0 bridge-back            # Bridge back to Ethereal"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
     echo "  SM_NETWORK_SEND_LIB, SM_NETWORK_RECEIVE_LIB, SM_NETWORK_DVN_1, SM_NETWORK_DVN_2, SM_NETWORK_EXECUTOR"
     echo ""
-    echo "Optional env vars for test collateral:"
-    echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY"
+    echo "Required env vars for testing:"
+    echo "  PREDICTOR_PRIVATE_KEY, COUNTERPARTY_PRIVATE_KEY"
+    echo ""
+    echo "Optional env vars:"
+    echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY (for test collateral)"
+    echo "  PREDICTOR_WAGER, COUNTERPARTY_WAGER, BRIDGE_AMOUNT (for testing)"
+    echo "  OUTCOME (yes|no|tie for resolve)"
     echo ""
     echo "IMPORTANT: This is a MAINNET deployment script. Double-check all addresses!"
 }
@@ -337,13 +409,6 @@ main() {
             configure_dvn_phase3b
             check_status
             ;;
-        deploy)
-            deploy_ethereal_phase1
-            deploy_arbitrum_phase2
-            configure_bridges_phase3
-            configure_dvn_phase3b
-            check_status
-            ;;
         collateral)
             deploy_test_collateral
             ;;
@@ -361,6 +426,18 @@ main() {
             ;;
         status)
             check_status
+            ;;
+        mint)
+            test_mint
+            ;;
+        bridge-to)
+            test_bridge_to_remote
+            ;;
+        resolve)
+            test_resolve
+            ;;
+        bridge-back)
+            test_bridge_back
             ;;
         help|--help|-h)
             usage

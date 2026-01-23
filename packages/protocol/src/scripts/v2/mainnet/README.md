@@ -305,10 +305,10 @@ Use the `deploy-all.sh` script to run all steps automatically:
 # Full deployment with DVN config
 ./src/scripts/v2/mainnet/deploy-all.sh all
 
-# Deploy and configure only
-./src/scripts/v2/mainnet/deploy-all.sh deploy
+# Full deployment with test collateral (for testing)
+./src/scripts/v2/mainnet/deploy-all.sh all-with-collateral
 
-# Run individual phases
+# Run individual deployment phases
 ./src/scripts/v2/mainnet/deploy-all.sh collateral # Deploy test collateral (optional)
 ./src/scripts/v2/mainnet/deploy-all.sh phase1     # Ethereal infrastructure
 ./src/scripts/v2/mainnet/deploy-all.sh phase2     # Arbitrum infrastructure
@@ -316,8 +316,11 @@ Use the `deploy-all.sh` script to run all steps automatically:
 ./src/scripts/v2/mainnet/deploy-all.sh phase3b    # DVN/library config
 ./src/scripts/v2/mainnet/deploy-all.sh status     # Check status
 
-# Full deployment with test collateral (for testing)
-./src/scripts/v2/mainnet/deploy-all.sh all-with-collateral
+# Run test commands
+./src/scripts/v2/mainnet/deploy-all.sh mint         # Mint position tokens
+./src/scripts/v2/mainnet/deploy-all.sh bridge-to    # Bridge to Arbitrum
+OUTCOME=yes ./src/scripts/v2/mainnet/deploy-all.sh resolve  # Resolve prediction
+./src/scripts/v2/mainnet/deploy-all.sh bridge-back  # Bridge back to Ethereal
 ```
 
 ## Environment Variables Reference
