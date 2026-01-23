@@ -167,10 +167,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         view
         returns (IV2Types.MintRequest memory request)
     {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 address(predictorSmartAccount), // Smart account as predictor
@@ -220,10 +220,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         view
         returns (IV2Types.MintRequest memory request)
     {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 predictor,
@@ -272,10 +272,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         view
         returns (IV2Types.MintRequest memory request)
     {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 address(predictorSmartAccount),
@@ -322,10 +322,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         view
         returns (IV2Types.MintRequest memory request)
     {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 predictor,
@@ -488,10 +488,10 @@ contract PredictionMarketV2ERC1271Test is Test {
             _createMintRequestWithSmartAccountPredictor(picks);
 
         // Replace with invalid signature (wrong private key)
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 address(predictorSmartAccount),
@@ -527,10 +527,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 address(nonEIP1271),
@@ -591,10 +591,10 @@ contract PredictionMarketV2ERC1271Test is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 address(revertingContract),

@@ -62,11 +62,13 @@ interface IV2Types {
 
     /// @notice Session key approval data for ZeroDev integration
     /// @dev Used when a party signs via session key instead of EOA/smart account directly
+    ///      Includes chainId to prevent cross-chain replay attacks
     struct SessionKeyData {
         address sessionKey; // The session key address that signed
         address owner; // The owner who authorized this session key
         uint256 validUntil; // Expiration timestamp for the session key
         bytes32 permissionsHash; // Hash of permissions granted to this session key
+        uint256 chainId; // Chain ID for cross-chain replay protection
         bytes ownerSignature; // Owner's signature authorizing the session key
     }
 

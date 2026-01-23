@@ -82,9 +82,9 @@ contract PredictionMarketV2IntegrationTest is Test {
         uint256 pWager,
         uint256 cWager
     ) internal view returns (IV2Types.MintRequest memory request) {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(predictionId, pWager, cWager, predictor, counterparty)
+            abi.encode(pickConfigId, pWager, cWager, predictor, counterparty)
         );
 
         uint256 pNonce = market.getNonce(predictor);

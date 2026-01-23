@@ -43,4 +43,9 @@ interface IV2Events {
     event CollateralDeposited(
         bytes32 indexed predictionId, uint256 totalAmount
     );
+
+    /// @notice Emitted when dust is swept from a fully-redeemed pick configuration
+    event DustSwept(
+        bytes32 indexed pickConfigId, address indexed recipient, uint256 amount
+    );
 }

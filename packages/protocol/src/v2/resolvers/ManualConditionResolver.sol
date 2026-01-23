@@ -13,6 +13,7 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     error NotApprovedSettler();
     error ConditionAlreadySettled();
     error InvalidOutcome();
+    error ArrayLengthMismatch();
 
     // ============ Events ============
     event SettlerApproved(address indexed settler);
@@ -93,6 +94,9 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
         IV2Types.OutcomeVector[] calldata outcomes
     ) external {
         if (!approvedSettlers[msg.sender]) revert NotApprovedSettler();
+        if (conditionIds.length != outcomes.length) {
+            revert ArrayLengthMismatch();
+        }
 
         uint256 length = conditionIds.length;
         for (uint256 i = 0; i < length; i++) {

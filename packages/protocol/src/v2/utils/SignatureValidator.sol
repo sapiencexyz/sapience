@@ -26,8 +26,9 @@ abstract contract SignatureValidator is EIP712 {
     );
 
     /// @notice EIP-712 typehash for session key approval (owner authorizing a session key)
+    /// @dev Includes chainId to prevent cross-chain replay attacks
     bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
-        "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash)"
+        "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash,uint256 chainId)"
     );
 
     /// @notice Trusted account factory for smart account verification
@@ -216,6 +217,7 @@ abstract contract SignatureValidator is EIP712 {
         address smartAccount; // The smart account (signer in the mint request)
         uint256 validUntil; // Expiration timestamp for the session key
         bytes32 permissionsHash; // Hash of permissions granted to this session key
+        uint256 chainId; // Chain ID to prevent cross-chain replay attacks
         bytes ownerSignature; // Owner's signature on the session approval
     }
 
@@ -275,13 +277,19 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // 2. Verify the owner authorized this session key
+        // Verify chain ID matches to prevent cross-chain replay attacks
+        if (sessionApproval.chainId != block.chainid) {
+            return false;
+        }
+
         bytes32 sessionStructHash = keccak256(
             abi.encode(
                 SESSION_KEY_APPROVAL_TYPEHASH,
                 sessionApproval.sessionKey,
                 sessionApproval.smartAccount,
                 sessionApproval.validUntil,
-                sessionApproval.permissionsHash
+                sessionApproval.permissionsHash,
+                sessionApproval.chainId
             )
         );
         bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
@@ -321,12 +329,14 @@ abstract contract SignatureValidator is EIP712 {
     /// @param smartAccount The smart account address
     /// @param validUntil Expiration timestamp
     /// @param permissionsHash Hash of permissions
+    /// @param chainId Chain ID (must match block.chainid during validation)
     /// @return hash The EIP-712 typed data hash for owner to sign
     function getSessionKeyApprovalHash(
         address sessionKey,
         address smartAccount,
         uint256 validUntil,
-        bytes32 permissionsHash
+        bytes32 permissionsHash,
+        uint256 chainId
     ) public view returns (bytes32 hash) {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -334,7 +344,8 @@ abstract contract SignatureValidator is EIP712 {
                 sessionKey,
                 smartAccount,
                 validUntil,
-                permissionsHash
+                permissionsHash,
+                chainId
             )
         );
         return _hashTypedDataV4(structHash);

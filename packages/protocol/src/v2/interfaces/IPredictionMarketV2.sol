@@ -25,6 +25,12 @@ interface IPredictionMarketV2 {
     error PicksNotCanonical();
     error ZeroWager();
     error InvalidToken();
+    error InvalidRecipient();
+    error TokensStillOutstanding(
+        uint256 predictorSupply, uint256 counterpartySupply
+    );
+    error NoDustToSweep();
+    error ResolverCallFailed(address resolver, bytes32 conditionId);
 
     // ============ External Functions ============
 

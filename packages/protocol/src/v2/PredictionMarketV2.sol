@@ -88,6 +88,62 @@ contract PredictionMarketV2 is
         _setAccountFactory(factory_);
     }
 
+    /// @notice Sweep dust collateral from a fully-redeemed pick configuration
+    /// @param pickConfigId The pick configuration to sweep dust from
+    /// @param recipient Address to receive the dust
+    /// @dev Only callable by owner. Can only sweep after all tokens are redeemed.
+    ///      This handles rounding errors from division in payout calculations.
+    function sweepDust(bytes32 pickConfigId, address recipient)
+        external
+        onlyOwner
+        nonReentrant
+    {
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
+
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
+
+        if (!config.resolved) {
+            revert PickConfigNotResolved();
+        }
+
+        IV2Types.TokenPair storage tokenPair = _tokenPairs[pickConfigId];
+        if (tokenPair.predictorToken == address(0)) {
+            revert InvalidToken();
+        }
+
+        // Check that all tokens have been redeemed (total supply is 0)
+        uint256 predictorSupply =
+            IPositionToken(tokenPair.predictorToken).totalSupply();
+        uint256 counterpartySupply =
+            IPositionToken(tokenPair.counterpartyToken).totalSupply();
+
+        if (predictorSupply > 0 || counterpartySupply > 0) {
+            revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+        }
+
+        // Calculate remaining dust
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
+        uint256 totalClaimed = config.claimedPredictorCollateral
+            + config.claimedCounterpartyCollateral;
+        uint256 dust = totalCollateral - totalClaimed;
+
+        if (dust == 0) {
+            revert NoDustToSweep();
+        }
+
+        // Mark dust as claimed to prevent double-sweeping
+        config.claimedPredictorCollateral += dust;
+
+        // Transfer dust to recipient
+        collateralToken.safeTransfer(recipient, dust);
+
+        emit DustSwept(pickConfigId, recipient, dust);
+    }
+
     // ============ External Functions: Market ============
 
     /// @inheritdoc IPredictionMarketV2
@@ -603,10 +659,21 @@ contract PredictionMarketV2 is
     /// @notice Validate picks array (canonical order, no duplicates, valid conditions)
     function _validatePicks(IV2Types.Pick[] calldata picks) internal view {
         for (uint256 i = 0; i < picks.length; i++) {
-            // Check condition is valid
-            if (!IConditionResolver(picks[i].conditionResolver)
-                    .isValidCondition(picks[i].conditionId)) {
-                revert InvalidPicks();
+            // Check condition is valid with try/catch to prevent DoS
+            try IConditionResolver(picks[i].conditionResolver)
+            .isValidCondition{ gas: RESOLVER_GAS_LIMIT }(
+                picks[i].conditionId
+            ) returns (
+                bool isValid
+            ) {
+                if (!isValid) {
+                    revert InvalidPicks();
+                }
+            } catch {
+                // Resolver call failed - treat as invalid
+                revert ResolverCallFailed(
+                    picks[i].conditionResolver, picks[i].conditionId
+                );
             }
 
             // Check for duplicates and canonical ordering
@@ -719,6 +786,9 @@ contract PredictionMarketV2 is
         }
     }
 
+    /// @notice Gas limit for resolver calls to prevent griefing
+    uint256 internal constant RESOLVER_GAS_LIMIT = 500_000;
+
     /// @notice Resolve using batch call when all picks use the same resolver
     function _resolveBatch(
         IV2Types.Pick[] storage picks,
@@ -735,9 +805,22 @@ contract PredictionMarketV2 is
             conditionIds[i] = picks[i].conditionId;
         }
 
-        // Single batch call to resolver
-        (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
-            IConditionResolver(resolver).getResolutions(conditionIds);
+        // Single batch call to resolver with try/catch to prevent DoS
+        bool[] memory resolved;
+        IV2Types.OutcomeVector[] memory outcomes;
+        try IConditionResolver(resolver)
+        .getResolutions{ gas: RESOLVER_GAS_LIMIT }(
+            conditionIds
+        ) returns (
+            bool[] memory _resolved, IV2Types.OutcomeVector[] memory _outcomes
+        ) {
+            resolved = _resolved;
+            outcomes = _outcomes;
+        } catch {
+            // Resolver call failed - treat as unresolved
+            // This prevents malicious resolvers from permanently blocking settlement
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
+        }
 
         // Process results
         bool hasNonDecisive = false;
@@ -773,9 +856,21 @@ contract PredictionMarketV2 is
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
-            (bool isResolved, IV2Types.OutcomeVector memory outcome) = IConditionResolver(
-                    pick.conditionResolver
-                ).getResolution(pick.conditionId);
+            // Call resolver with try/catch to prevent DoS from malicious resolvers
+            bool isResolved;
+            IV2Types.OutcomeVector memory outcome;
+            try IConditionResolver(pick.conditionResolver)
+            .getResolution{ gas: RESOLVER_GAS_LIMIT }(
+                pick.conditionId
+            ) returns (
+                bool _isResolved, IV2Types.OutcomeVector memory _outcome
+            ) {
+                isResolved = _isResolved;
+                outcome = _outcome;
+            } catch {
+                // Resolver call failed - treat as unresolved
+                return (false, IV2Types.SettlementResult.UNRESOLVED);
+            }
 
             if (!isResolved) {
                 return (false, IV2Types.SettlementResult.UNRESOLVED);
@@ -851,6 +946,7 @@ contract PredictionMarketV2 is
                 smartAccount: signer,
                 validUntil: skData.validUntil,
                 permissionsHash: skData.permissionsHash,
+                chainId: skData.chainId,
                 ownerSignature: skData.ownerSignature
             });
 

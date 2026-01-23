@@ -100,10 +100,10 @@ contract PredictionMarketV2Test is Test {
         view
         returns (IV2Types.MintRequest memory request)
     {
-        bytes32 predictionId = keccak256(abi.encode(picks));
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                predictionId,
+                pickConfigId,
                 PREDICTOR_WAGER,
                 COUNTERPARTY_WAGER,
                 predictor,

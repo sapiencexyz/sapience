@@ -250,6 +250,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         uint256 raw = uint256(priceId);
         if (raw > type(uint32).max) revert InvalidMarketData();
         feedId = uint32(raw);
+        // feedId 0 is invalid - must specify a valid price feed
+        if (feedId == 0) revert InvalidMarketData();
     }
 
     function _benchmarkFromVerifiedPayload(

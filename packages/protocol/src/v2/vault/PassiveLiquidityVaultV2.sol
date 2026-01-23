@@ -13,6 +13,20 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../../predictionMarket/utils/SignatureProcessor.sol";
 import "./interfaces/IPassiveLiquidityVaultV2.sol";
 
+/// @dev Minimal interface for querying position token info
+interface IPositionTokenInfo {
+    function pickConfigId() external view returns (bytes32);
+}
+
+/// @dev Minimal interface for querying prediction market info
+interface IPredictionMarketInfo {
+    function getClaimableAmount(
+        bytes32 pickConfigId,
+        address positionToken,
+        uint256 tokenAmount
+    ) external view returns (uint256);
+}
+
 /**
  * @title PassiveLiquidityVaultV2
  * @notice A passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
@@ -481,6 +495,10 @@ contract PassiveLiquidityVaultV2 is
      * @notice Emergency withdrawal (bypasses delay and uses proportional vault balance)
      * @param shares Number of shares to withdraw
      * @dev Only available in emergency mode, uses vault balance only (not deployed funds)
+     *      IMPORTANT: This only withdraws liquid assets. If the vault holds position tokens
+     *      from unsettled predictions, those are NOT included in the emergency withdrawal.
+     *      Users may need to wait for predictions to settle to recover full value.
+     *      Use getPositionTokenValue() to check for unredeemed position tokens.
      */
     function emergencyWithdraw(uint256 shares) external nonReentrant {
         if (!emergencyMode) revert EmergencyModeNotActive();
@@ -631,6 +649,66 @@ contract PassiveLiquidityVaultV2 is
         }
 
         return totalBalance > locked ? totalBalance - locked : 0;
+    }
+
+    // ============ Position Token Value Functions ============
+
+    /**
+     * @notice Get the value of a position token held by this vault
+     * @param positionToken The position token address
+     * @param predictionMarket The PredictionMarketV2 contract address
+     * @return balance The amount of position tokens held
+     * @return claimableValue The claimable value if resolved (0 if unresolved)
+     * @dev Use this to check for unredeemed position tokens from predictions.
+     *      IMPORTANT: Emergency withdrawals do NOT include position token value.
+     *      Users should monitor this to understand full vault value.
+     */
+    function getPositionTokenValue(
+        address positionToken,
+        address predictionMarket
+    ) external view returns (uint256 balance, uint256 claimableValue) {
+        balance = IERC20(positionToken).balanceOf(address(this));
+        if (balance == 0) {
+            return (0, 0);
+        }
+
+        // Try to get the pickConfigId from the token
+        // This is a best-effort check - may not work for all token types
+        try IPositionTokenInfo(positionToken).pickConfigId() returns (
+            bytes32 pickConfigId
+        ) {
+            // Try to get claimable amount from the market
+            try IPredictionMarketInfo(predictionMarket)
+                .getClaimableAmount(
+                    pickConfigId, positionToken, balance
+                ) returns (
+                uint256 amount
+            ) {
+                claimableValue = amount;
+            } catch {
+                // Market call failed, claimable value unknown
+                claimableValue = 0;
+            }
+        } catch {
+            // Token doesn't support pickConfigId, can't determine value
+            claimableValue = 0;
+        }
+    }
+
+    /**
+     * @notice Get the total value of the vault including liquid assets
+     * @return liquidAssets The available liquid assets
+     * @return unconfirmedDeposits Assets from pending deposits (not yet confirmed)
+     * @dev Position token values must be queried separately using getPositionTokenValue()
+     *      as the vault doesn't track which position tokens it holds.
+     */
+    function getTotalLiquidValue()
+        external
+        view
+        returns (uint256 liquidAssets, uint256 unconfirmedDeposits)
+    {
+        liquidAssets = _getAvailableAssets();
+        unconfirmedDeposits = unconfirmedAssets;
     }
 
     // ============ Admin Functions ============
