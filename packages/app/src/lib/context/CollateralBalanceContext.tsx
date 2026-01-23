@@ -50,7 +50,8 @@ export function CollateralBalanceProvider({
   children,
 }: CollateralBalanceProviderProps): React.ReactElement {
   const { isConnected } = useAccount();
-  const { effectiveAddress, isUsingSmartAccount } = useSession();
+  const { effectiveAddress, isUsingSmartAccount, isCalculatingAddress } =
+    useSession();
   const chainId = CHAIN_ID_ETHEREAL;
 
   const {
@@ -59,7 +60,7 @@ export function CollateralBalanceProvider({
     formattedBalance,
     decimals,
     symbol,
-    isLoading,
+    isLoading: isBalanceLoading,
     isEtherealChain,
     nativeBalance,
     wrappedBalance,
@@ -69,6 +70,10 @@ export function CollateralBalanceProvider({
     chainId,
     enabled: isConnected && !!effectiveAddress && !!chainId,
   });
+
+  // Include address calculation in loading state to prevent flicker
+  // when switching to smart account mode before address is computed
+  const isLoading = isBalanceLoading || isCalculatingAddress;
 
   // Derive from SessionContext's canonical state
   const isUsingEoa = !isUsingSmartAccount;

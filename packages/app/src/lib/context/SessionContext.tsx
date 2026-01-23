@@ -233,9 +233,13 @@ export function SessionProvider({ children }: SessionProviderProps) {
     useState<Address | null>(null);
   const [isCalculatingAddress, setIsCalculatingAddress] = useState(false);
 
-  // Account mode state - initialized from localStorage, defaults to smart-account
-  const [accountMode, setAccountModeInternal] = useState<AccountMode>(() => {
-    if (typeof window === 'undefined') return 'smart-account';
+  // Account mode state - always initialize to default, then sync from localStorage in useEffect
+  // This avoids SSR hydration mismatches since server always sees the same initial value
+  const [accountMode, setAccountModeInternal] = useState<AccountMode>('smart-account');
+
+  // Sync account mode from localStorage after mount (client-side only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
       const stored = window.localStorage.getItem(
         'sapience:accountMode'
@@ -244,14 +248,17 @@ export function SessionProvider({ children }: SessionProviderProps) {
       if (!stored) {
         const oldPreferEoa = window.localStorage.getItem('sapience:preferEoa');
         if (oldPreferEoa === 'true') {
-          return 'eoa';
+          setAccountModeInternal('eoa');
+          return;
         }
       }
-      return stored || 'smart-account';
+      if (stored && stored !== accountMode) {
+        setAccountModeInternal(stored);
+      }
     } catch {
-      return 'smart-account';
+      // localStorage not available
     }
-  });
+  }, []); // Run once on mount
 
   // Derived flags - these are what the rest of the app should use
   // isUsingSmartAccount = mode is smart-account AND smart account address is available

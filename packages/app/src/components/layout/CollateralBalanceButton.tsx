@@ -422,13 +422,15 @@ export default function CollateralBalanceButton({
                 />
                 Get USDe
               </Button>
+              {/* Withdraw button shown when smart account has balance, regardless of mode */}
+              {/* This allows users to recover funds from smart account even when using EOA */}
               {smartAccountBalance > 0 && (
                 <button
                   type="button"
                   onClick={() => setIsWithdrawOpen(true)}
                   className="text-xs text-muted-foreground hover:text-foreground underline"
                 >
-                  Withdraw USDe
+                  Withdraw from Sapience Account
                 </button>
               )}
             </div>

@@ -111,7 +111,7 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress, isUsingSmartAccount } = useSession();
+  const { effectiveAddress, isUsingSession } = useSession();
 
   // Use effectiveAddress from session context, falling back to zero address for logged-out users
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -415,13 +415,14 @@ export default function PositionForm({
     triggerAuctionRequest({ forceRefresh: true });
   }, [hasConnectedWallet, openConnectDialog, triggerAuctionRequest]);
 
-  // Auto-initiate auction when using smart account and content (predictions/wager) changes
+  // Auto-initiate auction when session is active and content (predictions/wager) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Note: We don't auto-trigger when preferEoa is true because wallet signing would cause popups
+  // Note: Only auto-trigger when isUsingSession (has active session key) to avoid wallet popups
+  // In owner mode (smart account without session), user must manually trigger to avoid unexpected popups
   const autoAuctionDebounceRef = useRef<number | null>(null);
   useEffect(() => {
-    // Only auto-trigger when using smart account (session active and not preferring EOA)
-    if (!isUsingSmartAccount) return;
+    // Only auto-trigger when session is active (can auto-sign without wallet popups)
+    if (!isUsingSession) return;
 
     // Wait for balance to load before triggering (so validation has the correct maxAmount)
     if (isBalanceLoading) return;
@@ -457,7 +458,7 @@ export default function PositionForm({
       }
     };
   }, [
-    isUsingSmartAccount,
+    isUsingSession,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,

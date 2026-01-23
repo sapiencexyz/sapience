@@ -231,6 +231,9 @@ export function useSapienceWriteContract({
   const router = useRouter();
   const didRedirectRef = useRef(false);
   const didShowSuccessToastRef = useRef(false);
+  // Capture the address that submitted the transaction to avoid race conditions
+  // if user toggles account mode while transaction is in-flight
+  const transactionAddressRef = useRef<`0x${string}` | null>(null);
   // Get position form context - may be undefined if not within provider
   const createPositionContext = useContext(CreatePositionContext);
 
@@ -272,11 +275,13 @@ export function useSapienceWriteContract({
           createPositionContext.clearSelections();
         }
       } else if (shouldRedirectToProfile) {
-        // When using smart account, redirect to smart account profile since that's where the attestation appears
+        // Use the address captured at transaction submission time to avoid race conditions
+        // if user toggles account mode while transaction is in-flight
         const connectedAddress =
-          isUsingSmartAccount && smartAccountAddress
+          transactionAddressRef.current ??
+          (isUsingSmartAccount && smartAccountAddress
             ? smartAccountAddress
-            : wagmiAddress;
+            : wagmiAddress);
         if (!connectedAddress) return; // No address available yet
         const addressLower = String(connectedAddress).toLowerCase();
         const redirectUrl = `/${redirectPage}/${addressLower}#${redirectProfileAnchor}`;
@@ -512,6 +517,13 @@ export function useSapienceWriteContract({
         // Determine execution path based on account mode and session state
         const executionPath = getExecutionPath(_chainId);
 
+        // Capture the address at transaction submission time to avoid race conditions
+        // if user toggles account mode while transaction is in-flight
+        transactionAddressRef.current =
+          executionPath === 'eoa'
+            ? wagmiAddress ?? null
+            : smartAccountAddress ?? wagmiAddress ?? null;
+
         // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
         if (executionPath === 'session') {
           // Get session client, creating Arbitrum session lazily if needed
@@ -577,6 +589,10 @@ export function useSapienceWriteContract({
         }
 
         // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
+        // Note: Unlike EOA path, we don't wrap native USDe here. Smart accounts are expected
+        // to hold wUSDe (wrapped), not native USDe. If value is passed, it uses the account's
+        // native balance directly. For Ethereal transactions requiring wUSDe, users should
+        // deposit wUSDe to their smart account first via the CollateralBalanceButton.
         if (executionPath === 'owner') {
           setIsSubmitting(true);
           const params = args[0];
@@ -594,7 +610,7 @@ export function useSapienceWriteContract({
               functionName,
               args: fnArgs,
             });
-            const calls = [
+            const calls: TransactionCall[] = [
               {
                 to: address as `0x${string}`,
                 data: calldata,
@@ -719,6 +735,13 @@ export function useSapienceWriteContract({
 
         // Determine execution path based on account mode and session state
         const executionPath = getExecutionPath(_chainId);
+
+        // Capture the address at transaction submission time to avoid race conditions
+        // if user toggles account mode while transaction is in-flight
+        transactionAddressRef.current =
+          executionPath === 'eoa'
+            ? wagmiAddress ?? null
+            : smartAccountAddress ?? wagmiAddress ?? null;
 
         // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
         if (executionPath === 'session') {
