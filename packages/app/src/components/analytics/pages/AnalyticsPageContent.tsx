@@ -97,10 +97,10 @@ function ChartTooltip({
     maximumFractionDigits: 2,
   });
 
-  // Format date in UTC to avoid timezone shifts
+  // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
   if (label) {
-    const date = new Date(label + 'T00:00:00Z'); // Parse as UTC
+    const date = new Date(parseInt(label, 10) * 1000);
     const months = [
       'Jan',
       'Feb',
@@ -130,9 +130,9 @@ function ChartTooltip({
   );
 }
 
-function formatDateTick(value: string): string {
-  // Parse as UTC to avoid timezone shifts
-  const date = new Date(value + 'T00:00:00Z');
+function formatTimestampTick(value: string): string {
+  // Parse Unix timestamp (seconds) to date
+  const date = new Date(parseInt(value, 10) * 1000);
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
@@ -159,8 +159,8 @@ function AnalyticsPageContent(): React.ReactElement {
       const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       return {
-        date: point.date,
-        dailyVolume: parseFloat(point.dailyVolume) / 1e18,
+        timestamp: point.timestamp,
+        prev24HourVolume: parseFloat(point.prev24HourVolume) / 1e18,
         openInterest: parseFloat(point.openInterest) / 1e18,
         totalBalance: vaultBalance + escrowBalance,
         vaultBalance,
@@ -284,9 +284,9 @@ function AnalyticsPageContent(): React.ReactElement {
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -297,15 +297,15 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="dailyVolume"
+                              dataKey="prev24HourVolume"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Bar
-                          dataKey="dailyVolume"
+                          dataKey="prev24HourVolume"
                           fill="hsl(var(--ethena) / 0.6)"
-                          name="dailyVolume"
+                          name="prev24HourVolume"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -357,9 +357,9 @@ function AnalyticsPageContent(): React.ReactElement {
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -433,9 +433,9 @@ function AnalyticsPageContent(): React.ReactElement {
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}

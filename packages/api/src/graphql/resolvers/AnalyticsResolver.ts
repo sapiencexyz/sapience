@@ -31,11 +31,11 @@ class AnalyticsSummary {
 @ObjectType()
 class AnalyticsTimeSeriesPoint {
   @Field(() => String)
-  date!: string;
+  timestamp!: string;
 
   // Position-based metrics
   @Field(() => String)
-  dailyVolume!: string;
+  prev24HourVolume!: string;
 
   @Field(() => String)
   openInterest!: string;
@@ -54,38 +54,25 @@ interface PositionSummaryRow {
 }
 
 interface DailyVolumeRow {
-  date: Date;
+  timestamp: bigint;
   daily_volume: string | null;
 }
 
 interface DailyOIRow {
-  date: Date;
+  timestamp: bigint;
   open_interest: string | null;
 }
 
-function buildDateMap<T extends { date: Date }>(
+function buildTimestampMap<T extends { timestamp: bigint }>(
   rows: T[],
   key: keyof T
-): Map<string, string> {
-  const map = new Map<string, string>();
+): Map<number, string> {
+  const map = new Map<number, string>();
   for (const row of rows) {
-    // Use UTC methods to avoid timezone shifts with Prisma DATE type
-    const d = row.date;
-    const year = d.getUTCFullYear();
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
     const value = row[key];
-    map.set(dateStr, value?.toString() || '0');
+    map.set(Number(row.timestamp), value?.toString() || '0');
   }
   return map;
-}
-
-function formatDateStr(d: Date): string {
-  const year = d.getUTCFullYear();
-  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
 }
 
 @Resolver()
@@ -124,18 +111,18 @@ export class AnalyticsResolver {
 
     // Fetch all time series data in parallel
     const [dailyVolumes, dailyOI, protocolSnapshots] = await Promise.all([
-      // Daily volumes from positions - last 90 days
+      // Daily volumes from positions - last 90 days (returns UTC midnight timestamps)
       prisma.$queryRaw<DailyVolumeRow[]>`
         SELECT
-          DATE_TRUNC('day', TO_TIMESTAMP("mintedAt")) as date,
+          EXTRACT(EPOCH FROM DATE_TRUNC('day', TO_TIMESTAMP("mintedAt")))::BIGINT as timestamp,
           SUM(CAST("totalCollateral" AS DECIMAL)) as daily_volume
         FROM position
         WHERE "chainId" = ${chainId}
           AND "mintedAt" >= EXTRACT(EPOCH FROM (CURRENT_DATE - INTERVAL '90 days'))::INT
         GROUP BY DATE_TRUNC('day', TO_TIMESTAMP("mintedAt"))
-        ORDER BY date
+        ORDER BY timestamp
       `,
-      // Daily open interest from positions - last 90 days
+      // Daily open interest from positions - last 90 days (returns UTC midnight timestamps)
       prisma.$queryRaw<DailyOIRow[]>`
         WITH date_series AS (
           SELECT generate_series(
@@ -145,7 +132,7 @@ export class AnalyticsResolver {
           )::date as date
         )
         SELECT
-          d.date,
+          EXTRACT(EPOCH FROM d.date)::BIGINT as timestamp,
           COALESCE(SUM(CAST(p."totalCollateral" AS DECIMAL)), 0)::TEXT as open_interest
         FROM date_series d
         LEFT JOIN position p ON
@@ -155,42 +142,41 @@ export class AnalyticsResolver {
           AND DATE_TRUNC('day', TO_TIMESTAMP(p."endsAt"))::date > d.date
           AND p."chainId" = ${chainId}
         GROUP BY d.date
-        ORDER BY d.date
+        ORDER BY timestamp
       `,
       // Protocol balance snapshots - last 90 days
       getProtocolStatsTimeSeries(CHAIN_ID_ETHEREAL, 90),
     ]);
 
-    const volumeMap = buildDateMap(dailyVolumes, 'daily_volume');
-    const oiMap = buildDateMap(dailyOI, 'open_interest');
+    const volumeMap = buildTimestampMap(dailyVolumes, 'daily_volume');
+    const oiMap = buildTimestampMap(dailyOI, 'open_interest');
 
-    // Build protocol balance map
+    // Build protocol balance map using timestamps directly from DB
     const balanceMap = new Map<
-      string,
+      number,
       { vaultBalance: string; escrowBalance: string }
     >();
     for (const snapshot of protocolSnapshots) {
-      const dateStr = formatDateStr(snapshot.snapshotDate);
-      balanceMap.set(dateStr, {
+      balanceMap.set(snapshot.snapshotTimestamp, {
         vaultBalance: snapshot.vaultTVL,
         escrowBalance: snapshot.predictionMarketTVL,
       });
     }
 
-    // Merge all dates
-    const allDates = new Set([
+    // Merge all timestamps
+    const allTimestamps = new Set([
       ...volumeMap.keys(),
       ...oiMap.keys(),
       ...balanceMap.keys(),
     ]);
-    const sortedDates = Array.from(allDates).sort();
+    const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
 
-    return sortedDates.map((dateStr) => {
-      const balanceData = balanceMap.get(dateStr);
+    return sortedTimestamps.map((timestamp) => {
+      const balanceData = balanceMap.get(timestamp);
       return {
-        date: dateStr,
-        dailyVolume: volumeMap.get(dateStr) || '0',
-        openInterest: oiMap.get(dateStr) || '0',
+        timestamp: timestamp.toString(),
+        prev24HourVolume: volumeMap.get(timestamp) || '0',
+        openInterest: oiMap.get(timestamp) || '0',
         vaultBalance: balanceData?.vaultBalance || '0',
         escrowBalance: balanceData?.escrowBalance || '0',
       };
@@ -210,7 +196,7 @@ export class AnalyticsResolver {
       return {
         vaultBalance: latestSnapshot.vaultTVL,
         escrowBalance: latestSnapshot.predictionMarketTVL,
-        lastUpdated: latestSnapshot.computedAt.toISOString(),
+        lastUpdated: latestSnapshot.snapshotTimestamp.toString(),
       };
     }
 

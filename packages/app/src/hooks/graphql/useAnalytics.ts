@@ -14,9 +14,9 @@ interface AnalyticsSummary {
 
 // Unified time series point including position metrics and protocol balances
 interface AnalyticsTimeSeriesPoint {
-  date: string;
+  timestamp: string;
   // Position-based metrics
-  dailyVolume: string;
+  prev24HourVolume: string;
   openInterest: string;
   // Protocol balance metrics (on-chain balances)
   vaultBalance: string;
@@ -38,8 +38,8 @@ const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
 const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
   query AnalyticsTimeSeries {
     analyticsTimeSeries {
-      date
-      dailyVolume
+      timestamp
+      prev24HourVolume
       openInterest
       vaultBalance
       escrowBalance

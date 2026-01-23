@@ -64,10 +64,10 @@ type AnalyticsSummary {
 }
 
 type AnalyticsTimeSeriesPoint {
-  dailyVolume: String!
-  date: String!
   escrowBalance: String!
   openInterest: String!
+  prev24HourVolume: String!
+  timestamp: String!
   vaultBalance: String!
 }
 

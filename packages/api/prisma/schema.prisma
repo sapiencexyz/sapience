@@ -368,8 +368,8 @@ model ProtocolStatsSnapshot {
   id                  Int      @id @default(autoincrement())
   createdAt           DateTime @default(now()) @db.Timestamp(6)
 
-  /// Date of the snapshot (UTC midnight)
-  snapshotDate        DateTime @db.Date
+  /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
+  snapshotTimestamp   Int
 
   /// Chain ID (5064014 for Ethereal)
   chainId             Int
@@ -380,11 +380,8 @@ model ProtocolStatsSnapshot {
   /// PredictionMarket TVL: wUSDe.balanceOf(predictionMarket) (in wei)
   predictionMarketTVL String   @db.VarChar
 
-  /// When this snapshot was computed
-  computedAt          DateTime @db.Timestamp(6)
-
-  @@unique([snapshotDate, chainId], map: "UQ_protocol_stats_snapshot_date_chain")
+  @@unique([snapshotTimestamp, chainId], map: "UQ_protocol_stats_snapshot_timestamp_chain")
   @@index([chainId], map: "IDX_protocol_stats_snapshot_chain")
-  @@index([snapshotDate], map: "IDX_protocol_stats_snapshot_date")
+  @@index([snapshotTimestamp], map: "IDX_protocol_stats_snapshot_timestamp")
   @@map("protocol_stats_snapshot")
 }

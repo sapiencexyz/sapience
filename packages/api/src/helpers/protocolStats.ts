@@ -136,41 +136,39 @@ export async function fetchPredictionMarketTVLAtBlock(
 }
 
 /**
+ * Get UTC midnight timestamp for a given date.
+ */
+function getUtcMidnightTimestamp(date: Date): number {
+  return Math.floor(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000
+  );
+}
+
+/**
  * Create or update daily stats snapshot.
  */
 export async function upsertProtocolStatsSnapshot(
   chainId: number,
-  snapshotDate: Date,
+  snapshotTimestamp: number,
   vaultTVL: bigint,
   predictionMarketTVL: bigint
 ): Promise<void> {
-  // Normalize to UTC midnight
-  const normalizedDate = new Date(
-    Date.UTC(
-      snapshotDate.getUTCFullYear(),
-      snapshotDate.getUTCMonth(),
-      snapshotDate.getUTCDate()
-    )
-  );
-
   await prisma.protocolStatsSnapshot.upsert({
     where: {
-      snapshotDate_chainId: {
-        snapshotDate: normalizedDate,
+      snapshotTimestamp_chainId: {
+        snapshotTimestamp,
         chainId,
       },
     },
     create: {
-      snapshotDate: normalizedDate,
+      snapshotTimestamp,
       chainId,
       vaultTVL: vaultTVL.toString(),
       predictionMarketTVL: predictionMarketTVL.toString(),
-      computedAt: new Date(),
     },
     update: {
       vaultTVL: vaultTVL.toString(),
       predictionMarketTVL: predictionMarketTVL.toString(),
-      computedAt: new Date(),
     },
   });
 }
@@ -205,10 +203,11 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Total Protocol TVL: ${formatUnits(totalTVL, 18)} USDe`
   );
 
-  // 4. Store snapshot
+  // 4. Store snapshot with today's UTC midnight timestamp
+  const snapshotTimestamp = getUtcMidnightTimestamp(new Date());
   await upsertProtocolStatsSnapshot(
     chainId,
-    new Date(),
+    snapshotTimestamp,
     vaultTVL,
     predictionMarketTVL
   );
@@ -225,7 +224,7 @@ export async function getLatestProtocolStats(
 ) {
   return prisma.protocolStatsSnapshot.findFirst({
     where: { chainId },
-    orderBy: { snapshotDate: 'desc' },
+    orderBy: { snapshotTimestamp: 'desc' },
   });
 }
 
@@ -236,15 +235,14 @@ export async function getProtocolStatsTimeSeries(
   chainId: number = CHAIN_ID_ETHEREAL,
   days: number = 90
 ) {
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
       chainId,
-      snapshotDate: { gte: startDate },
+      snapshotTimestamp: { gte: startTimestamp },
     },
-    orderBy: { snapshotDate: 'asc' },
+    orderBy: { snapshotTimestamp: 'asc' },
   });
 }
 
@@ -262,37 +260,34 @@ export async function backfillProtocolStats(
     `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}`
   );
 
-  // Generate list of dates to backfill (UTC midnight)
-  const dates: Date[] = [];
+  // Generate list of timestamps to backfill (UTC midnight)
+  const todayMidnight = getUtcMidnightTimestamp(new Date());
+  const timestamps: number[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - i);
-    date.setUTCHours(0, 0, 0, 0);
-    dates.push(date);
+    timestamps.push(todayMidnight - i * 86400);
   }
 
   let successCount = 0;
   let skipCount = 0;
 
-  for (let idx = 0; idx < dates.length; idx++) {
-    const date = dates[idx];
-    const timestamp = Math.floor(date.getTime() / 1000);
+  for (let idx = 0; idx < timestamps.length; idx++) {
+    const snapshotTimestamp = timestamps[idx];
+    const dateStr = new Date(snapshotTimestamp * 1000)
+      .toISOString()
+      .split('T')[0];
 
     // Find block at this timestamp using binary search
-    const block = await getBlockByTimestamp(client, timestamp);
+    const block = await getBlockByTimestamp(client, snapshotTimestamp);
     const blockNumber = block.number;
 
     if (blockNumber === null) {
-      console.log(
-        `[ProtocolStats] Skipping ${date.toISOString().split('T')[0]} - pending block`
-      );
+      console.log(`[ProtocolStats] Skipping ${dateStr} - pending block`);
       skipCount++;
       continue;
     }
 
-    const dateStr = date.toISOString().split('T')[0];
     console.log(
-      `[ProtocolStats] Processing ${dateStr} (block ${blockNumber}) [${idx + 1}/${dates.length}]`
+      `[ProtocolStats] Processing ${dateStr} (block ${blockNumber}) [${idx + 1}/${timestamps.length}]`
     );
 
     try {
@@ -306,7 +301,7 @@ export async function backfillProtocolStats(
       // Store snapshot (upsert handles existing records)
       await upsertProtocolStatsSnapshot(
         chainId,
-        date,
+        snapshotTimestamp,
         vaultTVL,
         predictionMarketTVL
       );

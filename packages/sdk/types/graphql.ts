@@ -86,10 +86,10 @@ export type AnalyticsSummary = {
 
 export type AnalyticsTimeSeriesPoint = {
   __typename?: 'AnalyticsTimeSeriesPoint';
-  dailyVolume: Scalars['String']['output'];
-  date: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  prev24HourVolume: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];
 };
 
