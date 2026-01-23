@@ -45,7 +45,7 @@ const ZERO_ADDRESS =
 const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
-const DISPLAY_TIMEOUT_MS = 3000;
+const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
@@ -386,33 +386,128 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
       <div className="rounded-md border border-brand-white/20 overflow-hidden bg-brand-black">
         <Table className="w-full table-fixed">
           <TableBody>
-            <AnimatePresence mode="popLayout">
-              {isLoading || topCombos.length === 0
-                ? // Pulsing skeleton rows while loading
-                  Array.from({ length: NUM_TO_DISPLAY }).map((_, idx) => (
-                    <motion.tr
-                      key={`skeleton-${idx}`}
-                      initial={false}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="border-b border-brand-white/20"
-                    >
-                      {/* Desktop icons cell - hidden on mobile */}
-                      <TableCell className="hidden md:table-cell p-0 w-[88px]">
-                        <div className="py-3 pl-4 pr-3">
-                          <div
-                            className="w-10 h-6 rounded bg-brand-white/5"
-                            style={{
-                              animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
-                              animationDelay: `${idx * 0.3}s`,
-                            }}
+            {Array.from({ length: NUM_TO_DISPLAY }).map((_, idx) => {
+              const item = topCombos[idx];
+              const isReady = !!item;
+              const combo = item?.combo;
+              const probability = item?.probability;
+              const status = item?.status;
+              const legs = combo ? comboToLegs(combo) : [];
+
+              return (
+                <tr
+                  key={`row-${idx}`}
+                  className="border-b border-brand-white/20"
+                >
+                  {/* Desktop icons cell - hidden on mobile */}
+                  <TableCell className="hidden md:table-cell p-0 w-[88px]">
+                    <div className="py-3 pl-4 pr-3 relative h-[48px]">
+                      <AnimatePresence mode="wait">
+                        {isReady ? (
+                          <motion.div
+                            key="content"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="absolute inset-0 py-3 pl-4 pr-3 flex items-center"
+                          >
+                            <StackedIcons legs={legs} />
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="skeleton"
+                            initial={{ opacity: 1 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="absolute inset-0 py-3 pl-4 pr-3 flex items-center"
+                          >
+                            <div
+                              className="w-10 h-6 rounded bg-brand-white/5"
+                              style={{
+                                animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
+                                animationDelay: `${idx * 0.3}s`,
+                              }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </TableCell>
+                  {/* Question cell - includes all content on mobile */}
+                  <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0">
+                    <AnimatePresence mode="wait">
+                      {isReady && combo ? (
+                        <motion.div
+                          key="content"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex flex-col gap-2 min-w-0"
+                        >
+                          {/* Mobile Row 1: Icons (on their own line) */}
+                          <StackedIcons
+                            legs={legs}
+                            className="flex md:hidden"
                           />
-                        </div>
-                      </TableCell>
-                      {/* Question cell - includes all content on mobile */}
-                      <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0">
-                        <div className="flex flex-col gap-2">
+                          {/* Row 2: Question + Badge + "and N others" */}
+                          <StackedPredictionsTitle
+                            legs={legs}
+                            className="md:gap-x-2"
+                            maxWidthClass="max-w-full md:max-w-[460px]"
+                          />
+                          {/* Mobile Row 3/4: Probability + PICK in one row */}
+                          <div className="md:hidden mt-0.5 flex items-center gap-3">
+                            <div className="text-sm flex-1 min-w-0 max-w-[240px]">
+                              {status === 'received' && probability !== null ? (
+                                <>
+                                  <PercentChance
+                                    probability={1 - probability}
+                                    showLabel
+                                    label="chance"
+                                    className="font-mono text-ethena"
+                                  />
+                                  <span className="text-muted-foreground ml-1">
+                                    implied by 1 USDe
+                                  </span>
+                                  <br />
+                                  <span className="text-muted-foreground">
+                                    to win{' '}
+                                  </span>
+                                  <span className="text-brand-white font-medium font-mono">
+                                    {(1 / (1 - probability)).toFixed(2)} USDe
+                                  </span>
+                                </>
+                              ) : status === 'error' ? (
+                                <span className="text-muted-foreground">—</span>
+                              ) : (
+                                <span className="text-foreground/70">
+                                  Initializing auction...
+                                </span>
+                              )}
+                            </div>
+                            <Button
+                              className="tracking-wider font-mono text-xs px-3 h-8 bg-brand-white text-brand-black ml-auto"
+                              variant="default"
+                              size="sm"
+                              type="button"
+                              onClick={() => handlePickCombo(combo)}
+                            >
+                              PICK
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="skeleton"
+                          initial={{ opacity: 1 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex flex-col gap-2"
+                        >
                           {/* Mobile Row 1: Icons skeleton */}
                           <div
                             className="md:hidden w-10 h-6 rounded bg-brand-white/5"
@@ -423,7 +518,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           />
                           {/* Row 2: Question skeleton */}
                           <div
-                            className="w-48 h-5 rounded bg-brand-white/5"
+                            className="w-full max-w-[300px] h-5 rounded bg-brand-white/5"
                             style={{
                               animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
                               animationDelay: `${idx * 0.3 + 0.1}s`,
@@ -431,7 +526,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           />
                           {/* Mobile Row 3: Probability skeleton */}
                           <div
-                            className="md:hidden w-48 h-5 rounded bg-brand-white/5"
+                            className="md:hidden w-full max-w-[240px] h-5 rounded bg-brand-white/5"
                             style={{
                               animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
                               animationDelay: `${idx * 0.3 + 0.2}s`,
@@ -445,121 +540,21 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                               animationDelay: `${idx * 0.3 + 0.15}s`,
                             }}
                           />
-                        </div>
-                      </TableCell>
-                      {/* Probability cell - desktop only */}
-                      <TableCell className="hidden md:table-cell py-3 px-4">
-                        <div
-                          className="w-48 h-5 rounded bg-brand-white/5 ml-auto"
-                          style={{
-                            animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
-                            animationDelay: `${idx * 0.3 + 0.2}s`,
-                          }}
-                        />
-                      </TableCell>
-                      {/* Desktop button cell - hidden on mobile */}
-                      <TableCell className="hidden md:table-cell p-0 w-[96px]">
-                        <div className="py-3 pr-4 flex justify-end">
-                          <div
-                            className="w-14 h-7 rounded bg-brand-white/5"
-                            style={{
-                              animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
-                              animationDelay: `${idx * 0.3 + 0.15}s`,
-                            }}
-                          />
-                        </div>
-                      </TableCell>
-                    </motion.tr>
-                  ))
-                : topCombos.map((item, idx) => {
-                    const { combo, probability, status, auctionId } = item;
-                    const legs = comboToLegs(combo);
-                    // Create a stable key from condition IDs and predictions
-                    const comboKey = combo
-                      .map(
-                        (leg) =>
-                          `${leg.condition.id}-${leg.prediction ? 'y' : 'n'}`
-                      )
-                      .join('_');
-                    // Use auctionId if available for uniqueness, otherwise fall back to comboKey + index
-                    const uniqueKey = auctionId || `${comboKey}-${idx}`;
-
-                    return (
-                      <motion.tr
-                        key={uniqueKey}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="border-b border-brand-white/20 hover:bg-transparent"
-                      >
-                        {/* Desktop icons cell - hidden on mobile */}
-                        <TableCell className="hidden md:table-cell p-0 w-[88px] shrink-0">
-                          <div className="py-3 pl-4 pr-3">
-                            <StackedIcons legs={legs} />
-                          </div>
-                        </TableCell>
-                        {/* Question cell - includes all content on mobile */}
-                        <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0 min-w-0">
-                          <div className="flex flex-col gap-2 min-w-0">
-                            {/* Mobile Row 1: Icons (on their own line) */}
-                            <StackedIcons
-                              legs={legs}
-                              className="flex md:hidden"
-                            />
-                            {/* Row 2: Question + Badge + "and N others" */}
-                            <StackedPredictionsTitle
-                              legs={legs}
-                              className="md:gap-x-2"
-                              maxWidthClass="max-w-full md:max-w-[300px]"
-                            />
-                            {/* Mobile Row 3/4: Probability + PICK in one row */}
-                            <div className="md:hidden mt-0.5 flex items-center gap-3">
-                              <div className="text-sm flex-1 min-w-0 max-w-[240px]">
-                                {status === 'received' &&
-                                probability !== null ? (
-                                  <>
-                                    <PercentChance
-                                      probability={1 - probability}
-                                      showLabel
-                                      label="chance"
-                                      className="font-mono text-ethena"
-                                    />
-                                    <span className="text-muted-foreground ml-1">
-                                      implied by 1 USDe
-                                    </span>
-                                    <br />
-                                    <span className="text-muted-foreground">
-                                      to win{' '}
-                                    </span>
-                                    <span className="text-brand-white font-medium font-mono">
-                                      {(1 / (1 - probability)).toFixed(2)} USDe
-                                    </span>
-                                  </>
-                                ) : status === 'error' ? (
-                                  <span className="text-muted-foreground">
-                                    —
-                                  </span>
-                                ) : (
-                                  <span className="text-foreground/70">
-                                    Initializing auction...
-                                  </span>
-                                )}
-                              </div>
-                              <Button
-                                className="tracking-wider font-mono text-xs px-3 h-8 bg-brand-white text-brand-black ml-auto"
-                                variant="default"
-                                size="sm"
-                                type="button"
-                                onClick={() => handlePickCombo(combo)}
-                              >
-                                PICK
-                              </Button>
-                            </div>
-                          </div>
-                        </TableCell>
-                        {/* Probability cell - desktop only */}
-                        <TableCell className="hidden md:table-cell py-3 px-4 text-right whitespace-nowrap">
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </TableCell>
+                  {/* Probability cell - desktop only */}
+                  <TableCell className="hidden md:table-cell py-3 pl-4 text-right whitespace-nowrap">
+                    <AnimatePresence mode="wait">
+                      {isReady ? (
+                        <motion.div
+                          key="content"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
                           {status === 'received' && probability !== null ? (
                             <div className="text-sm">
                               <PercentChance
@@ -582,10 +577,38 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                               Initializing auction...
                             </span>
                           )}
-                        </TableCell>
-                        {/* Desktop PICK button cell - hidden on mobile */}
-                        <TableCell className="hidden md:table-cell p-0 w-[96px]">
-                          <div className="py-3 pr-4 flex justify-end">
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="skeleton"
+                          initial={{ opacity: 1 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          <div
+                            className="w-full h-5 rounded bg-brand-white/5"
+                            style={{
+                              animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
+                              animationDelay: `${idx * 0.3 + 0.2}s`,
+                            }}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </TableCell>
+                  {/* Desktop PICK button cell - hidden on mobile */}
+                  <TableCell className="hidden md:table-cell p-0 w-[72px]">
+                    <div className="py-3 pr-4 flex justify-end">
+                      <AnimatePresence mode="wait">
+                        {isReady && combo ? (
+                          <motion.div
+                            key="content"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
                             <Button
                               className="tracking-wider font-mono text-xs px-3 h-7 bg-brand-white text-brand-black"
                               variant="default"
@@ -595,12 +618,30 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                             >
                               PICK
                             </Button>
-                          </div>
-                        </TableCell>
-                      </motion.tr>
-                    );
-                  })}
-            </AnimatePresence>
+                          </motion.div>
+                        ) : (
+                          <motion.div
+                            key="skeleton"
+                            initial={{ opacity: 1 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <div
+                              className="w-14 h-7 rounded bg-brand-white/5"
+                              style={{
+                                animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
+                                animationDelay: `${idx * 0.3 + 0.15}s`,
+                              }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </TableCell>
+                </tr>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
