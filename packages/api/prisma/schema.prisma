@@ -369,10 +369,7 @@ model ProtocolStatsSnapshot {
   createdAt     DateTime @default(now()) @db.Timestamp(6)
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
-  timestamp     Int
-
-  /// Chain ID (5064014 for Ethereal)
-  chainId       Int
+  timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
 
   /// Vault balance: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
   vaultBalance  String   @db.VarChar
@@ -380,8 +377,6 @@ model ProtocolStatsSnapshot {
   /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
   escrowBalance String   @db.VarChar
 
-  @@unique([timestamp, chainId], map: "UQ_protocol_stats_snapshot_timestamp_chain")
-  @@index([chainId], map: "IDX_protocol_stats_snapshot_chain")
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
   @@map("protocol_stats_snapshot")
 }

@@ -15,8 +15,8 @@ import {
   Bar,
 } from 'recharts';
 import {
-  useAnalyticsSummary,
-  useAnalyticsTimeSeries,
+  useProtocolStats,
+  useDailyVolumes,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 
@@ -147,29 +147,44 @@ const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
 
-  // Single unified query for all analytics data
-  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
-  const { data: timeSeries, isLoading: timeSeriesLoading } =
-    useAnalyticsTimeSeries();
+  // Fetch protocol stats and daily volumes
+  const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
+  const { data: dailyVolumes, isLoading: volumesLoading } = useDailyVolumes();
 
-  const chartData = useMemo(() => {
-    if (!timeSeries) return [];
+  // Get summary from the last protocol stat
+  const summary = useMemo(() => {
+    if (!protocolStats || protocolStats.length === 0) return null;
+    return protocolStats[protocolStats.length - 1];
+  }, [protocolStats]);
 
-    return timeSeries.map((point) => {
+  // Prepare chart data for protocol stats (TVL, OI)
+  const statsChartData = useMemo(() => {
+    if (!protocolStats) return [];
+
+    return protocolStats.map((point) => {
       const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       return {
         timestamp: point.timestamp,
-        prev24HourVolume: parseFloat(point.prev24HourVolume) / 1e18,
         openInterest: parseFloat(point.openInterest) / 1e18,
         totalBalance: vaultBalance + escrowBalance,
         vaultBalance,
         escrowBalance,
       };
     });
-  }, [timeSeries]);
+  }, [protocolStats]);
 
-  const isLoading = summaryLoading || timeSeriesLoading;
+  // Prepare chart data for daily volumes
+  const volumeChartData = useMemo(() => {
+    if (!dailyVolumes) return [];
+
+    return dailyVolumes.map((point) => ({
+      timestamp: point.timestamp,
+      volume: parseFloat(point.volume) / 1e18,
+    }));
+  }, [dailyVolumes]);
+
+  const isLoading = statsLoading || volumesLoading;
 
   return (
     <div className="relative">
@@ -251,7 +266,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(summary?.totalVolume || '0')}{' '}
+                    {formatNumber(summary?.cumulativeVolume || '0')}{' '}
                     {collateralSymbol}
                   </span>
                 )}
@@ -271,14 +286,14 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : volumeChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} margin={CHART_MARGIN}>
+                      <ComposedChart data={volumeChartData} margin={CHART_MARGIN}>
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="hsl(var(--brand-white) / 0.1)"
@@ -297,15 +312,15 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="prev24HourVolume"
+                              dataKey="volume"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Bar
-                          dataKey="prev24HourVolume"
+                          dataKey="volume"
                           fill="hsl(var(--ethena) / 0.6)"
-                          name="prev24HourVolume"
+                          name="volume"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -324,14 +339,14 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="openInterestGradient"
@@ -400,14 +415,14 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="protocolTVLGradient"

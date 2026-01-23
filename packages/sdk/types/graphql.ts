@@ -75,24 +75,6 @@ export type AggregatedProfitEntryType = {
   totalPnL: Scalars['Float']['output'];
 };
 
-export type AnalyticsSummary = {
-  __typename?: 'AnalyticsSummary';
-  escrowBalance: Scalars['String']['output'];
-  lastUpdated?: Maybe<Scalars['String']['output']>;
-  openInterest: Scalars['String']['output'];
-  totalVolume: Scalars['String']['output'];
-  vaultBalance: Scalars['String']['output'];
-};
-
-export type AnalyticsTimeSeriesPoint = {
-  __typename?: 'AnalyticsTimeSeriesPoint';
-  escrowBalance: Scalars['String']['output'];
-  openInterest: Scalars['String']['output'];
-  prev24HourVolume: Scalars['String']['output'];
-  timestamp: Scalars['String']['output'];
-  vaultBalance: Scalars['String']['output'];
-};
-
 export type Attestation = {
   __typename?: 'Attestation';
   attestation_score?: Maybe<AttestationScore>;
@@ -1374,6 +1356,12 @@ export type ConditionWhereUniqueInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
 };
 
+export type DailyVolume = {
+  __typename?: 'DailyVolume';
+  timestamp: Scalars['String']['output'];
+  volume: Scalars['String']['output'];
+};
+
 export type DateTimeFilter = {
   equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
   gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
@@ -2063,6 +2051,15 @@ export type ProfitRankType = {
   totalPnL: Scalars['Float']['output'];
 };
 
+export type ProtocolStat = {
+  __typename?: 'ProtocolStat';
+  cumulativeVolume: Scalars['String']['output'];
+  escrowBalance: Scalars['String']['output'];
+  openInterest: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+  vaultBalance: Scalars['String']['output'];
+};
+
 export type Query = {
   __typename?: 'Query';
   accuracyRankByAddress: AccuracyRankType;
@@ -2072,8 +2069,6 @@ export type Query = {
   aggregateConditionGroup: AggregateConditionGroup;
   aggregateUser: AggregateUser;
   allTimeProfitLeaderboard: Array<AggregatedProfitEntryType>;
-  analyticsSummary: AnalyticsSummary;
-  analyticsTimeSeries: Array<AnalyticsTimeSeriesPoint>;
   attestation?: Maybe<Attestation>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
@@ -2082,6 +2077,7 @@ export type Query = {
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
+  dailyVolumes: Array<DailyVolume>;
   findFirstAttestation?: Maybe<Attestation>;
   findFirstAttestationOrThrow?: Maybe<Attestation>;
   findFirstCategory?: Maybe<Category>;
@@ -2108,6 +2104,7 @@ export type Query = {
   positionsByConditionId: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
+  protocolStats: Array<ProtocolStat>;
   topForecasters: Array<ForecasterScoreType>;
   user?: Maybe<User>;
   users: Array<User>;

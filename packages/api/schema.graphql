@@ -55,22 +55,6 @@ type AggregatedProfitEntryType {
   totalPnL: Float!
 }
 
-type AnalyticsSummary {
-  escrowBalance: String!
-  lastUpdated: String
-  openInterest: String!
-  totalVolume: String!
-  vaultBalance: String!
-}
-
-type AnalyticsTimeSeriesPoint {
-  escrowBalance: String!
-  openInterest: String!
-  prev24HourVolume: String!
-  timestamp: String!
-  vaultBalance: String!
-}
-
 type Attestation {
   attestation_score(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
@@ -1224,6 +1208,11 @@ input ConditionWhereUniqueInput {
   similarMarkets: StringNullableListFilter
 }
 
+type DailyVolume {
+  timestamp: String!
+  volume: String!
+}
+
 input DateTimeFilter {
   equals: DateTimeISO
   gt: DateTimeISO
@@ -1874,6 +1863,14 @@ type ProfitRankType {
   totalPnL: Float!
 }
 
+type ProtocolStat {
+  cumulativeVolume: String!
+  escrowBalance: String!
+  openInterest: String!
+  timestamp: String!
+  vaultBalance: String!
+}
+
 type Query {
   accuracyRankByAddress(attester: String!): AccuracyRankType!
   aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
@@ -1882,8 +1879,6 @@ type Query {
   aggregateConditionGroup(cursor: ConditionGroupWhereUniqueInput, orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): AggregateConditionGroup!
   aggregateUser(cursor: UserWhereUniqueInput, orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): AggregateUser!
   allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
-  analyticsSummary: AnalyticsSummary!
-  analyticsTimeSeries: [AnalyticsTimeSeriesPoint!]!
   attestation(where: AttestationWhereUniqueInput!): Attestation
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
@@ -1892,6 +1887,7 @@ type Query {
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  dailyVolumes: [DailyVolume!]!
   findFirstAttestation(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstAttestationOrThrow(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
   findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
@@ -1918,6 +1914,7 @@ type Query {
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
+  protocolStats: [ProtocolStat!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!

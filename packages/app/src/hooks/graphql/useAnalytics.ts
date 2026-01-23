@@ -1,80 +1,68 @@
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 
-// Unified analytics summary including position metrics and protocol balances
-interface AnalyticsSummary {
-  // Position-based metrics
-  totalVolume: string;
-  openInterest: string;
-  // Protocol balance metrics (on-chain balances)
-  vaultBalance: string;
-  escrowBalance: string;
-  lastUpdated: string | null;
-}
-
-// Unified time series point including position metrics and protocol balances
-interface AnalyticsTimeSeriesPoint {
+interface ProtocolStat {
   timestamp: string;
-  // Position-based metrics
-  prev24HourVolume: string;
+  cumulativeVolume: string;
   openInterest: string;
-  // Protocol balance metrics (on-chain balances)
   vaultBalance: string;
   escrowBalance: string;
 }
 
-const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
-  query AnalyticsSummary {
-    analyticsSummary {
-      totalVolume
+interface DailyVolume {
+  timestamp: string;
+  volume: string;
+}
+
+const GET_PROTOCOL_STATS = /* GraphQL */ `
+  query ProtocolStats {
+    protocolStats {
+      timestamp
+      cumulativeVolume
       openInterest
       vaultBalance
       escrowBalance
-      lastUpdated
     }
   }
 `;
 
-const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
-  query AnalyticsTimeSeries {
-    analyticsTimeSeries {
+const GET_DAILY_VOLUMES = /* GraphQL */ `
+  query DailyVolumes {
+    dailyVolumes {
       timestamp
-      prev24HourVolume
-      openInterest
-      vaultBalance
-      escrowBalance
+      volume
     }
   }
 `;
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useAnalyticsSummary() {
-  return useQuery<AnalyticsSummary | null>({
-    queryKey: ['analyticsSummary'],
+export function useProtocolStats() {
+  return useQuery<ProtocolStat[]>({
+    queryKey: ['protocolStats'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        analyticsSummary: AnalyticsSummary;
-      }>(GET_ANALYTICS_SUMMARY);
-      return data?.analyticsSummary ?? null;
+        protocolStats: ProtocolStat[];
+      }>(GET_PROTOCOL_STATS);
+      return data?.protocolStats ?? [];
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export function useAnalyticsTimeSeries() {
-  return useQuery<AnalyticsTimeSeriesPoint[]>({
-    queryKey: ['analyticsTimeSeries'],
+export function useDailyVolumes() {
+  return useQuery<DailyVolume[]>({
+    queryKey: ['dailyVolumes'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
-      }>(GET_ANALYTICS_TIME_SERIES);
-      return data?.analyticsTimeSeries ?? [];
+        dailyVolumes: DailyVolume[];
+      }>(GET_DAILY_VOLUMES);
+      return data?.dailyVolumes ?? [];
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export type { AnalyticsSummary, AnalyticsTimeSeriesPoint };
+export type { ProtocolStat, DailyVolume };

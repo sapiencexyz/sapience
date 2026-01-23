@@ -145,24 +145,19 @@ function getUtcMidnightTimestamp(date: Date): number {
 }
 
 /**
- * Create or update daily stats snapshot.
+ * Create or update stats snapshot.
  */
 export async function upsertProtocolStatsSnapshot(
-  chainId: number,
   timestamp: number,
   vaultBalance: bigint,
   escrowBalance: bigint
 ): Promise<void> {
   await prisma.protocolStatsSnapshot.upsert({
     where: {
-      timestamp_chainId: {
-        timestamp,
-        chainId,
-      },
+      timestamp,
     },
     create: {
       timestamp,
-      chainId,
       vaultBalance: vaultBalance.toString(),
       escrowBalance: escrowBalance.toString(),
     },
@@ -203,20 +198,17 @@ export async function computeAndStoreProtocolStats(
 
   // 4. Store snapshot with today's UTC midnight timestamp
   const timestamp = getUtcMidnightTimestamp(new Date());
-  await upsertProtocolStatsSnapshot(chainId, timestamp, vaultBalance, escrowBalance);
+  await upsertProtocolStatsSnapshot(timestamp, vaultBalance, escrowBalance);
   console.log(`[ProtocolStats] Snapshot stored successfully`);
 
   return { vaultBalance, escrowBalance, totalBalance };
 }
 
 /**
- * Get the latest stats snapshot for a chain.
+ * Get the latest stats snapshot.
  */
-export async function getLatestProtocolStats(
-  chainId: number = CHAIN_ID_ETHEREAL
-) {
+export async function getLatestProtocolStats() {
   return prisma.protocolStatsSnapshot.findFirst({
-    where: { chainId },
     orderBy: { timestamp: 'desc' },
   });
 }
@@ -224,15 +216,11 @@ export async function getLatestProtocolStats(
 /**
  * Get stats time series for the last N days.
  */
-export async function getProtocolStatsTimeSeries(
-  chainId: number = CHAIN_ID_ETHEREAL,
-  days: number = 90
-) {
+export async function getProtocolStatsTimeSeries(days: number = 90) {
   const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
-      chainId,
       timestamp: { gte: startTimestamp },
     },
     orderBy: { timestamp: 'asc' },
@@ -290,12 +278,7 @@ export async function backfillProtocolStats(
       );
 
       // Store snapshot (upsert handles existing records)
-      await upsertProtocolStatsSnapshot(
-        chainId,
-        timestamp,
-        vaultBalance,
-        escrowBalance
-      );
+      await upsertProtocolStatsSnapshot(timestamp, vaultBalance, escrowBalance);
 
       console.log(
         `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)}, Escrow: ${formatUnits(escrowBalance, 18)}`
