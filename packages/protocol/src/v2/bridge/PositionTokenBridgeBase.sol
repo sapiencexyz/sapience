@@ -153,11 +153,18 @@ abstract contract PositionTokenBridgeBase is
         bytes memory options = OptionsBuilder.newOptions()
             .addExecutorLzReceiveOption(GAS_FOR_ACK, 0);
 
-        // Use available fee (from msg.value or balance)
-        MessagingFee memory fee = MessagingFee(availableFee, 0);
+        // Quote the actual fee required
+        MessagingFee memory fee =
+            _quote(_bridgeConfig.remoteEid, ackMessage, options, false);
 
-        // Pass availableFee to external call for try/catch pattern
-        try this.sendAckWithFee{ value: availableFee }(
+        // Check if we have enough
+        if (availableFee < fee.nativeFee) {
+            emit AckInsufficientBalance(bridgeId, fee.nativeFee, availableFee);
+            return;
+        }
+
+        // Pass quoted fee to external call for try/catch pattern
+        try this.sendAckWithFee{ value: fee.nativeFee }(
             ackMessage, options, fee
         ) {
         // ACK sent successfully
