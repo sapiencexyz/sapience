@@ -2161,16 +2161,6 @@ export type QueryAggregateUserArgs = {
 };
 
 
-export type QueryAnalyticsSummaryArgs = {
-  chainId: Scalars['Int']['input'];
-};
-
-
-export type QueryAnalyticsTimeSeriesArgs = {
-  chainId: Scalars['Int']['input'];
-};
-
-
 export type QueryAttestationArgs = {
   where: AttestationWhereUniqueInput;
 };

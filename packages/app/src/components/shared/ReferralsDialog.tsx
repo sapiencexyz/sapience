@@ -19,7 +19,7 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
-const INVITE_CODE_DISABLED = false;
+const VOLUME_THRESHOLD = 0;
 
 interface ReferralsDialogProps {
   open: boolean;
@@ -66,6 +66,15 @@ const ReferralsDialog = ({
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
   const { toast } = useToast();
+
+  const chainId = CHAIN_ID_ETHEREAL;
+  const { data: userPositions, isLoading: volumeLoading } = useUserPositions({
+    address: walletAddress?.toLowerCase() ?? '',
+    chainId,
+  });
+  const userVolume = useProfileVolume(userPositions, walletAddress ?? undefined);
+  const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
+  const inviteCodeDisabled = volumeLoading || !hasEnoughVolume;
 
   const invitesRemaining =
     maxReferrals !== null
@@ -248,20 +257,20 @@ const ReferralsDialog = ({
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                disabled={INVITE_CODE_DISABLED || submitting}
+                disabled={inviteCodeDisabled || submitting}
                 className="flex-1"
               />
               <Button
                 type="submit"
                 className="shrink-0"
-                disabled={INVITE_CODE_DISABLED || submitting || !code.trim()}
+                disabled={inviteCodeDisabled || submitting || !code.trim()}
               >
                 {submitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              {INVITE_CODE_DISABLED
-                ? "You can create an invite code once you've done $5,000 in trading volume."
+              {inviteCodeDisabled
+                ? `You can create an invite code once you've done $${VOLUME_THRESHOLD.toLocaleString()} in trading volume. Current: $${userVolume.display}`
                 : "Only an encrypted version of your code is stored, so you'll need to reset it if you forget it."}
             </p>
             {error && (

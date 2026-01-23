@@ -108,7 +108,7 @@ router.post('/code', async (req: Request, res: Response) => {
       create: {
         address: normalizeAddress(walletAddress),
         refCodeHash: codeHash,
-        // Rely on Prisma default of 0; callers cannot set this via the API.
+        maxReferrals: 5,
       },
     });
 
