@@ -101,7 +101,7 @@ get_verifier_args() {
     echo "$verify_args"
 }
 
-# Run forge script and capture output (with verification)
+# Run forge script and capture output (with verification unless SKIP_VERIFY=1)
 run_script() {
     local script=$1
     local rpc_url=$2
@@ -114,9 +114,14 @@ run_script() {
 
     cd "$PROTOCOL_DIR"
 
-    local verify_args=$(get_verifier_args "$rpc_url")
-    if [[ -n "$verify_args" ]]; then
-        log_info "Contract verification enabled"
+    local verify_args=""
+    if [[ "${SKIP_VERIFY:-0}" != "1" ]]; then
+        verify_args=$(get_verifier_args "$rpc_url")
+        if [[ -n "$verify_args" ]]; then
+            log_info "Contract verification enabled"
+        fi
+    else
+        log_warn "Contract verification SKIPPED (SKIP_VERIFY=1)"
     fi
 
     local output
@@ -328,6 +333,88 @@ test_bridge_back() {
     log_success "Bridge back initiated - check https://layerzeroscan.com/ for status"
 }
 
+# Verify contract on explorer
+verify_contract() {
+    local address=$1
+    local contract_path=$2
+    local rpc_url=$3
+    local description=$4
+
+    log_info "Verifying: $description at $address"
+
+    cd "$PROTOCOL_DIR"
+
+    local verify_cmd=""
+    if [[ "$rpc_url" == "$PM_NETWORK_RPC_URL" ]]; then
+        # Ethereal uses Blockscout
+        verify_cmd="forge verify-contract $address $contract_path --chain-id 5066318 --verifier blockscout --verifier-url https://explorer.ethereal.trade/api/"
+    elif [[ "$rpc_url" == "$SM_NETWORK_RPC_URL" ]]; then
+        # Arbitrum uses Arbiscan
+        if [[ -z "${SM_NETWORK_ETHERSCAN_API_KEY:-}" ]]; then
+            log_warn "SM_NETWORK_ETHERSCAN_API_KEY not set, skipping $description"
+            return 0
+        fi
+        verify_cmd="forge verify-contract $address $contract_path --chain-id 42161 --etherscan-api-key $SM_NETWORK_ETHERSCAN_API_KEY"
+    fi
+
+    if [[ -n "$verify_cmd" ]]; then
+        eval "$verify_cmd" && log_success "Verified: $description" || log_warn "Verification failed for $description (may already be verified)"
+    fi
+}
+
+# Verify PM Network contracts (Ethereal)
+verify_pm() {
+    log_info "=== Verify PM Network Contracts (Ethereal) ==="
+
+    check_env PM_NETWORK_RPC_URL || exit 1
+
+    # Verify Resolver if deployed
+    if [[ -n "${RESOLVER_ADDRESS:-}" ]]; then
+        verify_contract "$RESOLVER_ADDRESS" "src/v2/resolvers/ManualConditionResolver.sol:ManualConditionResolver" "$PM_NETWORK_RPC_URL" "ManualConditionResolver"
+    fi
+
+    # Verify PredictionMarketV2 if deployed
+    if [[ -n "${PREDICTION_MARKET_ADDRESS:-}" ]]; then
+        verify_contract "$PREDICTION_MARKET_ADDRESS" "src/v2/PredictionMarketV2.sol:PredictionMarketV2" "$PM_NETWORK_RPC_URL" "PredictionMarketV2"
+    fi
+
+    # Verify Bridge if deployed
+    if [[ -n "${PM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
+        verify_contract "$PM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PositionTokenBridge.sol:PositionTokenBridge" "$PM_NETWORK_RPC_URL" "PositionTokenBridge"
+    fi
+
+    # Verify Collateral if it was deployed via script (test token)
+    if [[ -n "${COLLATERAL_TOKEN_ADDRESS:-}" ]]; then
+        verify_contract "$COLLATERAL_TOKEN_ADDRESS" "test/v2/mocks/MockERC20.sol:MockERC20" "$PM_NETWORK_RPC_URL" "MockERC20 (test collateral)"
+    fi
+
+    log_success "PM Network verification complete"
+}
+
+# Verify SM Network contracts (Arbitrum)
+verify_sm() {
+    log_info "=== Verify SM Network Contracts (Arbitrum) ==="
+
+    check_env SM_NETWORK_RPC_URL || exit 1
+
+    if [[ -z "${SM_NETWORK_ETHERSCAN_API_KEY:-}" ]]; then
+        log_error "SM_NETWORK_ETHERSCAN_API_KEY required for Arbitrum verification"
+        exit 1
+    fi
+
+    # Verify Factory if deployed
+    if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$FACTORY_ADDRESS" "src/v2/bridge/PositionTokenFactory.sol:PositionTokenFactory" "$SM_NETWORK_RPC_URL" "PositionTokenFactory"
+    fi
+
+    # Verify Remote Bridge if deployed
+    if [[ -n "${SM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
+        verify_contract "$SM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PositionTokenBridgeRemote.sol:PositionTokenBridgeRemote" "$SM_NETWORK_RPC_URL" "PositionTokenBridgeRemote"
+    fi
+
+    log_success "SM Network verification complete"
+}
+
 # Print usage
 usage() {
     echo "Usage: $0 [command]"
@@ -342,6 +429,10 @@ usage() {
     echo "  phase3b               Configure DVN and libraries"
     echo "  status                Check deployment status"
     echo ""
+    echo "Verification Commands:"
+    echo "  verify-pm             Verify contracts on PM Network (Ethereal/Blockscout)"
+    echo "  verify-sm             Verify contracts on SM Network (Arbitrum/Arbiscan)"
+    echo ""
     echo "Test Commands:"
     echo "  mint                  Mint position tokens for testing"
     echo "  bridge-to             Bridge tokens from Ethereal to Arbitrum"
@@ -349,14 +440,17 @@ usage() {
     echo "  bridge-back           Bridge tokens back from Arbitrum to Ethereal"
     echo ""
     echo "Examples:"
-    echo "  $0 all                    # Full deployment with DVN config"
-    echo "  $0 all-with-collateral    # Full deployment with test collateral"
-    echo "  $0 phase3b                # Just configure DVN/libraries"
-    echo "  $0 status                 # Check current status"
-    echo "  $0 mint                   # Mint position tokens"
-    echo "  $0 bridge-to              # Bridge to Arbitrum"
-    echo "  OUTCOME=yes $0 resolve    # Resolve prediction (predictor wins)"
-    echo "  $0 bridge-back            # Bridge back to Ethereal"
+    echo "  $0 all                       # Full deployment with verification"
+    echo "  SKIP_VERIFY=1 $0 all         # Full deployment WITHOUT verification"
+    echo "  $0 verify-pm                 # Verify Ethereal contracts later"
+    echo "  $0 verify-sm                 # Verify Arbitrum contracts later"
+    echo "  $0 all-with-collateral       # Full deployment with test collateral"
+    echo "  $0 phase3b                   # Just configure DVN/libraries"
+    echo "  $0 status                    # Check current status"
+    echo "  $0 mint                      # Mint position tokens"
+    echo "  $0 bridge-to                 # Bridge to Arbitrum"
+    echo "  OUTCOME=yes $0 resolve       # Resolve prediction (predictor wins)"
+    echo "  $0 bridge-back               # Bridge back to Ethereal"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
@@ -366,6 +460,7 @@ usage() {
     echo "  PREDICTOR_PRIVATE_KEY, COUNTERPARTY_PRIVATE_KEY"
     echo ""
     echo "Optional env vars:"
+    echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"
     echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY (for test collateral)"
     echo "  PREDICTOR_WAGER, COUNTERPARTY_WAGER, BRIDGE_AMOUNT (for testing)"
     echo "  OUTCOME (yes|no|tie for resolve)"
@@ -426,6 +521,12 @@ main() {
             ;;
         status)
             check_status
+            ;;
+        verify-pm)
+            verify_pm
+            ;;
+        verify-sm)
+            verify_sm
             ;;
         mint)
             test_mint

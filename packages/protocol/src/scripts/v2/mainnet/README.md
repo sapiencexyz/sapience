@@ -302,8 +302,11 @@ forge script src/scripts/v2/mainnet/11_TestBridgeBack.s.sol \
 Use the `deploy-all.sh` script to run all steps automatically:
 
 ```bash
-# Full deployment with DVN config
+# Full deployment with DVN config and verification
 ./src/scripts/v2/mainnet/deploy-all.sh all
+
+# Full deployment WITHOUT verification (faster, verify later)
+SKIP_VERIFY=1 ./src/scripts/v2/mainnet/deploy-all.sh all
 
 # Full deployment with test collateral (for testing)
 ./src/scripts/v2/mainnet/deploy-all.sh all-with-collateral
@@ -315,6 +318,10 @@ Use the `deploy-all.sh` script to run all steps automatically:
 ./src/scripts/v2/mainnet/deploy-all.sh phase3     # Basic bridge config
 ./src/scripts/v2/mainnet/deploy-all.sh phase3b    # DVN/library config
 ./src/scripts/v2/mainnet/deploy-all.sh status     # Check status
+
+# Verify contracts separately (after deployment)
+./src/scripts/v2/mainnet/deploy-all.sh verify-pm  # Verify Ethereal contracts (Blockscout)
+./src/scripts/v2/mainnet/deploy-all.sh verify-sm  # Verify Arbitrum contracts (Arbiscan)
 
 # Run test commands
 ./src/scripts/v2/mainnet/deploy-all.sh mint         # Mint position tokens
