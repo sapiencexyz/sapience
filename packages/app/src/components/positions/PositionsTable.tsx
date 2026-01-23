@@ -134,13 +134,10 @@ export default function PositionsTable({
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
   const { address: connectedAddress } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress: sessionEffectiveAddress } = useSession();
   const hasWallet = Boolean(connectedAddress);
-  // When a session is active, use the smart account address for ownership checks
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress
-      ? smartAccountAddress.toLowerCase()
-      : connectedAddress?.toLowerCase();
+  // Use effectiveAddress from session context for ownership checks
+  const effectiveAddress = sessionEffectiveAddress?.toLowerCase();
   const [claimingTokenId, setClaimingTokenId] = React.useState<bigint | null>(
     null
   );

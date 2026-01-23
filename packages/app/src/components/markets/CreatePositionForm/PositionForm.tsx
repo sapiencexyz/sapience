@@ -111,15 +111,11 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress, isUsingSession } = useSession();
 
-  // Use smart account address when session is active, otherwise use EOA
-  // Falls back to zero address for logged-out users
+  // Use effectiveAddress from session context, falling back to zero address for logged-out users
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-  const selectedTakerAddress =
-    isSessionActive && smartAccountAddress
-      ? smartAccountAddress
-      : (takerAddress ?? ZERO_ADDRESS);
+  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? ZERO_ADDRESS;
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
@@ -421,10 +417,12 @@ export default function PositionForm({
 
   // Auto-initiate auction when session is active and content (predictions/wager) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
+  // Note: Only auto-trigger when isUsingSession (has active session key) to avoid wallet popups
+  // In owner mode (smart account without session), user must manually trigger to avoid unexpected popups
   const autoAuctionDebounceRef = useRef<number | null>(null);
   useEffect(() => {
-    // Only auto-trigger when session is active
-    if (!isSessionActive) return;
+    // Only auto-trigger when session is active (can auto-sign without wallet popups)
+    if (!isUsingSession) return;
 
     // Wait for balance to load before triggering (so validation has the correct maxAmount)
     if (isBalanceLoading) return;
@@ -460,7 +458,7 @@ export default function PositionForm({
       }
     };
   }, [
-    isSessionActive,
+    isUsingSession,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,

@@ -98,7 +98,7 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
   const chainId = CHAIN_ID_ETHEREAL;
 
@@ -133,9 +133,7 @@ const CreatePositionFormInner = ({
     [chainId, createPositionEntries]
   );
 
-  // Use smart account address when session is active for position queries
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+  // effectiveAddress from session context is used for position queries
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
