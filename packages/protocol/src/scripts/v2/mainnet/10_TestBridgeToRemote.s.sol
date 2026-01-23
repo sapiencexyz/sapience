@@ -12,6 +12,9 @@ import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 /// @notice Bridge position tokens from PM Network (Ethereal) to SM Network (Arbitrum)
 /// @dev Uses PREDICTOR_PRIVATE_KEY to bridge predictor tokens
 contract TestBridgeToRemote is Script {
+    uint32 constant ETHEREAL_EID = 30391;
+    uint32 constant ARBITRUM_EID = 30110;
+
     function run() external {
         address bridgeAddr = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");
         address tokenAddr = vm.envAddress("PREDICTOR_TOKEN_ADDRESS");
@@ -63,13 +66,19 @@ contract TestBridgeToRemote is Script {
 
         console.log("");
         console.log("=== Bridge Initiated ===");
-        console.log("BridgeId:", vm.toString(bridgeId));
+        console.log("Bridge ID:", vm.toString(bridgeId));
         console.log("");
-        console.log("Next steps:");
+        console.log("=== LayerZero Tracking ===");
+        console.log("Source Chain EID:", ETHEREAL_EID);
+        console.log("Destination Chain EID:", ARBITRUM_EID);
+        console.log("OApp (sender):", bridgeAddr);
+        console.log("");
         console.log(
-            "1. Wait for LayerZero message delivery (check confirmations)"
+            "NOTE: Use the transaction hash from forge output above to track on LayerZero Scan"
         );
-        console.log("2. Check bridge status on SM Network (Arbitrum)");
-        console.log("3. Track on https://layerzeroscan.com/");
+        console.log("https://layerzeroscan.com/");
+        console.log("");
+        console.log("Add to .env for retry if needed:");
+        console.log("BRIDGE_ID=", vm.toString(bridgeId));
     }
 }
