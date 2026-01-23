@@ -19,7 +19,7 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
-const INVITE_CODE_DISABLED = true;
+const INVITE_CODE_DISABLED = false;
 
 interface ReferralsDialogProps {
   open: boolean;
