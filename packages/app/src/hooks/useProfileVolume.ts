@@ -4,11 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { formatUnits } from 'viem';
 
-const USER_TRADING_VOLUME_QUERY = /* GraphQL */ `
-  query UserTradingVolume($wallet: String!) {
-    user(where: { address: $wallet }) {
-      tradingVolume
-    }
+const TRADING_VOLUME_QUERY = /* GraphQL */ `
+  query TradingVolume($address: String!) {
+    tradingVolumeByAddress(address: $address)
   }
 `;
 
@@ -22,10 +20,10 @@ export function useProfileVolume(address?: string) {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        user: { tradingVolume: string } | null;
-      }>(USER_TRADING_VOLUME_QUERY, { wallet: address?.toLowerCase() });
+        tradingVolumeByAddress: string;
+      }>(TRADING_VOLUME_QUERY, { address: address?.toLowerCase() });
 
-      const volumeWei = BigInt(resp?.user?.tradingVolume || '0');
+      const volumeWei = BigInt(resp?.tradingVolumeByAddress || '0');
       const value = Number(formatUnits(volumeWei, 18));
 
       return { value, display: value.toFixed(2) };

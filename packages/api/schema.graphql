@@ -1916,6 +1916,7 @@ type Query {
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
+  tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }
@@ -2032,7 +2033,6 @@ type User {
   referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
   referredBy(where: UserWhereInput): User
   referredById: Int
-  tradingVolume: String!
   updatedAt: DateTimeISO!
 }
 
