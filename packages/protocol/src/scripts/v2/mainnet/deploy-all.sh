@@ -260,6 +260,32 @@ configure_dvn_phase3b() {
     log_success "Phase 3b complete: DVN and libraries configured"
 }
 
+# Configure PM Network only
+configure_pm_only() {
+    log_info "=== Configure PM Network Bridge (Ethereal) ==="
+
+    check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
+              PM_NETWORK_SEND_LIB PM_NETWORK_RECEIVE_LIB PM_NETWORK_DVN_1 PM_NETWORK_DVN_2 || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/06_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/06b_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
+
+    log_success "PM Network configuration complete"
+}
+
+# Configure SM Network only
+configure_sm_only() {
+    log_info "=== Configure SM Network Bridge (Arbitrum) ==="
+
+    check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
+              SM_NETWORK_SEND_LIB SM_NETWORK_RECEIVE_LIB SM_NETWORK_DVN_1 SM_NETWORK_DVN_2 SM_NETWORK_EXECUTOR || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/07_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring SM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/07b_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
+
+    log_success "SM Network configuration complete"
+}
+
 # Check Status
 check_status() {
     log_info "=== Checking Deployment Status ==="
@@ -363,6 +389,118 @@ retry_bridge_sm() {
     log_success "Retry initiated - check https://layerzeroscan.com/ for status"
 }
 
+# Parse bridge status from cast output
+parse_bridge_status() {
+    local status_num=$1
+    case "$status_num" in
+        0) echo "PENDING" ;;
+        1) echo "COMPLETED" ;;
+        2) echo "REFUNDED" ;;
+        *) echo "UNKNOWN($status_num)" ;;
+    esac
+}
+
+# Check Bridge Status on PM Network (Ethereal)
+check_bridge_pm() {
+    log_info "=== Check Bridge Status on PM Network (Ethereal) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS BRIDGE_ID || exit 1
+
+    echo ""
+    log_info "Bridge ID: $BRIDGE_ID"
+    log_info "Bridge Contract: $PM_NETWORK_BRIDGE_ADDRESS"
+    echo ""
+
+    # Call getPendingBridge
+    local result
+    result=$(cast call "$PM_NETWORK_BRIDGE_ADDRESS" \
+        "getPendingBridge(bytes32)((address,address,address,uint256,uint64,uint64,uint8))" \
+        "$BRIDGE_ID" \
+        --rpc-url "$PM_NETWORK_RPC_URL" 2>&1)
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to query bridge status"
+        echo "$result"
+        return 1
+    fi
+
+    # Parse the tuple output
+    # Format: (token, sender, recipient, amount, createdAt, lastRetryAt, status)
+    local token=$(echo "$result" | sed -n 's/.*(\(0x[a-fA-F0-9]*\),.*/\1/p')
+    local sender=$(echo "$result" | cut -d',' -f2 | grep -oE '0x[a-fA-F0-9]{40}')
+    local recipient=$(echo "$result" | cut -d',' -f3 | grep -oE '0x[a-fA-F0-9]{40}')
+    local amount=$(echo "$result" | grep -oE '[0-9]+' | sed -n '1p')
+    local status_num=$(echo "$result" | grep -oE '[0-9]+' | tail -1)
+
+    local status_text=$(parse_bridge_status "$status_num")
+
+    echo "========================================"
+    echo "  Bridge Status (PM Network)"
+    echo "========================================"
+    echo "Token:      $token"
+    echo "Sender:     $sender"
+    echo "Recipient:  $recipient"
+    echo "Amount:     $amount"
+    echo "Status:     $status_text"
+    echo "========================================"
+
+    if [[ "$status_text" == "PENDING" ]]; then
+        log_warn "Bridge is PENDING - waiting for LayerZero delivery or needs retry"
+    elif [[ "$status_text" == "COMPLETED" ]]; then
+        log_success "Bridge is COMPLETED"
+    fi
+}
+
+# Check Bridge Back Status on SM Network (Arbitrum)
+check_bridge_sm() {
+    log_info "=== Check Bridge Back Status on SM Network (Arbitrum) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS BRIDGE_BACK_ID || exit 1
+
+    echo ""
+    log_info "Bridge Back ID: $BRIDGE_BACK_ID"
+    log_info "Bridge Contract: $SM_NETWORK_BRIDGE_ADDRESS"
+    echo ""
+
+    # Call getPendingBridge
+    local result
+    result=$(cast call "$SM_NETWORK_BRIDGE_ADDRESS" \
+        "getPendingBridge(bytes32)((address,address,address,uint256,uint64,uint64,uint8))" \
+        "$BRIDGE_BACK_ID" \
+        --rpc-url "$SM_NETWORK_RPC_URL" 2>&1)
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to query bridge status"
+        echo "$result"
+        return 1
+    fi
+
+    # Parse the tuple output
+    local token=$(echo "$result" | sed -n 's/.*(\(0x[a-fA-F0-9]*\),.*/\1/p')
+    local sender=$(echo "$result" | cut -d',' -f2 | grep -oE '0x[a-fA-F0-9]{40}')
+    local recipient=$(echo "$result" | cut -d',' -f3 | grep -oE '0x[a-fA-F0-9]{40}')
+    local amount=$(echo "$result" | grep -oE '[0-9]+' | sed -n '1p')
+    local status_num=$(echo "$result" | grep -oE '[0-9]+' | tail -1)
+
+    local status_text=$(parse_bridge_status "$status_num")
+
+    echo "========================================"
+    echo "  Bridge Back Status (SM Network)"
+    echo "========================================"
+    echo "Token:      $token"
+    echo "Sender:     $sender"
+    echo "Recipient:  $recipient"
+    echo "Amount:     $amount"
+    echo "Status:     $status_text"
+    echo "========================================"
+
+    if [[ "$status_text" == "PENDING" ]]; then
+        log_warn "Bridge back is PENDING - waiting for LayerZero delivery or needs retry"
+    elif [[ "$status_text" == "COMPLETED" ]]; then
+        log_success "Bridge back is COMPLETED"
+    fi
+}
+
 # Verify contract on explorer
 verify_contract() {
     local address=$1
@@ -453,10 +591,12 @@ usage() {
     echo "  all                   Run full deployment (phases 1-3b)"
     echo "  all-with-collateral   Run full deployment with test collateral (for testing)"
     echo "  collateral            Deploy test collateral token (optional, for testing)"
-    echo "  phase1                Deploy Ethereal infrastructure"
-    echo "  phase2                Deploy Arbitrum infrastructure"
+    echo "  phase1, deploy-pm     Deploy Ethereal infrastructure"
+    echo "  phase2, deploy-sm     Deploy Arbitrum infrastructure"
     echo "  phase3                Configure bridges (basic: peer, config)"
     echo "  phase3b               Configure DVN and libraries"
+    echo "  configure-pm          Configure PM Network bridge only"
+    echo "  configure-sm          Configure SM Network bridge only"
     echo "  status                Check deployment status"
     echo ""
     echo "Verification Commands:"
@@ -473,6 +613,10 @@ usage() {
     echo "  retry-pm              Retry a pending bridge from PM Network (uses BRIDGE_ID)"
     echo "  retry-sm              Retry a pending bridge from SM Network (uses BRIDGE_BACK_ID)"
     echo ""
+    echo "Status Commands:"
+    echo "  check-bridge          Check BRIDGE_ID status on PM Network (Ethereal)"
+    echo "  check-bridge-back     Check BRIDGE_BACK_ID status on SM Network (Arbitrum)"
+    echo ""
     echo "Examples:"
     echo "  $0 all                       # Full deployment with verification"
     echo "  SKIP_VERIFY=1 $0 all         # Full deployment WITHOUT verification"
@@ -487,6 +631,8 @@ usage() {
     echo "  $0 bridge-back               # Bridge back to Ethereal"
     echo "  BRIDGE_ID=0x... $0 retry-pm       # Retry bridge from Ethereal"
     echo "  BRIDGE_BACK_ID=0x... $0 retry-sm  # Retry bridge-back from Arbitrum"
+    echo "  $0 check-bridge                   # Check bridge status on PM Network"
+    echo "  $0 check-bridge-back              # Check bridge-back status on SM Network"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
@@ -557,6 +703,18 @@ main() {
         phase3b)
             configure_dvn_phase3b
             ;;
+        deploy-pm)
+            deploy_ethereal_phase1
+            ;;
+        deploy-sm)
+            deploy_arbitrum_phase2
+            ;;
+        configure-pm)
+            configure_pm_only
+            ;;
+        configure-sm)
+            configure_sm_only
+            ;;
         status)
             check_status
             ;;
@@ -583,6 +741,12 @@ main() {
             ;;
         retry-sm)
             retry_bridge_sm
+            ;;
+        check-bridge)
+            check_bridge_pm
+            ;;
+        check-bridge-back)
+            check_bridge_sm
             ;;
         help|--help|-h)
             usage
