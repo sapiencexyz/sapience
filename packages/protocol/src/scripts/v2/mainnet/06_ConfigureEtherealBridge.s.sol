@@ -16,8 +16,9 @@ contract ConfigureEtherealBridge is Script {
         address bridgeAddr = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");
         address remoteBridge = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
         uint32 remoteEid = uint32(vm.envUint("SM_NETWORK_LZ_EID"));
+        // ACK fee for SM (Arbitrum) to send ACK back to PM - paid in ETH
         uint128 ackFeeEstimate =
-            uint128(vm.envOr("ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
+            uint128(vm.envOr("PM_ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
 
         PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
 
