@@ -19,7 +19,7 @@ contract RetryBridgeSM is Script {
 
     function run() external {
         address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
-        bytes32 bridgeId = vm.envBytes32("BRIDGE_ID");
+        bytes32 bridgeId = vm.envBytes32("BRIDGE_BACK_ID");
         bytes32 refCode = vm.envOr("REF_CODE", bytes32(0));
 
         uint256 deployerPk = vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY");

@@ -88,6 +88,6 @@ contract TestBridgeBack is Script {
         console.log("https://layerzeroscan.com/");
         console.log("");
         console.log("Add to .env for retry if needed:");
-        console.log("BRIDGE_ID=", vm.toString(bridgeId));
+        console.log("BRIDGE_BACK_ID=", vm.toString(bridgeId));
     }
 }
