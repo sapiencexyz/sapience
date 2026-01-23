@@ -19,7 +19,7 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
-const VOLUME_THRESHOLD = 0;
+const VOLUME_THRESHOLD = 5000;
 
 interface ReferralsDialogProps {
   open: boolean;
