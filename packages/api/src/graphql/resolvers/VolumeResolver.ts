@@ -22,8 +22,10 @@ async function calculateVolumeForAddress(address: string): Promise<string> {
   let total = BigInt(0);
 
   for (const position of positions) {
-    const predictorIsUser = position.predictor.toLowerCase() === normalizedAddress;
-    const counterpartyIsUser = position.counterparty.toLowerCase() === normalizedAddress;
+    const predictorIsUser =
+      position.predictor.toLowerCase() === normalizedAddress;
+    const counterpartyIsUser =
+      position.counterparty.toLowerCase() === normalizedAddress;
 
     if (predictorIsUser && position.predictorCollateral) {
       try {
