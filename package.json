@@ -20,6 +20,7 @@
     "start:reindex-eas": "pnpm --filter api run start:reindex-eas",
     "start:reindex-accuracy": "pnpm --filter api run start:reindex-accuracy",
     "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy",
+    "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
     "start:reindex-prediction-market": "pnpm --filter api run start:reindex-prediction-market"
   },
   "keywords": [],
