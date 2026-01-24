@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useAccount, useSwitchChain } from 'wagmi';
-import type { Address, Hex } from 'viem';
+import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
 import {
@@ -85,8 +85,8 @@ function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
 
 // Chain clients type
 interface ChainClients {
-  ethereal: KernelAccountClient<any, any, any> | null;
-  arbitrum: KernelAccountClient<any, any, any> | null;
+  ethereal: KernelAccountClient | null;
+  arbitrum: KernelAccountClient | null;
 }
 
 // Type for signTypedData parameters
@@ -113,6 +113,13 @@ interface SessionApprovalData {
   typedData: EnableTypedData;
 }
 
+/**
+ * Account mode - determines which account to use for transactions.
+ * - 'smart-account': Use the smart account (with session key if active, otherwise owner signing)
+ * - 'eoa': Use the wallet directly
+ */
+export type AccountMode = 'smart-account' | 'eoa';
+
 // Session context value
 interface SessionContextValue {
   // Session state
@@ -136,6 +143,22 @@ interface SessionContextValue {
   smartAccountAddress: Address | null;
   isCalculatingAddress: boolean;
 
+  // Account mode - the current mode the app is operating in
+  // 'smart-account' = use smart account, 'eoa' = use wallet directly
+  accountMode: AccountMode;
+  setAccountMode: (mode: AccountMode) => void;
+
+  // Derived flags - these are what the rest of the app should use
+  // isUsingSmartAccount = mode is smart-account AND smart account address is available
+  isUsingSmartAccount: boolean;
+  // isUsingSession = using smart account AND session is active (can auto-sign)
+  isUsingSession: boolean;
+
+  // Effective address - the address to use for transactions, balance display, etc.
+  // In smart-account mode: smart account address
+  // In eoa mode: wallet address
+  effectiveAddress: Address | null;
+
   // Session signing functions (available when session is active)
   // Note: These are used for on-chain UserOperations via ZeroDev, not for relayer auth
   signMessage: ((message: string) => Promise<Hex>) | null;
@@ -154,11 +177,7 @@ interface SessionContextValue {
   hasArbitrumSession: boolean;
   isCreatingArbitrumSession: boolean;
   // Returns the created/existing client directly to avoid race conditions with state updates
-  createArbitrumSessionIfNeeded: () => Promise<KernelAccountClient<
-    any,
-    any,
-    any
-  > | null>;
+  createArbitrumSessionIfNeeded: () => Promise<KernelAccountClient | null>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -209,6 +228,50 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [smartAccountAddress, setSmartAccountAddress] =
     useState<Address | null>(null);
   const [isCalculatingAddress, setIsCalculatingAddress] = useState(false);
+
+  // Account mode state - always initialize to default, then sync from localStorage in useEffect
+  // This avoids SSR hydration mismatches since server always sees the same initial value
+  const [accountMode, setAccountModeInternal] =
+    useState<AccountMode>('smart-account');
+
+  // Sync account mode from localStorage after mount (client-side only)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = window.localStorage.getItem(
+        'sapience:accountMode'
+      ) as AccountMode | null;
+      // Migrate from old preferEoa setting
+      if (!stored) {
+        const oldPreferEoa = window.localStorage.getItem('sapience:preferEoa');
+        if (oldPreferEoa === 'true') {
+          setAccountModeInternal('eoa');
+          return;
+        }
+      }
+      if (stored && stored !== accountMode) {
+        setAccountModeInternal(stored);
+      }
+    } catch {
+      // localStorage not available
+    }
+  }, []); // Run once on mount
+
+  // Derived flags - these are what the rest of the app should use
+  // isUsingSmartAccount = mode is smart-account AND smart account address is available
+  const isUsingSmartAccount =
+    accountMode === 'smart-account' && !!smartAccountAddress;
+  // isUsingSession = using smart account AND session is active (can auto-sign)
+  const isUsingSession = isUsingSmartAccount && isSessionActive;
+
+  // Effective address - the address the app uses for transactions, balance display, etc.
+  const effectiveAddress = useMemo((): Address | null => {
+    if (!walletAddress) return null;
+    if (isUsingSmartAccount) {
+      return smartAccountAddress;
+    }
+    return walletAddress;
+  }, [walletAddress, isUsingSmartAccount, smartAccountAddress]);
 
   // Time remaining
   const [timeRemainingMs, setTimeRemainingMs] = useState(0);
@@ -421,6 +484,36 @@ export function SessionProvider({ children }: SessionProviderProps) {
     console.debug('[SessionContext] Session cleared');
   }, []);
 
+  // Set account mode - also persists as preference, destroys session if switching to EOA
+  const setAccountMode = useCallback(
+    (mode: AccountMode) => {
+      // If switching to EOA and session is active, destroy the session
+      if (mode === 'eoa' && isSessionActive) {
+        try {
+          endSessionInternal();
+        } catch (error) {
+          console.error(
+            '[SessionContext] Failed to end session when switching to EOA:',
+            error
+          );
+          // Continue with mode switch even if session cleanup fails
+        }
+      }
+      setAccountModeInternal(mode);
+      // Persist as preference so user returns to this mode
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem('sapience:accountMode', mode);
+          // Clean up old preferEoa key if it exists
+          window.localStorage.removeItem('sapience:preferEoa');
+        }
+      } catch {
+        // localStorage not available
+      }
+    },
+    [isSessionActive, endSessionInternal]
+  );
+
   // Start a new session
   const startSession = useCallback(
     async (params: { durationHours: number }) => {
@@ -432,7 +525,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionError(null);
 
       try {
-        const provider = await connector.getProvider();
+        const provider = (await connector.getProvider()) as EIP1193Provider;
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
@@ -485,11 +578,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates
   const createArbitrumSessionIfNeeded =
-    useCallback(async (): Promise<KernelAccountClient<
-      any,
-      any,
-      any
-    > | null> => {
+    useCallback(async (): Promise<KernelAccountClient | null> => {
       // Already has Arbitrum session - return existing client
       if (arbitrumSessionApproval || chainClients.arbitrum) {
         console.debug('[SessionContext] Arbitrum session already exists');
@@ -510,7 +599,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       try {
         console.debug('[SessionContext] Creating Arbitrum session lazily...');
 
-        const provider = await connector.getProvider();
+        const provider = (await connector.getProvider()) as EIP1193Provider;
         const ownerSigner: OwnerSigner = {
           address: walletAddress,
           provider,
@@ -580,12 +669,24 @@ export function SessionProvider({ children }: SessionProviderProps) {
       switchChainAsync,
     ]);
 
-  // Clear session when wallet disconnects
+  // Clear session when wallet disconnects or changes to a different address
   useEffect(() => {
     if (!walletAddress && isSessionActive) {
+      // Wallet disconnected
+      endSessionInternal();
+    } else if (
+      walletAddress &&
+      isSessionActive &&
+      sessionConfig &&
+      walletAddress.toLowerCase() !== sessionConfig.ownerAddress.toLowerCase()
+    ) {
+      // Wallet changed to a different address than session owner
+      console.debug(
+        '[SessionContext] Wallet changed, clearing session for previous owner'
+      );
       endSessionInternal();
     }
-  }, [walletAddress, isSessionActive, endSessionInternal]);
+  }, [walletAddress, isSessionActive, sessionConfig, endSessionInternal]);
 
   // Compute hasArbitrumSession from state
   const hasArbitrumSession = Boolean(
@@ -605,6 +706,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       timeRemainingMs,
       smartAccountAddress,
       isCalculatingAddress,
+      accountMode,
+      setAccountMode,
+      isUsingSmartAccount,
+      isUsingSession,
+      effectiveAddress,
       signMessage: sessionPrivateKey ? signMessage : null,
       signTypedData: sessionPrivateKey ? signTypedData : null,
       sessionKeyAddress,
@@ -626,6 +732,11 @@ export function SessionProvider({ children }: SessionProviderProps) {
       timeRemainingMs,
       smartAccountAddress,
       isCalculatingAddress,
+      accountMode,
+      setAccountMode,
+      isUsingSmartAccount,
+      isUsingSession,
+      effectiveAddress,
       sessionPrivateKey,
       signMessage,
       signTypedData,

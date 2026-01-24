@@ -25,20 +25,13 @@ const ChatWidget = () => {
     etherealSessionApproval,
     signMessage,
     isSessionActive,
-    smartAccountAddress,
+    effectiveAddress,
   } = useSession();
-  // When session is active, use smart account address (matches server's session auth)
-  // Otherwise fall back to EOA address
-  function getAddressOverride(): `0x${string}` | undefined {
-    if (!ready || !hasConnectedWallet) {
-      return undefined;
-    }
-    if (isSessionActive && smartAccountAddress) {
-      return smartAccountAddress;
-    }
-    return connectedWallet?.address;
-  }
-  const addressOverride = getAddressOverride();
+  // Use effectiveAddress from session context, falling back to wallet address when not connected
+  const addressOverride =
+    ready && hasConnectedWallet
+      ? (effectiveAddress ?? connectedWallet?.address)
+      : undefined;
 
   const {
     state: { messages, pendingText, setPendingText, canChat, canType },
