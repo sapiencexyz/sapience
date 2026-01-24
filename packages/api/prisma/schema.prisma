@@ -362,3 +362,21 @@ model User {
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
 }
+
+/// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
+model ProtocolStatsSnapshot {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+
+  /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
+  timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+
+  /// Vault balance: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
+  vaultBalance  String   @db.VarChar
+
+  /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
+  escrowBalance String   @db.VarChar
+
+  @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
+  @@map("protocol_stats_snapshot")
+}

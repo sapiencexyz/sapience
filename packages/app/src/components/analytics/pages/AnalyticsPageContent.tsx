@@ -15,8 +15,8 @@ import {
   Bar,
 } from 'recharts';
 import {
-  useAnalyticsSummary,
-  useAnalyticsTimeSeries,
+  useProtocolStats,
+  useDailyVolumes,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 
@@ -97,13 +97,26 @@ function ChartTooltip({
     maximumFractionDigits: 2,
   });
 
-  const dateLabel = label
-    ? new Date(label).toLocaleDateString(undefined, {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : '';
+  // Format timestamp (Unix seconds) to date string
+  let dateLabel = '';
+  if (label) {
+    const date = new Date(parseInt(label, 10) * 1000);
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
+  }
 
   return (
     <div className="bg-background border border-border rounded-md px-3 py-2">
@@ -117,9 +130,10 @@ function ChartTooltip({
   );
 }
 
-function formatDateTick(value: string): string {
-  const date = new Date(value);
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+function formatTimestampTick(value: string): string {
+  // Parse Unix timestamp (seconds) to date
+  const date = new Date(parseInt(value, 10) * 1000);
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
 const CHART_AXIS_STYLE = {
@@ -133,22 +147,44 @@ const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
 
-  const { data: summary, isLoading: summaryLoading } = useAnalyticsSummary();
-  const { data: timeSeries, isLoading: timeSeriesLoading } =
-    useAnalyticsTimeSeries();
+  // Fetch protocol stats and daily volumes
+  const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
+  const { data: dailyVolumes, isLoading: volumesLoading } = useDailyVolumes();
 
-  const chartData = useMemo(() => {
-    if (!timeSeries) return [];
+  // Get summary from the last protocol stat
+  const summary = useMemo(() => {
+    if (!protocolStats || protocolStats.length === 0) return null;
+    return protocolStats[protocolStats.length - 1];
+  }, [protocolStats]);
 
-    return timeSeries.map((point) => ({
-      date: point.date,
-      dailyVolume: parseFloat(point.dailyVolume) / 1e18,
-      openInterest: parseFloat(point.openInterest) / 1e18,
-      tvl: parseFloat(point.tvl) / 1e18,
+  // Prepare chart data for protocol stats (TVL, OI)
+  const statsChartData = useMemo(() => {
+    if (!protocolStats) return [];
+
+    return protocolStats.map((point) => {
+      const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
+      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
+      return {
+        timestamp: point.timestamp,
+        openInterest: parseFloat(point.openInterest) / 1e18,
+        totalBalance: vaultBalance + escrowBalance,
+        vaultBalance,
+        escrowBalance,
+      };
+    });
+  }, [protocolStats]);
+
+  // Prepare chart data for daily volumes
+  const volumeChartData = useMemo(() => {
+    if (!dailyVolumes) return [];
+
+    return dailyVolumes.map((point) => ({
+      timestamp: point.timestamp,
+      volume: parseFloat(point.volume) / 1e18,
     }));
-  }, [timeSeries]);
+  }, [dailyVolumes]);
 
-  const isLoading = summaryLoading || timeSeriesLoading;
+  const isLoading = statsLoading || volumesLoading;
 
   return (
     <div className="relative">
@@ -162,6 +198,42 @@ function AnalyticsPageContent(): React.ReactElement {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="p-6">
+              <div className="sc-heading text-foreground mb-2">
+                Protocol TVL
+              </div>
+              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
+                {isLoading ? (
+                  <div className="w-full flex justify-center pt-3">
+                    <Loader size={24} />
+                  </div>
+                ) : (
+                  <span className="transition-opacity duration-300">
+                    {formatNumber(
+                      String(
+                        BigInt(summary?.vaultBalance || '0') +
+                          BigInt(summary?.escrowBalance || '0')
+                      )
+                    )}{' '}
+                    {collateralSymbol}
+                  </span>
+                )}
+              </div>
+              {!isLoading && summary && (
+                <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
+                  <div>
+                    Vault: {formatNumber(summary.vaultBalance)} {collateralSymbol}
+                  </div>
+                  <div>
+                    Markets: {formatNumber(summary.escrowBalance)}{' '}
+                    {collateralSymbol}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2">
@@ -185,25 +257,6 @@ function AnalyticsPageContent(): React.ReactElement {
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2">
-                Total Value Locked
-              </div>
-              <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
-                {isLoading ? (
-                  <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
-                  </div>
-                ) : (
-                  <span className="transition-opacity duration-300">
-                    {formatNumber(summary?.tvl || '0')} {collateralSymbol}
-                  </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
                 Cumulative Volume
               </div>
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
@@ -213,7 +266,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(summary?.totalVolume || '0')}{' '}
+                    {formatNumber(summary?.cumulativeVolume || '0')}{' '}
                     {collateralSymbol}
                   </span>
                 )}
@@ -233,22 +286,22 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : volumeChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} margin={CHART_MARGIN}>
+                      <ComposedChart data={volumeChartData} margin={CHART_MARGIN}>
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -259,15 +312,15 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="dailyVolume"
+                              dataKey="volume"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Bar
-                          dataKey="dailyVolume"
+                          dataKey="volume"
                           fill="hsl(var(--ethena) / 0.6)"
-                          name="dailyVolume"
+                          name="volume"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -286,14 +339,14 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="openInterestGradient"
@@ -319,9 +372,9 @@ function AnalyticsPageContent(): React.ReactElement {
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -353,28 +406,26 @@ function AnalyticsPageContent(): React.ReactElement {
             </CardContent>
           </Card>
 
-          {/* TVL Chart */}
+          {/* Protocol TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">
-                Total Value Locked
-              </h3>
+              <h3 className="sc-heading text-foreground mb-4">Protocol TVL</h3>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader size={32} />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData} margin={CHART_MARGIN}>
+                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
-                            id="tvlGradient"
+                            id="protocolTVLGradient"
                             x1="0"
                             y1="0"
                             x2="0"
@@ -397,9 +448,9 @@ function AnalyticsPageContent(): React.ReactElement {
                           stroke="hsl(var(--brand-white) / 0.1)"
                         />
                         <XAxis
-                          dataKey="date"
+                          dataKey="timestamp"
                           {...CHART_AXIS_STYLE}
-                          tickFormatter={formatDateTick}
+                          tickFormatter={formatTimestampTick}
                         />
                         <YAxis
                           {...CHART_AXIS_STYLE}
@@ -410,17 +461,17 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="tvl"
+                              dataKey="totalBalance"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Area
                           type="monotone"
-                          dataKey="tvl"
+                          dataKey="totalBalance"
                           stroke="hsl(var(--accent-gold))"
                           strokeWidth={2}
-                          fill="url(#tvlGradient)"
+                          fill="url(#protocolTVLGradient)"
                           activeDot={{ r: 4, strokeWidth: 0 }}
                         />
                       </AreaChart>
