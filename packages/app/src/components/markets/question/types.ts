@@ -1,5 +1,7 @@
 // Type for combined prediction in a position
 export type CombinedPrediction = {
+  conditionId: string;
+  resolverAddress?: string;
   question: string;
   prediction: boolean;
   categorySlug?: string;

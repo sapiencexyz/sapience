@@ -35,6 +35,7 @@ import SignedFilter, {
 } from '~/components/terminal/filters/SignedFilter';
 import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
+import Loader from '~/components/shared/Loader';
 import { useReadContracts } from 'wagmi';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -396,7 +397,7 @@ const TerminalPageContent: React.FC = () => {
             </span>
           );
         }
-        return null;
+        return <Loader size={16} />;
       }
 
       const legs = decoded.data.map((o) => {

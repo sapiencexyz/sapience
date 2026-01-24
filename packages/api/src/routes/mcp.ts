@@ -8,6 +8,7 @@ import express from 'express';
 import { config } from '../config';
 
 // Create the McpServer instance
+// Note: Type assertion needed due to MCP SDK types incompatibility with zod 3.25.76
 const server = new McpServer(
   {
     name: 'sapience-mcp-server',
@@ -27,7 +28,8 @@ const server = new McpServer(
         list: false,
       },
     },
-  }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any
 );
 
 // Register all tools using the aggregator function

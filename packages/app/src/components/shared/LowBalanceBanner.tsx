@@ -14,7 +14,7 @@ type LowBalanceBannerProps = {
 
 /**
  * Banner displayed when the user's collateral balance is zero or negative.
- * Takes priority over HackathonBanner.
+ * Takes priority over BetaBanner.
  */
 const LowBalanceBanner: React.FC<LowBalanceBannerProps> = ({
   className,

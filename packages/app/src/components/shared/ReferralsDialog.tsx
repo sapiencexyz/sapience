@@ -19,6 +19,8 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
+const INVITE_CODE_DISABLED = true;
+
 interface ReferralsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -246,20 +248,21 @@ const ReferralsDialog = ({
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                disabled={submitting}
+                disabled={INVITE_CODE_DISABLED || submitting}
                 className="flex-1"
               />
               <Button
                 type="submit"
                 className="shrink-0"
-                disabled={submitting || !code.trim()}
+                disabled={INVITE_CODE_DISABLED || submitting || !code.trim()}
               >
                 {submitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Only an encrypted version of your code is stored, so you&apos;ll
-              need to reset it if you forget it.
+              {INVITE_CODE_DISABLED
+                ? "You can create an invite code once you've done $5,000 in trading volume."
+                : "Only an encrypted version of your code is stored, so you'll need to reset it if you forget it."}
             </p>
             {error && (
               <p className="text-xs text-destructive mt-1.5">{error}</p>
