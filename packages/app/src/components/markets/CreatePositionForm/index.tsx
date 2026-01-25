@@ -475,8 +475,19 @@ const CreatePositionFormInner = ({
   }, [effectiveAddress, initializedForAddress, formMethods]);
 
   // Single initialization effect - sets wager when balance becomes ready
+  // For logged-out users, default to "1" so they can see estimates immediately
   useEffect(() => {
     if (isWagerInitialized) return;
+
+    // For logged-out users, set default wager to "1" immediately
+    if (!hasConnectedWallet) {
+      formMethods.setValue('wagerAmount', '1', { shouldValidate: false });
+      setIsWagerInitialized(true);
+      setInitializedForAddress(null);
+      return;
+    }
+
+    // For logged-in users, wait for balance to load
     if (isBalanceLoading) return;
     if (userBalance <= 0) return;
 
@@ -497,6 +508,7 @@ const CreatePositionFormInner = ({
     isWagerInitialized,
     effectiveAddress,
     formMethods,
+    hasConnectedWallet,
   ]);
 
   // Sync form when position entries change without clobbering existing values
