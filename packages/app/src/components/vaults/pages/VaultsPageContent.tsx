@@ -30,7 +30,7 @@ import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useAnalyticsSummary } from '~/hooks/graphql/useAnalytics';
+import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 
@@ -77,8 +77,8 @@ const VaultsPageContent = () => {
   });
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { data: analyticsSummary, isLoading: isAnalyticsLoading } =
-    useAnalyticsSummary();
+  const { data: protocolStats, isLoading: isAnalyticsLoading } =
+    useProtocolStats();
 
   // Form state
   const [depositAmount, setDepositAmount] = useState('');
@@ -717,7 +717,12 @@ const VaultsPageContent = () => {
 
   const yieldMetrics = useMemo(() => {
     // Protocol TVL is the total collateral in all positions (in wei, 18 decimals)
-    const protocolTvlWei = BigInt(analyticsSummary?.tvl ?? '0');
+    // Computed from the last protocol stat (vaultBalance + escrowBalance)
+    const lastStat = protocolStats?.[protocolStats.length - 1];
+    const protocolTvlWei = lastStat
+      ? BigInt(lastStat.vaultBalance || '0') +
+        BigInt(lastStat.escrowBalance || '0')
+      : 0n;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     // Vault TVL is this vault's assets
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
@@ -736,7 +741,7 @@ const VaultsPageContent = () => {
       dailyYield: formatDecimalWithCommasFixed2(dailyYield.toString()),
       effectiveApy: effectiveApy.toFixed(2),
     };
-  }, [tvlWei, formatAssetAmount, analyticsSummary]);
+  }, [tvlWei, formatAssetAmount, protocolStats]);
 
   return (
     <div className="relative">
