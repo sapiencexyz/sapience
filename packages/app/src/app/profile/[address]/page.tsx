@@ -7,11 +7,10 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { address } = await params;
-  const truncated = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   return {
-    title: `Profile ${truncated}`,
-    description: `View forecasting activity and performance for ${truncated}`,
+    title: `Profile ${address}`,
+    description: `View forecasting activity and performance for ${address}`,
   };
 }
 
