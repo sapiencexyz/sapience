@@ -1916,6 +1916,7 @@ type Query {
   profitRankByAddress(owner: String!): ProfitRankType!
   protocolStats: [ProtocolStat!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
+  tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }
