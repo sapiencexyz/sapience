@@ -53,8 +53,8 @@ export default function Ecosystem() {
               className="h-16 w-16 md:h-24 md:w-24 shrink-0"
             />
             <p className="text-sm md:text-base leading-relaxed text-foreground/80">
-              Swap Sapience's prediction market tokens with other crypto and
-              tokenized versions of nearly any asset using{' '}
+              Trade prediction market tokens for crypto, stablecoins, and other
+              tokenized assets using{' '}
               <a
                 href="https://cow.fi"
                 target="_blank"
