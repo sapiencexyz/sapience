@@ -16,7 +16,6 @@ import {
 } from '@sapience/ui/components/ui/command';
 import { ChevronsUpDown, Check, Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
-import { useIsMobile } from '@sapience/ui/hooks/use-mobile';
 import { RangeFilter } from '~/components/shared/RangeFilter';
 
 export interface CategoryOption {
@@ -167,8 +166,6 @@ export default function TableFilters({
   onSearchChange,
   className,
 }: TableFiltersProps) {
-  const isMobile = useIsMobile();
-
   // Map Infinity to slider max for display
   const openInterestSliderValue: [number, number] = [
     filters.openInterestRange[0],
@@ -227,9 +224,7 @@ export default function TableFilters({
         <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
-          placeholder={
-            isMobile ? 'Search questions' : 'Search questions and keywords'
-          }
+          placeholder="Search questions"
           value={searchTerm}
           onChange={handleSearchInputChange}
           className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 md:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"

@@ -2,6 +2,12 @@
 
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@sapience/ui/components/ui/hover-card';
+import { Info } from 'lucide-react';
 import { useMemo } from 'react';
 import {
   AreaChart,
@@ -38,7 +44,10 @@ function formatNumber(value: string | number, decimals = 2): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return '0';
   const humanReadable = num / 1e18;
-  return formatLargeNumber(humanReadable, decimals, true);
+  return humanReadable.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 function formatChartValue(value: number): string {
@@ -200,8 +209,41 @@ function AnalyticsPageContent(): React.ReactElement {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <div className="sc-heading text-foreground mb-2">
+              <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
                 Protocol TVL
+                <HoverCard openDelay={100} closeDelay={100}>
+                  <HoverCardTrigger asChild>
+                    <button className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent
+                    className="w-auto bg-background border border-border p-3"
+                    align="start"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1">
+                        <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
+                          Prediction Market Escrow
+                        </span>
+                        <span className="font-mono whitespace-nowrap text-xl">
+                          {formatNumber(summary?.escrowBalance || '0')}{' '}
+                          {collateralSymbol}
+                        </span>
+                      </div>
+                      <div className="h-px bg-[hsl(var(--accent-gold)/0.25)]" />
+                      <div className="flex flex-col gap-1">
+                        <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
+                          Protocol Vault Reserve
+                        </span>
+                        <span className="font-mono whitespace-nowrap text-xl">
+                          {formatNumber(summary?.vaultBalance || '0')}{' '}
+                          {collateralSymbol}
+                        </span>
+                      </div>
+                    </div>
+                  </HoverCardContent>
+                </HoverCard>
               </div>
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
@@ -220,18 +262,6 @@ function AnalyticsPageContent(): React.ReactElement {
                   </span>
                 )}
               </div>
-              {!isLoading && summary && (
-                <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                  <div>
-                    Vault: {formatNumber(summary.vaultBalance)}{' '}
-                    {collateralSymbol}
-                  </div>
-                  <div>
-                    Markets: {formatNumber(summary.escrowBalance)}{' '}
-                    {collateralSymbol}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 

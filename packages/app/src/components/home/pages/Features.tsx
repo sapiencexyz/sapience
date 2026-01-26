@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@sapience/ui/components/ui/badge';
 import PulsingGradient from '../../shared/PulsingGradient';
 
 export default function Features() {
@@ -44,12 +45,27 @@ export default function Features() {
         </div>
 
         <div className="space-y-3">
-          <div className="eyebrow text-foreground">SPOT MARKETS</div>
+          <div className="eyebrow text-foreground flex items-center gap-3">
+            SECONDARY SALES
+            <Badge
+              variant="outline"
+              className="px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-normal"
+            >
+              COMING SOON
+            </Badge>
+          </div>
           <p className="headline max-w-5xl">
-            As an alternative to peer-to-peer auctions, spot markets integrate
-            with Uniswap. Users trade <em>Yes</em> tokens more like they do with
-            a traditional orderbook, but using smart contracts instead of a
-            private exchange.
+            Trade prediction market positions using{' '}
+            <a
+              href="https://cow.fi"
+              target="_blank"
+              rel="noreferrer"
+              className="gold-link"
+            >
+              CoW Swap
+            </a>
+            . Exit positions early or acquire exposure to prediction markets
+            using nearly any asset.
           </p>
         </div>
       </div>
