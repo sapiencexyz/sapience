@@ -1,0 +1,328 @@
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import type { ConditionType } from './useConditions';
+import type { ConditionGroupType } from './useConditionGroups';
+import type { SortField, SortDirection } from './useInfiniteMarkets';
+
+export interface MarketItemType {
+  itemType: 'group' | 'condition';
+  group?: ConditionGroupType | null;
+  condition?: ConditionType | null;
+}
+
+const GET_MARKET_ITEMS_SORTED = /* GraphQL */ `
+  query MarketItemsSorted(
+    $take: Int!
+    $skip: Int!
+    $chainId: Int
+    $sortField: String!
+    $sortDirection: String!
+    $search: String
+    $categorySlugs: [String!]
+    $excludeSettled: Boolean
+    $minEndTime: Int
+  ) {
+    marketItemsSorted(
+      take: $take
+      skip: $skip
+      chainId: $chainId
+      sortField: $sortField
+      sortDirection: $sortDirection
+      search: $search
+      categorySlugs: $categorySlugs
+      excludeSettled: $excludeSettled
+      minEndTime: $minEndTime
+    ) {
+      itemType
+      group {
+        id
+        createdAt
+        name
+        category {
+          id
+          name
+          slug
+        }
+        conditions {
+          id
+          createdAt
+          question
+          shortName
+          endTime
+          public
+          claimStatement
+          description
+          similarMarkets
+          chainId
+          resolver
+          settled
+          resolvedToYes
+          assertionId
+          assertionTimestamp
+          openInterest
+          conditionGroupId
+          category {
+            id
+            name
+            slug
+          }
+          displayOrder
+        }
+      }
+      condition {
+        id
+        createdAt
+        question
+        shortName
+        endTime
+        public
+        claimStatement
+        description
+        similarMarkets
+        chainId
+        resolver
+        settled
+        resolvedToYes
+        assertionId
+        assertionTimestamp
+        openInterest
+        conditionGroupId
+        category {
+          id
+          name
+          slug
+        }
+      }
+    }
+  }
+`;
+
+export interface UseInfiniteMarketItemsOptions {
+  chainId?: number;
+  search?: string;
+  categorySlugs?: string[];
+  pageSize?: number;
+  sortField?: SortField;
+  sortDirection?: SortDirection;
+  /** Exclude settled/resolved markets from results */
+  excludeSettled?: boolean;
+  /** Only include markets with endTime >= this value (unix timestamp) */
+  minEndTime?: number;
+}
+
+export interface UseInfiniteMarketItemsResult {
+  data: MarketItemType[];
+  isLoading: boolean;
+  isFetchingMore: boolean;
+  hasMore: boolean;
+  fetchMore: () => void;
+}
+
+export function useInfiniteMarketItems(
+  opts: UseInfiniteMarketItemsOptions
+): UseInfiniteMarketItemsResult {
+  const {
+    chainId,
+    search,
+    categorySlugs,
+    pageSize = 20,
+    sortField = 'openInterest',
+    sortDirection = 'desc',
+    excludeSettled,
+    minEndTime,
+  } = opts;
+
+  const [skip, setSkip] = useState(0);
+  const [allLoadedData, setAllLoadedData] = useState<MarketItemType[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+
+  // Track processed fetches to avoid duplicate accumulation
+  const processedSkipRef = useRef<number>(-1);
+
+  // Track if a fetch is pending (prevents multiple fetchMore calls)
+  const isFetchPendingRef = useRef(false);
+
+  // Refs for stable fetchMore callback - avoids stale closures
+  const hasMoreRef = useRef(hasMore);
+  const isFetchingRef = useRef(false);
+
+  // Stable reference for filter comparison (includes sort to reset pagination when sort changes)
+  const filtersKey = JSON.stringify({
+    chainId,
+    search,
+    categorySlugs,
+    sortField,
+    sortDirection,
+    excludeSettled,
+    minEndTime,
+  });
+  const prevFiltersKeyRef = useRef(filtersKey);
+
+  // Reset when filters change
+  useEffect(() => {
+    if (prevFiltersKeyRef.current !== filtersKey) {
+      prevFiltersKeyRef.current = filtersKey;
+      setSkip(0);
+      setAllLoadedData([]);
+      setHasMore(true);
+      processedSkipRef.current = -1;
+      lastSuccessfulSkipRef.current = 0;
+      isFetchPendingRef.current = false;
+    }
+  }, [filtersKey]);
+
+  // Track the last successfully processed skip value for error recovery
+  const lastSuccessfulSkipRef = useRef<number>(0);
+
+  // Fetch current page (+ 1 extra to detect if more exist)
+  // Use isFetching (not isLoading) - isLoading is only true on first load,
+  // isFetching is true whenever data is being fetched
+  const { data: rawData, isFetching, isError } = useQuery<MarketItemType[], Error>({
+    queryKey: [
+      'infiniteMarketItems',
+      pageSize,
+      skip,
+      chainId,
+      search,
+      categorySlugs,
+      sortField,
+      sortDirection,
+      excludeSettled,
+      minEndTime,
+    ],
+    queryFn: async (): Promise<MarketItemType[]> => {
+      type MarketItemsQueryResult = {
+        marketItemsSorted: MarketItemType[];
+      };
+      const variables = {
+        take: pageSize + 1,
+        skip,
+        chainId: chainId ?? null,
+        sortField,
+        sortDirection,
+        search: search?.trim() || null,
+        categorySlugs: categorySlugs?.length ? categorySlugs : null,
+        excludeSettled: excludeSettled ?? null,
+        minEndTime: minEndTime ?? null,
+      };
+
+      console.log(`[useInfiniteMarketItems] Fetching: take=${pageSize + 1}, skip=${skip}`);
+
+      const data = await graphqlRequest<MarketItemsQueryResult>(
+        GET_MARKET_ITEMS_SORTED,
+        variables
+      );
+
+      console.log(`[useInfiniteMarketItems] Received ${data.marketItemsSorted?.length ?? 0} items for skip=${skip}`);
+
+      return data.marketItemsSorted ?? [];
+    },
+  });
+
+  // Accumulate data when new page arrives
+  useEffect(() => {
+    if (rawData && processedSkipRef.current !== skip) {
+      processedSkipRef.current = skip;
+      lastSuccessfulSkipRef.current = skip; // Track successful fetch
+
+      const hasMoreItems = rawData.length > pageSize;
+      setHasMore(hasMoreItems);
+
+      const items = hasMoreItems ? rawData.slice(0, pageSize) : rawData;
+
+      if (skip === 0) {
+        console.log(
+          `[useInfiniteMarketItems] Setting initial data (skip=0): ${items.length} items`,
+          items.slice(0, 5).map((item, i) => ({
+            i,
+            type: item.itemType,
+            id: item.itemType === 'group' ? item.group?.id : item.condition?.id,
+          }))
+        );
+        setAllLoadedData(items);
+      } else {
+        console.log(
+          `[useInfiniteMarketItems] Appending data (skip=${skip}): ${items.length} new items`,
+          items.slice(0, 5).map((item, i) => ({
+            i,
+            type: item.itemType,
+            id: item.itemType === 'group' ? item.group?.id : item.condition?.id,
+          }))
+        );
+        setAllLoadedData((prev) => {
+          // Create a set of existing IDs to deduplicate
+          // This prevents duplicate keys if items shift between page fetches
+          const existingIds = new Set(
+            prev.map((item) =>
+              item.itemType === 'group'
+                ? `group-${item.group?.id}`
+                : `condition-${item.condition?.id}`
+            )
+          );
+
+          // Filter out any items that already exist in previous pages
+          const newItems = items.filter((item) => {
+            const id =
+              item.itemType === 'group'
+                ? `group-${item.group?.id}`
+                : `condition-${item.condition?.id}`;
+            return !existingIds.has(id);
+          });
+
+          if (newItems.length < items.length) {
+            console.log(
+              `[useInfiniteMarketItems] Deduplicated ${items.length - newItems.length} items`
+            );
+          }
+
+          return [...prev, ...newItems];
+        });
+      }
+    }
+  }, [rawData, skip, pageSize]);
+
+  // Reset skip on error to allow retry from last successful position
+  useEffect(() => {
+    if (isError && skip !== lastSuccessfulSkipRef.current) {
+      // Reset to last successful skip so user can retry
+      setSkip(lastSuccessfulSkipRef.current);
+      isFetchPendingRef.current = false;
+    }
+  }, [isError, skip]);
+
+  // Keep refs in sync with state for stable fetchMore callback
+  useEffect(() => {
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+
+  useEffect(() => {
+    isFetchingRef.current = isFetching;
+    // Reset pending flag when loading completes (success OR failure)
+    // This prevents the lock from persisting if the query fails or returns cached data
+    if (!isFetching) {
+      isFetchPendingRef.current = false;
+    }
+  }, [isFetching]);
+
+  // Stable fetchMore callback - uses refs to avoid stale closures
+  const fetchMore = useCallback(() => {
+    // Block if: already fetching, no more data, or initial load in progress
+    if (
+      !isFetchPendingRef.current &&
+      hasMoreRef.current &&
+      !isFetchingRef.current
+    ) {
+      isFetchPendingRef.current = true;
+      setSkip((prev) => prev + pageSize);
+    }
+  }, [pageSize]);
+
+  return {
+    data: allLoadedData,
+    isLoading: isFetching && skip === 0,
+    isFetchingMore: isFetching && skip > 0,
+    hasMore,
+    fetchMore,
+  };
+}

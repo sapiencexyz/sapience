@@ -1588,6 +1588,13 @@ export type LimitOrderWhereInput = {
   status?: InputMaybe<EnumLimitOrderStatusFilter>;
 };
 
+export type MarketItem = {
+  __typename?: 'MarketItem';
+  condition?: Maybe<Condition>;
+  group?: Maybe<ConditionGroup>;
+  itemType: Scalars['String']['output'];
+};
+
 export type NestedBoolFilter = {
   equals?: InputMaybe<Scalars['Boolean']['input']>;
   not?: InputMaybe<NestedBoolFilter>;
@@ -2100,12 +2107,14 @@ export type Query = {
   groupByCondition: Array<ConditionGroupBy>;
   groupByConditionGroup: Array<ConditionGroupGroupBy>;
   groupByUser: Array<UserGroupBy>;
+  marketItemsSorted: Array<MarketItem>;
   positions: Array<PositionType>;
   positionsByConditionId: Array<PositionType>;
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
   protocolStats: Array<ProtocolStat>;
   topForecasters: Array<ForecasterScoreType>;
+  tradingVolumeByAddress: Scalars['String']['output'];
   user?: Maybe<User>;
   users: Array<User>;
 };
@@ -2407,6 +2416,19 @@ export type QueryGroupByUserArgs = {
 };
 
 
+export type QueryMarketItemsSortedArgs = {
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  excludeSettled?: InputMaybe<Scalars['Boolean']['input']>;
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  skip: Scalars['Int']['input'];
+  sortDirection: Scalars['String']['input'];
+  sortField: Scalars['String']['input'];
+  take: Scalars['Int']['input'];
+};
+
+
 export type QueryPositionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
@@ -2444,6 +2466,11 @@ export type QueryProfitRankByAddressArgs = {
 
 export type QueryTopForecastersArgs = {
   limit?: Scalars['Int']['input'];
+};
+
+
+export type QueryTradingVolumeByAddressArgs = {
+  address: Scalars['String']['input'];
 };
 
 
@@ -2569,7 +2596,6 @@ export type User = {
   referrals: Array<User>;
   referredBy?: Maybe<User>;
   referredById?: Maybe<Scalars['Int']['output']>;
-  tradingVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 
