@@ -2569,6 +2569,7 @@ export type User = {
   referrals: Array<User>;
   referredBy?: Maybe<User>;
   referredById?: Maybe<Scalars['Int']['output']>;
+  tradingVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 

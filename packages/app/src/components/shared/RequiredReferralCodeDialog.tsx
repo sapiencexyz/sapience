@@ -125,6 +125,7 @@ const RequiredReferralCodeDialog = ({
 
       if (!resp.ok) {
         const message = data?.message || 'Failed to claim referral code';
+        console.error('Failed to claim referral code', data);
         toast({
           title: 'Unable to claim referral code',
           description: message,
