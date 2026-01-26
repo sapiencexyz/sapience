@@ -59,8 +59,22 @@ export class QuestionsResolver {
   ): Promise<MarketItem[]> {
     const prisma = getPrismaFromContext(ctx);
 
+    // Validate and sanitize sort field - only allow known fields
+    const validSortFields = ['openInterest', 'endTime'] as const;
+    const sanitizedSortField = validSortFields.includes(
+      sortField as (typeof validSortFields)[number]
+    )
+      ? sortField
+      : 'endTime';
+
     // Validate and sanitize sort direction - only allow 'ASC' or 'DESC'
     const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
+
+    // Bounds checking for defense-in-depth
+    const boundedTake = Math.max(1, Math.min(take, 100));
+    const boundedSkip = Math.max(0, Math.min(skip, 10000));
+    const boundedSearch = search?.slice(0, 200) ?? null;
+    const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
     // Step 1: UNION query to get both groups and ungrouped conditions sorted together
     // For groups: aggregate openInterest (SUM) or min endTime
@@ -82,7 +96,7 @@ export class QuestionsResolver {
           cg.id as group_id,
           NULL::text as condition_id,
           ${
-            sortField === 'openInterest'
+            sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`
               : Prisma.sql`COALESCE(MIN(c."endTime"), 2147483647)::text`
           } as sort_value
@@ -93,10 +107,10 @@ export class QuestionsResolver {
           ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
           ${minEndTime !== null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
         WHERE 1=1
-          ${search ? Prisma.sql`AND cg.name ILIKE ${'%' + search + '%'}` : Prisma.empty}
+          ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
           ${
-            categorySlugs?.length
-              ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${categorySlugs}::text[]))`
+            boundedCategorySlugs?.length
+              ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
               : Prisma.empty
           }
         GROUP BY cg.id
@@ -110,7 +124,7 @@ export class QuestionsResolver {
           NULL::integer as group_id,
           c.id as condition_id,
           ${
-            sortField === 'openInterest'
+            sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
               : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value
@@ -121,8 +135,8 @@ export class QuestionsResolver {
           ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
           ${minEndTime !== null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
-            search
-              ? Prisma.sql`AND (c.question ILIKE ${'%' + search + '%'} OR c."shortName" ILIKE ${'%' + search + '%'})`
+            boundedSearch
+              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
               : Prisma.empty
           }
           ${
@@ -137,8 +151,8 @@ export class QuestionsResolver {
                item_type ASC,
                COALESCE(group_id, 0) ASC,
                COALESCE(condition_id, '') ASC
-      LIMIT ${take}
-      OFFSET ${skip}
+      LIMIT ${boundedTake}
+      OFFSET ${boundedSkip}
     `;
 
     if (sortedItems.length === 0) return [];
