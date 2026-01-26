@@ -1,68 +1,68 @@
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useQuery } from '@tanstack/react-query';
 
-interface AnalyticsSummary {
-  totalVolume: string;
+interface ProtocolStat {
+  timestamp: string;
+  cumulativeVolume: string;
   openInterest: string;
-  tvl: string;
+  vaultBalance: string;
+  escrowBalance: string;
 }
 
-interface AnalyticsTimeSeriesPoint {
-  date: string;
-  dailyVolume: string;
-  openInterest: string;
-  tvl: string;
+interface DailyVolume {
+  timestamp: string;
+  volume: string;
 }
 
-const GET_ANALYTICS_SUMMARY = /* GraphQL */ `
-  query AnalyticsSummary {
-    analyticsSummary {
-      totalVolume
+const GET_PROTOCOL_STATS = /* GraphQL */ `
+  query ProtocolStats {
+    protocolStats {
+      timestamp
+      cumulativeVolume
       openInterest
-      tvl
+      vaultBalance
+      escrowBalance
     }
   }
 `;
 
-const GET_ANALYTICS_TIME_SERIES = /* GraphQL */ `
-  query AnalyticsTimeSeries {
-    analyticsTimeSeries {
-      date
-      dailyVolume
-      openInterest
-      tvl
+const GET_DAILY_VOLUMES = /* GraphQL */ `
+  query DailyVolumes {
+    dailyVolumes {
+      timestamp
+      volume
     }
   }
 `;
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useAnalyticsSummary() {
-  return useQuery<AnalyticsSummary | null>({
-    queryKey: ['analyticsSummary'],
+export function useProtocolStats() {
+  return useQuery<ProtocolStat[]>({
+    queryKey: ['protocolStats'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        analyticsSummary: AnalyticsSummary;
-      }>(GET_ANALYTICS_SUMMARY);
-      return data?.analyticsSummary ?? null;
+        protocolStats: ProtocolStat[];
+      }>(GET_PROTOCOL_STATS);
+      return data?.protocolStats ?? [];
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export function useAnalyticsTimeSeries() {
-  return useQuery<AnalyticsTimeSeriesPoint[]>({
-    queryKey: ['analyticsTimeSeries'],
+export function useDailyVolumes() {
+  return useQuery<DailyVolume[]>({
+    queryKey: ['dailyVolumes'],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        analyticsTimeSeries: AnalyticsTimeSeriesPoint[];
-      }>(GET_ANALYTICS_TIME_SERIES);
-      return data?.analyticsTimeSeries ?? [];
+        dailyVolumes: DailyVolume[];
+      }>(GET_DAILY_VOLUMES);
+      return data?.dailyVolumes ?? [];
     },
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });
 }
 
-export type { AnalyticsSummary, AnalyticsTimeSeriesPoint };
+export type { ProtocolStat, DailyVolume };
