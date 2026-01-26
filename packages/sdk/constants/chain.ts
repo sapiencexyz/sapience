@@ -15,11 +15,7 @@ export const COLLATERAL_SYMBOLS: Record<number, string> = {
 /**
  * Ethereal chain definition for viem/wagmi.
  * Single source of truth - import from @sapience/sdk/constants.
- *
- * Note: The `fees.defaultPriorityFee` is set to 1n to avoid wallet estimation
- * issues. Ethereal returns maxPriorityFeePerGas: 0 which some wallets (e.g. Rabby)
- * interpret as "estimation failed" rather than "no tips required", causing
- * inaccurate fee warnings and inflated gas estimates.
+ * fees.defaultPriorityFee is set to 1n to avoid wallet estimation issues.
  */
 export const etherealChain = defineChain({
   id: CHAIN_ID_ETHEREAL,
@@ -39,8 +35,6 @@ export const etherealChain = defineChain({
     },
   },
   fees: {
-    // Non-zero priority fee to prevent wallet "inaccurate fee" warnings
-    // Ethereal chain returns 0 for maxPriorityFeePerGas which confuses some wallets
     defaultPriorityFee: 1n,
   },
 });
