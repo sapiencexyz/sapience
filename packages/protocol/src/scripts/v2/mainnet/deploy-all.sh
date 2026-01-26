@@ -536,6 +536,11 @@ verify_pm() {
 
     check_env PM_NETWORK_RPC_URL || exit 1
 
+    # Verify Bridge if deployed
+    if [[ -n "${PM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
+        verify_contract "$PM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PositionTokenBridge.sol:PositionTokenBridge" "$PM_NETWORK_RPC_URL" "PositionTokenBridge"
+    fi
+
     # Verify Resolver if deployed
     if [[ -n "${RESOLVER_ADDRESS:-}" ]]; then
         verify_contract "$RESOLVER_ADDRESS" "src/v2/resolvers/ManualConditionResolver.sol:ManualConditionResolver" "$PM_NETWORK_RPC_URL" "ManualConditionResolver"
@@ -544,11 +549,6 @@ verify_pm() {
     # Verify PredictionMarketV2 if deployed
     if [[ -n "${PREDICTION_MARKET_ADDRESS:-}" ]]; then
         verify_contract "$PREDICTION_MARKET_ADDRESS" "src/v2/PredictionMarketV2.sol:PredictionMarketV2" "$PM_NETWORK_RPC_URL" "PredictionMarketV2"
-    fi
-
-    # Verify Bridge if deployed
-    if [[ -n "${PM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
-        verify_contract "$PM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PositionTokenBridge.sol:PositionTokenBridge" "$PM_NETWORK_RPC_URL" "PositionTokenBridge"
     fi
 
     # Verify Collateral if it was deployed via script (test token)
