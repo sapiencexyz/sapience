@@ -223,7 +223,8 @@ function AnalyticsPageContent(): React.ReactElement {
               {!isLoading && summary && (
                 <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
                   <div>
-                    Vault: {formatNumber(summary.vaultBalance)} {collateralSymbol}
+                    Vault: {formatNumber(summary.vaultBalance)}{' '}
+                    {collateralSymbol}
                   </div>
                   <div>
                     Markets: {formatNumber(summary.escrowBalance)}{' '}
@@ -293,7 +294,10 @@ function AnalyticsPageContent(): React.ReactElement {
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={volumeChartData} margin={CHART_MARGIN}>
+                      <ComposedChart
+                        data={volumeChartData}
+                        margin={CHART_MARGIN}
+                      >
                         <CartesianGrid
                           strokeDasharray="3 3"
                           stroke="hsl(var(--brand-white) / 0.1)"
