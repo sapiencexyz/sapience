@@ -40,7 +40,7 @@ export class MarketItem {
  * 4. Fetch full records via Prisma ORM for type safety
  */
 @Resolver()
-export class MarketItemsResolver {
+export class QuestionsResolver {
   @Query(() => [MarketItem], { nullable: false })
   async marketItemsSorted(
     @Ctx() ctx: ApolloContext,

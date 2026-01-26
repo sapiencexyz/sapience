@@ -207,14 +207,10 @@ export function useInfiniteMarketItems(
         minEndTime: minEndTime ?? null,
       };
 
-      console.log(`[useInfiniteMarketItems] Fetching: take=${pageSize + 1}, skip=${skip}`);
-
       const data = await graphqlRequest<MarketItemsQueryResult>(
         GET_MARKET_ITEMS_SORTED,
         variables
       );
-
-      console.log(`[useInfiniteMarketItems] Received ${data.marketItemsSorted?.length ?? 0} items for skip=${skip}`);
 
       return data.marketItemsSorted ?? [];
     },
@@ -232,24 +228,8 @@ export function useInfiniteMarketItems(
       const items = hasMoreItems ? rawData.slice(0, pageSize) : rawData;
 
       if (skip === 0) {
-        console.log(
-          `[useInfiniteMarketItems] Setting initial data (skip=0): ${items.length} items`,
-          items.slice(0, 5).map((item, i) => ({
-            i,
-            type: item.itemType,
-            id: item.itemType === 'group' ? item.group?.id : item.condition?.id,
-          }))
-        );
         setAllLoadedData(items);
       } else {
-        console.log(
-          `[useInfiniteMarketItems] Appending data (skip=${skip}): ${items.length} new items`,
-          items.slice(0, 5).map((item, i) => ({
-            i,
-            type: item.itemType,
-            id: item.itemType === 'group' ? item.group?.id : item.condition?.id,
-          }))
-        );
         setAllLoadedData((prev) => {
           // Create a set of existing IDs to deduplicate
           // This prevents duplicate keys if items shift between page fetches
@@ -269,12 +249,6 @@ export function useInfiniteMarketItems(
                 : `condition-${item.condition?.id}`;
             return !existingIds.has(id);
           });
-
-          if (newItems.length < items.length) {
-            console.log(
-              `[useInfiniteMarketItems] Deduplicated ${items.length - newItems.length} items`
-            );
-          }
 
           return [...prev, ...newItems];
         });

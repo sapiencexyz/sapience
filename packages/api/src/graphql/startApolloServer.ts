@@ -66,7 +66,7 @@ import {
   AnalyticsResolver,
   ConditionResolver,
   VolumeResolver,
-  MarketItemsResolver,
+  QuestionsResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -132,7 +132,7 @@ export const initializeApolloServer = async () => {
       AnalyticsResolver,
       ConditionResolver,
       VolumeResolver,
-      MarketItemsResolver,
+      QuestionsResolver,
     ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

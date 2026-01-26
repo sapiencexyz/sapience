@@ -865,15 +865,6 @@ export default function MarketsDataTable({
   // Build the top-level row model from unified market items
   // Backend handles sorting and interleaving - just map to our row format
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    console.log(
-      '[MarketsDataTable] marketItems order:',
-      marketItems.slice(0, 10).map((item, i) => ({
-        i,
-        type: item.itemType,
-        id: item.itemType === 'group' ? item.group?.id : item.condition?.id,
-        name: item.itemType === 'group' ? item.group?.name : item.condition?.shortName,
-      }))
-    );
     return marketItems
       .map((item): TopLevelRow | null => {
         if (item.itemType === 'group' && item.group) {

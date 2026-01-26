@@ -4,4 +4,4 @@ export { PositionResolver } from './PositionResolver';
 export { AnalyticsResolver } from './AnalyticsResolver';
 export { ConditionResolver } from './ConditionResolver';
 export { VolumeResolver } from './VolumeResolver';
-export { MarketItemsResolver } from './MarketItemsResolver';
+export { QuestionsResolver } from './QuestionsResolver';
