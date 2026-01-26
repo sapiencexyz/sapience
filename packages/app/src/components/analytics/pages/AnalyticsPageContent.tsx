@@ -38,7 +38,10 @@ function formatNumber(value: string | number, decimals = 2): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return '0';
   const humanReadable = num / 1e18;
-  return formatLargeNumber(humanReadable, decimals, true);
+  return humanReadable.toLocaleString(undefined, {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }
 
 function formatChartValue(value: number): string {
@@ -220,18 +223,6 @@ function AnalyticsPageContent(): React.ReactElement {
                   </span>
                 )}
               </div>
-              {!isLoading && summary && (
-                <div className="text-xs text-muted-foreground mt-2 space-y-0.5">
-                  <div>
-                    Vault: {formatNumber(summary.vaultBalance)}{' '}
-                    {collateralSymbol}
-                  </div>
-                  <div>
-                    Markets: {formatNumber(summary.escrowBalance)}{' '}
-                    {collateralSymbol}
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 
