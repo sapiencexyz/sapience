@@ -1071,7 +1071,7 @@ export default function PositionsTable({
           const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
 
           return (
-            <div>
+            <div className="relative">
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Profit/Loss
               </div>
@@ -1090,7 +1090,7 @@ export default function PositionsTable({
               </div>
               {viewerWager > 0 && (
                 <div
-                  className={`text-xs tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  className={`absolute text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
                   {roi >= 0 ? '+' : ''}
                   {Math.round(roi).toLocaleString()}%
@@ -1440,21 +1440,92 @@ export default function PositionsTable({
                         key={row.id}
                         className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
                       >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                              cell.column.id !== 'conditions'
-                                ? 'whitespace-nowrap'
-                                : ''
-                            }`}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
+                        {(() => {
+                          const cells = row.getVisibleCells();
+                          const pairedIds = new Set([
+                            'wager',
+                            'toWin',
+                            'pnl',
+                            'status',
+                          ]);
+                          const result: React.ReactNode[] = [];
+                          let i = 0;
+                          while (i < cells.length) {
+                            const cell = cells[i];
+                            // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
+                            if (
+                              pairedIds.has(cell.column.id) &&
+                              i + 1 < cells.length &&
+                              pairedIds.has(cells[i + 1].column.id)
+                            ) {
+                              const next = cells[i + 1];
+                              result.push(
+                                <TableCell
+                                  key={cell.id}
+                                  colSpan={2}
+                                  className="block xl:hidden px-0 py-0"
+                                >
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="text-brand-white whitespace-nowrap">
+                                      {flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                      )}
+                                    </div>
+                                    <div className="text-brand-white whitespace-nowrap">
+                                      {flexRender(
+                                        next.column.columnDef.cell,
+                                        next.getContext()
+                                      )}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              );
+                              // Also render individually for desktop
+                              result.push(
+                                <TableCell
+                                  key={`${cell.id}-xl`}
+                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )}
+                                </TableCell>
+                              );
+                              result.push(
+                                <TableCell
+                                  key={`${next.id}-xl`}
+                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                                >
+                                  {flexRender(
+                                    next.column.columnDef.cell,
+                                    next.getContext()
+                                  )}
+                                </TableCell>
+                              );
+                              i += 2;
+                            } else {
+                              result.push(
+                                <TableCell
+                                  key={cell.id}
+                                  className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                    cell.column.id !== 'conditions'
+                                      ? 'whitespace-nowrap'
+                                      : ''
+                                  }`}
+                                >
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )}
+                                </TableCell>
+                              );
+                              i++;
+                            }
+                          }
+                          return result;
+                        })()}
                       </TableRow>
                     ))}
                   </TableBody>

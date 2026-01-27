@@ -1,23 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import * as React from 'react';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import {
-  Calendar,
-  TrendingUp,
-  Telescope,
-  BarChart2,
-  Target,
-} from 'lucide-react';
-
-import { Badge } from '@sapience/ui/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 
 import type { Position } from '~/hooks/graphql/useUserPositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -25,124 +9,6 @@ import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-
-type MetricBadgeProps = {
-  icon?: React.ReactNode;
-  imageSrc?: string;
-  label: string;
-  value: React.ReactNode;
-  sublabel?: string;
-  tooltip?: string;
-  size?: 'normal' | 'large';
-  muted?: boolean;
-  highlighted?: boolean;
-};
-
-function MetricBadge({
-  icon,
-  imageSrc,
-  label,
-  value,
-  sublabel,
-  tooltip,
-  size = 'normal',
-  muted = false,
-  highlighted = false,
-}: MetricBadgeProps) {
-  const baseBadgeClasses = 'h-8 items-center px-3 text-xs leading-none';
-  const desktopBase =
-    size === 'large'
-      ? 'h-9 items-center px-3.5 text-sm leading-none'
-      : baseBadgeClasses;
-  const outlineExtras = highlighted
-    ? 'bg-background text-foreground border-foreground/30'
-    : 'bg-card border-border';
-
-  const variant = muted ? 'secondary' : 'outline';
-  const smallClass = `${baseBadgeClasses} ${muted ? '' : outlineExtras}`.trim();
-  const largeClass =
-    `${desktopBase} inline-flex ${muted ? '' : outlineExtras}`.trim();
-
-  const textColor = highlighted ? 'text-foreground' : 'text-brand-white';
-  const sublabelColor = highlighted
-    ? 'text-foreground/70'
-    : 'text-muted-foreground';
-  const dividerColor = highlighted
-    ? 'bg-foreground/30'
-    : 'bg-muted-foreground/30';
-
-  const left = (
-    <>
-      {imageSrc ? (
-        <Image
-          src={imageSrc}
-          alt={label}
-          width={16}
-          height={16}
-          className="mr-2 opacity-80"
-        />
-      ) : icon ? (
-        <span
-          className={`mr-2 -mt-0.5 ${size === 'large' ? 'h-4 w-4' : 'h-3.5 w-3.5'}`}
-        >
-          {icon}
-        </span>
-      ) : null}
-      <span className={`font-medium ${textColor}`}>{label}</span>
-    </>
-  );
-
-  const content = (
-    <>
-      {left}
-      <span
-        aria-hidden="true"
-        className={`hidden md:inline-block mx-2.5 h-4 w-px ${dividerColor}`}
-      />
-      <span className={`tabular-nums ${textColor}`}>{value}</span>
-      {sublabel ? (
-        <span className={`ml-1 ${sublabelColor} font-normal`}>{sublabel}</span>
-      ) : null}
-    </>
-  );
-
-  return (
-    <>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="inline-flex cursor-default md:hidden">
-              <Badge variant={variant as any} className={smallClass}>
-                {left}
-                <span
-                  aria-hidden="true"
-                  className={`mx-2 h-3.5 w-px ${dividerColor} inline-block`}
-                />
-                <span className={`tabular-nums ${textColor}`}>{value}</span>
-                {sublabel ? (
-                  <span className={`ml-1 ${sublabelColor} font-normal`}>
-                    {sublabel}
-                  </span>
-                ) : null}
-              </Badge>
-            </span>
-          </TooltipTrigger>
-          {tooltip ? (
-            <TooltipContent>
-              <p>{tooltip}</p>
-            </TooltipContent>
-          ) : null}
-        </Tooltip>
-      </TooltipProvider>
-
-      <span className="hidden md:inline-flex cursor-default">
-        <Badge variant={variant as any} className={largeClass}>
-          {content}
-        </Badge>
-      </span>
-    </>
-  );
-}
 
 function useProfileBalance(
   address?: string,
@@ -197,7 +63,7 @@ function useFirstActivity(positions: Position[] | undefined) {
 
     const monthYear = new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
     }).format(earliest);
     const full = new Intl.DateTimeFormat(undefined, {
       year: 'numeric',
@@ -235,13 +101,6 @@ export default function ProfileQuickMetrics({
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);
   const first = useFirstActivity(positions);
-  const forecastsIsFinite = Number.isFinite(forecastsCount);
-  const forecastsUnit = forecastsIsFinite
-    ? forecastsCount === 1
-      ? 'forecast'
-      : 'forecasts'
-    : undefined;
-
   // Fetch profit and accuracy data
   const { data: profit, isLoading: profitLoading } = useUserProfitRank(address);
   const { data: accuracy, isLoading: accuracyLoading } =
@@ -249,92 +108,115 @@ export default function ProfileQuickMetrics({
 
   const pnlNumber = Number(profit?.totalPnL || 0);
 
-  const pnlRank = profitLoading
-    ? undefined
-    : profit?.rank
-      ? `${collateralSymbol} (Rank #${profit.rank})`
-      : undefined;
-
   const accValue = accuracyLoading
     ? '—'
     : Number.isFinite(accuracy?.accuracyScore || 0)
       ? Math.round(accuracy?.accuracyScore || 0).toLocaleString('en-US')
       : '—';
 
-  const accRank = accuracyLoading
-    ? undefined
-    : accuracy?.rank
-      ? `(Rank #${accuracy.rank})`
-      : undefined;
-
   // Show P&L and Accuracy if they have rankings
   const showPnl = !profitLoading && profit?.rank;
   const showAccuracy = !accuracyLoading && accuracy?.rank;
 
+  const metrics: {
+    label: string;
+    value: React.ReactNode;
+    sublabel?: string;
+  }[] = [];
+
+  if (showPnl) {
+    metrics.push(
+      {
+        label: 'Realized PnL',
+        value: profitLoading ? '—' : <NumberDisplay value={pnlNumber} />,
+        sublabel: collateralSymbol,
+      },
+      {
+        label: 'Profit Rank',
+        value: profitLoading ? '—' : `#${profit?.rank}`,
+      }
+    );
+  }
+  if (showAccuracy) {
+    metrics.push(
+      {
+        label: 'Accuracy',
+        value: accValue,
+      },
+      {
+        label: 'Forecast Rank',
+        value: accuracyLoading ? '—' : `#${accuracy?.rank}`,
+      }
+    );
+  }
+  metrics.push(
+    {
+      label: 'Balance',
+      value: balance.display,
+      sublabel: collateralSymbol,
+    },
+    {
+      label: 'Volume',
+      value: volume.display,
+      sublabel: collateralSymbol,
+    },
+    ...(forecastsCount > 0
+      ? [{ label: 'Forecasts', value: forecastsCount }]
+      : []),
+    {
+      label: 'Started',
+      value: first.display,
+    }
+  );
+
   return (
-    <ul className={`flex flex-wrap items-center gap-4 ${className ?? ''}`}>
-      {showPnl && (
-        <li>
-          <MetricBadge
-            icon={<BarChart2 className="h-4 w-4 opacity-70" />}
-            label="Realized PnL"
-            value={profitLoading ? '—' : <NumberDisplay value={pnlNumber} />}
-            sublabel={pnlRank}
-            size="normal"
-            highlighted
-          />
-        </li>
-      )}
-      {showAccuracy && (
-        <li>
-          <MetricBadge
-            icon={<Target className="h-4 w-4 opacity-70" />}
-            label="Accuracy Score"
-            value={accValue}
-            sublabel={accRank}
-            size="normal"
-            highlighted
-          />
-        </li>
-      )}
-      <li>
-        <MetricBadge
-          imageSrc="/usde.svg"
-          label="Available Balance"
-          value={balance.display}
-          sublabel={collateralSymbol}
-          tooltip={balance.tooltip}
-          size="normal"
-        />
-      </li>
-      <li>
-        <MetricBadge
-          icon={<TrendingUp className="h-4 w-4 opacity-70" />}
-          label="Trading Volume"
-          value={volume.display}
-          sublabel={collateralSymbol}
-          size="normal"
-        />
-      </li>
-      <li>
-        <MetricBadge
-          icon={<Telescope className="h-4 w-4 opacity-70" />}
-          label="Forecasts"
-          value={forecastsIsFinite ? forecastsCount : '—'}
-          sublabel={forecastsUnit}
-          size="normal"
-        />
-      </li>
-      <li>
-        <MetricBadge
-          icon={<Calendar className="h-3.5 w-3.5 opacity-70" />}
-          label="Started"
-          value={first.display}
-          tooltip={first.tooltip}
-          muted={first.isNever}
-          size="normal"
-        />
-      </li>
-    </ul>
+    <>
+      {/* Mobile: grid layout */}
+      <div className={`grid grid-cols-3 gap-4 md:hidden ${className ?? ''}`}>
+        {metrics.map((m) => (
+          <div key={m.label} className="flex flex-col gap-0.5">
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+              {m.label}
+            </span>
+            <span className="text-sm font-medium tabular-nums text-foreground">
+              {m.value}
+              {m.sublabel ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  {m.sublabel}
+                </span>
+              ) : null}
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Desktop: flex with separators */}
+      <div
+        className={`hidden md:flex flex-wrap items-center gap-6 ${className ?? ''}`}
+      >
+        {metrics.map((m, i) => (
+          <React.Fragment key={m.label}>
+            {i > 0 && (
+              <span
+                aria-hidden="true"
+                className="h-8 w-px bg-muted-foreground/30"
+              />
+            )}
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                {m.label}
+              </span>
+              <span className="text-base font-medium tabular-nums text-foreground">
+                {m.value}
+                {m.sublabel ? (
+                  <span className="ml-1 text-xs font-normal text-muted-foreground">
+                    {m.sublabel}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+          </React.Fragment>
+        ))}
+      </div>
+    </>
   );
 }

@@ -691,7 +691,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
 
   return (
     <div>
-      <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+      <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
         {leftSlot}
         <div className="flex-1">
           <ForecastsTableFilters
