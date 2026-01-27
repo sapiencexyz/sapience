@@ -144,7 +144,7 @@ const MarketsPage = () => {
     pageSize: 30,
     sortField,
     sortDirection,
-    // Backend filtering for future markets
+    // Backend filtering for markets after this time
     minEndTime,
   });
 
