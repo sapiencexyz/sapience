@@ -6,14 +6,14 @@ import {
 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {
     LZConditionResolverUmaSide
-} from "../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
+} from "../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
 import {
     LZConditionResolver
-} from "../../src/v2/resolvers/lz/LZConditionResolver.sol";
+} from "../../src/v2/resolvers/lz-uma/LZConditionResolver.sol";
 import {
     ILZConditionResolverUmaSide
-} from "../../src/v2/resolvers/lz/interfaces/ILZConditionResolverUmaSide.sol";
-import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+} from "../../src/v2/resolvers/lz-uma/interfaces/ILZConditionResolverUmaSide.sol";
+import { LZTypes } from "../../src/v2/resolvers/lz-uma/LZTypes.sol";
 import { MockOptimisticOracleV3 } from "./mocks/MockOptimisticOracleV3.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";

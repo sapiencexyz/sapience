@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { LZTypes } from "../../lz/LZTypes.sol";
+import { LZTypes } from "../../lz-uma/LZTypes.sol";
 
 /// @title IConditionalTokensReader
 /// @notice Interface for ConditionalTokensReader (Polygon side)
