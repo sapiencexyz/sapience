@@ -140,6 +140,7 @@ export function useUserPositions(params: {
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {

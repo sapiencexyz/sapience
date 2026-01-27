@@ -364,6 +364,8 @@ export class PositionResolver {
 
     if (orderBy === 'created') {
       orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
+    } else if (orderBy === 'endsAt') {
+      orderByClause = { endsAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
     const where: Prisma.PositionWhereInput = {};
