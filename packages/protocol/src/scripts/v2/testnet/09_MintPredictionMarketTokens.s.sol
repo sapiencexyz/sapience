@@ -6,10 +6,10 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 
-/// @title Mint Position Tokens
-/// @notice Mint position tokens via PredictionMarketEscrow for bridge testing
+/// @title Mint Prediction Market Tokens
+/// @notice Mint prediction market tokens via PredictionMarketEscrow for bridge testing
 /// @dev Creates a prediction with separate predictor and counterparty addresses
-contract MintPositionTokens is Script {
+contract MintPredictionMarketTokens is Script {
     // Wager amounts (different for predictor and counterparty)
     uint256 constant PREDICTOR_WAGER = 100 ether; // 100 tokens
     uint256 constant COUNTERPARTY_WAGER = PREDICTOR_WAGER / 3; // ~33.33 tokens
@@ -27,7 +27,9 @@ contract MintPositionTokens is Script {
     function run() external {
         Actors memory actors = _loadActors();
 
-        console.log("=== Mint Position Tokens via PredictionMarketEscrow ===");
+        console.log(
+            "=== Mint Prediction Market Tokens via PredictionMarketEscrow ==="
+        );
         console.log("Deployer (funder):", actors.deployer);
         console.log("Predictor:", actors.predictor);
         console.log("Counterparty:", actors.counterparty);

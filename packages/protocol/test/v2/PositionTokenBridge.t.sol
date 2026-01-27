@@ -25,7 +25,9 @@ import {
 import {
     IPositionTokenBridgeBase
 } from "../../src/v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
-import { MockPositionToken } from "./mocks/MockPositionToken.sol";
+import {
+    MockPredictionMarketToken
+} from "./mocks/MockPredictionMarketToken.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
 
@@ -41,7 +43,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     PositionTokenBridge private etherealBridge;
     PositionTokenBridgeRemote private arbitrumBridge;
     PositionTokenFactory private factory;
-    MockPositionToken private positionToken;
+    MockPredictionMarketToken private positionToken;
 
     // LZ data
     uint32 private etherealEid = 1;
@@ -148,7 +150,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         factory.setDeployer(address(arbitrumBridge));
 
         // Deploy mock position token on Ethereal
-        positionToken = new MockPositionToken(
+        positionToken = new MockPredictionMarketToken(
             "Predictor Token", "PRED", PREDICTION_ID, IS_PREDICTOR_TOKEN, user
         );
     }

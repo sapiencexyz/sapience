@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./PositionToken.sol";
+import "./PredictionMarketToken.sol";
 import "./interfaces/IPredictionMarketEscrow.sol";
 import "./interfaces/IConditionResolver.sol";
-import "./interfaces/IPositionToken.sol";
+import "./interfaces/IPredictionMarketToken.sol";
 import "./interfaces/IV2Types.sol";
 import "./interfaces/IV2Events.sol";
 import "./utils/SignatureValidator.sol";
@@ -116,9 +116,9 @@ contract PredictionMarketEscrow is
 
         // Check that all tokens have been redeemed (total supply is 0)
         uint256 predictorSupply =
-            IPositionToken(tokenPair.predictorToken).totalSupply();
+            IPredictionMarketToken(tokenPair.predictorToken).totalSupply();
         uint256 counterpartySupply =
-            IPositionToken(tokenPair.counterpartyToken).totalSupply();
+            IPredictionMarketToken(tokenPair.counterpartyToken).totalSupply();
 
         if (predictorSupply > 0 || counterpartySupply > 0) {
             revert TokensStillOutstanding(predictorSupply, counterpartySupply);
@@ -281,9 +281,9 @@ contract PredictionMarketEscrow is
         );
 
         // Mint tokens proportional to wager (1:1 ratio)
-        IPositionToken(predictorToken)
+        IPredictionMarketToken(predictorToken)
             .mint(request.predictor, request.predictorWager);
-        IPositionToken(counterpartyToken)
+        IPredictionMarketToken(counterpartyToken)
             .mint(request.counterparty, request.counterpartyWager);
 
         // Update pick configuration totals
@@ -427,11 +427,11 @@ contract PredictionMarketEscrow is
         IV2Types.PickConfiguration storage config
     ) internal {
         // Burn predictor tokens from holder
-        IPositionToken(tokenPair.predictorToken)
+        IPredictionMarketToken(tokenPair.predictorToken)
             .burn(request.predictorHolder, request.predictorTokenAmount);
 
         // Burn counterparty tokens from holder
-        IPositionToken(tokenPair.counterpartyToken)
+        IPredictionMarketToken(tokenPair.counterpartyToken)
             .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
 
         // Update accounting
@@ -557,7 +557,7 @@ contract PredictionMarketEscrow is
 
         if (payout > 0) {
             // Burn the position tokens
-            IPositionToken(positionToken).burn(msg.sender, amount);
+            IPredictionMarketToken(positionToken).burn(msg.sender, amount);
 
             // Transfer collateral to holder
             collateralToken.safeTransfer(msg.sender, payout);
@@ -712,7 +712,7 @@ contract PredictionMarketEscrow is
         // Create predictor token with CREATE2
         bytes32 predictorSalt = keccak256(abi.encode(pickConfigId, true));
         predictorToken = address(
-            new PositionToken{ salt: predictorSalt }(
+            new PredictionMarketToken{ salt: predictorSalt }(
                 _generateTokenName(pickConfigId, true),
                 _generateTokenSymbol(pickConfigId, true),
                 pickConfigId,
@@ -724,7 +724,7 @@ contract PredictionMarketEscrow is
         // Create counterparty token with CREATE2
         bytes32 counterpartySalt = keccak256(abi.encode(pickConfigId, false));
         counterpartyToken = address(
-            new PositionToken{ salt: counterpartySalt }(
+            new PredictionMarketToken{ salt: counterpartySalt }(
                 _generateTokenName(pickConfigId, false),
                 _generateTokenSymbol(pickConfigId, false),
                 pickConfigId,

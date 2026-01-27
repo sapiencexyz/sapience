@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-/// @title MockPositionToken
+/// @title MockPredictionMarketToken
 /// @notice Mock position token for bridge testing
-contract MockPositionToken is ERC20 {
+contract MockPredictionMarketToken is ERC20 {
     uint256 public constant TOTAL_SUPPLY = 1e18;
 
     bytes32 public immutable pickConfigId;

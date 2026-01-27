@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
-import "../../src/v2/interfaces/IPositionToken.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
 contract PredictionMarketEscrowTest is Test {
@@ -200,10 +200,11 @@ contract PredictionMarketEscrowTest is Test {
 
         // Check position tokens were minted (amount = wager in fungible model)
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER
         );
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
             COUNTERPARTY_WAGER
         );
 
@@ -498,7 +499,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Should still have half the tokens
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor),
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
             PREDICTOR_WAGER / 2
         );
     }

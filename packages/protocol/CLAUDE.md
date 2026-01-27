@@ -51,7 +51,7 @@ src/
 │   ├── resolvers/       # Condition resolvers
 │   ├── utils/           # Signature validation, account factory
 │   ├── PredictionMarketEscrow.sol
-│   ├── PositionToken.sol
+│   ├── PredictionMarketToken.sol
 │   └── v2.md            # Detailed specification
 ├── predictionMarket/    # Legacy prediction market
 ├── bridge/              # LayerZero bridge utilities
@@ -105,7 +105,7 @@ Users with the same picks share tokens. Token supply equals total wagers:
 ### Main Contracts
 
 - **PredictionMarketEscrow.sol**: Core contract handling mint, settle, redeem
-- **PositionToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
+- **PredictionMarketToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
 - **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
 
 ### Condition Resolvers

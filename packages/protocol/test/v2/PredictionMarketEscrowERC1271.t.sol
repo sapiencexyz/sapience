@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
-import "../../src/v2/interfaces/IPositionToken.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./mocks/MockERC20.sol";
 
@@ -398,7 +398,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPositionToken(predictorToken)
+            IPredictionMarketToken(predictorToken)
                 .balanceOf(address(predictorSmartAccount)),
             PREDICTOR_WAGER
         );
@@ -434,7 +434,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPositionToken(counterpartyToken)
+            IPredictionMarketToken(counterpartyToken)
                 .balanceOf(address(counterpartySmartAccount)),
             COUNTERPARTY_WAGER
         );
@@ -469,12 +469,12 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check tokens minted to smart accounts
         assertEq(
-            IPositionToken(predictorToken)
+            IPredictionMarketToken(predictorToken)
                 .balanceOf(address(predictorSmartAccount)),
             PREDICTOR_WAGER
         );
         assertEq(
-            IPositionToken(counterpartyToken)
+            IPredictionMarketToken(counterpartyToken)
                 .balanceOf(address(counterpartySmartAccount)),
             COUNTERPARTY_WAGER
         );

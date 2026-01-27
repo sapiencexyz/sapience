@@ -4,12 +4,12 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
- * @title IPositionToken
+ * @title IPredictionMarketToken
  * @notice Interface for V2 position tokens (predictor or counterparty)
  * @dev Fungible tokens shared across predictions with the same picks.
  *      Supply is dynamic (equals total wagers). Holders can transfer and redeem.
  */
-interface IPositionToken is IERC20 {
+interface IPredictionMarketToken is IERC20 {
     /// @notice Get the pick configuration ID this token belongs to
     function pickConfigId() external view returns (bytes32);
 

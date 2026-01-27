@@ -13,8 +13,8 @@ import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../../predictionMarket/utils/SignatureProcessor.sol";
 import "./interfaces/IPassiveLiquidityVaultV2.sol";
 
-/// @dev Minimal interface for querying position token info
-interface IPositionTokenInfo {
+/// @dev Minimal interface for querying prediction market token info
+interface IPredictionMarketTokenInfo {
     function pickConfigId() external view returns (bytes32);
 }
 
@@ -498,7 +498,7 @@ contract PassiveLiquidityVaultV2 is
      *      IMPORTANT: This only withdraws liquid assets. If the vault holds position tokens
      *      from unsettled predictions, those are NOT included in the emergency withdrawal.
      *      Users may need to wait for predictions to settle to recover full value.
-     *      Use getPositionTokenValue() to check for unredeemed position tokens.
+     *      Use getPredictionMarketTokenValue() to check for unredeemed position tokens.
      */
     function emergencyWithdraw(uint256 shares) external nonReentrant {
         if (!emergencyMode) revert EmergencyModeNotActive();
@@ -663,7 +663,7 @@ contract PassiveLiquidityVaultV2 is
      *      IMPORTANT: Emergency withdrawals do NOT include position token value.
      *      Users should monitor this to understand full vault value.
      */
-    function getPositionTokenValue(
+    function getPredictionMarketTokenValue(
         address positionToken,
         address predictionMarket
     ) external view returns (uint256 balance, uint256 claimableValue) {
@@ -674,7 +674,7 @@ contract PassiveLiquidityVaultV2 is
 
         // Try to get the pickConfigId from the token
         // This is a best-effort check - may not work for all token types
-        try IPositionTokenInfo(positionToken).pickConfigId() returns (
+        try IPredictionMarketTokenInfo(positionToken).pickConfigId() returns (
             bytes32 pickConfigId
         ) {
             // Try to get claimable amount from the market
@@ -699,7 +699,7 @@ contract PassiveLiquidityVaultV2 is
      * @notice Get the total value of the vault including liquid assets
      * @return liquidAssets The available liquid assets
      * @return unconfirmedDeposits Assets from pending deposits (not yet confirmed)
-     * @dev Position token values must be queried separately using getPositionTokenValue()
+     * @dev Position token values must be queried separately using getPredictionMarketTokenValue()
      *      as the vault doesn't track which position tokens it holds.
      */
     function getTotalLiquidValue()

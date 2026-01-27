@@ -18,7 +18,9 @@ import {
     ManualConditionResolver
 } from "../../../src/v2/resolvers/ManualConditionResolver.sol";
 import { IV2Types } from "../../../src/v2/interfaces/IV2Types.sol";
-import { IPositionToken } from "../../../src/v2/interfaces/IPositionToken.sol";
+import {
+    IPredictionMarketToken
+} from "../../../src/v2/interfaces/IPredictionMarketToken.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
@@ -223,10 +225,11 @@ contract PassiveLiquidityVaultV2IntegrationTest is Test {
 
         // Verify position tokens minted
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER
         );
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(address(vault)),
+            IPredictionMarketToken(counterpartyToken).balanceOf(address(vault)),
             COUNTERPARTY_WAGER
         );
 

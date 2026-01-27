@@ -2,19 +2,19 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./interfaces/IPositionToken.sol";
+import "./interfaces/IPredictionMarketToken.sol";
 
 /**
- * @title PositionToken
+ * @title PredictionMarketToken
  * @notice ERC20 token representing a position in a prediction (predictor or counterparty)
  * @dev Fungible token shared across predictions with same picks.
  *      Supply is dynamic (equals total wagers). Created by PredictionMarketEscrow.
  */
-contract PositionToken is ERC20, IPositionToken {
-    /// @inheritdoc IPositionToken
+contract PredictionMarketToken is ERC20, IPredictionMarketToken {
+    /// @inheritdoc IPredictionMarketToken
     bytes32 public immutable pickConfigId;
 
-    /// @inheritdoc IPositionToken
+    /// @inheritdoc IPredictionMarketToken
     bool public immutable isPredictorToken;
 
     /// @notice Address authorized to mint/burn tokens (market contract)
@@ -41,7 +41,7 @@ contract PositionToken is ERC20, IPositionToken {
         // No initial mint - tokens are minted dynamically when bets are placed
     }
 
-    /// @inheritdoc IPositionToken
+    /// @inheritdoc IPredictionMarketToken
     function mint(address to, uint256 amount) external {
         if (msg.sender != market) {
             revert Unauthorized();
@@ -49,7 +49,7 @@ contract PositionToken is ERC20, IPositionToken {
         _mint(to, amount);
     }
 
-    /// @inheritdoc IPositionToken
+    /// @inheritdoc IPredictionMarketToken
     function burn(address holder, uint256 amount) external {
         if (msg.sender != market) {
             revert Unauthorized();

@@ -14,7 +14,7 @@ import {
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PositionTokenBridgeBase.sol";
 import "./interfaces/IPositionTokenBridge.sol";
-import "../interfaces/IPositionToken.sol";
+import "../interfaces/IPredictionMarketToken.sol";
 
 /// @title PositionTokenBridge
 /// @notice Bridge for position tokens on Ethereal (source chain)
@@ -46,12 +46,12 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         if (amount == 0) revert ZeroAmount();
 
         // Validate token has required interface (must be a PositionToken)
-        try IPositionToken(token).pickConfigId() returns (bytes32) { }
+        try IPredictionMarketToken(token).pickConfigId() returns (bytes32) { }
         catch {
             revert InvalidToken(token);
         }
 
-        try IPositionToken(token).isPredictorToken() returns (bool) { }
+        try IPredictionMarketToken(token).isPredictorToken() returns (bool) { }
         catch {
             revert InvalidToken(token);
         }
@@ -84,8 +84,8 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
             bytes memory payload = abi.encode(
                 bridgeId,
                 token,
-                IPositionToken(token).pickConfigId(),
-                IPositionToken(token).isPredictorToken(),
+                IPredictionMarketToken(token).pickConfigId(),
+                IPredictionMarketToken(token).isPredictorToken(),
                 IERC20Metadata(token).name(),
                 IERC20Metadata(token).symbol(),
                 recipient,
@@ -198,8 +198,10 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         returns (bytes memory message, uint128 gasLimit)
     {
         // Re-read token metadata
-        bytes32 pickConfigId = IPositionToken(pending.token).pickConfigId();
-        bool isPredictorToken = IPositionToken(pending.token).isPredictorToken();
+        bytes32 pickConfigId =
+            IPredictionMarketToken(pending.token).pickConfigId();
+        bool isPredictorToken =
+            IPredictionMarketToken(pending.token).isPredictorToken();
         string memory name = IERC20Metadata(pending.token).name();
         string memory symbol = IERC20Metadata(pending.token).symbol();
 

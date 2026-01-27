@@ -192,7 +192,7 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 07b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
 | 08a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status |
 | 08b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status |
-| 09 | MintPositionTokens | Ethereal | Mint position tokens for testing |
+| 09 | MintPredictionMarketTokens | Ethereal | Mint prediction market tokens for testing |
 | 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
 | 10b | ResolvePrediction | Ethereal | Resolve condition and settle prediction |
 | 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
@@ -225,7 +225,7 @@ BRIDGE_AMOUNT=10000000000000000000
 Mint position tokens using two EOAs (predictor and counterparty):
 
 ```bash
-forge script src/scripts/v2/mainnet/09_MintPositionTokens.s.sol \
+forge script src/scripts/v2/mainnet/09_MintPredictionMarketTokens.s.sol \
   --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
   -vvvv

@@ -7,7 +7,7 @@ import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IV2Events.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import "../../src/v2/interfaces/IPositionToken.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
 contract PredictionMarketEscrowBurnTest is Test {
@@ -288,10 +288,12 @@ contract PredictionMarketEscrowBurnTest is Test {
         market.burn(req);
 
         // Verify tokens burned
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), 0);
-        assertEq(IPositionToken(counterpartyToken).balanceOf(counterparty), 0);
-        assertEq(IPositionToken(predictorToken).totalSupply(), 0);
-        assertEq(IPositionToken(counterpartyToken).totalSupply(), 0);
+        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), 0);
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), 0
+        );
+        assertEq(IPredictionMarketToken(predictorToken).totalSupply(), 0);
+        assertEq(IPredictionMarketToken(counterpartyToken).totalSupply(), 0);
 
         // Verify collateral returned
         assertEq(
@@ -376,11 +378,11 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Verify remaining tokens
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor),
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
             PREDICTOR_WAGER - partialPredictor
         );
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
             COUNTERPARTY_WAGER - partialCounterparty
         );
 
@@ -447,11 +449,11 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Verify remaining tokens
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor),
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
             PREDICTOR_WAGER - burn1Predictor - burn2Predictor
         );
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
             COUNTERPARTY_WAGER - burn1Counterparty - burn2Counterparty
         );
 
@@ -873,10 +875,11 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Verify tokens minted again
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor), PREDICTOR_WAGER
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER
         );
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
             COUNTERPARTY_WAGER
         );
 
@@ -918,11 +921,12 @@ contract PredictionMarketEscrowBurnTest is Test {
         uint256 remainingCounterparty = COUNTERPARTY_WAGER - halfCounterparty;
 
         assertEq(
-            IPositionToken(tp.predictorToken).balanceOf(predictor),
+            IPredictionMarketToken(tp.predictorToken).balanceOf(predictor),
             remainingPredictor
         );
         assertEq(
-            IPositionToken(tp.counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(tp.counterpartyToken)
+                .balanceOf(counterparty),
             remainingCounterparty
         );
 
@@ -955,7 +959,7 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer counterparty tokens to predictor so same address holds both
         vm.prank(counterparty);
-        IPositionToken(counterpartyToken)
+        IPredictionMarketToken(counterpartyToken)
             .transfer(predictor, COUNTERPARTY_WAGER);
 
         // Same address burns both sides
@@ -1014,8 +1018,10 @@ contract PredictionMarketEscrowBurnTest is Test {
         market.burn(req);
 
         // Verify tokens burned
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), 0);
-        assertEq(IPositionToken(counterpartyToken).balanceOf(predictor), 0);
+        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), 0);
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(predictor), 0
+        );
 
         // Verify collateral returned
         assertEq(
@@ -1036,7 +1042,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer predictor tokens to thirdParty
         vm.prank(predictor);
-        IPositionToken(predictorToken).transfer(thirdParty, PREDICTOR_WAGER);
+        IPredictionMarketToken(predictorToken)
+            .transfer(thirdParty, PREDICTOR_WAGER);
 
         // ThirdParty (now holding predictor tokens) burns with counterparty
         IV2Types.BurnRequest memory req = _createBurnRequest(
@@ -1057,8 +1064,12 @@ contract PredictionMarketEscrowBurnTest is Test {
         market.burn(req);
 
         // Verify tokens burned from new holders
-        assertEq(IPositionToken(predictorToken).balanceOf(thirdParty), 0);
-        assertEq(IPositionToken(counterpartyToken).balanceOf(counterparty), 0);
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(thirdParty), 0
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), 0
+        );
 
         // Verify collateral sent to correct addresses
         assertEq(

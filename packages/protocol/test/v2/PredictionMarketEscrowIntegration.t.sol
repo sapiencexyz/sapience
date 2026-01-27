@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
-import "../../src/v2/interfaces/IPositionToken.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
 /**
@@ -145,9 +145,12 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
         // Verify initial state (tokens = wager amounts in fungible model)
         assertEq(collateralToken.balanceOf(address(market)), 2500e18);
-        assertEq(IPositionToken(predictorToken).balanceOf(predictor), pWager);
         assertEq(
-            IPositionToken(counterpartyToken).balanceOf(counterparty), cWager
+            IPredictionMarketToken(predictorToken).balanceOf(predictor), pWager
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
+            cWager
         );
 
         // 2. Settle condition - Team A wins (YES)
@@ -361,13 +364,15 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         // Predictor sells half their position to tokenBuyer
         uint256 halfTokens = pWager / 2;
         vm.prank(predictor);
-        IPositionToken(predictorToken).transfer(tokenBuyer, halfTokens);
+        IPredictionMarketToken(predictorToken).transfer(tokenBuyer, halfTokens);
 
         assertEq(
-            IPositionToken(predictorToken).balanceOf(predictor), halfTokens
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            halfTokens
         );
         assertEq(
-            IPositionToken(predictorToken).balanceOf(tokenBuyer), halfTokens
+            IPredictionMarketToken(predictorToken).balanceOf(tokenBuyer),
+            halfTokens
         );
 
         // Settle - predictor wins
