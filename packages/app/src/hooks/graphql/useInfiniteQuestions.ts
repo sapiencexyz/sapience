@@ -8,7 +8,7 @@ export type SortField = 'openInterest' | 'endTime';
 export type SortDirection = 'asc' | 'desc';
 
 export interface QuestionType {
-  itemType: 'group' | 'condition';
+  questionType: 'group' | 'condition';
   group?: ConditionGroupType | null;
   condition?: ConditionType | null;
 }
@@ -36,7 +36,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
       excludeSettled: $excludeSettled
       minEndTime: $minEndTime
     ) {
-      itemType
+      questionType
       group {
         id
         createdAt
@@ -237,7 +237,7 @@ export function useInfiniteQuestions(
           // This prevents duplicate keys if items shift between page fetches
           const existingIds = new Set(
             prev.map((item) =>
-              item.itemType === 'group'
+              item.questionType === 'group'
                 ? `group-${item.group?.id}`
                 : `condition-${item.condition?.id}`
             )
@@ -246,7 +246,7 @@ export function useInfiniteQuestions(
           // Filter out any items that already exist in previous pages
           const newItems = items.filter((item) => {
             const id =
-              item.itemType === 'group'
+              item.questionType === 'group'
                 ? `group-${item.group?.id}`
                 : `condition-${item.condition?.id}`;
             return !existingIds.has(id);

@@ -2489,7 +2489,7 @@ export type Question = {
   __typename?: 'Question';
   condition?: Maybe<Condition>;
   group?: Maybe<ConditionGroup>;
-  itemType: Scalars['String']['output'];
+  questionType: Scalars['String']['output'];
 };
 
 export type SortOrder =

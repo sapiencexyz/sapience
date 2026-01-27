@@ -20,7 +20,7 @@ import type { ApolloContext } from '../startApolloServer';
 @ObjectType()
 export class Question {
   @Field(() => String)
-  itemType!: 'group' | 'condition';
+  questionType!: 'group' | 'condition';
 
   @Field(() => ConditionGroup, { nullable: true })
   group?: ConditionGroup | null;
@@ -235,7 +235,7 @@ export class QuestionsResolver {
         const group = groupMap.get(item.group_id);
         if (group) {
           result.push({
-            itemType: 'group',
+            questionType: 'group',
             group: {
               ...group,
               conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
@@ -247,7 +247,7 @@ export class QuestionsResolver {
         const condition = conditionMap.get(item.condition_id);
         if (condition) {
           result.push({
-            itemType: 'condition',
+            questionType: 'condition',
             group: null,
             condition: condition as Condition,
           });

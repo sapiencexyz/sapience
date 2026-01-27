@@ -1930,7 +1930,7 @@ enum QueryMode {
 type Question {
   condition: Condition
   group: ConditionGroup
-  itemType: String!
+  questionType: String!
 }
 
 enum SortOrder {

@@ -867,7 +867,7 @@ export default function MarketsDataTable({
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
     return marketItems
       .map((item): TopLevelRow | null => {
-        if (item.itemType === 'group' && item.group) {
+        if (item.questionType === 'group' && item.group) {
           const group = item.group;
           if (group.conditions.length === 0) return null;
 
@@ -891,7 +891,7 @@ export default function MarketsDataTable({
             openInterestWei,
             maxEndTime,
           };
-        } else if (item.itemType === 'condition' && item.condition) {
+        } else if (item.questionType === 'condition' && item.condition) {
           return {
             kind: 'condition' as const,
             id: `condition-${item.condition.id}`,
