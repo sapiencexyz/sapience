@@ -8,8 +8,8 @@ import {
 } from "../../../v2/bridge/PositionTokenBridge.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status - PM Network (Mainnet)
 /// @notice Check deployment status on PM Network (Ethereal mainnet)
@@ -60,7 +60,7 @@ contract CheckStatus_PMNetwork is Script {
             console.log("Owner:", bridge.owner());
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Config Complete:", bridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 bridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("Remote Bridge:", config.remoteBridge);

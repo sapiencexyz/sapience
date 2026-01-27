@@ -2,12 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import "./IPositionTokenBridgeBase.sol";
+import "./IPredictionMarketBridgeBase.sol";
 
 /// @title IPositionTokenBridgeRemote
 /// @notice Interface for position token bridge on Arbitrum (remote chain)
 /// @dev Extends base interface with Arbitrum-specific functionality
-interface IPositionTokenBridgeRemote is IPositionTokenBridgeBase {
+interface IPositionTokenBridgeRemote is IPredictionMarketBridgeBase {
     // ============ Structs ============
 
     /// @notice Minted bridge record (for audit trail)

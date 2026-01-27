@@ -6,8 +6,8 @@ import {
     PositionTokenBridge
 } from "../../../v2/bridge/PositionTokenBridge.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Configure PM Network Bridge
 /// @notice Configure bridge on PM Network with remote settings
@@ -31,7 +31,7 @@ contract ConfigureEtherealBridge is Script {
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: remoteEid,
                 remoteBridge: remoteBridge,
                 ackFeeEstimate: ackFeeEstimate

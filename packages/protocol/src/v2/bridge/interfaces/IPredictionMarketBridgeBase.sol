@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
-/// @title IPositionTokenBridgeBase
+/// @title IPredictionMarketBridgeBase
 /// @notice Base interface for position token bridges
 /// @dev Shared types, events, and errors for both Ethereal and Arbitrum bridges
-interface IPositionTokenBridgeBase {
+interface IPredictionMarketBridgeBase {
     // ============ Enums ============
 
     /// @notice Bridge status

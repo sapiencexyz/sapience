@@ -131,7 +131,7 @@ Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-p
 
 **Architecture:**
 ```
-PositionTokenBridgeBase (abstract)
+PredictionMarketBridgeBase (abstract)
 ├── PositionTokenBridge (Ethereal - source chain)
 └── PositionTokenBridgeRemote (Arbitrum - remote chain)
 ```
@@ -144,7 +144,7 @@ PositionTokenBridgeBase (abstract)
 - Automatic token deployment on first bridge
 
 **Contracts:**
-- `PositionTokenBridgeBase.sol`: Abstract base with shared logic
+- `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
 - `PositionTokenBridge.sol`: Ethereal side (escrow, release)
 - `PositionTokenBridgeRemote.sol`: Arbitrum side (mint, burn)
 - `PositionTokenFactory.sol`: CREATE3 factory

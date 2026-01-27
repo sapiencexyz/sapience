@@ -6,8 +6,8 @@ import {
     PositionTokenBridgeRemote
 } from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Retry Bridge from SM Network (Mainnet)
@@ -33,7 +33,7 @@ contract RetryBridgeSM is Script {
         console.logBytes32(bridgeId);
 
         // Get pending bridge info
-        IPositionTokenBridgeBase.PendingBridge memory pending =
+        IPredictionMarketBridgeBase.PendingBridge memory pending =
             bridge.getPendingBridge(bridgeId);
 
         console.log("");
@@ -47,7 +47,7 @@ contract RetryBridgeSM is Script {
         console.log("Last Retry At:", pending.lastRetryAt);
 
         require(
-            pending.status == IPositionTokenBridgeBase.BridgeStatus.PENDING,
+            pending.status == IPredictionMarketBridgeBase.BridgeStatus.PENDING,
             "Bridge not in PENDING status"
         );
 

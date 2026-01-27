@@ -23,8 +23,8 @@ import {
     IPositionTokenBridgeRemote
 } from "../../src/v2/bridge/interfaces/IPositionTokenBridgeRemote.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../src/v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 import {
     MockPredictionMarketToken
 } from "./mocks/MockPredictionMarketToken.sol";
@@ -53,7 +53,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     bytes32 public constant PREDICTION_ID = keccak256("test-prediction");
     bool public constant IS_PREDICTOR_TOKEN = true;
 
-    // Events from IPositionTokenBridgeBase
+    // Events from IPredictionMarketBridgeBase
     event BridgeInitiated(
         bytes32 indexed bridgeId,
         address indexed token,
@@ -68,7 +68,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     event BridgeCancelled(
         bytes32 indexed bridgeId, address indexed sender, uint256 amount
     );
-    event BridgeConfigUpdated(IPositionTokenBridgeBase.BridgeConfig config);
+    event BridgeConfigUpdated(IPredictionMarketBridgeBase.BridgeConfig config);
 
     // Events from IPositionTokenBridge
     event TokensReleased(
@@ -132,14 +132,14 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
         // Configure bridges with ACK fee estimate (0.0001 ETH)
         etherealBridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: arbitrumEid,
                 remoteBridge: address(arbitrumBridge),
                 ackFeeEstimate: 0.0001 ether
             })
         );
         arbitrumBridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: etherealEid,
                 remoteBridge: address(etherealBridge),
                 ackFeeEstimate: 0.0001 ether
@@ -174,8 +174,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     // ============ Configuration Tests ============
 
     function test_setBridgeConfig_success() public {
-        IPositionTokenBridgeBase.BridgeConfig memory newConfig =
-            IPositionTokenBridgeBase.BridgeConfig({
+        IPredictionMarketBridgeBase.BridgeConfig memory newConfig =
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: 999,
                 remoteBridge: address(0x1234),
                 ackFeeEstimate: 0.0002 ether
@@ -185,7 +185,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         emit BridgeConfigUpdated(newConfig);
         etherealBridge.setBridgeConfig(newConfig);
 
-        IPositionTokenBridgeBase.BridgeConfig memory retrieved =
+        IPredictionMarketBridgeBase.BridgeConfig memory retrieved =
             etherealBridge.getBridgeConfig();
         assertEq(retrieved.remoteEid, 999);
         assertEq(retrieved.remoteBridge, address(0x1234));
@@ -196,7 +196,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(unauthorizedUser);
         vm.expectRevert();
         etherealBridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: 999,
                 remoteBridge: address(0x1234),
                 ackFeeEstimate: 0.0001 ether
@@ -208,7 +208,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     function test_bridge_revertIfZeroAddress() public {
         vm.prank(user);
-        vm.expectRevert(IPositionTokenBridgeBase.ZeroAddress.selector);
+        vm.expectRevert(IPredictionMarketBridgeBase.ZeroAddress.selector);
         etherealBridge.bridge{ value: 1 ether }(
             address(0), user, 1e17, bytes32(0)
         );
@@ -216,7 +216,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     function test_bridge_revertIfZeroAmount() public {
         vm.prank(user);
-        vm.expectRevert(IPositionTokenBridgeBase.ZeroAmount.selector);
+        vm.expectRevert(IPredictionMarketBridgeBase.ZeroAmount.selector);
         etherealBridge.bridge{ value: 1 ether }(
             address(positionToken), user, 0, bytes32(0)
         );
@@ -262,7 +262,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         );
 
         // Verify pending bridge created
-        IPositionTokenBridgeBase.PendingBridge memory pending =
+        IPredictionMarketBridgeBase.PendingBridge memory pending =
             etherealBridge.getPendingBridge(bridgeId);
         assertEq(pending.token, address(positionToken));
         assertEq(pending.sender, user);
@@ -270,7 +270,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         assertEq(pending.amount, amount);
         assertEq(
             uint8(pending.status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
 
         // Verify escrowed
@@ -305,7 +305,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Initial status is PENDING
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
 
         // Deliver packets to Arbitrum (mint tokens)
@@ -330,7 +330,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // In production, ACK would mark it COMPLETED
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
     }
 
@@ -383,7 +383,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Bridge back is PENDING
         assertEq(
             uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
 
         // Deliver packets back to Ethereal (release tokens, ACK not sent due to test env)
@@ -397,7 +397,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Tokens remain escrowed on Arbitrum until ACK received
         assertEq(
             uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
         // In production, ACK would trigger burn of escrowed tokens
     }
@@ -487,7 +487,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Status should still be PENDING (waiting for ACK)
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
     }
 
@@ -519,7 +519,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Status should still be PENDING
         assertEq(
             uint8(etherealBridge.getPendingBridge(bridgeId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
     }
 
@@ -538,14 +538,14 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
             address(positionToken), user, amount, bytes32(0)
         );
 
-        IPositionTokenBridgeBase.PendingBridge memory pending =
+        IPredictionMarketBridgeBase.PendingBridge memory pending =
             etherealBridge.getPendingBridge(bridgeId);
 
         // Try to retry immediately
         vm.prank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IPositionTokenBridgeBase.RetryTooSoon.selector,
+                IPredictionMarketBridgeBase.RetryTooSoon.selector,
                 bridgeId,
                 pending.lastRetryAt,
                 pending.lastRetryAt + 1 hours
@@ -605,7 +605,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         // Status should still be PENDING
         assertEq(
             uint8(arbitrumBridge.getPendingBridge(bridgeBackId).status),
-            uint8(IPositionTokenBridgeBase.BridgeStatus.PENDING)
+            uint8(IPredictionMarketBridgeBase.BridgeStatus.PENDING)
         );
     }
 

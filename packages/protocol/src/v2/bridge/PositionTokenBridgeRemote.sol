@@ -9,16 +9,16 @@ import {
 import {
     OptionsBuilder
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import "./PositionTokenBridgeBase.sol";
+import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPositionTokenBridgeRemote.sol";
 import "./interfaces/IPositionTokenFactory.sol";
 import "./interfaces/IBridgedPositionToken.sol";
 
 /// @title PositionTokenBridgeRemote
 /// @notice Bridge for position tokens on Arbitrum (remote chain)
-/// @dev Extends PositionTokenBridgeBase with Arbitrum-specific logic
+/// @dev Extends PredictionMarketBridgeBase with Arbitrum-specific logic
 contract PositionTokenBridgeRemote is
-    PositionTokenBridgeBase,
+    PredictionMarketBridgeBase,
     IPositionTokenBridgeRemote
 {
     using SafeERC20 for IERC20;
@@ -44,7 +44,7 @@ contract PositionTokenBridgeRemote is
 
     // ============ Constructor ============
     constructor(address endpoint_, address owner_, address factory_)
-        PositionTokenBridgeBase(endpoint_, owner_)
+        PredictionMarketBridgeBase(endpoint_, owner_)
     {
         factory = IPositionTokenFactory(factory_);
     }
@@ -175,7 +175,7 @@ contract PositionTokenBridgeRemote is
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function quoteRetry(bytes32 bridgeId)
         external
         view

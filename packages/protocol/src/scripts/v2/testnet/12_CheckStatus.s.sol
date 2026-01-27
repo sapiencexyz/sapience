@@ -14,8 +14,8 @@ import {
 } from "../../../v2/bridge/PositionTokenFactory.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status
 /// @notice Check deployment status and balances
@@ -60,7 +60,7 @@ contract CheckStatus is Script {
             console.log("Owner:", etherealBridge.owner());
             console.log("ETH Balance:", etherealBridge.getETHBalance());
             console.log("Config Complete:", etherealBridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 etherealBridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("SM Network Bridge:", config.remoteBridge);
@@ -79,7 +79,7 @@ contract CheckStatus is Script {
             console.log("ETH Balance:", arbBridge.getETHBalance());
             console.log("Factory:", arbBridge.getFactory());
             console.log("Config Complete:", arbBridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 arbBridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("SM Network Bridge:", config.remoteBridge);

@@ -10,8 +10,8 @@ import {
     PositionTokenFactory
 } from "../../../v2/bridge/PositionTokenFactory.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status - SM Network (Mainnet)
 /// @notice Check deployment status on SM Network (Arbitrum mainnet)
@@ -35,7 +35,7 @@ contract CheckStatus_SMNetwork is Script {
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Factory:", bridge.getFactory());
             console.log("Config Complete:", bridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 bridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("Remote Bridge:", config.remoteBridge);

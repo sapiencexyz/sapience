@@ -9,8 +9,8 @@ import {
     PositionTokenFactory
 } from "../../../v2/bridge/PositionTokenFactory.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Configure SM Network Bridge (Mainnet)
 /// @notice Configure bridge on SM Network (Arbitrum mainnet) with Ethereal settings
@@ -40,7 +40,7 @@ contract ConfigureRemoteBridge is Script {
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: remoteEid,
                 remoteBridge: remoteBridge,
                 ackFeeEstimate: ackFeeEstimate

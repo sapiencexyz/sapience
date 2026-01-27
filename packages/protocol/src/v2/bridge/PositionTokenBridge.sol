@@ -12,14 +12,14 @@ import {
 import {
     OptionsBuilder
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import "./PositionTokenBridgeBase.sol";
+import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPositionTokenBridge.sol";
 import "../interfaces/IPredictionMarketToken.sol";
 
 /// @title PositionTokenBridge
 /// @notice Bridge for position tokens on Ethereal (source chain)
-/// @dev Extends PositionTokenBridgeBase with Ethereal-specific logic
-contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
+/// @dev Extends PredictionMarketBridgeBase with Ethereal-specific logic
+contract PositionTokenBridge is PredictionMarketBridgeBase, IPositionTokenBridge {
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
 
@@ -28,7 +28,7 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
 
     // ============ Constructor ============
     constructor(address endpoint_, address owner_)
-        PositionTokenBridgeBase(endpoint_, owner_)
+        PredictionMarketBridgeBase(endpoint_, owner_)
     { }
 
     // ============ Bridge Function ============
@@ -157,7 +157,7 @@ contract PositionTokenBridge is PositionTokenBridgeBase, IPositionTokenBridge {
         return _quote(_bridgeConfig.remoteEid, message, options, false);
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function quoteRetry(bytes32 bridgeId)
         external
         view

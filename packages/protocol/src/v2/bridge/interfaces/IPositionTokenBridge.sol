@@ -2,12 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import "./IPositionTokenBridgeBase.sol";
+import "./IPredictionMarketBridgeBase.sol";
 
 /// @title IPositionTokenBridge
 /// @notice Interface for position token bridge on Ethereal (source chain)
 /// @dev Extends base interface with Ethereal-specific functionality
-interface IPositionTokenBridge is IPositionTokenBridgeBase {
+interface IPositionTokenBridge is IPredictionMarketBridgeBase {
     // ============ Events ============
 
     /// @notice Emitted when tokens are released from escrow (incoming bridge completed)

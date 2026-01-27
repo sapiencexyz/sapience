@@ -18,15 +18,15 @@ import {
 import {
     OptionsBuilder
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import "./interfaces/IPositionTokenBridgeBase.sol";
+import "./interfaces/IPredictionMarketBridgeBase.sol";
 
-/// @title PositionTokenBridgeBase
+/// @title PredictionMarketBridgeBase
 /// @notice Abstract base contract for position token bridges
 /// @dev Contains shared logic for both Ethereal and Arbitrum bridges
-abstract contract PositionTokenBridgeBase is
+abstract contract PredictionMarketBridgeBase is
     OApp,
     ReentrancyGuard,
-    IPositionTokenBridgeBase
+    IPredictionMarketBridgeBase
 {
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
@@ -75,14 +75,14 @@ abstract contract PositionTokenBridgeBase is
         emit BridgeConfigUpdated(config);
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function getBridgeConfig() external view returns (BridgeConfig memory) {
         return _bridgeConfig;
     }
 
     // ============ Retry Function ============
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function retry(bytes32 bridgeId, bytes32 refCode)
         external
         payable
@@ -222,7 +222,7 @@ abstract contract PositionTokenBridgeBase is
 
     // ============ View Functions ============
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function getPendingBridge(bytes32 bridgeId)
         external
         view
@@ -231,7 +231,7 @@ abstract contract PositionTokenBridgeBase is
         return _pendingBridges[bridgeId];
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function getPendingBridges(address sender)
         external
         view
@@ -258,24 +258,24 @@ abstract contract PositionTokenBridgeBase is
         }
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function isBridgeProcessed(bytes32 bridgeId) external view returns (bool) {
         return _processedBridges[bridgeId];
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function getEscrowedBalance(address token) external view returns (uint256) {
         return _escrowedBalances[token];
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function getMinRetryDelay() external pure returns (uint64) {
         return MIN_RETRY_DELAY;
     }
 
     // ============ Ownership Management ============
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function isConfigComplete() public view virtual returns (bool) {
         // Check bridge config
         if (_bridgeConfig.remoteEid == 0) return false;
@@ -288,7 +288,7 @@ abstract contract PositionTokenBridgeBase is
         return true;
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function renounceOwnershipSafe() external onlyOwner {
         require(this.isConfigComplete(), "Config incomplete");
         renounceOwnership();
@@ -304,7 +304,7 @@ abstract contract PositionTokenBridgeBase is
         return address(this).balance;
     }
 
-    /// @inheritdoc IPositionTokenBridgeBase
+    /// @inheritdoc IPredictionMarketBridgeBase
     function withdrawETH(address payable to, uint256 amount)
         external
         onlyOwner
