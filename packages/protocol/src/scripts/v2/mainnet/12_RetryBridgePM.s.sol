@@ -24,7 +24,8 @@ contract RetryBridgePM is Script {
 
         uint256 deployerPk = vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY");
 
-        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge =
+            PredictionMarketBridge(payable(bridgeAddr));
 
         console.log("=== Retry Bridge from PM Network (Mainnet) ===");
         console.log("Bridge:", bridgeAddr);

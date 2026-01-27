@@ -317,9 +317,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Verify token was deployed and minted
         assertTrue(bridgedToken.code.length > 0);
-        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount);
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).pickConfigId(), PREDICTION_ID
+            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
+        );
+        assertEq(
+            PredictionMarketTokenBridged(bridgedToken).pickConfigId(),
+            PREDICTION_ID
         );
         assertEq(
             PredictionMarketTokenBridged(bridgedToken).isPredictorToken(),
@@ -354,7 +357,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         address bridgedToken =
             factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
-        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount);
+        assertEq(
+            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
+        );
 
         // Approve and bridge back
         vm.prank(user);
@@ -752,7 +757,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         public
     {
         // Deploy new factory without deployer set
-        PredictionMarketTokenFactory newFactory = new PredictionMarketTokenFactory(owner);
+        PredictionMarketTokenFactory newFactory =
+            new PredictionMarketTokenFactory(owner);
 
         assertFalse(newFactory.isConfigComplete());
     }
@@ -769,7 +775,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         public
     {
         // Deploy new factory without deployer set
-        PredictionMarketTokenFactory newFactory = new PredictionMarketTokenFactory(owner);
+        PredictionMarketTokenFactory newFactory =
+            new PredictionMarketTokenFactory(owner);
 
         vm.expectRevert("Config incomplete");
         newFactory.renounceOwnershipSafe();

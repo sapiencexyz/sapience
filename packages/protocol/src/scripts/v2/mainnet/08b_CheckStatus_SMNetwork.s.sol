@@ -47,7 +47,8 @@ contract CheckStatus_SMNetwork is Script {
             console.log("");
             console.log("--- Position Token Factory ---");
             console.log("Address:", factoryAddr);
-            PredictionMarketTokenFactory factory = PredictionMarketTokenFactory(factoryAddr);
+            PredictionMarketTokenFactory factory =
+                PredictionMarketTokenFactory(factoryAddr);
             console.log("Owner:", factory.owner());
             console.log("Deployer:", factory.deployer());
             console.log("Config Complete:", factory.isConfigComplete());

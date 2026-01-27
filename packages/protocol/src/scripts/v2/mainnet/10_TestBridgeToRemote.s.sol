@@ -29,7 +29,8 @@ contract TestBridgeToRemote is Script {
         // Optional: bridge to a different recipient
         address recipient = vm.envOr("BRIDGE_RECIPIENT", predictor);
 
-        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge =
+            PredictionMarketBridge(payable(bridgeAddr));
         IERC20 token = IERC20(tokenAddr);
 
         console.log("=== Bridge Test: Ethereal -> Arbitrum (Mainnet) ===");

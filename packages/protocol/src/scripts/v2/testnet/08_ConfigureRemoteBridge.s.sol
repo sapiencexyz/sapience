@@ -25,7 +25,8 @@ contract ConfigureRemoteBridge is Script {
 
         PredictionMarketBridgeRemote bridge =
             PredictionMarketBridgeRemote(payable(bridgeAddr));
-        PredictionMarketTokenFactory factory = PredictionMarketTokenFactory(factoryAddr);
+        PredictionMarketTokenFactory factory =
+            PredictionMarketTokenFactory(factoryAddr);
 
         console.log("=== Configure SM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);

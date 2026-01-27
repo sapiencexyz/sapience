@@ -17,7 +17,8 @@ contract DeployFactory is Script {
 
         vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        PredictionMarketTokenFactory factory = new PredictionMarketTokenFactory(owner);
+        PredictionMarketTokenFactory factory =
+            new PredictionMarketTokenFactory(owner);
 
         vm.stopBroadcast();
 

@@ -19,7 +19,10 @@ import "../interfaces/IPredictionMarketToken.sol";
 /// @title PredictionMarketBridge
 /// @notice Bridge for position tokens on Ethereal (source chain)
 /// @dev Extends PredictionMarketBridgeBase with Ethereal-specific logic
-contract PredictionMarketBridge is PredictionMarketBridgeBase, IPredictionMarketBridge {
+contract PredictionMarketBridge is
+    PredictionMarketBridgeBase,
+    IPredictionMarketBridge
+{
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
 

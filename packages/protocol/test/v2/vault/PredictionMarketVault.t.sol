@@ -998,8 +998,7 @@ contract PredictionMarketVaultTest is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                PredictionMarketVault.PendingRequestNotProcessed.selector,
-                user1
+                PredictionMarketVault.PendingRequestNotProcessed.selector, user1
             )
         );
         vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);

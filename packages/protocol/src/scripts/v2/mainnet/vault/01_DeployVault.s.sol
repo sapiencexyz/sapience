@@ -32,9 +32,8 @@ contract DeployVault is Script {
 
         vm.startBroadcast(deployerPk);
 
-        PredictionMarketVault vault = new PredictionMarketVault(
-            collateralToken, manager, name, symbol
-        );
+        PredictionMarketVault vault =
+            new PredictionMarketVault(collateralToken, manager, name, symbol);
 
         // Configure interaction delay to 0 for testing (can be changed later)
         vault.setInteractionDelay(0);

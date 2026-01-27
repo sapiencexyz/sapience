@@ -22,7 +22,8 @@ contract TestBridgeToRemote is Script {
 
         uint256 amount = vm.envOr("BRIDGE_AMOUNT", uint256(10 ether)); // Default 10 tokens
 
-        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge =
+            PredictionMarketBridge(payable(bridgeAddr));
         IERC20 token = IERC20(tokenAddr);
 
         console.log("=== Bridge Test: PM Network -> SM Network ===");

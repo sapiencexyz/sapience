@@ -89,7 +89,8 @@ contract PredictionMarketTokenFactoryTest is Test {
             PREDICTION_ID, IS_PREDICTOR_TOKEN, "My Token", "MTK", address(this)
         );
 
-        PredictionMarketTokenBridged bridged = PredictionMarketTokenBridged(token);
+        PredictionMarketTokenBridged bridged =
+            PredictionMarketTokenBridged(token);
         assertEq(bridged.name(), "My Token");
         assertEq(bridged.symbol(), "MTK");
         assertEq(bridged.pickConfigId(), PREDICTION_ID);

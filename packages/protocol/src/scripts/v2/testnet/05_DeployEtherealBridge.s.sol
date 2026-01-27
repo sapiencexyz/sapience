@@ -19,7 +19,8 @@ contract DeployEtherealBridge is Script {
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        PredictionMarketBridge bridge = new PredictionMarketBridge(endpoint, owner);
+        PredictionMarketBridge bridge =
+            new PredictionMarketBridge(endpoint, owner);
 
         vm.stopBroadcast();
 

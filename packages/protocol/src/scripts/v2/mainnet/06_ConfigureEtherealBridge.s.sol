@@ -20,7 +20,8 @@ contract ConfigureEtherealBridge is Script {
         uint128 ackFeeEstimate =
             uint128(vm.envOr("PM_ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
 
-        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge =
+            PredictionMarketBridge(payable(bridgeAddr));
 
         console.log("=== Configure PM Network Bridge (Mainnet) ===");
         console.log("Bridge:", bridgeAddr);

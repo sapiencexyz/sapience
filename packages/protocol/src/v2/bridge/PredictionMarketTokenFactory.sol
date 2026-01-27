@@ -9,7 +9,10 @@ import "./PredictionMarketTokenBridged.sol";
 /// @title PredictionMarketTokenFactory
 /// @notice Factory for deploying bridged position tokens using CREATE3
 /// @dev Ensures deterministic addresses across chains
-contract PredictionMarketTokenFactory is IPredictionMarketTokenFactory, Ownable {
+contract PredictionMarketTokenFactory is
+    IPredictionMarketTokenFactory,
+    Ownable
+{
     /// @notice Address authorized to deploy tokens (bridge)
     address public deployer;
 
