@@ -13,13 +13,13 @@ import {
     OptionsBuilder
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
-import "./interfaces/IPositionTokenBridge.sol";
+import "./interfaces/IPredictionMarketBridge.sol";
 import "../interfaces/IPredictionMarketToken.sol";
 
-/// @title PositionTokenBridge
+/// @title PredictionMarketBridge
 /// @notice Bridge for position tokens on Ethereal (source chain)
 /// @dev Extends PredictionMarketBridgeBase with Ethereal-specific logic
-contract PositionTokenBridge is PredictionMarketBridgeBase, IPositionTokenBridge {
+contract PredictionMarketBridge is PredictionMarketBridgeBase, IPredictionMarketBridge {
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
 
@@ -33,7 +33,7 @@ contract PositionTokenBridge is PredictionMarketBridgeBase, IPositionTokenBridge
 
     // ============ Bridge Function ============
 
-    /// @inheritdoc IPositionTokenBridge
+    /// @inheritdoc IPredictionMarketBridge
     function bridge(
         address token,
         address recipient,
@@ -127,7 +127,7 @@ contract PositionTokenBridge is PredictionMarketBridgeBase, IPositionTokenBridge
 
     // ============ Quote Functions ============
 
-    /// @inheritdoc IPositionTokenBridge
+    /// @inheritdoc IPredictionMarketBridge
     function quoteBridge(address token, uint256 amount)
         external
         view

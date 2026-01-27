@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
     IPredictionMarketBridgeBase
@@ -55,8 +55,8 @@ contract CheckStatus_PMNetwork is Script {
             console.log("");
             console.log("--- PM Network Bridge ---");
             console.log("Address:", bridgeAddr);
-            PositionTokenBridge bridge =
-                PositionTokenBridge(payable(bridgeAddr));
+            PredictionMarketBridge bridge =
+                PredictionMarketBridge(payable(bridgeAddr));
             console.log("Owner:", bridge.owner());
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Config Complete:", bridge.isConfigComplete());

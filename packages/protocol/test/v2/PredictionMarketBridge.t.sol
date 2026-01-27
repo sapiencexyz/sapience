@@ -5,8 +5,8 @@ import {
     TestHelperOz5
 } from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import {
-    PositionTokenBridge
-} from "../../src/v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../src/v2/bridge/PredictionMarketBridge.sol";
 import {
     PositionTokenBridgeRemote
 } from "../../src/v2/bridge/PositionTokenBridgeRemote.sol";
@@ -17,8 +17,8 @@ import {
     BridgedPositionToken
 } from "../../src/v2/bridge/BridgedPositionToken.sol";
 import {
-    IPositionTokenBridge
-} from "../../src/v2/bridge/interfaces/IPositionTokenBridge.sol";
+    IPredictionMarketBridge
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
 import {
     IPositionTokenBridgeRemote
 } from "../../src/v2/bridge/interfaces/IPositionTokenBridgeRemote.sol";
@@ -31,16 +31,16 @@ import {
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
 
-/// @title PositionTokenBridgeTest
+/// @title PredictionMarketBridgeTest
 /// @notice Test suite for position token bridge with ACK mechanism
-contract PositionTokenBridgeTest is TestHelperOz5 {
+contract PredictionMarketBridgeTest is TestHelperOz5 {
     // Users
     address private owner;
     address private user;
     address private unauthorizedUser;
 
     // Contracts
-    PositionTokenBridge private etherealBridge;
+    PredictionMarketBridge private etherealBridge;
     PositionTokenBridgeRemote private arbitrumBridge;
     PositionTokenFactory private factory;
     MockPredictionMarketToken private positionToken;
@@ -70,7 +70,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
     );
     event BridgeConfigUpdated(IPredictionMarketBridgeBase.BridgeConfig config);
 
-    // Events from IPositionTokenBridge
+    // Events from IPredictionMarketBridge
     event TokensReleased(
         bytes32 indexed bridgeId,
         address indexed token,
@@ -103,9 +103,9 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         factory = new PositionTokenFactory(owner);
 
         // Deploy Ethereal bridge
-        etherealBridge = PositionTokenBridge(
+        etherealBridge = PredictionMarketBridge(
             payable(_deployOApp(
-                    type(PositionTokenBridge).creationCode,
+                    type(PredictionMarketBridge).creationCode,
                     abi.encode(address(endpoints[etherealEid]), owner)
                 ))
         );
@@ -229,7 +229,7 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
         vm.prank(user);
         vm.expectRevert(
             abi.encodeWithSelector(
-                IPositionTokenBridge.InvalidToken.selector,
+                IPredictionMarketBridge.InvalidToken.selector,
                 address(invalidToken)
             )
         );
@@ -709,8 +709,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     function test_isConfigComplete_returnsFalse_whenNotConfigured() public {
         // Deploy new bridge without config
-        PositionTokenBridge newBridge =
-            new PositionTokenBridge(address(endpoints[etherealEid]), owner);
+        PredictionMarketBridge newBridge =
+            new PredictionMarketBridge(address(endpoints[etherealEid]), owner);
 
         assertFalse(newBridge.isConfigComplete());
     }
@@ -726,8 +726,8 @@ contract PositionTokenBridgeTest is TestHelperOz5 {
 
     function test_renounceOwnershipSafe_reverts_whenIncomplete() public {
         // Deploy new bridge without config
-        PositionTokenBridge newBridge =
-            new PositionTokenBridge(address(endpoints[etherealEid]), owner);
+        PredictionMarketBridge newBridge =
+            new PredictionMarketBridge(address(endpoints[etherealEid]), owner);
 
         vm.expectRevert("Config incomplete");
         newBridge.renounceOwnershipSafe();

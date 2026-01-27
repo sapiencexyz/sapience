@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 import {
     IPredictionMarketBridgeBase
 } from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
@@ -24,7 +24,7 @@ contract RetryBridgePM is Script {
 
         uint256 deployerPk = vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY");
 
-        PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
 
         console.log("=== Retry Bridge from PM Network (Mainnet) ===");
         console.log("Bridge:", bridgeAddr);

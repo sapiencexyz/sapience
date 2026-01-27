@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 import {
     IPredictionMarketBridgeBase
 } from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
@@ -20,7 +20,7 @@ contract ConfigureEtherealBridge is Script {
         uint128 ackFeeEstimate =
             uint128(vm.envOr("PM_ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
 
-        PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge = PredictionMarketBridge(payable(bridgeAddr));
 
         console.log("=== Configure PM Network Bridge (Mainnet) ===");
         console.log("Bridge:", bridgeAddr);

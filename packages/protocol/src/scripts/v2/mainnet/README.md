@@ -11,7 +11,7 @@ This deployment deploys the full V2 bridge infrastructure for mainnet, connectin
 **On PM Network (Source Chain - Ethereal Mainnet):**
 - ManualConditionResolver
 - PredictionMarketEscrow
-- PositionTokenBridge
+- PredictionMarketBridge
 
 **On SM Network (Remote Chain - Arbitrum Mainnet):**
 - PositionTokenFactory
@@ -183,7 +183,7 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 00 | DeployCollateral | Ethereal | Deploy test ERC20 collateral (optional) |
 | 01 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
 | 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
-| 03 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
+| 03 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
 | 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
 | 05 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
 | 06 | ConfigureEtherealBridge | Ethereal | Set peer and bridge config |
@@ -421,5 +421,5 @@ Track cross-chain messages: https://layerzeroscan.com/
 | ManualConditionResolver | Ethereal | |
 | PredictionMarketEscrow | Ethereal | |
 | PositionTokenFactory | Arbitrum | |
-| PositionTokenBridge | Ethereal | |
+| PredictionMarketBridge | Ethereal | |
 | PositionTokenBridgeRemote | Arbitrum | |
