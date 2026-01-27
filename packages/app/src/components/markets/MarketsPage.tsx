@@ -9,20 +9,17 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import MarketsDataTable from '~/components/markets/MarketsDataTable';
 import type { FilterState } from '~/components/markets/TableFilters';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
-  useConditionGroups,
-  type ConditionGroupFilters,
-} from '~/hooks/graphql/useConditionGroups';
-import {
-  useConditions,
-  type ConditionFilters,
-} from '~/hooks/graphql/useConditions';
+  useInfiniteQuestions,
+  type SortField,
+  type SortDirection,
+} from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
@@ -105,71 +102,51 @@ const MarketsPage = () => {
     selectedCategories: [],
   });
 
+  // Sorting state - lifted here so backend can respect it during pagination
+  const [sortField, setSortField] = useState<SortField>('openInterest');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const handleSortChange = useCallback(
+    (field: SortField, direction: SortDirection) => {
+      setSortField(field);
+      setSortDirection(direction);
+    },
+    []
+  );
+
   const [pythPredictions, setPythPredictions] = useState<PythPrediction[]>([]);
 
   // Debounce search term for backend queries (300ms)
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
-  // Convert UI filter state to backend filter format for ungrouped conditions
-  const backendConditionFilters = useMemo((): ConditionFilters => {
-    const result: ConditionFilters = {
-      publicOnly: true, // Always filter to public conditions
-      ungroupedOnly: true, // Only fetch conditions without a group
-    };
+  // Compute backend filter params from client filter state
+  // timeToResolutionRange[0] = min days from now (0 = today, negative = past)
+  const minEndTime = useMemo(() => {
+    const [minDays] = filters.timeToResolutionRange;
+    const nowSec = Math.floor(Date.now() / 1000);
+    return nowSec + minDays * 86400;
+  }, [filters.timeToResolutionRange]);
 
-    // Search filter (debounced)
-    if (debouncedSearchTerm.trim()) {
-      result.search = debouncedSearchTerm.trim();
-    }
-
-    // Category filter
-    if (filters.selectedCategories.length > 0) {
-      result.categorySlugs = filters.selectedCategories;
-    }
-
-    // Note: Time to resolution and open interest filters are applied client-side
-    // because they need to apply to group aggregates as well
-
-    return result;
-  }, [debouncedSearchTerm, filters.selectedCategories]);
-
-  // Convert UI filter state to backend filter format for condition groups
-  const backendGroupFilters = useMemo((): ConditionGroupFilters => {
-    const result: ConditionGroupFilters = {
-      publicOnly: true, // Filter to groups with public conditions
-    };
-
-    // Search filter (debounced) - searches group name
-    if (debouncedSearchTerm.trim()) {
-      result.search = debouncedSearchTerm.trim();
-    }
-
-    // Category filter
-    if (filters.selectedCategories.length > 0) {
-      result.categorySlugs = filters.selectedCategories;
-    }
-
-    return result;
-  }, [debouncedSearchTerm, filters.selectedCategories]);
-
-  // Fetch condition groups with their conditions
-  const { data: conditionGroups = [], isLoading: isLoadingGroups } =
-    useConditionGroups({
-      take: 200,
-      chainId,
-      filters: backendGroupFilters,
-    });
-
-  // Fetch ungrouped conditions via GraphQL with backend filtering
-  const { data: ungroupedConditions = [], isLoading: isLoadingConditions } =
-    useConditions({
-      take: 200,
-      chainId,
-      filters: backendConditionFilters,
-    });
-
-  // Combined loading state
-  const isLoadingData = isLoadingGroups || isLoadingConditions;
+  // Fetch questions (both groups and ungrouped conditions interleaved)
+  const {
+    data: questions,
+    isLoading: isLoadingData,
+    isFetchingMore,
+    hasMore,
+    fetchMore,
+  } = useInfiniteQuestions({
+    chainId,
+    search: debouncedSearchTerm.trim() || undefined,
+    categorySlugs:
+      filters.selectedCategories.length > 0
+        ? filters.selectedCategories
+        : undefined,
+    pageSize: 30,
+    sortField,
+    sortDirection,
+    // Backend filtering for markets after this time
+    minEndTime,
+  });
 
   const handlePythPick = useCallback(
     (values: CreatePythPredictionFormValues) => {
@@ -264,14 +241,19 @@ const MarketsPage = () => {
             transition={{ duration: 0.25 }}
           >
             <MarketsDataTable
-              conditionGroups={conditionGroups}
-              ungroupedConditions={ungroupedConditions}
+              questions={questions}
               isLoading={isLoadingData}
+              isFetchingMore={isFetchingMore}
+              hasMore={hasMore}
+              onFetchMore={fetchMore}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
               filters={filters}
               onFiltersChange={setFilters}
               categories={categoryOptions}
+              sortField={sortField}
+              sortDirection={sortDirection}
+              onSortChange={handleSortChange}
             />
           </motion.div>
         </div>
