@@ -43,7 +43,7 @@ import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGr
 import type {
   SortField,
   SortDirection,
-  MarketItemType,
+  QuestionType,
 } from '~/hooks/graphql/useInfiniteMarkets';
 
 // Union type for top-level table rows
@@ -92,7 +92,7 @@ function groupConditionToConditionType(
 }
 
 interface MarketsDataTableProps {
-  marketItems: MarketItemType[];
+  marketItems: QuestionType[];
   isLoading?: boolean;
   isFetchingMore?: boolean;
   hasMore?: boolean;

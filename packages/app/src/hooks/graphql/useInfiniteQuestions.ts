@@ -5,14 +5,14 @@ import type { ConditionType } from './useConditions';
 import type { ConditionGroupType } from './useConditionGroups';
 import type { SortField, SortDirection } from './useInfiniteMarkets';
 
-export interface MarketItemType {
+export interface QuestionType {
   itemType: 'group' | 'condition';
   group?: ConditionGroupType | null;
   condition?: ConditionType | null;
 }
 
-const GET_MARKET_ITEMS_SORTED = /* GraphQL */ `
-  query MarketItemsSorted(
+const GET_QUESTIONS_SORTED = /* GraphQL */ `
+  query QuestionsSorted(
     $take: Int!
     $skip: Int!
     $chainId: Int
@@ -23,7 +23,7 @@ const GET_MARKET_ITEMS_SORTED = /* GraphQL */ `
     $excludeSettled: Boolean
     $minEndTime: Int
   ) {
-    marketItemsSorted(
+    questionsSorted(
       take: $take
       skip: $skip
       chainId: $chainId
@@ -98,7 +98,7 @@ const GET_MARKET_ITEMS_SORTED = /* GraphQL */ `
   }
 `;
 
-export interface UseInfiniteMarketItemsOptions {
+export interface UseInfiniteQuestionsOptions {
   chainId?: number;
   search?: string;
   categorySlugs?: string[];
@@ -111,17 +111,17 @@ export interface UseInfiniteMarketItemsOptions {
   minEndTime?: number;
 }
 
-export interface UseInfiniteMarketItemsResult {
-  data: MarketItemType[];
+export interface UseInfiniteQuestionsResult {
+  data: QuestionType[];
   isLoading: boolean;
   isFetchingMore: boolean;
   hasMore: boolean;
   fetchMore: () => void;
 }
 
-export function useInfiniteMarketItems(
-  opts: UseInfiniteMarketItemsOptions
-): UseInfiniteMarketItemsResult {
+export function useInfiniteQuestions(
+  opts: UseInfiniteQuestionsOptions
+): UseInfiniteQuestionsResult {
   const {
     chainId,
     search,
@@ -134,7 +134,7 @@ export function useInfiniteMarketItems(
   } = opts;
 
   const [skip, setSkip] = useState(0);
-  const [allLoadedData, setAllLoadedData] = useState<MarketItemType[]>([]);
+  const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);
   const [hasMore, setHasMore] = useState(true);
 
   // Track processed fetches to avoid duplicate accumulation
@@ -178,9 +178,9 @@ export function useInfiniteMarketItems(
   // Fetch current page (+ 1 extra to detect if more exist)
   // Use isFetching (not isLoading) - isLoading is only true on first load,
   // isFetching is true whenever data is being fetched
-  const { data: rawData, isFetching, isError } = useQuery<MarketItemType[], Error>({
+  const { data: rawData, isFetching, isError } = useQuery<QuestionType[], Error>({
     queryKey: [
-      'infiniteMarketItems',
+      'infiniteQuestions',
       pageSize,
       skip,
       chainId,
@@ -191,9 +191,9 @@ export function useInfiniteMarketItems(
       excludeSettled,
       minEndTime,
     ],
-    queryFn: async (): Promise<MarketItemType[]> => {
-      type MarketItemsQueryResult = {
-        marketItemsSorted: MarketItemType[];
+    queryFn: async (): Promise<QuestionType[]> => {
+      type QuestionsQueryResult = {
+        questionsSorted: QuestionType[];
       };
       const variables = {
         take: pageSize + 1,
@@ -207,12 +207,12 @@ export function useInfiniteMarketItems(
         minEndTime: minEndTime ?? null,
       };
 
-      const data = await graphqlRequest<MarketItemsQueryResult>(
-        GET_MARKET_ITEMS_SORTED,
+      const data = await graphqlRequest<QuestionsQueryResult>(
+        GET_QUESTIONS_SORTED,
         variables
       );
 
-      return data.marketItemsSorted ?? [];
+      return data.questionsSorted ?? [];
     },
   });
 

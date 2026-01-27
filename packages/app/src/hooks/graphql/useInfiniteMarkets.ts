@@ -1,12 +1,12 @@
 import {
-  useInfiniteMarketItems,
-  type MarketItemType,
-} from './useInfiniteMarketItems';
+  useInfiniteQuestions,
+  type QuestionType,
+} from './useInfiniteQuestions';
 
 export type SortField = 'openInterest' | 'endTime';
 export type SortDirection = 'asc' | 'desc';
 
-export type { MarketItemType };
+export type { QuestionType };
 
 export interface UseInfiniteMarketsOptions {
   chainId?: number;
@@ -22,7 +22,7 @@ export interface UseInfiniteMarketsOptions {
 }
 
 export interface UseInfiniteMarketsResult {
-  items: MarketItemType[];
+  items: QuestionType[];
   isLoading: boolean;
   isFetchingMore: boolean;
   hasMore: boolean;
@@ -32,7 +32,7 @@ export interface UseInfiniteMarketsResult {
 export function useInfiniteMarkets(
   opts: UseInfiniteMarketsOptions
 ): UseInfiniteMarketsResult {
-  const result = useInfiniteMarketItems(opts);
+  const result = useInfiniteQuestions(opts);
 
   return {
     items: result.data,

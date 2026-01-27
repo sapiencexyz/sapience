@@ -42,7 +42,7 @@ export class Question {
 @Resolver()
 export class QuestionsResolver {
   @Query(() => [Question], { nullable: false })
-  async marketItemsSorted(
+  async questionsSorted(
     @Ctx() ctx: ApolloContext,
     @Arg('take', () => Int) take: number,
     @Arg('skip', () => Int) skip: number,
