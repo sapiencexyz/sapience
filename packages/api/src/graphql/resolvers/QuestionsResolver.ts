@@ -13,12 +13,12 @@ import { Prisma } from '../../../generated/prisma';
 import type { ApolloContext } from '../startApolloServer';
 
 /**
- * Wrapper type for market items that can be either a condition group or an ungrouped condition.
+ * Wrapper type for questions that can be either a condition group or an ungrouped condition.
  * This allows returning a single sorted list where groups and conditions are interleaved
  * based on their sort value (openInterest or endTime).
  */
 @ObjectType()
-export class MarketItem {
+export class Question {
   @Field(() => String)
   itemType!: 'group' | 'condition';
 
@@ -30,7 +30,7 @@ export class MarketItem {
 }
 
 /**
- * Resolver for fetching market items (both condition groups and ungrouped conditions)
+ * Resolver for fetching questions (both condition groups and ungrouped conditions)
  * sorted together by aggregate/individual values.
  *
  * Uses a UNION SQL query to:
@@ -41,7 +41,7 @@ export class MarketItem {
  */
 @Resolver()
 export class QuestionsResolver {
-  @Query(() => [MarketItem], { nullable: false })
+  @Query(() => [Question], { nullable: false })
   async marketItemsSorted(
     @Ctx() ctx: ApolloContext,
     @Arg('take', () => Int) take: number,
@@ -56,7 +56,7 @@ export class QuestionsResolver {
     excludeSettled: boolean | null,
     @Arg('minEndTime', () => Int, { nullable: true })
     minEndTime: number | null
-  ): Promise<MarketItem[]> {
+  ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
     // Validate sort field - throw if invalid, default to 'endTime' if not provided
@@ -229,7 +229,7 @@ export class QuestionsResolver {
     }
 
     // Step 5: Reconstruct in original SQL order
-    const result: MarketItem[] = [];
+    const result: Question[] = [];
     for (const item of sortedItems) {
       if (item.item_type === 'group' && item.group_id !== null) {
         const group = groupMap.get(item.group_id);
