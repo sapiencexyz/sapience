@@ -5,12 +5,12 @@ import {
     ReentrancyGuard
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { IConditionResolver } from "../interfaces/IConditionResolver.sol";
-import { IV2Types } from "../interfaces/IV2Types.sol";
-import { IPythLazer } from "./pythLazer/IPythLazer.sol";
-import { PythLazerLib } from "./pythLazer/PythLazerLib.sol";
-import { PythLazerLibBytes } from "./pythLazer/PythLazerLibBytes.sol";
-import { PythLazerStructs } from "./pythLazer/PythLazerStructs.sol";
+import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { IV2Types } from "../../interfaces/IV2Types.sol";
+import { IPythLazer } from "../pythLazer/IPythLazer.sol";
+import { PythLazerLib } from "../pythLazer/PythLazerLib.sol";
+import { PythLazerLibBytes } from "../pythLazer/PythLazerLibBytes.sol";
+import { PythLazerStructs } from "../pythLazer/PythLazerStructs.sol";
 
 /// @title PythConditionResolver
 /// @notice V2 condition resolver for binary options settled using Pyth Lazer verified historical updates
