@@ -27,7 +27,7 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -51,7 +51,6 @@ import {
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
@@ -62,47 +61,59 @@ import {
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
 
-function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
-  const [nowMs, setNowMs] = React.useState(() => Date.now());
+function CountdownCell({ endsAtMs }: { endsAtMs: number }) {
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
+
   React.useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    setNowMs(Date.now());
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-  const isPast = endsAtMs <= nowMs;
-  if (isPast) {
-    return <AwaitingSettlementBadge />;
+
+  const date = new Date(endsAtMs);
+  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a xxx");
+
+  if (nowMs === null) {
+    return (
+      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+        —
+      </span>
+    );
   }
-  const settlesAt = new Date(endsAtMs);
-  const label = formatDistanceToNowStrict(settlesAt, {
-    roundingMethod: 'round',
-  });
-  const settlesAtLocalDisplay = settlesAt.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short',
-  });
+
+  const diff = endsAtMs - nowMs;
+  const isPast = diff <= 0;
+
+  const formatCountdown = () => {
+    if (isPast) return 'Ended';
+
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    const h = hours % 24;
+    const m = minutes % 60;
+    const s = seconds % 60;
+
+    if (days > 0) return `${days}d ${h}h ${m}m`;
+    if (hours > 0) return `${h}h ${m}m ${s}s`;
+    if (minutes > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap"
-              disabled
-            >
-              {`Ends in ${label}`}
-            </Button>
+          <span
+            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
+          >
+            {formatCountdown()}
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          <div>{`Ends at ${settlesAtLocalDisplay}`}</div>
+          <span>{fullDateTime}</span>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -199,7 +210,7 @@ export default function PositionsTable({
 
   // Sorting state
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'created', desc: true },
+    { id: 'conditions', desc: true },
   ]);
 
   // Filter state
@@ -208,15 +219,27 @@ export default function PositionsTable({
   );
 
   // Convert sorting state to API params
-  const orderBy = sorting[0]?.id;
+  const sortId = sorting[0]?.id;
+  const orderBy =
+    sortId === 'conditions'
+      ? 'created'
+      : sortId === 'status'
+        ? 'endsAt'
+        : sortId;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
+  // Track what data we've already processed to avoid infinite loops
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
+
   // Reset when account, sorting, or chainId change (server-side params only)
-  // Note: filters are applied client-side, so they shouldn't reset the loaded data
+  // Don't clear allLoadedData — placeholderData in the hook keeps stale results
+  // visible until new data arrives, preventing layout collapse
   React.useEffect(() => {
     setSkip(0);
-    setAllLoadedData([]);
     setHasMore(true);
+    processedRef.current = null;
   }, [account, sorting, chainId]);
 
   // Fetch total count
@@ -231,13 +254,6 @@ export default function PositionsTable({
     orderDirection,
     chainId,
   });
-
-  // Append new data when it arrives
-  // Use a ref to track what we've already processed to avoid infinite loops
-  // (rawData may be a new reference on every render even with same contents)
-  const processedRef = React.useRef<{ skip: number; length: number } | null>(
-    null
-  );
 
   React.useEffect(() => {
     const dataLength = rawData?.length ?? 0;
@@ -716,11 +732,10 @@ export default function PositionsTable({
   const columns = React.useMemo<ColumnDef<UIPosition>[]>(
     () => [
       {
-        id: 'created',
+        id: 'conditions',
         accessorFn: (row) => row.createdAt,
-        size: 150,
-        minSize: 0,
-        maxSize: 160,
+        size: 550,
+        minSize: 550,
         header: ({ column }) => (
           <Button
             type="button"
@@ -736,7 +751,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            Created
+            Predictions
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -750,6 +765,9 @@ export default function PositionsTable({
           </Button>
         ),
         cell: ({ row }) => {
+          const hasPythLeg = (row.original.legs || []).some(
+            (leg) => leg.source === 'pyth'
+          );
           const createdDate = new Date(row.original.createdAt);
           const createdDisplay = formatDistanceToNow(createdDate, {
             addSuffix: true,
@@ -764,44 +782,11 @@ export default function PositionsTable({
             timeZoneName: 'short',
           });
           return (
-            <div>
-              <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                Created
-              </div>
-              <div className="text-[15px] leading-[1.35] tracking-[-0.01em] mb-0.5 whitespace-nowrap">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">{createdDisplay}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div>{exactLocalDisplay}</div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="text-sm text-muted-foreground whitespace-nowrap font-mono uppercase">{`ID #${row.original.positionId}`}</div>
-            </div>
-          );
-        },
-      },
-      {
-        id: 'conditions',
-        accessorFn: (row) => row.legs.length,
-        enableSorting: false,
-        size: 400,
-        minSize: 300,
-        header: () => <span>Predictions</span>,
-        cell: ({ row }) => {
-          const hasPythLeg = (row.original.legs || []).some(
-            (leg) => leg.source === 'pyth'
-          );
-          return (
             <div className="text-sm">
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Predictions
               </div>
-              <div className="flex flex-col xl:flex-row xl:items-center gap-2">
+              <div className="flex flex-col xl:flex-row xl:items-center gap-2 mb-2">
                 {row.original.addressRole === 'counterparty' && (
                   <>
                     {/* Counterparty badge is only shown for UMA (non-Pyth) positions */}
@@ -813,43 +798,39 @@ export default function PositionsTable({
                   className="max-w-full flex-1 min-w-0"
                 />
               </div>
+              <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                <span>Position #{row.original.positionId} created</span>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">{createdDisplay}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div>{exactLocalDisplay}</div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                {row.original.counterpartyAddress && (
+                  <>
+                    <span>against</span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <EnsAvatar
+                        address={row.original.counterpartyAddress}
+                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                        width={14}
+                        height={14}
+                      />
+                      <AddressDisplay
+                        address={row.original.counterpartyAddress}
+                        compact
+                      />
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           );
         },
-      },
-
-      {
-        id: 'counterparty',
-        accessorFn: (row) => row.counterpartyAddress ?? null,
-        enableSorting: false,
-        size: 240,
-        minSize: 200,
-        header: () => <span>Opponent</span>,
-        cell: ({ row }) => (
-          <div>
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Opponent
-            </div>
-            {row.original.counterpartyAddress ? (
-              <div className="whitespace-nowrap text-[15px] min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <EnsAvatar
-                    address={row.original.counterpartyAddress}
-                    className="shrink-0 rounded-sm ring-1 ring-border/50"
-                    width={20}
-                    height={20}
-                  />
-                  <AddressDisplay
-                    address={row.original.counterpartyAddress}
-                    className="text-[15px] min-w-0"
-                  />
-                </div>
-              </div>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </div>
-        ),
       },
 
       {
@@ -1068,7 +1049,7 @@ export default function PositionsTable({
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
                   Profit/Loss
                 </div>
-                <span className="text-muted-foreground">Pending</span>
+                <span className="text-muted-foreground">—</span>
               </div>
             );
           }
@@ -1094,12 +1075,16 @@ export default function PositionsTable({
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Profit/Loss
               </div>
-              <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+              <div
+                className={`whitespace-nowrap tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
                 <NumberDisplay
                   value={pnlValue}
-                  className="tabular-nums text-brand-white font-mono"
+                  className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 />{' '}
-                <span className="tabular-nums text-brand-white font-mono">
+                <span
+                  className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {symbol}
                 </span>
               </div>
@@ -1117,174 +1102,218 @@ export default function PositionsTable({
       },
 
       {
-        id: 'actions',
+        id: 'status',
+        accessorFn: (row) => {
+          if (row.status === 'active' && row.endsAt > Date.now())
+            return row.endsAt;
+          if (row.status === 'active') return 0;
+          if (row.status === 'won') return -1;
+          if (row.status === 'lost') return -2;
+          return -3;
+        },
+        size: 180,
+        minSize: 120,
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Ends
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const content = (() => {
+            if (
+              row.original.status === 'active' &&
+              row.original.endsAt > Date.now()
+            ) {
+              return <CountdownCell endsAtMs={row.original.endsAt} />;
+            }
+            if (
+              row.original.status === 'active' &&
+              row.original.endsAt <= Date.now() &&
+              row.original.addressRole !== 'unknown'
+            ) {
+              const {
+                allConditionsSettled,
+                predictorWonFromDb,
+                addressRole,
+                positionId,
+              } = row.original;
+
+              if (!allConditionsSettled) {
+                return (
+                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                    Pending
+                  </span>
+                );
+              }
+
+              const viewerWon =
+                addressRole === 'predictor'
+                  ? predictorWonFromDb === true
+                  : addressRole === 'counterparty'
+                    ? predictorWonFromDb === false
+                    : false;
+
+              if (viewerWon) {
+                const tokenIdToClaim = BigInt(positionId);
+
+                const isOwnerConnected =
+                  effectiveAddress &&
+                  effectiveAddress === String(account || '').toLowerCase();
+                const isThisTokenClaiming =
+                  isClaimPending && claimingTokenId === tokenIdToClaim;
+
+                return isOwnerConnected ? (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setClaimingTokenId(tokenIdToClaim);
+                      burn(tokenIdToClaim, ZERO_REF_CODE);
+                    }}
+                    disabled={isClaimPending}
+                  >
+                    {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
+                  </Button>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span>
+                          <Button size="sm" variant="outline" disabled>
+                            Claim
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-[220px]">
+                          {hasWallet
+                            ? 'You can only claim winnings from the account that owns this position.'
+                            : 'Connect your account to claim this position.'}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                );
+              }
+
+              return (
+                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                  Lost
+                </span>
+              );
+            }
+            if (
+              row.original.status === 'won' &&
+              row.original.tokenIdToClaim !== undefined &&
+              claimableTokenIds.has(String(row.original.tokenIdToClaim))
+            ) {
+              const isOwnerConnected =
+                effectiveAddress &&
+                effectiveAddress === String(account || '').toLowerCase();
+              const isThisTokenClaiming =
+                isClaimPending &&
+                claimingTokenId === row.original.tokenIdToClaim;
+              return isOwnerConnected ? (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setClaimingTokenId(row.original.tokenIdToClaim!);
+                    burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
+                  }}
+                  disabled={isClaimPending}
+                >
+                  {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
+                </Button>
+              ) : (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button size="sm" variant="outline" disabled>
+                          Claim
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-[220px]">
+                        {hasWallet
+                          ? 'You can only claim winnings from the account that owns this position.'
+                          : 'Connect your account to claim this position.'}
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            }
+            if (
+              row.original.status === 'won' &&
+              (row.original.tokenIdToClaim === undefined ||
+                !claimableTokenIds.has(String(row.original.tokenIdToClaim)))
+            ) {
+              return (
+                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                  Claimed
+                </span>
+              );
+            }
+            if (row.original.status === 'lost') {
+              return (
+                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                  Lost
+                </span>
+              );
+            }
+            return null;
+          })();
+
+          return (
+            <div className="whitespace-nowrap xl:mt-0">
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Ends
+              </div>
+              {content}
+            </div>
+          );
+        },
+      },
+
+      {
+        id: 'share',
         enableSorting: false,
-        size: 140,
-        minSize: 100,
+        size: 80,
+        minSize: 60,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap xl:mt-0">
-            <div className="flex items-center gap-2 justify-start xl:justify-end">
-              {row.original.status === 'active' &&
-                row.original.endsAt > Date.now() && (
-                  <EndsInButton endsAtMs={row.original.endsAt} />
-                )}
-              {row.original.status === 'active' &&
-                row.original.endsAt <= Date.now() &&
-                row.original.addressRole !== 'unknown' &&
-                (() => {
-                  const {
-                    allConditionsSettled,
-                    predictorWonFromDb,
-                    addressRole,
-                    positionId,
-                  } = row.original;
-
-                  // If conditions are not all settled, show awaiting badge
-                  if (!allConditionsSettled) {
-                    return <AwaitingSettlementBadge />;
-                  }
-
-                  const viewerWon =
-                    addressRole === 'predictor'
-                      ? predictorWonFromDb === true
-                      : addressRole === 'counterparty'
-                        ? predictorWonFromDb === false
-                        : false;
-
-                  if (viewerWon) {
-                    const tokenIdToClaim =
-                      addressRole === 'predictor'
-                        ? BigInt(positionId)
-                        : BigInt(positionId);
-
-                    const isOwnerConnected =
-                      effectiveAddress &&
-                      effectiveAddress === String(account || '').toLowerCase();
-                    const isThisTokenClaiming =
-                      isClaimPending && claimingTokenId === tokenIdToClaim;
-
-                    return isOwnerConnected ? (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setClaimingTokenId(tokenIdToClaim);
-                          burn(tokenIdToClaim, ZERO_REF_CODE);
-                        }}
-                        disabled={isClaimPending}
-                      >
-                        {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
-                      </Button>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button size="sm" variant="outline" disabled>
-                                Claim Winnings
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-[220px]">
-                              {hasWallet
-                                ? 'You can only claim winnings from the account that owns this position.'
-                                : 'Connect your account to claim this position.'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  }
-
-                  // Viewer lost
-                  return (
-                    <Button size="sm" variant="outline" disabled>
-                      Wager Lost
-                    </Button>
-                  );
-                })()}
-              {row.original.status === 'won' &&
-                row.original.tokenIdToClaim !== undefined &&
-                claimableTokenIds.has(String(row.original.tokenIdToClaim)) &&
-                (() => {
-                  const isOwnerConnected =
-                    effectiveAddress &&
-                    effectiveAddress === String(account || '').toLowerCase();
-                  const isThisTokenClaiming =
-                    isClaimPending &&
-                    claimingTokenId === row.original.tokenIdToClaim;
-                  return isOwnerConnected ? (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setClaimingTokenId(row.original.tokenIdToClaim!);
-                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
-                      }}
-                      disabled={isClaimPending}
-                    >
-                      {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
-                    </Button>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button size="sm" variant="outline" disabled>
-                              Claim Winnings
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-[220px]">
-                            {hasWallet
-                              ? 'You can only claim winnings from the account that owns this position.'
-                              : 'Connect your account to claim this position.'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })()}
-              {row.original.status === 'won' &&
-                (row.original.tokenIdToClaim === undefined ||
-                  !claimableTokenIds.has(
-                    String(row.original.tokenIdToClaim)
-                  )) && (
-                  <Button size="sm" variant="outline" disabled>
-                    Claimed
-                  </Button>
-                )}
-              {row.original.status === 'lost' && (
-                <Button size="sm" variant="outline" disabled>
-                  Wager Lost
-                </Button>
-              )}
-              {(() => {
-                // Hide Share button when a lost state is displayed
-                const viewerLostFromDb =
-                  row.original.allConditionsSettled &&
-                  (row.original.addressRole === 'predictor'
-                    ? row.original.predictorWonFromDb === false
-                    : row.original.addressRole === 'counterparty'
-                      ? row.original.predictorWonFromDb === true
-                      : false);
-                const isLostDisplayed =
-                  row.original.status === 'lost' || viewerLostFromDb;
-                if (isLostDisplayed) return null;
-                return (
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                    onClick={() =>
-                      setOpenSharePositionId(row.original.positionId)
-                    }
-                  >
-                    Share
-                  </button>
-                );
-              })()}
-            </div>
+          <div className="whitespace-nowrap xl:mt-0 xl:pr-4">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              onClick={() => setOpenSharePositionId(row.original.positionId)}
+            >
+              Share
+            </button>
           </div>
         ),
       },
@@ -1348,7 +1377,7 @@ export default function PositionsTable({
         </div>
       ) : (
         <>
-          <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+          <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
             {leftSlot}
             <div className="flex-1">
               <PositionsTableFilters
@@ -1364,9 +1393,9 @@ export default function PositionsTable({
           ) : (
             <>
               <div className="overflow-hidden bg-brand-black relative">
-                {isLoading && (
-                  <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                    <Loader size={12} />
+                {isLoading && rows.length > 0 && (
+                  <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
+                    <Loader size={20} />
                   </div>
                 )}
                 <Table className="w-full table-fixed">
@@ -1381,19 +1410,14 @@ export default function PositionsTable({
                             key={header.id}
                             className={
                               [
-                                header.id === 'created'
-                                  ? 'xl:w-[150px] whitespace-nowrap'
-                                  : '',
-                                header.id === 'conditions' ? 'xl:w-auto' : '',
-                                header.id === 'counterparty'
-                                  ? 'xl:w-[240px]'
-                                  : '',
-                                header.id === 'wager' ? 'xl:w-[170px]' : '',
-                                header.id === 'toWin' ? 'xl:w-[170px]' : '',
-                                header.id === 'pnl' ? 'xl:w-[170px]' : '',
-                                header.id === 'actions'
-                                  ? 'xl:w-[220px] text-right'
-                                  : '',
+                                header.id === 'conditions'
+                                  ? ''
+                                  : 'whitespace-nowrap',
+                                header.id === 'wager' ? 'xl:w-[120px]' : '',
+                                header.id === 'toWin' ? 'xl:w-[120px]' : '',
+                                header.id === 'pnl' ? 'xl:w-[140px]' : '',
+                                header.id === 'status' ? 'xl:w-[120px]' : '',
+                                header.id === 'share' ? 'xl:w-[100px]' : '',
                               ]
                                 .filter(Boolean)
                                 .join(' ') || undefined
@@ -1420,18 +1444,8 @@ export default function PositionsTable({
                           <TableCell
                             key={cell.id}
                             className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                              cell.column.id === 'created'
-                                ? 'xl:w-[150px] whitespace-nowrap'
-                                : ''
-                            } ${cell.column.id === 'conditions' ? 'xl:w-auto' : ''} ${
-                              cell.column.id === 'counterparty'
-                                ? 'xl:w-[240px] min-w-0'
-                                : ''
-                            } ${cell.column.id === 'wager' ? 'xl:w-[170px]' : ''} ${
-                              cell.column.id === 'toWin' ? 'xl:w-[170px]' : ''
-                            } ${cell.column.id === 'pnl' ? 'xl:w-[170px]' : ''} ${
-                              cell.column.id === 'actions'
-                                ? 'xl:w-[220px] text-left xl:text-right xl:mt-0'
+                              cell.column.id !== 'conditions'
+                                ? 'whitespace-nowrap'
                                 : ''
                             }`}
                           >

@@ -54,7 +54,7 @@ function picksMatch(
 }
 
 interface OgShareDialogBaseProps {
-  imageSrc: string; // Relative path with query, e.g. "/og/trade?..."
+  imageSrc: string; // Relative path with query, e.g. "/og/position?..."
   title?: string; // Dialog title
   trigger?: React.ReactNode;
   shareTitle?: string; // Unused but kept for backward compatibility

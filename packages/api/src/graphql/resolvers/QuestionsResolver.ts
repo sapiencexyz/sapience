@@ -47,7 +47,8 @@ export class QuestionsResolver {
     @Arg('take', () => Int) take: number,
     @Arg('skip', () => Int) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId: number | null,
-    @Arg('sortField', () => String, { nullable: true }) sortField: string | null,
+    @Arg('sortField', () => String, { nullable: true })
+    sortField: string | null,
     @Arg('sortDirection', () => String) sortDirection: string,
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
