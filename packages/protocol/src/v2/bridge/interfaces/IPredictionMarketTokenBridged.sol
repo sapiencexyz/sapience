@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// @title IBridgedPositionToken
+/// @title IPredictionMarketTokenBridged
 /// @notice Interface for bridged position tokens (on remote chain)
-interface IBridgedPositionToken is IERC20 {
+interface IPredictionMarketTokenBridged is IERC20 {
     // ============ Errors ============
 
     /// @notice Only bridge can mint/burn

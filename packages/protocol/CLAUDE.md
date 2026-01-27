@@ -148,7 +148,7 @@ PredictionMarketBridgeBase (abstract)
 - `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
 - `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)
 - `PredictionMarketTokenFactory.sol`: CREATE3 factory
-- `BridgedPositionToken.sol`: Mintable/burnable ERC20 on Arbitrum
+- `PredictionMarketTokenBridged.sol`: Mintable/burnable ERC20 on Arbitrum
 
 ### Deployment Configuration
 

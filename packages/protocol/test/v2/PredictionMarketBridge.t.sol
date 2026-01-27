@@ -14,8 +14,8 @@ import {
     PredictionMarketTokenFactory
 } from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
 import {
-    BridgedPositionToken
-} from "../../src/v2/bridge/BridgedPositionToken.sol";
+    PredictionMarketTokenBridged
+} from "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
 import {
     IPredictionMarketBridge
 } from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
@@ -317,12 +317,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Verify token was deployed and minted
         assertTrue(bridgedToken.code.length > 0);
-        assertEq(BridgedPositionToken(bridgedToken).balanceOf(user), amount);
+        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount);
         assertEq(
-            BridgedPositionToken(bridgedToken).pickConfigId(), PREDICTION_ID
+            PredictionMarketTokenBridged(bridgedToken).pickConfigId(), PREDICTION_ID
         );
         assertEq(
-            BridgedPositionToken(bridgedToken).isPredictorToken(),
+            PredictionMarketTokenBridged(bridgedToken).isPredictorToken(),
             IS_PREDICTOR_TOKEN
         );
 
@@ -354,11 +354,11 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         address bridgedToken =
             factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
-        assertEq(BridgedPositionToken(bridgedToken).balanceOf(user), amount);
+        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount);
 
         // Approve and bridge back
         vm.prank(user);
-        BridgedPositionToken(bridgedToken)
+        PredictionMarketTokenBridged(bridgedToken)
             .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =
@@ -372,9 +372,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         );
 
         // Bridged tokens should be escrowed (NOT burned yet)
-        assertEq(BridgedPositionToken(bridgedToken).balanceOf(user), 0);
+        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), 0);
         assertEq(
-            BridgedPositionToken(bridgedToken)
+            PredictionMarketTokenBridged(bridgedToken)
                 .balanceOf(address(arbitrumBridge)),
             amount
         );
@@ -426,7 +426,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Bridge back partial amount
         vm.prank(user);
-        BridgedPositionToken(bridgedToken)
+        PredictionMarketTokenBridged(bridgedToken)
             .approve(address(arbitrumBridge), bridgeBackAmount);
 
         MessagingFee memory backFee =
@@ -439,7 +439,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Should have remaining bridged tokens (minus escrowed amount)
         assertEq(
-            BridgedPositionToken(bridgedToken).balanceOf(user),
+            PredictionMarketTokenBridged(bridgedToken).balanceOf(user),
             bridgeAmount - bridgeBackAmount
         );
 
@@ -577,7 +577,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Initiate bridge back
         vm.prank(user);
-        BridgedPositionToken(bridgedToken)
+        PredictionMarketTokenBridged(bridgedToken)
             .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =

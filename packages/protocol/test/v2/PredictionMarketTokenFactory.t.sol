@@ -6,8 +6,8 @@ import {
     PredictionMarketTokenFactory
 } from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
 import {
-    BridgedPositionToken
-} from "../../src/v2/bridge/BridgedPositionToken.sol";
+    PredictionMarketTokenBridged
+} from "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
 
 /// @title PredictionMarketTokenFactoryTest
 /// @notice Test suite for CREATE3-based position token factory
@@ -89,7 +89,7 @@ contract PredictionMarketTokenFactoryTest is Test {
             PREDICTION_ID, IS_PREDICTOR_TOKEN, "My Token", "MTK", address(this)
         );
 
-        BridgedPositionToken bridged = BridgedPositionToken(token);
+        PredictionMarketTokenBridged bridged = PredictionMarketTokenBridged(token);
         assertEq(bridged.name(), "My Token");
         assertEq(bridged.symbol(), "MTK");
         assertEq(bridged.pickConfigId(), PREDICTION_ID);

@@ -2,19 +2,19 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "./interfaces/IBridgedPositionToken.sol";
+import "./interfaces/IPredictionMarketTokenBridged.sol";
 
-/// @title BridgedPositionToken
+/// @title PredictionMarketTokenBridged
 /// @notice ERC20 token representing a bridged position (on remote chain)
 /// @dev Mintable/burnable only by the bridge contract
-contract BridgedPositionToken is ERC20, IBridgedPositionToken {
-    /// @inheritdoc IBridgedPositionToken
+contract PredictionMarketTokenBridged is ERC20, IPredictionMarketTokenBridged {
+    /// @inheritdoc IPredictionMarketTokenBridged
     bytes32 public immutable pickConfigId;
 
-    /// @inheritdoc IBridgedPositionToken
+    /// @inheritdoc IPredictionMarketTokenBridged
     bool public immutable isPredictorToken;
 
-    /// @inheritdoc IBridgedPositionToken
+    /// @inheritdoc IPredictionMarketTokenBridged
     address public immutable bridge;
 
     /// @notice Create a new bridged position token
@@ -35,13 +35,13 @@ contract BridgedPositionToken is ERC20, IBridgedPositionToken {
         bridge = bridge_;
     }
 
-    /// @inheritdoc IBridgedPositionToken
+    /// @inheritdoc IPredictionMarketTokenBridged
     function mint(address to, uint256 amount) external {
         if (msg.sender != bridge) revert OnlyBridge();
         _mint(to, amount);
     }
 
-    /// @inheritdoc IBridgedPositionToken
+    /// @inheritdoc IPredictionMarketTokenBridged
     function burn(address from, uint256 amount) external {
         if (msg.sender != bridge) revert OnlyBridge();
         _burn(from, amount);
