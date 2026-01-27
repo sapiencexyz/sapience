@@ -1,10 +1,11 @@
 import { ImageResponse } from 'next/og';
-import { og } from '../_shared';
 import {
+  og,
   WIDTH,
   HEIGHT,
   getScale,
   normalizeText,
+  parseEthereumAddress,
   loadFontData,
   fontsFromData,
   commonAssets,
@@ -16,128 +17,24 @@ import {
   Pill,
   PredictionsLabel,
   computePotentialReturn,
+  FONT_FAMILY,
+  createErrorImageResponse,
 } from '../_shared';
+import {
+  POSITION_BY_NFT_QUERY,
+  getGraphQLEndpoint,
+  formatUnits,
+  normalizeChoiceLabel,
+  getChoiceTone,
+  roundToTwoDecimals,
+  type PositionPrediction,
+} from '../_position-helpers';
 
 export const runtime = 'edge';
-
-// Helper to normalize choice labels to standard format
-function normalizeChoiceLabel(
-  label: string
-): 'YES' | 'NO' | 'OVER' | 'UNDER' | null {
-  const upper = label.toUpperCase();
-  if (upper === 'YES' || upper.startsWith('YES')) return 'YES';
-  if (upper === 'NO' || upper.startsWith('NO')) return 'NO';
-  if (upper === 'OVER' || upper.startsWith('OVER')) return 'OVER';
-  if (upper === 'UNDER' || upper.startsWith('UNDER')) return 'UNDER';
-  return null;
-}
-
-// Helper to determine pill tone from normalized choice
-function getChoiceTone(
-  normalized: 'YES' | 'NO' | 'OVER' | 'UNDER' | null
-): 'success' | 'danger' | 'neutral' {
-  if (normalized === 'YES' || normalized === 'OVER') return 'success';
-  if (normalized === 'NO' || normalized === 'UNDER') return 'danger';
-  return 'neutral';
-}
-
-// Helper to get GraphQL endpoint URL
-function getGraphQLEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
-
-// Helper to format units (18 decimals for collateral)
-function formatUnits(value: string, decimals: number = 18): string {
-  try {
-    const bigIntValue = BigInt(value);
-    const divisor = BigInt(10 ** decimals);
-    const whole = bigIntValue / divisor;
-    const remainder = bigIntValue % divisor;
-    if (remainder === 0n) {
-      return whole.toString();
-    }
-    const remainderStr = remainder.toString().padStart(decimals, '0');
-    const trimmed = remainderStr.replace(/0+$/, '');
-    return `${whole}.${trimmed}`;
-  } catch {
-    return '0';
-  }
-}
-
-// marketAdress, counterparty bool, positionId.
-// for a given share card, this will be everything that we need to generate it
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-
-    if (searchParams.has('debug')) {
-      const nftId = searchParams.get('nftId');
-      const marketAddr = searchParams.get('marketAddress');
-      const graphqlEndpoint = getGraphQLEndpoint();
-
-      let apiResult = 'Not queried';
-      if (nftId && marketAddr) {
-        try {
-          const query = `
-            query PositionsByNftAndMarket($nftTokenId: String, $marketAddress: String) {
-              positions(nftTokenId: $nftTokenId, marketAddress: $marketAddress, take: 1) {
-                id
-                predictor
-                predictorNftTokenId
-                counterpartyNftTokenId
-                predictorCollateral
-                counterpartyCollateral
-                totalCollateral
-                predictions {
-                  conditionId
-                  outcomeYes
-                  condition {
-                    shortName
-                    question
-                  }
-                }
-              }
-            }
-          `;
-          const response = await fetch(graphqlEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              query,
-              variables: { nftTokenId: nftId, marketAddress: marketAddr },
-            }),
-          });
-          apiResult = await response.text();
-        } catch (err) {
-          apiResult = `Error: ${err instanceof Error ? err.message : String(err)}`;
-        }
-      }
-
-      return new Response(
-        JSON.stringify(
-          {
-            endpoint: graphqlEndpoint,
-            nftId,
-            marketAddress: marketAddr,
-            apiResult: apiResult,
-          },
-          null,
-          2
-        ),
-        {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        }
-      );
-    }
 
     // Check if nftId and marketAddress are provided - if so, query API for position data
     const nftIdParam = searchParams.get('nftId');
@@ -153,36 +50,12 @@ export async function GET(req: Request) {
     if (nftIdParam && marketAddressParam) {
       try {
         const graphqlEndpoint = getGraphQLEndpoint();
-        const query = `
-          query PositionsByNftAndMarket($nftTokenId: String, $marketAddress: String) {
-            positions(nftTokenId: $nftTokenId, marketAddress: $marketAddress, take: 1) {
-              id
-              chainId
-              predictor
-              counterparty
-              predictorNftTokenId
-              counterpartyNftTokenId
-              predictorCollateral
-              counterpartyCollateral
-              totalCollateral
-              predictions {
-                conditionId
-                outcomeYes
-                condition {
-                  id
-                  question
-                  shortName
-                }
-              }
-            }
-          }
-        `;
 
         const response = await fetch(graphqlEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            query,
+            query: POSITION_BY_NFT_QUERY,
             variables: {
               nftTokenId: nftIdParam,
               marketAddress: marketAddressParam,
@@ -225,25 +98,17 @@ export async function GET(req: Request) {
 
             // Default symbol if not provided
             if (!symbol) {
-              symbol = 'testUSDe';
+              symbol = 'USDe';
             }
 
             // Build legs from predictions
             if (position.predictions && position.predictions.length > 0) {
-              rawLegs = position.predictions.map(
-                (pred: {
-                  condition?: {
-                    shortName?: string | null;
-                    question?: string | null;
-                  } | null;
-                  outcomeYes: boolean;
-                }) => {
-                  const question =
-                    pred.condition?.shortName || pred.condition?.question || '';
-                  const choice = pred.outcomeYes ? 'Yes' : 'No';
-                  return `${question}|${choice}`;
-                }
-              );
+              rawLegs = position.predictions.map((pred: PositionPrediction) => {
+                const question =
+                  pred.condition?.question || pred.condition?.shortName || '';
+                const choice = pred.outcomeYes ? 'Yes' : 'No';
+                return `${question}|${choice}`;
+              });
             }
           }
         }
@@ -257,16 +122,6 @@ export async function GET(req: Request) {
     }
 
     // Round wager and payout to 2 decimals
-    const roundToTwoDecimals = (value: string): string => {
-      try {
-        const num = parseFloat(value);
-        if (isNaN(num)) return value;
-        return num.toFixed(2);
-      } catch {
-        return value;
-      }
-    };
-
     const wagerRawRounded = roundToTwoDecimals(wagerRaw);
     const payoutRawRounded = roundToTwoDecimals(payoutRaw);
 
@@ -278,8 +133,7 @@ export async function GET(req: Request) {
     );
 
     // Validate and normalize Ethereum address (optional)
-    const cleanedAddr = rawAddr.replace(/\s/g, '').toLowerCase();
-    const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
+    const addr = parseEthereumAddress(rawAddr);
 
     // Shared assets and fonts
     const { bgUrl } = commonAssets(req);
@@ -366,8 +220,7 @@ export async function GET(req: Request) {
                                     lineHeight: `${24 * scale}px`,
                                     fontWeight: 600,
                                     color: og.colors.mutedWhite64,
-                                    fontFamily:
-                                      'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                                    fontFamily: FONT_FAMILY.mono,
                                   }}
                                 >
                                   and more...
@@ -375,41 +228,40 @@ export async function GET(req: Request) {
                               </div>
                             );
                           }
+                          // Split text into words so badge flows inline
+                          const words = leg.text.split(' ');
                           return (
                             <div
                               key={idx}
                               style={{
                                 display: 'flex',
+                                flexWrap: 'wrap',
                                 alignItems: 'center',
-                                gap: 16 * scale,
                               }}
                             >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  fontSize: 32 * scale,
-                                  lineHeight: `${40 * scale}px`,
-                                  fontWeight: 600,
-                                  letterSpacing: -0.16 * scale,
-                                  color: og.colors.brandWhite,
-                                  fontFamily:
-                                    'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                                }}
-                              >
-                                {leg.text}
-                              </div>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                }}
-                              >
-                                <Pill
-                                  text={leg.choice}
-                                  tone={leg.tone}
-                                  scale={scale}
-                                />
-                              </div>
+                              {words.map((word, wordIdx) => (
+                                <div
+                                  key={wordIdx}
+                                  style={{
+                                    display: 'flex',
+                                    fontSize: 32 * scale,
+                                    lineHeight: `${40 * scale}px`,
+                                    fontWeight: 600,
+                                    letterSpacing: -0.16 * scale,
+                                    color: og.colors.brandWhite,
+                                    fontFamily: FONT_FAMILY.mono,
+                                    marginRight: 12 * scale,
+                                    marginBottom: 6 * scale,
+                                  }}
+                                >
+                                  {word}
+                                </div>
+                              ))}
+                              <Pill
+                                text={leg.choice}
+                                tone={leg.tone}
+                                scale={scale}
+                              />
                             </div>
                           );
                         })}
@@ -439,28 +291,6 @@ export async function GET(req: Request) {
       }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: og.colors.backgroundDark,
-            color: og.colors.foregroundLight,
-            fontFamily:
-              'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
-          }}
-        >
-          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>
-            Error: {message}
-          </div>
-        </div>
-      ),
-      { width: WIDTH, height: HEIGHT }
-    );
+    return createErrorImageResponse(err);
   }
 }

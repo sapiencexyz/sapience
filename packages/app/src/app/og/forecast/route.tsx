@@ -1,11 +1,12 @@
 import { ImageResponse } from 'next/og';
 import { formatDistanceStrict } from 'date-fns';
-import { og } from '../_shared';
 import {
+  og,
   WIDTH,
   HEIGHT,
   getScale,
   normalizeText,
+  parseEthereumAddress,
   loadFontData,
   fontsFromData,
   commonAssets,
@@ -14,6 +15,8 @@ import {
   contentContainerStyle,
   ForecastFooter,
   SectionLabel,
+  FONT_FAMILY,
+  createErrorImageResponse,
 } from '../_shared';
 
 export const runtime = 'edge';
@@ -82,9 +85,7 @@ export async function GET(req: Request) {
     const horizon =
       endTs && createdTs ? formatHorizonDays(createdTs, endTs) : horizonParam;
 
-    const rawAddr = (searchParams.get('addr') || '').toString();
-    const cleanedAddr = rawAddr.replace(/\s/g, '').toLowerCase();
-    const addr = /^0x[a-f0-9]{40}$/.test(cleanedAddr) ? cleanedAddr : '';
+    const addr = parseEthereumAddress(searchParams.get('addr'));
 
     const { bgUrl } = commonAssets(req);
     const fonts = await loadFontData(req);
@@ -123,8 +124,7 @@ export async function GET(req: Request) {
                       fontWeight: 600,
                       letterSpacing: -0.16 * scale,
                       color: og.colors.brandWhite,
-                      fontFamily:
-                        'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                      fontFamily: FONT_FAMILY.mono,
                     }}
                   >
                     {question}
@@ -150,28 +150,6 @@ export async function GET(req: Request) {
       }
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: og.colors.backgroundDark,
-            color: og.colors.foregroundLight,
-            fontFamily:
-              'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
-          }}
-        >
-          <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>
-            Error: {message}
-          </div>
-        </div>
-      ),
-      { width: WIDTH, height: HEIGHT }
-    );
+    return createErrorImageResponse(err);
   }
 }

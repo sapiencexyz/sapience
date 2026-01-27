@@ -1,5 +1,11 @@
+import { ImageResponse } from 'next/og';
 import { getBlockieSrc } from '~/lib/avatar';
 import { og } from '~/lib/theme/ogPalette';
+
+export const FONT_FAMILY = {
+  mono: 'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+  sans: 'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
+} as const;
 
 const BASE_WIDTH = 1200;
 const BASE_HEIGHT = 630;
@@ -17,6 +23,11 @@ export function normalizeText(val: string | null, max: number): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
+}
+
+export function parseEthereumAddress(raw: string | null): string {
+  const cleaned = (raw || '').toString().replace(/\s/g, '').toLowerCase();
+  return /^0x[a-f0-9]{40}$/.test(cleaned) ? cleaned : '';
 }
 
 export async function loadFontData(req: Request) {
@@ -115,7 +126,7 @@ export function fontsFromData(fonts: {
 export function commonAssets(req: Request) {
   return {
     logoUrl: new URL('/logo.svg', req.url).toString(),
-    bgUrl: new URL('/share_bg.png', req.url).toString(),
+    bgUrl: new URL('/share.png', req.url).toString(),
   } as const;
 }
 
@@ -164,7 +175,6 @@ export function Background({
           height: '100%',
           objectFit: 'cover',
           objectPosition: 'center',
-          opacity: 0.6,
         }}
       />
     </div>
@@ -206,6 +216,110 @@ export function PredictionsLabel({
 function truncateAddress(addr: string): string {
   if (!addr) return '';
   return addr.slice(0, 6) + '…' + addr.slice(-4);
+}
+
+// Shared tagline component for footer
+function Tagline({ scale = 1 }: { scale?: number }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        marginTop: 20 * scale,
+        justifyContent: 'flex-start',
+        fontSize: 27 * scale,
+        lineHeight: `${36 * scale}px`,
+        fontWeight: 600,
+        color: og.colors.foregroundLight,
+      }}
+    >
+      <span>Forecast the future on</span>
+      <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
+        www.sapience.xyz
+      </span>
+    </div>
+  );
+}
+
+// Creates common styles used across all stats row variants
+function createStatsRowStyles(scale: number) {
+  return {
+    labelWrapperStyle: {
+      display: 'flex',
+      marginBottom: 8 * scale,
+    } as React.CSSProperties,
+    valueStyle: {
+      display: 'flex',
+      fontSize: 43 * scale,
+      lineHeight: `${43 * scale}px`,
+      fontWeight: 600,
+      color: og.colors.brandWhite,
+      fontFamily: FONT_FAMILY.mono,
+    } as React.CSSProperties,
+    colStyle: {
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+    } as React.CSSProperties,
+    symbolStyle: {
+      display: 'flex',
+      fontSize: 32 * scale,
+      marginTop: 2 * scale,
+      lineHeight: `${32 * scale}px`,
+      fontWeight: 600,
+      color: og.colors.white,
+      fontFamily: FONT_FAMILY.mono,
+    } as React.CSSProperties,
+    containerStyle: {
+      display: 'flex',
+      flexDirection: 'column',
+      flex: 1,
+    } as React.CSSProperties,
+    rowStyle: {
+      display: 'flex',
+      gap: 28 * scale,
+      justifyContent: 'space-between',
+    } as React.CSSProperties,
+  };
+}
+
+// Base footer wrapper component
+function BaseFooter({
+  addr,
+  avatarUrl,
+  scale = 1,
+  children,
+}: {
+  addr: string;
+  avatarUrl?: string | null;
+  scale?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 16 * scale,
+        marginLeft: -(180 + 34) * scale,
+        marginRight: -40 * scale,
+      }}
+    >
+      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
+        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          flex: 1,
+          minWidth: 0,
+          marginTop: -32 * scale,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 function BottomIdentity({
@@ -280,8 +394,7 @@ function BottomIdentity({
           lineHeight: `${24 * scale}px`,
           fontWeight: 600,
           color: og.colors.mutedWhite64,
-          fontFamily:
-            'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          fontFamily: FONT_FAMILY.mono,
         }}
       >
         {truncateAddress(addr)}
@@ -324,91 +437,57 @@ function StatsRow({
       ? og.colors.danger
       : og.colors.success;
   const hasReturn = Boolean(potentialReturn && showReturn);
-  const labelWrapperStyle: React.CSSProperties = {
-    display: 'flex',
-    marginBottom: 6 * scale,
-  };
-  const valueStyle: React.CSSProperties = {
-    display: 'flex',
-    fontSize: 32 * scale,
-    lineHeight: `${32 * scale}px`,
-    fontWeight: 600,
-    color: og.colors.brandWhite,
-    fontFamily:
-      'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  };
-  const colStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-  };
+  const styles = createStatsRowStyles(scale);
   const symbolText = normalizeSymbol(_symbol);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 28 * scale,
-          justifyContent: 'space-between',
-        }}
-      >
+    <div style={styles.containerStyle}>
+      <div style={styles.rowStyle}>
         <div
           style={
             hasReturn
-              ? colStyle
+              ? styles.colStyle
               : {
-                  ...colStyle,
+                  ...styles.colStyle,
                   flex: `0 0 ${300 * scale}px`,
                   width: 300 * scale,
                 }
           }
         >
-          <div style={labelWrapperStyle}>
+          <div style={styles.labelWrapperStyle}>
             <FooterLabel scale={scale}>Wagered</FooterLabel>
           </div>
           <div
             style={{
               display: 'flex',
-              alignItems: 'flex-end',
+              alignItems: 'baseline',
               gap: 8 * scale,
               whiteSpace: 'nowrap',
             }}
           >
-            <div style={valueStyle}>{wager}</div>
+            <div style={styles.valueStyle}>{wager}</div>
             {symbolText ? (
-              <div
-                style={{
-                  display: 'flex',
-                  fontSize: 24 * scale,
-                  marginTop: 0,
-                  lineHeight: `${24 * scale}px`,
-                  fontWeight: 600,
-                  color: og.colors.white,
-                  fontFamily:
-                    'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                }}
-              >
-                {symbolText}
-              </div>
+              <div style={styles.symbolStyle}>{symbolText}</div>
             ) : null}
           </div>
         </div>
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
+        <div style={styles.colStyle}>
+          <div style={styles.labelWrapperStyle}>
             <FooterLabel scale={scale}>To Win</FooterLabel>
           </div>
           <div
             style={{
               display: 'flex',
-              alignItems: 'flex-end',
+              alignItems: 'baseline',
               gap: 8 * scale,
               whiteSpace: 'nowrap',
             }}
           >
             <div
               style={{
-                ...valueStyle,
-                color: forceToWinGreen ? og.colors.success : valueStyle.color,
+                ...styles.valueStyle,
+                color: forceToWinGreen
+                  ? og.colors.success
+                  : styles.valueStyle.color,
               }}
             >
               {payout}
@@ -416,14 +495,8 @@ function StatsRow({
             {symbolText ? (
               <div
                 style={{
-                  display: 'flex',
-                  fontSize: 24 * scale,
-                  marginTop: 0,
-                  lineHeight: `${24 * scale}px`,
-                  fontWeight: 600,
+                  ...styles.symbolStyle,
                   color: forceToWinGreen ? og.colors.success : og.colors.white,
-                  fontFamily:
-                    'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                 }}
               >
                 {symbolText}
@@ -432,14 +505,14 @@ function StatsRow({
           </div>
         </div>
         {hasReturn ? (
-          <div style={colStyle}>
-            <div style={labelWrapperStyle}>
+          <div style={styles.colStyle}>
+            <div style={styles.labelWrapperStyle}>
               <FooterLabel scale={scale}>Return</FooterLabel>
             </div>
             <div
               style={{
                 display: 'flex',
-                alignItems: 'flex-end',
+                alignItems: 'baseline',
                 gap: 8 * scale,
               }}
             >
@@ -460,22 +533,7 @@ function StatsRow({
           </div>
         ) : null}
       </div>
-      <div
-        style={{
-          display: 'flex',
-          marginTop: 16 * scale,
-          justifyContent: 'flex-start',
-          fontSize: 27 * scale,
-          lineHeight: `${36 * scale}px`,
-          fontWeight: 600,
-          color: og.colors.foregroundLight,
-        }}
-      >
-        <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
-          www.sapience.xyz
-        </span>
-      </div>
+      <Tagline scale={scale} />
     </div>
   );
 }
@@ -502,227 +560,17 @@ export function Footer({
   forceToWinGreen?: boolean;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16 * scale,
-        // Shift footer content left by avatar width + gap so StatsRow left aligns with Predictions
-        marginLeft: -(180 + 34) * scale,
-        // Reduce right padding to give more room for StatsRow columns
-        marginRight: -40 * scale,
-      }}
-    >
-      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
-        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          marginTop: -32 * scale,
-        }}
-      >
-        <StatsRow
-          wager={wager}
-          payout={payout}
-          symbol={symbol}
-          potentialReturn={potentialReturn}
-          scale={scale}
-          showReturn={showReturn}
-          forceToWinGreen={forceToWinGreen}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Liquidity share card stats row
-function LiquidityStatsRow({
-  lowPrice,
-  highPrice,
-  symbol: _symbol,
-  scale = 1,
-}: {
-  lowPrice?: string | null;
-  highPrice?: string | null;
-  symbol?: string | null;
-  scale?: number;
-}) {
-  const labelWrapperStyle: React.CSSProperties = {
-    display: 'flex',
-    marginBottom: 6 * scale,
-  };
-  const valueStyle: React.CSSProperties = {
-    display: 'flex',
-    fontSize: 32 * scale,
-    lineHeight: `${32 * scale}px`,
-    fontWeight: 600,
-    color: og.colors.brandWhite,
-    fontFamily:
-      'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  };
-  const colStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-  };
-  const symbolText = normalizeSymbol(_symbol || '');
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 28 * scale,
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
-            <FooterLabel scale={scale}>Low Price</FooterLabel>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <div style={valueStyle}>{lowPrice}</div>
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 24 * scale,
-                marginTop: 0,
-                lineHeight: `${24 * scale}px`,
-                fontWeight: 600,
-                color: og.colors.white,
-                fontFamily:
-                  'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              }}
-            >
-              {symbolText}
-            </div>
-          </div>
-        </div>
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
-            <FooterLabel scale={scale}>High Price</FooterLabel>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <div style={valueStyle}>{highPrice}</div>
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 24 * scale,
-                marginTop: 0,
-                lineHeight: `${24 * scale}px`,
-                fontWeight: 600,
-                color: og.colors.white,
-                fontFamily:
-                  'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-              }}
-            >
-              {symbolText}
-            </div>
-          </div>
-        </div>
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
-            <FooterLabel scale={scale}>Fee</FooterLabel>
-          </div>
-          <div
-            style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                fontSize: 32 * scale,
-                lineHeight: `${40 * scale}px`,
-                fontWeight: 800,
-                color: og.colors.success,
-              }}
-            >
-              1%
-            </div>
-          </div>
-        </div>
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          marginTop: 16 * scale,
-          justifyContent: 'flex-start',
-          fontSize: 27 * scale,
-          lineHeight: `${36 * scale}px`,
-          fontWeight: 600,
-          color: og.colors.foregroundLight,
-        }}
-      >
-        <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
-          www.sapience.xyz
-        </span>
-      </div>
-    </div>
-  );
-}
-
-export function LiquidityFooter({
-  addr,
-  avatarUrl,
-  lowPrice,
-  highPrice,
-  symbol,
-  scale = 1,
-}: {
-  addr: string;
-  avatarUrl?: string | null;
-  lowPrice?: string | null;
-  highPrice?: string | null;
-  symbol?: string | null;
-  scale?: number;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16 * scale,
-        marginLeft: -(180 + 34) * scale,
-        marginRight: -40 * scale,
-      }}
-    >
-      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
-        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          marginTop: -32 * scale,
-        }}
-      >
-        <LiquidityStatsRow
-          lowPrice={lowPrice || ''}
-          highPrice={highPrice || ''}
-          symbol={symbol || ''}
-          scale={scale}
-        />
-      </div>
-    </div>
+    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
+      <StatsRow
+        wager={wager}
+        payout={payout}
+        symbol={symbol}
+        potentialReturn={potentialReturn}
+        scale={scale}
+        showReturn={showReturn}
+        forceToWinGreen={forceToWinGreen}
+      />
+    </BaseFooter>
   );
 }
 
@@ -738,35 +586,14 @@ function ForecastStatsRow({
   odds?: string | null; // e.g., "89%" (we color based on numeric value)
   scale?: number;
 }) {
-  const labelWrapperStyle: React.CSSProperties = {
-    display: 'flex',
-    marginBottom: 6 * scale,
-  };
-  const valueStyle: React.CSSProperties = {
-    display: 'flex',
-    fontSize: 32 * scale,
-    lineHeight: `${40 * scale}px`,
-    fontWeight: 600,
-    color: og.colors.brandWhite,
-    fontFamily:
-      'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-  };
-  const colStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    flex: 1,
-  };
+  const styles = createStatsRowStyles(scale);
+  // Override lineHeight for forecast stats row to match original
+  const valueStyle = { ...styles.valueStyle, lineHeight: `${40 * scale}px` };
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div
-        style={{
-          display: 'flex',
-          gap: 28 * scale,
-          justifyContent: 'space-between',
-        }}
-      >
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
+    <div style={styles.containerStyle}>
+      <div style={styles.rowStyle}>
+        <div style={styles.colStyle}>
+          <div style={styles.labelWrapperStyle}>
             <FooterLabel scale={scale}>Resolution</FooterLabel>
           </div>
           <div
@@ -775,8 +602,8 @@ function ForecastStatsRow({
             <div style={valueStyle}>{resolution}</div>
           </div>
         </div>
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
+        <div style={styles.colStyle}>
+          <div style={styles.labelWrapperStyle}>
             <FooterLabel scale={scale}>Horizon</FooterLabel>
           </div>
           <div
@@ -785,39 +612,18 @@ function ForecastStatsRow({
             <div style={valueStyle}>{horizon}</div>
           </div>
         </div>
-        <div style={colStyle}>
-          <div style={labelWrapperStyle}>
+        <div style={styles.colStyle}>
+          <div style={styles.labelWrapperStyle}>
             <FooterLabel scale={scale}>Prediction</FooterLabel>
           </div>
           <div
             style={{ display: 'flex', alignItems: 'baseline', gap: 8 * scale }}
           >
-            <div
-              style={{
-                ...valueStyle,
-              }}
-            >
-              {odds ? `${odds} Chance` : ''}
-            </div>
+            <div style={valueStyle}>{odds ? `${odds} Chance` : ''}</div>
           </div>
         </div>
       </div>
-      <div
-        style={{
-          display: 'flex',
-          marginTop: 16 * scale,
-          justifyContent: 'flex-start',
-          fontSize: 27 * scale,
-          lineHeight: `${36 * scale}px`,
-          fontWeight: 600,
-          color: og.colors.foregroundLight,
-        }}
-      >
-        <span>Forecast the future on</span>
-        <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
-          www.sapience.xyz
-        </span>
-      </div>
+      <Tagline scale={scale} />
     </div>
   );
 }
@@ -838,35 +644,14 @@ export function ForecastFooter({
   scale?: number;
 }) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16 * scale,
-        marginLeft: -(180 + 34) * scale,
-        marginRight: -40 * scale,
-      }}
-    >
-      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
-        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          marginTop: -32 * scale,
-        }}
-      >
-        <ForecastStatsRow
-          resolution={resolution || ''}
-          horizon={horizon || ''}
-          odds={odds || ''}
-          scale={scale}
-        />
-      </div>
-    </div>
+    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
+      <ForecastStatsRow
+        resolution={resolution || ''}
+        horizon={horizon || ''}
+        odds={odds || ''}
+        scale={scale}
+      />
+    </BaseFooter>
   );
 }
 
@@ -880,8 +665,7 @@ export function baseContainerStyle(): React.CSSProperties {
     padding: 0,
     background: og.colors.backgroundDark,
     color: og.colors.foregroundLight,
-    fontFamily:
-      'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
+    fontFamily: FONT_FAMILY.sans,
     position: 'relative',
   } as const;
 }
@@ -1045,17 +829,17 @@ function getPillColors(tone: PillTone): {
 
   if (tone === 'success') {
     return {
-      border: toRgba(og.colors.success, 0.45),
+      border: toRgba(og.colors.success, 0.6),
       fg: og.colors.success,
-      bg: toRgba(og.colors.success, 0.1),
+      bg: toRgba(og.colors.success, 0.2),
     };
   }
 
   if (tone === 'danger') {
     return {
-      border: toRgba(og.colors.danger, 0.45),
+      border: toRgba(og.colors.danger, 0.6),
       fg: og.colors.danger,
-      bg: toRgba(og.colors.danger, 0.1),
+      bg: toRgba(og.colors.danger, 0.2),
     };
   }
 
@@ -1079,15 +863,15 @@ function computePillStyle(scale: number, tone: PillTone): React.CSSProperties {
     borderRadius: Math.round(6 * scale),
     background: colors.bg,
     color: colors.fg,
-    fontWeight: 500,
+    fontWeight: 600,
     borderStyle: 'solid',
     borderWidth,
     borderColor: colors.border,
     fontSize,
     lineHeight: `${lineHeight}px`,
-    fontFamily: isHighlighted
-      ? 'IBMPlexMono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
-      : undefined,
+    fontFamily: FONT_FAMILY.mono,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
   };
 }
 
@@ -1115,6 +899,35 @@ export function computePotentialReturn(
   const profit = p;
   if (profit <= 0) return null;
   return addThousandsSeparators(profit.toFixed(profit < 1 ? 4 : 2));
+}
+
+export function ErrorOGImage({ message }: { message: string }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: og.colors.backgroundDark,
+        color: og.colors.foregroundLight,
+        fontFamily: FONT_FAMILY.sans,
+      }}
+    >
+      <div style={{ display: 'flex', fontSize: 28, opacity: 0.86 }}>
+        Error: {message}
+      </div>
+    </div>
+  );
+}
+
+export function createErrorImageResponse(err: unknown): ImageResponse {
+  const message = err instanceof Error ? err.message : 'Unknown error';
+  return new ImageResponse(<ErrorOGImage message={message} />, {
+    width: WIDTH,
+    height: HEIGHT,
+  });
 }
 
 export { og };

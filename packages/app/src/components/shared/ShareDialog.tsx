@@ -43,7 +43,7 @@ export default function ShareDialog({
   owner,
   extraParams,
   trigger,
-  imagePath = '/og/trade',
+  imagePath = '/og/position',
   title = 'Share',
   open: controlledOpen,
   onOpenChange,
