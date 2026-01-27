@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 
-/// @title Deploy PositionTokenBridgeRemote (Mainnet)
+/// @title Deploy PredictionMarketBridgeRemote (Mainnet)
 /// @notice Deploy bridge on SM Network (Arbitrum mainnet - remote chain)
 contract DeployRemoteBridge is Script {
     function run() external {
@@ -15,7 +15,7 @@ contract DeployRemoteBridge is Script {
         address factory = vm.envAddress("FACTORY_ADDRESS");
 
         console.log(
-            "=== Deploy PositionTokenBridgeRemote on SM Network (Mainnet) ==="
+            "=== Deploy PredictionMarketBridgeRemote on SM Network (Mainnet) ==="
         );
         console.log("LZ Endpoint:", endpoint);
         console.log("Owner:", owner);
@@ -23,14 +23,14 @@ contract DeployRemoteBridge is Script {
 
         vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        PositionTokenBridgeRemote bridge =
-            new PositionTokenBridgeRemote(endpoint, owner, factory);
+        PredictionMarketBridgeRemote bridge =
+            new PredictionMarketBridgeRemote(endpoint, owner, factory);
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Deployed ===");
-        console.log("PositionTokenBridgeRemote:", address(bridge));
+        console.log("PredictionMarketBridgeRemote:", address(bridge));
         console.log("");
         console.log("Add to .env:");
         console.log("SM_NETWORK_BRIDGE_ADDRESS=", address(bridge));

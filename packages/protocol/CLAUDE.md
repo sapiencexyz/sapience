@@ -50,8 +50,8 @@ src/
 │   ├── interfaces/      # V2 interfaces
 │   ├── resolvers/       # Condition resolvers
 │   ├── utils/           # Signature validation, account factory
-│   ├── PredictionMarketV2.sol
-│   ├── PositionToken.sol
+│   ├── PredictionMarketEscrow.sol
+│   ├── PredictionMarketToken.sol
 │   └── v2.md            # Detailed specification
 ├── predictionMarket/    # Legacy prediction market
 ├── bridge/              # LayerZero bridge utilities
@@ -104,8 +104,8 @@ Users with the same picks share tokens. Token supply equals total wagers:
 
 ### Main Contracts
 
-- **PredictionMarketV2.sol**: Core contract handling mint, settle, redeem
-- **PositionToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
+- **PredictionMarketEscrow.sol**: Core contract handling mint, settle, redeem
+- **PredictionMarketToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
 - **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
 
 ### Condition Resolvers
@@ -120,7 +120,7 @@ Located in `src/v2/resolvers/`:
 
 1. Condition resolvers return `OutcomeVector [yesWeight, noWeight]`
    - `[1,0]` = YES wins, `[0,1]` = NO wins, `[1,1]` = tie
-2. PredictionMarketV2 applies parlay logic:
+2. PredictionMarketEscrow applies parlay logic:
    - All picks match predicted outcome -> PREDICTOR_WINS
    - Any pick decisively against -> COUNTERPARTY_WINS
    - Any non-decisive pick -> NON_DECISIVE (tie)
@@ -131,9 +131,9 @@ Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-p
 
 **Architecture:**
 ```
-PositionTokenBridgeBase (abstract)
-├── PositionTokenBridge (Ethereal - source chain)
-└── PositionTokenBridgeRemote (Arbitrum - remote chain)
+PredictionMarketBridgeBase (abstract)
+├── PredictionMarketBridge (Ethereal - source chain)
+└── PredictionMarketBridgeRemote (Arbitrum - remote chain)
 ```
 
 **Key Features:**
@@ -144,11 +144,11 @@ PositionTokenBridgeBase (abstract)
 - Automatic token deployment on first bridge
 
 **Contracts:**
-- `PositionTokenBridgeBase.sol`: Abstract base with shared logic
-- `PositionTokenBridge.sol`: Ethereal side (escrow, release)
-- `PositionTokenBridgeRemote.sol`: Arbitrum side (mint, burn)
-- `PositionTokenFactory.sol`: CREATE3 factory
-- `BridgedPositionToken.sol`: Mintable/burnable ERC20 on Arbitrum
+- `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
+- `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
+- `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)
+- `PredictionMarketTokenFactory.sol`: CREATE3 factory
+- `PredictionMarketTokenBridged.sol`: Mintable/burnable ERC20 on Arbitrum
 
 ### Deployment Configuration
 

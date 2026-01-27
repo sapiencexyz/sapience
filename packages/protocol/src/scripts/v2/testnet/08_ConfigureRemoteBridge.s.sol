@@ -3,14 +3,14 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../../v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Configure SM Network Bridge
 /// @notice Configure bridge on SM Network with Ethereal settings
@@ -23,9 +23,10 @@ contract ConfigureRemoteBridge is Script {
         uint128 ackFeeEstimate =
             uint128(vm.envOr("ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
 
-        PositionTokenBridgeRemote bridge =
-            PositionTokenBridgeRemote(payable(bridgeAddr));
-        PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
+        PredictionMarketBridgeRemote bridge =
+            PredictionMarketBridgeRemote(payable(bridgeAddr));
+        PredictionMarketTokenFactory factory =
+            PredictionMarketTokenFactory(factoryAddr);
 
         console.log("=== Configure SM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);
@@ -38,7 +39,7 @@ contract ConfigureRemoteBridge is Script {
 
         // Set bridge config
         bridge.setBridgeConfig(
-            IPositionTokenBridgeBase.BridgeConfig({
+            IPredictionMarketBridgeBase.BridgeConfig({
                 remoteEid: remoteEid,
                 remoteBridge: remoteBridge,
                 ackFeeEstimate: ackFeeEstimate

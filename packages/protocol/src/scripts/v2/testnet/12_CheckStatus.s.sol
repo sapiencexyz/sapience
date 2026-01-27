@@ -4,18 +4,18 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../../v2/bridge/PositionTokenFactory.sol";
-import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+    PredictionMarketTokenFactory
+} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status
 /// @notice Check deployment status and balances
@@ -44,7 +44,7 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- Prediction Market V2 ---");
             console.log("Address:", marketAddr);
-            PredictionMarketV2 market = PredictionMarketV2(marketAddr);
+            PredictionMarketEscrow market = PredictionMarketEscrow(marketAddr);
             console.log("Collateral Token:", address(market.collateralToken()));
         }
 
@@ -55,12 +55,12 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- PM Network Bridge ---");
             console.log("Address:", etherealBridgeAddr);
-            PositionTokenBridge etherealBridge =
-                PositionTokenBridge(payable(etherealBridgeAddr));
+            PredictionMarketBridge etherealBridge =
+                PredictionMarketBridge(payable(etherealBridgeAddr));
             console.log("Owner:", etherealBridge.owner());
             console.log("ETH Balance:", etherealBridge.getETHBalance());
             console.log("Config Complete:", etherealBridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 etherealBridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("SM Network Bridge:", config.remoteBridge);
@@ -73,13 +73,13 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- Arbitrum Bridge ---");
             console.log("Address:", arbBridgeAddr);
-            PositionTokenBridgeRemote arbBridge =
-                PositionTokenBridgeRemote(payable(arbBridgeAddr));
+            PredictionMarketBridgeRemote arbBridge =
+                PredictionMarketBridgeRemote(payable(arbBridgeAddr));
             console.log("Owner:", arbBridge.owner());
             console.log("ETH Balance:", arbBridge.getETHBalance());
             console.log("Factory:", arbBridge.getFactory());
             console.log("Config Complete:", arbBridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 arbBridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("SM Network Bridge:", config.remoteBridge);
@@ -91,7 +91,8 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- Position Token Factory ---");
             console.log("Address:", factoryAddr);
-            PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
+            PredictionMarketTokenFactory factory =
+                PredictionMarketTokenFactory(factoryAddr);
             console.log("Owner:", factory.owner());
             console.log("Deployer:", factory.deployer());
             console.log("Config Complete:", factory.isConfigComplete());
@@ -114,8 +115,8 @@ contract CheckStatus is Script {
         if (pickConfigId != bytes32(0) && arbBridgeAddr != address(0)) {
             console.log("");
             console.log("--- Bridged Token Status ---");
-            PositionTokenBridgeRemote arbBridge =
-                PositionTokenBridgeRemote(payable(arbBridgeAddr));
+            PredictionMarketBridgeRemote arbBridge =
+                PredictionMarketBridgeRemote(payable(arbBridgeAddr));
             bool isDeployed = arbBridge.isTokenDeployed(pickConfigId, true);
             console.log("Token Deployed:", isDeployed);
             if (isDeployed) {

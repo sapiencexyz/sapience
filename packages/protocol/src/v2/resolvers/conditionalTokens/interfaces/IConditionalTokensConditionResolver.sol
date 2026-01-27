@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { IConditionResolver } from "../../../interfaces/IConditionResolver.sol";
-import { LZTypes } from "../../lz/LZTypes.sol";
+import { LZTypes } from "../../shared/LZTypes.sol";
 
 /// @title IConditionalTokensConditionResolver
 /// @notice Interface for ConditionalTokens-based condition resolver (PM side)

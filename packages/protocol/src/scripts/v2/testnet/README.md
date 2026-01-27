@@ -4,19 +4,19 @@ Scripts for deploying and testing the V2 position token bridge between PM Networ
 
 ## Overview
 
-This deployment uses real PredictionMarketV2 to mint position tokens, which are then bridged between chains.
+This deployment uses real PredictionMarketEscrow to mint position tokens, which are then bridged between chains.
 
 ### Contracts Deployed
 
 **On PM Network (Source Chain):**
 - CollateralToken (Mock USDC)
 - ManualConditionResolver
-- PredictionMarketV2
-- PositionTokenBridge
+- PredictionMarketEscrow
+- PredictionMarketBridge
 
 **On SM Network (Remote Chain):**
-- PositionTokenFactory
-- PositionTokenBridgeRemote
+- PredictionMarketTokenFactory
+- PredictionMarketBridgeRemote
 
 ## Prerequisites
 
@@ -78,7 +78,7 @@ forge script src/scripts/v2/testnet/02_DeployResolver.s.sol --rpc-url $PM_NETWOR
 
 # Add to .env: RESOLVER_ADDRESS=...
 
-# 3. Deploy PredictionMarketV2
+# 3. Deploy PredictionMarketEscrow
 forge script src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: PREDICTION_MARKET_ADDRESS=...
@@ -126,8 +126,8 @@ forge script src/scripts/v2/testnet/08b_SetDVN_RemoteBridge.s.sol --rpc-url $SM_
 Run on **PM Network**:
 
 ```bash
-# 9. Mint position tokens via PredictionMarketV2
-forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
+# 9. Mint position tokens via PredictionMarketEscrow
+forge script src/scripts/v2/testnet/09_MintPredictionMarketTokens.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env:
 # PREDICTOR_TOKEN_ADDRESS=...
@@ -164,15 +164,15 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 |---|--------|-------|-------------|
 | 01 | DeployCollateral | Ethereal | Deploy mock USDC collateral token |
 | 02 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketV2 |
-| 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
-| 05 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
-| 06 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
+| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
+| 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
+| 05 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
+| 06 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
 | 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
 | 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
 | 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
-| 09 | MintPositionTokens | Ethereal | Mint tokens (predictor/counterparty wager) |
+| 09 | MintPredictionMarketTokens | Ethereal | Mint tokens (predictor/counterparty wager) |
 | 10 | TestBridgeToRemote | Ethereal | Predictor bridges tokens to SM Network |
 | 11 | TestBridgeBack | Arbitrum | Predictor bridges tokens back to PM Network |
 | 12a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status & balances |
@@ -296,7 +296,7 @@ Use LayerZero Scan to track messages:
 |----------|-------|---------|
 | CollateralToken | Ethereal | |
 | ManualConditionResolver | Ethereal | |
-| PredictionMarketV2 | Ethereal | |
-| PositionTokenFactory | Arbitrum | |
-| PositionTokenBridge | Ethereal | |
-| PositionTokenBridgeRemote | Arbitrum | |
+| PredictionMarketEscrow | Ethereal | |
+| PredictionMarketTokenFactory | Arbitrum | |
+| PredictionMarketBridge | Ethereal | |
+| PredictionMarketBridgeRemote | Arbitrum | |

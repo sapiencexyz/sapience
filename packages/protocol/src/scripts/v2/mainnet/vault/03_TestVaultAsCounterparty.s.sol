@@ -4,13 +4,15 @@ pragma solidity ^0.8.22;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../../v2/vault/PassiveLiquidityVaultV2.sol";
-import { PredictionMarketV2 } from "../../../../v2/PredictionMarketV2.sol";
+    PredictionMarketVault
+} from "../../../../v2/vault/PredictionMarketVault.sol";
+import {
+    PredictionMarketEscrow
+} from "../../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../../v2/interfaces/IV2Types.sol";
 
 /// @title Test Vault as Counterparty (Mainnet)
-/// @notice Tests vault acting as counterparty in PredictionMarketV2
+/// @notice Tests vault acting as counterparty in PredictionMarketEscrow
 /// @dev Manager signs on behalf of vault via ERC-1271
 contract TestVaultAsCounterparty is Script {
     struct Actors {
@@ -28,8 +30,8 @@ contract TestVaultAsCounterparty is Script {
     }
 
     struct SignParams {
-        PredictionMarketV2 market;
-        PassiveLiquidityVaultV2 vault;
+        PredictionMarketEscrow market;
+        PredictionMarketVault vault;
         bytes32 predictionHash;
         uint256 deadline;
     }
@@ -43,15 +45,16 @@ contract TestVaultAsCounterparty is Script {
     }
 
     // State variables to avoid stack too deep
-    PassiveLiquidityVaultV2 internal _vault;
-    PredictionMarketV2 internal _market;
+    PredictionMarketVault internal _vault;
+    PredictionMarketEscrow internal _market;
     IERC20 internal _collateral;
 
     function run() external {
         Actors memory actors = _loadActors();
 
-        _vault = PassiveLiquidityVaultV2(vm.envAddress("VAULT_ADDRESS"));
-        _market = PredictionMarketV2(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
+        _vault = PredictionMarketVault(vm.envAddress("VAULT_ADDRESS"));
+        _market =
+            PredictionMarketEscrow(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         _collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
 
         // Configurable wager amounts (default 1 USDe)
@@ -237,8 +240,8 @@ contract TestVaultAsCounterparty is Script {
     }
 
     function _buildRequest(
-        PredictionMarketV2 market,
-        PassiveLiquidityVaultV2 vault,
+        PredictionMarketEscrow market,
+        PredictionMarketVault vault,
         IV2Types.Pick[] memory picks,
         Actors memory actors,
         Wagers memory wagers

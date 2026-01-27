@@ -223,7 +223,7 @@ deploy_arbitrum_phase2() {
     fi
 
     # 06. Deploy SM Network Bridge
-    run_script "src/scripts/v2/testnet/06_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PositionTokenBridgeRemote on SM Network"
+    run_script "src/scripts/v2/testnet/06_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketBridgeRemote on SM Network"
     addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"

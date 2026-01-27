@@ -53,7 +53,7 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Error when account factory is not set but session key validation is attempted
     error AccountFactoryNotSet();
 
-    constructor() EIP712("PredictionMarketV2", "1") { }
+    constructor() EIP712("PredictionMarketEscrow", "1") { }
 
     /// @notice Set the trusted account factory for smart account verification
     /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)

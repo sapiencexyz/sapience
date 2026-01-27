@@ -4,18 +4,18 @@ Scripts for deploying and configuring the V2 position token bridge between PM Ne
 
 ## Overview
 
-This deployment deploys the full V2 bridge infrastructure for mainnet, connecting Ethereal mainnet (where PredictionMarketV2 lives) to Arbitrum mainnet (secondary market).
+This deployment deploys the full V2 bridge infrastructure for mainnet, connecting Ethereal mainnet (where PredictionMarketEscrow lives) to Arbitrum mainnet (secondary market).
 
 ### Contracts Deployed
 
 **On PM Network (Source Chain - Ethereal Mainnet):**
 - ManualConditionResolver
-- PredictionMarketV2
-- PositionTokenBridge
+- PredictionMarketEscrow
+- PredictionMarketBridge
 
 **On SM Network (Remote Chain - Arbitrum Mainnet):**
-- PositionTokenFactory
-- PositionTokenBridgeRemote
+- PredictionMarketTokenFactory
+- PredictionMarketBridgeRemote
 
 ## Prerequisites
 
@@ -107,7 +107,7 @@ forge script src/scripts/v2/mainnet/01_DeployResolver.s.sol \
 
 # Add to .env: RESOLVER_ADDRESS=...
 
-# 2. Deploy PredictionMarketV2
+# 2. Deploy PredictionMarketEscrow
 forge script src/scripts/v2/mainnet/02_DeployPredictionMarket.s.sol \
   --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
@@ -182,17 +182,17 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 |---|--------|-------|-------------|
 | 00 | DeployCollateral | Ethereal | Deploy test ERC20 collateral (optional) |
 | 01 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketV2 |
-| 03 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
-| 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
-| 05 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
+| 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
+| 03 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
+| 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
+| 05 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
 | 06 | ConfigureEtherealBridge | Ethereal | Set peer and bridge config |
 | 06b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 07 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
 | 07b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
 | 08a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status |
 | 08b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status |
-| 09 | MintPositionTokens | Ethereal | Mint position tokens for testing |
+| 09 | MintPredictionMarketTokens | Ethereal | Mint prediction market tokens for testing |
 | 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
 | 10b | ResolvePrediction | Ethereal | Resolve condition and settle prediction |
 | 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
@@ -225,7 +225,7 @@ BRIDGE_AMOUNT=10000000000000000000
 Mint position tokens using two EOAs (predictor and counterparty):
 
 ```bash
-forge script src/scripts/v2/mainnet/09_MintPositionTokens.s.sol \
+forge script src/scripts/v2/mainnet/09_MintPredictionMarketTokens.s.sol \
   --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
   -vvvv
@@ -419,7 +419,7 @@ Track cross-chain messages: https://layerzeroscan.com/
 | Contract | Chain | Address |
 |----------|-------|---------|
 | ManualConditionResolver | Ethereal | |
-| PredictionMarketV2 | Ethereal | |
-| PositionTokenFactory | Arbitrum | |
-| PositionTokenBridge | Ethereal | |
-| PositionTokenBridgeRemote | Arbitrum | |
+| PredictionMarketEscrow | Ethereal | |
+| PredictionMarketTokenFactory | Arbitrum | |
+| PredictionMarketBridge | Ethereal | |
+| PredictionMarketBridgeRemote | Arbitrum | |

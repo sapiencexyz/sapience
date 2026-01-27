@@ -3,29 +3,30 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 
-/// @title Deploy PositionTokenBridge
+/// @title Deploy PredictionMarketBridge
 /// @notice Deploy bridge on PM Network (source chain)
 contract DeployEtherealBridge is Script {
     function run() external {
         address endpoint = vm.envAddress("PM_NETWORK_LZ_ENDPOINT");
         address owner = vm.envAddress("DEPLOYER_ADDRESS");
 
-        console.log("=== Deploy PositionTokenBridge on PM Network ===");
+        console.log("=== Deploy PredictionMarketBridge on PM Network ===");
         console.log("LZ Endpoint:", endpoint);
         console.log("Owner:", owner);
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        PositionTokenBridge bridge = new PositionTokenBridge(endpoint, owner);
+        PredictionMarketBridge bridge =
+            new PredictionMarketBridge(endpoint, owner);
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Deployed ===");
-        console.log("PositionTokenBridge:", address(bridge));
+        console.log("PredictionMarketBridge:", address(bridge));
         console.log("");
         console.log("Add to .env:");
         console.log("PM_NETWORK_BRIDGE_ADDRESS=", address(bridge));

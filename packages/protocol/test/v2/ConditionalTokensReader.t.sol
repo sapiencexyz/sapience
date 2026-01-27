@@ -17,7 +17,7 @@ import {
     IConditionalTokensReader
 } from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
 import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
-import { LZTypes } from "../../src/v2/resolvers/lz/LZTypes.sol";
+import { LZTypes } from "../../src/v2/resolvers/shared/LZTypes.sol";
 import { MockConditionalTokens } from "./mocks/MockConditionalTokens.sol";
 import "forge-std/Test.sol";
 

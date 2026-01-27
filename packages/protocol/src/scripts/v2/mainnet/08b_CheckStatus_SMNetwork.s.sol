@@ -4,14 +4,14 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../../v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status - SM Network (Mainnet)
 /// @notice Check deployment status on SM Network (Arbitrum mainnet)
@@ -29,13 +29,13 @@ contract CheckStatus_SMNetwork is Script {
             console.log("");
             console.log("--- SM Network Bridge ---");
             console.log("Address:", bridgeAddr);
-            PositionTokenBridgeRemote bridge =
-                PositionTokenBridgeRemote(payable(bridgeAddr));
+            PredictionMarketBridgeRemote bridge =
+                PredictionMarketBridgeRemote(payable(bridgeAddr));
             console.log("Owner:", bridge.owner());
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Factory:", bridge.getFactory());
             console.log("Config Complete:", bridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 bridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("Remote Bridge:", config.remoteBridge);
@@ -47,7 +47,8 @@ contract CheckStatus_SMNetwork is Script {
             console.log("");
             console.log("--- Position Token Factory ---");
             console.log("Address:", factoryAddr);
-            PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
+            PredictionMarketTokenFactory factory =
+                PredictionMarketTokenFactory(factoryAddr);
             console.log("Owner:", factory.owner());
             console.log("Deployer:", factory.deployer());
             console.log("Config Complete:", factory.isConfigComplete());

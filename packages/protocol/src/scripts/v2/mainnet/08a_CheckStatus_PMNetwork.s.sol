@@ -4,12 +4,12 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
-import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
+import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status - PM Network (Mainnet)
 /// @notice Check deployment status on PM Network (Ethereal mainnet)
@@ -45,7 +45,7 @@ contract CheckStatus_PMNetwork is Script {
             console.log("");
             console.log("--- Prediction Market V2 ---");
             console.log("Address:", marketAddr);
-            PredictionMarketV2 market = PredictionMarketV2(marketAddr);
+            PredictionMarketEscrow market = PredictionMarketEscrow(marketAddr);
             console.log("Collateral Token:", address(market.collateralToken()));
         }
 
@@ -55,12 +55,12 @@ contract CheckStatus_PMNetwork is Script {
             console.log("");
             console.log("--- PM Network Bridge ---");
             console.log("Address:", bridgeAddr);
-            PositionTokenBridge bridge =
-                PositionTokenBridge(payable(bridgeAddr));
+            PredictionMarketBridge bridge =
+                PredictionMarketBridge(payable(bridgeAddr));
             console.log("Owner:", bridge.owner());
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Config Complete:", bridge.isConfigComplete());
-            IPositionTokenBridgeBase.BridgeConfig memory config =
+            IPredictionMarketBridgeBase.BridgeConfig memory config =
                 bridge.getBridgeConfig();
             console.log("Remote EID:", config.remoteEid);
             console.log("Remote Bridge:", config.remoteBridge);

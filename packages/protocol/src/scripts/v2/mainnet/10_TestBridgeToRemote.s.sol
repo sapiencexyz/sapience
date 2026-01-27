@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridge
-} from "../../../v2/bridge/PositionTokenBridge.sol";
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Test Bridge to Remote (Mainnet)
@@ -29,7 +29,8 @@ contract TestBridgeToRemote is Script {
         // Optional: bridge to a different recipient
         address recipient = vm.envOr("BRIDGE_RECIPIENT", predictor);
 
-        PositionTokenBridge bridge = PositionTokenBridge(payable(bridgeAddr));
+        PredictionMarketBridge bridge =
+            PredictionMarketBridge(payable(bridgeAddr));
         IERC20 token = IERC20(tokenAddr);
 
         console.log("=== Bridge Test: Ethereal -> Arbitrum (Mainnet) ===");

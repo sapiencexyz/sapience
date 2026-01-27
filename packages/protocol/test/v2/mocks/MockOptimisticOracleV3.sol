@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {
     LZConditionResolverUmaSide
-} from "../../../src/v2/resolvers/lz/LZConditionResolverUmaSide.sol";
+} from "../../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
 
 /// @title MockOptimisticOracleV3
 /// @notice Mock OptimisticOracleV3 for v2 LZ resolver testing

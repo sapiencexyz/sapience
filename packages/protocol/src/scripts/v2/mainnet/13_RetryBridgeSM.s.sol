@@ -3,11 +3,11 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    IPositionTokenBridgeBase
-} from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Retry Bridge from SM Network (Mainnet)
@@ -24,8 +24,8 @@ contract RetryBridgeSM is Script {
 
         uint256 deployerPk = vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY");
 
-        PositionTokenBridgeRemote bridge =
-            PositionTokenBridgeRemote(payable(bridgeAddr));
+        PredictionMarketBridgeRemote bridge =
+            PredictionMarketBridgeRemote(payable(bridgeAddr));
 
         console.log("=== Retry Bridge from SM Network (Mainnet) ===");
         console.log("Bridge:", bridgeAddr);
@@ -33,7 +33,7 @@ contract RetryBridgeSM is Script {
         console.logBytes32(bridgeId);
 
         // Get pending bridge info
-        IPositionTokenBridgeBase.PendingBridge memory pending =
+        IPredictionMarketBridgeBase.PendingBridge memory pending =
             bridge.getPendingBridge(bridgeId);
 
         console.log("");
@@ -47,7 +47,7 @@ contract RetryBridgeSM is Script {
         console.log("Last Retry At:", pending.lastRetryAt);
 
         require(
-            pending.status == IPositionTokenBridgeBase.BridgeStatus.PENDING,
+            pending.status == IPredictionMarketBridgeBase.BridgeStatus.PENDING,
             "Bridge not in PENDING status"
         );
 

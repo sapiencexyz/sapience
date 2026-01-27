@@ -4,11 +4,11 @@ pragma solidity ^0.8.22;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../../v2/vault/PassiveLiquidityVaultV2.sol";
+    PredictionMarketVault
+} from "../../../../v2/vault/PredictionMarketVault.sol";
 
 /// @title Test Deposit and Withdrawal (Mainnet)
-/// @notice Tests deposit and withdrawal flow on PassiveLiquidityVaultV2
+/// @notice Tests deposit and withdrawal flow on PredictionMarketVault
 /// @dev PREDICTOR deposits, COUNTERPARTY (manager) processes
 contract TestDepositWithdrawal is Script {
     struct Actors {
@@ -21,8 +21,8 @@ contract TestDepositWithdrawal is Script {
     function run() external {
         Actors memory actors = _loadActors();
 
-        PassiveLiquidityVaultV2 vault =
-            PassiveLiquidityVaultV2(vm.envAddress("VAULT_ADDRESS"));
+        PredictionMarketVault vault =
+            PredictionMarketVault(vm.envAddress("VAULT_ADDRESS"));
         IERC20 collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
 
         // Configurable amounts (default 1 USDe)
