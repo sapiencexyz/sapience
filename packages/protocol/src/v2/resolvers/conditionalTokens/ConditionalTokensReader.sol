@@ -17,7 +17,7 @@ import {
 import {
     IConditionalTokensReader
 } from "./interfaces/IConditionalTokensReader.sol";
-import { LZTypes } from "../lz-uma/LZTypes.sol";
+import { LZTypes } from "../shared/LZTypes.sol";
 
 /// @notice Minimal subset of Gnosis ConditionalTokens needed for resolution
 interface IConditionalTokens {

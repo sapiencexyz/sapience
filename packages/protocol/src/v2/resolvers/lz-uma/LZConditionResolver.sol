@@ -12,7 +12,7 @@ import {
 import { ILZConditionResolver } from "./interfaces/ILZConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
-import { LZTypes } from "./LZTypes.sol";
+import { LZTypes } from "../shared/LZTypes.sol";
 import { LZETHManagement } from "./LZETHManagement.sol";
 
 /// @title LZConditionResolver

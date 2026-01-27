@@ -15,7 +15,7 @@ import {
 } from "./interfaces/IConditionalTokensConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
-import { LZTypes } from "../lz-uma/LZTypes.sol";
+import { LZTypes } from "../shared/LZTypes.sol";
 
 /// @title ConditionalTokensConditionResolver
 /// @notice Resolver that receives ConditionalTokens resolution data via LayerZero

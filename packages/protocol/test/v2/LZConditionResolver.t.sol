@@ -8,7 +8,7 @@ import { Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import {
     LZConditionResolver
 } from "../../src/v2/resolvers/lz-uma/LZConditionResolver.sol";
-import { LZTypes } from "../../src/v2/resolvers/lz-uma/LZTypes.sol";
+import { LZTypes } from "../../src/v2/resolvers/shared/LZTypes.sol";
 import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
 import "forge-std/Test.sol";
 

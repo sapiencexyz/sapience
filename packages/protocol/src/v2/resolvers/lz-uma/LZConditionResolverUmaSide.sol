@@ -26,7 +26,7 @@ import {
 import {
     ILZConditionResolverUmaSide
 } from "./interfaces/ILZConditionResolverUmaSide.sol";
-import { LZTypes } from "./LZTypes.sol";
+import { LZTypes } from "../shared/LZTypes.sol";
 import { LZETHManagement } from "./LZETHManagement.sol";
 
 /// @title LZConditionResolverUmaSide

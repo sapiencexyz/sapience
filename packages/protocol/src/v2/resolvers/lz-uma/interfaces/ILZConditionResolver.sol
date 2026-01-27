@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { IConditionResolver } from "../../../interfaces/IConditionResolver.sol";
-import { LZTypes } from "../LZTypes.sol";
+import { LZTypes } from "../../shared/LZTypes.sol";
 
 /// @title ILZConditionResolver
 /// @notice Interface for LayerZero-based Condition Resolver (PM side)

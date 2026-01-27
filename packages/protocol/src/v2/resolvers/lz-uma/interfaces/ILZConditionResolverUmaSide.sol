@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { LZTypes } from "../LZTypes.sol";
+import { LZTypes } from "../../shared/LZTypes.sol";
 
 /// @title ILZConditionResolverUmaSide
 /// @notice Interface for UMA-side LayerZero Condition Resolver
