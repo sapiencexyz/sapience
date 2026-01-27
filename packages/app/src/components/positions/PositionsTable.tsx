@@ -27,7 +27,7 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -36,8 +36,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
-import StackedPredictions from '~/components/shared/StackedPredictions';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import PicksSummary from '~/components/shared/PicksSummary';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -734,8 +733,6 @@ export default function PositionsTable({
       {
         id: 'conditions',
         accessorFn: (row) => row.createdAt,
-        size: 550,
-        minSize: 550,
         header: ({ column }) => (
           <Button
             type="button"
@@ -768,66 +765,73 @@ export default function PositionsTable({
           const hasPythLeg = (row.original.legs || []).some(
             (leg) => leg.source === 'pyth'
           );
-          const createdDate = new Date(row.original.createdAt);
-          const createdDisplay = formatDistanceToNow(createdDate, {
-            addSuffix: true,
-          });
-          const exactLocalDisplay = createdDate.toLocaleString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZoneName: 'short',
-          });
           return (
             <div className="text-sm">
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Predictions
               </div>
-              <div className="flex flex-col xl:flex-row xl:items-center gap-2 mb-2">
-                {row.original.addressRole === 'counterparty' && (
-                  <>
-                    {/* Counterparty badge is only shown for UMA (non-Pyth) positions */}
-                    {!hasPythLeg ? <CounterpartyBadge /> : null}
-                  </>
-                )}
-                <StackedPredictions
-                  legs={row.original.legs}
-                  className="max-w-full flex-1 min-w-0"
+              <PicksSummary
+                legs={row.original.legs}
+                positionId={row.original.positionId}
+                isCounterparty={row.original.addressRole === 'counterparty'}
+                hasPythLeg={hasPythLeg}
+                createdAt={row.original.createdAt}
+              />
+            </div>
+          );
+        },
+      },
+
+      {
+        id: 'against',
+        accessorFn: (row) => row.counterpartyAddress ?? '',
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Opponent
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const addr = row.original.counterpartyAddress;
+          if (!addr) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <div>
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Opponent
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+                <EnsAvatar
+                  address={addr}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
                 />
-              </div>
-              <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-                <span>Position #{row.original.positionId} created</span>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">{createdDisplay}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div>{exactLocalDisplay}</div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                {row.original.counterpartyAddress && (
-                  <>
-                    <span>against</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <EnsAvatar
-                        address={row.original.counterpartyAddress}
-                        className="shrink-0 rounded-sm ring-1 ring-border/50"
-                        width={14}
-                        height={14}
-                      />
-                      <AddressDisplay
-                        address={row.original.counterpartyAddress}
-                        compact
-                      />
-                    </span>
-                  </>
-                )}
-              </div>
+                <AddressDisplay address={addr} />
+              </span>
             </div>
           );
         },
@@ -847,8 +851,6 @@ export default function PositionsTable({
                   0n);
           return Number(formatEther(viewerWagerWei));
         },
-        size: 180,
-        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -915,8 +917,6 @@ export default function PositionsTable({
           if (row.status === 'lost') return 0;
           return totalPayout;
         },
-        size: 180,
-        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -999,8 +999,6 @@ export default function PositionsTable({
           const pnlValue = Number(formatEther(BigInt(row.userPnL || '0')));
           return pnlValue;
         },
-        size: 180,
-        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -1111,8 +1109,6 @@ export default function PositionsTable({
           if (row.status === 'lost') return -2;
           return -3;
         },
-        size: 180,
-        minSize: 120,
         header: ({ column }) => (
           <Button
             type="button"
@@ -1302,11 +1298,9 @@ export default function PositionsTable({
       {
         id: 'share',
         enableSorting: false,
-        size: 80,
-        minSize: 60,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap xl:mt-0 xl:pr-4">
+          <div className="whitespace-nowrap mt-6 xl:mt-0">
             <button
               type="button"
               className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -1398,7 +1392,7 @@ export default function PositionsTable({
                     <Loader size={20} />
                   </div>
                 )}
-                <Table className="w-full table-fixed">
+                <Table className="w-full table-auto">
                   <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
                     {table.getHeaderGroups().map((headerGroup) => (
                       <TableRow
@@ -1413,11 +1407,6 @@ export default function PositionsTable({
                                 header.id === 'conditions'
                                   ? ''
                                   : 'whitespace-nowrap',
-                                header.id === 'wager' ? 'xl:w-[120px]' : '',
-                                header.id === 'toWin' ? 'xl:w-[120px]' : '',
-                                header.id === 'pnl' ? 'xl:w-[140px]' : '',
-                                header.id === 'status' ? 'xl:w-[120px]' : '',
-                                header.id === 'share' ? 'xl:w-[100px]' : '',
                               ]
                                 .filter(Boolean)
                                 .join(' ') || undefined

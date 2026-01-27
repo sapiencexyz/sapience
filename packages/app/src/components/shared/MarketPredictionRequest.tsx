@@ -377,7 +377,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               probability={requestedPrediction}
               showLabel={true}
               label="chance"
-              className="font-mono text-ethena"
+              className="font-mono"
+              colorByProbability
             />
           </motion.span>
         )}
