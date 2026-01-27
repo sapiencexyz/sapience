@@ -3,7 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import type { ConditionType } from './useConditions';
 import type { ConditionGroupType } from './useConditionGroups';
-import type { SortField, SortDirection } from './useInfiniteMarkets';
+
+export type SortField = 'openInterest' | 'endTime';
+export type SortDirection = 'asc' | 'desc';
 
 export interface QuestionType {
   itemType: 'group' | 'condition';

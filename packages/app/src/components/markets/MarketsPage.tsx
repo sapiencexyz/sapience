@@ -16,10 +16,10 @@ import MarketsDataTable from '~/components/markets/MarketsDataTable';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
-  useInfiniteMarkets,
+  useInfiniteQuestions,
   type SortField,
   type SortDirection,
-} from '~/hooks/graphql/useInfiniteMarkets';
+} from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
@@ -136,12 +136,12 @@ const MarketsPage = () => {
 
   // Fetch market items (both groups and ungrouped conditions interleaved)
   const {
-    items: marketItems,
+    data: marketItems,
     isLoading: isLoadingData,
     isFetchingMore,
     hasMore,
     fetchMore,
-  } = useInfiniteMarkets({
+  } = useInfiniteQuestions({
     chainId,
     search: debouncedSearchTerm.trim() || undefined,
     categorySlugs:

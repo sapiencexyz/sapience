@@ -44,7 +44,7 @@ import type {
   SortField,
   SortDirection,
   QuestionType,
-} from '~/hooks/graphql/useInfiniteMarkets';
+} from '~/hooks/graphql/useInfiniteQuestions';
 
 // Union type for top-level table rows
 type TopLevelRow =
