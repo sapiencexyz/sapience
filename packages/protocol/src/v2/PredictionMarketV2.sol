@@ -334,6 +334,135 @@ contract PredictionMarketV2 is
     }
 
     /// @inheritdoc IPredictionMarketV2
+    function burn(IV2Types.BurnRequest calldata request) external nonReentrant {
+        // Validate token amounts
+        if (
+            request.predictorTokenAmount == 0
+                || request.counterpartyTokenAmount == 0
+        ) {
+            revert ZeroWager();
+        }
+
+        // Validate conservation: total payout == total tokens burned
+        if (
+            request.predictorPayout + request.counterpartyPayout
+                != request.predictorTokenAmount
+                    + request.counterpartyTokenAmount
+        ) {
+            revert InvalidBurnAmounts();
+        }
+
+        // Validate token pair exists
+        IV2Types.TokenPair storage tokenPair = _tokenPairs[request.pickConfigId];
+        if (tokenPair.predictorToken == address(0)) {
+            revert InvalidToken();
+        }
+
+        // Validate pick config is not resolved
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[request.pickConfigId];
+        if (config.resolved) {
+            revert PickConfigAlreadyResolved();
+        }
+
+        // Compute burn hash for signatures
+        bytes32 burnHash = keccak256(
+            abi.encode(
+                request.pickConfigId,
+                request.predictorTokenAmount,
+                request.counterpartyTokenAmount,
+                request.predictorHolder,
+                request.counterpartyHolder,
+                request.predictorPayout,
+                request.counterpartyPayout
+            )
+        );
+
+        // Validate predictor signature
+        if (!_validateBurnPartySignature(
+                burnHash,
+                request.predictorHolder,
+                request.predictorTokenAmount,
+                request.predictorPayout,
+                request.predictorNonce,
+                request.predictorDeadline,
+                request.predictorSignature,
+                request.predictorSessionKeyData
+            )) {
+            revert InvalidSignature();
+        }
+        if (request.predictorNonce != _nonces[request.predictorHolder]) {
+            revert InvalidNonce();
+        }
+
+        // Validate counterparty signature
+        if (!_validateBurnPartySignature(
+                burnHash,
+                request.counterpartyHolder,
+                request.counterpartyTokenAmount,
+                request.counterpartyPayout,
+                request.counterpartyNonce,
+                request.counterpartyDeadline,
+                request.counterpartySignature,
+                request.counterpartySessionKeyData
+            )) {
+            revert InvalidSignature();
+        }
+        if (request.counterpartyNonce != _nonces[request.counterpartyHolder]) {
+            revert InvalidNonce();
+        }
+
+        // Increment nonces
+        _nonces[request.predictorHolder]++;
+        _nonces[request.counterpartyHolder]++;
+
+        // Execute burn
+        _executeBurn(request, tokenPair, config);
+    }
+
+    /// @dev Internal function to execute burn logic and avoid stack too deep
+    function _executeBurn(
+        IV2Types.BurnRequest calldata request,
+        IV2Types.TokenPair storage tokenPair,
+        IV2Types.PickConfiguration storage config
+    ) internal {
+        // Burn predictor tokens from holder
+        IPositionToken(tokenPair.predictorToken)
+            .burn(request.predictorHolder, request.predictorTokenAmount);
+
+        // Burn counterparty tokens from holder
+        IPositionToken(tokenPair.counterpartyToken)
+            .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
+
+        // Update accounting
+        config.totalPredictorCollateral -= request.predictorTokenAmount;
+        config.totalCounterpartyCollateral -= request.counterpartyTokenAmount;
+
+        // Transfer collateral to holders
+        if (request.predictorPayout > 0) {
+            collateralToken.safeTransfer(
+                request.predictorHolder, request.predictorPayout
+            );
+        }
+        if (request.counterpartyPayout > 0) {
+            collateralToken.safeTransfer(
+                request.counterpartyHolder, request.counterpartyPayout
+            );
+        }
+
+        emit PositionsBurned(
+            request.pickConfigId,
+            request.predictorHolder,
+            request.counterpartyHolder,
+            request.predictorTokenAmount,
+            request.counterpartyTokenAmount,
+            request.predictorPayout,
+            request.counterpartyPayout,
+            request.refCode
+        );
+    }
+
+    /// @inheritdoc IPredictionMarketV2
     function settle(bytes32 predictionId, bytes32 refCode)
         external
         nonReentrant
@@ -954,6 +1083,56 @@ contract PredictionMarketV2 is
                 predictionHash,
                 signer,
                 wager,
+                nonce,
+                deadline,
+                signature,
+                approval
+            );
+        }
+    }
+
+    /// @notice Validate a burn party's signature (supports both EOA and session key)
+    function _validateBurnPartySignature(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) internal view returns (bool isValid) {
+        if (sessionKeyData.length == 0) {
+            // EOA or EIP-1271 (smart account) signature
+            return _isBurnApprovalValidWithEIP1271Fallback(
+                burnHash,
+                signer,
+                tokenAmount,
+                payout,
+                nonce,
+                deadline,
+                signature
+            );
+        } else {
+            // Session key signature - decode and validate
+            IV2Types.SessionKeyData memory skData =
+                abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
+
+            SessionKeyApproval memory approval = SessionKeyApproval({
+                sessionKey: skData.sessionKey,
+                owner: skData.owner,
+                smartAccount: signer,
+                validUntil: skData.validUntil,
+                permissionsHash: skData.permissionsHash,
+                chainId: skData.chainId,
+                ownerSignature: skData.ownerSignature
+            });
+
+            return _isSessionKeyBurnApprovalValid(
+                burnHash,
+                signer,
+                tokenAmount,
+                payout,
                 nonce,
                 deadline,
                 signature,

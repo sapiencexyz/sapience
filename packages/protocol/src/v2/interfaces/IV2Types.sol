@@ -92,6 +92,27 @@ interface IV2Types {
         bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
     }
 
+    /// @notice Burn request data for bilateral position exit before resolution
+    /// @dev Both token holders sign to agree on payout split. Conservation: predictorPayout + counterpartyPayout == predictorTokenAmount + counterpartyTokenAmount
+    struct BurnRequest {
+        bytes32 pickConfigId; // Pick configuration to burn from
+        uint256 predictorTokenAmount; // Predictor tokens to burn
+        uint256 counterpartyTokenAmount; // Counterparty tokens to burn
+        address predictorHolder; // Who holds/burns predictor tokens
+        address counterpartyHolder; // Who holds/burns counterparty tokens
+        uint256 predictorPayout; // Collateral to predictor holder
+        uint256 counterpartyPayout; // Collateral to counterparty holder
+        uint256 predictorNonce; // Nonce for predictor signature
+        uint256 counterpartyNonce; // Nonce for counterparty signature
+        uint256 predictorDeadline; // Deadline for predictor signature
+        uint256 counterpartyDeadline; // Deadline for counterparty signature
+        bytes predictorSignature; // EIP-712 signature (from EOA or session key)
+        bytes counterpartySignature; // EIP-712 signature (from EOA or session key)
+        bytes32 refCode; // Referral code
+        bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
+        bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
+    }
+
     /// @notice Token pair for a prediction
     struct TokenPair {
         address predictorToken;

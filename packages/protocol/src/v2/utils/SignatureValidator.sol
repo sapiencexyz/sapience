@@ -25,6 +25,11 @@ abstract contract SignatureValidator is EIP712 {
         "MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)"
     );
 
+    /// @notice EIP-712 typehash for burn approval
+    bytes32 public constant BURN_APPROVAL_TYPEHASH = keccak256(
+        "BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)"
+    );
+
     /// @notice EIP-712 typehash for session key approval (owner authorizing a session key)
     /// @dev Includes chainId to prevent cross-chain replay attacks
     bytes32 public constant SESSION_KEY_APPROVAL_TYPEHASH = keccak256(
@@ -195,6 +200,234 @@ abstract contract SignatureValidator is EIP712 {
                 predictionHash,
                 signer,
                 wager,
+                nonce,
+                deadline
+            )
+        );
+        return _hashTypedDataV4(structHash);
+    }
+
+    /// @notice Validate a burn approval signature (ECDSA)
+    /// @param burnHash Hash of the burn parameters
+    /// @param signer Expected signer address
+    /// @param tokenAmount Token amount for this signer
+    /// @param payout Payout amount for this signer
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The EIP-712 signature
+    /// @return isValid True if the signature is valid
+    function _isBurnApprovalValid(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        if (block.timestamp > deadline) {
+            return false;
+        }
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                BURN_APPROVAL_TYPEHASH,
+                burnHash,
+                signer,
+                tokenAmount,
+                payout,
+                nonce,
+                deadline
+            )
+        );
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+        address recoveredSigner = ECDSA.recover(hash, signature);
+
+        if (recoveredSigner == address(0)) {
+            return false;
+        }
+
+        return recoveredSigner == signer;
+    }
+
+    /// @notice Validate burn signature for EOA or smart contract with EIP-1271 fallback
+    /// @param burnHash Hash of the burn parameters
+    /// @param signer Expected signer address (EOA or smart contract)
+    /// @param tokenAmount Token amount for this signer
+    /// @param payout Payout amount for this signer
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The signature (ECDSA for EOA, or signature validated by EIP-1271)
+    /// @return isValid True if the signature is valid
+    function _isBurnApprovalValidWithEIP1271Fallback(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        if (block.timestamp > deadline) {
+            return false;
+        }
+
+        // Try ECDSA first (for EOAs)
+        if (_isBurnApprovalValid(
+                burnHash,
+                signer,
+                tokenAmount,
+                payout,
+                nonce,
+                deadline,
+                signature
+            )) {
+            return true;
+        }
+
+        // Fallback to EIP-1271 for contracts
+        if (signer.code.length > 0) {
+            bytes32 structHash = keccak256(
+                abi.encode(
+                    BURN_APPROVAL_TYPEHASH,
+                    burnHash,
+                    signer,
+                    tokenAmount,
+                    payout,
+                    nonce,
+                    deadline
+                )
+            );
+            bytes32 hash = _hashTypedDataV4(structHash);
+            return _isEIP1271SignatureValid(signer, hash, signature);
+        }
+
+        return false;
+    }
+
+    /// @notice Validate a burn approval signed by a session key
+    /// @param burnHash Hash of the burn parameters
+    /// @param smartAccount The smart account address (expected signer)
+    /// @param tokenAmount Token amount
+    /// @param payout Payout amount
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param sessionKeySignature The session key's signature on the burn approval
+    /// @param sessionApproval The owner's approval of the session key
+    /// @return isValid True if both signatures are valid
+    function _isSessionKeyBurnApprovalValid(
+        bytes32 burnHash,
+        address smartAccount,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory sessionKeySignature,
+        SessionKeyApproval memory sessionApproval
+    ) internal view returns (bool isValid) {
+        if (block.timestamp > deadline) {
+            return false;
+        }
+
+        if (block.timestamp > sessionApproval.validUntil) {
+            return false;
+        }
+
+        if (sessionApproval.smartAccount != smartAccount) {
+            return false;
+        }
+
+        // 1. Verify the session key signed the burn message
+        bytes32 burnStructHash = keccak256(
+            abi.encode(
+                BURN_APPROVAL_TYPEHASH,
+                burnHash,
+                smartAccount,
+                tokenAmount,
+                payout,
+                nonce,
+                deadline
+            )
+        );
+        bytes32 burnDigest = _hashTypedDataV4(burnStructHash);
+        address recoveredSessionKey =
+            ECDSA.recover(burnDigest, sessionKeySignature);
+
+        if (
+            recoveredSessionKey == address(0)
+                || recoveredSessionKey != sessionApproval.sessionKey
+        ) {
+            return false;
+        }
+
+        // 2. Verify the owner authorized this session key
+        if (sessionApproval.chainId != block.chainid) {
+            return false;
+        }
+
+        bytes32 sessionStructHash = keccak256(
+            abi.encode(
+                SESSION_KEY_APPROVAL_TYPEHASH,
+                sessionApproval.sessionKey,
+                sessionApproval.smartAccount,
+                sessionApproval.validUntil,
+                sessionApproval.permissionsHash,
+                sessionApproval.chainId
+            )
+        );
+        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
+        address recoveredOwner =
+            ECDSA.recover(sessionHash, sessionApproval.ownerSignature);
+
+        if (
+            recoveredOwner == address(0)
+                || recoveredOwner != sessionApproval.owner
+        ) {
+            return false;
+        }
+
+        // 3. Verify the smart account is derived from the owner
+        if (address(accountFactory) == address(0)) {
+            revert AccountFactoryNotSet();
+        }
+
+        address expectedAccount =
+            accountFactory.getAccountAddress(sessionApproval.owner, 0);
+        if (expectedAccount != smartAccount) {
+            expectedAccount =
+                accountFactory.getAccountAddress(sessionApproval.owner, 1);
+            if (expectedAccount != smartAccount) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /// @notice Get the hash that should be signed offchain for burn approval
+    /// @param burnHash Hash of the burn parameters
+    /// @param signer Signer address
+    /// @param tokenAmount Token amount
+    /// @param payout Payout amount
+    /// @param nonce Nonce
+    /// @param deadline Deadline timestamp
+    /// @return hash The EIP-712 typed data hash to sign
+    function getBurnApprovalHash(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline
+    ) public view returns (bytes32 hash) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                BURN_APPROVAL_TYPEHASH,
+                burnHash,
+                signer,
+                tokenAmount,
+                payout,
                 nonce,
                 deadline
             )

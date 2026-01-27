@@ -31,6 +31,8 @@ interface IPredictionMarketV2 {
     );
     error NoDustToSweep();
     error ResolverCallFailed(address resolver, bytes32 conditionId);
+    error PickConfigAlreadyResolved();
+    error InvalidBurnAmounts();
 
     // ============ External Functions ============
 
@@ -46,6 +48,11 @@ interface IPredictionMarketV2 {
             address predictorToken,
             address counterpartyToken
         );
+
+    /// @notice Burn positions bilaterally before resolution
+    /// @param request The burn request containing token amounts, payouts, and signatures
+    /// @dev Both holders must sign. Conservation: predictorPayout + counterpartyPayout == predictorTokenAmount + counterpartyTokenAmount
+    function burn(IV2Types.BurnRequest calldata request) external;
 
     /// @notice Settle a prediction based on condition resolver outcomes
     /// @param predictionId The prediction to settle

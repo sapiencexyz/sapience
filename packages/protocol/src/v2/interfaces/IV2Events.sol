@@ -48,4 +48,16 @@ interface IV2Events {
     event DustSwept(
         bytes32 indexed pickConfigId, address indexed recipient, uint256 amount
     );
+
+    /// @notice Emitted when positions are burned bilaterally before resolution
+    event PositionsBurned(
+        bytes32 indexed pickConfigId,
+        address indexed predictorHolder,
+        address indexed counterpartyHolder,
+        uint256 predictorTokensBurned,
+        uint256 counterpartyTokensBurned,
+        uint256 predictorPayout,
+        uint256 counterpartyPayout,
+        bytes32 refCode
+    );
 }
