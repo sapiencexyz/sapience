@@ -127,9 +127,9 @@ const MarketsPage = () => {
     return nowSec + minDays * 86400;
   }, [filters.timeToResolutionRange]);
 
-  // Fetch market items (both groups and ungrouped conditions interleaved)
+  // Fetch questions (both groups and ungrouped conditions interleaved)
   const {
-    data: marketItems,
+    data: questions,
     isLoading: isLoadingData,
     isFetchingMore,
     hasMore,
@@ -241,7 +241,7 @@ const MarketsPage = () => {
             transition={{ duration: 0.25 }}
           >
             <MarketsDataTable
-              marketItems={marketItems}
+              questions={questions}
               isLoading={isLoadingData}
               isFetchingMore={isFetchingMore}
               hasMore={hasMore}

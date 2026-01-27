@@ -92,7 +92,7 @@ function groupConditionToConditionType(
 }
 
 interface MarketsDataTableProps {
-  marketItems: QuestionType[];
+  questions: QuestionType[];
   isLoading?: boolean;
   isFetchingMore?: boolean;
   hasMore?: boolean;
@@ -736,7 +736,7 @@ function ChildConditionRow({
 }
 
 export default function MarketsDataTable({
-  marketItems,
+  questions,
   isLoading,
   isFetchingMore,
   hasMore,
@@ -862,10 +862,10 @@ export default function MarketsDataTable({
     return { openInterestBounds, timeToResolutionBounds };
   }, []);
 
-  // Build the top-level row model from unified market items
+  // Build the top-level row model from unified questions
   // Backend handles sorting and interleaving - just map to our row format
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    return marketItems
+    return questions
       .map((item): TopLevelRow | null => {
         if (item.questionType === 'group' && item.group) {
           const group = item.group;
@@ -901,7 +901,7 @@ export default function MarketsDataTable({
         return null;
       })
       .filter((row): row is TopLevelRow => row !== null);
-  }, [marketItems]);
+  }, [questions]);
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(() => {
