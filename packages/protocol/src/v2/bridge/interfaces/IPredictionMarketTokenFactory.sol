@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-/// @title IPositionTokenFactory
+/// @title IPredictionMarketTokenFactory
 /// @notice Interface for CREATE3-based position token factory
-interface IPositionTokenFactory {
+interface IPredictionMarketTokenFactory {
     // ============ Events ============
 
     /// @notice Emitted when a token is deployed

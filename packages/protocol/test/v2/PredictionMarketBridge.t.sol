@@ -11,8 +11,8 @@ import {
     PredictionMarketBridgeRemote
 } from "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../src/v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
 import {
     BridgedPositionToken
 } from "../../src/v2/bridge/BridgedPositionToken.sol";
@@ -42,7 +42,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     // Contracts
     PredictionMarketBridge private etherealBridge;
     PredictionMarketBridgeRemote private arbitrumBridge;
-    PositionTokenFactory private factory;
+    PredictionMarketTokenFactory private factory;
     MockPredictionMarketToken private positionToken;
 
     // LZ data
@@ -100,7 +100,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
         // Deploy factory on Arbitrum side
-        factory = new PositionTokenFactory(owner);
+        factory = new PredictionMarketTokenFactory(owner);
 
         // Deploy Ethereal bridge
         etherealBridge = PredictionMarketBridge(
@@ -752,7 +752,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         public
     {
         // Deploy new factory without deployer set
-        PositionTokenFactory newFactory = new PositionTokenFactory(owner);
+        PredictionMarketTokenFactory newFactory = new PredictionMarketTokenFactory(owner);
 
         assertFalse(newFactory.isConfigComplete());
     }
@@ -769,7 +769,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         public
     {
         // Deploy new factory without deployer set
-        PositionTokenFactory newFactory = new PositionTokenFactory(owner);
+        PredictionMarketTokenFactory newFactory = new PredictionMarketTokenFactory(owner);
 
         vm.expectRevert("Config incomplete");
         newFactory.renounceOwnershipSafe();

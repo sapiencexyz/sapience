@@ -3,16 +3,16 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import {
-    PositionTokenFactory
-} from "../../src/v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
 import {
     BridgedPositionToken
 } from "../../src/v2/bridge/BridgedPositionToken.sol";
 
-/// @title PositionTokenFactoryTest
+/// @title PredictionMarketTokenFactoryTest
 /// @notice Test suite for CREATE3-based position token factory
-contract PositionTokenFactoryTest is Test {
-    PositionTokenFactory private factory;
+contract PredictionMarketTokenFactoryTest is Test {
+    PredictionMarketTokenFactory private factory;
     address private owner;
     address private deployer;
 
@@ -23,7 +23,7 @@ contract PositionTokenFactoryTest is Test {
         owner = address(this);
         deployer = address(0x1234);
 
-        factory = new PositionTokenFactory(owner);
+        factory = new PredictionMarketTokenFactory(owner);
         factory.setDeployer(deployer);
     }
 

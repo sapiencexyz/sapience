@@ -15,7 +15,7 @@ This deployment uses real PredictionMarketEscrow to mint position tokens, which 
 - PredictionMarketBridge
 
 **On SM Network (Remote Chain):**
-- PositionTokenFactory
+- PredictionMarketTokenFactory
 - PredictionMarketBridgeRemote
 
 ## Prerequisites
@@ -165,7 +165,7 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 01 | DeployCollateral | Ethereal | Deploy mock USDC collateral token |
 | 02 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
 | 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
-| 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
+| 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
 | 05 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
 | 06 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
 | 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
@@ -297,6 +297,6 @@ Use LayerZero Scan to track messages:
 | CollateralToken | Ethereal | |
 | ManualConditionResolver | Ethereal | |
 | PredictionMarketEscrow | Ethereal | |
-| PositionTokenFactory | Arbitrum | |
+| PredictionMarketTokenFactory | Arbitrum | |
 | PredictionMarketBridge | Ethereal | |
 | PredictionMarketBridgeRemote | Arbitrum | |

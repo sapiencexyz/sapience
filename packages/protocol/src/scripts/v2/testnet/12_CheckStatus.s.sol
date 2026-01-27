@@ -10,8 +10,8 @@ import {
     PredictionMarketBridgeRemote
 } from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../../v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
     IPredictionMarketBridgeBase
@@ -91,7 +91,7 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- Position Token Factory ---");
             console.log("Address:", factoryAddr);
-            PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
+            PredictionMarketTokenFactory factory = PredictionMarketTokenFactory(factoryAddr);
             console.log("Owner:", factory.owner());
             console.log("Deployer:", factory.deployer());
             console.log("Config Complete:", factory.isConfigComplete());

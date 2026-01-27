@@ -6,8 +6,8 @@ import {
     PredictionMarketBridgeRemote
 } from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
-    PositionTokenFactory
-} from "../../../v2/bridge/PositionTokenFactory.sol";
+    PredictionMarketTokenFactory
+} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 import {
     IPredictionMarketBridgeBase
 } from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
@@ -25,7 +25,7 @@ contract ConfigureRemoteBridge is Script {
 
         PredictionMarketBridgeRemote bridge =
             PredictionMarketBridgeRemote(payable(bridgeAddr));
-        PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
+        PredictionMarketTokenFactory factory = PredictionMarketTokenFactory(factoryAddr);
 
         console.log("=== Configure SM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);

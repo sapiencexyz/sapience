@@ -11,7 +11,7 @@ import {
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridgeRemote.sol";
-import "./interfaces/IPositionTokenFactory.sol";
+import "./interfaces/IPredictionMarketTokenFactory.sol";
 import "./interfaces/IBridgedPositionToken.sol";
 
 /// @title PredictionMarketBridgeRemote
@@ -31,7 +31,7 @@ contract PredictionMarketBridgeRemote is
     // ============ Storage ============
 
     /// @notice Token factory for CREATE3 deployments
-    IPositionTokenFactory public immutable factory;
+    IPredictionMarketTokenFactory public immutable factory;
 
     /// @notice Mapping from source token address to bridged token address
     mapping(address => address) public sourceToRemote;
@@ -46,7 +46,7 @@ contract PredictionMarketBridgeRemote is
     constructor(address endpoint_, address owner_, address factory_)
         PredictionMarketBridgeBase(endpoint_, owner_)
     {
-        factory = IPositionTokenFactory(factory_);
+        factory = IPredictionMarketTokenFactory(factory_);
     }
 
     // ============ View Functions ============

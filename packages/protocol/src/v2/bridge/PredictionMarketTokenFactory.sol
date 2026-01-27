@@ -3,13 +3,13 @@ pragma solidity ^0.8.19;
 
 import { CREATE3 } from "solady/utils/CREATE3.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IPositionTokenFactory.sol";
+import "./interfaces/IPredictionMarketTokenFactory.sol";
 import "./BridgedPositionToken.sol";
 
-/// @title PositionTokenFactory
+/// @title PredictionMarketTokenFactory
 /// @notice Factory for deploying bridged position tokens using CREATE3
 /// @dev Ensures deterministic addresses across chains
-contract PositionTokenFactory is IPositionTokenFactory, Ownable {
+contract PredictionMarketTokenFactory is IPredictionMarketTokenFactory, Ownable {
     /// @notice Address authorized to deploy tokens (bridge)
     address public deployer;
 
@@ -29,7 +29,7 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         deployer = deployer_;
     }
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function deploy(
         bytes32 pickConfigId,
         bool isPredictorToken,
@@ -61,7 +61,7 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         emit TokenDeployed(pickConfigId, isPredictorToken, token, salt);
     }
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function predictAddress(bytes32 pickConfigId, bool isPredictorToken)
         public
         view
@@ -71,7 +71,7 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         return CREATE3.predictDeterministicAddress(salt, address(this));
     }
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function computeSalt(bytes32 pickConfigId, bool isPredictorToken)
         public
         pure
@@ -80,7 +80,7 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
         return keccak256(abi.encode(pickConfigId, isPredictorToken));
     }
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function isDeployed(bytes32 pickConfigId, bool isPredictorToken)
         external
         view
@@ -92,12 +92,12 @@ contract PositionTokenFactory is IPositionTokenFactory, Ownable {
 
     // ============ Ownership Management ============
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function isConfigComplete() external view returns (bool) {
         return deployer != address(0);
     }
 
-    /// @inheritdoc IPositionTokenFactory
+    /// @inheritdoc IPredictionMarketTokenFactory
     function renounceOwnershipSafe() external onlyOwner {
         require(this.isConfigComplete(), "Config incomplete");
         renounceOwnership();
