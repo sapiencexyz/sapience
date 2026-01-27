@@ -2,14 +2,14 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/v2/PredictionMarketV2.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPositionToken.sol";
 import "./mocks/MockERC20.sol";
 
-contract PredictionMarketV2Test is Test {
-    PredictionMarketV2 public market;
+contract PredictionMarketEscrowTest is Test {
+    PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
@@ -42,7 +42,7 @@ contract PredictionMarketV2Test is Test {
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
-        market = new PredictionMarketV2(address(collateralToken), owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -246,7 +246,7 @@ contract PredictionMarketV2Test is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
         IV2Types.MintRequest memory request = _createMintRequest(picks);
 
-        vm.expectRevert(IPredictionMarketV2.InvalidPicks.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidPicks.selector);
         market.mint(request);
     }
 
@@ -257,7 +257,7 @@ contract PredictionMarketV2Test is Test {
         IV2Types.MintRequest memory request = _createMintRequest(picks);
         request.predictorWager = 0;
 
-        vm.expectRevert(IPredictionMarketV2.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
         market.mint(request);
     }
 
@@ -357,7 +357,7 @@ contract PredictionMarketV2Test is Test {
     function test_settle_revertIfNotFound() public {
         bytes32 fakePredictionId = keccak256("fake");
 
-        vm.expectRevert(IPredictionMarketV2.PredictionNotFound.selector);
+        vm.expectRevert(IPredictionMarketEscrow.PredictionNotFound.selector);
         market.settle(fakePredictionId, REF_CODE);
     }
 
@@ -372,7 +372,9 @@ contract PredictionMarketV2Test is Test {
 
         market.settle(predictionId, REF_CODE);
 
-        vm.expectRevert(IPredictionMarketV2.PredictionAlreadySettled.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionAlreadySettled.selector
+        );
         market.settle(predictionId, REF_CODE);
     }
 
@@ -383,7 +385,9 @@ contract PredictionMarketV2Test is Test {
         (bytes32 predictionId,,) = _mintPrediction(picks);
 
         // Don't settle the condition - should fail
-        vm.expectRevert(IPredictionMarketV2.PredictionNotResolvable.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
         market.settle(predictionId, REF_CODE);
     }
 
@@ -506,13 +510,13 @@ contract PredictionMarketV2Test is Test {
         (, address predictorToken,) = _mintPrediction(picks);
 
         vm.prank(predictor);
-        vm.expectRevert(IPredictionMarketV2.PickConfigNotResolved.selector);
+        vm.expectRevert(IPredictionMarketEscrow.PickConfigNotResolved.selector);
         market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
     }
 
     function test_redeem_revertIfInvalidToken() public {
         vm.prank(predictor);
-        vm.expectRevert(IPredictionMarketV2.InvalidToken.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidToken.selector);
         market.redeem(address(collateralToken), 100e18, REF_CODE);
     }
 

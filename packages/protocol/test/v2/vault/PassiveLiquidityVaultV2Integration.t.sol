@@ -8,10 +8,12 @@ import {
 import {
     IPassiveLiquidityVaultV2
 } from "../../../src/v2/vault/interfaces/IPassiveLiquidityVaultV2.sol";
-import { PredictionMarketV2 } from "../../../src/v2/PredictionMarketV2.sol";
 import {
-    IPredictionMarketV2
-} from "../../../src/v2/interfaces/IPredictionMarketV2.sol";
+    PredictionMarketEscrow
+} from "../../../src/v2/PredictionMarketEscrow.sol";
+import {
+    IPredictionMarketEscrow
+} from "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import {
     ManualConditionResolver
 } from "../../../src/v2/resolvers/ManualConditionResolver.sol";
@@ -21,12 +23,12 @@ import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
  * @title PassiveLiquidityVaultV2IntegrationTest
- * @notice Integration tests for PassiveLiquidityVaultV2 acting as counterparty in PredictionMarketV2
+ * @notice Integration tests for PassiveLiquidityVaultV2 acting as counterparty in PredictionMarketEscrow
  * @dev Tests the main use case: vault provides liquidity as counterparty to predictions
  */
 contract PassiveLiquidityVaultV2IntegrationTest is Test {
     PassiveLiquidityVaultV2 public vault;
-    PredictionMarketV2 public market;
+    PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
@@ -60,7 +62,7 @@ contract PassiveLiquidityVaultV2IntegrationTest is Test {
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
         // Deploy prediction market
-        market = new PredictionMarketV2(address(collateralToken), owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
         // Deploy vault
         vm.prank(owner);
@@ -648,7 +650,7 @@ contract PassiveLiquidityVaultV2IntegrationTest is Test {
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.mint(request);
     }
 

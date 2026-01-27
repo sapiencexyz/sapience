@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/v2/PredictionMarketV2.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPositionToken.sol";
@@ -64,8 +64,8 @@ contract RevertingEIP1271Contract is IERC1271 {
     }
 }
 
-contract PredictionMarketV2ERC1271Test is Test {
-    PredictionMarketV2 public market;
+contract PredictionMarketEscrowERC1271Test is Test {
+    PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
@@ -97,7 +97,7 @@ contract PredictionMarketV2ERC1271Test is Test {
 
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
-        market = new PredictionMarketV2(address(collateralToken), owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -511,7 +511,7 @@ contract PredictionMarketV2ERC1271Test is Test {
             counterpartyPk // Wrong key!
         );
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.mint(request);
     }
 
@@ -574,7 +574,7 @@ contract PredictionMarketV2ERC1271Test is Test {
         request.counterpartySessionKeyData = "";
 
         // Should fail because the contract doesn't implement EIP-1271
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.mint(request);
     }
 
@@ -637,7 +637,7 @@ contract PredictionMarketV2ERC1271Test is Test {
         request.counterpartySessionKeyData = "";
 
         // Should fail gracefully (catch block in _isEIP1271SignatureValid)
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.mint(request);
     }
 

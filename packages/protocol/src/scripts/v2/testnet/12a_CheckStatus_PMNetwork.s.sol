@@ -6,7 +6,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     PositionTokenBridge
 } from "../../../v2/bridge/PositionTokenBridge.sol";
-import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
     IPositionTokenBridgeBase
 } from "../../../v2/bridge/interfaces/IPositionTokenBridgeBase.sol";
@@ -37,7 +37,7 @@ contract CheckStatus_PMNetwork is Script {
             console.log("");
             console.log("--- Prediction Market V2 ---");
             console.log("Address:", marketAddr);
-            PredictionMarketV2 market = PredictionMarketV2(marketAddr);
+            PredictionMarketEscrow market = PredictionMarketEscrow(marketAddr);
             console.log("Collateral Token:", address(market.collateralToken()));
         }
 

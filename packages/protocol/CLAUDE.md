@@ -50,7 +50,7 @@ src/
 │   ├── interfaces/      # V2 interfaces
 │   ├── resolvers/       # Condition resolvers
 │   ├── utils/           # Signature validation, account factory
-│   ├── PredictionMarketV2.sol
+│   ├── PredictionMarketEscrow.sol
 │   ├── PositionToken.sol
 │   └── v2.md            # Detailed specification
 ├── predictionMarket/    # Legacy prediction market
@@ -104,7 +104,7 @@ Users with the same picks share tokens. Token supply equals total wagers:
 
 ### Main Contracts
 
-- **PredictionMarketV2.sol**: Core contract handling mint, settle, redeem
+- **PredictionMarketEscrow.sol**: Core contract handling mint, settle, redeem
 - **PositionToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
 - **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
 
@@ -120,7 +120,7 @@ Located in `src/v2/resolvers/`:
 
 1. Condition resolvers return `OutcomeVector [yesWeight, noWeight]`
    - `[1,0]` = YES wins, `[0,1]` = NO wins, `[1,1]` = tie
-2. PredictionMarketV2 applies parlay logic:
+2. PredictionMarketEscrow applies parlay logic:
    - All picks match predicted outcome -> PREDICTOR_WINS
    - Any pick decisively against -> COUNTERPARTY_WINS
    - Any non-decisive pick -> NON_DECISIVE (tie)

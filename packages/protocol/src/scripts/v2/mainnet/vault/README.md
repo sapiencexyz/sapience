@@ -4,7 +4,7 @@ Scripts for deploying and testing PassiveLiquidityVaultV2 on Ethereal mainnet.
 
 ## Overview
 
-These scripts deploy a passive liquidity vault that can act as counterparty in PredictionMarketV2 predictions. The vault uses a manager (EOA) to sign approvals via ERC-1271.
+These scripts deploy a passive liquidity vault that can act as counterparty in PredictionMarketEscrow predictions. The vault uses a manager (EOA) to sign approvals via ERC-1271.
 
 ### Roles
 
@@ -96,7 +96,7 @@ forge script src/scripts/v2/mainnet/vault/02_TestDepositWithdrawal.s.sol \
 
 ### 3. Test Vault as Counterparty
 
-Tests the vault acting as counterparty in a PredictionMarketV2 prediction:
+Tests the vault acting as counterparty in a PredictionMarketEscrow prediction:
 1. Manager approves funds for market
 2. Build MintRequest with vault as counterparty
 3. Manager signs via ERC-1271

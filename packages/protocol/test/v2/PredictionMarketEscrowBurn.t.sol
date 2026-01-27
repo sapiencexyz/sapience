@@ -2,18 +2,18 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/v2/PredictionMarketV2.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IV2Events.sol";
-import "../../src/v2/interfaces/IPredictionMarketV2.sol";
+import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/interfaces/IPositionToken.sol";
 import "./mocks/MockERC20.sol";
 
-contract PredictionMarketV2BurnTest is Test {
+contract PredictionMarketEscrowBurnTest is Test {
     // ============ State Variables ============
 
-    PredictionMarketV2 public market;
+    PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
@@ -46,7 +46,7 @@ contract PredictionMarketV2BurnTest is Test {
         thirdParty = vm.addr(thirdPartyPk);
 
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
-        market = new PredictionMarketV2(address(collateralToken), owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -574,7 +574,7 @@ contract PredictionMarketV2BurnTest is Test {
             bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
         );
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.burn(req);
     }
 
@@ -598,7 +598,7 @@ contract PredictionMarketV2BurnTest is Test {
             bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
         );
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.burn(req);
     }
 
@@ -620,7 +620,7 @@ contract PredictionMarketV2BurnTest is Test {
         // Warp past deadline
         vm.warp(block.timestamp + 2 hours);
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.burn(req);
     }
 
@@ -642,7 +642,7 @@ contract PredictionMarketV2BurnTest is Test {
         // Set wrong nonce
         req.predictorNonce = 999;
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.burn(req);
     }
 
@@ -664,7 +664,7 @@ contract PredictionMarketV2BurnTest is Test {
         // Set wrong counterparty nonce
         req.counterpartyNonce = 999;
 
-        vm.expectRevert(IPredictionMarketV2.InvalidSignature.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.burn(req);
     }
 
@@ -683,7 +683,7 @@ contract PredictionMarketV2BurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketV2.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
         market.burn(req);
     }
 
@@ -702,7 +702,7 @@ contract PredictionMarketV2BurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketV2.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
         market.burn(req);
     }
 
@@ -760,7 +760,7 @@ contract PredictionMarketV2BurnTest is Test {
         req.predictorSessionKeyData = "";
         req.counterpartySessionKeyData = "";
 
-        vm.expectRevert(IPredictionMarketV2.InvalidBurnAmounts.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidBurnAmounts.selector);
         market.burn(req);
     }
 
@@ -790,7 +790,9 @@ contract PredictionMarketV2BurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketV2.PickConfigAlreadyResolved.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PickConfigAlreadyResolved.selector
+        );
         market.burn(req);
     }
 
@@ -809,7 +811,7 @@ contract PredictionMarketV2BurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketV2.InvalidToken.selector);
+        vm.expectRevert(IPredictionMarketEscrow.InvalidToken.selector);
         market.burn(req);
     }
 

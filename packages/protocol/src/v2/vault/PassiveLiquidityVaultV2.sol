@@ -37,7 +37,7 @@ interface IPredictionMarketInfo {
  * 3. A designated EOA manager processes requests when market conditions are favorable (fair pricing)
  * 4. If requests expire (default 10 minutes) or conditions aren't favorable, users can cancel their requests
  * 5. Users must wait between requests (default 1 day) to prevent rapid-fire interactions
- * 6. The manager can approve vault funds for use by external protocols (e.g., PredictionMarketV2)
+ * 6. The manager can approve vault funds for use by external protocols (e.g., PredictionMarketEscrow)
  * 7. Emergency mode allows immediate proportional withdrawals using only vault balance
  *
  * KEY FEATURES:
@@ -50,7 +50,7 @@ interface IPredictionMarketInfo {
  * - Custom errors for gas-efficient error handling
  *
  * DIFFERENCES FROM V1:
- * - No utilization rate tracking (PredictionMarketV2 uses ERC20 position tokens, not NFTs)
+ * - No utilization rate tracking (PredictionMarketEscrow uses ERC20 position tokens, not NFTs)
  * - No ERC721 receiver (V2 doesn't use NFTs for positions)
  * - Simplified approveFundsUsage without utilization checks
  *
@@ -574,7 +574,7 @@ contract PassiveLiquidityVaultV2 is
 
     /**
      * @notice Approve funds usage to an external protocol
-     * @param protocol Address of the target protocol (e.g., PredictionMarketV2)
+     * @param protocol Address of the target protocol (e.g., PredictionMarketEscrow)
      * @param amount Amount of assets to approve
      * @dev Simplified from V1 - no utilization tracking, just approve if available
      */
@@ -656,7 +656,7 @@ contract PassiveLiquidityVaultV2 is
     /**
      * @notice Get the value of a position token held by this vault
      * @param positionToken The position token address
-     * @param predictionMarket The PredictionMarketV2 contract address
+     * @param predictionMarket The PredictionMarketEscrow contract address
      * @return balance The amount of position tokens held
      * @return claimableValue The claimable value if resolved (0 if unresolved)
      * @dev Use this to check for unredeemed position tokens from predictions.

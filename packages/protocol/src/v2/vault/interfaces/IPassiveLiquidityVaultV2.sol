@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 /**
  * @title IPassiveLiquidityVaultV2
  * @notice Interface for the PassiveLiquidityVaultV2 contract with request-based deposits and withdrawals
- * @dev Simplified from V1 - removes utilization tracking since PredictionMarketV2 uses ERC20 position tokens
+ * @dev Simplified from V1 - removes utilization tracking since PredictionMarketEscrow uses ERC20 position tokens
  */
 interface IPassiveLiquidityVaultV2 is IERC1271, IERC165 {
     // ============ Structs ============
@@ -75,7 +75,7 @@ interface IPassiveLiquidityVaultV2 is IERC1271, IERC165 {
 
     /**
      * @notice Approve funds usage to an external protocol
-     * @param protocol Address of the target protocol (PredictionMarketV2)
+     * @param protocol Address of the target protocol (PredictionMarketEscrow)
      * @param amount Amount of assets to approve
      */
     function approveFundsUsage(address protocol, uint256 amount) external;

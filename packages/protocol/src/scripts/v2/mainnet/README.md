@@ -4,13 +4,13 @@ Scripts for deploying and configuring the V2 position token bridge between PM Ne
 
 ## Overview
 
-This deployment deploys the full V2 bridge infrastructure for mainnet, connecting Ethereal mainnet (where PredictionMarketV2 lives) to Arbitrum mainnet (secondary market).
+This deployment deploys the full V2 bridge infrastructure for mainnet, connecting Ethereal mainnet (where PredictionMarketEscrow lives) to Arbitrum mainnet (secondary market).
 
 ### Contracts Deployed
 
 **On PM Network (Source Chain - Ethereal Mainnet):**
 - ManualConditionResolver
-- PredictionMarketV2
+- PredictionMarketEscrow
 - PositionTokenBridge
 
 **On SM Network (Remote Chain - Arbitrum Mainnet):**
@@ -107,7 +107,7 @@ forge script src/scripts/v2/mainnet/01_DeployResolver.s.sol \
 
 # Add to .env: RESOLVER_ADDRESS=...
 
-# 2. Deploy PredictionMarketV2
+# 2. Deploy PredictionMarketEscrow
 forge script src/scripts/v2/mainnet/02_DeployPredictionMarket.s.sol \
   --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
@@ -182,7 +182,7 @@ forge script src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 |---|--------|-------|-------------|
 | 00 | DeployCollateral | Ethereal | Deploy test ERC20 collateral (optional) |
 | 01 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketV2 |
+| 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
 | 03 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
 | 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
 | 05 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
@@ -419,7 +419,7 @@ Track cross-chain messages: https://layerzeroscan.com/
 | Contract | Chain | Address |
 |----------|-------|---------|
 | ManualConditionResolver | Ethereal | |
-| PredictionMarketV2 | Ethereal | |
+| PredictionMarketEscrow | Ethereal | |
 | PositionTokenFactory | Arbitrum | |
 | PositionTokenBridge | Ethereal | |
 | PositionTokenBridgeRemote | Arbitrum | |

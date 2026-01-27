@@ -3,11 +3,11 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 
 /// @title Mint Position Tokens
-/// @notice Mint position tokens via PredictionMarketV2 for bridge testing
+/// @notice Mint position tokens via PredictionMarketEscrow for bridge testing
 /// @dev Creates a prediction with separate predictor and counterparty addresses
 contract MintPositionTokens is Script {
     // Wager amounts (different for predictor and counterparty)
@@ -27,7 +27,7 @@ contract MintPositionTokens is Script {
     function run() external {
         Actors memory actors = _loadActors();
 
-        console.log("=== Mint Position Tokens via PredictionMarketV2 ===");
+        console.log("=== Mint Position Tokens via PredictionMarketEscrow ===");
         console.log("Deployer (funder):", actors.deployer);
         console.log("Predictor:", actors.predictor);
         console.log("Counterparty:", actors.counterparty);
@@ -87,9 +87,8 @@ contract MintPositionTokens is Script {
             bytes32 conditionId
         )
     {
-        PredictionMarketV2 market = PredictionMarketV2(
-            vm.envAddress("PREDICTION_MARKET_ADDRESS")
-        );
+        PredictionMarketEscrow market =
+            PredictionMarketEscrow(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         IERC20 collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
         address resolverAddr = vm.envAddress("RESOLVER_ADDRESS");
 
@@ -132,7 +131,7 @@ contract MintPositionTokens is Script {
     }
 
     function _buildRequest(
-        PredictionMarketV2 market,
+        PredictionMarketEscrow market,
         IV2Types.Pick[] memory picks,
         Actors memory actors
     ) internal view returns (IV2Types.MintRequest memory request) {
@@ -194,7 +193,7 @@ contract MintPositionTokens is Script {
     }
 
     function _sign(
-        PredictionMarketV2 market,
+        PredictionMarketEscrow market,
         bytes32 predictionHash,
         address signer,
         uint256 wager,

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketV2 } from "../../../v2/PredictionMarketV2.sol";
+import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
     ManualConditionResolver
 } from "../../../v2/resolvers/ManualConditionResolver.sol";
@@ -25,7 +25,7 @@ contract ResolvePrediction is Script {
         address deployer = vm.addr(deployerPk);
 
         ManualConditionResolver resolver = ManualConditionResolver(resolverAddr);
-        PredictionMarketV2 market = PredictionMarketV2(marketAddr);
+        PredictionMarketEscrow market = PredictionMarketEscrow(marketAddr);
 
         console.log("=== Resolve Prediction (Mainnet) ===");
         console.log("Resolver:", resolverAddr);
@@ -70,7 +70,7 @@ contract ResolvePrediction is Script {
             console.log("Condition settled");
         }
 
-        // Step 3: Settle the prediction in PredictionMarketV2
+        // Step 3: Settle the prediction in PredictionMarketEscrow
         console.log("Settling prediction...");
         market.settle(predictionId, bytes32(0));
         console.log("Prediction settled");

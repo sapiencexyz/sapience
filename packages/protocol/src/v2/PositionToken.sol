@@ -8,7 +8,7 @@ import "./interfaces/IPositionToken.sol";
  * @title PositionToken
  * @notice ERC20 token representing a position in a prediction (predictor or counterparty)
  * @dev Fungible token shared across predictions with same picks.
- *      Supply is dynamic (equals total wagers). Created by PredictionMarketV2.
+ *      Supply is dynamic (equals total wagers). Created by PredictionMarketEscrow.
  */
 contract PositionToken is ERC20, IPositionToken {
     /// @inheritdoc IPositionToken

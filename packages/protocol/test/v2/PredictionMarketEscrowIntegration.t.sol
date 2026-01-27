@@ -2,19 +2,19 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/v2/PredictionMarketV2.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPositionToken.sol";
 import "./mocks/MockERC20.sol";
 
 /**
- * @title PredictionMarketV2IntegrationTest
- * @notice Integration tests for PredictionMarketV2 with ManualConditionResolver
+ * @title PredictionMarketEscrowIntegrationTest
+ * @notice Integration tests for PredictionMarketEscrow with ManualConditionResolver
  * @dev Tests full flows: mint -> settle conditions -> settle prediction -> redeem
  */
-contract PredictionMarketV2IntegrationTest is Test {
-    PredictionMarketV2 public market;
+contract PredictionMarketEscrowIntegrationTest is Test {
+    PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
@@ -40,7 +40,7 @@ contract PredictionMarketV2IntegrationTest is Test {
 
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
-        market = new PredictionMarketV2(address(collateralToken), owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);

@@ -4,14 +4,14 @@ Scripts for deploying and testing the V2 position token bridge between PM Networ
 
 ## Overview
 
-This deployment uses real PredictionMarketV2 to mint position tokens, which are then bridged between chains.
+This deployment uses real PredictionMarketEscrow to mint position tokens, which are then bridged between chains.
 
 ### Contracts Deployed
 
 **On PM Network (Source Chain):**
 - CollateralToken (Mock USDC)
 - ManualConditionResolver
-- PredictionMarketV2
+- PredictionMarketEscrow
 - PositionTokenBridge
 
 **On SM Network (Remote Chain):**
@@ -78,7 +78,7 @@ forge script src/scripts/v2/testnet/02_DeployResolver.s.sol --rpc-url $PM_NETWOR
 
 # Add to .env: RESOLVER_ADDRESS=...
 
-# 3. Deploy PredictionMarketV2
+# 3. Deploy PredictionMarketEscrow
 forge script src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env: PREDICTION_MARKET_ADDRESS=...
@@ -126,7 +126,7 @@ forge script src/scripts/v2/testnet/08b_SetDVN_RemoteBridge.s.sol --rpc-url $SM_
 Run on **PM Network**:
 
 ```bash
-# 9. Mint position tokens via PredictionMarketV2
+# 9. Mint position tokens via PredictionMarketEscrow
 forge script src/scripts/v2/testnet/09_MintPositionTokens.s.sol --rpc-url $PM_NETWORK_RPC_URL --broadcast -vvvv
 
 # Add to .env:
@@ -164,7 +164,7 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 |---|--------|-------|-------------|
 | 01 | DeployCollateral | Ethereal | Deploy mock USDC collateral token |
 | 02 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketV2 |
+| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
 | 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
 | 05 | DeployEtherealBridge | Ethereal | Deploy PositionTokenBridge |
 | 06 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
@@ -296,7 +296,7 @@ Use LayerZero Scan to track messages:
 |----------|-------|---------|
 | CollateralToken | Ethereal | |
 | ManualConditionResolver | Ethereal | |
-| PredictionMarketV2 | Ethereal | |
+| PredictionMarketEscrow | Ethereal | |
 | PositionTokenFactory | Arbitrum | |
 | PositionTokenBridge | Ethereal | |
 | PositionTokenBridgeRemote | Arbitrum | |

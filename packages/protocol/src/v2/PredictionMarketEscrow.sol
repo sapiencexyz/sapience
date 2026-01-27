@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./PositionToken.sol";
-import "./interfaces/IPredictionMarketV2.sol";
+import "./interfaces/IPredictionMarketEscrow.sol";
 import "./interfaces/IConditionResolver.sol";
 import "./interfaces/IPositionToken.sol";
 import "./interfaces/IV2Types.sol";
@@ -14,12 +14,12 @@ import "./interfaces/IV2Events.sol";
 import "./utils/SignatureValidator.sol";
 
 /**
- * @title PredictionMarketV2
+ * @title PredictionMarketEscrow
  * @notice Unified prediction market contract with fungible betting pools
  * @dev Same picks share tokens. Token supply = total wagers. Parimutuel model.
  */
-contract PredictionMarketV2 is
-    IPredictionMarketV2,
+contract PredictionMarketEscrow is
+    IPredictionMarketEscrow,
     IV2Events,
     ReentrancyGuard,
     SignatureValidator,
@@ -146,7 +146,7 @@ contract PredictionMarketV2 is
 
     // ============ External Functions: Market ============
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function mint(IV2Types.MintRequest calldata request)
         external
         nonReentrant
@@ -333,7 +333,7 @@ contract PredictionMarketV2 is
         emit CollateralDeposited(predictionId, totalCollateral);
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function burn(IV2Types.BurnRequest calldata request) external nonReentrant {
         // Validate token amounts
         if (
@@ -462,7 +462,7 @@ contract PredictionMarketV2 is
         );
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function settle(bytes32 predictionId, bytes32 refCode)
         external
         nonReentrant
@@ -513,7 +513,7 @@ contract PredictionMarketV2 is
         );
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function redeem(address positionToken, uint256 amount, bytes32 refCode)
         external
         nonReentrant
@@ -578,7 +578,7 @@ contract PredictionMarketV2 is
 
     // ============ View Functions ============
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function getPrediction(bytes32 predictionId)
         external
         view
@@ -587,7 +587,7 @@ contract PredictionMarketV2 is
         return _predictions[predictionId];
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function getPickConfiguration(bytes32 pickConfigId)
         external
         view
@@ -596,7 +596,7 @@ contract PredictionMarketV2 is
         return _pickConfigurations[pickConfigId];
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function getTokenPair(bytes32 pickConfigId)
         external
         view
@@ -605,12 +605,12 @@ contract PredictionMarketV2 is
         return _tokenPairs[pickConfigId];
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function getNonce(address account) external view returns (uint256 nonce) {
         return _nonces[account];
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function canSettle(bytes32 predictionId) external view returns (bool) {
         IV2Types.Prediction storage prediction = _predictions[predictionId];
         if (prediction.predictionId == bytes32(0) || prediction.settled) {
@@ -627,7 +627,7 @@ contract PredictionMarketV2 is
         return canResolve;
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function getPicks(bytes32 pickConfigId)
         external
         view
@@ -636,7 +636,7 @@ contract PredictionMarketV2 is
         return _pickConfigPicks[pickConfigId];
     }
 
-    /// @inheritdoc IPredictionMarketV2
+    /// @inheritdoc IPredictionMarketEscrow
     function computePickConfigId(IV2Types.Pick[] calldata picks)
         external
         pure

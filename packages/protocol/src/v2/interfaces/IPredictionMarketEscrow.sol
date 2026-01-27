@@ -4,12 +4,12 @@ pragma solidity ^0.8.19;
 import "./IV2Types.sol";
 
 /**
- * @title IPredictionMarketV2
+ * @title IPredictionMarketEscrow
  * @notice Interface for the V2 Prediction Market orchestrator
  * @dev Main entry point for mint, settle, and redeem operations.
  *      Uses fungible betting pools - same picks share tokens.
  */
-interface IPredictionMarketV2 {
+interface IPredictionMarketEscrow {
     // ============ Errors ============
 
     error InvalidSignature();
