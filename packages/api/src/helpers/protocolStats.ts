@@ -140,7 +140,8 @@ export async function fetchPredictionMarketTVLAtBlock(
  */
 function getUtcMidnightTimestamp(date: Date): number {
   return Math.floor(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) / 1000
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()) /
+      1000
   );
 }
 
@@ -192,9 +193,7 @@ export async function computeAndStoreProtocolStats(
 
   // 3. Calculate total
   const totalBalance = vaultBalance + escrowBalance;
-  console.log(
-    `[ProtocolStats] Total: ${formatUnits(totalBalance, 18)} USDe`
-  );
+  console.log(`[ProtocolStats] Total: ${formatUnits(totalBalance, 18)} USDe`);
 
   // 4. Store snapshot with today's UTC midnight timestamp
   const timestamp = getUtcMidnightTimestamp(new Date());

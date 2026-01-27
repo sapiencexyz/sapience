@@ -2105,7 +2105,9 @@ export type Query = {
   positionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
   protocolStats: Array<ProtocolStat>;
+  questionsSorted: Array<Question>;
   topForecasters: Array<ForecasterScoreType>;
+  tradingVolumeByAddress: Scalars['String']['output'];
   user?: Maybe<User>;
   users: Array<User>;
 };
@@ -2442,8 +2444,26 @@ export type QueryProfitRankByAddressArgs = {
 };
 
 
+export type QueryQuestionsSortedArgs = {
+  categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  excludeSettled?: InputMaybe<Scalars['Boolean']['input']>;
+  minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  search?: InputMaybe<Scalars['String']['input']>;
+  skip: Scalars['Int']['input'];
+  sortDirection: Scalars['String']['input'];
+  sortField?: InputMaybe<Scalars['String']['input']>;
+  take: Scalars['Int']['input'];
+};
+
+
 export type QueryTopForecastersArgs = {
   limit?: Scalars['Int']['input'];
+};
+
+
+export type QueryTradingVolumeByAddressArgs = {
+  address: Scalars['String']['input'];
 };
 
 
@@ -2464,6 +2484,13 @@ export type QueryUsersArgs = {
 export type QueryMode =
   | 'default'
   | 'insensitive';
+
+export type Question = {
+  __typename?: 'Question';
+  condition?: Maybe<Condition>;
+  group?: Maybe<ConditionGroup>;
+  questionType: Scalars['String']['output'];
+};
 
 export type SortOrder =
   | 'asc'
@@ -2569,7 +2596,6 @@ export type User = {
   referrals: Array<User>;
   referredBy?: Maybe<User>;
   referredById?: Maybe<Scalars['Int']['output']>;
-  tradingVolume: Scalars['String']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 

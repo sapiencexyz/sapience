@@ -1915,6 +1915,7 @@ type Query {
   positionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
   protocolStats: [ProtocolStat!]!
+  questionsSorted(categorySlugs: [String!], chainId: Int, excludeSettled: Boolean, minEndTime: Int, search: String, skip: Int!, sortDirection: String!, sortField: String, take: Int!): [Question!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User
@@ -1924,6 +1925,12 @@ type Query {
 enum QueryMode {
   default
   insensitive
+}
+
+type Question {
+  condition: Condition
+  group: ConditionGroup
+  questionType: String!
 }
 
 enum SortOrder {
