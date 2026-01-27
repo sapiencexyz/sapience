@@ -47,7 +47,7 @@ export class QuestionsResolver {
     @Arg('take', () => Int) take: number,
     @Arg('skip', () => Int) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId: number | null,
-    @Arg('sortField', () => String) sortField: string,
+    @Arg('sortField', () => String, { nullable: true }) sortField: string | null,
     @Arg('sortDirection', () => String) sortDirection: string,
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
@@ -59,13 +59,19 @@ export class QuestionsResolver {
   ): Promise<MarketItem[]> {
     const prisma = getPrismaFromContext(ctx);
 
-    // Validate and sanitize sort field - only allow known fields
+    // Validate sort field - throw if invalid, default to 'endTime' if not provided
     const validSortFields = ['openInterest', 'endTime'] as const;
-    const sanitizedSortField = validSortFields.includes(
-      sortField as (typeof validSortFields)[number]
-    )
-      ? sortField
-      : 'endTime';
+    type ValidSortField = (typeof validSortFields)[number];
+    let sanitizedSortField: ValidSortField;
+    if (sortField === null || sortField === undefined) {
+      sanitizedSortField = 'endTime';
+    } else if (validSortFields.includes(sortField as ValidSortField)) {
+      sanitizedSortField = sortField as ValidSortField;
+    } else {
+      throw new Error(
+        `Invalid sortField: "${sortField}". Must be one of: ${validSortFields.join(', ')}`
+      );
+    }
 
     // Validate and sanitize sort direction - only allow 'ASC' or 'DESC'
     const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
@@ -77,7 +83,7 @@ export class QuestionsResolver {
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
     // Step 1: UNION query to get both groups and ungrouped conditions sorted together
-    // For groups: aggregate openInterest (SUM) or min endTime
+    // For groups: aggregate openInterest (SUM) or max endTime
     // For conditions: individual openInterest or endTime
     // Note: condition_group.id is integer, condition.id is string (text)
     // We store them separately and use item_type to determine which ID to use
@@ -86,11 +92,10 @@ export class QuestionsResolver {
         item_type: string;
         group_id: number | null;
         condition_id: string | null;
-        sort_value: string;
       }[]
     >`
       WITH combined AS (
-        -- Groups: aggregate by SUM(openInterest) or MIN(endTime)
+        -- Groups: aggregate by SUM(openInterest) or MAX(endTime)
         SELECT
           'group' as item_type,
           cg.id as group_id,
@@ -98,7 +103,7 @@ export class QuestionsResolver {
           ${
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`
-              : Prisma.sql`COALESCE(MIN(c."endTime"), 2147483647)::text`
+              : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
           } as sort_value
         FROM condition_group cg
         LEFT JOIN condition c ON c."conditionGroupId" = cg.id
