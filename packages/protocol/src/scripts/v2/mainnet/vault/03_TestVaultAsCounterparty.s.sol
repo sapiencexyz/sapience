@@ -4,8 +4,8 @@ pragma solidity ^0.8.22;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../../v2/vault/PassiveLiquidityVaultV2.sol";
+    PredictionMarketVault
+} from "../../../../v2/vault/PredictionMarketVault.sol";
 import {
     PredictionMarketEscrow
 } from "../../../../v2/PredictionMarketEscrow.sol";
@@ -31,7 +31,7 @@ contract TestVaultAsCounterparty is Script {
 
     struct SignParams {
         PredictionMarketEscrow market;
-        PassiveLiquidityVaultV2 vault;
+        PredictionMarketVault vault;
         bytes32 predictionHash;
         uint256 deadline;
     }
@@ -45,14 +45,14 @@ contract TestVaultAsCounterparty is Script {
     }
 
     // State variables to avoid stack too deep
-    PassiveLiquidityVaultV2 internal _vault;
+    PredictionMarketVault internal _vault;
     PredictionMarketEscrow internal _market;
     IERC20 internal _collateral;
 
     function run() external {
         Actors memory actors = _loadActors();
 
-        _vault = PassiveLiquidityVaultV2(vm.envAddress("VAULT_ADDRESS"));
+        _vault = PredictionMarketVault(vm.envAddress("VAULT_ADDRESS"));
         _market =
             PredictionMarketEscrow(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         _collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
@@ -241,7 +241,7 @@ contract TestVaultAsCounterparty is Script {
 
     function _buildRequest(
         PredictionMarketEscrow market,
-        PassiveLiquidityVaultV2 vault,
+        PredictionMarketVault vault,
         IV2Types.Pick[] memory picks,
         Actors memory actors,
         Wagers memory wagers

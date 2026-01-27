@@ -4,19 +4,19 @@ pragma solidity ^0.8.22;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../src/v2/vault/PassiveLiquidityVaultV2.sol";
+    PredictionMarketVault
+} from "../../../src/v2/vault/PredictionMarketVault.sol";
 import {
-    IPassiveLiquidityVaultV2
-} from "../../../src/v2/vault/interfaces/IPassiveLiquidityVaultV2.sol";
+    IPredictionMarketVault
+} from "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
     SafeERC20
 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract PassiveLiquidityVaultV2Test is Test {
-    PassiveLiquidityVaultV2 public vault;
+contract PredictionMarketVaultTest is Test {
+    PredictionMarketVault public vault;
     MockERC20 public asset;
 
     address public owner = address(0x1);
@@ -37,7 +37,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         asset = new MockERC20("Test Token", "TEST", 18);
 
         // Deploy vault
-        vault = new PassiveLiquidityVaultV2(
+        vault = new PredictionMarketVault(
             address(asset), manager, "Passive Liquidity Vault V2", "PLV2"
         );
 
@@ -86,19 +86,19 @@ contract PassiveLiquidityVaultV2Test is Test {
     function test_constructorRevertsWithZeroAsset() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidAsset.selector, address(0)
+                PredictionMarketVault.InvalidAsset.selector, address(0)
             )
         );
-        new PassiveLiquidityVaultV2(address(0), manager, "Test Vault", "TV");
+        new PredictionMarketVault(address(0), manager, "Test Vault", "TV");
     }
 
     function test_constructorRevertsWithZeroManager() public {
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidManager.selector, address(0)
+                PredictionMarketVault.InvalidManager.selector, address(0)
             )
         );
-        new PassiveLiquidityVaultV2(
+        new PredictionMarketVault(
             address(asset), address(0), "Test Vault", "TV"
         );
     }
@@ -133,7 +133,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.startPrank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidAmount.selector, 0
+                PredictionMarketVault.InvalidAmount.selector, 0
             )
         );
         vault.requestDeposit(0, 100);
@@ -145,7 +145,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         asset.approve(address(vault), 100);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidShares.selector, 0
+                PredictionMarketVault.InvalidShares.selector, 0
             )
         );
         vault.requestDeposit(100, 0);
@@ -181,7 +181,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.warp(block.timestamp + 11 minutes);
 
         vm.startPrank(manager);
-        vm.expectRevert(PassiveLiquidityVaultV2.RequestExpired.selector);
+        vm.expectRevert(PredictionMarketVault.RequestExpired.selector);
         vault.processDeposit(user1);
         vm.stopPrank();
     }
@@ -213,7 +213,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         asset.approve(address(vault), amount);
         vault.requestDeposit(amount, amount);
 
-        vm.expectRevert(PassiveLiquidityVaultV2.RequestNotExpired.selector);
+        vm.expectRevert(PredictionMarketVault.RequestNotExpired.selector);
         vault.cancelDeposit();
         vm.stopPrank();
     }
@@ -250,7 +250,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.startPrank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidShares.selector, 0
+                PredictionMarketVault.InvalidShares.selector, 0
             )
         );
         vault.requestWithdrawal(0, 100);
@@ -264,7 +264,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.startPrank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InsufficientBalance.selector,
+                PredictionMarketVault.InsufficientBalance.selector,
                 user1,
                 shares + 1,
                 shares
@@ -304,7 +304,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.warp(block.timestamp + 11 minutes);
 
         vm.startPrank(manager);
-        vm.expectRevert(PassiveLiquidityVaultV2.RequestExpired.selector);
+        vm.expectRevert(PredictionMarketVault.RequestExpired.selector);
         vault.processWithdrawal(user1);
         vm.stopPrank();
     }
@@ -427,7 +427,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         uint256 shares = _approveAndDeposit(user1, depositAmount);
 
         vm.prank(user1);
-        vm.expectRevert(PassiveLiquidityVaultV2.EmergencyModeNotActive.selector);
+        vm.expectRevert(PredictionMarketVault.EmergencyModeNotActive.selector);
         vault.emergencyWithdraw(shares);
     }
 
@@ -474,7 +474,7 @@ contract PassiveLiquidityVaultV2Test is Test {
 
         vm.startPrank(user2);
         asset.approve(address(vault), DEPOSIT_AMOUNT);
-        vm.expectRevert(PassiveLiquidityVaultV2.EmergencyModeActive.selector);
+        vm.expectRevert(PredictionMarketVault.EmergencyModeActive.selector);
         vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
         vm.stopPrank();
     }
@@ -499,7 +499,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(manager);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidProtocol.selector, address(0)
+                PredictionMarketVault.InvalidProtocol.selector, address(0)
             )
         );
         vault.approveFundsUsage(address(0), DEPOSIT_AMOUNT);
@@ -511,7 +511,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(manager);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidAmount.selector, 0
+                PredictionMarketVault.InvalidAmount.selector, 0
             )
         );
         vault.approveFundsUsage(protocol1, 0);
@@ -526,7 +526,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(manager);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InsufficientAvailableAssets.selector,
+                PredictionMarketVault.InsufficientAvailableAssets.selector,
                 excessAmount,
                 depositAmount
             )
@@ -555,7 +555,7 @@ contract PassiveLiquidityVaultV2Test is Test {
 
         vm.prank(manager);
         vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVaultV2.FundsApproved(
+        emit IPredictionMarketVault.FundsApproved(
             manager, DEPOSIT_AMOUNT, protocol1
         );
         vault.approveFundsUsage(protocol1, DEPOSIT_AMOUNT);
@@ -576,7 +576,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(owner);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.InvalidManager.selector, address(0)
+                PredictionMarketVault.InvalidManager.selector, address(0)
             )
         );
         vault.setManager(address(0));
@@ -587,7 +587,7 @@ contract PassiveLiquidityVaultV2Test is Test {
 
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVaultV2.ManagerUpdated(manager, newManager);
+        emit IPredictionMarketVault.ManagerUpdated(manager, newManager);
         vault.setManager(newManager);
     }
 
@@ -624,7 +624,7 @@ contract PassiveLiquidityVaultV2Test is Test {
     function test_toggleEmergencyModeEmitsEvent() public {
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
-        emit IPassiveLiquidityVaultV2.EmergencyModeUpdated(true);
+        emit IPredictionMarketVault.EmergencyModeUpdated(true);
         vault.toggleEmergencyMode();
     }
 
@@ -663,7 +663,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(user2);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.OnlyManager.selector, user2, manager
+                PredictionMarketVault.OnlyManager.selector, user2, manager
             )
         );
         vault.processDeposit(user1);
@@ -678,7 +678,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(user2);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.OnlyManager.selector, user2, manager
+                PredictionMarketVault.OnlyManager.selector, user2, manager
             )
         );
         vault.processWithdrawal(user1);
@@ -690,7 +690,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.OnlyManager.selector, user1, manager
+                PredictionMarketVault.OnlyManager.selector, user1, manager
             )
         );
         vault.approveFundsUsage(protocol1, DEPOSIT_AMOUNT / 2);
@@ -723,7 +723,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(user1);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.SharesLockedForWithdrawal.selector,
+                PredictionMarketVault.SharesLockedForWithdrawal.selector,
                 user1,
                 shares,
                 shares
@@ -815,7 +815,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         // Try to make another request immediately
         vm.prank(user1);
         vm.expectRevert(
-            PassiveLiquidityVaultV2.InteractionDelayNotExpired.selector
+            PredictionMarketVault.InteractionDelayNotExpired.selector
         );
         vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
 
@@ -938,9 +938,9 @@ contract PassiveLiquidityVaultV2Test is Test {
     // ============ ERC165 Interface Detection Tests ============
 
     function test_supportsInterface() public view {
-        // IPassiveLiquidityVaultV2
+        // IPredictionMarketVault
         assertTrue(
-            vault.supportsInterface(type(IPassiveLiquidityVaultV2).interfaceId)
+            vault.supportsInterface(type(IPredictionMarketVault).interfaceId)
         );
 
         // IERC1271
@@ -998,7 +998,7 @@ contract PassiveLiquidityVaultV2Test is Test {
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.PendingRequestNotProcessed.selector,
+                PredictionMarketVault.PendingRequestNotProcessed.selector,
                 user1
             )
         );
@@ -1010,7 +1010,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(manager);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.NoPendingRequests.selector, user1
+                PredictionMarketVault.NoPendingRequests.selector, user1
             )
         );
         vault.processDeposit(user1);
@@ -1025,7 +1025,7 @@ contract PassiveLiquidityVaultV2Test is Test {
         vm.prank(manager);
         vm.expectRevert(
             abi.encodeWithSelector(
-                PassiveLiquidityVaultV2.NoPendingDeposit.selector, user1
+                PredictionMarketVault.NoPendingDeposit.selector, user1
             )
         );
         vault.processDeposit(user1);

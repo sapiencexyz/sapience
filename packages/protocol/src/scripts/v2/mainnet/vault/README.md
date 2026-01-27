@@ -1,6 +1,6 @@
-# PassiveLiquidityVaultV2 Mainnet Scripts
+# PredictionMarketVault Mainnet Scripts
 
-Scripts for deploying and testing PassiveLiquidityVaultV2 on Ethereal mainnet.
+Scripts for deploying and testing PredictionMarketVault on Ethereal mainnet.
 
 ## Overview
 
@@ -58,7 +58,7 @@ done
 
 ### 1. Deploy Vault
 
-Deploys PassiveLiquidityVaultV2 with COUNTERPARTY as manager.
+Deploys PredictionMarketVault with COUNTERPARTY as manager.
 
 ```bash
 forge script src/scripts/v2/mainnet/vault/01_DeployVault.s.sol \
@@ -139,7 +139,7 @@ When the vault acts as counterparty, the manager signs on its behalf:
 
 | Script | Description |
 |--------|-------------|
-| 01_DeployVault | Deploy and configure PassiveLiquidityVaultV2 |
+| 01_DeployVault | Deploy and configure PredictionMarketVault |
 | 02_TestDepositWithdrawal | Test deposit and withdrawal flow |
 | 03_TestVaultAsCounterparty | Test vault as counterparty in prediction |
 

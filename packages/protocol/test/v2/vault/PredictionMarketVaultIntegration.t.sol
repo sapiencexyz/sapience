@@ -3,11 +3,11 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../src/v2/vault/PassiveLiquidityVaultV2.sol";
+    PredictionMarketVault
+} from "../../../src/v2/vault/PredictionMarketVault.sol";
 import {
-    IPassiveLiquidityVaultV2
-} from "../../../src/v2/vault/interfaces/IPassiveLiquidityVaultV2.sol";
+    IPredictionMarketVault
+} from "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
 import {
     PredictionMarketEscrow
 } from "../../../src/v2/PredictionMarketEscrow.sol";
@@ -24,12 +24,12 @@ import {
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
- * @title PassiveLiquidityVaultV2IntegrationTest
- * @notice Integration tests for PassiveLiquidityVaultV2 acting as counterparty in PredictionMarketEscrow
+ * @title PredictionMarketVaultIntegrationTest
+ * @notice Integration tests for PredictionMarketVault acting as counterparty in PredictionMarketEscrow
  * @dev Tests the main use case: vault provides liquidity as counterparty to predictions
  */
-contract PassiveLiquidityVaultV2IntegrationTest is Test {
-    PassiveLiquidityVaultV2 public vault;
+contract PredictionMarketVaultIntegrationTest is Test {
+    PredictionMarketVault public vault;
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
@@ -68,7 +68,7 @@ contract PassiveLiquidityVaultV2IntegrationTest is Test {
 
         // Deploy vault
         vm.prank(owner);
-        vault = new PassiveLiquidityVaultV2(
+        vault = new PredictionMarketVault(
             address(collateralToken),
             manager,
             "Passive Liquidity Vault V2",

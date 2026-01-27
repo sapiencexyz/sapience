@@ -5,11 +5,11 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 /**
- * @title IPassiveLiquidityVaultV2
- * @notice Interface for the PassiveLiquidityVaultV2 contract with request-based deposits and withdrawals
+ * @title IPredictionMarketVault
+ * @notice Interface for the PredictionMarketVault contract with request-based deposits and withdrawals
  * @dev Simplified from V1 - removes utilization tracking since PredictionMarketEscrow uses ERC20 position tokens
  */
-interface IPassiveLiquidityVaultV2 is IERC1271, IERC165 {
+interface IPredictionMarketVault is IERC1271, IERC165 {
     // ============ Structs ============
     struct PendingRequest {
         uint256 shares;

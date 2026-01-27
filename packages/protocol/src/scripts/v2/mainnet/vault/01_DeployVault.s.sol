@@ -3,11 +3,11 @@ pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PassiveLiquidityVaultV2
-} from "../../../../v2/vault/PassiveLiquidityVaultV2.sol";
+    PredictionMarketVault
+} from "../../../../v2/vault/PredictionMarketVault.sol";
 
-/// @title Deploy PassiveLiquidityVaultV2 (Mainnet)
-/// @notice Deploys and configures PassiveLiquidityVaultV2 on Ethereal mainnet
+/// @title Deploy PredictionMarketVault (Mainnet)
+/// @notice Deploys and configures PredictionMarketVault on Ethereal mainnet
 /// @dev Deployer becomes owner, COUNTERPARTY wallet becomes manager
 contract DeployVault is Script {
     function run() external {
@@ -23,7 +23,7 @@ contract DeployVault is Script {
         string memory name = vm.envOr("VAULT_NAME", string("Sapience Vault V2"));
         string memory symbol = vm.envOr("VAULT_SYMBOL", string("SVLT"));
 
-        console.log("=== Deploy PassiveLiquidityVaultV2 (Mainnet) ===");
+        console.log("=== Deploy PredictionMarketVault (Mainnet) ===");
         console.log("Deployer (owner):", deployer);
         console.log("Manager:", manager);
         console.log("Collateral Token:", collateralToken);
@@ -32,7 +32,7 @@ contract DeployVault is Script {
 
         vm.startBroadcast(deployerPk);
 
-        PassiveLiquidityVaultV2 vault = new PassiveLiquidityVaultV2(
+        PredictionMarketVault vault = new PredictionMarketVault(
             collateralToken, manager, name, symbol
         );
 
@@ -48,7 +48,7 @@ contract DeployVault is Script {
 
         console.log("");
         console.log("=== Deployed ===");
-        console.log("PassiveLiquidityVaultV2:", address(vault));
+        console.log("PredictionMarketVault:", address(vault));
         console.log("Owner:", vault.owner());
         console.log("Manager:", vault.manager());
         console.log("Interaction Delay:", vault.interactionDelay());

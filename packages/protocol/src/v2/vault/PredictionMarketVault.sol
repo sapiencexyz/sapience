@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../../predictionMarket/utils/SignatureProcessor.sol";
-import "./interfaces/IPassiveLiquidityVaultV2.sol";
+import "./interfaces/IPredictionMarketVault.sol";
 
 /// @dev Minimal interface for querying prediction market token info
 interface IPredictionMarketTokenInfo {
@@ -28,7 +28,7 @@ interface IPredictionMarketInfo {
 }
 
 /**
- * @title PassiveLiquidityVaultV2
+ * @title PredictionMarketVault
  * @notice A passive liquidity vault that allows users to deposit assets and earn yield through EOA-managed protocol interactions
  *
  * HOW IT WORKS:
@@ -56,9 +56,9 @@ interface IPredictionMarketInfo {
  *
  * @dev Implements request-based deposit/withdrawal system and EOA-controlled fund approval
  */
-contract PassiveLiquidityVaultV2 is
+contract PredictionMarketVault is
     ERC20,
-    IPassiveLiquidityVaultV2,
+    IPredictionMarketVault,
     Ownable2Step,
     ReentrancyGuard,
     Pausable,
@@ -117,7 +117,7 @@ contract PassiveLiquidityVaultV2 is
     );
 
     // ============ Events ============
-    // Events are defined in the IPassiveLiquidityVaultV2 interface
+    // Events are defined in the IPredictionMarketVault interface
 
     // ============ State Variables ============
 
@@ -250,7 +250,7 @@ contract PassiveLiquidityVaultV2 is
 
         lastUserInteractionTimestamp[msg.sender] = block.timestamp;
 
-        pendingRequests[msg.sender] = IPassiveLiquidityVaultV2.PendingRequest({
+        pendingRequests[msg.sender] = IPredictionMarketVault.PendingRequest({
             shares: shares,
             assets: expectedAssets,
             timestamp: uint64(block.timestamp),
@@ -296,7 +296,7 @@ contract PassiveLiquidityVaultV2 is
             revert TransferFailed(balanceBefore, assets, balanceAfter);
         }
 
-        pendingRequests[msg.sender] = IPassiveLiquidityVaultV2.PendingRequest({
+        pendingRequests[msg.sender] = IPredictionMarketVault.PendingRequest({
             shares: expectedShares,
             assets: assets,
             timestamp: uint64(block.timestamp),
@@ -778,7 +778,7 @@ contract PassiveLiquidityVaultV2 is
         override(ERC165, IERC165)
         returns (bool)
     {
-        return interfaceId == type(IPassiveLiquidityVaultV2).interfaceId
+        return interfaceId == type(IPredictionMarketVault).interfaceId
             || interfaceId == type(IERC1271).interfaceId
             || super.supportsInterface(interfaceId);
     }
