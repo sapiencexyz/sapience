@@ -35,6 +35,8 @@ interface CollateralBalanceContextValue {
   suggestedInitialWager: string | null;
   /** Whether balance has finished loading and is available */
   isBalanceReady: boolean;
+  /** Whether we're using the user's wallet (EOA) vs smart account */
+  isUsingEoa: boolean;
 }
 
 const CollateralBalanceContext =
@@ -47,14 +49,10 @@ interface CollateralBalanceProviderProps {
 export function CollateralBalanceProvider({
   children,
 }: CollateralBalanceProviderProps): React.ReactElement {
-  const { address: eoaAddress, isConnected } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { isConnected } = useAccount();
+  const { effectiveAddress, isUsingSmartAccount, isCalculatingAddress } =
+    useSession();
   const chainId = CHAIN_ID_ETHEREAL;
-
-  // Use smart account address when session is active, otherwise EOA
-  // This ensures we show the balance of the address that will execute transactions
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : eoaAddress;
 
   const {
     balance,
@@ -62,16 +60,23 @@ export function CollateralBalanceProvider({
     formattedBalance,
     decimals,
     symbol,
-    isLoading,
+    isLoading: isBalanceLoading,
     isEtherealChain,
     nativeBalance,
     wrappedBalance,
     refetch,
   } = useCollateralBalance({
-    address: effectiveAddress,
+    address: effectiveAddress ?? undefined,
     chainId,
     enabled: isConnected && !!effectiveAddress && !!chainId,
   });
+
+  // Include address calculation in loading state to prevent flicker
+  // when switching to smart account mode before address is computed
+  const isLoading = isBalanceLoading || isCalculatingAddress;
+
+  // Derive from SessionContext's canonical state
+  const isUsingEoa = !isUsingSmartAccount;
 
   // Compute suggested initial wager: min(balance, 10), or null if not ready
   const suggestedInitialWager = useMemo(() => {
@@ -95,10 +100,11 @@ export function CollateralBalanceProvider({
     nativeBalance,
     wrappedBalance,
     refetch,
-    effectiveAddress,
+    effectiveAddress: effectiveAddress ?? undefined,
     chainId,
     suggestedInitialWager,
     isBalanceReady,
+    isUsingEoa,
   };
 
   return (

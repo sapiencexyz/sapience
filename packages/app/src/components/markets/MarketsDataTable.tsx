@@ -14,7 +14,6 @@ import type { SortingState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
@@ -40,10 +39,12 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
+import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
-  ConditionGroupType,
-  ConditionGroupConditionType,
-} from '~/hooks/graphql/useConditionGroups';
+  SortField,
+  SortDirection,
+  QuestionType,
+} from '~/hooks/graphql/useInfiniteQuestions';
 
 // Union type for top-level table rows
 type TopLevelRow =
@@ -91,9 +92,11 @@ function groupConditionToConditionType(
 }
 
 interface MarketsDataTableProps {
-  conditionGroups: ConditionGroupType[];
-  ungroupedConditions: ConditionType[];
+  questions: QuestionType[];
   isLoading?: boolean;
+  isFetchingMore?: boolean;
+  hasMore?: boolean;
+  onFetchMore?: () => void;
 
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -101,6 +104,11 @@ interface MarketsDataTableProps {
   onFiltersChange: (filters: FilterState) => void;
 
   categories: CategoryOption[];
+
+  // Sorting props - controlled by parent for backend sorting
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSortChange: (field: SortField, direction: SortDirection) => void;
 }
 
 // Countdown display component with live updates
@@ -728,18 +736,44 @@ function ChildConditionRow({
 }
 
 export default function MarketsDataTable({
-  conditionGroups,
-  ungroupedConditions,
+  questions,
   isLoading,
+  isFetchingMore,
+  hasMore,
+  onFetchMore,
   searchTerm,
   onSearchChange,
   filters,
   onFiltersChange,
   categories,
+  sortField,
+  sortDirection,
+  onSortChange,
 }: MarketsDataTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'openInterest', desc: true },
-  ]);
+  // Derive table sorting state from controlled props
+  const sorting: SortingState = React.useMemo(
+    () => [{ id: sortField, desc: sortDirection === 'desc' }],
+    [sortField, sortDirection]
+  );
+
+  // Handle sorting change - notify parent to trigger backend re-fetch
+  const handleSortingChange = React.useCallback(
+    (updaterOrValue: SortingState | ((old: SortingState) => SortingState)) => {
+      const newSorting =
+        typeof updaterOrValue === 'function'
+          ? updaterOrValue(sorting)
+          : updaterOrValue;
+
+      if (newSorting.length > 0) {
+        const { id, desc } = newSorting[0];
+        // Only handle sortable columns that backend supports
+        if (id === 'openInterest' || id === 'endTime') {
+          onSortChange(id, desc ? 'desc' : 'asc');
+        }
+      }
+    },
+    [sorting, onSortChange]
+  );
 
   // Expand/collapse state for groups
   const [expandedGroupIds, setExpandedGroupIds] = React.useState<Set<number>>(
@@ -828,47 +862,46 @@ export default function MarketsDataTable({
     return { openInterestBounds, timeToResolutionBounds };
   }, []);
 
-  // Build the top-level row model
+  // Build the top-level row model from unified questions
+  // Backend handles sorting and interleaving - just map to our row format
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    const rows: TopLevelRow[] = [];
+    return questions
+      .map((item): TopLevelRow | null => {
+        if (item.questionType === 'group' && item.group) {
+          const group = item.group;
+          if (group.conditions.length === 0) return null;
 
-    // Add groups
-    for (const group of conditionGroups) {
-      if (group.conditions.length === 0) continue;
+          // Compute aggregates for display
+          let openInterestWei = 0n;
+          let maxEndTime = 0;
+          for (const c of group.conditions) {
+            openInterestWei += BigInt(c.openInterest || '0');
+            if (c.endTime > maxEndTime) {
+              maxEndTime = c.endTime;
+            }
+          }
 
-      // Compute aggregates
-      let openInterestWei = 0n;
-      let maxEndTime = 0;
-      for (const c of group.conditions) {
-        openInterestWei += BigInt(c.openInterest || '0');
-        if (c.endTime > maxEndTime) {
-          maxEndTime = c.endTime;
+          return {
+            kind: 'group' as const,
+            id: `group-${group.id}`,
+            groupId: group.id,
+            name: group.name,
+            category: group.category,
+            conditions: group.conditions,
+            openInterestWei,
+            maxEndTime,
+          };
+        } else if (item.questionType === 'condition' && item.condition) {
+          return {
+            kind: 'condition' as const,
+            id: `condition-${item.condition.id}`,
+            condition: item.condition,
+          };
         }
-      }
-
-      rows.push({
-        kind: 'group',
-        id: `group-${group.id}`,
-        groupId: group.id,
-        name: group.name,
-        category: group.category,
-        conditions: group.conditions,
-        openInterestWei,
-        maxEndTime,
-      });
-    }
-
-    // Add ungrouped conditions
-    for (const condition of ungroupedConditions) {
-      rows.push({
-        kind: 'condition',
-        id: `condition-${condition.id}`,
-        condition,
-      });
-    }
-
-    return rows;
-  }, [conditionGroups, ungroupedConditions]);
+        return null;
+      })
+      .filter((row): row is TopLevelRow => row !== null);
+  }, [questions]);
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(() => {
@@ -876,7 +909,7 @@ export default function MarketsDataTable({
     const [minDays, maxDays] = filters.timeToResolutionRange;
     const nowSec = Math.floor(Date.now() / 1000);
 
-    return topLevelRows.filter((row) => {
+    const result = topLevelRows.filter((row) => {
       // Open interest filter (in USDe, so convert from wei)
       const oiWei = getRowOpenInterest(row);
       const oiUsde = parseFloat(formatEther(oiWei));
@@ -899,16 +932,29 @@ export default function MarketsDataTable({
 
       return true;
     });
+
+    return result;
   }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange]);
 
-  // Infinite scroll state
-  const BATCH_SIZE = 20;
-  const [displayCount, setDisplayCount] = React.useState(BATCH_SIZE);
+  // Ref for infinite scroll sentinel
   const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
+  // Refs for IntersectionObserver callback to avoid stale closures
+  // This prevents the observer from needing to be recreated when these values change
+  const hasMoreRef = React.useRef(hasMore);
+  const isFetchingMoreRef = React.useRef(isFetchingMore);
+  const onFetchMoreRef = React.useRef(onFetchMore);
+
+  // Keep refs in sync with props
   React.useEffect(() => {
-    setDisplayCount(BATCH_SIZE);
-  }, [conditionGroups, ungroupedConditions, filters]);
+    hasMoreRef.current = hasMore;
+  }, [hasMore]);
+  React.useEffect(() => {
+    isFetchingMoreRef.current = isFetchingMore;
+  }, [isFetchingMore]);
+  React.useEffect(() => {
+    onFetchMoreRef.current = onFetchMore;
+  }, [onFetchMore]);
 
   // Create columns using refs so column definitions stay stable across prediction
   // updates (preventing cell remounts and visual flashing).
@@ -929,26 +975,31 @@ export default function MarketsDataTable({
     state: {
       sorting,
     },
-    onSortingChange: setSorting,
+    onSortingChange: handleSortingChange,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    // Note: No getSortedRowModel() - backend handles sorting via pagination
     getRowId: (row) => row.id,
+    // Disable automatic sorting since it's controlled by parent/backend
+    manualSorting: true,
   });
 
-  // Get all sorted rows and slice for display
+  // Get all sorted rows for display (server-side pagination handles limiting)
   const allRows = table.getRowModel().rows;
-  const displayedRows = allRows.slice(0, displayCount);
-  const hasMore = displayCount < allRows.length;
+  const displayedRows = allRows;
 
-  // Intersection Observer for infinite scroll
+  // Intersection Observer for infinite scroll - stable observer using refs
+  // Using refs avoids stale closures and prevents observer recreation
   React.useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry?.isIntersecting && hasMore) {
-          setDisplayCount((prev) =>
-            Math.min(prev + BATCH_SIZE, allRows.length)
-          );
+        // Use refs for current values - avoids stale closure issue
+        if (
+          entry?.isIntersecting &&
+          hasMoreRef.current &&
+          !isFetchingMoreRef.current
+        ) {
+          onFetchMoreRef.current?.();
         }
       },
       { threshold: 0.1, rootMargin: '100px' }
@@ -964,7 +1015,30 @@ export default function MarketsDataTable({
         observer.unobserve(currentRef);
       }
     };
-  }, [hasMore, allRows.length]);
+  }, []); // Empty deps - observer is stable, uses refs for current values
+
+  // After loading completes, check if sentinel is still visible and trigger fetchMore
+  // This handles the case where the observer fired during initial load (when isFetching was true)
+  // and the sentinel is still visible after loading completes
+  const prevIsLoadingRef = React.useRef(isLoading);
+  React.useEffect(() => {
+    const wasLoading = prevIsLoadingRef.current;
+    prevIsLoadingRef.current = isLoading;
+
+    // If we just finished loading (wasLoading -> !isLoading)
+    if (wasLoading && !isLoading && hasMore && !isFetchingMore) {
+      const sentinel = loadMoreRef.current;
+      if (sentinel) {
+        // Check if sentinel is currently visible
+        const rect = sentinel.getBoundingClientRect();
+        const isVisible =
+          rect.top < window.innerHeight + 100 && rect.bottom > -100;
+        if (isVisible) {
+          onFetchMore?.();
+        }
+      }
+    }
+  }, [isLoading, hasMore, isFetchingMore, onFetchMore]);
 
   return (
     <div className="space-y-4">
@@ -1016,44 +1090,82 @@ export default function MarketsDataTable({
                 </TableCell>
               </TableRow>
             ) : displayedRows.length ? (
-              displayedRows.map((row) => {
-                const data = row.original;
-                const isGroupRow = data.kind === 'group';
-                const isExpanded =
-                  isGroupRow && expandedGroupIds.has(data.groupId);
+              <>
+                {displayedRows.map((row) => {
+                  const data = row.original;
+                  const isGroupRow = data.kind === 'group';
+                  const isExpanded =
+                    isGroupRow && expandedGroupIds.has(data.groupId);
 
-                return (
-                  <React.Fragment key={row.id}>
-                    <TableRow
-                      data-state={row.getIsSelected() && 'selected'}
-                      className="border-b border-brand-white/20 hover:bg-transparent"
+                  return (
+                    <React.Fragment key={row.id}>
+                      <TableRow
+                        data-state={row.getIsSelected() && 'selected'}
+                        className="border-b border-brand-white/20 hover:bg-transparent"
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={getCellClassName(cell.column.id)}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      {/* Render child rows when group is expanded */}
+                      {isExpanded &&
+                        data.conditions.map((condition, idx) => (
+                          <ChildConditionRow
+                            key={`child-${condition.id}`}
+                            condition={condition}
+                            predictionMap={predictionMap}
+                            onPrediction={handlePrediction}
+                            isLast={idx === data.conditions.length - 1}
+                          />
+                        ))}
+                    </React.Fragment>
+                  );
+                })}
+                {/* Pulsating loading row while fetching next page */}
+                {isFetchingMore && (
+                  <TableRow className="hover:bg-transparent border-b border-brand-white/20">
+                    <TableCell colSpan={columns.length} className="py-4">
+                      <div className="flex items-center gap-3 animate-pulse">
+                        <div className="h-4 w-4 rounded-full bg-brand-white/20" />
+                        <div className="h-4 flex-1 max-w-[200px] rounded bg-brand-white/20" />
+                        <div className="h-4 w-20 rounded bg-brand-white/20 ml-auto" />
+                        <div className="h-4 w-24 rounded bg-brand-white/20" />
+                        <div className="h-8 w-16 rounded bg-brand-white/20" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {/* Scroll hint when more data is available */}
+                {hasMore && !isFetchingMore && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="py-3 text-center text-muted-foreground text-sm"
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell
-                          key={cell.id}
-                          className={getCellClassName(cell.column.id)}
-                        >
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                    {/* Render child rows when group is expanded */}
-                    {isExpanded &&
-                      data.conditions.map((condition, idx) => (
-                        <ChildConditionRow
-                          key={`child-${condition.id}`}
-                          condition={condition}
-                          predictionMap={predictionMap}
-                          onPrediction={handlePrediction}
-                          isLast={idx === data.conditions.length - 1}
-                        />
-                      ))}
-                  </React.Fragment>
-                );
-              })
+                      Scroll down for more markets
+                    </TableCell>
+                  </TableRow>
+                )}
+                {/* End of results indicator */}
+                {!hasMore && !isFetchingMore && (
+                  <TableRow className="hover:bg-transparent">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="py-4 text-center text-muted-foreground text-sm"
+                    >
+                      End of results
+                    </TableCell>
+                  </TableRow>
+                )}
+              </>
             ) : (
               <TableRow className="hover:bg-transparent">
                 <TableCell
@@ -1068,20 +1180,8 @@ export default function MarketsDataTable({
         </Table>
       </div>
 
-      {/* Infinite scroll loader */}
-      {hasMore ? (
-        <div
-          ref={loadMoreRef}
-          className="flex items-center justify-center py-4"
-        >
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Loading more...</span>
-          </div>
-        </div>
-      ) : (
-        <div ref={loadMoreRef} />
-      )}
+      {/* Infinite scroll sentinel (invisible) */}
+      <div ref={loadMoreRef} className="h-1" />
     </div>
   );
 }

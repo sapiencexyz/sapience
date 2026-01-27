@@ -30,6 +30,7 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import MarketBadge from '~/components/markets/MarketBadge';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import type { PredictionData, ForecastData } from './types';
 
@@ -66,6 +67,16 @@ export function PredictionScatterChart({
   const [isTooltipHovered, setIsTooltipHovered] = React.useState(false);
   const isTooltipHoveredRef = React.useRef(false);
   const tooltipTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  // Keep track of the last valid point to prevent flicker during re-renders
+  const lastValidPointRef = React.useRef<PredictionData | ForecastData | null>(
+    null
+  );
+  // Update the ref whenever we have a valid point
+  if (hoveredPoint || hoveredForecast) {
+    lastValidPointRef.current = hoveredPoint || hoveredForecast;
+  } else if (!isTooltipHovered) {
+    lastValidPointRef.current = null;
+  }
 
   // Comment square hover state - for comment popover
   const [hoveredComment, setHoveredComment] = React.useState<{
@@ -167,9 +178,11 @@ export function PredictionScatterChart({
             }
             content={({ active, payload }) => {
               // Use hovered point/forecast state for persistent tooltip
+              // Fall back to lastValidPointRef to prevent flicker during re-renders
               const point =
                 hoveredPoint ||
                 hoveredForecast ||
+                (isTooltipHovered && lastValidPointRef.current) ||
                 (active &&
                   (payload?.[0]?.payload as
                     | PredictionData
@@ -410,9 +423,13 @@ export function PredictionScatterChart({
                                         )}
                                         categorySlug={pred.categorySlug}
                                       />
-                                      <span className="text-sm flex-1 min-w-0 font-mono underline decoration-dotted underline-offset-2 hover:text-brand-white/80 transition-colors cursor-pointer truncate">
-                                        {pred.question}
-                                      </span>
+                                      <ConditionTitleLink
+                                        conditionId={pred.conditionId}
+                                        resolverAddress={pred.resolverAddress}
+                                        title={pred.question}
+                                        className="text-sm flex-1 min-w-0"
+                                        clampLines={1}
+                                      />
                                       <Badge
                                         variant="outline"
                                         className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
@@ -877,14 +894,6 @@ export const scatterChartStyles = `
     }
   }
   .scatter-tooltip {
-    animation: tooltip-fade-in 150ms ease-out;
-  }
-  @keyframes tooltip-fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    /* Animation handled by framer-motion AnimatePresence, not CSS */
   }
 `;

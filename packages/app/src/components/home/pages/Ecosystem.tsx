@@ -1,5 +1,7 @@
 'use client';
 
+import { Badge } from '@sapience/ui/components/ui/badge';
+
 export default function Ecosystem() {
   return (
     <section className="w-full py-16 md:py-20">
@@ -27,25 +29,6 @@ export default function Ecosystem() {
           </div>
           <div className="w-full md:basis-1/3 flex items-center justify-start gap-3 md:gap-4 pl-1 pr-0 md:pl-3 md:pr-3">
             <img
-              src="/uniswap-circle.svg"
-              alt="Uniswap"
-              className="h-16 w-16 md:h-24 md:w-24"
-            />
-            <p className="text-sm md:text-base leading-relaxed text-foreground/80">
-              Sapience's spot markets integrate with{' '}
-              <a
-                href="https://uniswap.org"
-                target="_blank"
-                rel="noreferrer"
-                className="gold-link"
-              >
-                Uniswap
-              </a>
-              , the most popular decentralized exchange protocol.
-            </p>
-          </div>
-          <div className="w-full md:basis-1/3 flex items-center justify-start gap-3 md:gap-4 md:pl-1">
-            <img
               src="/eliza-circle.svg"
               alt="ElizaOS"
               className="h-16 w-16 md:h-24 md:w-24"
@@ -62,6 +45,32 @@ export default function Ecosystem() {
               </a>{' '}
               starter template.
             </p>
+          </div>
+          <div className="w-full md:basis-1/3 relative flex items-center justify-start gap-3 md:gap-4 md:pl-1">
+            <img
+              src="/cowswap-circle.svg"
+              alt="CoW Swap"
+              className="h-16 w-16 md:h-24 md:w-24 shrink-0"
+            />
+            <p className="text-sm md:text-base leading-relaxed text-foreground/80">
+              Trade prediction market tokens for crypto, stablecoins, and other
+              tokenized assets using{' '}
+              <a
+                href="https://cow.fi"
+                target="_blank"
+                rel="noreferrer"
+                className="gold-link"
+              >
+                CoW Swap
+              </a>
+              .
+            </p>
+            <Badge
+              variant="outline"
+              className="absolute -bottom-4 left-[79px] md:left-[115px] px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-normal"
+            >
+              COMING SOON
+            </Badge>
           </div>
           <span
             aria-hidden

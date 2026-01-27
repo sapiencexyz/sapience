@@ -23,6 +23,7 @@ import { useState } from 'react';
 import RFQTab from './RFQTab';
 import ConditionGroupsTab from './ConditionGroupsTab';
 import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
+import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -120,6 +121,8 @@ const Admin = () => {
   const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
   const [predictionMarketReindexOpen, setPredictionMarketReindexOpen] =
     useState(false);
+  const [protocolStatsBackfillOpen, setProtocolStatsBackfillOpen] =
+    useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -175,6 +178,22 @@ const Admin = () => {
                 <DialogTitle>Reindex Prediction Markets</DialogTitle>
               </DialogHeader>
               <ReindexPredictionMarketForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={protocolStatsBackfillOpen}
+            onOpenChange={setProtocolStatsBackfillOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Backfill Protocol Stats
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Backfill Protocol Stats</DialogTitle>
+              </DialogHeader>
+              <BackfillProtocolStatsForm />
             </DialogContent>
           </Dialog>
           <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>

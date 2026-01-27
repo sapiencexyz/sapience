@@ -56,6 +56,10 @@ interface BidDisplayProps {
   isAuctionPending?: boolean;
   /** Whether form has validation errors (disables initiate auction) */
   hasFormErrors?: boolean;
+  /** Whether user is logged out - shows estimates only and "Connect to Submit" */
+  isLoggedOut?: boolean;
+  /** Callback to open connect dialog */
+  onConnectClick?: () => void;
 }
 
 /**
@@ -85,6 +89,8 @@ export default function BidDisplay({
   showAddPredictionsHint = false,
   isAuctionPending = false,
   hasFormErrors = false,
+  isLoggedOut = false,
+  onConnectClick,
 }: BidDisplayProps): React.ReactElement {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
@@ -125,13 +131,21 @@ export default function BidDisplay({
     : true;
 
   // Unified UI state - single source of truth for all UI rendering
-  type UIState = 'idle' | 'pending' | 'active' | 'submitting';
+  // For logged-out users, show estimate state even with valid bids (they need to connect first)
+  type UIState =
+    | 'idle'
+    | 'pending'
+    | 'active'
+    | 'submitting'
+    | 'logged-out-with-bid';
   const uiState: UIState = useMemo(() => {
     if (isSubmitting) return 'submitting';
+    // Logged-out users with valid bids see estimate UI with "Connect to Submit" button
+    if (isLoggedOut && bestBid && !isBidExpired) return 'logged-out-with-bid';
     if (bestBid && !isBidExpired) return 'active';
     if (isAuctionPending) return 'pending';
     return 'idle';
-  }, [isSubmitting, bestBid, isBidExpired, isAuctionPending]);
+  }, [isSubmitting, bestBid, isBidExpired, isAuctionPending, isLoggedOut]);
 
   // Calculate remaining seconds and the "to win" amount.
   const { humanTotal, remainingSecs } = (() => {
@@ -163,6 +177,14 @@ export default function BidDisplay({
           onClick: () => {},
           type: 'button' as const,
         };
+      case 'logged-out-with-bid':
+        // Logged-out user with valid bid - prompt them to connect
+        return {
+          text: 'LOG IN TO TRADE',
+          disabled: false,
+          onClick: onConnectClick || (() => {}),
+          type: 'button' as const,
+        };
       case 'active':
         return {
           text: 'SUBMIT PREDICTION',
@@ -182,6 +204,15 @@ export default function BidDisplay({
       default:
         // Show estimate state if we have an estimate bid but no valid bid
         if (estimateBid && estimateTotal) {
+          // For logged-out users with estimate, show connect button
+          if (isLoggedOut) {
+            return {
+              text: 'LOG IN TO TRADE',
+              disabled: false,
+              onClick: onConnectClick || (() => {}),
+              type: 'button' as const,
+            };
+          }
           return {
             text: 'WAITING FOR BIDS...',
             disabled: true,
@@ -299,9 +330,98 @@ export default function BidDisplay({
         </div>
       )}
 
-      {/* Show "Listening for bids..." hint when waiting for bids */}
-      {uiState === 'pending' && (
-        <div className="mb-4 -mt-1">
+      {/* Logged-out user with valid bid - show as estimate with connect prompt */}
+      {uiState === 'logged-out-with-bid' && bestBid && (
+        <div
+          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+        >
+          <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
+            <div className="flex items-center min-h-[40px]">
+              <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
+                <span className="font-light text-muted-foreground uppercase tracking-wider">
+                  ESTIMATED TO WIN
+                </span>
+                <span className="text-muted-foreground font-semibold whitespace-nowrap">
+                  {`${humanTotal} ${collateralSymbol}`}
+                </span>
+              </span>
+            </div>
+          </div>
+          {/* Listening for bids hint row */}
+          <div className="flex items-center justify-between mt-3 px-1 text-xs">
+            <span
+              className="text-muted-foreground"
+              style={{
+                background:
+                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                backgroundSize: '200% 100%',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                animation: 'shimmer 2s linear infinite',
+              }}
+            >
+              Listening for bids...
+            </span>
+            <button
+              type="button"
+              onClick={onRequestBids}
+              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+            >
+              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                Restart auction
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Show "Add more predictions" hint for single-pick betslips */}
+      {((uiState === 'idle' && !estimateBid) || uiState === 'pending') &&
+        showAddPredictionsHint && (
+          <div className="mt-4 mb-4">
+            <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
+              <div className="flex items-center justify-center gap-2 min-h-[41px]">
+                <Info className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
+                  Add more predictions for bids
+                </span>
+              </div>
+            </div>
+            {/* Listening for bids row - inside hint container to match TO WIN spacing */}
+            {uiState === 'pending' && (
+              <div className="flex items-center justify-between mt-2 px-1 text-xs">
+                <span
+                  className="text-muted-foreground"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                    backgroundSize: '200% 100%',
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    animation: 'shimmer 2s linear infinite',
+                  }}
+                >
+                  Listening for bids...
+                </span>
+                <button
+                  type="button"
+                  onClick={onRequestBids}
+                  className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+                >
+                  <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                    Restart auction
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+      {/* Show "Listening for bids..." when pending but no hint (multi-pick) */}
+      {uiState === 'pending' && !showAddPredictionsHint && (
+        <div className="mb-4 mt-4">
           <div className="flex items-center justify-between px-1 text-xs">
             <span
               className="text-muted-foreground"
@@ -370,18 +490,6 @@ export default function BidDisplay({
                 Restart auction
               </span>
             </button>
-          </div>
-        </div>
-      )}
-      {uiState === 'idle' && !estimateBid && showAddPredictionsHint && (
-        <div className="mt-4 mb-4">
-          <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
-            <div className="flex items-center justify-center gap-2 min-h-[40px]">
-              <Info className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
-                Add more predictions for bids
-              </span>
-            </div>
           </div>
         </div>
       )}

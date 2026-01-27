@@ -98,7 +98,7 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
   const chainId = CHAIN_ID_ETHEREAL;
 
@@ -133,9 +133,7 @@ const CreatePositionFormInner = ({
     [chainId, createPositionEntries]
   );
 
-  // Use smart account address when session is active for position queries
-  const effectiveAddress =
-    isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+  // effectiveAddress from session context is used for position queries
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
@@ -477,8 +475,19 @@ const CreatePositionFormInner = ({
   }, [effectiveAddress, initializedForAddress, formMethods]);
 
   // Single initialization effect - sets wager when balance becomes ready
+  // For logged-out users, default to "1" so they can see estimates immediately
   useEffect(() => {
     if (isWagerInitialized) return;
+
+    // For logged-out users, set default wager to "1" immediately
+    if (!hasConnectedWallet) {
+      formMethods.setValue('wagerAmount', '1', { shouldValidate: false });
+      setIsWagerInitialized(true);
+      setInitializedForAddress(null);
+      return;
+    }
+
+    // For logged-in users, wait for balance to load
     if (isBalanceLoading) return;
     if (userBalance <= 0) return;
 
@@ -499,6 +508,7 @@ const CreatePositionFormInner = ({
     isWagerInitialized,
     effectiveAddress,
     formMethods,
+    hasConnectedWallet,
   ]);
 
   // Sync form when position entries change without clobbering existing values

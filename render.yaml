@@ -56,3 +56,20 @@ services:
     envVars:
       - key: ENABLE_AUCTION_WS
         value: "true"
+
+  - name: protocol-stats-cron
+    type: cron
+    env: node
+    schedule: "0 0 * * *"
+    buildCommand: npm install -g pnpm@9 && bash render-build-sdk.sh && pnpm --filter @sapience/api prisma:generate
+    startCommand: pnpm --filter @sapience/api start:compute-stats
+    branch: main
+    buildFilter:
+      paths:
+        - packages/api/**
+        - packages/sdk/**
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: database
+          property: connectionString

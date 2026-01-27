@@ -82,7 +82,7 @@ export function useBidSubmission(
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = CHAIN_ID_ETHEREAL;
   const { apiBaseUrl } = useSettings();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -129,9 +129,8 @@ export function useBidSubmission(
         maxEndTimeSec,
       } = params;
 
-      // Use smart account address as maker when session is active
-      const signerAddress =
-        isSessionActive && smartAccountAddress ? smartAccountAddress : address;
+      // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
+      const signerAddress = effectiveAddress;
 
       // Validate required data
       if (!signerAddress) {
@@ -275,8 +274,7 @@ export function useBidSubmission(
       wsUrl,
       signTypedDataAsync,
       onSignatureRejected,
-      isSessionActive,
-      smartAccountAddress,
+      effectiveAddress,
     ]
   );
 

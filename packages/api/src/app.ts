@@ -2,6 +2,7 @@ import express, { Request } from 'express';
 import cors from 'cors';
 import { router } from './routes';
 import { config } from './config';
+import { rateLimiter } from './middleware';
 
 const corsOptions: cors.CorsOptions = {
   origin: (
@@ -62,6 +63,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(rateLimiter);
 
 app.use('/', router);
 

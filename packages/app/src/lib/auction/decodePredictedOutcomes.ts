@@ -3,6 +3,8 @@ import {
   pythResolver,
   umaResolver,
   lzPMResolver,
+  lzUmaResolver,
+  predictionMarketLZConditionalTokensResolver,
 } from '@sapience/sdk/contracts';
 
 export type UmaDecodedOutcome = {
@@ -37,6 +39,10 @@ const UMA_RESOLVER_SET = new Set<string>(
   [
     ...Object.values(umaResolver).map((v) => v?.address),
     ...Object.values(lzPMResolver).map((v) => v?.address),
+    ...Object.values(lzUmaResolver).map((v) => v?.address),
+    ...Object.values(predictionMarketLZConditionalTokensResolver).map(
+      (v) => v?.address
+    ),
   ]
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())

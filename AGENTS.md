@@ -50,3 +50,4 @@ Package-specific highlights:
 - Check for package-local docs (e.g., `packages/protocol/CLAUDE.md`) before duplicating guidance.
 - Respect existing formatting tools (Prettier, Forge fmt, etc.) and run relevant checks before submitting changes.
 - When adding new scripts or workflows, update this file and any package-specific READMEs to keep automated collaboration smooth.
+- schema.graphql and graphql.ts files are read-only and should be generated using bash commands, never edited directly.

@@ -15,9 +15,10 @@ import { createWalletClient, custom, http, keccak256, stringToHex } from 'viem';
 import { mainnet } from 'viem/chains';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+
+const VOLUME_THRESHOLD = 5000;
 
 interface ReferralsDialogProps {
   open: boolean;
@@ -35,19 +36,12 @@ type ReferralRow = {
 const ReferralVolumeCell = ({ address }: { address: string }) => {
   const chainId = CHAIN_ID_ETHEREAL;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
-  const lowerAddress = address.toLowerCase();
 
-  const { data: positions, isLoading: positionsLoading } = useUserPositions({
-    address: lowerAddress,
-    chainId,
-  });
-
-  const volume = useProfileVolume(positions, address);
-  const loading = positionsLoading;
+  const { display, isLoading } = useProfileVolume(address);
 
   return (
     <span className="tabular-nums">
-      {loading ? '—' : `${volume.display} ${collateralSymbol}`}
+      {isLoading ? '—' : `${display} ${collateralSymbol}`}
     </span>
   );
 };
@@ -64,6 +58,10 @@ const ReferralsDialog = ({
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
   const { toast } = useToast();
+
+  const userVolume = useProfileVolume(walletAddress ?? undefined);
+  const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
+  const inviteCodeDisabled = userVolume.isLoading || !hasEnoughVolume;
 
   const invitesRemaining =
     maxReferrals !== null
@@ -246,20 +244,21 @@ const ReferralsDialog = ({
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                disabled={submitting}
+                disabled={inviteCodeDisabled || submitting}
                 className="flex-1"
               />
               <Button
                 type="submit"
                 className="shrink-0"
-                disabled={submitting || !code.trim()}
+                disabled={inviteCodeDisabled || submitting || !code.trim()}
               >
                 {submitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Only an encrypted version of your code is stored, so you&apos;ll
-              need to reset it if you forget it.
+              {inviteCodeDisabled
+                ? `You can create an invite code once you've done $${VOLUME_THRESHOLD.toLocaleString()} in trading volume. Current: $${userVolume.display}`
+                : "Only an encrypted version of your code is stored, so you'll need to reset it if you forget it."}
             </p>
             {error && (
               <p className="text-xs text-destructive mt-1.5">{error}</p>

@@ -2,6 +2,7 @@ import { Plugin } from "@elizaos/core";
 import { attestMarketAction } from "./actions/attestMarket.js";
 import { autonomousModeAction } from "./actions/autonomousMode.js";
 import { callToolAction } from "./actions/callTool.js";
+import { claimWinningsAction } from "./actions/claimWinningsAction.js";
 import { forecastAction } from "./actions/forecastAction.js";
 import { tradeAction } from "./actions/tradeAction.js";
 import { tradingAction } from "./actions/tradingAction.js";
@@ -21,6 +22,7 @@ export const customActionsPlugin: Plugin = {
     attestMarketAction,
     autonomousModeAction,
     callToolAction,
+    claimWinningsAction,
     forecastAction,
     tradeAction,
     tradingAction,

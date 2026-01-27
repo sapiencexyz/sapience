@@ -57,7 +57,7 @@ interface PositionFormProps {
   bids?: QuoteBid[];
   requestQuotes?: (
     params: AuctionParams | null,
-    options?: { forceRefresh?: boolean }
+    options?: { forceRefresh?: boolean; requireSignature?: boolean }
   ) => void;
   // Collateral token configuration from useSubmitPosition hook
   collateralToken?: `0x${string}`;
@@ -111,15 +111,11 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { isSessionActive, smartAccountAddress } = useSession();
+  const { effectiveAddress } = useSession();
 
-  // Use smart account address when session is active, otherwise use EOA
-  // Falls back to zero address for logged-out users
+  // Use effectiveAddress from session context, falling back to zero address for logged-out users
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-  const selectedTakerAddress =
-    isSessionActive && smartAccountAddress
-      ? smartAccountAddress
-      : (takerAddress ?? ZERO_ADDRESS);
+  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? ZERO_ADDRESS;
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
@@ -192,6 +188,19 @@ export default function PositionForm({
       prevWagerAmountRef.current = wagerAmount || '';
     }
   }, [wagerAmount]);
+
+  // Clear bids when wallet connection state changes
+  // Old bids were generated for a different taker address (zero address for logged-out, user address for logged-in)
+  const prevHasConnectedWalletRef = useRef(hasConnectedWallet);
+  useEffect(() => {
+    if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
+      setValidBids([]);
+      setStickyEstimateBid(null);
+      setLastQuoteRequestMs(null);
+      currentRequestKeyRef.current = null;
+      prevHasConnectedWalletRef.current = hasConnectedWallet;
+    }
+  }, [hasConnectedWallet]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
@@ -308,7 +317,10 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    async (options?: { forceRefresh?: boolean }) => {
+    async (options?: {
+      forceRefresh?: boolean;
+      requireSignature?: boolean;
+    }) => {
       if (!requestQuotes || !selectedTakerAddress) return;
 
       const hasUma = selections.length > 0;
@@ -374,7 +386,10 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        requestQuotes(params, options);
+        requestQuotes(params, {
+          forceRefresh: options?.forceRefresh,
+          requireSignature: options?.requireSignature,
+        });
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
@@ -410,27 +425,27 @@ export default function PositionForm({
     ]
   );
 
-  // Handler for "Initiate Auction" button - requires login first
+  // Handler for "Initiate Auction" button - works for all users
+  // Logged-out users get unsigned auctions that display as estimates
   const handleRequestBids = useCallback(() => {
-    if (!hasConnectedWallet) {
-      openConnectDialog();
-      return;
-    }
-    triggerAuctionRequest({ forceRefresh: true });
-  }, [hasConnectedWallet, openConnectDialog, triggerAuctionRequest]);
+    triggerAuctionRequest({
+      forceRefresh: true,
+      requireSignature: hasConnectedWallet,
+    });
+  }, [triggerAuctionRequest, hasConnectedWallet]);
 
-  // Auto-initiate auction when session is active and content (predictions/wager) changes
+  // Auto-initiate auction when content (predictions/wager) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
+  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
   const autoAuctionDebounceRef = useRef<number | null>(null);
   useEffect(() => {
-    // Only auto-trigger when session is active
-    if (!isSessionActive) return;
-
-    // Wait for balance to load before triggering (so validation has the correct maxAmount)
-    if (isBalanceLoading) return;
+    // Wait for balance to load before triggering for logged-in users
+    // Skip balance loading check for logged-out users (they have no balance to load)
+    if (hasConnectedWallet && isBalanceLoading) return;
 
     // Don't auto-trigger if there are form errors (e.g., wager exceeds balance)
-    if (hasFormErrors) return;
+    // Skip this check for logged-out users since they can't have balance-related errors
+    if (hasConnectedWallet && hasFormErrors) return;
 
     // Must have at least one prediction
     const hasPredictions = selections.length > 0 || pythPredictions.length > 0;
@@ -440,9 +455,9 @@ export default function PositionForm({
     const wagerNum = Number(wagerAmount || '0');
     if (wagerNum <= 0 || Number.isNaN(wagerNum)) return;
 
-    // Don't auto-trigger if wager exceeds user's balance
-    // Use simple comparison: if userBalance is 0 (loading/unavailable) and wager > 0, this returns
-    if (wagerNum > userBalance) return;
+    // Don't auto-trigger if wager exceeds user's balance (only for logged-in users)
+    // Logged-out users can enter any wager amount to see estimates
+    if (hasConnectedWallet && wagerNum > userBalance) return;
 
     // Clear previous debounce timer
     if (autoAuctionDebounceRef.current) {
@@ -451,7 +466,10 @@ export default function PositionForm({
 
     // Debounce for 300ms to let user finish typing/selecting
     autoAuctionDebounceRef.current = window.setTimeout(() => {
-      triggerAuctionRequest({ forceRefresh: true });
+      triggerAuctionRequest({
+        forceRefresh: true,
+        requireSignature: hasConnectedWallet,
+      });
     }, 300);
 
     return () => {
@@ -460,7 +478,7 @@ export default function PositionForm({
       }
     };
   }, [
-    isSessionActive,
+    hasConnectedWallet,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,
@@ -656,6 +674,8 @@ export default function PositionForm({
               showAddPredictionsHint={selections.length === 1}
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}
+              isLoggedOut={!hasConnectedWallet}
+              onConnectClick={openConnectDialog}
             />
           </div>
           {error && (

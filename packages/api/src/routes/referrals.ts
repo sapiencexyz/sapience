@@ -5,6 +5,54 @@ import { recoverMessageAddress } from 'viem';
 
 const router = Router();
 
+const VOLUME_THRESHOLD = 5000;
+
+async function calculateVolumeForAddress(address: string): Promise<bigint> {
+  const normalizedAddress = address.toLowerCase();
+
+  const positions = await prisma.position.findMany({
+    where: {
+      OR: [
+        { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
+        { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
+      ],
+    },
+    select: {
+      predictor: true,
+      counterparty: true,
+      predictorCollateral: true,
+      counterpartyCollateral: true,
+    },
+  });
+
+  let total = BigInt(0);
+
+  for (const position of positions) {
+    const predictorIsUser =
+      position.predictor.toLowerCase() === normalizedAddress;
+    const counterpartyIsUser =
+      position.counterparty.toLowerCase() === normalizedAddress;
+
+    if (predictorIsUser && position.predictorCollateral) {
+      try {
+        total += BigInt(position.predictorCollateral);
+      } catch {
+        // Skip invalid values
+      }
+    }
+
+    if (counterpartyIsUser && position.counterpartyCollateral) {
+      try {
+        total += BigInt(position.counterpartyCollateral);
+      } catch {
+        // Skip invalid values
+      }
+    }
+  }
+
+  return total;
+}
+
 type SetReferralCodeBody = {
   walletAddress?: string;
   codePlaintext?: string;
@@ -97,6 +145,21 @@ router.post('/code', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Failed to verify signature' });
   }
 
+  // Check if user has enough trading volume
+  try {
+    const volumeWei = await calculateVolumeForAddress(walletAddress);
+    const thresholdWei = BigInt(VOLUME_THRESHOLD) * BigInt(10 ** 18);
+
+    if (volumeWei < thresholdWei) {
+      return res.status(403).json({
+        message: `Insufficient trading volume.`,
+      });
+    }
+  } catch (e) {
+    console.error('Error checking trading volume', e);
+    return res.status(500).json({ message: 'Failed to verify trading volume' });
+  }
+
   try {
     // Note: maxReferrals is intentionally *not* writable via this public
     // endpoint. It is managed exclusively by admins / internal tooling.
@@ -108,7 +171,7 @@ router.post('/code', async (req: Request, res: Response) => {
       create: {
         address: normalizeAddress(walletAddress),
         refCodeHash: codeHash,
-        // Rely on Prisma default of 0; callers cannot set this via the API.
+        maxReferrals: 5,
       },
     });
 
