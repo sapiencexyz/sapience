@@ -121,17 +121,10 @@ const MarketsPage = () => {
 
   // Compute backend filter params from client filter state
   // timeToResolutionRange[0] = min days from now (0 = today, negative = past)
-  // If minDays >= 0, we want future markets only, so set minEndTime to current timestamp
   const minEndTime = useMemo(() => {
     const [minDays] = filters.timeToResolutionRange;
-    if (minDays >= 0) {
-      // User wants future markets - minEndTime is "now + minDays"
-      const nowSec = Math.floor(Date.now() / 1000);
-      return nowSec + minDays * 86400;
-    }
-    // If minDays is negative, user wants to include past markets too
-    // We could compute a minEndTime in the past, but null means "no filter"
-    return undefined;
+    const nowSec = Math.floor(Date.now() / 1000);
+    return nowSec + minDays * 86400;
   }, [filters.timeToResolutionRange]);
 
   // Fetch market items (both groups and ungrouped conditions interleaved)
