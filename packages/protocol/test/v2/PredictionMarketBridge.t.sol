@@ -8,8 +8,8 @@ import {
     PredictionMarketBridge
 } from "../../src/v2/bridge/PredictionMarketBridge.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../src/v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
     PositionTokenFactory
 } from "../../src/v2/bridge/PositionTokenFactory.sol";
@@ -20,8 +20,8 @@ import {
     IPredictionMarketBridge
 } from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
 import {
-    IPositionTokenBridgeRemote
-} from "../../src/v2/bridge/interfaces/IPositionTokenBridgeRemote.sol";
+    IPredictionMarketBridgeRemote
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
 import {
     IPredictionMarketBridgeBase
 } from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
@@ -41,7 +41,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
     // Contracts
     PredictionMarketBridge private etherealBridge;
-    PositionTokenBridgeRemote private arbitrumBridge;
+    PredictionMarketBridgeRemote private arbitrumBridge;
     PositionTokenFactory private factory;
     MockPredictionMarketToken private positionToken;
 
@@ -78,7 +78,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         uint256 amount
     );
 
-    // Events from IPositionTokenBridgeRemote
+    // Events from IPredictionMarketBridgeRemote
     event TokensMinted(
         bytes32 indexed bridgeId,
         address indexed token,
@@ -111,9 +111,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         );
 
         // Deploy Arbitrum bridge with factory
-        arbitrumBridge = PositionTokenBridgeRemote(
+        arbitrumBridge = PredictionMarketBridgeRemote(
             payable(_deployOApp(
-                    type(PositionTokenBridgeRemote).creationCode,
+                    type(PredictionMarketBridgeRemote).creationCode,
                     abi.encode(
                         address(endpoints[arbitrumEid]), owner, address(factory)
                     )

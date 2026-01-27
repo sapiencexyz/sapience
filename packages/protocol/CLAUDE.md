@@ -133,7 +133,7 @@ Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-p
 ```
 PredictionMarketBridgeBase (abstract)
 ├── PredictionMarketBridge (Ethereal - source chain)
-└── PositionTokenBridgeRemote (Arbitrum - remote chain)
+└── PredictionMarketBridgeRemote (Arbitrum - remote chain)
 ```
 
 **Key Features:**
@@ -146,7 +146,7 @@ PredictionMarketBridgeBase (abstract)
 **Contracts:**
 - `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
 - `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
-- `PositionTokenBridgeRemote.sol`: Arbitrum side (mint, burn)
+- `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)
 - `PositionTokenFactory.sol`: CREATE3 factory
 - `BridgedPositionToken.sol`: Mintable/burnable ERC20 on Arbitrum
 

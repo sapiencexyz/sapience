@@ -16,7 +16,7 @@ This deployment uses real PredictionMarketEscrow to mint position tokens, which 
 
 **On SM Network (Remote Chain):**
 - PositionTokenFactory
-- PositionTokenBridgeRemote
+- PredictionMarketBridgeRemote
 
 ## Prerequisites
 
@@ -167,7 +167,7 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
 | 04 | DeployFactory | Arbitrum | Deploy PositionTokenFactory |
 | 05 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
-| 06 | DeployRemoteBridge | Arbitrum | Deploy PositionTokenBridgeRemote |
+| 06 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
 | 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
 | 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
@@ -299,4 +299,4 @@ Use LayerZero Scan to track messages:
 | PredictionMarketEscrow | Ethereal | |
 | PositionTokenFactory | Arbitrum | |
 | PredictionMarketBridge | Ethereal | |
-| PositionTokenBridgeRemote | Arbitrum | |
+| PredictionMarketBridgeRemote | Arbitrum | |

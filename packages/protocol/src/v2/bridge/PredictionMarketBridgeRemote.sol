@@ -10,16 +10,16 @@ import {
     OptionsBuilder
 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
-import "./interfaces/IPositionTokenBridgeRemote.sol";
+import "./interfaces/IPredictionMarketBridgeRemote.sol";
 import "./interfaces/IPositionTokenFactory.sol";
 import "./interfaces/IBridgedPositionToken.sol";
 
-/// @title PositionTokenBridgeRemote
+/// @title PredictionMarketBridgeRemote
 /// @notice Bridge for position tokens on Arbitrum (remote chain)
 /// @dev Extends PredictionMarketBridgeBase with Arbitrum-specific logic
-contract PositionTokenBridgeRemote is
+contract PredictionMarketBridgeRemote is
     PredictionMarketBridgeBase,
-    IPositionTokenBridgeRemote
+    IPredictionMarketBridgeRemote
 {
     using SafeERC20 for IERC20;
     using OptionsBuilder for bytes;
@@ -51,12 +51,12 @@ contract PositionTokenBridgeRemote is
 
     // ============ View Functions ============
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function getFactory() external view returns (address) {
         return address(factory);
     }
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function isTokenDeployed(bytes32 pickConfigId, bool isPredictorToken)
         external
         view
@@ -65,7 +65,7 @@ contract PositionTokenBridgeRemote is
         return factory.isDeployed(pickConfigId, isPredictorToken);
     }
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function getTokenAddress(bytes32 pickConfigId, bool isPredictorToken)
         external
         view
@@ -74,7 +74,7 @@ contract PositionTokenBridgeRemote is
         return factory.predictAddress(pickConfigId, isPredictorToken);
     }
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function getMintedBridge(bytes32 bridgeId)
         external
         view
@@ -85,7 +85,7 @@ contract PositionTokenBridgeRemote is
 
     // ============ Bridge Function ============
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function bridge(
         address token,
         address recipient,
@@ -156,7 +156,7 @@ contract PositionTokenBridgeRemote is
 
     // ============ Quote Functions ============
 
-    /// @inheritdoc IPositionTokenBridgeRemote
+    /// @inheritdoc IPredictionMarketBridgeRemote
     function quoteBridge(address token, uint256 amount)
         external
         view

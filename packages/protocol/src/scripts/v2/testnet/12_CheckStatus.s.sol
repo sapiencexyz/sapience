@@ -7,8 +7,8 @@ import {
     PredictionMarketBridge
 } from "../../../v2/bridge/PredictionMarketBridge.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
     PositionTokenFactory
 } from "../../../v2/bridge/PositionTokenFactory.sol";
@@ -73,8 +73,8 @@ contract CheckStatus is Script {
             console.log("");
             console.log("--- Arbitrum Bridge ---");
             console.log("Address:", arbBridgeAddr);
-            PositionTokenBridgeRemote arbBridge =
-                PositionTokenBridgeRemote(payable(arbBridgeAddr));
+            PredictionMarketBridgeRemote arbBridge =
+                PredictionMarketBridgeRemote(payable(arbBridgeAddr));
             console.log("Owner:", arbBridge.owner());
             console.log("ETH Balance:", arbBridge.getETHBalance());
             console.log("Factory:", arbBridge.getFactory());
@@ -114,8 +114,8 @@ contract CheckStatus is Script {
         if (pickConfigId != bytes32(0) && arbBridgeAddr != address(0)) {
             console.log("");
             console.log("--- Bridged Token Status ---");
-            PositionTokenBridgeRemote arbBridge =
-                PositionTokenBridgeRemote(payable(arbBridgeAddr));
+            PredictionMarketBridgeRemote arbBridge =
+                PredictionMarketBridgeRemote(payable(arbBridgeAddr));
             bool isDeployed = arbBridge.isTokenDeployed(pickConfigId, true);
             console.log("Token Deployed:", isDeployed);
             if (isDeployed) {

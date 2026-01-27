@@ -219,7 +219,7 @@ deploy_arbitrum_phase2() {
     fi
 
     # 05. Deploy SM Network Bridge
-    run_script "src/scripts/v2/mainnet/05_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PositionTokenBridgeRemote on SM Network"
+    run_script "src/scripts/v2/mainnet/05_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketBridgeRemote on SM Network"
     addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
@@ -577,7 +577,7 @@ verify_sm() {
 
     # Verify Remote Bridge if deployed
     if [[ -n "${SM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
-        verify_contract "$SM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PositionTokenBridgeRemote.sol:PositionTokenBridgeRemote" "$SM_NETWORK_RPC_URL" "PositionTokenBridgeRemote"
+        verify_contract "$SM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PredictionMarketBridgeRemote.sol:PredictionMarketBridgeRemote" "$SM_NETWORK_RPC_URL" "PredictionMarketBridgeRemote"
     fi
 
     log_success "SM Network verification complete"

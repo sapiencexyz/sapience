@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
     PositionTokenFactory
 } from "../../../v2/bridge/PositionTokenFactory.sol";
@@ -29,8 +29,8 @@ contract CheckStatus_SMNetwork is Script {
             console.log("");
             console.log("--- SM Network Bridge ---");
             console.log("Address:", bridgeAddr);
-            PositionTokenBridgeRemote bridge =
-                PositionTokenBridgeRemote(payable(bridgeAddr));
+            PredictionMarketBridgeRemote bridge =
+                PredictionMarketBridgeRemote(payable(bridgeAddr));
             console.log("Owner:", bridge.owner());
             console.log("ETH Balance:", bridge.getETHBalance());
             console.log("Factory:", bridge.getFactory());
@@ -58,8 +58,8 @@ contract CheckStatus_SMNetwork is Script {
         if (pickConfigId != bytes32(0) && bridgeAddr != address(0)) {
             console.log("");
             console.log("--- Bridged Token Status ---");
-            PositionTokenBridgeRemote bridge =
-                PositionTokenBridgeRemote(payable(bridgeAddr));
+            PredictionMarketBridgeRemote bridge =
+                PredictionMarketBridgeRemote(payable(bridgeAddr));
 
             // Check predictor token
             bool isPredictorDeployed =

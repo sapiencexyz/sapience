@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Test Bridge Back (Mainnet)
@@ -27,8 +27,8 @@ contract TestBridgeBack is Script {
         // Optional: bridge to a different recipient
         address recipient = vm.envOr("BRIDGE_RECIPIENT", predictor);
 
-        PositionTokenBridgeRemote bridge =
-            PositionTokenBridgeRemote(payable(bridgeAddr));
+        PredictionMarketBridgeRemote bridge =
+            PredictionMarketBridgeRemote(payable(bridgeAddr));
 
         // Get bridged token address
         address tokenAddr =

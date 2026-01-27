@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import {
-    PositionTokenBridgeRemote
-} from "../../../v2/bridge/PositionTokenBridgeRemote.sol";
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 import {
     PositionTokenFactory
 } from "../../../v2/bridge/PositionTokenFactory.sol";
@@ -25,8 +25,8 @@ contract ConfigureRemoteBridge is Script {
         uint128 ackFeeEstimate =
             uint128(vm.envOr("SM_ACK_FEE_ESTIMATE", uint256(0.5 ether)));
 
-        PositionTokenBridgeRemote bridge =
-            PositionTokenBridgeRemote(payable(bridgeAddr));
+        PredictionMarketBridgeRemote bridge =
+            PredictionMarketBridgeRemote(payable(bridgeAddr));
         PositionTokenFactory factory = PositionTokenFactory(factoryAddr);
 
         console.log("=== Configure SM Network Bridge (Mainnet) ===");
