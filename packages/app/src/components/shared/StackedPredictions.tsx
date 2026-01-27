@@ -37,6 +37,10 @@ export interface Pick {
    * (no "OVER $0.19" badge).
    */
   pythPrediction?: PythPrediction;
+  /** Whether the condition has been settled on-chain. */
+  settled?: boolean;
+  /** If settled, whether it resolved to YES. */
+  resolvedToYes?: boolean;
 }
 
 interface StackedPredictionsProps {

@@ -151,13 +151,13 @@ export default function ProfileQuickMetrics({
   }
   metrics.push(
     {
-      label: 'Balance',
-      value: balance.display,
+      label: 'Volume',
+      value: volume.display,
       sublabel: collateralSymbol,
     },
     {
-      label: 'Volume',
-      value: volume.display,
+      label: 'Balance',
+      value: balance.display,
       sublabel: collateralSymbol,
     },
     ...(forecastsCount > 0
