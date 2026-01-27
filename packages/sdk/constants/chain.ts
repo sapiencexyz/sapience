@@ -1,4 +1,4 @@
-import { defineChain } from 'viem';
+import type { Chain } from 'viem';
 
 export const CHAIN_ID_ARBITRUM = 42161 as const;
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
@@ -15,9 +15,8 @@ export const COLLATERAL_SYMBOLS: Record<number, string> = {
 /**
  * Ethereal chain definition for viem/wagmi.
  * Single source of truth - import from @sapience/sdk/constants.
- * fees.defaultPriorityFee is set to 1n to avoid wallet estimation issues.
  */
-export const etherealChain = defineChain({
+export const etherealChain = {
   id: CHAIN_ID_ETHEREAL,
   name: 'Ethereal',
   nativeCurrency: {
@@ -37,4 +36,4 @@ export const etherealChain = defineChain({
   fees: {
     defaultPriorityFee: 1n,
   },
-});
+} as const satisfies Chain;
