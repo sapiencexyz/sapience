@@ -16,7 +16,7 @@ import {
 } from "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import {
     ManualConditionResolver
-} from "../../../src/v2/resolvers/ManualConditionResolver.sol";
+} from "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import { IV2Types } from "../../../src/v2/interfaces/IV2Types.sol";
 import {
     IPredictionMarketToken

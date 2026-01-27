@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IConditionResolver } from "../interfaces/IConditionResolver.sol";
-import { IV2Types } from "../interfaces/IV2Types.sol";
+import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { IV2Types } from "../../interfaces/IV2Types.sol";
 
 /// @title ManualConditionResolver
 /// @notice Generic condition resolver where approved settlers can manually settle conditions

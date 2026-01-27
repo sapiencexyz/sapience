@@ -5,7 +5,7 @@ import { Script, console } from "forge-std/Script.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 import {
     ManualConditionResolver
-} from "../../../v2/resolvers/ManualConditionResolver.sol";
+} from "../../../v2/resolvers/mocks/ManualConditionResolver.sol";
 import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 
 /// @title Resolve Prediction (Mainnet)
