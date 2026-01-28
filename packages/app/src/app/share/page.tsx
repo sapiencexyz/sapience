@@ -1,5 +1,6 @@
 import { brotliDecompressSync, inflateRawSync } from 'zlib';
 import type { Metadata } from 'next';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@sapience/ui/components/ui/button';
 
@@ -108,6 +109,7 @@ export async function generateMetadata(
 
   if (nftId && marketAddress) {
     img = buildPositionImageUrl(nftId, marketAddress);
+    canonical = `/positions/${marketAddress}/${nftId}`;
   }
 
   if (token) {
@@ -160,6 +162,11 @@ export default async function SharePage(props: SharePageProps) {
   const token = coerceString(searchParams?.t);
   const nftId = coerceString(searchParams?.nftId);
   const marketAddress = coerceString(searchParams?.marketAddress);
+
+  if (nftId && marketAddress) {
+    redirect(`/positions/${marketAddress}/${nftId}`);
+  }
+
   let img = coerceString(searchParams?.img);
   let alt = coerceString(searchParams?.alt) || 'Share image';
   const addrFromQuery = extractParamFromImg(img, 'addr');

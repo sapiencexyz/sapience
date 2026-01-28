@@ -116,13 +116,11 @@ const ProfilePageContent = () => {
       <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
         {hasLoadedOnce ? (
-          <div className="rounded-md border border-border bg-brand-black px-4 py-3">
-            <ProfileQuickMetrics
-              address={address}
-              forecastsCount={attestations?.length ?? 0}
-              positions={positions ?? []}
-            />
-          </div>
+          <ProfileQuickMetrics
+            address={address}
+            forecastsCount={attestations?.length ?? 0}
+            positions={positions ?? []}
+          />
         ) : null}
       </div>
 

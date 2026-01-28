@@ -747,7 +747,7 @@ const VaultsPageContent = () => {
     <div className="relative">
       {/* Main Content */}
       <div className="container max-w-[600px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
@@ -779,7 +779,7 @@ const VaultsPageContent = () => {
           <div className="flex flex-col gap-4">
             <div>
               <div className="text-sm font-mono uppercase tracking-wider text-accent-gold">
-                VAULT REWARDS
+                PROTOCOL VAULT REWARDS
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Ethena rewards are automatically distributed into the vault for
@@ -792,8 +792,8 @@ const VaultsPageContent = () => {
                 <Loader size={24} />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="pr-4 border-r border-brand-white/20">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:pr-4 sm:border-r border-brand-white/20">
                   <div className="text-3xl font-medium font-mono">
                     {yieldMetrics.effectiveApy}%
                   </div>
@@ -801,7 +801,7 @@ const VaultsPageContent = () => {
                     Approximate APY
                   </div>
                 </div>
-                <div className="pl-4">
+                <div className="sm:pl-4">
                   <div className="text-3xl font-medium font-mono">
                     {yieldMetrics.dailyYield} {collateralSymbol}
                   </div>

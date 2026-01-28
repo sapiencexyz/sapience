@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
@@ -28,6 +29,7 @@ import {
   Users,
   Wallet,
   XCircle,
+  BarChart3,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -149,6 +151,13 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
         >
           Docs
         </a>
+        <Link
+          href="/analytics"
+          className={`flex w-fit xl:hidden px-3 py-2 rounded-full ${linkClass} ${isActive('/analytics', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          onClick={handleLinkClick}
+        >
+          Analytics
+        </Link>
         {/* Mobile settings link, placed under links */}
         <Link
           href="/settings"
@@ -435,6 +444,12 @@ const Header = () => {
                           className="opacity-100"
                           priority
                         />
+                        <Badge
+                          variant="outline"
+                          className="ml-2 px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-widest opacity-75"
+                        >
+                          BETA
+                        </Badge>
                       </div>
                     </Link>
                   </div>
@@ -442,7 +457,7 @@ const Header = () => {
                 {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
                 <SidebarTrigger
                   id="nav-sidebar"
-                  className="xl:hidden mr-0.5 order-1 xl:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="xl:hidden -mr-0.5 order-1 xl:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <Menu className="h-5 w-5" />
                 </SidebarTrigger>
@@ -512,6 +527,15 @@ const Header = () => {
                     >
                       <Bot className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
                       <span>Build Bots</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/analytics"
+                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
+                    >
+                      <BarChart3 className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
+                      <span>Analytics</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

@@ -103,11 +103,36 @@ export default function ConditionTitleLink({
   // Wrapper display: block for single-line clamp, inline otherwise
   const wrapperDisplay = clampLines === 1 ? 'block' : 'inline align-baseline';
 
-  // Only show tooltip when text might be truncated (clamped)
-  const showTooltip = clampLines != null && !noWrap;
+  // Detect actual text truncation via ResizeObserver
+  const linkRef = React.useRef<HTMLAnchorElement>(null);
+  const [isTruncated, setIsTruncated] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = linkRef.current;
+    if (!el || clampLines == null || noWrap) {
+      setIsTruncated(false);
+      return;
+    }
+
+    const check = () => {
+      if (clampLines === 1) {
+        setIsTruncated(el.scrollWidth > el.clientWidth);
+      } else {
+        setIsTruncated(el.scrollHeight > el.clientHeight);
+      }
+    };
+
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [clampLines, noWrap, title]);
+
+  const canTruncate = clampLines != null && !noWrap;
 
   const linkElement = (
     <Link
+      ref={linkRef}
       href={href}
       className={`${baseClickableClass} min-w-0 max-w-full`}
       style={linkStyle}
@@ -118,8 +143,8 @@ export default function ConditionTitleLink({
 
   return (
     <span className={`${wrapperDisplay} min-w-0 max-w-full ${className ?? ''}`}>
-      {showTooltip ? (
-        <Tooltip>
+      {canTruncate ? (
+        <Tooltip open={isTruncated ? undefined : false}>
           <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
           <TooltipContent
             side="top"

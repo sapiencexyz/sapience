@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -8,20 +7,26 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
 import React, { useMemo, useRef, useEffect, useCallback } from 'react';
-import { ChevronUp, ChevronDown, Copy } from 'lucide-react';
+import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import MarketBadge from '~/components/markets/MarketBadge';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
@@ -32,8 +37,11 @@ import {
   getDefaultForecastsFilterState,
   type ForecastsFilterState,
 } from '~/components/profile/ForecastsTableFilters';
-import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
+import { useUserForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import ConditionStatus from '~/components/shared/ConditionStatus';
 
 interface ForecastsTableProps {
   attesterAddress: string;
@@ -51,6 +59,15 @@ type ConditionData = {
   resolver?: string | null;
   conditionId?: string;
   conditionGroupId?: string;
+  categorySlug?: string | null;
+};
+
+// Helper to get category color
+const getCategoryColor = (categorySlug?: string | null): string => {
+  if (!categorySlug) return 'hsl(var(--muted-foreground))';
+  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+  if (focusArea) return focusArea.color;
+  return getDeterministicCategoryColor(categorySlug);
 };
 
 const renderSubmittedCell = ({
@@ -72,36 +89,19 @@ const renderSubmittedCell = ({
     timeZoneName: 'short',
   });
 
-  const uid = row.original.uid;
-  const truncatedUid = uid ? `${uid.slice(0, 6)}...${uid.slice(-4)}` : '';
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (uid) {
-      await navigator.clipboard.writeText(uid);
-    }
-  };
-
   return (
-    <div>
-      <div className="whitespace-nowrap font-medium" title={exactLocalDisplay}>
-        {createdDisplay}
-      </div>
-      {uid && (
-        <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
-          <span className="font-mono">ID {truncatedUid}</span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="p-0.5 hover:text-foreground transition-colors"
-            aria-label="Copy attestation ID"
-            title="Copy attestation ID"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        </div>
-      )}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="whitespace-nowrap text-muted-foreground cursor-default">
+            {createdDisplay}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span>{exactLocalDisplay}</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
@@ -115,8 +115,16 @@ const renderPredictionCell = ({
   // Convert D18 to percentage (0-100)
   const percentage = d18ToPercentage(value);
 
+  // Color based on probability: high (>=70) = green, low (<=30) = red, else default
+  let colorClass = 'text-ethena';
+  if (percentage >= 70) {
+    colorClass = 'text-yes';
+  } else if (percentage <= 30) {
+    colorClass = 'text-no';
+  }
+
   return (
-    <span className="font-mono text-ethena whitespace-nowrap">
+    <span className={`font-mono ${colorClass} whitespace-nowrap`}>
       {`${formatPercentChance(percentage / 100)} chance`}
     </span>
   );
@@ -150,6 +158,9 @@ const renderQuestionCell = ({
 
   // Build content element
   let content: React.ReactNode;
+  const categorySlug = conditionData?.categorySlug;
+  const color = getCategoryColor(categorySlug);
+
   if (conditionData && questionText) {
     content = (
       <ConditionTitleLink
@@ -158,7 +169,7 @@ const renderQuestionCell = ({
         title={questionText}
         endTime={conditionData.endTime}
         description={conditionData.description}
-        clampLines={null}
+        clampLines={1}
       />
     );
   } else if (conditionId) {
@@ -173,20 +184,15 @@ const renderQuestionCell = ({
     );
   }
 
-  const comment = (row.original.comment || '').trim();
-
   return (
-    <div className="space-y-1">
-      <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
-        {content}
-      </h2>
-      {comment.length > 0 ? (
-        <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-          {comment}
-        </div>
-      ) : (
-        <div className="text-sm text-muted-foreground">No comment</div>
-      )}
+    <div className="text-sm font-medium text-foreground leading-snug flex items-center gap-2 max-w-[360px] min-w-0">
+      <MarketBadge
+        label={questionText || 'Unknown'}
+        size={24}
+        color={color}
+        categorySlug={categorySlug}
+      />
+      {content}
     </div>
   );
 };
@@ -254,71 +260,92 @@ const renderActionsCell = ({
   );
 };
 
-const renderResolutionCell = ({
-  row,
-  conditionsMap,
-}: {
-  row: { original: FormattedAttestation };
-  conditionsMap?: Record<string, ConditionData>;
-}) => {
-  const conditionId = row.original.conditionId;
-
-  // Look up condition for settlement status
-  if (conditionId && conditionsMap) {
-    const condition = conditionsMap[conditionId.toLowerCase()];
-    if (condition) {
-      if (condition.settled) {
-        const isYes = condition.resolvedToYes === true;
-        return (
-          <Badge
-            variant="outline"
-            className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-              isYes
-                ? 'border-yes/40 bg-yes/10 text-yes'
-                : 'border-no/40 bg-no/10 text-no'
-            }`}
-          >
-            {isYes ? 'YES' : 'NO'}
-          </Badge>
-        );
-      }
-    }
-  }
-
-  return (
-    <Badge
-      variant="outline"
-      className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-    >
-      PENDING
-    </Badge>
-  );
-};
-
 const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
   // Filter state
   const [filters, setFilters] = React.useState<ForecastsFilterState>(
     getDefaultForecastsFilterState
   );
 
-  // Fetch data with infinite pagination
-  const {
-    data: attestations,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteForecasts({
+  // Pagination & sorting state
+  const ITEMS_PER_PAGE = 20;
+  const [skip, setSkip] = React.useState(0);
+  const [allLoadedData, setAllLoadedData] = React.useState<
+    FormattedAttestation[]
+  >([]);
+  const [hasMore, setHasMore] = React.useState(true);
+
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'rawTime', desc: true },
+  ]);
+
+  // Convert sorting state to API params
+  const sortId = sorting[0]?.id;
+  const orderBy =
+    sortId === 'rawTime' ? 'time' : sortId === 'value' ? 'prediction' : 'time';
+  const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
+
+  // Track what data we've already processed to avoid infinite loops
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
+
+  // Reset when sorting changes
+  React.useEffect(() => {
+    setSkip(0);
+    setHasMore(true);
+    processedRef.current = null;
+  }, [sorting, attesterAddress]);
+
+  // Fetch data with skip-based pagination
+  const { data: rawData, isLoading } = useUserForecasts({
     attesterAddress,
     schemaId: SCHEMA_UID,
+    take: ITEMS_PER_PAGE + 1,
+    skip,
+    orderBy,
+    orderDirection,
   });
 
-  // Load more handler (wrapped in useCallback for IntersectionObserver dependency)
-  const handleLoadMore = useCallback(() => {
-    if (!isFetchingNextPage && hasNextPage) {
-      fetchNextPage();
+  // Accumulate pages
+  React.useEffect(() => {
+    const dataLength = rawData?.length ?? 0;
+
+    if (
+      processedRef.current?.skip === skip &&
+      processedRef.current?.length === dataLength
+    ) {
+      return;
     }
-  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
+    processedRef.current = { skip, length: dataLength };
+
+    if (!rawData || rawData.length === 0) {
+      if (skip === 0) {
+        setAllLoadedData((prev) => (prev.length === 0 ? prev : []));
+        setHasMore((prev) => (prev === false ? prev : false));
+      }
+      return;
+    }
+
+    const hasNextPage = rawData.length > ITEMS_PER_PAGE;
+    const newItems = hasNextPage ? rawData.slice(0, ITEMS_PER_PAGE) : rawData;
+
+    if (skip === 0) {
+      setAllLoadedData(newItems);
+    } else {
+      setAllLoadedData((prev) => [...prev, ...newItems]);
+    }
+
+    setHasMore(hasNextPage);
+  }, [rawData, skip]);
+
+  const attestations = allLoadedData;
+
+  // Load more handler
+  const handleLoadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      setSkip((prev) => prev + ITEMS_PER_PAGE);
+    }
+  }, [isLoading, hasMore]);
 
   // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
@@ -357,16 +384,25 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             settled
             resolvedToYes
             resolver
+            category {
+              slug
+            }
           }
         }
       `;
+      type RawCondition = Omit<ConditionData, 'categorySlug'> & {
+        category?: { slug: string } | null;
+      };
       type Result = {
-        conditions: ConditionData[];
+        conditions: RawCondition[];
       };
       const res = await graphqlRequest<Result>(query, { ids: conditionIds });
       const map: Record<string, ConditionData> = {};
       for (const c of res.conditions || []) {
-        map[c.id.toLowerCase()] = c;
+        map[c.id.toLowerCase()] = {
+          ...c,
+          categorySlug: c.category?.slug ?? null,
+        };
       }
       return map;
     },
@@ -374,6 +410,36 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
 
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
+      {
+        id: 'question',
+        accessorFn: (row) => {
+          return row.conditionId || '';
+        },
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Question</span>,
+        cell: (info) =>
+          renderQuestionCell({
+            row: info.row,
+            conditionsMap,
+            isConditionsLoading,
+          }),
+      },
+      {
+        id: 'comment',
+        accessorFn: (row) => (row.comment || '').trim(),
+        header: () => <span className="text-sm font-medium">Comment</span>,
+        enableSorting: false,
+        cell: (info) => {
+          const comment = (info.row.original.comment || '').trim();
+          return comment.length > 0 ? (
+            <span className="text-base leading-snug text-foreground/90">
+              {comment}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
       {
         id: 'rawTime',
         accessorFn: (row) => Number(row.rawTime),
@@ -392,7 +458,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                   : 'descending'
             }
           >
-            Created
+            Forecasted
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -412,45 +478,57 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         ),
       },
       {
-        id: 'question',
+        id: 'horizon',
         accessorFn: (row) => {
-          const comment = (row.comment || '').trim();
-          return comment.length > 0 ? comment : row.conditionId || '';
-        },
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
+          const conditionId = row.conditionId;
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
+            if (condition?.endTime) {
+              return condition.endTime - Number(row.rawTime);
             }
-          >
-            Question
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
+          }
+          return 0;
+        },
+        enableSorting: false,
+        header: () => (
+          <span className="text-sm font-medium inline-flex items-center gap-1 whitespace-nowrap">
+            Horizon
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-help">
+                    <CircleHelp className="w-3 h-3 opacity-80" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs text-xs whitespace-normal"
+                >
+                  Time from forecast submission to question resolution. Earlier
+                  forecasts are weighted more heavily in accuracy scoring.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>
         ),
-        cell: (info) =>
-          renderQuestionCell({
-            row: info.row,
-            conditionsMap,
-            isConditionsLoading,
-          }),
+        cell: (info) => {
+          const conditionId = info.row.original.conditionId;
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
+            if (condition?.endTime) {
+              const createdDate = new Date(
+                Number(info.row.original.rawTime) * 1000
+              );
+              const endDate = new Date(condition.endTime * 1000);
+              return (
+                <span className="whitespace-nowrap text-muted-foreground">
+                  {formatDistanceStrict(createdDate, endDate)}
+                </span>
+              );
+            }
+          }
+          return <span className="text-muted-foreground">—</span>;
+        },
       },
       {
         id: 'value',
@@ -489,50 +567,31 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }),
       },
       {
-        id: 'resolution',
+        id: 'ends',
         accessorFn: (row) => {
           const conditionId = row.conditionId;
           if (conditionId && conditionsMap) {
             const condition = conditionsMap[conditionId.toLowerCase()];
-            if (condition?.settled) {
-              return condition.resolvedToYes ? 'Yes' : 'No';
-            }
+            if (condition?.endTime) return condition.endTime;
           }
-          return 'Pending';
+          return 0;
         },
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Resolution
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
-        ),
-        cell: (info) =>
-          renderResolutionCell({
-            row: info.row,
-            conditionsMap,
-          }),
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Ends</span>,
+        cell: (info) => {
+          const conditionId = info.row.original.conditionId;
+          const condition =
+            conditionId && conditionsMap
+              ? conditionsMap[conditionId.toLowerCase()]
+              : undefined;
+          return (
+            <ConditionStatus
+              settled={condition?.settled}
+              resolvedToYes={condition?.resolvedToYes}
+              endTime={condition?.endTime}
+            />
+          );
+        },
       },
       {
         id: 'actions',
@@ -546,10 +605,6 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     ],
     [conditionsMap, isConditionsLoading]
   );
-
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'rawTime', desc: true },
-  ]);
 
   // Apply client-side filtering
   const filteredAttestations = useMemo(() => {
@@ -629,18 +684,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualSorting: true,
   });
 
   // Auto-load more when scrolling near bottom
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loadMoreRef.current || !hasNextPage) return;
+    if (!loadMoreRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
           handleLoadMore();
         }
       },
@@ -653,7 +708,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     observer.observe(loadMoreRef.current);
 
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
+  }, [hasMore, isLoading, handleLoadMore]);
 
   // Initial loading state (no data yet)
   const isInitialLoading =
@@ -681,17 +736,9 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     return content as string | number | null;
   };
 
-  if (isInitialLoading) {
-    return (
-      <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-        <Loader size={24} />
-      </div>
-    );
-  }
-
   return (
     <div>
-      <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
         {leftSlot}
         <div className="flex-1">
           <ForecastsTableFilters
@@ -700,24 +747,23 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           />
         </div>
       </div>
-      {hasNoData ? (
+      {isInitialLoading ? (
+        <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
+          <Loader size={24} />
+        </div>
+      ) : hasNoData ? (
         <EmptyTabState centered message="No forecasts found" />
       ) : filteredAttestations.length === 0 ? (
         <EmptyTabState centered message="No forecasts match your filters" />
       ) : (
         <>
           <div className="overflow-hidden bg-brand-black relative">
-            {(isLoading || isFetchingNextPage) && (
-              <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                <Loader size={12} />
-              </div>
-            )}
-            <Table>
+            <Table className="w-full table-auto">
               <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
-                    className="hover:!bg-background bg-background border-b border-border"
+                    className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60"
                   >
                     {headerGroup.headers.map((header) => {
                       const content = header.isPlaceholder
@@ -733,7 +779,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                           className={
                             header.column.id === 'actions'
                               ? 'text-right'
-                              : header.column.id === 'question'
+                              : header.column.id === 'comment'
                                 ? 'w-full'
                                 : undefined
                           }
@@ -751,42 +797,116 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
-                      className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 hover:bg-muted/50"
+                      className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
                     >
-                      {row.getVisibleCells().map((cell) => {
-                        const content = flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        );
-                        const colId = cell.column.id;
-                        const mobileLabel =
-                          colId === 'value'
-                            ? 'Forecast'
-                            : colId === 'rawTime'
-                              ? 'Created'
-                              : undefined;
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                              colId === 'actions'
-                                ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
-                                : ''
-                            } ${colId === 'question' ? 'xl:w-full' : ''}`}
-                          >
-                            {mobileLabel ? (
-                              <div
-                                className={`text-xs text-muted-foreground xl:hidden ${
-                                  mobileLabel === 'Forecast' ? 'mb-1.5' : ''
-                                }`}
+                      {(() => {
+                        const cells = row.getVisibleCells();
+                        const pairedIds = new Set(['value', 'ends']);
+                        const result: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < cells.length) {
+                          const cell = cells[i];
+                          const colId = cell.column.id;
+
+                          // Pair forecast+resolution in a 2-col grid on mobile
+                          if (
+                            pairedIds.has(colId) &&
+                            i + 1 < cells.length &&
+                            pairedIds.has(cells[i + 1].column.id)
+                          ) {
+                            const next = cells[i + 1];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                colSpan={2}
+                                className="block xl:hidden px-0 py-0"
                               >
-                                {mobileLabel}
-                              </div>
-                            ) : null}
-                            {renderContent(content)}
-                          </TableCell>
-                        );
-                      })}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="text-brand-white">
+                                    <div className="text-xs text-muted-foreground mb-1">
+                                      Forecast
+                                    </div>
+                                    {renderContent(
+                                      flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                      )
+                                    )}
+                                  </div>
+                                  <div className="text-brand-white">
+                                    <div className="text-xs text-muted-foreground mb-1">
+                                      Ends
+                                    </div>
+                                    {renderContent(
+                                      flexRender(
+                                        next.column.columnDef.cell,
+                                        next.getContext()
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            );
+                            // Desktop cells
+                            result.push(
+                              <TableCell
+                                key={`${cell.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {renderContent(
+                                  flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )
+                                )}
+                              </TableCell>
+                            );
+                            result.push(
+                              <TableCell
+                                key={`${next.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {renderContent(
+                                  flexRender(
+                                    next.column.columnDef.cell,
+                                    next.getContext()
+                                  )
+                                )}
+                              </TableCell>
+                            );
+                            i += 2;
+                          } else {
+                            const content = flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            );
+                            const mobileLabelMap: Record<string, string> = {
+                              rawTime: 'Forecasted',
+                              horizon: 'Horizon',
+                            };
+                            const mobileLabel = mobileLabelMap[colId];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                  colId === 'actions'
+                                    ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
+                                    : ''
+                                } ${colId === 'comment' ? 'xl:w-full' : ''}`}
+                              >
+                                {mobileLabel ? (
+                                  <div className="text-xs text-muted-foreground xl:hidden">
+                                    {mobileLabel}
+                                  </div>
+                                ) : null}
+                                {renderContent(content)}
+                              </TableCell>
+                            );
+                            i++;
+                          }
+                        }
+                        return result;
+                      })()}
                     </TableRow>
                   ))
                 ) : (
@@ -803,12 +923,12 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             </Table>
           </div>
           {/* Infinite scroll sentinel - triggers auto-load when visible */}
-          {hasNextPage && (
+          {hasMore && (
             <div
               ref={loadMoreRef}
               className="flex items-center justify-center px-4 py-6 bg-brand-black"
             >
-              {isFetchingNextPage ? (
+              {isLoading ? (
                 <div className="flex items-center gap-2">
                   <Loader size={12} />
                   <span className="text-sm text-muted-foreground">

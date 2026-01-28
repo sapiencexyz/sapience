@@ -1,27 +1,15 @@
 'use client';
 
-import * as React from 'react';
 import {
   StackedIcons,
   type Pick,
 } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@sapience/ui/components/ui/dialog';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
+import Link from 'next/link';
 import { PredictionChoiceBadge } from '@sapience/ui';
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { format, formatDistanceToNow } from 'date-fns';
+import ResolutionBadge from '~/components/shared/ResolutionBadge';
+import { formatDistanceToNow } from 'date-fns';
+import ConditionStatus from '~/components/shared/ConditionStatus';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -29,133 +17,88 @@ import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest
 
 interface PicksSummaryProps {
   legs: Pick[];
-  positionId: number;
+  positionId: string | number;
+  isCounterparty?: boolean;
+  hasPythLeg?: boolean;
+  marketAddress?: string;
+}
+
+export interface PicksContentProps {
+  legs: Pick[];
+  positionId: string | number;
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
   createdAt?: string | number;
+  hideHeader?: boolean;
+  /** Position-level status: controls what the "Ends" column shows for settled legs */
+  positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
 }
 
-function useSecondTick() {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
+function PickForecastCell({ leg }: { leg: Pick }) {
+  if (leg.settled) {
+    return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
+  }
 
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    const interval = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return nowMs;
+  return (
+    <MarketPredictionRequest
+      conditionId={leg.conditionId}
+      inline
+      eager
+      skipViewportCheck
+    />
+  );
 }
 
-function CountdownCell({
-  endTime,
-  nowMs,
+function PickEndsCell({
+  leg,
+  positionStatus,
 }: {
-  endTime: number;
-  nowMs: number | null;
+  leg: Pick;
+  positionStatus?: PicksContentProps['positionStatus'];
 }) {
-  const endMs = endTime * 1000;
-  const date = new Date(endMs);
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");
+  if (!leg.endTime) {
+    return <span className="text-muted-foreground">—</span>;
+  }
 
-  if (nowMs === null) {
+  // Leg not settled → standard condition lifecycle (countdown or pending)
+  if (!leg.settled) {
+    return <ConditionStatus settled={false} endTime={leg.endTime} />;
+  }
+
+  // Leg is settled — show position-level status if available
+  if (
+    positionStatus === 'won' ||
+    positionStatus === 'lost' ||
+    positionStatus === 'claimed'
+  ) {
     return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
+      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+        {positionStatus === 'won'
+          ? 'Won'
+          : positionStatus === 'lost'
+            ? 'Lost'
+            : 'Claimed'}
       </span>
     );
   }
 
-  const diff = endMs - nowMs;
-  const isPast = diff <= 0;
-
-  const formatCountdown = () => {
-    if (isPast) return 'Ended';
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-    if (days > 0) return `${days}d ${h}h ${m}m`;
-    if (hours > 0) return `${h}h ${m}m ${s}s`;
-    if (minutes > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown()}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
+  // Fallback: show resolved status per leg
+  return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
 }
 
-function PickForecastCell({ leg, nowMs }: { leg: Pick; nowMs: number | null }) {
-  const nowSec =
-    nowMs !== null ? Math.floor(nowMs / 1000) : Math.floor(Date.now() / 1000);
-  const isPastEnd = !!leg.endTime && leg.endTime <= nowSec;
-
-  if (!isPastEnd) {
-    return (
-      <MarketPredictionRequest
-        conditionId={leg.conditionId}
-        inline
-        eager
-        skipViewportCheck
-      />
-    );
-  }
-
-  if (!leg.settled) {
-    return (
-      <Badge
-        variant="outline"
-        className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-      >
-        PENDING
-      </Badge>
-    );
-  }
-
-  return (
-    <Badge
-      variant="outline"
-      className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-        leg.resolvedToYes
-          ? 'border-yes/40 bg-yes/10 text-yes'
-          : 'border-no/40 bg-no/10 text-no'
-      }`}
-    >
-      RESOLVED {leg.resolvedToYes ? 'YES' : 'NO'}
-    </Badge>
-  );
-}
-
-function PicksDialogBody({
+export function PicksContent({
   legs,
   positionId,
   isCounterparty,
   hasPythLeg,
   createdAt,
-}: PicksSummaryProps) {
-  const nowMs = useSecondTick();
-
+  hideHeader,
+  positionStatus,
+}: PicksContentProps) {
   return (
     <>
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
+      {!hideHeader && (
+        <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
           Position #{positionId}
           {isCounterparty && !hasPythLeg && <CounterpartyBadge />}
           {createdAt && (
@@ -166,18 +109,18 @@ function PicksDialogBody({
               })}
             </span>
           )}
-        </DialogTitle>
-      </DialogHeader>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-brand-white/10 text-left text-muted-foreground">
-              <th className="pb-2 pr-4 font-medium w-full">Questions</th>
-              <th className="pb-2 pr-4 font-medium whitespace-nowrap">
-                Prediction
+              <th className="pb-2 pr-4 font-medium w-full">Question</th>
+              <th className="pb-2 pr-8 font-medium whitespace-nowrap">
+                {legs.every((leg) => leg.settled) ? 'Resolution' : 'Forecast'}
               </th>
               <th className="pb-2 pr-4 font-medium text-right whitespace-nowrap">
-                Forecast
+                Prediction
               </th>
               <th className="pb-2 pl-4 font-medium text-right whitespace-nowrap">
                 Ends
@@ -219,20 +162,16 @@ function PicksDialogBody({
                     )}
                   </div>
                 </td>
-                <td className="py-2 pr-4 whitespace-nowrap">
+                <td className="py-2 pr-8 whitespace-nowrap">
+                  <PickForecastCell leg={leg} />
+                </td>
+                <td className="py-2 pr-4 text-right whitespace-nowrap">
                   <PredictionChoiceBadge
                     choice={String(leg.choice).toUpperCase()}
                   />
                 </td>
-                <td className="py-2 pr-4 text-right whitespace-nowrap">
-                  <PickForecastCell leg={leg} nowMs={nowMs} />
-                </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
-                  {leg.endTime ? (
-                    <CountdownCell endTime={leg.endTime} nowMs={nowMs} />
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  <PickEndsCell leg={leg} positionStatus={positionStatus} />
                 </td>
               </tr>
             ))}
@@ -248,32 +187,29 @@ export default function PicksSummary({
   positionId,
   isCounterparty,
   hasPythLeg,
-  createdAt,
+  marketAddress,
 }: PicksSummaryProps) {
   if (!legs || legs.length === 0) return null;
+
+  const href = marketAddress
+    ? `/positions/${marketAddress}/${positionId}`
+    : undefined;
 
   return (
     <div className="flex items-center gap-2">
       <StackedIcons legs={legs} />
-      <Dialog>
-        <DialogTrigger asChild>
-          <button
-            type="button"
-            className="text-base font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
-          >
-            {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
-          </button>
-        </DialogTrigger>
-        <DialogContent className="max-w-4xl bg-brand-black border-brand-white/20">
-          <PicksDialogBody
-            legs={legs}
-            positionId={positionId}
-            isCounterparty={isCounterparty}
-            hasPythLeg={hasPythLeg}
-            createdAt={createdAt}
-          />
-        </DialogContent>
-      </Dialog>
+      {href ? (
+        <Link
+          href={href}
+          className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+        >
+          {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+        </Link>
+      ) : (
+        <span className="text-lg font-mono font-semibold text-brand-white">
+          {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+        </span>
+      )}
       {isCounterparty && !hasPythLeg && <CounterpartyBadge />}
     </div>
   );

@@ -324,10 +324,7 @@ export default function OgShareDialogBase({
 
     let relativeUrl = '/share';
     if (nftId && marketAddress) {
-      const qp = new URLSearchParams();
-      qp.set('nftId', nftId);
-      qp.set('marketAddress', marketAddress);
-      relativeUrl = `/share?${qp.toString()}`;
+      relativeUrl = `/positions/${marketAddress}/${nftId}`;
     }
 
     if (typeof window === 'undefined') {
