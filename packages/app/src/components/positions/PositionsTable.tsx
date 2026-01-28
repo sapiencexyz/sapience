@@ -60,6 +60,51 @@ import {
   getDefaultPositionsFilterState,
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
+import PositionDialog from '~/components/positions/PositionDialog';
+
+export type UILeg = {
+  question: string;
+  choice: string;
+  conditionId?: string;
+  resolverAddress?: string | null;
+  categorySlug?: string | null;
+  endTime?: number | null;
+  description?: string | null;
+  source?: 'uma' | 'pyth';
+  pythPrediction?: PythPrediction;
+  // For Pyth legs only: maker-side prediction (true=Over, false=Under).
+  // Used to render the correct side for counterparty rows (which take the opposite side).
+  pythMakerPrediction?: boolean;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  predictorBetYes?: boolean;
+};
+
+export type UIPosition = {
+  uniqueRowKey: string;
+  positionId: number;
+  legs: UILeg[];
+  direction: 'Long' | 'Short';
+  endsAt: number; // ms
+  status: 'active' | 'won' | 'lost';
+  tokenIdToClaim?: bigint;
+  createdAt: number; // ms
+  totalPayoutWei: bigint; // total payout if won
+  predictorCollateralWei?: bigint; // user's wager if they are predictor
+  counterpartyCollateralWei?: bigint; // user's wager if they are counterparty
+  userPnL: string; // pnl for settled positions
+  addressRole: 'predictor' | 'counterparty' | 'unknown';
+  /** @deprecated Use predictor/counterparty instead */
+  counterpartyAddress?: Address | null;
+  /** Absolute predictor address */
+  predictor?: Address | null;
+  /** Absolute counterparty address */
+  counterparty?: Address | null;
+  chainId: number;
+  marketAddress: Address;
+  allConditionsSettled?: boolean;
+  predictorWonFromDb?: boolean;
+};
 
 export default function PositionsTable({
   account,
@@ -104,45 +149,6 @@ export default function PositionsTable({
         .catch(() => {});
     },
   });
-  type UILeg = {
-    question: string;
-    choice: string;
-    conditionId?: string;
-    resolverAddress?: string | null;
-    categorySlug?: string | null;
-    endTime?: number | null;
-    description?: string | null;
-    source?: 'uma' | 'pyth';
-    pythPrediction?: PythPrediction;
-    // For Pyth legs only: maker-side prediction (true=Over, false=Under).
-    // Used to render the correct side for counterparty rows (which take the opposite side).
-    pythMakerPrediction?: boolean;
-    settled?: boolean;
-    resolvedToYes?: boolean;
-
-    predictorBetYes?: boolean;
-  };
-  type UIPosition = {
-    uniqueRowKey: string;
-    positionId: number;
-    legs: UILeg[];
-    direction: 'Long' | 'Short';
-    endsAt: number; // ms
-    status: 'active' | 'won' | 'lost';
-    tokenIdToClaim?: bigint;
-    createdAt: number; // ms
-    totalPayoutWei: bigint; // total payout if won
-    predictorCollateralWei?: bigint; // user's wager if they are predictor
-    counterpartyCollateralWei?: bigint; // user's wager if they are counterparty
-    userPnL: string; // pnl for settled positions
-    addressRole: 'predictor' | 'counterparty' | 'unknown';
-    counterpartyAddress?: Address | null;
-    chainId: number;
-    marketAddress: Address;
-    allConditionsSettled?: boolean;
-    predictorWonFromDb?: boolean;
-  };
-
   // Infinite scroll state
   const ITEMS_PER_PAGE = 50;
   const [skip, setSkip] = React.useState(0);
@@ -560,6 +566,8 @@ export default function PositionsTable({
               : role === 'counterparty'
                 ? (p.predictor as Address | undefined)
                 : undefined) ?? null,
+          predictor: (p.predictor as Address | undefined) ?? null,
+          counterparty: (p.counterparty as Address | undefined) ?? null,
           chainId: Number(p.chainId || DEFAULT_CHAIN_ID),
           marketAddress: p.marketAddress as Address,
         };
@@ -683,6 +691,15 @@ export default function PositionsTable({
     return rows.find((r) => r.positionId === openSharePositionId) || null;
   }, [rows, openSharePositionId]);
 
+  // Position dialog state (for "X PICKS" click)
+  const [openPositionDialogId, setOpenPositionDialogId] = React.useState<
+    number | null
+  >(null);
+  const selectedPositionForDialog = React.useMemo(() => {
+    if (openPositionDialogId === null) return null;
+    return rows.find((r) => r.positionId === openPositionDialogId) || null;
+  }, [rows, openPositionDialogId]);
+
   // Find the original Position data to get predictorNftTokenId for sharing
   const selectedPositionData = React.useMemo(() => {
     if (!selectedPosition) return null;
@@ -749,6 +766,7 @@ export default function PositionsTable({
                 isCounterparty={row.original.addressRole === 'counterparty'}
                 hasPythLeg={hasPythLeg}
                 marketAddress={row.original.marketAddress}
+                onClick={() => setOpenPositionDialogId(row.original.positionId)}
               />
             </div>
           );
@@ -1565,6 +1583,12 @@ export default function PositionsTable({
           title="Share Your Position"
         />
       )}
+      <PositionDialog
+        open={openPositionDialogId !== null}
+        onOpenChange={(open) => !open && setOpenPositionDialogId(null)}
+        position={selectedPositionForDialog}
+        collateralSymbol={collateralSymbol}
+      />
     </div>
   );
 }

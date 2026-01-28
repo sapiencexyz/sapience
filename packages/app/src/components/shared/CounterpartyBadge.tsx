@@ -23,7 +23,7 @@ export default function CounterpartyBadge({
   tooltip = 'As the counterparty, this user needs only one of these predictions to be correct.',
 }: CounterpartyBadgeProps) {
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={300}>
       <div className="inline-flex items-center">
         <Badge
           variant="outline"
