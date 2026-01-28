@@ -173,3 +173,128 @@ export interface BurnRequestJson {
   predictorSessionKeyData?: string;
   counterpartySessionKeyData?: string;
 }
+
+// ============================================================================
+// V2 Relay/WebSocket Message Types
+// ============================================================================
+
+/**
+ * V2 auction request payload - initiates a prediction match request
+ * The predictor submits their side and waits for a counterparty to fill
+ */
+export interface V2AuctionRequestPayload {
+  picks: PickJson[];
+  predictorWager: string; // wei string
+  counterpartyWager: string; // wei string (requested counterparty stake)
+  predictor: string; // EOA or smart account address
+  predictorNonce: number;
+  predictorDeadline: number; // unix timestamp
+  predictorSignature: string; // EIP-712 MintApproval signature
+  chainId: number;
+  refCode?: string;
+  predictorSessionKeyData?: string; // ZeroDev session approval (base64)
+}
+
+/**
+ * V2 bid payload - counterparty fills an auction
+ */
+export interface V2BidPayload {
+  auctionId: string;
+  counterparty: string; // EOA or smart account address
+  counterpartyNonce: number;
+  counterpartyDeadline: number; // unix timestamp
+  counterpartySignature: string; // EIP-712 MintApproval signature
+  counterpartySessionKeyData?: string; // ZeroDev session approval (base64)
+}
+
+/**
+ * V2 burn request payload - bilateral exit before resolution
+ */
+export interface V2BurnRequestPayload {
+  pickConfigId: string;
+  predictorTokenAmount: string;
+  counterpartyTokenAmount: string;
+  predictorHolder: string;
+  counterpartyHolder: string;
+  predictorPayout: string;
+  counterpartyPayout: string;
+  predictorNonce: number;
+  counterpartyNonce: number;
+  predictorDeadline: number;
+  counterpartyDeadline: number;
+  predictorSignature: string;
+  counterpartySignature: string;
+  chainId: number;
+  refCode?: string;
+  predictorSessionKeyData?: string;
+  counterpartySessionKeyData?: string;
+}
+
+// ----- Client to Server Messages -----
+
+export type V2ClientToServerMessage =
+  | { type: 'v2.auction.start'; payload: V2AuctionRequestPayload }
+  | { type: 'v2.auction.subscribe'; payload: { auctionId: string } }
+  | { type: 'v2.auction.unsubscribe'; payload: { auctionId: string } }
+  | { type: 'v2.bid.submit'; payload: V2BidPayload }
+  | { type: 'v2.burn.request'; payload: V2BurnRequestPayload }
+  | { type: 'ping' };
+
+// ----- Server to Client Messages -----
+
+/** Auction details broadcast to subscribers */
+export interface V2AuctionDetails {
+  auctionId: string;
+  picks: PickJson[];
+  predictorWager: string;
+  counterpartyWager: string;
+  predictor: string;
+  predictorDeadline: number;
+  chainId: number;
+  createdAt: string; // ISO timestamp
+}
+
+/** Bid that has been validated */
+export interface V2ValidatedBid {
+  auctionId: string;
+  counterparty: string;
+  counterpartyDeadline: number;
+  receivedAt: string; // ISO timestamp
+}
+
+export type V2ServerToClientMessage =
+  | {
+      type: 'v2.auction.ack';
+      payload: {
+        auctionId?: string;
+        error?: string;
+        subscribed?: boolean;
+        unsubscribed?: boolean;
+      };
+    }
+  | { type: 'v2.bid.ack'; payload: { bidId?: string; error?: string } }
+  | { type: 'v2.auction.started'; payload: V2AuctionDetails }
+  | { type: 'v2.auction.bids'; payload: { auctionId: string; bids: V2ValidatedBid[] } }
+  | {
+      type: 'v2.auction.filled';
+      payload: {
+        auctionId: string;
+        predictionId: string;
+        pickConfigId: string;
+        transactionHash: string;
+      };
+    }
+  | {
+      type: 'v2.auction.expired';
+      payload: { auctionId: string; reason: string };
+    }
+  | {
+      type: 'v2.burn.ack';
+      payload: {
+        burnId?: string;
+        transactionHash?: string;
+        error?: string;
+      };
+    }
+  | { type: 'pong' }
+  | { type: 'error'; payload: { message: string; code?: string } };
