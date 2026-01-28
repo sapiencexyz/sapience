@@ -27,7 +27,6 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -37,6 +36,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import PicksSummary from '~/components/shared/PicksSummary';
+import CountdownCell from '~/components/shared/CountdownCell';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -54,70 +54,12 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import type { PythPrediction } from '@sapience/ui';
+import { calculatePositionPnLWei } from '~/lib/utils/calculatePositionPnL';
 import {
   PositionsTableFilters,
   getDefaultPositionsFilterState,
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
-
-function CountdownCell({ endsAtMs }: { endsAtMs: number }) {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const date = new Date(endsAtMs);
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a xxx");
-
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const diff = endsAtMs - nowMs;
-  const isPast = diff <= 0;
-
-  const formatCountdown = () => {
-    if (isPast) return 'Ended';
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-
-    if (days > 0) return `${days}d ${h}h ${m}m`;
-    if (hours > 0) return `${h}h ${m}m ${s}s`;
-    if (minutes > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown()}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 export default function PositionsTable({
   account,
@@ -227,6 +169,35 @@ export default function PositionsTable({
         : sortId;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
+  // Map filter state to server-side params
+  const serverStatus = React.useMemo((): string | undefined => {
+    // UI statuses: active, won, lost
+    // Server statuses: active, settled, consolidated
+    // "active" maps directly; "won" and "lost" both map to "settled"
+    if (filters.status.length === 1) {
+      if (filters.status[0] === 'active') return 'active';
+      if (filters.status[0] === 'won' || filters.status[0] === 'lost')
+        return 'settled';
+    }
+    // If both won+lost selected (but not active), that's all settled
+    if (
+      filters.status.length === 2 &&
+      filters.status.includes('won') &&
+      filters.status.includes('lost')
+    ) {
+      return 'settled';
+    }
+    return undefined;
+  }, [filters.status]);
+
+  const serverEndsAtGte = React.useMemo((): number | undefined => {
+    // dateRange[0] >= 0 means "ends in the future"
+    if (filters.dateRange[0] >= 0) {
+      return Math.floor(Date.now() / 1000);
+    }
+    return undefined;
+  }, [filters.dateRange]);
+
   // Track what data we've already processed to avoid infinite loops
   const processedRef = React.useRef<{ skip: number; length: number } | null>(
     null
@@ -239,7 +210,7 @@ export default function PositionsTable({
     setSkip(0);
     setHasMore(true);
     processedRef.current = null;
-  }, [account, sorting, chainId]);
+  }, [account, sorting, chainId, serverStatus, serverEndsAtGte]);
 
   // Fetch total count
   const totalCount = useUserPositionsCount(String(account), chainId);
@@ -252,6 +223,8 @@ export default function PositionsTable({
     orderBy,
     orderDirection,
     chainId,
+    status: serverStatus,
+    endsAtGte: serverEndsAtGte,
   });
 
   React.useEffect(() => {
@@ -492,23 +465,13 @@ export default function PositionsTable({
           p.totalCollateral &&
           role !== 'unknown'
         ) {
-          try {
-            const predictorCollateral = BigInt(p.predictorCollateral);
-            const counterpartyCollateral = BigInt(p.counterpartyCollateral);
-            const totalCollateral = BigInt(p.totalCollateral);
-
-            if (role === 'predictor') {
-              userPnL = p.predictorWon
-                ? (totalCollateral - predictorCollateral).toString()
-                : (-predictorCollateral).toString();
-            } else if (role === 'counterparty') {
-              userPnL = !p.predictorWon
-                ? (totalCollateral - counterpartyCollateral).toString()
-                : (-counterpartyCollateral).toString();
-            }
-          } catch (e) {
-            console.error('Error calculating position PnL:', e);
-          }
+          userPnL = calculatePositionPnLWei({
+            predictorWon: p.predictorWon,
+            isCounterparty: role === 'counterparty',
+            predictorCollateral: p.predictorCollateral,
+            counterpartyCollateral: p.counterpartyCollateral,
+            totalCollateral: p.totalCollateral,
+          });
         }
 
         // Choose positionId based on the role for this row.
@@ -608,16 +571,18 @@ export default function PositionsTable({
     return positionRows;
   }, [data, viewer]);
 
-  // Apply client-side filtering
+  // Apply client-side filtering (only for filters not handled server-side)
   const filteredRows = React.useMemo(() => {
     let result = rows;
 
-    // Filter by status
+    // Filter by status (client-side only when server can't fully handle it)
+    // Server handles: single status, or won+lost combo (both map to "settled")
+    // Client still needed: to distinguish won vs lost when server returns "settled"
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((row) => filters.status.includes(row.status));
     }
 
-    // Filter by wager range
+    // Filter by wager range (server doesn't support this)
     if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
       result = result.filter((row) => {
         const viewerWagerWei =
@@ -633,19 +598,27 @@ export default function PositionsTable({
       });
     }
 
-    // Filter by date range (days from now based on endsAt)
+    // Filter by date range (client-side only when server can't handle it)
+    // Server handles: "ends in the future" (dateRange[0] >= 0) via endsAtGte
+    // Client still needed: upper bound filtering and "ended in the past" scenarios
     if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      const nowMs = Date.now();
-      result = result.filter((row) => {
-        const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
-        return (
-          daysFromNow >= filters.dateRange[0] &&
-          daysFromNow <= filters.dateRange[1]
-        );
-      });
+      // Skip client-side date filtering if server is handling "ends in the future"
+      // and there's no upper bound constraint
+      const serverHandlesDate =
+        filters.dateRange[0] >= 0 && filters.dateRange[1] === Infinity;
+      if (!serverHandlesDate) {
+        const nowMs = Date.now();
+        result = result.filter((row) => {
+          const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
+          return (
+            daysFromNow >= filters.dateRange[0] &&
+            daysFromNow <= filters.dateRange[1]
+          );
+        });
+      }
     }
 
-    // Filter by search term
+    // Filter by search term (server doesn't support this)
     if (filters.searchTerm.trim()) {
       const term = filters.searchTerm.toLowerCase();
       result = result.filter((row) => {
@@ -775,7 +748,7 @@ export default function PositionsTable({
                 positionId={row.original.positionId}
                 isCounterparty={row.original.addressRole === 'counterparty'}
                 hasPythLeg={hasPythLeg}
-                createdAt={row.original.createdAt}
+                marketAddress={row.original.marketAddress}
               />
             </div>
           );
@@ -1143,7 +1116,11 @@ export default function PositionsTable({
               row.original.status === 'active' &&
               row.original.endsAt > Date.now()
             ) {
-              return <CountdownCell endsAtMs={row.original.endsAt} />;
+              return (
+                <CountdownCell
+                  endTime={Math.floor(row.original.endsAt / 1000)}
+                />
+              );
             }
             if (
               row.original.status === 'active' &&
@@ -1182,24 +1159,23 @@ export default function PositionsTable({
                   isClaimPending && claimingTokenId === tokenIdToClaim;
 
                 return isOwnerConnected ? (
-                  <Button
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       setClaimingTokenId(tokenIdToClaim);
                       burn(tokenIdToClaim, ZERO_REF_CODE);
                     }}
                     disabled={isClaimPending}
+                    className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                  </Button>
+                  </button>
                 ) : (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>
-                          <Button size="sm" variant="outline" disabled>
-                            Claim
-                          </Button>
+                        <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                          Claim
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1232,24 +1208,23 @@ export default function PositionsTable({
                 isClaimPending &&
                 claimingTokenId === row.original.tokenIdToClaim;
               return isOwnerConnected ? (
-                <Button
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => {
                     setClaimingTokenId(row.original.tokenIdToClaim!);
                     burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
                   }}
                   disabled={isClaimPending}
+                  className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                </Button>
+                </button>
               ) : (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>
-                        <Button size="sm" variant="outline" disabled>
-                          Claim
-                        </Button>
+                      <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                        Claim
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1300,7 +1275,7 @@ export default function PositionsTable({
         enableSorting: false,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap mt-6 xl:mt-0">
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-end">
             <button
               type="button"
               className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -1371,7 +1346,7 @@ export default function PositionsTable({
         </div>
       ) : (
         <>
-          <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
             {leftSlot}
             <div className="flex-1">
               <PositionsTableFilters
@@ -1380,168 +1355,176 @@ export default function PositionsTable({
               />
             </div>
           </div>
-          {rows.length === 0 ? (
-            <EmptyTabState centered message="No positions found" />
-          ) : filteredRows.length === 0 ? (
-            <EmptyTabState centered message="No positions match your filters" />
-          ) : (
-            <>
-              <div className="overflow-hidden bg-brand-black relative">
-                {isLoading && rows.length > 0 && (
-                  <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
-                    <Loader size={20} />
-                  </div>
-                )}
-                <Table className="w-full table-auto">
-                  <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow
-                        key={headerGroup.id}
-                        className="hover:!bg-background bg-background border-b border-border"
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            className={
-                              [
-                                header.id === 'conditions'
-                                  ? ''
-                                  : 'whitespace-nowrap',
-                              ]
-                                .filter(Boolean)
-                                .join(' ') || undefined
-                            }
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
-                      >
-                        {(() => {
-                          const cells = row.getVisibleCells();
-                          const pairedIds = new Set([
-                            'wager',
-                            'toWin',
-                            'pnl',
-                            'status',
-                          ]);
-                          const result: React.ReactNode[] = [];
-                          let i = 0;
-                          while (i < cells.length) {
-                            const cell = cells[i];
-                            // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
-                            if (
-                              pairedIds.has(cell.column.id) &&
-                              i + 1 < cells.length &&
-                              pairedIds.has(cells[i + 1].column.id)
-                            ) {
-                              const next = cells[i + 1];
-                              result.push(
-                                <TableCell
-                                  key={cell.id}
-                                  colSpan={2}
-                                  className="block xl:hidden px-0 py-0"
-                                >
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="text-brand-white whitespace-nowrap">
-                                      {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext()
-                                      )}
-                                    </div>
-                                    <div className="text-brand-white whitespace-nowrap">
-                                      {flexRender(
-                                        next.column.columnDef.cell,
-                                        next.getContext()
-                                      )}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                              );
-                              // Also render individually for desktop
-                              result.push(
-                                <TableCell
-                                  key={`${cell.id}-xl`}
-                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              result.push(
-                                <TableCell
-                                  key={`${next.id}-xl`}
-                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
-                                >
-                                  {flexRender(
-                                    next.column.columnDef.cell,
-                                    next.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              i += 2;
-                            } else {
-                              result.push(
-                                <TableCell
-                                  key={cell.id}
-                                  className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                                    cell.column.id !== 'conditions'
-                                      ? 'whitespace-nowrap'
-                                      : ''
-                                  }`}
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              i++;
-                            }
-                          }
-                          return result;
-                        })()}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* Infinite scroll sentinel - triggers auto-load when visible */}
-              {hasMore && (
-                <div
-                  ref={loadMoreRef}
-                  className="flex items-center justify-center px-4 py-6 bg-brand-black"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader size={12} />
-                      <span className="text-sm text-muted-foreground">
-                        Loading more positions...
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Scroll to load more • {data.length} of {totalCount}
-                    </span>
-                  )}
+          <>
+            <div className="overflow-hidden bg-brand-black relative">
+              {isLoading && rows.length > 0 && (
+                <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
+                  <Loader size={20} />
                 </div>
               )}
-            </>
-          )}
+              <Table className="w-full table-auto">
+                <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={
+                            [
+                              header.id === 'conditions'
+                                ? ''
+                                : 'whitespace-nowrap',
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || undefined
+                          }
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="p-0">
+                        <EmptyTabState
+                          centered
+                          message={
+                            rows.length === 0
+                              ? 'No positions found'
+                              : 'No positions match your filters'
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
+                    >
+                      {(() => {
+                        const cells = row.getVisibleCells();
+                        const pairedIds = new Set([
+                          'wager',
+                          'toWin',
+                          'pnl',
+                          'status',
+                        ]);
+                        const result: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < cells.length) {
+                          const cell = cells[i];
+                          // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
+                          if (
+                            pairedIds.has(cell.column.id) &&
+                            i + 1 < cells.length &&
+                            pairedIds.has(cells[i + 1].column.id)
+                          ) {
+                            const next = cells[i + 1];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                colSpan={2}
+                                className="block xl:hidden px-0 py-0"
+                              >
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      cell.column.columnDef.cell,
+                                      cell.getContext()
+                                    )}
+                                  </div>
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      next.column.columnDef.cell,
+                                      next.getContext()
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            );
+                            // Also render individually for desktop
+                            result.push(
+                              <TableCell
+                                key={`${cell.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            result.push(
+                              <TableCell
+                                key={`${next.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  next.column.columnDef.cell,
+                                  next.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i += 2;
+                          } else {
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                  cell.column.id !== 'conditions'
+                                    ? 'whitespace-nowrap'
+                                    : ''
+                                }`}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i++;
+                          }
+                        }
+                        return result;
+                      })()}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Infinite scroll sentinel - triggers auto-load when visible */}
+            {hasMore && !(isLoading && rows.length > 0) && (
+              <div
+                ref={loadMoreRef}
+                className="flex items-center justify-center px-4 py-6 bg-brand-black"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader size={12} />
+                    <span className="text-sm text-muted-foreground">
+                      Loading more positions...
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
+                    Displaying {data.length} of {totalCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         </>
       )}
       {selectedPosition && (
