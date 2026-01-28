@@ -8,6 +8,7 @@ export * from './onchain/eas';
 export * from './onchain/attest';
 export * from './onchain/trading';
 export * from './onchain/claim';
+export * from './onchain/v2';
 
 // Legacy auction (v1)
 export * from './auction/signing';
