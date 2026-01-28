@@ -1,6 +1,5 @@
 'use client';
 
-import * as React from 'react';
 import {
   StackedIcons,
   type Pick,
@@ -16,6 +15,8 @@ import {
 import { PredictionChoiceBadge } from '@sapience/ui';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useSecondTick } from '~/hooks/useSecondTick';
+import { formatCountdown } from '~/lib/utils/formatCountdown';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -26,7 +27,6 @@ interface PicksSummaryProps {
   positionId: number;
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
-  createdAt?: string | number;
   marketAddress?: string;
 }
 
@@ -39,18 +39,6 @@ export interface PicksContentProps {
   hideHeader?: boolean;
   /** Position-level status: controls what the "Ends" column shows for settled legs */
   positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
-}
-
-function useSecondTick() {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    const interval = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return nowMs;
 }
 
 function CountdownCell({
@@ -75,21 +63,6 @@ function CountdownCell({
   const diff = endMs - nowMs;
   const isPast = diff <= 0;
 
-  const formatCountdown = () => {
-    if (isPast) return 'Ended';
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-    if (days > 0) return `${days}d ${h}h ${m}m`;
-    if (hours > 0) return `${h}h ${m}m ${s}s`;
-    if (minutes > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
-
   return (
     <TooltipProvider>
       <Tooltip>
@@ -97,7 +70,7 @@ function CountdownCell({
           <span
             className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
           >
-            {formatCountdown()}
+            {formatCountdown(diff)}
           </span>
         </TooltipTrigger>
         <TooltipContent>

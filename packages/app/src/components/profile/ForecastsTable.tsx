@@ -43,6 +43,8 @@ import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import { useSecondTick } from '~/hooks/useSecondTick';
+import { formatCountdown } from '~/lib/utils/formatCountdown';
 
 interface ForecastsTableProps {
   attesterAddress: string;
@@ -71,18 +73,6 @@ const getCategoryColor = (categorySlug?: string | null): string => {
   return getDeterministicCategoryColor(categorySlug);
 };
 
-function useSecondTick() {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    const interval = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return nowMs;
-}
-
 function CountdownCell({
   endTime,
   nowMs,
@@ -105,21 +95,6 @@ function CountdownCell({
   const diff = endMs - nowMs;
   const isPast = diff <= 0;
 
-  const formatCountdown = () => {
-    if (isPast) return 'Ended';
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-    if (days > 0) return `${days}d ${h}h ${m}m`;
-    if (hours > 0) return `${h}h ${m}m ${s}s`;
-    if (minutes > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
-
   return (
     <TooltipProvider>
       <Tooltip>
@@ -127,7 +102,7 @@ function CountdownCell({
           <span
             className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
           >
-            {formatCountdown()}
+            {formatCountdown(diff)}
           </span>
         </TooltipTrigger>
         <TooltipContent>
@@ -175,10 +150,8 @@ const renderSubmittedCell = ({
 
 const renderPredictionCell = ({
   row,
-  conditionsMap: _conditionsMap,
 }: {
   row: { original: FormattedAttestation };
-  conditionsMap?: Record<string, ConditionData>;
 }) => {
   const { value } = row.original; // D18 format: percentage * 10^18
 
@@ -664,7 +637,6 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         cell: (info) =>
           renderPredictionCell({
             row: info.row,
-            conditionsMap,
           }),
       },
       {

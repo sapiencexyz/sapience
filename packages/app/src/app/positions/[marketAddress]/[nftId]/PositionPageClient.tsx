@@ -53,6 +53,15 @@ export default function PositionPageClient({
   marketAddress: string;
   serverPosition: PositionData | null;
 }) {
+  // Fetch current NFT owner on-chain (must be called before any early return)
+  const { data: currentOwner } = useReadContract({
+    address: marketAddress as Address,
+    abi: predictionMarketAbi,
+    functionName: 'ownerOf',
+    args: [BigInt(nftId)],
+    chainId: serverPosition?.chainId ?? DEFAULT_CHAIN_ID,
+  });
+
   if (!serverPosition) {
     return (
       <div className="text-center text-muted-foreground">
@@ -83,15 +92,6 @@ export default function PositionPageClient({
     ? new Date(serverPosition.mintedAt * 1000)
     : null;
   const endsAtMs = serverPosition.endsAt ? serverPosition.endsAt * 1000 : null;
-
-  // Fetch current NFT owner on-chain
-  const { data: currentOwner } = useReadContract({
-    address: marketAddress as Address,
-    abi: predictionMarketAbi,
-    functionName: 'ownerOf',
-    args: [BigInt(nftId)],
-    chainId: serverPosition.chainId ?? DEFAULT_CHAIN_ID,
-  });
 
   // Compute PnL for settled positions (mirrors PositionsTable logic)
   const isSettled =

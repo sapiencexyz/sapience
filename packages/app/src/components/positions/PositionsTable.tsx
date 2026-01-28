@@ -816,7 +816,6 @@ export default function PositionsTable({
                 positionId={row.original.positionId}
                 isCounterparty={row.original.addressRole === 'counterparty'}
                 hasPythLeg={hasPythLeg}
-                createdAt={row.original.createdAt}
                 marketAddress={row.original.marketAddress}
               />
             </div>
@@ -1420,176 +1419,176 @@ export default function PositionsTable({
               />
             </div>
           </div>
-          {rows.length === 0 ? (
-            <EmptyTabState centered message="No positions found" />
-          ) : (
-            <>
-              <div className="overflow-hidden bg-brand-black relative">
-                {isLoading && rows.length > 0 && (
-                  <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
-                    <Loader size={20} />
-                  </div>
-                )}
-                <Table className="w-full table-auto">
-                  <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow
-                        key={headerGroup.id}
-                        className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            className={
-                              [
-                                header.id === 'conditions'
-                                  ? ''
-                                  : 'whitespace-nowrap',
-                              ]
-                                .filter(Boolean)
-                                .join(' ') || undefined
-                            }
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRows.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={columns.length} className="p-0">
-                          <EmptyTabState
-                            centered
-                            message="No positions match your filters"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ) : null}
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
-                      >
-                        {(() => {
-                          const cells = row.getVisibleCells();
-                          const pairedIds = new Set([
-                            'wager',
-                            'toWin',
-                            'pnl',
-                            'status',
-                          ]);
-                          const result: React.ReactNode[] = [];
-                          let i = 0;
-                          while (i < cells.length) {
-                            const cell = cells[i];
-                            // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
-                            if (
-                              pairedIds.has(cell.column.id) &&
-                              i + 1 < cells.length &&
-                              pairedIds.has(cells[i + 1].column.id)
-                            ) {
-                              const next = cells[i + 1];
-                              result.push(
-                                <TableCell
-                                  key={cell.id}
-                                  colSpan={2}
-                                  className="block xl:hidden px-0 py-0"
-                                >
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div className="text-brand-white whitespace-nowrap">
-                                      {flexRender(
-                                        cell.column.columnDef.cell,
-                                        cell.getContext()
-                                      )}
-                                    </div>
-                                    <div className="text-brand-white whitespace-nowrap">
-                                      {flexRender(
-                                        next.column.columnDef.cell,
-                                        next.getContext()
-                                      )}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                              );
-                              // Also render individually for desktop
-                              result.push(
-                                <TableCell
-                                  key={`${cell.id}-xl`}
-                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              result.push(
-                                <TableCell
-                                  key={`${next.id}-xl`}
-                                  className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
-                                >
-                                  {flexRender(
-                                    next.column.columnDef.cell,
-                                    next.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              i += 2;
-                            } else {
-                              result.push(
-                                <TableCell
-                                  key={cell.id}
-                                  className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                                    cell.column.id !== 'conditions'
-                                      ? 'whitespace-nowrap'
-                                      : ''
-                                  }`}
-                                >
-                                  {flexRender(
-                                    cell.column.columnDef.cell,
-                                    cell.getContext()
-                                  )}
-                                </TableCell>
-                              );
-                              i++;
-                            }
-                          }
-                          return result;
-                        })()}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* Infinite scroll sentinel - triggers auto-load when visible */}
-              {hasMore && !(isLoading && rows.length > 0) && (
-                <div
-                  ref={loadMoreRef}
-                  className="flex items-center justify-center px-4 py-6 bg-brand-black"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader size={12} />
-                      <span className="text-sm text-muted-foreground">
-                        Loading more positions...
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Scroll to load more • {data.length} of {totalCount}
-                    </span>
-                  )}
+          <>
+            <div className="overflow-hidden bg-brand-black relative">
+              {isLoading && rows.length > 0 && (
+                <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
+                  <Loader size={20} />
                 </div>
               )}
-            </>
-          )}
+              <Table className="w-full table-auto">
+                <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={
+                            [
+                              header.id === 'conditions'
+                                ? ''
+                                : 'whitespace-nowrap',
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || undefined
+                          }
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="p-0">
+                        <EmptyTabState
+                          centered
+                          message={
+                            rows.length === 0
+                              ? 'No positions found'
+                              : 'No positions match your filters'
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
+                    >
+                      {(() => {
+                        const cells = row.getVisibleCells();
+                        const pairedIds = new Set([
+                          'wager',
+                          'toWin',
+                          'pnl',
+                          'status',
+                        ]);
+                        const result: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < cells.length) {
+                          const cell = cells[i];
+                          // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
+                          if (
+                            pairedIds.has(cell.column.id) &&
+                            i + 1 < cells.length &&
+                            pairedIds.has(cells[i + 1].column.id)
+                          ) {
+                            const next = cells[i + 1];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                colSpan={2}
+                                className="block xl:hidden px-0 py-0"
+                              >
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      cell.column.columnDef.cell,
+                                      cell.getContext()
+                                    )}
+                                  </div>
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      next.column.columnDef.cell,
+                                      next.getContext()
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            );
+                            // Also render individually for desktop
+                            result.push(
+                              <TableCell
+                                key={`${cell.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            result.push(
+                              <TableCell
+                                key={`${next.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  next.column.columnDef.cell,
+                                  next.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i += 2;
+                          } else {
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                  cell.column.id !== 'conditions'
+                                    ? 'whitespace-nowrap'
+                                    : ''
+                                }`}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i++;
+                          }
+                        }
+                        return result;
+                      })()}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Infinite scroll sentinel - triggers auto-load when visible */}
+            {hasMore && !(isLoading && rows.length > 0) && (
+              <div
+                ref={loadMoreRef}
+                className="flex items-center justify-center px-4 py-6 bg-brand-black"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader size={12} />
+                    <span className="text-sm text-muted-foreground">
+                      Loading more positions...
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
+                    Displaying {data.length} of {totalCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         </>
       )}
       {selectedPosition && (
