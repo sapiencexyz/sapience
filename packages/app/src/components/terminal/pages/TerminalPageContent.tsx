@@ -13,6 +13,7 @@ import AutoBid from '~/components/terminal/AutoBid';
 import { ApprovalDialogProvider } from '~/components/terminal/ApprovalDialogContext';
 import ApprovalDialog from '~/components/terminal/ApprovalDialog';
 import { TerminalLogsProvider } from '~/components/terminal/TerminalLogsContext';
+import { useTradeSettledNotifications } from '~/hooks/useTradeSettledNotifications';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import StackedPredictions, {
   type Pick,
@@ -53,6 +54,12 @@ interface AuctionStartedData {
   resolver?: string;
   predictedOutcomes?: string[];
 }
+
+// Defined outside TerminalPageContent to prevent remounting on parent re-renders
+const TradeNotifications = () => {
+  useTradeSettledNotifications();
+  return null;
+};
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
@@ -818,6 +825,7 @@ const TerminalPageContent: React.FC = () => {
   return (
     <TerminalLogsProvider>
       <ApprovalDialogProvider>
+        <TradeNotifications />
         <div className="h-full min-h-0">
           <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
             {isCompact ? (

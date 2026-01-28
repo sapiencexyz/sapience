@@ -21,6 +21,7 @@ interface PicksSummaryProps {
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
   marketAddress?: string;
+  onClick?: () => void;
 }
 
 export interface PicksContentProps {
@@ -188,6 +189,7 @@ export default function PicksSummary({
   isCounterparty,
   hasPythLeg,
   marketAddress,
+  onClick,
 }: PicksSummaryProps) {
   if (!legs || legs.length === 0) return null;
 
@@ -199,12 +201,22 @@ export default function PicksSummary({
     <div className="flex items-center gap-2">
       <StackedIcons legs={legs} />
       {href ? (
-        <Link
-          href={href}
-          className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
-        >
-          {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
-        </Link>
+        onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+          >
+            {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+          </button>
+        ) : (
+          <Link
+            href={href}
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+          >
+            {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+          </Link>
+        )
       ) : (
         <span className="text-lg font-mono font-semibold text-brand-white">
           {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}

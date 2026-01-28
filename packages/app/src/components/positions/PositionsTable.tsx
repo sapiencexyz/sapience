@@ -60,6 +60,52 @@ import {
   getDefaultPositionsFilterState,
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
+import PositionDialog from '~/components/positions/PositionDialog';
+
+export type UILeg = {
+  question: string;
+  choice: string;
+  conditionId?: string;
+  resolverAddress?: string | null;
+  categorySlug?: string | null;
+  endTime?: number | null;
+  description?: string | null;
+  source?: 'uma' | 'pyth';
+  pythPrediction?: PythPrediction;
+  // For Pyth legs only: maker-side prediction (true=Over, false=Under).
+  // Used to render the correct side for counterparty rows (which take the opposite side).
+  pythMakerPrediction?: boolean;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  predictorBetYes?: boolean;
+};
+
+export type UIPosition = {
+  uniqueRowKey: string;
+  positionId: number;
+  legs: UILeg[];
+  direction: 'Long' | 'Short';
+  endsAt: number; // ms
+  status: 'active' | 'won' | 'lost';
+  tokenIdToClaim?: bigint;
+  createdAt: number; // ms
+  totalPayoutWei: bigint; // total payout if won
+  /** Wager for this position (predictor's collateral if predictor position, counterparty's if counterparty position) */
+  wagerWei: bigint;
+  pnlWei: string; // pnl for settled positions
+  /** Whether this is a counterparty position (as opposed to predictor position) - intrinsic to the NFT */
+  isCounterpartyPosition: boolean;
+  /** The opponent's address (counterparty if this is predictor position, predictor if counterparty position) */
+  opponentAddress?: Address | null;
+  /** Absolute predictor address */
+  predictor?: Address | null;
+  /** Absolute counterparty address */
+  counterparty?: Address | null;
+  chainId: number;
+  marketAddress: Address;
+  allConditionsSettled?: boolean;
+  predictorWonFromDb?: boolean;
+};
 
 export default function PositionsTable({
   account,
@@ -72,16 +118,6 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
-  const pythSideForRole = (
-    makerPrediction: boolean,
-    role: UIPosition['addressRole']
-  ): { choice: 'OVER' | 'UNDER'; direction: 'over' | 'under' } => {
-    const displayPrediction =
-      role === 'counterparty' ? !makerPrediction : makerPrediction;
-    return displayPrediction
-      ? { choice: 'OVER', direction: 'over' }
-      : { choice: 'UNDER', direction: 'under' };
-  };
   // ---
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
@@ -104,45 +140,6 @@ export default function PositionsTable({
         .catch(() => {});
     },
   });
-  type UILeg = {
-    question: string;
-    choice: string;
-    conditionId?: string;
-    resolverAddress?: string | null;
-    categorySlug?: string | null;
-    endTime?: number | null;
-    description?: string | null;
-    source?: 'uma' | 'pyth';
-    pythPrediction?: PythPrediction;
-    // For Pyth legs only: maker-side prediction (true=Over, false=Under).
-    // Used to render the correct side for counterparty rows (which take the opposite side).
-    pythMakerPrediction?: boolean;
-    settled?: boolean;
-    resolvedToYes?: boolean;
-
-    predictorBetYes?: boolean;
-  };
-  type UIPosition = {
-    uniqueRowKey: string;
-    positionId: number;
-    legs: UILeg[];
-    direction: 'Long' | 'Short';
-    endsAt: number; // ms
-    status: 'active' | 'won' | 'lost';
-    tokenIdToClaim?: bigint;
-    createdAt: number; // ms
-    totalPayoutWei: bigint; // total payout if won
-    predictorCollateralWei?: bigint; // user's wager if they are predictor
-    counterpartyCollateralWei?: bigint; // user's wager if they are counterparty
-    userPnL: string; // pnl for settled positions
-    addressRole: 'predictor' | 'counterparty' | 'unknown';
-    counterpartyAddress?: Address | null;
-    chainId: number;
-    marketAddress: Address;
-    allConditionsSettled?: boolean;
-    predictorWonFromDb?: boolean;
-  };
-
   // Infinite scroll state
   const ITEMS_PER_PAGE = 50;
   const [skip, setSkip] = React.useState(0);
@@ -420,72 +417,72 @@ export default function PositionsTable({
         }
       })();
 
-      const roles: UIPosition['addressRole'][] =
+      // Determine which position types to show for this account
+      // Each position can have predictor NFT, counterparty NFT, or both (if same account owns both)
+      const positionTypes: boolean[] = // true = counterparty position, false = predictor position
         userIsPredictor && userIsCounterparty
-          ? (['predictor', 'counterparty'] as const)
+          ? [false, true] // Show both positions
           : userIsPredictor
-            ? (['predictor'] as const)
+            ? [false] // Predictor position only
             : userIsCounterparty
-              ? (['counterparty'] as const)
-              : (['unknown'] as const);
+              ? [true] // Counterparty position only
+              : [false]; // Default to predictor view for unknown
 
-      const buildRowForRole = (role: UIPosition['addressRole']): UIPosition => {
-        const roleWon =
+      const buildRowForPositionType = (
+        isCounterpartyPosition: boolean
+      ): UIPosition => {
+        const positionWon =
           !isActive &&
-          (role === 'predictor'
-            ? p.predictorWon === true
-            : role === 'counterparty'
-              ? p.predictorWon === false
-              : false);
+          (isCounterpartyPosition
+            ? p.predictorWon === false // Counterparty wins when predictor loses
+            : p.predictorWon === true); // Predictor wins when predictorWon is true
 
         const status: UIPosition['status'] = isActive
           ? 'active'
-          : roleWon
+          : positionWon
             ? 'won'
             : 'lost';
 
         const tokenIdToClaim = (() => {
-          if (!roleWon) return undefined;
+          if (!positionWon) return undefined;
           try {
-            if (role === 'predictor') return BigInt(p.predictorNftTokenId);
-            if (role === 'counterparty')
-              return BigInt(p.counterpartyNftTokenId);
-            return undefined;
+            return isCounterpartyPosition
+              ? BigInt(p.counterpartyNftTokenId)
+              : BigInt(p.predictorNftTokenId);
           } catch {
             return undefined;
           }
         })();
 
-        // Calculate PnL for settled positions (per-role; important when viewer is both sides)
-        let userPnL = '0';
+        // Wager is the collateral for this position type
+        const wagerWei = isCounterpartyPosition
+          ? (viewerCounterpartyCollateralWei ?? 0n)
+          : (viewerPredictorCollateralWei ?? 0n);
+
+        // Calculate PnL for settled positions
+        let pnlWei = '0';
         if (
           !isActive &&
           p.predictorCollateral &&
           p.counterpartyCollateral &&
-          p.totalCollateral &&
-          role !== 'unknown'
+          p.totalCollateral
         ) {
-          userPnL = calculatePositionPnLWei({
+          pnlWei = calculatePositionPnLWei({
             predictorWon: p.predictorWon,
-            isCounterparty: role === 'counterparty',
+            isCounterparty: isCounterpartyPosition,
             predictorCollateral: p.predictorCollateral,
             counterpartyCollateral: p.counterpartyCollateral,
             totalCollateral: p.totalCollateral,
           });
         }
 
-        // Choose positionId based on the role for this row.
-        const positionId =
-          role === 'predictor'
-            ? Number(p.predictorNftTokenId)
-            : role === 'counterparty'
-              ? Number(p.counterpartyNftTokenId)
-              : p.predictorNftTokenId
-                ? Number(p.predictorNftTokenId)
-                : p.id;
+        // Choose positionId based on position type (which NFT this row represents)
+        const positionId = isCounterpartyPosition
+          ? Number(p.counterpartyNftTokenId)
+          : Number(p.predictorNftTokenId) || p.id;
 
-        // Create unique row key combining prediction id, role, and token id (stable + unique).
-        const uniqueRowKey = `${p.id}-${role}-${positionId}`;
+        // Create unique row key combining prediction id and position type
+        const uniqueRowKey = `${p.id}-${isCounterpartyPosition ? 'counterparty' : 'predictor'}-${positionId}`;
 
         // Compute settlement status from database conditions
         const allConditionsSettled =
@@ -500,25 +497,30 @@ export default function PositionsTable({
             })
           : undefined;
 
+        // Determine opponent address (the other side of the position)
+        const opponentAddress = isCounterpartyPosition
+          ? ((p.predictor as Address | undefined) ?? null)
+          : ((p.counterparty as Address | undefined) ?? null);
+
         return {
           uniqueRowKey,
           positionId,
           allConditionsSettled,
           predictorWonFromDb,
           legs: legs.map((leg) => {
-            // Flip display sides for counterparty rows:
-            // - Pyth: maker prediction is stored; counterparty is opposite
+            // Flip display sides for counterparty positions:
+            // - Pyth: predictor prediction is stored; counterparty is opposite
             // - UMA: counterparty is opposite of the predictor's YES/NO
-            if (role === 'counterparty') {
+            if (isCounterpartyPosition) {
               if (leg.source === 'pyth' && leg.pythPrediction) {
-                const makerPrediction = Boolean(leg.pythMakerPrediction);
-                const side = pythSideForRole(makerPrediction, role);
+                const predictorPrediction = Boolean(leg.pythMakerPrediction);
+                const displayPrediction = !predictorPrediction; // Counterparty takes opposite
                 return {
                   ...leg,
-                  choice: side.choice,
+                  choice: displayPrediction ? 'OVER' : 'UNDER',
                   pythPrediction: {
                     ...leg.pythPrediction,
-                    direction: side.direction,
+                    direction: displayPrediction ? 'over' : 'under',
                   },
                 };
               }
@@ -529,15 +531,14 @@ export default function PositionsTable({
             }
 
             if (leg.source === 'pyth' && leg.pythPrediction) {
-              // Predictor row (or unknown): ensure Pyth direction matches maker side.
-              const makerPrediction = Boolean(leg.pythMakerPrediction);
-              const side = pythSideForRole(makerPrediction, role);
+              // Predictor position: ensure Pyth direction matches predictor side
+              const predictorPrediction = Boolean(leg.pythMakerPrediction);
               return {
                 ...leg,
-                choice: side.choice,
+                choice: predictorPrediction ? 'OVER' : 'UNDER',
                 pythPrediction: {
                   ...leg.pythPrediction,
-                  direction: side.direction,
+                  direction: predictorPrediction ? 'over' : 'under',
                 },
               };
             }
@@ -550,22 +551,18 @@ export default function PositionsTable({
           tokenIdToClaim,
           createdAt: p.mintedAt ? Number(p.mintedAt) * 1000 : Date.now(),
           totalPayoutWei: totalPayoutWei,
-          predictorCollateralWei: viewerPredictorCollateralWei,
-          counterpartyCollateralWei: viewerCounterpartyCollateralWei,
-          userPnL,
-          addressRole: role,
-          counterpartyAddress:
-            (role === 'predictor'
-              ? (p.counterparty as Address | undefined)
-              : role === 'counterparty'
-                ? (p.predictor as Address | undefined)
-                : undefined) ?? null,
+          wagerWei,
+          pnlWei,
+          isCounterpartyPosition,
+          opponentAddress,
+          predictor: (p.predictor as Address | undefined) ?? null,
+          counterparty: (p.counterparty as Address | undefined) ?? null,
           chainId: Number(p.chainId || DEFAULT_CHAIN_ID),
           marketAddress: p.marketAddress as Address,
         };
       };
 
-      return roles.map(buildRowForRole);
+      return positionTypes.map(buildRowForPositionType);
     });
 
     return positionRows;
@@ -585,15 +582,7 @@ export default function PositionsTable({
     // Filter by wager range (server doesn't support this)
     if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
       result = result.filter((row) => {
-        const viewerWagerWei =
-          row.addressRole === 'predictor'
-            ? (row.predictorCollateralWei ?? 0n)
-            : row.addressRole === 'counterparty'
-              ? (row.counterpartyCollateralWei ?? 0n)
-              : (row.predictorCollateralWei ??
-                row.counterpartyCollateralWei ??
-                0n);
-        const wager = Number(formatEther(viewerWagerWei));
+        const wager = Number(formatEther(row.wagerWei));
         return wager >= filters.wagerRange[0] && wager <= filters.wagerRange[1];
       });
     }
@@ -683,6 +672,15 @@ export default function PositionsTable({
     return rows.find((r) => r.positionId === openSharePositionId) || null;
   }, [rows, openSharePositionId]);
 
+  // Position dialog state (for "X PICKS" click)
+  const [openPositionDialogId, setOpenPositionDialogId] = React.useState<
+    number | null
+  >(null);
+  const selectedPositionForDialog = React.useMemo(() => {
+    if (openPositionDialogId === null) return null;
+    return rows.find((r) => r.positionId === openPositionDialogId) || null;
+  }, [rows, openPositionDialogId]);
+
   // Find the original Position data to get predictorNftTokenId for sharing
   const selectedPositionData = React.useMemo(() => {
     if (!selectedPosition) return null;
@@ -746,9 +744,10 @@ export default function PositionsTable({
               <PicksSummary
                 legs={row.original.legs}
                 positionId={row.original.positionId}
-                isCounterparty={row.original.addressRole === 'counterparty'}
+                isCounterparty={row.original.isCounterpartyPosition}
                 hasPythLeg={hasPythLeg}
                 marketAddress={row.original.marketAddress}
+                onClick={() => setOpenPositionDialogId(row.original.positionId)}
               />
             </div>
           );
@@ -757,7 +756,7 @@ export default function PositionsTable({
 
       {
         id: 'against',
-        accessorFn: (row) => row.counterpartyAddress ?? '',
+        accessorFn: (row) => row.opponentAddress ?? '',
         header: ({ column }) => (
           <Button
             type="button"
@@ -787,7 +786,7 @@ export default function PositionsTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const addr = row.original.counterpartyAddress;
+          const addr = row.original.opponentAddress;
           if (!addr) {
             return <span className="text-muted-foreground">—</span>;
           }
@@ -812,18 +811,7 @@ export default function PositionsTable({
 
       {
         id: 'wager',
-        accessorFn: (row) => {
-          // Show the viewer's contributed collateral as the wager
-          const viewerWagerWei =
-            row.addressRole === 'predictor'
-              ? (row.predictorCollateralWei ?? 0n)
-              : row.addressRole === 'counterparty'
-                ? (row.counterpartyCollateralWei ?? 0n)
-                : (row.predictorCollateralWei ??
-                  row.counterpartyCollateralWei ??
-                  0n);
-          return Number(formatEther(viewerWagerWei));
-        },
+        accessorFn: (row) => Number(formatEther(row.wagerWei)),
         header: ({ column }) => (
           <Button
             type="button"
@@ -854,15 +842,7 @@ export default function PositionsTable({
         ),
         cell: ({ row }) => {
           const symbol = collateralSymbol;
-          const viewerWagerWei =
-            row.original.addressRole === 'predictor'
-              ? (row.original.predictorCollateralWei ?? 0n)
-              : row.original.addressRole === 'counterparty'
-                ? (row.original.counterpartyCollateralWei ?? 0n)
-                : (row.original.predictorCollateralWei ??
-                  row.original.counterpartyCollateralWei ??
-                  0n);
-          const viewerWager = Number(formatEther(viewerWagerWei));
+          const wager = Number(formatEther(row.original.wagerWei));
 
           return (
             <div>
@@ -871,7 +851,7 @@ export default function PositionsTable({
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
                 <NumberDisplay
-                  value={viewerWager}
+                  value={wager}
                   className="tabular-nums text-brand-white font-mono"
                 />{' '}
                 <span className="tabular-nums text-brand-white font-mono">
@@ -923,14 +903,13 @@ export default function PositionsTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          const viewerLostFromDb =
+          // Determine if this position lost based on settlement
+          const positionLostFromDb =
             row.original.allConditionsSettled &&
-            (row.original.addressRole === 'predictor'
-              ? row.original.predictorWonFromDb === false
-              : row.original.addressRole === 'counterparty'
-                ? row.original.predictorWonFromDb === true
-                : false);
-          if (row.original.status === 'lost' || viewerLostFromDb) {
+            (row.original.isCounterpartyPosition
+              ? row.original.predictorWonFromDb === true // Counterparty loses when predictor wins
+              : row.original.predictorWonFromDb === false); // Predictor loses when predictorWon is false
+          if (row.original.status === 'lost' || positionLostFromDb) {
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
@@ -969,7 +948,7 @@ export default function PositionsTable({
       {
         id: 'pnl',
         accessorFn: (row) => {
-          const pnlValue = Number(formatEther(BigInt(row.userPnL || '0')));
+          const pnlValue = Number(formatEther(BigInt(row.pnlWei || '0')));
           return pnlValue;
         },
         header: ({ column }) => (
@@ -1004,15 +983,14 @@ export default function PositionsTable({
           const symbol = collateralSymbol;
           const isClosed = row.original.status !== 'active';
 
-          const viewerLostFromDb =
+          // Determine if this position lost based on settlement
+          const positionLostFromDb =
             row.original.allConditionsSettled &&
-            (row.original.addressRole === 'predictor'
-              ? row.original.predictorWonFromDb === false
-              : row.original.addressRole === 'counterparty'
-                ? row.original.predictorWonFromDb === true
-                : false);
+            (row.original.isCounterpartyPosition
+              ? row.original.predictorWonFromDb === true // Counterparty loses when predictor wins
+              : row.original.predictorWonFromDb === false); // Predictor loses when predictorWon is false
           const lostPositionUnclaimed =
-            row.original.status === 'active' && viewerLostFromDb;
+            row.original.status === 'active' && positionLostFromDb;
 
           if (!isClosed && !lostPositionUnclaimed) {
             return (
@@ -1025,21 +1003,13 @@ export default function PositionsTable({
             );
           }
 
-          const viewerWagerWei =
-            row.original.addressRole === 'predictor'
-              ? (row.original.predictorCollateralWei ?? 0n)
-              : row.original.addressRole === 'counterparty'
-                ? (row.original.counterpartyCollateralWei ?? 0n)
-                : (row.original.predictorCollateralWei ??
-                  row.original.counterpartyCollateralWei ??
-                  0n);
-          const viewerWager = Number(formatEther(viewerWagerWei));
+          const wager = Number(formatEther(row.original.wagerWei));
 
           const pnlValue = lostPositionUnclaimed
-            ? -viewerWager
-            : Number(formatEther(BigInt(row.original.userPnL || '0')));
+            ? -wager
+            : Number(formatEther(BigInt(row.original.pnlWei || '0')));
 
-          const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
+          const roi = wager > 0 ? (pnlValue / wager) * 100 : 0;
 
           return (
             <div className="relative">
@@ -1058,7 +1028,7 @@ export default function PositionsTable({
                 >
                   {symbol}
                 </span>
-                {viewerWager > 0 && (
+                {wager > 0 && (
                   <span
                     className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
@@ -1124,13 +1094,12 @@ export default function PositionsTable({
             }
             if (
               row.original.status === 'active' &&
-              row.original.endsAt <= Date.now() &&
-              row.original.addressRole !== 'unknown'
+              row.original.endsAt <= Date.now()
             ) {
               const {
                 allConditionsSettled,
                 predictorWonFromDb,
-                addressRole,
+                isCounterpartyPosition,
                 positionId,
               } = row.original;
 
@@ -1142,14 +1111,12 @@ export default function PositionsTable({
                 );
               }
 
-              const viewerWon =
-                addressRole === 'predictor'
-                  ? predictorWonFromDb === true
-                  : addressRole === 'counterparty'
-                    ? predictorWonFromDb === false
-                    : false;
+              // Determine if this position won
+              const positionWon = isCounterpartyPosition
+                ? predictorWonFromDb === false // Counterparty wins when predictor loses
+                : predictorWonFromDb === true; // Predictor wins when predictorWon is true
 
-              if (viewerWon) {
+              if (positionWon) {
                 const tokenIdToClaim = BigInt(positionId);
 
                 const isOwnerConnected =
@@ -1531,7 +1498,7 @@ export default function PositionsTable({
         <ShareDialog
           question={`Position #${selectedPosition.positionId}`}
           nftId={
-            selectedPosition.addressRole === 'counterparty'
+            selectedPosition.isCounterpartyPosition
               ? selectedPositionData?.counterpartyNftTokenId
               : selectedPositionData?.predictorNftTokenId ||
                 String(selectedPosition.positionId)
@@ -1541,21 +1508,13 @@ export default function PositionsTable({
             question: l.question,
             choice: l.choice,
           }))}
-          wager={Number(
-            formatEther(
-              selectedPosition.predictorCollateralWei ??
-                selectedPosition.counterpartyCollateralWei ??
-                0n
-            )
-          )}
+          wager={Number(formatEther(selectedPosition.wagerWei))}
           payout={Number(formatEther(selectedPosition.totalPayoutWei || 0n))}
           symbol="USDe"
           owner={String(account)}
           imagePath="/og/position"
           extraParams={{
-            ...(selectedPosition.addressRole === 'counterparty'
-              ? { anti: '1' }
-              : {}),
+            ...(selectedPosition.isCounterpartyPosition ? { anti: '1' } : {}),
           }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {
@@ -1565,6 +1524,12 @@ export default function PositionsTable({
           title="Share Your Position"
         />
       )}
+      <PositionDialog
+        open={openPositionDialogId !== null}
+        onOpenChange={(open) => !open && setOpenPositionDialogId(null)}
+        position={selectedPositionForDialog}
+        collateralSymbol={collateralSymbol}
+      />
     </div>
   );
 }
