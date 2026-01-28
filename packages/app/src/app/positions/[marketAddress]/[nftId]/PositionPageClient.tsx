@@ -54,7 +54,7 @@ export default function PositionPageClient({
   serverPosition: PositionData | null;
 }) {
   // Fetch current NFT owner on-chain (must be called before any early return)
-  const { data: currentOwner } = useReadContract({
+  const { data: currentOwner, isLoading: isOwnerLoading } = useReadContract({
     address: marketAddress as Address,
     abi: predictionMarketAbi,
     functionName: 'ownerOf',
@@ -71,7 +71,6 @@ export default function PositionPageClient({
   }
 
   const isCounterparty = serverPosition.counterpartyNftTokenId === nftId;
-  const positionId = Number(nftId);
   const legs = positionToLegs(serverPosition);
 
   if (isCounterparty) {
@@ -119,7 +118,7 @@ export default function PositionPageClient({
       <div className="mb-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
-            <h2 className="eyebrow text-foreground">Position #{positionId}</h2>
+            <h2 className="eyebrow text-foreground">Position #{nftId}</h2>
             {isCounterparty && <CounterpartyBadge />}
           </div>
           <div className="flex items-center gap-2">
@@ -194,7 +193,9 @@ export default function PositionPageClient({
           {/* Predictor */}
           {serverPosition.predictor && (
             <div className="space-y-1">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+              <div
+                className={`text-[11px] uppercase tracking-wider font-normal font-mono ${!isCounterparty ? 'text-accent-gold' : 'text-muted-foreground'}`}
+              >
                 Predictor
               </div>
               <Link
@@ -215,7 +216,9 @@ export default function PositionPageClient({
           {/* Counterparty */}
           {serverPosition.counterparty && (
             <div className="space-y-1">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+              <div
+                className={`text-[11px] uppercase tracking-wider font-normal font-mono ${isCounterparty ? 'text-accent-gold' : 'text-muted-foreground'}`}
+              >
                 Counterparty
               </div>
               <Link
@@ -319,7 +322,7 @@ export default function PositionPageClient({
 
       <PicksContent
         legs={legs}
-        positionId={positionId}
+        positionId={nftId}
         isCounterparty={isCounterparty}
         hideHeader
         positionStatus={
@@ -329,9 +332,11 @@ export default function PositionPageClient({
                   ? !serverPosition.predictorWon
                   : serverPosition.predictorWon
               )
-              ? currentOwner
+              ? isOwnerLoading
                 ? 'won'
-                : 'claimed'
+                : currentOwner
+                  ? 'won'
+                  : 'claimed'
               : 'lost'
             : serverPosition.endsAt &&
                 serverPosition.endsAt * 1000 <= Date.now()

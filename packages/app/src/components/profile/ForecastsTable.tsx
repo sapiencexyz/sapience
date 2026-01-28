@@ -18,7 +18,6 @@ import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
   getCoreRowModel,
-  getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
@@ -39,12 +38,12 @@ import {
   getDefaultForecastsFilterState,
   type ForecastsFilterState,
 } from '~/components/profile/ForecastsTableFilters';
-import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
+import { useUserForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { useSecondTick } from '~/hooks/useSecondTick';
-import { formatCountdown } from '~/lib/utils/formatCountdown';
+import CountdownCell from '~/components/shared/CountdownCell';
 
 interface ForecastsTableProps {
   attesterAddress: string;
@@ -72,46 +71,6 @@ const getCategoryColor = (categorySlug?: string | null): string => {
   if (focusArea) return focusArea.color;
   return getDeterministicCategoryColor(categorySlug);
 };
-
-function CountdownCell({
-  endTime,
-  nowMs,
-}: {
-  endTime: number;
-  nowMs: number | null;
-}) {
-  const endMs = endTime * 1000;
-  const date = new Date(endMs);
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");
-
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const diff = endMs - nowMs;
-  const isPast = diff <= 0;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown(diff)}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 const renderSubmittedCell = ({
   row,
@@ -303,9 +262,13 @@ const renderActionsCell = ({
   );
 };
 
-function EndsCell({ condition }: { condition?: ConditionData | null }) {
-  const nowMs = useSecondTick();
-
+function EndsCell({
+  condition,
+  nowMs,
+}: {
+  condition?: ConditionData | null;
+  nowMs: number | null;
+}) {
   if (!condition) return <span className="text-muted-foreground">—</span>;
 
   if (condition.settled) {
@@ -345,29 +308,93 @@ function EndsCell({ condition }: { condition?: ConditionData | null }) {
 }
 
 const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
+  const nowMs = useSecondTick();
+
   // Filter state
   const [filters, setFilters] = React.useState<ForecastsFilterState>(
     getDefaultForecastsFilterState
   );
 
-  // Fetch data with infinite pagination
-  const {
-    data: attestations,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteForecasts({
+  // Pagination & sorting state
+  const ITEMS_PER_PAGE = 20;
+  const [skip, setSkip] = React.useState(0);
+  const [allLoadedData, setAllLoadedData] = React.useState<
+    FormattedAttestation[]
+  >([]);
+  const [hasMore, setHasMore] = React.useState(true);
+
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'rawTime', desc: true },
+  ]);
+
+  // Convert sorting state to API params
+  const sortId = sorting[0]?.id;
+  const orderBy =
+    sortId === 'rawTime' ? 'time' : sortId === 'value' ? 'prediction' : 'time';
+  const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
+
+  // Track what data we've already processed to avoid infinite loops
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
+
+  // Reset when sorting changes
+  React.useEffect(() => {
+    setSkip(0);
+    setHasMore(true);
+    processedRef.current = null;
+  }, [sorting, attesterAddress]);
+
+  // Fetch data with skip-based pagination
+  const { data: rawData, isLoading } = useUserForecasts({
     attesterAddress,
     schemaId: SCHEMA_UID,
+    take: ITEMS_PER_PAGE + 1,
+    skip,
+    orderBy,
+    orderDirection,
   });
 
-  // Load more handler (wrapped in useCallback for IntersectionObserver dependency)
-  const handleLoadMore = useCallback(() => {
-    if (!isFetchingNextPage && hasNextPage) {
-      fetchNextPage();
+  // Accumulate pages
+  React.useEffect(() => {
+    const dataLength = rawData?.length ?? 0;
+
+    if (
+      processedRef.current?.skip === skip &&
+      processedRef.current?.length === dataLength
+    ) {
+      return;
     }
-  }, [isFetchingNextPage, hasNextPage, fetchNextPage]);
+    processedRef.current = { skip, length: dataLength };
+
+    if (!rawData || rawData.length === 0) {
+      if (skip === 0) {
+        setAllLoadedData((prev) => (prev.length === 0 ? prev : []));
+        setHasMore((prev) => (prev === false ? prev : false));
+      }
+      return;
+    }
+
+    const hasNextPage = rawData.length > ITEMS_PER_PAGE;
+    const newItems = hasNextPage ? rawData.slice(0, ITEMS_PER_PAGE) : rawData;
+
+    if (skip === 0) {
+      setAllLoadedData(newItems);
+    } else {
+      setAllLoadedData((prev) => [...prev, ...newItems]);
+    }
+
+    setHasMore(hasNextPage);
+  }, [rawData, skip]);
+
+  const attestations = allLoadedData;
+
+  // Load more handler
+  const handleLoadMore = useCallback(() => {
+    if (!isLoading && hasMore) {
+      setSkip((prev) => prev + ITEMS_PER_PAGE);
+    }
+  }, [isLoading, hasMore]);
 
   // Collect conditionIds from attestations for batch fetching
   const conditionIds = useMemo(() => {
@@ -437,34 +464,8 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         accessorFn: (row) => {
           return row.conditionId || '';
         },
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Question
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
-        ),
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Question</span>,
         cell: (info) =>
           renderQuestionCell({
             row: info.row,
@@ -537,29 +538,14 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }
           return 0;
         },
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
+        enableSorting: false,
+        header: () => (
+          <span className="text-sm font-medium inline-flex items-center gap-1 whitespace-nowrap">
             Horizon
             <TooltipProvider delayDuration={0}>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span
-                    className="inline-flex cursor-help"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <span className="inline-flex cursor-help">
                     <CircleHelp className="w-3 h-3 opacity-80" />
                   </span>
                 </TooltipTrigger>
@@ -572,17 +558,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
+          </span>
         ),
         cell: (info) => {
           const conditionId = info.row.original.conditionId;
@@ -649,41 +625,15 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }
           return 0;
         },
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Ends
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
-        ),
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Ends</span>,
         cell: (info) => {
           const conditionId = info.row.original.conditionId;
           const condition =
             conditionId && conditionsMap
               ? conditionsMap[conditionId.toLowerCase()]
               : undefined;
-          return <EndsCell condition={condition} />;
+          return <EndsCell condition={condition} nowMs={nowMs} />;
         },
       },
       {
@@ -696,12 +646,8 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }),
       },
     ],
-    [conditionsMap, isConditionsLoading]
+    [conditionsMap, isConditionsLoading, nowMs]
   );
-
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'rawTime', desc: true },
-  ]);
 
   // Apply client-side filtering
   const filteredAttestations = useMemo(() => {
@@ -781,18 +727,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    manualSorting: true,
   });
 
   // Auto-load more when scrolling near bottom
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!loadMoreRef.current || !hasNextPage) return;
+    if (!loadMoreRef.current || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
+        if (entries[0].isIntersecting && hasMore && !isLoading) {
           handleLoadMore();
         }
       },
@@ -805,7 +751,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     observer.observe(loadMoreRef.current);
 
     return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, handleLoadMore]);
+  }, [hasMore, isLoading, handleLoadMore]);
 
   // Initial loading state (no data yet)
   const isInitialLoading =
@@ -835,7 +781,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
 
   return (
     <div>
-      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.05]">
+      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
         {leftSlot}
         <div className="flex-1">
           <ForecastsTableFilters
@@ -860,7 +806,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
-                    className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
+                    className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60"
                   >
                     {headerGroup.headers.map((header) => {
                       const content = header.isPlaceholder
@@ -1020,12 +966,12 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             </Table>
           </div>
           {/* Infinite scroll sentinel - triggers auto-load when visible */}
-          {hasNextPage && (
+          {hasMore && (
             <div
               ref={loadMoreRef}
               className="flex items-center justify-center px-4 py-6 bg-brand-black"
             >
-              {isFetchingNextPage ? (
+              {isLoading ? (
                 <div className="flex items-center gap-2">
                   <Loader size={12} />
                   <span className="text-sm text-muted-foreground">

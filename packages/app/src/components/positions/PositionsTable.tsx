@@ -1339,7 +1339,7 @@ export default function PositionsTable({
         enableSorting: false,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap mt-6 xl:mt-0">
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-end">
             <button
               type="button"
               className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -1410,7 +1410,7 @@ export default function PositionsTable({
         </div>
       ) : (
         <>
-          <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.05]">
+          <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
             {leftSlot}
             <div className="flex-1">
               <PositionsTableFilters
@@ -1431,7 +1431,7 @@ export default function PositionsTable({
                   {table.getHeaderGroups().map((headerGroup) => (
                     <TableRow
                       key={headerGroup.id}
-                      className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
+                      className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60"
                     >
                       {headerGroup.headers.map((header) => (
                         <TableHead

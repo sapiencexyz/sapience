@@ -6,17 +6,11 @@ import {
 } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import Link from 'next/link';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { PredictionChoiceBadge } from '@sapience/ui';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { useSecondTick } from '~/hooks/useSecondTick';
-import { formatCountdown } from '~/lib/utils/formatCountdown';
+import CountdownCell from '~/components/shared/CountdownCell';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -24,7 +18,7 @@ import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest
 
 interface PicksSummaryProps {
   legs: Pick[];
-  positionId: number;
+  positionId: string | number;
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
   marketAddress?: string;
@@ -32,7 +26,7 @@ interface PicksSummaryProps {
 
 export interface PicksContentProps {
   legs: Pick[];
-  positionId: number;
+  positionId: string | number;
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
   createdAt?: string | number;
@@ -41,53 +35,7 @@ export interface PicksContentProps {
   positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
 }
 
-function CountdownCell({
-  endTime,
-  nowMs,
-}: {
-  endTime: number;
-  nowMs: number | null;
-}) {
-  const endMs = endTime * 1000;
-  const date = new Date(endMs);
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");
-
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const diff = endMs - nowMs;
-  const isPast = diff <= 0;
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown(diff)}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function PickForecastCell({
-  leg,
-  nowMs: _nowMs,
-}: {
-  leg: Pick;
-  nowMs: number | null;
-}) {
+function PickForecastCell({ leg }: { leg: Pick }) {
   if (leg.settled) {
     return (
       <Badge
@@ -192,7 +140,7 @@ export function PicksContent({
                   </div>
                 </td>
                 <td className="py-2 pr-8 whitespace-nowrap">
-                  <PickForecastCell leg={leg} nowMs={nowMs} />
+                  <PickForecastCell leg={leg} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
                   <PredictionChoiceBadge

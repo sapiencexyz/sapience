@@ -51,10 +51,14 @@ export async function generateMetadata(
   };
 }
 
-function buildConditionsQuery(ids: string[]): string {
-  const jsonIds = JSON.stringify(ids);
-  return `{ conditions(where: { id: { in: ${jsonIds} } }, take: 1000) { id category { slug } } }`;
-}
+const CONDITIONS_QUERY = `
+  query ConditionCategories($ids: [String!]!) {
+    conditions(where: { id: { in: $ids } }, take: 1000) {
+      id
+      category { slug }
+    }
+  }
+`;
 
 async function fetchPosition(
   nftId: string,
@@ -83,7 +87,8 @@ async function fetchPosition(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          query: buildConditionsQuery(conditionIds),
+          query: CONDITIONS_QUERY,
+          variables: { ids: conditionIds },
         }),
         next: { revalidate: 30 },
       });

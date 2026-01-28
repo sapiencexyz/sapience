@@ -186,7 +186,7 @@ export default function ProfileQuickMetrics({
     (b) => b.length > 0
   );
 
-  const MetricItem = ({ m }: { m: Metric; size?: string; mdSize?: string }) => (
+  const MetricItem = ({ m }: { m: Metric }) => (
     <div className="flex flex-col gap-0.5">
       <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
         {m.label}
@@ -219,7 +219,7 @@ export default function ProfileQuickMetrics({
                   className="h-8 w-px bg-muted-foreground/30"
                 />
               )}
-              <MetricItem m={m} size="sm" mdSize="base" />
+              <MetricItem m={m} />
             </React.Fragment>
           ))}
         </div>
