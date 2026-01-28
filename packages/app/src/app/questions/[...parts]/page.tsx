@@ -50,7 +50,7 @@ async function fetchQuestionTitle(
 
     const result = await response.json();
     const condition = result?.data?.conditions?.[0];
-    return condition?.shortName || condition?.question || null;
+    return condition?.question || null;
   } catch {
     return null;
   }

@@ -257,10 +257,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const conditionItems = useMemo<MultiSelectItem[]>(() => {
     return activeConditionCatalog.map((condition) => ({
       value: condition.id,
-      label:
-        (condition.shortName as string | undefined) ||
-        (condition.question as string | undefined) ||
-        condition.id,
+      label: (condition.question as string | undefined) || condition.id,
     }));
   }, [activeConditionCatalog]);
 
@@ -268,9 +265,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     return Object.fromEntries(
       (conditionCatalog || []).map((condition) => [
         condition.id,
-        (condition.shortName as string | undefined) ||
-          (condition.question as string | undefined) ||
-          condition.id,
+        (condition.question as string | undefined) || condition.id,
       ])
     );
   }, [conditionCatalog]);

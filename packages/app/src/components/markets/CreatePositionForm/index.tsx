@@ -696,8 +696,9 @@ const CreatePositionFormInner = ({
           }
 
           const dialogData = {
+            // OG images use shortName when available for more compact display
             picks: selections.map((s) => ({
-              question: s.question,
+              question: s.shortName || s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
             wager: wagerAmount,

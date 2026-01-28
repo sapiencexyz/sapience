@@ -290,7 +290,6 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     useCreatePositionContext();
 
   const isPastEnd = useIsPastEndTime(condition.endTime);
-  const displayQ = condition.shortName || condition.question;
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -310,7 +309,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     }
     addSelection({
       conditionId: condition.id,
-      question: displayQ,
+      question: condition.question,
+      shortName: condition.shortName,
       prediction: true,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
@@ -319,7 +319,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     condition.id,
     condition.category?.slug,
     condition.endTime,
-    displayQ,
+    condition.question,
+    condition.shortName,
     selections,
     removeSelection,
     addSelection,
@@ -334,7 +335,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     }
     addSelection({
       conditionId: condition.id,
-      question: displayQ,
+      question: condition.question,
+      shortName: condition.shortName,
       prediction: false,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
@@ -343,7 +345,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     condition.id,
     condition.category?.slug,
     condition.endTime,
-    displayQ,
+    condition.question,
+    condition.shortName,
     selections,
     removeSelection,
     addSelection,
@@ -463,11 +466,10 @@ function createColumns(
         const condition = data.condition;
         const categorySlug = condition.category?.slug;
         const color = getCategoryColor(categorySlug);
-        const displayQ = condition.shortName || condition.question;
         return (
           <div className="flex items-center gap-3 w-full min-w-0">
             <MarketBadge
-              label={displayQ}
+              label={condition.question}
               size={24}
               color={color}
               categorySlug={categorySlug}
@@ -475,7 +477,7 @@ function createColumns(
             <ConditionTitleLink
               conditionId={condition.id}
               resolverAddress={condition.resolver ?? undefined}
-              title={displayQ}
+              title={condition.question}
               clampLines={1}
               className="text-sm min-w-0"
             />
@@ -665,7 +667,6 @@ function ChildConditionRow({
   const conditionType = groupConditionToConditionType(condition);
   const categorySlug = condition.category?.slug;
   const color = getCategoryColor(categorySlug);
-  const displayQ = condition.shortName || condition.question;
   const openInterestWei = BigInt(condition.openInterest || '0');
   const etherValue = parseFloat(formatEther(openInterestWei));
   const formattedValue = etherValue.toFixed(2);
@@ -679,7 +680,7 @@ function ChildConditionRow({
       <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
         <div className="flex items-center gap-3 w-full min-w-0">
           <MarketBadge
-            label={displayQ}
+            label={condition.question}
             size={24}
             color={color}
             categorySlug={categorySlug}
@@ -687,7 +688,7 @@ function ChildConditionRow({
           <ConditionTitleLink
             conditionId={condition.id}
             resolverAddress={condition.resolver ?? undefined}
-            title={displayQ}
+            title={condition.question}
             clampLines={1}
             className="text-sm min-w-0"
           />

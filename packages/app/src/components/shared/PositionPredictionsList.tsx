@@ -70,8 +70,7 @@ export default function PositionPredictionsList({
         >
           <div className="flex items-center gap-4 md:gap-5 whitespace-nowrap pr-6">
             {legs.map((leg, idx) => {
-              const text =
-                leg.shortName || leg.question || leg.conditionId || '';
+              const text = leg.question || leg.conditionId || '';
               const isHexId = /^0x[0-9a-fA-F]{64}$/.test(String(text));
               return (
                 <div
@@ -126,7 +125,7 @@ export default function PositionPredictionsList({
       ) : (
         <div className="space-y-1">
           {legs.map((leg, idx) => {
-            const text = leg.shortName || leg.question || leg.conditionId || '';
+            const text = leg.question || leg.conditionId || '';
             const isHexId = /^0x[0-9a-fA-F]{64}$/.test(String(text));
             return (
               <div key={idx} className="text-sm flex items-center gap-2">

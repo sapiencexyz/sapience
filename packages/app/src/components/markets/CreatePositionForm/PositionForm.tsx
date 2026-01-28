@@ -599,10 +599,12 @@ export default function PositionForm({
             const categoryColor = getCategoryStyle(s.categorySlug).color;
             // Convert color to 10% opacity background (matches MarketBadge style)
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
+            // In CreatePositionForm: show shortName if available, always show question in tooltip
+            const displayTitle = s.shortName || s.question;
             const umaPrediction: UmaPrediction = {
               id: s.id,
               conditionId: s.conditionId,
-              question: s.question,
+              question: displayTitle,
               prediction: s.prediction,
               categorySlug: s.categorySlug,
             };
@@ -615,7 +617,7 @@ export default function PositionForm({
                   prediction={umaPrediction}
                   leading={
                     <div
-                      className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center"
+                      className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"
                       style={{ backgroundColor: bgWithAlpha }}
                     >
                       <CategoryIcon
@@ -628,8 +630,10 @@ export default function PositionForm({
                     <ConditionTitleLink
                       conditionId={s.conditionId}
                       resolverAddress={s.resolverAddress ?? undefined}
-                      title={s.question}
+                      title={displayTitle}
+                      tooltipTitle={s.question}
                       clampLines={1}
+                      className="text-sm"
                     />
                   }
                   onRemove={removeSelection}

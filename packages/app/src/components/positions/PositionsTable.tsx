@@ -308,8 +308,7 @@ export default function PositionsTable({
       };
 
       const legs: UILeg[] = (p.predictions || []).map((o: any) => {
-        const question =
-          o?.condition?.shortName || o?.condition?.question || o.conditionId;
+        const question = o?.condition?.question || o.conditionId;
         const desc = o?.condition?.description ?? null;
         const pythMeta = parsePythDescriptor(desc);
         if (pythMeta) {
@@ -326,9 +325,7 @@ export default function PositionsTable({
             endTimeSec !== null
               ? formatUnixSecondsToLocalInput(BigInt(endTimeSec))
               : '';
-          const feedLabel = String(
-            o?.condition?.shortName || o?.condition?.question || question || ''
-          );
+          const feedLabel = String(o?.condition?.question || question || '');
 
           // Note: `o.outcomeYes` is stored as the maker/predictor-side prediction for Pyth.
           // We keep it here and compute display direction per-role later.
