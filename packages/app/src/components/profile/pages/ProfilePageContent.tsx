@@ -9,11 +9,12 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import { Telescope, ArrowLeftRightIcon } from 'lucide-react';
+import { Telescope, ArrowLeftRightIcon, Coins } from 'lucide-react';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
+import V2PositionsTable from '~/components/positions/V2PositionsTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
@@ -21,7 +22,7 @@ import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
-const TAB_VALUES = ['positions', 'forecasts'] as const;
+const TAB_VALUES = ['positions', 'v2positions', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const ProfilePageContent = () => {
@@ -97,6 +98,10 @@ const ProfilePageContent = () => {
         <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
         Positions
       </TabsTrigger>
+      <TabsTrigger className="justify-center" value="v2positions">
+        <Coins className="h-4 w-4 mr-2" />
+        V2 Positions
+      </TabsTrigger>
       <TabsTrigger className="justify-center" value="forecasts">
         <Telescope className="h-4 w-4 mr-2" />
         Forecasts
@@ -134,6 +139,15 @@ const ProfilePageContent = () => {
           <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black mb-3 md:mb-6 lg:mb-8">
             <TabsContent value="positions" className="mt-0">
               <PositionsTable
+                account={address}
+                showHeaderText={false}
+                chainId={chainId}
+                leftSlot={tabSwitcher}
+              />
+            </TabsContent>
+
+            <TabsContent value="v2positions" className="mt-0">
+              <V2PositionsTable
                 account={address}
                 showHeaderText={false}
                 chainId={chainId}

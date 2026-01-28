@@ -212,10 +212,12 @@ export default function V2PositionsTable({
   account,
   showHeaderText = true,
   chainId,
+  leftSlot,
 }: {
   account: Address;
   showHeaderText?: boolean;
   chainId?: number;
+  leftSlot?: React.ReactNode;
 }) {
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 5064014] || 'USDe';
   const queryClient = useQueryClient();
@@ -277,45 +279,63 @@ export default function V2PositionsTable({
     [redeem, refetch, queryClient]
   );
 
+  // Filter out zero balances
+  const nonZeroBalances = (positionBalances ?? []).filter(
+    (p) => BigInt(p.balance) > 0n
+  );
+
+  // Header with leftSlot (tab switcher) and optional title
+  const headerContent = (
+    <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+      {leftSlot}
+      <div className="flex-1">
+        {showHeaderText && (
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">V2 Positions</h3>
+            <Badge variant="outline">{nonZeroBalances.length} positions</Badge>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader />
-      </div>
+      <>
+        {headerContent}
+        <div className="flex items-center justify-center py-8">
+          <Loader />
+        </div>
+      </>
     );
   }
 
   if (error) {
     return (
-      <div className="text-destructive text-center py-8">
-        Error loading V2 positions
-      </div>
+      <>
+        {headerContent}
+        <div className="text-destructive text-center py-8">
+          Error loading V2 positions
+        </div>
+      </>
     );
   }
 
-  // Filter out zero balances
-  const nonZeroBalances = positionBalances.filter(
-    (p) => BigInt(p.balance) > 0n
-  );
-
   if (nonZeroBalances.length === 0) {
     return (
-      <EmptyTabState
-        message="No V2 positions found"
-      />
+      <>
+        {headerContent}
+        <EmptyTabState
+          message="No V2 positions found"
+        />
+      </>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {showHeaderText && (
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">V2 Positions</h3>
-          <Badge variant="outline">{nonZeroBalances.length} positions</Badge>
-        </div>
-      )}
-
-      <div className="rounded-md border">
+    <>
+      {headerContent}
+      <div className="rounded-md">
         <Table>
           <TableHeader>
             <TableRow>
@@ -344,6 +364,6 @@ export default function V2PositionsTable({
           </TableBody>
         </Table>
       </div>
-    </div>
+    </>
   );
 }
