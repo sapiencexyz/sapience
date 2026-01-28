@@ -8,6 +8,12 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
@@ -18,10 +24,11 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
 import React, { useMemo, useRef, useEffect, useCallback } from 'react';
-import { ChevronUp, ChevronDown, Copy } from 'lucide-react';
+import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import MarketBadge from '~/components/markets/MarketBadge';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import ShareDialog from '~/components/shared/ShareDialog';
@@ -34,6 +41,8 @@ import {
 } from '~/components/profile/ForecastsTableFilters';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 
 interface ForecastsTableProps {
   attesterAddress: string;
@@ -51,7 +60,83 @@ type ConditionData = {
   resolver?: string | null;
   conditionId?: string;
   conditionGroupId?: string;
+  categorySlug?: string | null;
 };
+
+// Helper to get category color
+const getCategoryColor = (categorySlug?: string | null): string => {
+  if (!categorySlug) return 'hsl(var(--muted-foreground))';
+  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+  if (focusArea) return focusArea.color;
+  return getDeterministicCategoryColor(categorySlug);
+};
+
+function useSecondTick() {
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setNowMs(Date.now());
+    const interval = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return nowMs;
+}
+
+function CountdownCell({
+  endTime,
+  nowMs,
+}: {
+  endTime: number;
+  nowMs: number | null;
+}) {
+  const endMs = endTime * 1000;
+  const date = new Date(endMs);
+  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");
+
+  if (nowMs === null) {
+    return (
+      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+        —
+      </span>
+    );
+  }
+
+  const diff = endMs - nowMs;
+  const isPast = diff <= 0;
+
+  const formatCountdown = () => {
+    if (isPast) return 'Ended';
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    const h = hours % 24;
+    const m = minutes % 60;
+    const s = seconds % 60;
+    if (days > 0) return `${days}d ${h}h ${m}m`;
+    if (hours > 0) return `${h}h ${m}m ${s}s`;
+    if (minutes > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
+          >
+            {formatCountdown()}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span>{fullDateTime}</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 const renderSubmittedCell = ({
   row,
@@ -72,51 +157,44 @@ const renderSubmittedCell = ({
     timeZoneName: 'short',
   });
 
-  const uid = row.original.uid;
-  const truncatedUid = uid ? `${uid.slice(0, 6)}...${uid.slice(-4)}` : '';
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (uid) {
-      await navigator.clipboard.writeText(uid);
-    }
-  };
-
   return (
-    <div>
-      <div className="whitespace-nowrap font-medium" title={exactLocalDisplay}>
-        {createdDisplay}
-      </div>
-      {uid && (
-        <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1">
-          <span className="font-mono">ID {truncatedUid}</span>
-          <button
-            type="button"
-            onClick={handleCopy}
-            className="p-0.5 hover:text-foreground transition-colors"
-            aria-label="Copy attestation ID"
-            title="Copy attestation ID"
-          >
-            <Copy className="h-3 w-3" />
-          </button>
-        </div>
-      )}
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="whitespace-nowrap text-muted-foreground cursor-default">
+            {createdDisplay}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span>{exactLocalDisplay}</span>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
 const renderPredictionCell = ({
   row,
+  conditionsMap: _conditionsMap,
 }: {
   row: { original: FormattedAttestation };
+  conditionsMap?: Record<string, ConditionData>;
 }) => {
   const { value } = row.original; // D18 format: percentage * 10^18
 
   // Convert D18 to percentage (0-100)
   const percentage = d18ToPercentage(value);
 
+  // Color based on probability: high (>=70) = green, low (<=30) = red, else default
+  let colorClass = 'text-ethena';
+  if (percentage >= 70) {
+    colorClass = 'text-yes';
+  } else if (percentage <= 30) {
+    colorClass = 'text-no';
+  }
+
   return (
-    <span className="font-mono text-ethena whitespace-nowrap">
+    <span className={`font-mono ${colorClass} whitespace-nowrap`}>
       {`${formatPercentChance(percentage / 100)} chance`}
     </span>
   );
@@ -150,6 +228,9 @@ const renderQuestionCell = ({
 
   // Build content element
   let content: React.ReactNode;
+  const categorySlug = conditionData?.categorySlug;
+  const color = getCategoryColor(categorySlug);
+
   if (conditionData && questionText) {
     content = (
       <ConditionTitleLink
@@ -158,7 +239,7 @@ const renderQuestionCell = ({
         title={questionText}
         endTime={conditionData.endTime}
         description={conditionData.description}
-        clampLines={null}
+        clampLines={1}
       />
     );
   } else if (conditionId) {
@@ -173,20 +254,15 @@ const renderQuestionCell = ({
     );
   }
 
-  const comment = (row.original.comment || '').trim();
-
   return (
-    <div className="space-y-1">
-      <h2 className="text-[17px] font-medium text-foreground leading-[1.35] tracking-[-0.01em] flex items-center gap-2">
-        {content}
-      </h2>
-      {comment.length > 0 ? (
-        <div className="text-xl leading-[1.5] text-foreground/90 tracking-[-0.005em]">
-          {comment}
-        </div>
-      ) : (
-        <div className="text-sm text-muted-foreground">No comment</div>
-      )}
+    <div className="text-sm font-medium text-foreground leading-snug flex items-center gap-2 max-w-[360px] min-w-0">
+      <MarketBadge
+        label={questionText || 'Unknown'}
+        size={24}
+        color={color}
+        categorySlug={categorySlug}
+      />
+      {content}
     </div>
   );
 };
@@ -254,46 +330,46 @@ const renderActionsCell = ({
   );
 };
 
-const renderResolutionCell = ({
-  row,
-  conditionsMap,
-}: {
-  row: { original: FormattedAttestation };
-  conditionsMap?: Record<string, ConditionData>;
-}) => {
-  const conditionId = row.original.conditionId;
+function EndsCell({ condition }: { condition?: ConditionData | null }) {
+  const nowMs = useSecondTick();
 
-  // Look up condition for settlement status
-  if (conditionId && conditionsMap) {
-    const condition = conditionsMap[conditionId.toLowerCase()];
-    if (condition) {
-      if (condition.settled) {
-        const isYes = condition.resolvedToYes === true;
-        return (
-          <Badge
-            variant="outline"
-            className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-              isYes
-                ? 'border-yes/40 bg-yes/10 text-yes'
-                : 'border-no/40 bg-no/10 text-no'
-            }`}
-          >
-            {isYes ? 'YES' : 'NO'}
-          </Badge>
-        );
-      }
-    }
+  if (!condition) return <span className="text-muted-foreground">—</span>;
+
+  if (condition.settled) {
+    const isYes = condition.resolvedToYes === true;
+    return (
+      <Badge
+        variant="outline"
+        className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+          isYes
+            ? 'border-yes/40 bg-yes/10 text-yes'
+            : 'border-no/40 bg-no/10 text-no'
+        }`}
+      >
+        RESOLVED {isYes ? 'YES' : 'NO'}
+      </Badge>
+    );
   }
 
-  return (
-    <Badge
-      variant="outline"
-      className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-    >
-      PENDING
-    </Badge>
-  );
-};
+  if (condition.endTime) {
+    const nowSec =
+      nowMs !== null ? Math.floor(nowMs / 1000) : Math.floor(Date.now() / 1000);
+    const isPastEnd = condition.endTime <= nowSec;
+    if (isPastEnd) {
+      return (
+        <Badge
+          variant="outline"
+          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+        >
+          PENDING RESOLUTION
+        </Badge>
+      );
+    }
+    return <CountdownCell endTime={condition.endTime} nowMs={nowMs} />;
+  }
+
+  return <span className="text-muted-foreground">—</span>;
+}
 
 const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
   // Filter state
@@ -357,16 +433,25 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             settled
             resolvedToYes
             resolver
+            category {
+              slug
+            }
           }
         }
       `;
+      type RawCondition = Omit<ConditionData, 'categorySlug'> & {
+        category?: { slug: string } | null;
+      };
       type Result = {
-        conditions: ConditionData[];
+        conditions: RawCondition[];
       };
       const res = await graphqlRequest<Result>(query, { ids: conditionIds });
       const map: Record<string, ConditionData> = {};
       for (const c of res.conditions || []) {
-        map[c.id.toLowerCase()] = c;
+        map[c.id.toLowerCase()] = {
+          ...c,
+          categorySlug: c.category?.slug ?? null,
+        };
       }
       return map;
     },
@@ -375,47 +460,9 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
   const columns: ColumnDef<FormattedAttestation>[] = React.useMemo(
     () => [
       {
-        id: 'rawTime',
-        accessorFn: (row) => Number(row.rawTime),
-        header: ({ column }) => (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
-            aria-sort={
-              column.getIsSorted() === false
-                ? 'none'
-                : column.getIsSorted() === 'asc'
-                  ? 'ascending'
-                  : 'descending'
-            }
-          >
-            Created
-            {column.getIsSorted() === 'asc' ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : column.getIsSorted() === 'desc' ? (
-              <ChevronDown className="h-4 w-4" />
-            ) : (
-              <span className="flex flex-col -my-2">
-                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
-                <ChevronDown className="h-3 w-3 opacity-50" />
-              </span>
-            )}
-          </Button>
-        ),
-        cell: (info) => (
-          <div className="whitespace-nowrap">
-            {renderSubmittedCell({ row: info.row })}
-          </div>
-        ),
-      },
-      {
         id: 'question',
         accessorFn: (row) => {
-          const comment = (row.comment || '').trim();
-          return comment.length > 0 ? comment : row.conditionId || '';
+          return row.conditionId || '';
         },
         header: ({ column }) => (
           <Button
@@ -453,6 +500,137 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }),
       },
       {
+        id: 'comment',
+        accessorFn: (row) => (row.comment || '').trim(),
+        header: () => <span className="text-sm font-medium">Comment</span>,
+        enableSorting: false,
+        cell: (info) => {
+          const comment = (info.row.original.comment || '').trim();
+          return comment.length > 0 ? (
+            <span className="text-base leading-snug text-foreground/90">
+              {comment}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          );
+        },
+      },
+      {
+        id: 'rawTime',
+        accessorFn: (row) => Number(row.rawTime),
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Forecasted
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: (info) => (
+          <div className="whitespace-nowrap">
+            {renderSubmittedCell({ row: info.row })}
+          </div>
+        ),
+      },
+      {
+        id: 'horizon',
+        accessorFn: (row) => {
+          const conditionId = row.conditionId;
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
+            if (condition?.endTime) {
+              return condition.endTime - Number(row.rawTime);
+            }
+          }
+          return 0;
+        },
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Horizon
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className="inline-flex cursor-help"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <CircleHelp className="w-3 h-3 opacity-80" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  side="top"
+                  className="max-w-xs text-xs whitespace-normal"
+                >
+                  Time from forecast submission to question resolution. Earlier
+                  forecasts are weighted more heavily in accuracy scoring.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: (info) => {
+          const conditionId = info.row.original.conditionId;
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
+            if (condition?.endTime) {
+              const createdDate = new Date(
+                Number(info.row.original.rawTime) * 1000
+              );
+              const endDate = new Date(condition.endTime * 1000);
+              return (
+                <span className="whitespace-nowrap text-muted-foreground">
+                  {formatDistanceStrict(createdDate, endDate)}
+                </span>
+              );
+            }
+          }
+          return <span className="text-muted-foreground">—</span>;
+        },
+      },
+      {
         id: 'value',
         accessorFn: (row) => row.value,
         header: ({ column }) => (
@@ -486,19 +664,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         cell: (info) =>
           renderPredictionCell({
             row: info.row,
+            conditionsMap,
           }),
       },
       {
-        id: 'resolution',
+        id: 'ends',
         accessorFn: (row) => {
           const conditionId = row.conditionId;
           if (conditionId && conditionsMap) {
             const condition = conditionsMap[conditionId.toLowerCase()];
-            if (condition?.settled) {
-              return condition.resolvedToYes ? 'Yes' : 'No';
-            }
+            if (condition?.endTime) return condition.endTime;
           }
-          return 'Pending';
+          return 0;
         },
         header: ({ column }) => (
           <Button
@@ -515,7 +692,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                   : 'descending'
             }
           >
-            Resolution
+            Ends
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -528,11 +705,14 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             )}
           </Button>
         ),
-        cell: (info) =>
-          renderResolutionCell({
-            row: info.row,
-            conditionsMap,
-          }),
+        cell: (info) => {
+          const conditionId = info.row.original.conditionId;
+          const condition =
+            conditionId && conditionsMap
+              ? conditionsMap[conditionId.toLowerCase()]
+              : undefined;
+          return <EndsCell condition={condition} />;
+        },
       },
       {
         id: 'actions',
@@ -681,17 +861,9 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     return content as string | number | null;
   };
 
-  if (isInitialLoading) {
-    return (
-      <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-        <Loader size={24} />
-      </div>
-    );
-  }
-
   return (
     <div>
-      <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
+      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.05]">
         {leftSlot}
         <div className="flex-1">
           <ForecastsTableFilters
@@ -700,24 +872,23 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           />
         </div>
       </div>
-      {hasNoData ? (
+      {isInitialLoading ? (
+        <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
+          <Loader size={24} />
+        </div>
+      ) : hasNoData ? (
         <EmptyTabState centered message="No forecasts found" />
       ) : filteredAttestations.length === 0 ? (
         <EmptyTabState centered message="No forecasts match your filters" />
       ) : (
         <>
           <div className="overflow-hidden bg-brand-black relative">
-            {(isLoading || isFetchingNextPage) && (
-              <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                <Loader size={12} />
-              </div>
-            )}
-            <Table>
+            <Table className="w-full table-auto">
               <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
-                    className="hover:!bg-background bg-background border-b border-border"
+                    className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
                   >
                     {headerGroup.headers.map((header) => {
                       const content = header.isPlaceholder
@@ -733,7 +904,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                           className={
                             header.column.id === 'actions'
                               ? 'text-right'
-                              : header.column.id === 'question'
+                              : header.column.id === 'comment'
                                 ? 'w-full'
                                 : undefined
                           }
@@ -751,42 +922,116 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                     <TableRow
                       key={row.id}
                       data-state={row.getIsSelected() && 'selected'}
-                      className="xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 hover:bg-muted/50"
+                      className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
                     >
-                      {row.getVisibleCells().map((cell) => {
-                        const content = flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        );
-                        const colId = cell.column.id;
-                        const mobileLabel =
-                          colId === 'value'
-                            ? 'Forecast'
-                            : colId === 'rawTime'
-                              ? 'Created'
-                              : undefined;
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                              colId === 'actions'
-                                ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
-                                : ''
-                            } ${colId === 'question' ? 'xl:w-full' : ''}`}
-                          >
-                            {mobileLabel ? (
-                              <div
-                                className={`text-xs text-muted-foreground xl:hidden ${
-                                  mobileLabel === 'Forecast' ? 'mb-1.5' : ''
-                                }`}
+                      {(() => {
+                        const cells = row.getVisibleCells();
+                        const pairedIds = new Set(['value', 'ends']);
+                        const result: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < cells.length) {
+                          const cell = cells[i];
+                          const colId = cell.column.id;
+
+                          // Pair forecast+resolution in a 2-col grid on mobile
+                          if (
+                            pairedIds.has(colId) &&
+                            i + 1 < cells.length &&
+                            pairedIds.has(cells[i + 1].column.id)
+                          ) {
+                            const next = cells[i + 1];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                colSpan={2}
+                                className="block xl:hidden px-0 py-0"
                               >
-                                {mobileLabel}
-                              </div>
-                            ) : null}
-                            {renderContent(content)}
-                          </TableCell>
-                        );
-                      })}
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="text-brand-white">
+                                    <div className="text-xs text-muted-foreground mb-1">
+                                      Forecast
+                                    </div>
+                                    {renderContent(
+                                      flexRender(
+                                        cell.column.columnDef.cell,
+                                        cell.getContext()
+                                      )
+                                    )}
+                                  </div>
+                                  <div className="text-brand-white">
+                                    <div className="text-xs text-muted-foreground mb-1">
+                                      Ends
+                                    </div>
+                                    {renderContent(
+                                      flexRender(
+                                        next.column.columnDef.cell,
+                                        next.getContext()
+                                      )
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            );
+                            // Desktop cells
+                            result.push(
+                              <TableCell
+                                key={`${cell.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {renderContent(
+                                  flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext()
+                                  )
+                                )}
+                              </TableCell>
+                            );
+                            result.push(
+                              <TableCell
+                                key={`${next.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {renderContent(
+                                  flexRender(
+                                    next.column.columnDef.cell,
+                                    next.getContext()
+                                  )
+                                )}
+                              </TableCell>
+                            );
+                            i += 2;
+                          } else {
+                            const content = flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            );
+                            const mobileLabelMap: Record<string, string> = {
+                              rawTime: 'Forecasted',
+                              horizon: 'Horizon',
+                            };
+                            const mobileLabel = mobileLabelMap[colId];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                className={`block xl:table-cell w-full xl:w-auto px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                  colId === 'actions'
+                                    ? 'text-left xl:text-right whitespace-nowrap xl:mt-0'
+                                    : ''
+                                } ${colId === 'comment' ? 'xl:w-full' : ''}`}
+                              >
+                                {mobileLabel ? (
+                                  <div className="text-xs text-muted-foreground xl:hidden">
+                                    {mobileLabel}
+                                  </div>
+                                ) : null}
+                                {renderContent(content)}
+                              </TableCell>
+                            );
+                            i++;
+                          }
+                        }
+                        return result;
+                      })()}
                     </TableRow>
                   ))
                 ) : (

@@ -29,7 +29,10 @@ function useProfileBalance(
       return { display: '0.00', tooltip: `0 ${effectiveSymbol}` };
     }
     return {
-      display: balance.toFixed(2),
+      display: balance.toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
       tooltip: `${balance.toLocaleString()} ${effectiveSymbol}`,
     };
   }, [balance, symbol, collateralSymbol]);
@@ -118,105 +121,109 @@ export default function ProfileQuickMetrics({
   const showPnl = !profitLoading && profit?.rank;
   const showAccuracy = !accuracyLoading && accuracy?.rank;
 
-  const metrics: {
-    label: string;
-    value: React.ReactNode;
-    sublabel?: string;
-  }[] = [];
+  type Metric = { label: string; value: React.ReactNode; sublabel?: string };
 
-  if (showPnl) {
-    metrics.push(
-      {
-        label: 'Realized PnL',
-        value: profitLoading ? '—' : <NumberDisplay value={pnlNumber} />,
-        sublabel: collateralSymbol,
-      },
-      {
-        label: 'Profit Rank',
-        value: profitLoading ? '—' : `#${profit?.rank}`,
-      }
-    );
-  }
-  if (showAccuracy) {
-    metrics.push(
-      {
-        label: 'Accuracy',
-        value: accValue,
-      },
-      {
-        label: 'Forecast Rank',
-        value: accuracyLoading ? '—' : `#${accuracy?.rank}`,
-      }
-    );
-  }
-  metrics.push(
-    {
+  // Box 1: Volume metrics (only if volume > 0)
+  const volumeMetrics: Metric[] = [];
+  if (volume.value > 0) {
+    if (showPnl) {
+      volumeMetrics.push(
+        {
+          label: 'Profit/Loss',
+          value: profitLoading ? '—' : <NumberDisplay value={pnlNumber} />,
+          sublabel: collateralSymbol,
+        },
+        {
+          label: 'Profit Rank',
+          value: profitLoading ? '—' : `#${profit?.rank}`,
+        }
+      );
+    }
+    volumeMetrics.push({
       label: 'Volume',
       value: volume.display,
       sublabel: collateralSymbol,
-    },
+    });
+  }
+
+  // Box 2: Forecasts + Accuracy (only if forecasts > 0)
+  const forecastMetrics: Metric[] = [];
+  if (forecastsCount > 0) {
+    if (showAccuracy) {
+      forecastMetrics.push(
+        {
+          label: 'Accuracy',
+          value: accValue,
+        },
+        {
+          label: 'Accuracy Rank',
+          value: accuracyLoading ? '—' : `#${accuracy?.rank}`,
+        }
+      );
+    }
+    forecastMetrics.push({
+      label: 'Forecasts',
+      value: forecastsCount.toLocaleString('en-US'),
+    });
+  }
+
+  // Box 3: Balance (always renders)
+  const balanceMetrics: Metric[] = [
     {
-      label: 'Balance',
+      label: 'Available Balance',
       value: balance.display,
       sublabel: collateralSymbol,
     },
-    ...(forecastsCount > 0
-      ? [{ label: 'Forecasts', value: forecastsCount }]
-      : []),
-    {
+  ];
+  if (!first.isNever) {
+    balanceMetrics.push({
       label: 'Started',
       value: first.display,
-    }
+    });
+  }
+
+  const boxes = [volumeMetrics, forecastMetrics, balanceMetrics].filter(
+    (b) => b.length > 0
+  );
+
+  const MetricItem = ({ m }: { m: Metric; size?: string; mdSize?: string }) => (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        {m.label}
+      </span>
+      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+        {m.value}
+        {m.sublabel ? (
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            {m.sublabel}
+          </span>
+        ) : null}
+      </span>
+    </div>
   );
 
   return (
-    <>
-      {/* Mobile: grid layout */}
-      <div className={`grid grid-cols-3 gap-4 md:hidden ${className ?? ''}`}>
-        {metrics.map((m) => (
-          <div key={m.label} className="flex flex-col gap-0.5">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              {m.label}
-            </span>
-            <span className="text-sm font-medium tabular-nums text-foreground">
-              {m.value}
-              {m.sublabel ? (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  {m.sublabel}
-                </span>
-              ) : null}
-            </span>
-          </div>
-        ))}
-      </div>
-      {/* Desktop: flex with separators */}
-      <div
-        className={`hidden md:flex flex-wrap items-center gap-6 ${className ?? ''}`}
-      >
-        {metrics.map((m, i) => (
-          <React.Fragment key={m.label}>
-            {i > 0 && (
-              <span
-                aria-hidden="true"
-                className="h-8 w-px bg-muted-foreground/30"
-              />
-            )}
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-                {m.label}
-              </span>
-              <span className="text-base font-medium tabular-nums text-foreground">
-                {m.value}
-                {m.sublabel ? (
-                  <span className="ml-1 text-xs font-normal text-muted-foreground">
-                    {m.sublabel}
-                  </span>
-                ) : null}
-              </span>
-            </div>
-          </React.Fragment>
-        ))}
-      </div>
-    </>
+    <div
+      className={`flex flex-col md:flex-row flex-wrap items-start gap-3 md:gap-6 ${className ?? ''}`}
+    >
+      {boxes.map((box, bi) => (
+        <div
+          key={bi}
+          className="flex items-center gap-4 md:gap-6 rounded-md border border-border bg-brand-black px-4 md:px-5 py-3"
+        >
+          {box.map((m, i) => (
+            <React.Fragment key={m.label}>
+              {i > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="h-8 w-px bg-muted-foreground/30"
+                />
+              )}
+              <MetricItem m={m} size="sm" mdSize="base" />
+            </React.Fragment>
+          ))}
+        </div>
+      ))}
+    </div>
   );
 }

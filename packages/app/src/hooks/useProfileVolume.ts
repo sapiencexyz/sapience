@@ -26,7 +26,13 @@ export function useProfileVolume(address?: string) {
       const volumeWei = BigInt(resp?.tradingVolumeByAddress || '0');
       const value = Number(formatUnits(volumeWei, 18));
 
-      return { value, display: value.toFixed(2) };
+      return {
+        value,
+        display: value.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }),
+      };
     },
   });
 

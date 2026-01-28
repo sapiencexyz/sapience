@@ -227,6 +227,35 @@ export default function PositionsTable({
         : sortId;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
+  // Map filter state to server-side params
+  const serverStatus = React.useMemo((): string | undefined => {
+    // UI statuses: active, won, lost
+    // Server statuses: active, settled, consolidated
+    // "active" maps directly; "won" and "lost" both map to "settled"
+    if (filters.status.length === 1) {
+      if (filters.status[0] === 'active') return 'active';
+      if (filters.status[0] === 'won' || filters.status[0] === 'lost')
+        return 'settled';
+    }
+    // If both won+lost selected (but not active), that's all settled
+    if (
+      filters.status.length === 2 &&
+      filters.status.includes('won') &&
+      filters.status.includes('lost')
+    ) {
+      return 'settled';
+    }
+    return undefined;
+  }, [filters.status]);
+
+  const serverEndsAtGte = React.useMemo((): number | undefined => {
+    // dateRange[0] >= 0 means "ends in the future"
+    if (filters.dateRange[0] >= 0) {
+      return Math.floor(Date.now() / 1000);
+    }
+    return undefined;
+  }, [filters.dateRange]);
+
   // Track what data we've already processed to avoid infinite loops
   const processedRef = React.useRef<{ skip: number; length: number } | null>(
     null
@@ -239,7 +268,7 @@ export default function PositionsTable({
     setSkip(0);
     setHasMore(true);
     processedRef.current = null;
-  }, [account, sorting, chainId]);
+  }, [account, sorting, chainId, serverStatus, serverEndsAtGte]);
 
   // Fetch total count
   const totalCount = useUserPositionsCount(String(account), chainId);
@@ -252,6 +281,8 @@ export default function PositionsTable({
     orderBy,
     orderDirection,
     chainId,
+    status: serverStatus,
+    endsAtGte: serverEndsAtGte,
   });
 
   React.useEffect(() => {
@@ -608,16 +639,18 @@ export default function PositionsTable({
     return positionRows;
   }, [data, viewer]);
 
-  // Apply client-side filtering
+  // Apply client-side filtering (only for filters not handled server-side)
   const filteredRows = React.useMemo(() => {
     let result = rows;
 
-    // Filter by status
+    // Filter by status (client-side only when server can't fully handle it)
+    // Server handles: single status, or won+lost combo (both map to "settled")
+    // Client still needed: to distinguish won vs lost when server returns "settled"
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((row) => filters.status.includes(row.status));
     }
 
-    // Filter by wager range
+    // Filter by wager range (server doesn't support this)
     if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
       result = result.filter((row) => {
         const viewerWagerWei =
@@ -633,19 +666,27 @@ export default function PositionsTable({
       });
     }
 
-    // Filter by date range (days from now based on endsAt)
+    // Filter by date range (client-side only when server can't handle it)
+    // Server handles: "ends in the future" (dateRange[0] >= 0) via endsAtGte
+    // Client still needed: upper bound filtering and "ended in the past" scenarios
     if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      const nowMs = Date.now();
-      result = result.filter((row) => {
-        const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
-        return (
-          daysFromNow >= filters.dateRange[0] &&
-          daysFromNow <= filters.dateRange[1]
-        );
-      });
+      // Skip client-side date filtering if server is handling "ends in the future"
+      // and there's no upper bound constraint
+      const serverHandlesDate =
+        filters.dateRange[0] >= 0 && filters.dateRange[1] === Infinity;
+      if (!serverHandlesDate) {
+        const nowMs = Date.now();
+        result = result.filter((row) => {
+          const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
+          return (
+            daysFromNow >= filters.dateRange[0] &&
+            daysFromNow <= filters.dateRange[1]
+          );
+        });
+      }
     }
 
-    // Filter by search term
+    // Filter by search term (server doesn't support this)
     if (filters.searchTerm.trim()) {
       const term = filters.searchTerm.toLowerCase();
       result = result.filter((row) => {
@@ -776,6 +817,7 @@ export default function PositionsTable({
                 isCounterparty={row.original.addressRole === 'counterparty'}
                 hasPythLeg={hasPythLeg}
                 createdAt={row.original.createdAt}
+                marketAddress={row.original.marketAddress}
               />
             </div>
           );
@@ -1182,24 +1224,23 @@ export default function PositionsTable({
                   isClaimPending && claimingTokenId === tokenIdToClaim;
 
                 return isOwnerConnected ? (
-                  <Button
-                    size="sm"
+                  <button
+                    type="button"
                     onClick={() => {
                       setClaimingTokenId(tokenIdToClaim);
                       burn(tokenIdToClaim, ZERO_REF_CODE);
                     }}
                     disabled={isClaimPending}
+                    className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                  </Button>
+                  </button>
                 ) : (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <span>
-                          <Button size="sm" variant="outline" disabled>
-                            Claim
-                          </Button>
+                        <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                          Claim
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1232,24 +1273,23 @@ export default function PositionsTable({
                 isClaimPending &&
                 claimingTokenId === row.original.tokenIdToClaim;
               return isOwnerConnected ? (
-                <Button
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => {
                     setClaimingTokenId(row.original.tokenIdToClaim!);
                     burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
                   }}
                   disabled={isClaimPending}
+                  className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                </Button>
+                </button>
               ) : (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>
-                        <Button size="sm" variant="outline" disabled>
-                          Claim
-                        </Button>
+                      <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                        Claim
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1371,7 +1411,7 @@ export default function PositionsTable({
         </div>
       ) : (
         <>
-          <div className="px-4 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.05]">
             {leftSlot}
             <div className="flex-1">
               <PositionsTableFilters
@@ -1382,8 +1422,6 @@ export default function PositionsTable({
           </div>
           {rows.length === 0 ? (
             <EmptyTabState centered message="No positions found" />
-          ) : filteredRows.length === 0 ? (
-            <EmptyTabState centered message="No positions match your filters" />
           ) : (
             <>
               <div className="overflow-hidden bg-brand-black relative">
@@ -1397,7 +1435,7 @@ export default function PositionsTable({
                     {table.getHeaderGroups().map((headerGroup) => (
                       <TableRow
                         key={headerGroup.id}
-                        className="hover:!bg-background bg-background border-b border-border"
+                        className="hover:!bg-white/[0.05] bg-white/[0.05] border-b border-border/60"
                       >
                         {headerGroup.headers.map((header) => (
                           <TableHead
@@ -1424,6 +1462,16 @@ export default function PositionsTable({
                     ))}
                   </TableHeader>
                   <TableBody>
+                    {filteredRows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={columns.length} className="p-0">
+                          <EmptyTabState
+                            centered
+                            message="No positions match your filters"
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
                     {table.getRowModel().rows.map((row) => (
                       <TableRow
                         key={row.id}
@@ -1521,7 +1569,7 @@ export default function PositionsTable({
                 </Table>
               </div>
               {/* Infinite scroll sentinel - triggers auto-load when visible */}
-              {hasMore && (
+              {hasMore && !(isLoading && rows.length > 0) && (
                 <div
                   ref={loadMoreRef}
                   className="flex items-center justify-center px-4 py-6 bg-brand-black"
