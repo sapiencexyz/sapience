@@ -129,6 +129,149 @@ export const eas: ChainAddressMap = {
   },
 } as const;
 
+// ============================================
+// V2 Contract Addresses
+// ============================================
+
+/**
+ * PredictionMarketEscrow (V2)
+ * Core escrow contract handling mint, settle, redeem, burn
+ * TODO: Update addresses after mainnet deployment
+ */
+export const predictionMarketEscrow: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketVault (V2)
+ * Passive liquidity vault for V2 protocol
+ * TODO: Update addresses after mainnet deployment
+ */
+export const predictionMarketVault: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PythConditionResolver (V2)
+ * Pyth oracle-based condition resolution
+ */
+export const pythConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * ManualConditionResolver (V2)
+ * Admin-controlled condition resolution (for testing/mocks)
+ */
+export const manualConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * LZConditionResolver (V2)
+ * LayerZero cross-chain condition resolution
+ */
+export const lzConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketBridge (V2)
+ * Bridge contract on source chain (Ethereal)
+ */
+export const predictionMarketBridge: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketBridgeRemote (V2)
+ * Bridge contract on remote chain (Arbitrum)
+ */
+export const predictionMarketBridgeRemote: ChainAddressMap = {
+  42161: {
+    // Arbitrum mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  421614: {
+    // Arbitrum Sepolia testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketTokenFactory (V2)
+ * CREATE3 factory for deterministic token addresses on remote chain
+ */
+export const predictionMarketTokenFactory: ChainAddressMap = {
+  42161: {
+    // Arbitrum mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  421614: {
+    // Arbitrum Sepolia testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+// Legacy exports
 export const contracts = {
   predictionMarket,
   predictionMarketLZConditionalTokensResolver,
@@ -139,5 +282,17 @@ export const contracts = {
   passiveLiquidityVault,
   collateralToken,
   eas,
+};
+
+// V2 exports
+export const v2Contracts = {
+  predictionMarketEscrow,
+  predictionMarketVault,
+  pythConditionResolver,
+  manualConditionResolver,
+  lzConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
 };
 
