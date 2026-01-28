@@ -21,6 +21,10 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
+import type { Address, Hex } from 'viem';
+import type { Pick as V2Pick } from '@sapience/sdk/types/v2';
+import { OutcomeSide } from '@sapience/sdk/types/v2';
+import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/positionFormUtils';
@@ -74,6 +78,11 @@ interface CreatePositionContextType {
   setIsPopoverOpen: (open: boolean) => void;
   // New properties for market data
   positionsWithMarketData: PositionWithMarketData[];
+  // V2 protocol helpers
+  /** Convert current selections to V2 Pick[] array */
+  getV2Picks: () => V2Pick[];
+  /** Compute V2 pickConfigId from current selections */
+  getV2PickConfigId: () => Hex | null;
 }
 
 export const CreatePositionContext = createContext<
@@ -252,6 +261,24 @@ export const CreatePositionProvider = ({
     setSelections([]);
   }, []);
 
+  // V2 helpers: convert selections to V2 Pick[] array
+  const getV2Picks = useCallback((): V2Pick[] => {
+    return selections
+      .filter((s) => s.resolverAddress) // Only include selections with resolver address
+      .map((s) => ({
+        conditionResolver: s.resolverAddress as Address,
+        conditionId: s.conditionId as Hex,
+        predictedOutcome: s.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+      }));
+  }, [selections]);
+
+  // V2 helper: compute pickConfigId from current selections
+  const getV2PickConfigId = useCallback((): Hex | null => {
+    const picks = getV2Picks();
+    if (picks.length === 0) return null;
+    return computePickConfigId(picks);
+  }, [getV2Picks]);
+
   const value: CreatePositionContextType = {
     createPositionEntries: singlePositions,
     singlePositions,
@@ -267,6 +294,8 @@ export const CreatePositionProvider = ({
     isPopoverOpen,
     setIsPopoverOpen,
     positionsWithMarketData,
+    getV2Picks,
+    getV2PickConfigId,
   };
 
   return (
