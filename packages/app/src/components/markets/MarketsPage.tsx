@@ -100,6 +100,7 @@ const MarketsPage = () => {
     openInterestRange: [0, Infinity],
     timeToResolutionRange: [0, Infinity], // Default to future markets only
     selectedCategories: [],
+    resolutionStatus: 'all',
   });
 
   // Sorting state - lifted here so backend can respect it during pagination

@@ -872,15 +872,81 @@ export default function MarketsDataTable({
     return { openInterestBounds, timeToResolutionBounds };
   }, []);
 
+  // Helper to check if a condition matches the resolution status filter
+  const matchesResolutionStatus = React.useCallback(
+    (
+      settled: boolean | undefined,
+      resolvedToYes: boolean | null | undefined
+    ): boolean => {
+      if (filters.resolutionStatus === 'all') return true;
+      switch (filters.resolutionStatus) {
+        case 'resolvedYes':
+          return settled === true && resolvedToYes === true;
+        case 'resolvedNo':
+          return settled === true && resolvedToYes === false;
+        case 'unresolved':
+          return settled !== true;
+        default:
+          return true;
+      }
+    },
+    [filters.resolutionStatus]
+  );
+
   // Build the top-level row model from unified questions
   // Backend handles sorting and interleaving - just map to our row format
+  // Resolution status filter is applied here with group flattening for partial matches
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    return questions
-      .map((item): TopLevelRow | null => {
-        if (item.questionType === 'group' && item.group) {
-          const group = item.group;
-          if (group.conditions.length === 0) return null;
+    const rows: TopLevelRow[] = [];
 
+    for (const item of questions) {
+      if (item.questionType === 'group' && item.group) {
+        const group = item.group;
+        if (group.conditions.length === 0) continue;
+
+        // Check if resolution filter is active
+        if (filters.resolutionStatus !== 'all') {
+          // Filter conditions within the group
+          const matchingConditions = group.conditions.filter((c) =>
+            matchesResolutionStatus(c.settled, c.resolvedToYes)
+          );
+
+          // If all conditions match, show group as normal
+          if (matchingConditions.length === group.conditions.length) {
+            // Compute aggregates for display
+            let openInterestWei = 0n;
+            let maxEndTime = 0;
+            for (const c of group.conditions) {
+              openInterestWei += BigInt(c.openInterest || '0');
+              if (c.endTime > maxEndTime) {
+                maxEndTime = c.endTime;
+              }
+            }
+
+            rows.push({
+              kind: 'group' as const,
+              id: `group-${group.id}`,
+              groupId: group.id,
+              name: group.name,
+              category: group.category,
+              conditions: group.conditions,
+              openInterestWei,
+              maxEndTime,
+            });
+          }
+          // If some match, show them as individual conditions (flatten)
+          else if (matchingConditions.length > 0) {
+            for (const c of matchingConditions) {
+              rows.push({
+                kind: 'condition' as const,
+                id: `condition-${c.id}`,
+                condition: groupConditionToConditionType(c),
+              });
+            }
+          }
+          // If none match, skip entirely
+        } else {
+          // No resolution filter - show group normally
           // Compute aggregates for display
           let openInterestWei = 0n;
           let maxEndTime = 0;
@@ -891,7 +957,7 @@ export default function MarketsDataTable({
             }
           }
 
-          return {
+          rows.push({
             kind: 'group' as const,
             id: `group-${group.id}`,
             groupId: group.id,
@@ -900,18 +966,27 @@ export default function MarketsDataTable({
             conditions: group.conditions,
             openInterestWei,
             maxEndTime,
-          };
-        } else if (item.questionType === 'condition' && item.condition) {
-          return {
+          });
+        }
+      } else if (item.questionType === 'condition' && item.condition) {
+        // Filter standalone conditions by resolution status
+        if (
+          matchesResolutionStatus(
+            item.condition.settled,
+            item.condition.resolvedToYes
+          )
+        ) {
+          rows.push({
             kind: 'condition' as const,
             id: `condition-${item.condition.id}`,
             condition: item.condition,
-          };
+          });
         }
-        return null;
-      })
-      .filter((row): row is TopLevelRow => row !== null);
-  }, [questions]);
+      }
+    }
+
+    return rows;
+  }, [questions, filters.resolutionStatus, matchesResolutionStatus]);
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(() => {
