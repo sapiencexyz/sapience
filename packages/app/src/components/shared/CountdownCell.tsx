@@ -8,14 +8,17 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { format } from 'date-fns';
 import { formatCountdown } from '~/lib/utils/formatCountdown';
+import { useSecondTick } from '~/hooks/useSecondTick';
 
-export default function CountdownCell({
-  endTime,
-  nowMs,
-}: {
-  endTime: number;
-  nowMs: number | null;
-}) {
+/**
+ * Live countdown to an end time, with a tooltip showing the full date.
+ * Manages its own per-second tick internally.
+ *
+ * @param endTime  Unix timestamp in **seconds**
+ */
+export default function CountdownCell({ endTime }: { endTime: number }) {
+  const nowMs = useSecondTick();
+
   const endMs = endTime * 1000;
   const date = new Date(endMs);
   const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");

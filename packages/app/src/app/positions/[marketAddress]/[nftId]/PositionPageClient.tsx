@@ -18,8 +18,9 @@ import {
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import CountdownTimer from './CountdownTimer';
+import CountdownCell from '~/components/shared/CountdownCell';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import { calculatePositionPnL } from '~/lib/utils/calculatePositionPnL';
 
 function positionToLegs(position: PositionData): Pick[] {
   return (position.predictions ?? []).map((pred) => ({
@@ -92,25 +93,20 @@ export default function PositionPageClient({
     : null;
   const endsAtMs = serverPosition.endsAt ? serverPosition.endsAt * 1000 : null;
 
-  // Compute PnL for settled positions (mirrors PositionsTable logic)
+  // Compute PnL for settled positions
   const isSettled =
     serverPosition.status === 'settled' ||
     serverPosition.status === 'consolidated';
-  const pnl = (() => {
-    if (
-      !isSettled ||
-      serverPosition.predictorWon === null ||
-      serverPosition.predictorWon === undefined
-    )
-      return null;
-    const viewerWon = isCounterparty
-      ? !serverPosition.predictorWon
-      : serverPosition.predictorWon;
-    const total = formatCollateral(serverPosition.totalCollateral);
-    if (viewerWon) return total - wager;
-    return -wager;
-  })();
-  const roi = pnl !== null && wager > 0 ? (pnl / wager) * 100 : null;
+  const pnlResult = calculatePositionPnL({
+    isSettled,
+    predictorWon: serverPosition.predictorWon,
+    isCounterparty,
+    predictorCollateral: serverPosition.predictorCollateral,
+    counterpartyCollateral: serverPosition.counterpartyCollateral,
+    totalCollateral: serverPosition.totalCollateral,
+  });
+  const pnl = pnlResult?.pnl ?? null;
+  const roi = pnlResult?.roi ?? null;
 
   return (
     <>
@@ -246,7 +242,7 @@ export default function PositionPageClient({
             </div>
             <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
               {endsAtMs && endsAtMs > Date.now() ? (
-                <CountdownTimer endsAtMs={endsAtMs} />
+                <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
               ) : createdAt ? (
                 <span title={createdAt.toLocaleString()}>
                   {createdAt.toLocaleDateString(undefined, {

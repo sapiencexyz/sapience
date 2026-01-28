@@ -1,4 +1,3 @@
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
   Table,
@@ -42,8 +41,7 @@ import { useUserForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
-import { useSecondTick } from '~/hooks/useSecondTick';
-import CountdownCell from '~/components/shared/CountdownCell';
+import ConditionStatus from '~/components/shared/ConditionStatus';
 
 interface ForecastsTableProps {
   attesterAddress: string;
@@ -262,54 +260,7 @@ const renderActionsCell = ({
   );
 };
 
-function EndsCell({
-  condition,
-  nowMs,
-}: {
-  condition?: ConditionData | null;
-  nowMs: number | null;
-}) {
-  if (!condition) return <span className="text-muted-foreground">—</span>;
-
-  if (condition.settled) {
-    const isYes = condition.resolvedToYes === true;
-    return (
-      <Badge
-        variant="outline"
-        className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-          isYes
-            ? 'border-yes/40 bg-yes/10 text-yes'
-            : 'border-no/40 bg-no/10 text-no'
-        }`}
-      >
-        RESOLVED {isYes ? 'YES' : 'NO'}
-      </Badge>
-    );
-  }
-
-  if (condition.endTime) {
-    const nowSec =
-      nowMs !== null ? Math.floor(nowMs / 1000) : Math.floor(Date.now() / 1000);
-    const isPastEnd = condition.endTime <= nowSec;
-    if (isPastEnd) {
-      return (
-        <Badge
-          variant="outline"
-          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-        >
-          PENDING RESOLUTION
-        </Badge>
-      );
-    }
-    return <CountdownCell endTime={condition.endTime} nowMs={nowMs} />;
-  }
-
-  return <span className="text-muted-foreground">—</span>;
-}
-
 const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
-  const nowMs = useSecondTick();
-
   // Filter state
   const [filters, setFilters] = React.useState<ForecastsFilterState>(
     getDefaultForecastsFilterState
@@ -633,7 +584,13 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             conditionId && conditionsMap
               ? conditionsMap[conditionId.toLowerCase()]
               : undefined;
-          return <EndsCell condition={condition} nowMs={nowMs} />;
+          return (
+            <ConditionStatus
+              settled={condition?.settled}
+              resolvedToYes={condition?.resolvedToYes}
+              endTime={condition?.endTime}
+            />
+          );
         },
       },
       {
@@ -646,7 +603,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           }),
       },
     ],
-    [conditionsMap, isConditionsLoading, nowMs]
+    [conditionsMap, isConditionsLoading]
   );
 
   // Apply client-side filtering

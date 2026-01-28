@@ -27,7 +27,6 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -37,6 +36,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import PicksSummary from '~/components/shared/PicksSummary';
+import CountdownCell from '~/components/shared/CountdownCell';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -54,70 +54,12 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import type { PythPrediction } from '@sapience/ui';
+import { calculatePositionPnLWei } from '~/lib/utils/calculatePositionPnL';
 import {
   PositionsTableFilters,
   getDefaultPositionsFilterState,
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
-
-function CountdownCell({ endsAtMs }: { endsAtMs: number }) {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const date = new Date(endsAtMs);
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a xxx");
-
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const diff = endsAtMs - nowMs;
-  const isPast = diff <= 0;
-
-  const formatCountdown = () => {
-    if (isPast) return 'Ended';
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-
-    if (days > 0) return `${days}d ${h}h ${m}m`;
-    if (hours > 0) return `${h}h ${m}m ${s}s`;
-    if (minutes > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-  };
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown()}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
 
 export default function PositionsTable({
   account,
@@ -523,23 +465,13 @@ export default function PositionsTable({
           p.totalCollateral &&
           role !== 'unknown'
         ) {
-          try {
-            const predictorCollateral = BigInt(p.predictorCollateral);
-            const counterpartyCollateral = BigInt(p.counterpartyCollateral);
-            const totalCollateral = BigInt(p.totalCollateral);
-
-            if (role === 'predictor') {
-              userPnL = p.predictorWon
-                ? (totalCollateral - predictorCollateral).toString()
-                : (-predictorCollateral).toString();
-            } else if (role === 'counterparty') {
-              userPnL = !p.predictorWon
-                ? (totalCollateral - counterpartyCollateral).toString()
-                : (-counterpartyCollateral).toString();
-            }
-          } catch (e) {
-            console.error('Error calculating position PnL:', e);
-          }
+          userPnL = calculatePositionPnLWei({
+            predictorWon: p.predictorWon,
+            isCounterparty: role === 'counterparty',
+            predictorCollateral: p.predictorCollateral,
+            counterpartyCollateral: p.counterpartyCollateral,
+            totalCollateral: p.totalCollateral,
+          });
         }
 
         // Choose positionId based on the role for this row.
@@ -1184,7 +1116,11 @@ export default function PositionsTable({
               row.original.status === 'active' &&
               row.original.endsAt > Date.now()
             ) {
-              return <CountdownCell endsAtMs={row.original.endsAt} />;
+              return (
+                <CountdownCell
+                  endTime={Math.floor(row.original.endsAt / 1000)}
+                />
+              );
             }
             if (
               row.original.status === 'active' &&

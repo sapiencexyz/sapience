@@ -7,10 +7,9 @@ import {
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import Link from 'next/link';
 import { PredictionChoiceBadge } from '@sapience/ui';
-import { Badge } from '@sapience/ui/components/ui/badge';
+import ResolutionBadge from '~/components/shared/ResolutionBadge';
 import { formatDistanceToNow } from 'date-fns';
-import { useSecondTick } from '~/hooks/useSecondTick';
-import CountdownCell from '~/components/shared/CountdownCell';
+import ConditionStatus from '~/components/shared/ConditionStatus';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -37,18 +36,7 @@ export interface PicksContentProps {
 
 function PickForecastCell({ leg }: { leg: Pick }) {
   if (leg.settled) {
-    return (
-      <Badge
-        variant="outline"
-        className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-          leg.resolvedToYes
-            ? 'border-yes/40 bg-yes/10 text-yes'
-            : 'border-no/40 bg-no/10 text-no'
-        }`}
-      >
-        RESOLVED {leg.resolvedToYes ? 'YES' : 'NO'}
-      </Badge>
-    );
+    return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
   }
 
   return (
@@ -61,6 +49,43 @@ function PickForecastCell({ leg }: { leg: Pick }) {
   );
 }
 
+function PickEndsCell({
+  leg,
+  positionStatus,
+}: {
+  leg: Pick;
+  positionStatus?: PicksContentProps['positionStatus'];
+}) {
+  if (!leg.endTime) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  // Leg not settled → standard condition lifecycle (countdown or pending)
+  if (!leg.settled) {
+    return <ConditionStatus settled={false} endTime={leg.endTime} />;
+  }
+
+  // Leg is settled — show position-level status if available
+  if (
+    positionStatus === 'won' ||
+    positionStatus === 'lost' ||
+    positionStatus === 'claimed'
+  ) {
+    return (
+      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+        {positionStatus === 'won'
+          ? 'Won'
+          : positionStatus === 'lost'
+            ? 'Lost'
+            : 'Claimed'}
+      </span>
+    );
+  }
+
+  // Fallback: show resolved status per leg
+  return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
+}
+
 export function PicksContent({
   legs,
   positionId,
@@ -70,8 +95,6 @@ export function PicksContent({
   hideHeader,
   positionStatus,
 }: PicksContentProps) {
-  const nowMs = useSecondTick();
-
   return (
     <>
       {!hideHeader && (
@@ -148,64 +171,7 @@ export function PicksContent({
                   />
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
-                  {leg.endTime ? (
-                    (() => {
-                      const nowSec =
-                        nowMs !== null
-                          ? Math.floor(nowMs / 1000)
-                          : Math.floor(Date.now() / 1000);
-                      const isPastEnd = leg.endTime <= nowSec;
-                      if (!isPastEnd) {
-                        return (
-                          <CountdownCell endTime={leg.endTime} nowMs={nowMs} />
-                        );
-                      }
-                      if (!leg.settled) {
-                        return (
-                          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                            Pending
-                          </span>
-                        );
-                      }
-                      // Leg is settled — show position-level status if available
-                      if (positionStatus === 'won') {
-                        return (
-                          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                            Won
-                          </span>
-                        );
-                      }
-                      if (positionStatus === 'lost') {
-                        return (
-                          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                            Lost
-                          </span>
-                        );
-                      }
-                      if (positionStatus === 'claimed') {
-                        return (
-                          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                            Claimed
-                          </span>
-                        );
-                      }
-                      // Fallback: show resolved status per leg
-                      return (
-                        <Badge
-                          variant="outline"
-                          className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-                            leg.resolvedToYes
-                              ? 'border-yes/40 bg-yes/10 text-yes'
-                              : 'border-no/40 bg-no/10 text-no'
-                          }`}
-                        >
-                          RESOLVED {leg.resolvedToYes ? 'YES' : 'NO'}
-                        </Badge>
-                      );
-                    })()
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  <PickEndsCell leg={leg} positionStatus={positionStatus} />
                 </td>
               </tr>
             ))}
