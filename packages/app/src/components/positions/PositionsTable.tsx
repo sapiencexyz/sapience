@@ -1047,7 +1047,7 @@ export default function PositionsTable({
                 Profit/Loss
               </div>
               <div
-                className={`whitespace-nowrap tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
                 <NumberDisplay
                   value={pnlValue}
@@ -1058,15 +1058,15 @@ export default function PositionsTable({
                 >
                   {symbol}
                 </span>
+                {viewerWager > 0 && (
+                  <span
+                    className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {roi >= 0 ? '+' : ''}
+                    {Math.round(roi).toLocaleString()}%
+                  </span>
+                )}
               </div>
-              {viewerWager > 0 && (
-                <div
-                  className={`absolute text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {roi >= 0 ? '+' : ''}
-                  {Math.round(roi).toLocaleString()}%
-                </div>
-              )}
             </div>
           );
         },
@@ -1275,7 +1275,7 @@ export default function PositionsTable({
         enableSorting: false,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-end">
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-start xl:justify-end">
             <button
               type="button"
               className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"

@@ -457,7 +457,7 @@ const Header = () => {
                 {/* Mobile Sidebar Trigger (outside blurred div, to the right) */}
                 <SidebarTrigger
                   id="nav-sidebar"
-                  className="xl:hidden mr-0.5 order-1 xl:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
+                  className="xl:hidden -mr-0.5 order-1 xl:order-2 flex items-center justify-center h-10 w-10 rounded-full border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
                 >
                   <Menu className="h-5 w-5" />
                 </SidebarTrigger>
