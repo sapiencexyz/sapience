@@ -1,25 +1,13 @@
 'use client';
 
 import { formatEther, type Address } from 'viem';
-import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
 import { useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import type { PositionData } from '~/app/og/_position-helpers';
 import type { Pick } from '~/components/shared/StackedPredictions';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import EnsAvatar from '~/components/shared/EnsAvatar';
-import NumberDisplay from '~/components/shared/NumberDisplay';
-import CountdownCell from '~/components/shared/CountdownCell';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import PositionSummary from '~/components/positions/PositionSummary';
 import { calculatePositionPnL } from '~/lib/utils/calculatePositionPnL';
 
 function positionToLegs(position: PositionData): Pick[] {
@@ -71,10 +59,13 @@ export default function PositionPageClient({
     );
   }
 
-  const isCounterparty = serverPosition.counterpartyNftTokenId === nftId;
+  // Determine if this NFT is the counterparty position (intrinsic to the NFT being viewed)
+  const isCounterpartyPosition =
+    serverPosition.counterpartyNftTokenId === nftId;
   const legs = positionToLegs(serverPosition);
 
-  if (isCounterparty) {
+  // Flip choices for counterparty position (they bet the opposite)
+  if (isCounterpartyPosition) {
     for (const leg of legs) {
       const upper = String(leg.choice || '').toUpperCase();
       if (upper === 'YES') leg.choice = 'NO';
@@ -82,8 +73,9 @@ export default function PositionPageClient({
     }
   }
 
+  // Wager is based on which position this NFT represents
   const wager = formatCollateral(
-    isCounterparty
+    isCounterpartyPosition
       ? serverPosition.counterpartyCollateral
       : serverPosition.predictorCollateral
   );
@@ -100,7 +92,7 @@ export default function PositionPageClient({
   const pnlResult = calculatePositionPnL({
     isSettled,
     predictorWon: serverPosition.predictorWon,
-    isCounterparty,
+    isCounterparty: isCounterpartyPosition,
     predictorCollateral: serverPosition.predictorCollateral,
     counterpartyCollateral: serverPosition.counterpartyCollateral,
     totalCollateral: serverPosition.totalCollateral,
@@ -108,226 +100,44 @@ export default function PositionPageClient({
   const pnl = pnlResult?.pnl ?? null;
   const roi = pnlResult?.roi ?? null;
 
+  // Determine if this position won
+  const positionWon =
+    isSettled &&
+    serverPosition.predictorWon !== null &&
+    serverPosition.predictorWon !== undefined &&
+    (isCounterpartyPosition
+      ? !serverPosition.predictorWon // Counterparty wins when predictor loses
+      : serverPosition.predictorWon); // Predictor wins when predictorWon is true
+
   return (
     <>
-      {/* Position summary header */}
-      <div className="mb-6 space-y-4">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <h2 className="eyebrow text-foreground">Position #{nftId}</h2>
-            {isCounterparty && <CounterpartyBadge />}
-          </div>
-          <div className="flex items-center gap-2">
-            {isSettled &&
-              serverPosition.predictorWon !== null &&
-              serverPosition.predictorWon !== undefined &&
-              (() => {
-                const viewerWon = isCounterparty
-                  ? !serverPosition.predictorWon
-                  : serverPosition.predictorWon;
-                return viewerWon ? (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 uppercase">
-                    Won
-                  </span>
-                ) : null;
-              })()}
-            {createdAt && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="whitespace-nowrap text-muted-foreground text-xs cursor-default">
-                      created{' '}
-                      {formatDistanceToNow(createdAt, { addSuffix: false })} ago
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <span>
-                      {createdAt.toLocaleString(undefined, {
-                        year: 'numeric',
-                        month: 'short',
-                        day: '2-digit',
-                        hour: 'numeric',
-                        minute: '2-digit',
-                        second: '2-digit',
-                        timeZoneName: 'short',
-                      })}
-                    </span>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-        </div>
-
-        {/* Row 1: Addresses */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Current Owner */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Current Owner
-            </div>
-            {currentOwner ? (
-              <Link
-                href={`/profile/${currentOwner}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={currentOwner as string}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={currentOwner as string} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
-
-          {/* Predictor */}
-          {serverPosition.predictor && (
-            <div className="space-y-1">
-              <div
-                className={`text-[11px] uppercase tracking-wider font-normal font-mono ${!isCounterparty ? 'text-accent-gold' : 'text-muted-foreground'}`}
-              >
-                Predictor
-              </div>
-              <Link
-                href={`/profile/${serverPosition.predictor}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={serverPosition.predictor}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={serverPosition.predictor} />
-              </Link>
-            </div>
-          )}
-
-          {/* Counterparty */}
-          {serverPosition.counterparty && (
-            <div className="space-y-1">
-              <div
-                className={`text-[11px] uppercase tracking-wider font-normal font-mono ${isCounterparty ? 'text-accent-gold' : 'text-muted-foreground'}`}
-              >
-                Counterparty
-              </div>
-              <Link
-                href={`/profile/${serverPosition.counterparty}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={serverPosition.counterparty}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={serverPosition.counterparty} />
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Row 2: Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* Ends / Created */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              {endsAtMs && endsAtMs > Date.now() ? 'Ends' : 'Created'}
-            </div>
-            <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-              {endsAtMs && endsAtMs > Date.now() ? (
-                <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
-              ) : createdAt ? (
-                <span title={createdAt.toLocaleString()}>
-                  {createdAt.toLocaleDateString(undefined, {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric',
-                  })}
-                </span>
-              ) : (
-                '—'
-              )}
-            </span>
-          </div>
-
-          {/* Wager */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Wager
-            </div>
-            <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-              <NumberDisplay value={wager} className="tabular-nums" />
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                USDe
-              </span>
-            </span>
-          </div>
-
-          {/* To Win */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              To Win
-            </div>
-            <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-              <NumberDisplay value={toWin} className="tabular-nums" />
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
-                USDe
-              </span>
-            </span>
-          </div>
-
-          {/* Profit/Loss */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Profit/Loss
-            </div>
-            {pnl !== null ? (
-              <span
-                className={`text-sm md:text-base font-medium tabular-nums items-baseline ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-              >
-                <NumberDisplay value={pnl} className="tabular-nums" />
-                <span
-                  className={`ml-1 text-xs font-normal ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  USDe
-                </span>
-                {roi !== null && wager > 0 && (
-                  <span
-                    className={`ml-1 text-[10px] tabular-nums font-mono ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                  >
-                    {roi >= 0 ? '+' : ''}
-                    {Math.round(roi).toLocaleString()}%
-                  </span>
-                )}
-              </span>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
-        </div>
+      <div className="mb-6">
+        <PositionSummary
+          positionId={nftId}
+          isCounterpartyPosition={isCounterpartyPosition}
+          createdAt={createdAt}
+          endsAtMs={endsAtMs}
+          wager={wager}
+          toWin={toWin}
+          pnl={pnl}
+          roi={roi}
+          isSettled={isSettled}
+          positionWon={positionWon}
+          currentOwner={currentOwner as string | undefined}
+          isOwnerLoading={isOwnerLoading}
+          predictorAddress={serverPosition.predictor}
+          counterpartyAddress={serverPosition.counterparty}
+        />
       </div>
 
       <PicksContent
         legs={legs}
         positionId={nftId}
-        isCounterparty={isCounterparty}
+        isCounterparty={isCounterpartyPosition}
         hideHeader
         positionStatus={
           isSettled
-            ? (
-                isCounterparty
-                  ? !serverPosition.predictorWon
-                  : serverPosition.predictorWon
-              )
+            ? positionWon
               ? isOwnerLoading
                 ? 'won'
                 : currentOwner
