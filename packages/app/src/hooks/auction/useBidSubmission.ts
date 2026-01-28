@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * @deprecated V1 bid submission hook. For V2 protocol, use useV2BidSubmission
+ * which supports the new MintApproval EIP-712 signature format.
+ */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import {

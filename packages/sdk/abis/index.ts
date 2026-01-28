@@ -18,13 +18,26 @@ import ManualConditionResolver from './ManualConditionResolver.json';
 import LZConditionResolver from './LZConditionResolver.json';
 import IConditionResolver from './IConditionResolver.json';
 
-// Legacy exports
+// Legacy (V1) exports - use V2 equivalents for new code
+
+/** @deprecated Use `predictionMarketEscrowAbi` for V2 protocol */
 export const predictionMarketAbi: Abi = (PredictionMarket as { abi: Abi }).abi;
+
+/** @deprecated Use `predictionMarketVaultAbi` for V2 protocol */
 export const liquidityVaultAbi: Abi = (LiquidityVault as { abi: Abi }).abi;
+
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
 export const umaResolverAbi: Abi = (UMAResolver as { abi: Abi }).abi;
+
 export const collateralTokenAbi: Abi = (CollateralToken as { abi: Abi }).abi;
+
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
 export const lzResolverAbi: Abi = (LZResolver as { abi: Abi }).abi;
+
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
 export const lzResolverUmaSideAbi: Abi = (LZResolverUmaSide as { abi: Abi }).abi;
+
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
 export const lzConditionalTokenResolverAbi: Abi = LZConditionalTokenResolver as Abi;
 
 // V2 exports

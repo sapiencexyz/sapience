@@ -1,3 +1,8 @@
+/**
+ * @deprecated V1 position submission hook. For V2 protocol, use the auction flow:
+ * - useV2AuctionStart to create auctions
+ * - The relayer handles mint execution after counterparty bid
+ */
 import { useCallback, useState, useMemo } from 'react';
 import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 

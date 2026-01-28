@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * @deprecated V1 single condition auction hook. For V2 protocol, use:
+ * - useV2AuctionStart for creating auctions with Pick[] array
+ * - V2 supports multi-pick parlays natively
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
