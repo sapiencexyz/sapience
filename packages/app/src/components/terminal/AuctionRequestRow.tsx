@@ -156,6 +156,12 @@ const AuctionRequestRow: React.FC<Props> = ({
       if (!Array.isArray(bids) || bids.length === 0) return null;
       const nowMs = Date.now();
       const active = bids.filter((b) => {
+        // Filter out zero address bids
+        if (
+          !b?.maker ||
+          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
+        )
+          return false;
         const deadlineSec = Number(b?.makerDeadline || 0);
         if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
         return deadlineSec * 1000 > nowMs;
