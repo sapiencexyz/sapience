@@ -411,7 +411,7 @@ const TerminalPageContent: React.FC = () => {
         const cond = renderConditionMap.get(o.marketId);
         return {
           id: o.marketId,
-          title: cond?.shortName ?? cond?.question ?? String(o.marketId),
+          title: cond?.question ?? String(o.marketId),
           categorySlug: cond?.category?.slug ?? null,
           // In the auction/taker view we show what the TAKER needs to win.
           // The taker wins if the maker is wrong on at least one leg, so we invert

@@ -102,10 +102,11 @@ export async function GET(req: Request) {
             }
 
             // Build legs from predictions
+            // OG images use shortName when available for more compact display
             if (position.predictions && position.predictions.length > 0) {
               rawLegs = position.predictions.map((pred: PositionPrediction) => {
                 const question =
-                  pred.condition?.question || pred.condition?.shortName || '';
+                  pred.condition?.shortName || pred.condition?.question || '';
                 const choice = pred.outcomeYes ? 'Yes' : 'No';
                 return `${question}|${choice}`;
               });

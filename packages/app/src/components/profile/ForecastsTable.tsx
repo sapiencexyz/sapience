@@ -151,7 +151,7 @@ const renderQuestionCell = ({
   if (conditionId && conditionsMap) {
     const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
-      questionText = condition.shortName || condition.question;
+      questionText = condition.question;
       conditionData = condition;
     }
   }
@@ -214,7 +214,7 @@ const renderActionsCell = ({
   if (conditionId && conditionsMap) {
     const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
-      questionText = condition.shortName || condition.question;
+      questionText = condition.question;
       if (condition.endTime) {
         resolutionDate = new Date(condition.endTime * 1000);
       }

@@ -137,6 +137,7 @@ export default function ShareAfterMarketsRedirect() {
         qp.set('symbol', 'testUSDe');
 
         // Add legs from predictions
+        // OG images use shortName when available for more compact display
         if (position.predictions && position.predictions.length > 0) {
           position.predictions.forEach((pred) => {
             const question =
@@ -214,8 +215,7 @@ export default function ShareAfterMarketsRedirect() {
       // Find the position using expected legs
       const resolved = filteredByNftId.find((p: Position) => {
         const positionLegs = (p.predictions || []).map((pred) => {
-          const question =
-            pred.condition?.shortName || pred.condition?.question || '';
+          const question = pred.condition?.question || '';
           const choice = pred.outcomeYes ? 'Yes' : 'No';
           return { question, choice };
         });

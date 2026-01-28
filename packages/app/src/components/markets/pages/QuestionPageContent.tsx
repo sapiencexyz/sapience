@@ -525,7 +525,8 @@ export default function QuestionPageContent({
   const renderPredictionFormCard = () => (
     <PredictionForm
       conditionId={conditionId}
-      question={data.shortName || data.question || ''}
+      question={data.question || ''}
+      shortName={data.shortName}
       categorySlug={data.category?.slug}
       resolverAddress={resolverAddress}
       chainId={chainId}
@@ -642,7 +643,7 @@ export default function QuestionPageContent({
               <ConditionForecastForm
                 conditionId={conditionId}
                 resolver={UMA_RESOLVER_ARBITRUM}
-                question={data.shortName || data.question || ''}
+                question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
                 onSuccess={handleForecastSuccess}
@@ -651,7 +652,7 @@ export default function QuestionPageContent({
           )}
           <Comments
             selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.shortName || data.question}
+            question={data.question}
             conditionId={conditionId}
             refetchTrigger={refetchTrigger}
           />
@@ -686,7 +687,7 @@ export default function QuestionPageContent({
         {/* Content area - Agent */}
         <TabsContent value="agent" className="m-0">
           <ResearchAgent
-            question={data.shortName || data.question}
+            question={data.question}
             endTime={data.endTime}
             description={data.description}
           />
@@ -751,7 +752,7 @@ export default function QuestionPageContent({
               <ConditionForecastForm
                 conditionId={conditionId}
                 resolver={UMA_RESOLVER_ARBITRUM}
-                question={data.shortName || data.question || ''}
+                question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
                 onSuccess={handleForecastSuccess}
@@ -760,7 +761,7 @@ export default function QuestionPageContent({
           )}
           <Comments
             selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.shortName || data.question}
+            question={data.question}
             conditionId={conditionId}
             refetchTrigger={refetchTrigger}
           />
@@ -793,7 +794,7 @@ export default function QuestionPageContent({
         </TabsContent>
         <TabsContent value="agent" className="m-0">
           <ResearchAgent
-            question={data.shortName || data.question}
+            question={data.question}
             endTime={data.endTime}
             description={data.description}
           />

@@ -112,7 +112,7 @@ function attestationToComment(
   if (!isZeroConditionId && conditionsMap && conditionId) {
     const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
-      question = condition.shortName || condition.question;
+      question = condition.question;
       category = condition.category?.slug || undefined;
       endTime = condition.endTime;
       description = condition.description;

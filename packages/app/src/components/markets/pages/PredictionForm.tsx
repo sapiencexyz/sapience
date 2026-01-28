@@ -14,8 +14,10 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 interface PredictionFormProps {
   /** The condition ID to bet on */
   conditionId: string;
-  /** The question text for context */
+  /** The full question text (used for tooltips and display when shortName not available) */
   question: string;
+  /** Short display name (used in CreatePositionForm) */
+  shortName?: string | null;
   /** Category slug for context */
   categorySlug?: string | null;
   /** Resolver address for canonical links */
@@ -46,6 +48,7 @@ interface PredictionFormProps {
 export default function PredictionForm({
   conditionId,
   question,
+  shortName,
   categorySlug,
   resolverAddress,
   chainId,
@@ -146,6 +149,7 @@ export default function PredictionForm({
     addSelection({
       conditionId,
       question,
+      shortName,
       prediction: true,
       categorySlug: categorySlug ?? undefined,
       resolverAddress,
@@ -155,6 +159,7 @@ export default function PredictionForm({
   }, [
     conditionId,
     question,
+    shortName,
     categorySlug,
     resolverAddress,
     endTime,
@@ -173,6 +178,7 @@ export default function PredictionForm({
     addSelection({
       conditionId,
       question,
+      shortName,
       prediction: false,
       categorySlug: categorySlug ?? undefined,
       resolverAddress,
@@ -182,6 +188,7 @@ export default function PredictionForm({
   }, [
     conditionId,
     question,
+    shortName,
     categorySlug,
     resolverAddress,
     endTime,
