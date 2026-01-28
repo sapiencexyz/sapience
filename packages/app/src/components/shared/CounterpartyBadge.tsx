@@ -34,13 +34,12 @@ export default function CounterpartyBadge({
           </span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <span
                 aria-label="Counterparty details"
-                className={`inline-flex items-center justify-center h-4 w-4 text-muted-foreground hover:text-foreground ${iconClassName ?? ''}`}
+                className={`inline-flex items-center justify-center h-4 w-4 text-muted-foreground hover:text-foreground cursor-help ${iconClassName ?? ''}`}
               >
                 <HelpCircle className="h-3.5 w-3.5" />
-              </button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>
               <p>{tooltip}</p>
