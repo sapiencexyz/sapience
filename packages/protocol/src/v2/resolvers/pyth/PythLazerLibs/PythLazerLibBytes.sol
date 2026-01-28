@@ -97,6 +97,16 @@ library PythLazerLibBytes {
         }
     }
 
+    function _setTriState(
+        PythLazerStructs.Feed memory feed,
+        uint8 propId,
+        uint8 state
+    ) private pure {
+        uint256 mask = ~(uint256(3) << (2 * propId));
+        feed.triStateMap =
+            (feed.triStateMap & mask) | (uint256(state) << (2 * propId));
+    }
+
     function _parsePayloadHeader(bytes memory payload)
         private
         pure
@@ -178,9 +188,9 @@ library PythLazerLibBytes {
                     pos += 8;
                     // Match upstream semantics: value==0 means ApplicableButMissing.
                     if (feed._price != 0) {
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.BestBidPrice
@@ -188,9 +198,9 @@ library PythLazerLibBytes {
                     feed._bestBidPrice = _readI64BE(payload, pos);
                     pos += 8;
                     if (feed._bestBidPrice != 0) {
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.BestAskPrice
@@ -198,9 +208,9 @@ library PythLazerLibBytes {
                     feed._bestAskPrice = _readI64BE(payload, pos);
                     pos += 8;
                     if (feed._bestAskPrice != 0) {
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.PublisherCount
@@ -208,24 +218,24 @@ library PythLazerLibBytes {
                     feed._publisherCount = _readU16BE(payload, pos);
                     pos += 2;
                     if (feed._publisherCount != 0) {
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (prop == PythLazerStructs.PriceFeedProperty.Exponent)
                 {
                     feed._exponent = _readI16BE(payload, pos);
                     pos += 2;
-                    feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                    _setTriState(feed, uint8(prop), 2);
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.Confidence
                 ) {
                     feed._confidence = _readU64BE(payload, pos);
                     pos += 8;
                     if (feed._confidence != 0) {
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.FundingRate
@@ -235,9 +245,9 @@ library PythLazerLibBytes {
                     if (exists != 0) {
                         feed._fundingRate = _readI64BE(payload, pos);
                         pos += 8;
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.FundingTimestamp
@@ -247,9 +257,9 @@ library PythLazerLibBytes {
                     if (exists != 0) {
                         feed._fundingTimestamp = _readU64BE(payload, pos);
                         pos += 8;
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop
@@ -261,9 +271,9 @@ library PythLazerLibBytes {
                     if (exists != 0) {
                         feed._fundingRateInterval = _readU64BE(payload, pos);
                         pos += 8;
-                        feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 2);
                     } else {
-                        feed.triStateMap |= (uint256(1) << (2 * uint8(prop)));
+                        _setTriState(feed, uint8(prop), 1);
                     }
                 } else if (
                     prop == PythLazerStructs.PriceFeedProperty.MarketSession
@@ -273,7 +283,7 @@ library PythLazerLibBytes {
                     if (v < 0 || v > 4) revert InvalidMarketSessionValue();
                     feed._marketSession =
                         PythLazerStructs.MarketSession(uint8(uint16(v)));
-                    feed.triStateMap |= (uint256(2) << (2 * uint8(prop)));
+                    _setTriState(feed, uint8(prop), 2);
                 } else {
                     // Should be unreachable due to enum bound check
                     revert UnknownProperty();
