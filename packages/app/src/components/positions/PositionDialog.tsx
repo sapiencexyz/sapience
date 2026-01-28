@@ -35,40 +35,29 @@ export default function PositionDialog({
 
   if (!position) return null;
 
-  const hasPythLeg = position.legs.some((leg) => leg.source === 'pyth');
-  const isCounterparty = position.addressRole === 'counterparty';
+  const isCounterpartyPosition = position.isCounterpartyPosition;
 
-  const viewerWagerWei =
-    position.addressRole === 'predictor'
-      ? (position.predictorCollateralWei ?? 0n)
-      : position.addressRole === 'counterparty'
-        ? (position.counterpartyCollateralWei ?? 0n)
-        : (position.predictorCollateralWei ??
-          position.counterpartyCollateralWei ??
-          0n);
-  const wager = Number(formatEther(viewerWagerWei));
+  const wager = Number(formatEther(position.wagerWei));
   const toWin = Number(formatEther(position.totalPayoutWei || 0n));
 
   const isSettled = position.status !== 'active';
-  const viewerLostFromDb =
-    position.allConditionsSettled &&
-    (position.addressRole === 'predictor'
-      ? position.predictorWonFromDb === false
-      : position.addressRole === 'counterparty'
-        ? position.predictorWonFromDb === true
-        : false);
-  const viewerWonFromDb =
-    position.allConditionsSettled &&
-    (position.addressRole === 'predictor'
-      ? position.predictorWonFromDb === true
-      : position.addressRole === 'counterparty'
-        ? position.predictorWonFromDb === false
-        : false);
 
-  const showPnl = isSettled || viewerLostFromDb;
-  const pnlValue = viewerLostFromDb
+  // Determine if this position lost/won based on settlement data
+  const positionLostFromDb =
+    position.allConditionsSettled &&
+    (isCounterpartyPosition
+      ? position.predictorWonFromDb === true // Counterparty loses when predictor wins
+      : position.predictorWonFromDb === false); // Predictor loses when predictorWon is false
+  const positionWonFromDb =
+    position.allConditionsSettled &&
+    (isCounterpartyPosition
+      ? position.predictorWonFromDb === false // Counterparty wins when predictor loses
+      : position.predictorWonFromDb === true); // Predictor wins when predictorWon is true
+
+  const showPnl = isSettled || positionLostFromDb;
+  const pnlValue = positionLostFromDb
     ? -wager
-    : Number(formatEther(BigInt(position.userPnL || '0')));
+    : Number(formatEther(BigInt(position.pnlWei || '0')));
   const roi = wager > 0 ? (pnlValue / wager) * 100 : 0;
 
   const positionUrl = `/positions/${position.marketAddress}/${position.positionId}`;
@@ -82,8 +71,8 @@ export default function PositionDialog({
     | 'active' => {
     if (position.status === 'won') return 'won';
     if (position.status === 'lost') return 'lost';
-    if (viewerLostFromDb) return 'lost';
-    if (viewerWonFromDb) return 'won';
+    if (positionLostFromDb) return 'lost';
+    if (positionWonFromDb) return 'won';
     if (position.endsAt <= Date.now()) return 'pending';
     return 'active';
   };
@@ -93,8 +82,7 @@ export default function PositionDialog({
       <DialogContent className="sm:max-w-2xl">
         <PositionSummary
           positionId={position.positionId}
-          isCounterparty={isCounterparty}
-          hasPythLeg={hasPythLeg}
+          isCounterpartyPosition={isCounterpartyPosition}
           createdAt={createdAt}
           endsAtMs={position.endsAt}
           wager={wager}
@@ -102,7 +90,7 @@ export default function PositionDialog({
           pnl={showPnl ? pnlValue : null}
           roi={showPnl ? roi : null}
           isSettled={isSettled}
-          viewerWon={position.status === 'won'}
+          positionWon={position.status === 'won' || positionWonFromDb}
           collateralSymbol={collateralSymbol}
           positionUrl={positionUrl}
           currentOwner={currentOwner as string | undefined}
@@ -115,8 +103,7 @@ export default function PositionDialog({
         <PicksContent
           legs={position.legs}
           positionId={position.positionId}
-          isCounterparty={isCounterparty}
-          hasPythLeg={hasPythLeg}
+          isCounterparty={isCounterpartyPosition}
           hideHeader
           positionStatus={getPositionStatus()}
         />

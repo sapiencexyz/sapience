@@ -59,10 +59,13 @@ export default function PositionPageClient({
     );
   }
 
-  const isCounterparty = serverPosition.counterpartyNftTokenId === nftId;
+  // Determine if this NFT is the counterparty position (intrinsic to the NFT being viewed)
+  const isCounterpartyPosition =
+    serverPosition.counterpartyNftTokenId === nftId;
   const legs = positionToLegs(serverPosition);
 
-  if (isCounterparty) {
+  // Flip choices for counterparty position (they bet the opposite)
+  if (isCounterpartyPosition) {
     for (const leg of legs) {
       const upper = String(leg.choice || '').toUpperCase();
       if (upper === 'YES') leg.choice = 'NO';
@@ -70,8 +73,9 @@ export default function PositionPageClient({
     }
   }
 
+  // Wager is based on which position this NFT represents
   const wager = formatCollateral(
-    isCounterparty
+    isCounterpartyPosition
       ? serverPosition.counterpartyCollateral
       : serverPosition.predictorCollateral
   );
@@ -88,7 +92,7 @@ export default function PositionPageClient({
   const pnlResult = calculatePositionPnL({
     isSettled,
     predictorWon: serverPosition.predictorWon,
-    isCounterparty,
+    isCounterparty: isCounterpartyPosition,
     predictorCollateral: serverPosition.predictorCollateral,
     counterpartyCollateral: serverPosition.counterpartyCollateral,
     totalCollateral: serverPosition.totalCollateral,
@@ -96,20 +100,21 @@ export default function PositionPageClient({
   const pnl = pnlResult?.pnl ?? null;
   const roi = pnlResult?.roi ?? null;
 
-  const viewerWon =
+  // Determine if this position won
+  const positionWon =
     isSettled &&
     serverPosition.predictorWon !== null &&
     serverPosition.predictorWon !== undefined &&
-    (isCounterparty
-      ? !serverPosition.predictorWon
-      : serverPosition.predictorWon);
+    (isCounterpartyPosition
+      ? !serverPosition.predictorWon // Counterparty wins when predictor loses
+      : serverPosition.predictorWon); // Predictor wins when predictorWon is true
 
   return (
     <>
       <div className="mb-6">
         <PositionSummary
           positionId={nftId}
-          isCounterparty={isCounterparty}
+          isCounterpartyPosition={isCounterpartyPosition}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
           wager={wager}
@@ -117,7 +122,7 @@ export default function PositionPageClient({
           pnl={pnl}
           roi={roi}
           isSettled={isSettled}
-          viewerWon={viewerWon}
+          positionWon={positionWon}
           currentOwner={currentOwner as string | undefined}
           isOwnerLoading={isOwnerLoading}
           predictorAddress={serverPosition.predictor}
@@ -128,15 +133,11 @@ export default function PositionPageClient({
       <PicksContent
         legs={legs}
         positionId={nftId}
-        isCounterparty={isCounterparty}
+        isCounterparty={isCounterpartyPosition}
         hideHeader
         positionStatus={
           isSettled
-            ? (
-                isCounterparty
-                  ? !serverPosition.predictorWon
-                  : serverPosition.predictorWon
-              )
+            ? positionWon
               ? isOwnerLoading
                 ? 'won'
                 : currentOwner

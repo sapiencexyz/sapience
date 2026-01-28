@@ -18,8 +18,8 @@ import Loader from '~/components/shared/Loader';
 
 export interface PositionSummaryProps {
   positionId: string | number;
-  isCounterparty?: boolean;
-  hasPythLeg?: boolean;
+  /** Whether this is a counterparty position (as opposed to predictor position) */
+  isCounterpartyPosition?: boolean;
   createdAt: Date | null;
   endsAtMs: number | null;
   wager: number;
@@ -27,7 +27,8 @@ export interface PositionSummaryProps {
   pnl: number | null;
   roi: number | null;
   isSettled: boolean;
-  viewerWon?: boolean;
+  /** Whether this position won */
+  positionWon?: boolean;
   collateralSymbol?: string;
   /** Link to the full position page. If provided, shows an external link icon. */
   positionUrl?: string;
@@ -42,8 +43,7 @@ export interface PositionSummaryProps {
 
 export default function PositionSummary({
   positionId,
-  isCounterparty,
-  hasPythLeg,
+  isCounterpartyPosition,
   createdAt,
   endsAtMs,
   wager,
@@ -51,7 +51,7 @@ export default function PositionSummary({
   pnl,
   roi,
   isSettled,
-  viewerWon,
+  positionWon,
   collateralSymbol = 'USDe',
   positionUrl,
   currentOwner,
@@ -83,11 +83,11 @@ export default function PositionSummary({
               <ExternalLink className="h-4 w-4" />
             </Link>
           )}
-          {isCounterparty && !hasPythLeg && <CounterpartyBadge />}
+          {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
         {/* Right group: Won badge, created time */}
         <div className="flex items-center gap-2">
-          {isSettled && viewerWon && (
+          {isSettled && positionWon && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 uppercase">
               Won
             </span>
