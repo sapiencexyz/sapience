@@ -74,6 +74,12 @@ const BestBid: React.FC<BestBidProps> = ({
   const topUnexpiredBid = useMemo(() => {
     try {
       for (const b of sortedBids || []) {
+        // Skip zero address bids
+        if (
+          !b?.maker ||
+          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
+        )
+          continue;
         const deadlineSec = Number(b?.makerDeadline || 0);
         const ms =
           Number.isFinite(deadlineSec) && deadlineSec > 0
@@ -445,6 +451,12 @@ const AuctionRequestInfo: React.FC<Props> = ({
     try {
       if (!Array.isArray(bids) || bids.length === 0) return null as any;
       const candidates = bids.filter((b) => {
+        // Filter out zero address bids
+        if (
+          !b?.maker ||
+          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
+        )
+          return false;
         const deadlineSec = Number(b?.makerDeadline || 0);
         if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return true;
         return deadlineSec * 1000 > now;
