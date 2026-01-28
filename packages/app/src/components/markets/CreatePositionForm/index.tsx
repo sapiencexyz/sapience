@@ -122,7 +122,6 @@ const CreatePositionFormInner = ({
   const {
     progressState,
     startSubmission,
-    markTxSent,
     markReceiptReceived,
     markPositionIndexed,
     reset: resetProgress,
@@ -622,8 +621,8 @@ const CreatePositionFormInner = ({
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
-      onTxSent: markTxSent,
-      onReceiptConfirmed: markReceiptReceived,
+      onTxSent: markReceiptReceived, // Skip CONFIRMING, go directly to INDEXING
+      onReceiptConfirmed: markReceiptReceived, // Keep for safety (both trigger INDEXING)
     },
   });
 
