@@ -17,7 +17,7 @@ export default function CollateralBalance({
   chainId,
 }: CollateralBalanceProps) {
   const { address: accountAddress, isConnected } = useAccount();
-  const { effectiveAddress, isUsingSmartAccount } = useSession();
+  const { effectiveAddress } = useSession();
 
   const {
     balance: numericBalance,
@@ -57,16 +57,12 @@ export default function CollateralBalance({
 
   const isReady = hasValidBalance;
 
-  // Label to indicate which account's balance is being shown
-  const balanceLabel = isUsingSmartAccount ? 'Sapience' : 'Wallet';
-
   return (
     <div
       className={`flex items-center space-x-2 transition-opacity duration-300 ${
         isReady ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      <span className="text-xs text-muted-foreground">{balanceLabel}</span>
       {onSetWagerAmount && (
         <>
           <Button
