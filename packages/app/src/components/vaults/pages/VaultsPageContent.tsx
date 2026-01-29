@@ -716,7 +716,8 @@ const VaultsPageContent = () => {
 
   const isWhitelisted =
     DEPOSIT_WHITELIST.length === 0 ||
-    (address && DEPOSIT_WHITELIST.includes(address.toLowerCase() as `0x${string}`));
+    (address &&
+      DEPOSIT_WHITELIST.includes(address.toLowerCase() as `0x${string}`));
 
   const utilizationDisplay = useMemo(() => {
     try {

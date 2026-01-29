@@ -122,7 +122,6 @@ const CreatePositionFormInner = ({
   const {
     progressState,
     startSubmission,
-    markTxSent,
     markReceiptReceived,
     markPositionIndexed,
     reset: resetProgress,
@@ -137,15 +136,16 @@ const CreatePositionFormInner = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserPositions({
-    address: effectiveAddress
-      ? String(effectiveAddress).toLowerCase()
-      : undefined,
-    chainId: positionChainId,
-    take: 1, // Only need the latest one
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
+  const { data: userPositions, refetch: refetchUserPositions } =
+    useUserPositions({
+      address: effectiveAddress
+        ? String(effectiveAddress).toLowerCase()
+        : undefined,
+      chainId: positionChainId,
+      take: 1, // Only need the latest one
+      orderBy: 'mintedAt',
+      orderDirection: 'desc',
+    });
 
   const {
     bids: rawBids,
@@ -640,8 +640,8 @@ const CreatePositionFormInner = ({
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
-      onTxSent: markTxSent,
-      onReceiptConfirmed: markReceiptReceived,
+      onTxSent: markReceiptReceived, // Skip CONFIRMING, go directly to INDEXING
+      onReceiptConfirmed: markReceiptReceived, // Keep for safety (both trigger INDEXING)
     },
   });
 
@@ -803,6 +803,13 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
+  // Handle position indexed - mark complete and refetch positions for accurate lastNftId on next trade
+  const handlePositionIndexed = useCallback(() => {
+    markPositionIndexed();
+    // Refetch positions so next trade has correct lastNftId
+    refetchUserPositions();
+  }, [markPositionIndexed, refetchUserPositions]);
+
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
       wagerAmount: string;
@@ -839,7 +846,7 @@ const CreatePositionFormInner = ({
       expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
       progressState={progressState}
-      onPositionIndexed={markPositionIndexed}
+      onPositionIndexed={handlePositionIndexed}
     />
   );
 
