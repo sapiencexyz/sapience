@@ -310,10 +310,16 @@ router.post('/claim', async (req: Request, res: Response) => {
     }
 
     // Check if it's an admin code first
+    console.log('[DEBUG] Looking for admin code with hash:', codeHash);
     const adminCode = await prisma.referralCode.findFirst({
       where: { codeHash },
       include: { _count: { select: { claimedBy: true } } },
     });
+    console.log('[DEBUG] Admin code found:', adminCode ? adminCode.code : 'NOT FOUND');
+
+    // Also log all existing codes for debugging
+    const allCodes = await prisma.referralCode.findMany({ select: { code: true, codeHash: true } });
+    console.log('[DEBUG] All codes in DB:', allCodes);
 
     if (adminCode) {
       // Validate: isActive, not expired, under capacity

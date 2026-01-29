@@ -22,6 +22,7 @@ import { useState } from 'react';
 
 import RFQTab from './RFQTab';
 import ConditionGroupsTab from './ConditionGroupsTab';
+import ReferralCodesTab from './ReferralCodesTab';
 import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
@@ -133,6 +134,9 @@ const Admin = () => {
   // Condition Groups state
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupCsvImportOpen, setGroupCsvImportOpen] = useState(false);
+
+  // Referral Codes state
+  const [createReferralCodeOpen, setCreateReferralCodeOpen] = useState(false);
 
   const isHttpUrl = (value: string) => {
     try {
@@ -278,6 +282,7 @@ const Admin = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="conditions">Conditions</TabsTrigger>
           <TabsTrigger value="groups">Condition Groups</TabsTrigger>
+          <TabsTrigger value="referral-codes">Referral Codes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="conditions">
@@ -326,6 +331,22 @@ const Admin = () => {
                   New Group
                 </Button>
               </>
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="referral-codes">
+          <ReferralCodesTab
+            createOpen={createReferralCodeOpen}
+            setCreateOpen={setCreateReferralCodeOpen}
+            actionButtons={
+              <Button
+                size="sm"
+                onClick={() => setCreateReferralCodeOpen(true)}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                New Referral Code
+              </Button>
             }
           />
         </TabsContent>

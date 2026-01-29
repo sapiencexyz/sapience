@@ -2492,6 +2492,88 @@ export type Question = {
   questionType: Scalars['String']['output'];
 };
 
+/** Admin-managed referral codes for campaigns */
+export type ReferralCode = {
+  __typename?: 'ReferralCode';
+  _count?: Maybe<ReferralCodeCount>;
+  /** Users who claimed this code */
+  claimedBy: Array<User>;
+  /** The plaintext code (stored for admin convenience) */
+  code: Scalars['String']['output'];
+  /** keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex */
+  codeHash: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  /** Wallet address of admin who created it */
+  createdBy: Scalars['String']['output'];
+  /** Optional description (e.g., "CryptoTwitter Campaign Q1 2026") */
+  description?: Maybe<Scalars['String']['output']>;
+  /** Optional expiration (Unix timestamp) */
+  expiresAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  /** Whether code is currently active */
+  isActive: Scalars['Boolean']['output'];
+  /** Maximum claims allowed (0 = unlimited) */
+  maxClaims: Scalars['Int']['output'];
+  updatedAt: Scalars['DateTimeISO']['output'];
+};
+
+
+/** Admin-managed referral codes for campaigns */
+export type ReferralCodeClaimedByArgs = {
+  cursor?: InputMaybe<UserWhereUniqueInput>;
+  distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<UserOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<UserWhereInput>;
+};
+
+export type ReferralCodeCount = {
+  __typename?: 'ReferralCodeCount';
+  claimedBy: Scalars['Int']['output'];
+};
+
+
+export type ReferralCodeCountClaimedByArgs = {
+  where?: InputMaybe<UserWhereInput>;
+};
+
+export type ReferralCodeNullableRelationFilter = {
+  is?: InputMaybe<ReferralCodeWhereInput>;
+  isNot?: InputMaybe<ReferralCodeWhereInput>;
+};
+
+export type ReferralCodeOrderByWithRelationInput = {
+  claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
+  code?: InputMaybe<SortOrder>;
+  codeHash?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  createdBy?: InputMaybe<SortOrder>;
+  description?: InputMaybe<SortOrderInput>;
+  expiresAt?: InputMaybe<SortOrderInput>;
+  id?: InputMaybe<SortOrder>;
+  isActive?: InputMaybe<SortOrder>;
+  maxClaims?: InputMaybe<SortOrder>;
+  updatedAt?: InputMaybe<SortOrder>;
+};
+
+export type ReferralCodeWhereInput = {
+  AND?: InputMaybe<Array<ReferralCodeWhereInput>>;
+  NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
+  OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
+  claimedBy?: InputMaybe<UserListRelationFilter>;
+  code?: InputMaybe<StringFilter>;
+  codeHash?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  createdBy?: InputMaybe<StringFilter>;
+  description?: InputMaybe<StringNullableFilter>;
+  expiresAt?: InputMaybe<IntNullableFilter>;
+  id?: InputMaybe<IntFilter>;
+  isActive?: InputMaybe<BoolFilter>;
+  maxClaims?: InputMaybe<IntFilter>;
+  updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
 export type SortOrder =
   | 'asc'
   | 'desc';
@@ -2595,6 +2677,9 @@ export type User = {
   refCodeHash?: Maybe<Scalars['String']['output']>;
   referrals: Array<User>;
   referredBy?: Maybe<User>;
+  referredByCode?: Maybe<ReferralCode>;
+  /** Admin referral code that referred this user (mutually exclusive with referredById) */
+  referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
 };
@@ -2622,16 +2707,27 @@ export type UserReferredByArgs = {
   where?: InputMaybe<UserWhereInput>;
 };
 
+
+/**
+ * Application-level user record, keyed by wallet address,
+ * used for referrals and other per-wallet metadata.
+ */
+export type UserReferredByCodeArgs = {
+  where?: InputMaybe<ReferralCodeWhereInput>;
+};
+
 export type UserAvgAggregate = {
   __typename?: 'UserAvgAggregate';
   id?: Maybe<Scalars['Float']['output']>;
   maxReferrals?: Maybe<Scalars['Float']['output']>;
+  referredByCodeId?: Maybe<Scalars['Float']['output']>;
   referredById?: Maybe<Scalars['Float']['output']>;
 };
 
 export type UserAvgOrderByAggregateInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
+  referredByCodeId?: InputMaybe<SortOrder>;
   referredById?: InputMaybe<SortOrder>;
 };
 
@@ -2653,6 +2749,7 @@ export type UserCountAggregate = {
   id: Scalars['Int']['output'];
   maxReferrals: Scalars['Int']['output'];
   refCodeHash: Scalars['Int']['output'];
+  referredByCodeId: Scalars['Int']['output'];
   referredById: Scalars['Int']['output'];
   updatedAt: Scalars['Int']['output'];
 };
@@ -2663,6 +2760,7 @@ export type UserCountOrderByAggregateInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
   refCodeHash?: InputMaybe<SortOrder>;
+  referredByCodeId?: InputMaybe<SortOrder>;
   referredById?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2679,6 +2777,7 @@ export type UserGroupBy = {
   id: Scalars['Int']['output'];
   maxReferrals: Scalars['Int']['output'];
   refCodeHash?: Maybe<Scalars['String']['output']>;
+  referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
 };
@@ -2696,6 +2795,7 @@ export type UserMaxAggregate = {
   id?: Maybe<Scalars['Int']['output']>;
   maxReferrals?: Maybe<Scalars['Int']['output']>;
   refCodeHash?: Maybe<Scalars['String']['output']>;
+  referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
   updatedAt?: Maybe<Scalars['DateTimeISO']['output']>;
 };
@@ -2706,6 +2806,7 @@ export type UserMaxOrderByAggregateInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
   refCodeHash?: InputMaybe<SortOrder>;
+  referredByCodeId?: InputMaybe<SortOrder>;
   referredById?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2717,6 +2818,7 @@ export type UserMinAggregate = {
   id?: Maybe<Scalars['Int']['output']>;
   maxReferrals?: Maybe<Scalars['Int']['output']>;
   refCodeHash?: Maybe<Scalars['String']['output']>;
+  referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
   updatedAt?: Maybe<Scalars['DateTimeISO']['output']>;
 };
@@ -2727,6 +2829,7 @@ export type UserMinOrderByAggregateInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
   refCodeHash?: InputMaybe<SortOrder>;
+  referredByCodeId?: InputMaybe<SortOrder>;
   referredById?: InputMaybe<SortOrder>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2751,6 +2854,7 @@ export type UserOrderByWithAggregationInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
   refCodeHash?: InputMaybe<SortOrderInput>;
+  referredByCodeId?: InputMaybe<SortOrderInput>;
   referredById?: InputMaybe<SortOrderInput>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2763,6 +2867,8 @@ export type UserOrderByWithRelationInput = {
   refCodeHash?: InputMaybe<SortOrderInput>;
   referrals?: InputMaybe<UserOrderByRelationAggregateInput>;
   referredBy?: InputMaybe<UserOrderByWithRelationInput>;
+  referredByCode?: InputMaybe<ReferralCodeOrderByWithRelationInput>;
+  referredByCodeId?: InputMaybe<SortOrderInput>;
   referredById?: InputMaybe<SortOrderInput>;
   updatedAt?: InputMaybe<SortOrder>;
 };
@@ -2773,6 +2879,7 @@ export type UserScalarFieldEnum =
   | 'id'
   | 'maxReferrals'
   | 'refCodeHash'
+  | 'referredByCodeId'
   | 'referredById'
   | 'updatedAt';
 
@@ -2785,6 +2892,7 @@ export type UserScalarWhereWithAggregatesInput = {
   id?: InputMaybe<IntWithAggregatesFilter>;
   maxReferrals?: InputMaybe<IntWithAggregatesFilter>;
   refCodeHash?: InputMaybe<StringNullableWithAggregatesFilter>;
+  referredByCodeId?: InputMaybe<IntNullableWithAggregatesFilter>;
   referredById?: InputMaybe<IntNullableWithAggregatesFilter>;
   updatedAt?: InputMaybe<DateTimeWithAggregatesFilter>;
 };
@@ -2793,12 +2901,14 @@ export type UserSumAggregate = {
   __typename?: 'UserSumAggregate';
   id?: Maybe<Scalars['Int']['output']>;
   maxReferrals?: Maybe<Scalars['Int']['output']>;
+  referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
 };
 
 export type UserSumOrderByAggregateInput = {
   id?: InputMaybe<SortOrder>;
   maxReferrals?: InputMaybe<SortOrder>;
+  referredByCodeId?: InputMaybe<SortOrder>;
   referredById?: InputMaybe<SortOrder>;
 };
 
@@ -2813,6 +2923,8 @@ export type UserWhereInput = {
   refCodeHash?: InputMaybe<StringNullableFilter>;
   referrals?: InputMaybe<UserListRelationFilter>;
   referredBy?: InputMaybe<UserNullableRelationFilter>;
+  referredByCode?: InputMaybe<ReferralCodeNullableRelationFilter>;
+  referredByCodeId?: InputMaybe<IntNullableFilter>;
   referredById?: InputMaybe<IntNullableFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
@@ -2828,6 +2940,8 @@ export type UserWhereUniqueInput = {
   refCodeHash?: InputMaybe<Scalars['String']['input']>;
   referrals?: InputMaybe<UserListRelationFilter>;
   referredBy?: InputMaybe<UserNullableRelationFilter>;
+  referredByCode?: InputMaybe<ReferralCodeNullableRelationFilter>;
+  referredByCodeId?: InputMaybe<IntNullableFilter>;
   referredById?: InputMaybe<IntNullableFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
