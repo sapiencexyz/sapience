@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Vault } from 'lucide-react';
+import { Vault, Clock } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
@@ -803,10 +803,147 @@ const VaultsPageContent = () => {
                     </div>
                   </div>
 
+                  {/* Pending Requests */}
+                  {pendingRequest && !pendingRequest.processed && (
+                    <div className="flex items-center gap-3 bg-muted/30 border border-brand-white/10 rounded-md p-4">
+                      <Clock className="h-6 w-6 text-muted-foreground shrink-0 animate-pulse" />
+                      <div className="flex-1 flex items-center justify-between">
+                        <div className="flex items-baseline gap-3">
+                          <span className="text-base font-medium text-brand-white">
+                            {pendingRequest.isDeposit
+                              ? 'Pending Deposit'
+                              : 'Pending Withdrawal'}
+                          </span>
+                          <span className="text-base text-muted-foreground font-mono">
+                            {pendingRequest.isDeposit ? (
+                              <>
+                                {formatAssetAmount(pendingRequest.assets)}{' '}
+                                {collateralSymbol}
+                                {depositQueuePosition
+                                  ? ` · Queue #${depositQueuePosition}`
+                                  : ''}
+                              </>
+                            ) : (
+                              <>
+                                {formatSharesAmount(pendingRequest.shares)}{' '}
+                                sapLP
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        {pendingRequest.isDeposit ? (
+                          (() => {
+                            const expiresAt =
+                              (Number(pendingRequest.timestamp) +
+                                Number(expirationTime ?? 0n)) *
+                              1000;
+                            const isExpired = Date.now() >= expiresAt;
+
+                            return (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isExpired}
+                                onClick={async () => {
+                                  setPendingAction('cancelDeposit');
+                                  await cancelDeposit(VAULT_CHAIN_ID);
+                                  setPendingAction(undefined);
+                                }}
+                              >
+                                {isVaultPending &&
+                                pendingAction === 'cancelDeposit'
+                                  ? 'Processing...'
+                                  : isExpired
+                                    ? 'Expired'
+                                    : 'Cancel'}
+                              </Button>
+                            );
+                          })()
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={
+                              Date.now() >=
+                              (Number(pendingRequest.timestamp) +
+                                Number(expirationTime ?? 0n)) *
+                                1000
+                            }
+                            onClick={async () => {
+                              setPendingAction('cancelWithdrawal');
+                              await cancelWithdrawal(VAULT_CHAIN_ID);
+                              setPendingAction(undefined);
+                            }}
+                          >
+                            {isVaultPending &&
+                            pendingAction === 'cancelWithdrawal'
+                              ? 'Processing...'
+                              : 'Cancel'}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Vault Stats - Two column layout on large screens */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left Column: Vault Rewards & PnL Chart */}
-                    <div className="flex flex-col gap-6">
+                    {/* Left Column: PnL Chart & Utilization (appears second on mobile) */}
+                    <div className="flex flex-col gap-6 order-2 lg:order-1">
+                      {/* Vault PnL Chart */}
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col">
+                        <VaultPnlChart
+                          protocolStats={protocolStats ?? undefined}
+                          isLoading={isAnalyticsLoading}
+                          className="flex-1"
+                        />
+                      </div>
+
+                      {/* Utilization Block */}
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
+                            Utilization Rate
+                          </h4>
+                          <span className="text-base font-mono text-foreground">
+                            {utilizationDisplay} DEPLOYED
+                          </span>
+                        </div>
+                        <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
+                          <div
+                            className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
+                            style={{ width: `${utilizationPercent}%` }}
+                          />
+                        </div>
+                        <div className="mt-2 flex items-baseline justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            <span className="font-mono text-foreground">{deployedDisplay}</span>
+                            {' of '}
+                            <span className="font-mono text-foreground">{tvlDisplay}</span>
+                            {' '}{collateralSymbol} deployed
+                          </span>
+                          <Link
+                            href={`/profile/${VAULT_ADDRESS}`}
+                            className="text-sm gold-link"
+                          >
+                            View Profile
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Manage Position & Vault Rewards (appears first on mobile) */}
+                    <div className="flex flex-col gap-6 order-1 lg:order-2">
+                      {/* Deposit/Withdraw Tabs */}
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1">
+                        <h4 className="text-base font-mono uppercase tracking-wider text-brand-white mb-2">
+                          Manage Position
+                        </h4>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Swap <span className="font-mono">{collateralSymbol}</span> for <span className="font-mono">sapLP</span> tokens, representing shares of the vault. <span className="font-mono">sapLP</span> is fully composable and can be used across DeFi like any other ERC-20.
+                        </p>
+                        {renderVaultForm()}
+                      </div>
+
                       {/* Vault Rewards Info */}
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-ethena/40 shadow-[0_0_12px_rgba(136,180,245,0.3)]">
                         <div className="flex flex-col gap-4">
@@ -846,146 +983,8 @@ const VaultsPageContent = () => {
                           )}
                         </div>
                       </div>
-
-                      {/* Vault PnL Chart */}
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col">
-                        <VaultPnlChart
-                          protocolStats={protocolStats ?? undefined}
-                          isLoading={isAnalyticsLoading}
-                          className="flex-1"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Right Column: Manage Position & Utilization */}
-                    <div className="flex flex-col gap-6">
-                      {/* Deposit/Withdraw Tabs */}
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
-                        <h4 className="text-base font-mono uppercase tracking-wider text-brand-white mb-2">
-                          Manage Position
-                        </h4>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Swap <span className="font-mono">{collateralSymbol}</span> for <span className="font-mono">sapLP</span> tokens, representing shares of the vault. <span className="font-mono">sapLP</span> can be redeemed, transferred, or traded like any other token on Ethereum.
-                        </p>
-                        {renderVaultForm()}
-                      </div>
-
-                      {/* Utilization Block */}
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
-                            Utilization Rate
-                          </h4>
-                          <span className="text-base font-mono text-foreground">
-                            {utilizationDisplay} DEPLOYED
-                          </span>
-                        </div>
-                        <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
-                          <div
-                            className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
-                            style={{ width: `${utilizationPercent}%` }}
-                          />
-                        </div>
-                        <div className="mt-2 flex items-baseline justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            <span className="font-mono text-foreground">{deployedDisplay}</span>
-                            {' of '}
-                            <span className="font-mono text-foreground">{tvlDisplay}</span>
-                            {' '}{collateralSymbol} deployed
-                          </span>
-                          <Link
-                            href={`/profile/${VAULT_ADDRESS}`}
-                            className="text-sm gold-link"
-                          >
-                            View Profile
-                          </Link>
-                        </div>
-                      </div>
                     </div>
                   </div>
-
-                  {/* Pending Requests (mapping-based) */}
-                  {pendingRequest && !pendingRequest.processed && (
-                    <div className="mt-4 space-y-2">
-                      <div className="p-3 bg-muted/30 border border-brand-white/10 rounded-md">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="text-sm text-muted-foreground">
-                            <p className="font-medium">
-                              {pendingRequest.isDeposit
-                                ? 'Pending Deposit'
-                                : 'Pending Withdrawal'}
-                            </p>
-                            <p className="text-xs">
-                              {pendingRequest.isDeposit ? (
-                                <>
-                                  {formatAssetAmount(pendingRequest.assets)}{' '}
-                                  {collateralSymbol}
-                                  {depositQueuePosition
-                                    ? ` · Queue #${depositQueuePosition}`
-                                    : ''}
-                                </>
-                              ) : (
-                                <>
-                                  {formatSharesAmount(pendingRequest.shares)}{' '}
-                                  sapLP
-                                </>
-                              )}
-                            </p>
-                          </div>
-                          {pendingRequest.isDeposit ? (
-                            (() => {
-                              const expiresAt =
-                                (Number(pendingRequest.timestamp) +
-                                  Number(expirationTime ?? 0n)) *
-                                1000;
-                              const isExpired = Date.now() >= expiresAt;
-
-                              return (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  disabled={isExpired}
-                                  onClick={async () => {
-                                    setPendingAction('cancelDeposit');
-                                    await cancelDeposit(VAULT_CHAIN_ID);
-                                    setPendingAction(undefined);
-                                  }}
-                                >
-                                  {isVaultPending &&
-                                  pendingAction === 'cancelDeposit'
-                                    ? 'Processing...'
-                                    : isExpired
-                                      ? 'Expired'
-                                      : 'Cancel'}
-                                </Button>
-                              );
-                            })()
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={
-                                Date.now() >=
-                                (Number(pendingRequest.timestamp) +
-                                  Number(expirationTime ?? 0n)) *
-                                  1000
-                              }
-                              onClick={async () => {
-                                setPendingAction('cancelWithdrawal');
-                                await cancelWithdrawal(VAULT_CHAIN_ID);
-                                setPendingAction(undefined);
-                              }}
-                            >
-                              {isVaultPending &&
-                              pendingAction === 'cancelWithdrawal'
-                                ? 'Processing...'
-                                : 'Cancel'}
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </CardContent>
             </Card>
