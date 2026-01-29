@@ -10,12 +10,12 @@ import {
 /// @notice Deploy factory on SM Network Sepolia (remote chain)
 contract DeployFactory is Script {
     function run() external {
-        address owner = vm.envAddress("DEPLOYER_ADDRESS");
+        address owner = vm.envAddress("SM_NETWORK_DEPLOYER_ADDRESS");
 
         console.log("=== Deploy PredictionMarketTokenFactory ===");
         console.log("Owner:", owner);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         PredictionMarketTokenFactory factory =
             new PredictionMarketTokenFactory(owner);

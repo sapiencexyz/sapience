@@ -11,7 +11,7 @@ import {
 contract DeployRemoteBridge is Script {
     function run() external {
         address endpoint = vm.envAddress("SM_NETWORK_LZ_ENDPOINT");
-        address owner = vm.envAddress("DEPLOYER_ADDRESS");
+        address owner = vm.envAddress("SM_NETWORK_DEPLOYER_ADDRESS");
         address factory = vm.envAddress("FACTORY_ADDRESS");
 
         console.log("=== Deploy PredictionMarketBridgeRemote on SM Network ===");
@@ -19,7 +19,7 @@ contract DeployRemoteBridge is Script {
         console.log("Owner:", owner);
         console.log("Factory:", factory);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         PredictionMarketBridgeRemote bridge =
             new PredictionMarketBridgeRemote(endpoint, owner, factory);

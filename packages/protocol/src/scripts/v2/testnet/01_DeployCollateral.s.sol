@@ -8,15 +8,21 @@ import { MockERC20 } from "../../../../test/v2/mocks/MockERC20.sol";
 /// @notice Deploys a mock ERC20 token for collateral (simulating USDC/WUSDe)
 contract DeployCollateral is Script {
     function run() external {
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
-        uint256 initialSupply = 1_000_000 ether; // 1M tokens
+        address deployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
+        uint256 initialSupply =
+            vm.envOr("COLLATERAL_INITIAL_SUPPLY", uint256(1_000_000 ether));
+        string memory name = vm.envOr("COLLATERAL_NAME", string("Test USDe"));
+        string memory symbol = vm.envOr("COLLATERAL_SYMBOL", string("tUSDe"));
 
         console.log("=== Deploy Collateral Token ===");
         console.log("Deployer:", deployer);
+        console.log("Name:", name);
+        console.log("Symbol:", symbol);
+        console.log("Initial Supply:", initialSupply);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        MockERC20 collateral = new MockERC20("Test USDC", "tUSDC", 18);
+        MockERC20 collateral = new MockERC20(name, symbol, 18);
 
         // Mint initial supply to deployer
         collateral.mint(deployer, initialSupply);

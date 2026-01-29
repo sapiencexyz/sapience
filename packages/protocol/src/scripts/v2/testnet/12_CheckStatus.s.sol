@@ -25,17 +25,19 @@ contract CheckStatus is Script {
         console.log("");
 
         // Addresses from env
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
-        console.log("Deployer:", deployer);
+        address pmDeployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
+        address smDeployer = vm.envOr("SM_NETWORK_DEPLOYER_ADDRESS", pmDeployer);
+        console.log("PM Network Deployer:", pmDeployer);
+        console.log("SM Network Deployer:", smDeployer);
 
-        // Check Collateral Token
+        // Check Collateral Token (PM Network)
         address collateralAddr =
             vm.envOr("COLLATERAL_TOKEN_ADDRESS", address(0));
         if (collateralAddr != address(0)) {
             console.log("");
             console.log("--- Collateral Token ---");
             console.log("Address:", collateralAddr);
-            console.log("Balance:", IERC20(collateralAddr).balanceOf(deployer));
+            console.log("PM Deployer Balance:", IERC20(collateralAddr).balanceOf(pmDeployer));
         }
 
         // Check Prediction Market
@@ -98,15 +100,15 @@ contract CheckStatus is Script {
             console.log("Config Complete:", factory.isConfigComplete());
         }
 
-        // Check Position Tokens
+        // Check Position Tokens (PM Network)
         address predictorTokenAddr =
             vm.envOr("PREDICTOR_TOKEN_ADDRESS", address(0));
         if (predictorTokenAddr != address(0)) {
             console.log("");
-            console.log("--- Predictor Token ---");
+            console.log("--- Predictor Token (PM Network) ---");
             console.log("Address:", predictorTokenAddr);
             console.log(
-                "Balance:", IERC20(predictorTokenAddr).balanceOf(deployer)
+                "PM Deployer Balance:", IERC20(predictorTokenAddr).balanceOf(pmDeployer)
             );
         }
 
@@ -114,7 +116,7 @@ contract CheckStatus is Script {
         bytes32 pickConfigId = vm.envOr("PICK_CONFIG_ID", bytes32(0));
         if (pickConfigId != bytes32(0) && arbBridgeAddr != address(0)) {
             console.log("");
-            console.log("--- Bridged Token Status ---");
+            console.log("--- Bridged Token Status (SM Network) ---");
             PredictionMarketBridgeRemote arbBridge =
                 PredictionMarketBridgeRemote(payable(arbBridgeAddr));
             bool isDeployed = arbBridge.isTokenDeployed(pickConfigId, true);
@@ -124,8 +126,8 @@ contract CheckStatus is Script {
                     arbBridge.getTokenAddress(pickConfigId, true);
                 console.log("Bridged Token Address:", bridgedToken);
                 console.log(
-                    "Bridged Token Balance:",
-                    IERC20(bridgedToken).balanceOf(deployer)
+                    "SM Deployer Balance:",
+                    IERC20(bridgedToken).balanceOf(smDeployer)
                 );
             }
         }

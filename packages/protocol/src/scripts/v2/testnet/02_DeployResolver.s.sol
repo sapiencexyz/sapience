@@ -10,12 +10,12 @@ import {
 /// @notice Deploys a ManualConditionResolver for testing predictions
 contract DeployResolver is Script {
     function run() external {
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
+        address deployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
 
         console.log("=== Deploy Manual Condition Resolver ===");
         console.log("Owner:", deployer);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         ManualConditionResolver resolver = new ManualConditionResolver(deployer);
 

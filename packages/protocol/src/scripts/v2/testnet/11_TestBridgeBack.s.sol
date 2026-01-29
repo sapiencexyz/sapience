@@ -24,18 +24,33 @@ contract TestBridgeBack is Script {
         PredictionMarketBridgeRemote bridge =
             PredictionMarketBridgeRemote(payable(bridgeAddr));
 
+        console.log("=== Bridge Test: SM Network -> PM Network ===");
+        console.log("Bridge:", bridgeAddr);
+        console.log("Pick Config ID:", vm.toString(pickConfigId));
+        console.log("Predictor (sender):", predictor);
+
+        // Check if token is deployed (bridge from PM->SM must have completed first)
+        bool isDeployed = bridge.isTokenDeployed(pickConfigId, isPredictorToken);
+        if (!isDeployed) {
+            console.log("");
+            console.log("ERROR: Bridged token not yet deployed on SM Network!");
+            console.log("This means the bridge from PM Network -> SM Network has not completed.");
+            console.log("");
+            console.log("Please:");
+            console.log("1. Check if bridge was initiated on PM Network");
+            console.log("2. Wait for LayerZero message delivery (1-5 minutes)");
+            console.log("3. Track on https://testnet.layerzeroscan.com/");
+            revert("Token not deployed - bridge from PM Network not completed");
+        }
+
         // Get bridged token address
         address tokenAddr =
             bridge.getTokenAddress(pickConfigId, isPredictorToken);
-        require(tokenAddr != address(0), "Token not deployed");
 
         IERC20 token = IERC20(tokenAddr);
         uint256 balance = token.balanceOf(predictor);
 
-        console.log("=== Bridge Test: SM Network -> PM Network ===");
-        console.log("Bridge:", bridgeAddr);
         console.log("Bridged Token:", tokenAddr);
-        console.log("Predictor (sender):", predictor);
         console.log("Current balance:", balance);
 
         require(balance > 0, "No bridged tokens to bridge back");

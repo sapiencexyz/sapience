@@ -20,8 +20,10 @@ contract ConfigureRemoteBridge is Script {
         address remoteBridge = vm.envAddress("PM_NETWORK_BRIDGE_ADDRESS");
         address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
         uint32 remoteEid = uint32(vm.envUint("PM_NETWORK_LZ_EID"));
+        // ACK fee for PM (Ethereal) to send ACK back to SM - paid in USDe
+        // Ethereal uses USDe as native token, so this needs to be ~0.5 USDe
         uint128 ackFeeEstimate =
-            uint128(vm.envOr("ACK_FEE_ESTIMATE", uint256(0.0001 ether)));
+            uint128(vm.envOr("SM_ACK_FEE_ESTIMATE", uint256(0.5 ether)));
 
         PredictionMarketBridgeRemote bridge =
             PredictionMarketBridgeRemote(payable(bridgeAddr));
@@ -35,7 +37,7 @@ contract ConfigureRemoteBridge is Script {
         console.log("Factory:", factoryAddr);
         console.log("ACK Fee Estimate:", ackFeeEstimate);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         // Set bridge config
         bridge.setBridgeConfig(
@@ -53,10 +55,6 @@ contract ConfigureRemoteBridge is Script {
         // Set factory deployer to bridge
         factory.setDeployer(bridgeAddr);
 
-        // Fund bridge for ACK fees
-        (bool success,) = bridgeAddr.call{ value: 0.01 ether }("");
-        require(success, "Failed to fund bridge");
-
         vm.stopBroadcast();
 
         console.log("");
@@ -64,7 +62,6 @@ contract ConfigureRemoteBridge is Script {
         console.log("Bridge config set");
         console.log("LZ peer set");
         console.log("Factory deployer set to bridge");
-        console.log("Funded with 0.01 ETH for ACK fees");
         console.log("");
         console.log("Config complete:", bridge.isConfigComplete());
         console.log("Factory config complete:", factory.isConfigComplete());

@@ -18,7 +18,7 @@ contract CheckStatus_PMNetwork is Script {
         console.log("=== PM Network Status Check ===");
         console.log("");
 
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
+        address deployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
         console.log("Deployer:", deployer);
 
         // Check Collateral Token

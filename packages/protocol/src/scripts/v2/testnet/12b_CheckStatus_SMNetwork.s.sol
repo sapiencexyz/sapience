@@ -20,7 +20,7 @@ contract CheckStatus_SMNetwork is Script {
         console.log("=== SM Network Status Check ===");
         console.log("");
 
-        address deployer = vm.envAddress("DEPLOYER_ADDRESS");
+        address deployer = vm.envAddress("SM_NETWORK_DEPLOYER_ADDRESS");
         console.log("Deployer:", deployer);
 
         // Check SM Network Bridge

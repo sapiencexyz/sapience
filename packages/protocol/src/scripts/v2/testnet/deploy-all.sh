@@ -7,7 +7,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-ENV_FILE="$PROTOCOL_DIR/.env"
+ENV_FILE="$SCRIPT_DIR/.env"
+DEPLOYMENTS_FILE="$SCRIPT_DIR/deployments.json"
 
 # Colors for output
 RED='\033[0;31m'
@@ -42,6 +43,66 @@ check_env() {
         fi
     done
     return $missing
+}
+
+# Initialize deployments JSON file if it doesn't exist
+init_deployments_json() {
+    if [ ! -f "$DEPLOYMENTS_FILE" ]; then
+        local pm_name="${PM_NETWORK_NAME:-PM Network}"
+        local sm_name="${SM_NETWORK_NAME:-SM Network}"
+        cat > "$DEPLOYMENTS_FILE" << EOF
+{
+  "network": "testnet",
+  "pmNetwork": {
+    "name": "${pm_name}",
+    "chainId": null,
+    "contracts": {}
+  },
+  "smNetwork": {
+    "name": "${sm_name}",
+    "chainId": null,
+    "contracts": {}
+  },
+  "deployedAt": null,
+  "lastUpdated": null
+}
+EOF
+        log_info "Created deployments file: $DEPLOYMENTS_FILE"
+    fi
+}
+
+# Update deployment JSON with a contract address
+# Usage: update_deployment <network> <contract_name> <address>
+# network: "pmNetwork" or "smNetwork"
+update_deployment() {
+    local network=$1
+    local contract_name=$2
+    local address=$3
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Create file if it doesn't exist
+    init_deployments_json
+
+    # Update the JSON file using a temp file for atomic write
+    local temp_file=$(mktemp)
+
+    # Use node/jq if available, otherwise use sed
+    if command -v jq &> /dev/null; then
+        jq --arg net "$network" \
+           --arg name "$contract_name" \
+           --arg addr "$address" \
+           --arg ts "$timestamp" \
+           '.[$net].contracts[$name] = $addr | .lastUpdated = $ts | if .deployedAt == null then .deployedAt = $ts else . end' \
+           "$DEPLOYMENTS_FILE" > "$temp_file" && mv "$temp_file" "$DEPLOYMENTS_FILE"
+    else
+        # Fallback: simple sed-based update (less robust but works without jq)
+        # For proper JSON handling, jq is recommended
+        log_warn "jq not found, using basic file append for deployments"
+        # Just log to a simple format
+        echo "$timestamp | $network | $contract_name = $address" >> "${DEPLOYMENTS_FILE%.json}.log"
+    fi
+
+    log_info "Saved deployment: $network.$contract_name = $address"
 }
 
 # Load .env file
@@ -118,7 +179,7 @@ get_verifier_args() {
     echo "$verify_args"
 }
 
-# Run forge script and capture output (with verification)
+# Run forge script and capture output (with verification unless SKIP_VERIFY=1)
 run_script() {
     local script=$1
     local rpc_url=$2
@@ -131,10 +192,14 @@ run_script() {
 
     cd "$PROTOCOL_DIR"
 
-    # Get verification args if available
-    local verify_args=$(get_verifier_args "$rpc_url")
-    if [[ -n "$verify_args" ]]; then
-        log_info "Contract verification enabled"
+    local verify_args=""
+    if [[ "${SKIP_VERIFY:-0}" != "1" ]]; then
+        verify_args=$(get_verifier_args "$rpc_url")
+        if [[ -n "$verify_args" ]]; then
+            log_info "Contract verification enabled"
+        fi
+    else
+        log_warn "Contract verification SKIPPED (SKIP_VERIFY=1)"
     fi
 
     local output
@@ -172,38 +237,50 @@ run_script_no_verify() {
     LAST_OUTPUT="$output"
 }
 
+# Deploy Test Collateral Token (optional - for testing only)
+deploy_test_collateral() {
+    log_info "=== Deploy Test Collateral Token (TESTING ONLY) ==="
+
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL || exit 1
+
+    run_script "src/scripts/v2/testnet/01_DeployCollateral.s.sol:DeployCollateral" "$PM_NETWORK_RPC_URL" "Deploying Test Collateral Token on PM Network"
+    local addr=$(extract_address "$LAST_OUTPUT" "COLLATERAL_TOKEN_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "COLLATERAL_TOKEN_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "CollateralToken" "$addr"
+    fi
+
+    log_success "Test collateral token deployed"
+}
+
 # Phase 1: Deploy PM Network Infrastructure
 deploy_ethereal_phase1() {
     log_info "=== Phase 1: Deploy PM Network Infrastructure ==="
 
-    check_env DEPLOYER_PRIVATE_KEY DEPLOYER_ADDRESS PM_NETWORK_RPC_URL || exit 1
-
-    # 01. Deploy Collateral Token
-    run_script "src/scripts/v2/testnet/01_DeployCollateral.s.sol:DeployCollateral" "$PM_NETWORK_RPC_URL" "Deploying Collateral Token on PM Network"
-    local addr=$(extract_address "$LAST_OUTPUT" "COLLATERAL_TOKEN_ADDRESS=")
-    if [ -n "$addr" ]; then
-        update_env "COLLATERAL_TOKEN_ADDRESS" "$addr"
-    fi
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
 
     # 02. Deploy Resolver
     run_script "src/scripts/v2/testnet/02_DeployResolver.s.sol:DeployResolver" "$PM_NETWORK_RPC_URL" "Deploying ManualConditionResolver on PM Network"
-    addr=$(extract_address "$LAST_OUTPUT" "RESOLVER_ADDRESS=")
+    local addr=$(extract_address "$LAST_OUTPUT" "RESOLVER_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "RESOLVER_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "ManualConditionResolver" "$addr"
     fi
 
     # 03. Deploy PredictionMarketV2
-    run_script "src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketV2 on PM Network"
+    run_script "src/scripts/v2/testnet/03_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketEscrow on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PREDICTION_MARKET_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PREDICTION_MARKET_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketEscrow" "$addr"
     fi
 
     # 05. Deploy PM Network Bridge
-    run_script "src/scripts/v2/testnet/05_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PositionTokenBridge on PM Network"
+    run_script "src/scripts/v2/testnet/05_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketBridge on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
     fi
 
     log_success "Phase 1 complete: Ethereal infrastructure deployed"
@@ -213,13 +290,14 @@ deploy_ethereal_phase1() {
 deploy_arbitrum_phase2() {
     log_info "=== Phase 2: Deploy SM Network Infrastructure ==="
 
-    check_env SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
+    check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
 
     # 04. Deploy Factory
-    run_script "src/scripts/v2/testnet/04_DeployFactory.s.sol:DeployFactory" "$SM_NETWORK_RPC_URL" "Deploying PositionTokenFactory on SM Network"
+    run_script "src/scripts/v2/testnet/04_DeployFactory.s.sol:DeployFactory" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
     local addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketTokenFactory" "$addr"
     fi
 
     # 06. Deploy SM Network Bridge
@@ -227,6 +305,7 @@ deploy_arbitrum_phase2() {
     addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketBridgeRemote" "$addr"
     fi
 
     log_success "Phase 2 complete: Arbitrum infrastructure deployed"
@@ -271,16 +350,18 @@ mint_tokens_phase4() {
     check_env PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS || exit 1
 
     # 09. Mint Position Tokens
-    run_script_no_verify "src/scripts/v2/testnet/09_MintPositionTokens.s.sol:MintPositionTokens" "$PM_NETWORK_RPC_URL" "Minting Position Tokens via PredictionMarketV2"
+    run_script_no_verify "src/scripts/v2/testnet/09_MintPredictionMarketTokens.s.sol:MintPredictionMarketTokens" "$PM_NETWORK_RPC_URL" "Minting Position Tokens via PredictionMarketEscrow"
 
     local addr=$(extract_address "$LAST_OUTPUT" "PREDICTOR_TOKEN_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PREDICTOR_TOKEN_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictorToken" "$addr"
     fi
 
     addr=$(extract_address "$LAST_OUTPUT" "COUNTERPARTY_TOKEN_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "COUNTERPARTY_TOKEN_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "CounterpartyToken" "$addr"
     fi
 
     local bytes32=$(extract_bytes32 "$LAST_OUTPUT" "PICK_CONFIG_ID=")
@@ -327,31 +408,152 @@ check_status() {
     run_script_no_verify "src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol:CheckStatus_SMNetwork" "$SM_NETWORK_RPC_URL" "Checking SM Network status"
 }
 
+# Verify contract on explorer
+verify_contract() {
+    local address=$1
+    local contract_path=$2
+    local rpc_url=$3
+    local verifier=$4
+    local verifier_url=$5
+    local api_key=$6
+    local description=$7
+
+    log_info "Verifying: $description at $address"
+
+    cd "$PROTOCOL_DIR"
+
+    local verify_cmd="forge verify-contract $address $contract_path --rpc-url $rpc_url"
+
+    if [[ "$verifier" == "blockscout" ]]; then
+        verify_cmd="$verify_cmd --verifier blockscout --verifier-url $verifier_url"
+    elif [[ -n "$api_key" ]]; then
+        verify_cmd="$verify_cmd --etherscan-api-key $api_key"
+        if [[ -n "$verifier_url" ]]; then
+            verify_cmd="$verify_cmd --verifier-url $verifier_url"
+        fi
+    else
+        log_warn "No API key provided for $description, skipping"
+        return 0
+    fi
+
+    eval "$verify_cmd" && log_success "Verified: $description" || log_warn "Verification failed for $description (may already be verified)"
+}
+
+# Verify PM Network contracts
+verify_pm() {
+    log_info "=== Verify PM Network Contracts ==="
+
+    check_env PM_NETWORK_RPC_URL || exit 1
+
+    local rpc_url="$PM_NETWORK_RPC_URL"
+    local verifier="${PM_NETWORK_VERIFIER:-etherscan}"
+    local verifier_url="${PM_NETWORK_VERIFIER_URL:-}"
+    local api_key="${PM_NETWORK_ETHERSCAN_API_KEY:-}"
+
+    # Verify Collateral if deployed via script
+    if [[ -n "${COLLATERAL_TOKEN_ADDRESS:-}" ]]; then
+        verify_contract "$COLLATERAL_TOKEN_ADDRESS" "test/v2/mocks/MockERC20.sol:MockERC20" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "MockERC20 (test collateral)"
+    fi
+
+    # Verify Resolver if deployed
+    if [[ -n "${RESOLVER_ADDRESS:-}" ]]; then
+        verify_contract "$RESOLVER_ADDRESS" "src/v2/resolvers/mocks/ManualConditionResolver.sol:ManualConditionResolver" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "ManualConditionResolver"
+    fi
+
+    # Verify PredictionMarketEscrow if deployed
+    if [[ -n "${PREDICTION_MARKET_ADDRESS:-}" ]]; then
+        verify_contract "$PREDICTION_MARKET_ADDRESS" "src/v2/PredictionMarketEscrow.sol:PredictionMarketEscrow" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketEscrow"
+    fi
+
+    # Verify Bridge if deployed
+    if [[ -n "${PM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
+        verify_contract "$PM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PredictionMarketBridge.sol:PredictionMarketBridge" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketBridge"
+    fi
+
+    log_success "PM Network verification complete"
+}
+
+# Verify SM Network contracts
+verify_sm() {
+    log_info "=== Verify SM Network Contracts ==="
+
+    check_env SM_NETWORK_RPC_URL || exit 1
+
+    local rpc_url="$SM_NETWORK_RPC_URL"
+    local verifier="${SM_NETWORK_VERIFIER:-etherscan}"
+    local verifier_url="${SM_NETWORK_VERIFIER_URL:-}"
+    local api_key="${SM_NETWORK_ETHERSCAN_API_KEY:-}"
+
+    # Verify Factory if deployed
+    if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$FACTORY_ADDRESS" "src/v2/bridge/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketTokenFactory"
+    fi
+
+    # Verify Remote Bridge if deployed
+    if [[ -n "${SM_NETWORK_BRIDGE_ADDRESS:-}" ]]; then
+        verify_contract "$SM_NETWORK_BRIDGE_ADDRESS" "src/v2/bridge/PredictionMarketBridgeRemote.sol:PredictionMarketBridgeRemote" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketBridgeRemote"
+    fi
+
+    log_success "SM Network verification complete"
+}
+
 # Print usage
 usage() {
     echo "Usage: $0 [command]"
     echo ""
-    echo "Commands:"
-    echo "  all           Run full deployment (phases 1-4, including DVN config)"
-    echo "  deploy        Run deployment only (phases 1-3b)"
-    echo "  phase1        Deploy Ethereal infrastructure"
-    echo "  phase2        Deploy Arbitrum infrastructure"
-    echo "  phase3        Configure bridges (basic: peer, config)"
-    echo "  phase3b       Configure DVN and libraries"
-    echo "  phase4        Mint position tokens"
-    echo "  phase5        Test bridging"
-    echo "  test          Run bridge test (phases 4-5)"
-    echo "  status        Check deployment status"
+    echo "Deployment Commands:"
+    echo "  all                   Run full deployment (phases 1-4, including DVN config)"
+    echo "  all-with-collateral   Run full deployment with test collateral (for testing)"
+    echo "  collateral            Deploy test collateral token (optional, for testing)"
+    echo "  deploy                Run deployment only (phases 1-3b)"
+    echo "  phase1                Deploy Ethereal infrastructure"
+    echo "  phase2                Deploy Arbitrum infrastructure"
+    echo "  phase3                Configure bridges (basic: peer, config)"
+    echo "  phase3b               Configure DVN and libraries"
+    echo "  phase4                Mint position tokens"
+    echo "  phase5                Test bridging"
+    echo "  test                  Run bridge test (phases 4-5)"
+    echo "  status                Check deployment status"
+    echo ""
+    echo "Verification Commands:"
+    echo "  verify-pm             Verify contracts on PM Network"
+    echo "  verify-sm             Verify contracts on SM Network"
     echo ""
     echo "Examples:"
-    echo "  $0 all        # Full deployment with DVN config and mint"
-    echo "  $0 deploy     # Deploy and configure only (no mint)"
-    echo "  $0 phase3b    # Just configure DVN/libraries"
-    echo "  $0 status     # Check current status"
+    echo "  $0 all                         # Full deployment with DVN config and mint"
+    echo "  $0 all-with-collateral         # Full deployment with test collateral"
+    echo "  SKIP_VERIFY=1 $0 all           # Full deployment WITHOUT verification"
+    echo "  $0 deploy                      # Deploy and configure only (no mint)"
+    echo "  $0 phase3b                     # Just configure DVN/libraries"
+    echo "  $0 status                      # Check current status"
+    echo "  $0 verify-pm                   # Verify PM Network contracts"
+    echo "  $0 verify-sm                   # Verify SM Network contracts"
+    echo ""
+    echo "Required env vars for deployment:"
+    echo "  PM_NETWORK_DEPLOYER_ADDRESS, PM_NETWORK_DEPLOYER_PRIVATE_KEY, PM_NETWORK_RPC_URL"
+    echo "  SM_NETWORK_DEPLOYER_ADDRESS, SM_NETWORK_DEPLOYER_PRIVATE_KEY, SM_NETWORK_RPC_URL"
+    echo "  COLLATERAL_TOKEN_ADDRESS (or deploy with 'collateral' command to create test token)"
     echo ""
     echo "Required env vars for DVN config:"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN"
     echo "  SM_NETWORK_SEND_LIB, SM_NETWORK_RECEIVE_LIB, SM_NETWORK_DVN, SM_NETWORK_EXECUTOR"
+    echo ""
+    echo "Required env vars for verification:"
+    echo "  PM_NETWORK_ETHERSCAN_API_KEY (or PM_NETWORK_VERIFIER=blockscout with PM_NETWORK_VERIFIER_URL)"
+    echo "  SM_NETWORK_ETHERSCAN_API_KEY"
+    echo ""
+    echo "Optional env vars:"
+    echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"
+    echo "  PM_NETWORK_VERIFIER (etherscan or blockscout, default: etherscan)"
+    echo "  PM_NETWORK_VERIFIER_URL (custom verifier URL)"
+    echo "  PM_ACK_FEE_ESTIMATE (default: 0.0001 ether)"
+    echo "  SM_ACK_FEE_ESTIMATE (default: 0.5 ether - Ethereal uses USDe as native token)"
 }
 
 # Main
@@ -379,6 +581,18 @@ main() {
             configure_dvn_phase3b
             mint_tokens_phase4
             check_status
+            ;;
+        all-with-collateral)
+            deploy_test_collateral
+            deploy_ethereal_phase1
+            deploy_arbitrum_phase2
+            configure_bridges_phase3
+            configure_dvn_phase3b
+            mint_tokens_phase4
+            check_status
+            ;;
+        collateral)
+            deploy_test_collateral
             ;;
         deploy)
             deploy_ethereal_phase1
@@ -412,6 +626,12 @@ main() {
             ;;
         status)
             check_status
+            ;;
+        verify-pm)
+            verify_pm
+            ;;
+        verify-sm)
+            verify_sm
             ;;
         help|--help|-h)
             usage

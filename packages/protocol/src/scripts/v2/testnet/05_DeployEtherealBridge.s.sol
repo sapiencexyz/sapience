@@ -11,13 +11,13 @@ import {
 contract DeployEtherealBridge is Script {
     function run() external {
         address endpoint = vm.envAddress("PM_NETWORK_LZ_ENDPOINT");
-        address owner = vm.envAddress("DEPLOYER_ADDRESS");
+        address owner = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
 
         console.log("=== Deploy PredictionMarketBridge on PM Network ===");
         console.log("LZ Endpoint:", endpoint);
         console.log("Owner:", owner);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         PredictionMarketBridge bridge =
             new PredictionMarketBridge(endpoint, owner);

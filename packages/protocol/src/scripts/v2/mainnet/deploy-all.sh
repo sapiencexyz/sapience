@@ -7,7 +7,8 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
-ENV_FILE="$PROTOCOL_DIR/.env"
+ENV_FILE="$SCRIPT_DIR/.env"
+DEPLOYMENTS_FILE="$SCRIPT_DIR/deployments.json"
 
 # Colors for output
 RED='\033[0;31m'
@@ -42,6 +43,62 @@ check_env() {
         fi
     done
     return $missing
+}
+
+# Initialize deployments JSON file if it doesn't exist
+init_deployments_json() {
+    if [ ! -f "$DEPLOYMENTS_FILE" ]; then
+        cat > "$DEPLOYMENTS_FILE" << 'EOF'
+{
+  "network": "mainnet",
+  "pmNetwork": {
+    "name": "Ethereal",
+    "chainId": 5066318,
+    "contracts": {}
+  },
+  "smNetwork": {
+    "name": "Arbitrum One",
+    "chainId": 42161,
+    "contracts": {}
+  },
+  "deployedAt": null,
+  "lastUpdated": null
+}
+EOF
+        log_info "Created deployments file: $DEPLOYMENTS_FILE"
+    fi
+}
+
+# Update deployment JSON with a contract address
+# Usage: update_deployment <network> <contract_name> <address>
+# network: "pmNetwork" or "smNetwork"
+update_deployment() {
+    local network=$1
+    local contract_name=$2
+    local address=$3
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+    # Create file if it doesn't exist
+    init_deployments_json
+
+    # Update the JSON file using a temp file for atomic write
+    local temp_file=$(mktemp)
+
+    # Use jq if available, otherwise fallback to log file
+    if command -v jq &> /dev/null; then
+        jq --arg net "$network" \
+           --arg name "$contract_name" \
+           --arg addr "$address" \
+           --arg ts "$timestamp" \
+           '.[$net].contracts[$name] = $addr | .lastUpdated = $ts | if .deployedAt == null then .deployedAt = $ts else . end' \
+           "$DEPLOYMENTS_FILE" > "$temp_file" && mv "$temp_file" "$DEPLOYMENTS_FILE"
+    else
+        # Fallback: simple log format (jq recommended for proper JSON)
+        log_warn "jq not found, using basic file append for deployments"
+        echo "$timestamp | $network | $contract_name = $address" >> "${DEPLOYMENTS_FILE%.json}.log"
+    fi
+
+    log_info "Saved deployment: $network.$contract_name = $address"
 }
 
 # Load .env file
@@ -170,6 +227,7 @@ deploy_test_collateral() {
     local addr=$(extract_address "$LAST_OUTPUT" "COLLATERAL_TOKEN_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "COLLATERAL_TOKEN_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "CollateralToken" "$addr"
     fi
 
     log_success "Test collateral token deployed"
@@ -186,20 +244,23 @@ deploy_ethereal_phase1() {
     local addr=$(extract_address "$LAST_OUTPUT" "RESOLVER_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "RESOLVER_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "ManualConditionResolver" "$addr"
     fi
 
-    # 02. Deploy PredictionMarketV2
-    run_script "src/scripts/v2/mainnet/02_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketV2 on PM Network"
+    # 02. Deploy PredictionMarketEscrow
+    run_script "src/scripts/v2/mainnet/02_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketEscrow on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PREDICTION_MARKET_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PREDICTION_MARKET_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketEscrow" "$addr"
     fi
 
     # 03. Deploy PM Network Bridge
-    run_script "src/scripts/v2/mainnet/03_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PositionTokenBridge on PM Network"
+    run_script "src/scripts/v2/mainnet/03_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketBridge on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
     fi
 
     log_success "Phase 1 complete: Ethereal infrastructure deployed"
@@ -212,10 +273,11 @@ deploy_arbitrum_phase2() {
     check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
 
     # 04. Deploy Factory
-    run_script "src/scripts/v2/mainnet/04_DeployFactory.s.sol:DeployFactory" "$SM_NETWORK_RPC_URL" "Deploying PositionTokenFactory on SM Network"
+    run_script "src/scripts/v2/mainnet/04_DeployFactory.s.sol:DeployFactory" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
     local addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketTokenFactory" "$addr"
     fi
 
     # 05. Deploy SM Network Bridge
@@ -223,6 +285,7 @@ deploy_arbitrum_phase2() {
     addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketBridgeRemote" "$addr"
     fi
 
     log_success "Phase 2 complete: Arbitrum infrastructure deployed"
@@ -305,7 +368,7 @@ test_mint() {
 
     check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PREDICTOR_PRIVATE_KEY COUNTERPARTY_PRIVATE_KEY || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/09_MintPositionTokens.s.sol:MintPositionTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
+    run_script_no_verify "src/scripts/v2/mainnet/09_MintPredictionMarketTokens.s.sol:MintPredictionMarketTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
 
     # Extract and save token addresses
     local prediction_id=$(echo "$LAST_OUTPUT" | grep "PREDICTION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
@@ -315,8 +378,14 @@ test_mint() {
     local condition_id=$(echo "$LAST_OUTPUT" | grep "CONDITION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
 
     [ -n "$prediction_id" ] && update_env "PREDICTION_ID" "$prediction_id"
-    [ -n "$predictor_token" ] && update_env "PREDICTOR_TOKEN_ADDRESS" "$predictor_token"
-    [ -n "$counterparty_token" ] && update_env "COUNTERPARTY_TOKEN_ADDRESS" "$counterparty_token"
+    if [ -n "$predictor_token" ]; then
+        update_env "PREDICTOR_TOKEN_ADDRESS" "$predictor_token"
+        update_deployment "pmNetwork" "PredictorToken" "$predictor_token"
+    fi
+    if [ -n "$counterparty_token" ]; then
+        update_env "COUNTERPARTY_TOKEN_ADDRESS" "$counterparty_token"
+        update_deployment "pmNetwork" "CounterpartyToken" "$counterparty_token"
+    fi
     [ -n "$pick_config_id" ] && update_env "PICK_CONFIG_ID" "$pick_config_id"
     [ -n "$condition_id" ] && update_env "CONDITION_ID" "$condition_id"
 

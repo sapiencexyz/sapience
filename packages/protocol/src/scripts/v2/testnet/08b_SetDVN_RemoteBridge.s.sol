@@ -41,7 +41,7 @@ contract SetDVN_RemoteBridge is Script {
         console.log("DVN:", dvn);
         console.log("Executor:", executor);
 
-        vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
+        vm.startBroadcast(vm.envUint("SM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         // 1. Set send library
         ILayerZeroEndpointV2(endpoint)
