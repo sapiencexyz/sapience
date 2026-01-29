@@ -129,14 +129,17 @@ type VaultPnlChartProps = {
   protocolStats?: ProtocolStat[];
   /** Whether the data is loading */
   isLoading?: boolean;
-  /** Chart height in pixels */
+  /** Chart height in pixels (ignored if className includes flex-1) */
   height?: number;
+  /** Additional class names for the container */
+  className?: string;
 };
 
 export default function VaultPnlChart({
   protocolStats: externalStats,
   isLoading: externalLoading,
   height = 200,
+  className,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
   const [period, setPeriod] = useState<Period>('3M');
@@ -234,21 +237,21 @@ export default function VaultPnlChart({
   const currentPnl = chartData.length > 0 ? chartData[chartData.length - 1].pnl : 0;
   const isPositive = currentPnl >= 0;
 
+  // Check if className includes flex-1 to use flexible height
+  const useFlexHeight = className?.includes('flex-1');
+
   return (
-    <div className="w-full">
+    <div className={`w-full ${useFlexHeight ? 'flex flex-col' : ''} ${className ?? ''}`.trim()}>
       <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-        <h4 className="text-base font-mono uppercase tracking-wider text-muted-foreground">
+        <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
           Profit/Loss
         </h4>
         <div className="flex items-center gap-3">
-          {apy !== null && (
-            <span
-              className={`text-base font-mono ${apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
-            >
-              {apy >= 0 ? '+' : ''}
-              {apy.toFixed(1)}% APY
-            </span>
-          )}
+          <span
+            className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
+          >
+            {apy !== null ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY' : '\u00A0'}
+          </span>
           <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
             <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
               <TabsTrigger value="1W">1W</TabsTrigger>
@@ -259,7 +262,7 @@ export default function VaultPnlChart({
           </Tabs>
         </div>
       </div>
-      <div style={{ height }}>
+      <div className={useFlexHeight ? 'flex-1' : ''} style={{ height: useFlexHeight ? undefined : height, minHeight: useFlexHeight ? height : undefined }}>
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader className="w-6 h-6" />
@@ -274,12 +277,12 @@ export default function VaultPnlChart({
               <AreaChart data={chartData} margin={CHART_MARGIN}>
                 <defs>
                   <linearGradient id="pnlGradientPositive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(142 76% 36%)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="hsl(142 76% 36%)" stopOpacity={0} />
+                    <stop offset="0%" stopColor="hsl(142 76% 36%)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(142 76% 36%)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="pnlGradientNegative" x1="0" y1="1" x2="0" y2="0">
-                    <stop offset="5%" stopColor="hsl(0 84% 60%)" stopOpacity={0.4} />
-                    <stop offset="95%" stopColor="hsl(0 84% 60%)" stopOpacity={0} />
+                  <linearGradient id="pnlGradientNegative" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(0 84% 60%)" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="hsl(0 84% 60%)" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -311,6 +314,7 @@ export default function VaultPnlChart({
                   stroke={isPositive ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)'}
                   strokeWidth={2}
                   fill={isPositive ? 'url(#pnlGradientPositive)' : 'url(#pnlGradientNegative)'}
+                  baseValue={yDomain[0]}
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
               </AreaChart>
