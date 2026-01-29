@@ -97,7 +97,7 @@ export function usePassiveLiquidityVault(
   config?: UsePassiveLiquidityVaultConfig
 ) {
   const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isCalculatingAddress } = useSession();
   const { toast } = useToast();
 
   const VAULT_ADDRESS: Address = config?.vaultAddress || DEFAULT_VAULT_ADDRESS;
@@ -382,21 +382,22 @@ export function usePassiveLiquidityVault(
     (extraVaultFields?.[0]?.result as bigint) || 0n;
 
   // Interaction delay and last interaction timestamp
-  const { data: interactionDelayData } = useReadContracts({
-    contracts: hasFunction('interactionDelay', 0)
-      ? [
-          {
-            abi: PASSIVE_VAULT_ABI,
-            address: VAULT_ADDRESS,
-            functionName: 'interactionDelay',
-            chainId: TARGET_CHAIN_ID,
-          },
-        ]
-      : [],
-    query: {
-      enabled: !!VAULT_ADDRESS && hasFunction('interactionDelay', 0),
-    },
-  });
+  const { data: interactionDelayData, isPending: isInteractionDelayPending } =
+    useReadContracts({
+      contracts: hasFunction('interactionDelay', 0)
+        ? [
+            {
+              abi: PASSIVE_VAULT_ABI,
+              address: VAULT_ADDRESS,
+              functionName: 'interactionDelay',
+              chainId: TARGET_CHAIN_ID,
+            },
+          ]
+        : [],
+      query: {
+        enabled: !!VAULT_ADDRESS && hasFunction('interactionDelay', 0),
+      },
+    });
 
   const interactionDelay: bigint =
     (interactionDelayData?.[0]?.result as bigint) || 0n;
@@ -406,26 +407,27 @@ export function usePassiveLiquidityVault(
   // the address that actually submits transactions.
   const cooldownAddress = effectiveAddress ?? address;
 
-  const { data: lastInteractionData } = useReadContracts({
-    contracts:
-      cooldownAddress && hasFunction('lastUserInteractionTimestamp', 1)
-        ? [
-            {
-              abi: PASSIVE_VAULT_ABI,
-              address: VAULT_ADDRESS,
-              functionName: 'lastUserInteractionTimestamp',
-              args: [cooldownAddress],
-              chainId: TARGET_CHAIN_ID,
-            },
-          ]
-        : [],
-    query: {
-      enabled:
-        !!cooldownAddress &&
-        !!VAULT_ADDRESS &&
-        hasFunction('lastUserInteractionTimestamp', 1),
-    },
-  });
+  const { data: lastInteractionData, isPending: isLastInteractionPending } =
+    useReadContracts({
+      contracts:
+        cooldownAddress && hasFunction('lastUserInteractionTimestamp', 1)
+          ? [
+              {
+                abi: PASSIVE_VAULT_ABI,
+                address: VAULT_ADDRESS,
+                functionName: 'lastUserInteractionTimestamp',
+                args: [cooldownAddress],
+                chainId: TARGET_CHAIN_ID,
+              },
+            ]
+          : [],
+      query: {
+        enabled:
+          !!cooldownAddress &&
+          !!VAULT_ADDRESS &&
+          hasFunction('lastUserInteractionTimestamp', 1),
+      },
+    });
 
   const lastInteractionAt: bigint =
     (lastInteractionData?.[0]?.result as bigint) || 0n;
@@ -442,7 +444,12 @@ export function usePassiveLiquidityVault(
     }
   }, [lastInteractionAt, interactionDelay]);
 
-  const isInteractionDelayActive = interactionDelayRemainingSec > 0;
+  // Only consider cooldown active if address has stabilized and queries have loaded
+  const isInteractionDelayActive =
+    !isCalculatingAddress &&
+    !isInteractionDelayPending &&
+    !isLastInteractionPending &&
+    interactionDelayRemainingSec > 0;
 
   const { data: pendingMapping, refetch: refetchPendingMapping } =
     useReadContracts({

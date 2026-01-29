@@ -12,7 +12,10 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
-import { useProtocolStats, type ProtocolStat } from '~/hooks/graphql/useAnalytics';
+import {
+  useProtocolStats,
+  type ProtocolStat,
+} from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -21,7 +24,7 @@ const PERIOD_DAYS: Record<Period, number> = {
   '1W': 7,
   '1M': 30,
   '3M': 90,
-  'ALL': Infinity,
+  ALL: Infinity,
 };
 
 function formatLargeNumber(value: number): string {
@@ -98,8 +101,18 @@ function ChartTooltip({
   if (label) {
     const date = new Date(parseInt(label, 10) * 1000);
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
   }
@@ -109,8 +122,11 @@ function ChartTooltip({
       <div className="text-xs font-medium text-muted-foreground mb-1">
         {dateLabel}
       </div>
-      <div className={`text-sm font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
-        {isPositive ? '+' : ''}{formattedValue} {collateralSymbol}
+      <div
+        className={`text-sm font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}
+      >
+        {isPositive ? '+' : ''}
+        {formattedValue} {collateralSymbol}
       </div>
     </div>
   );
@@ -145,7 +161,8 @@ export default function VaultPnlChart({
   const [period, setPeriod] = useState<Period>('3M');
 
   // Use internal fetch if no external data provided
-  const { data: internalStats, isLoading: internalLoading } = useProtocolStats();
+  const { data: internalStats, isLoading: internalLoading } =
+    useProtocolStats();
 
   const protocolStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
@@ -172,11 +189,14 @@ export default function VaultPnlChart({
     // Get the initial TVL as baseline
     const firstStat = filteredStats[0];
     const baselineTvl =
-      (parseFloat(firstStat.vaultBalance) + parseFloat(firstStat.escrowBalance)) / 1e18;
+      (parseFloat(firstStat.vaultBalance) +
+        parseFloat(firstStat.escrowBalance)) /
+      1e18;
 
     return filteredStats.map((point, index) => {
       const currentTvl =
-        (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) / 1e18;
+        (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) /
+        1e18;
 
       // Placeholder PnL calculation: difference from baseline TVL
       // In production, this will come from the actual vaultPnl field
@@ -234,14 +254,17 @@ export default function VaultPnlChart({
   }, [chartData]);
 
   // Determine if overall PnL is positive or negative
-  const currentPnl = chartData.length > 0 ? chartData[chartData.length - 1].pnl : 0;
+  const currentPnl =
+    chartData.length > 0 ? chartData[chartData.length - 1].pnl : 0;
   const isPositive = currentPnl >= 0;
 
   // Check if className includes flex-1 to use flexible height
   const useFlexHeight = className?.includes('flex-1');
 
   return (
-    <div className={`w-full ${useFlexHeight ? 'flex flex-col' : ''} ${className ?? ''}`.trim()}>
+    <div
+      className={`w-full ${useFlexHeight ? 'flex flex-col' : ''} ${className ?? ''}`.trim()}
+    >
       <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
         <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
           Profit/Loss
@@ -250,7 +273,9 @@ export default function VaultPnlChart({
           <span
             className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
           >
-            {apy !== null ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY' : '\u00A0'}
+            {apy !== null
+              ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY'
+              : '\u00A0'}
           </span>
           <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
             <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
@@ -262,7 +287,13 @@ export default function VaultPnlChart({
           </Tabs>
         </div>
       </div>
-      <div className={useFlexHeight ? 'flex-1' : ''} style={{ height: useFlexHeight ? undefined : height, minHeight: useFlexHeight ? height : undefined }}>
+      <div
+        className={useFlexHeight ? 'flex-1' : ''}
+        style={{
+          height: useFlexHeight ? undefined : height,
+          minHeight: useFlexHeight ? height : undefined,
+        }}
+      >
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <Loader className="w-6 h-6" />
@@ -276,13 +307,41 @@ export default function VaultPnlChart({
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={CHART_MARGIN}>
                 <defs>
-                  <linearGradient id="pnlGradientPositive" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(142 76% 36%)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="hsl(142 76% 36%)" stopOpacity={0} />
+                  <linearGradient
+                    id="pnlGradientPositive"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="hsl(142 76% 36%)"
+                      stopOpacity={0.4}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="hsl(142 76% 36%)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
-                  <linearGradient id="pnlGradientNegative" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="hsl(0 84% 60%)" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="hsl(0 84% 60%)" stopOpacity={0} />
+                  <linearGradient
+                    id="pnlGradientNegative"
+                    x1="0"
+                    y1="0"
+                    x2="0"
+                    y2="1"
+                  >
+                    <stop
+                      offset="0%"
+                      stopColor="hsl(0 84% 60%)"
+                      stopOpacity={0.4}
+                    />
+                    <stop
+                      offset="100%"
+                      stopColor="hsl(0 84% 60%)"
+                      stopOpacity={0}
+                    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
@@ -313,7 +372,11 @@ export default function VaultPnlChart({
                   dataKey="pnl"
                   stroke={isPositive ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)'}
                   strokeWidth={2}
-                  fill={isPositive ? 'url(#pnlGradientPositive)' : 'url(#pnlGradientNegative)'}
+                  fill={
+                    isPositive
+                      ? 'url(#pnlGradientPositive)'
+                      : 'url(#pnlGradientNegative)'
+                  }
                   baseValue={yDomain[0]}
                   activeDot={{ r: 4, strokeWidth: 0 }}
                 />
