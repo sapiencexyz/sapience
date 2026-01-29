@@ -19,8 +19,8 @@ import { Vault, Clock } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
-import { useAccount } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import Link from 'next/link';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -40,7 +40,7 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
 ];
 
 const VaultsPageContent = () => {
-  const { isConnected, address } = useAccount();
+  const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
   // Constants for vault integration
   const VAULT_CHAIN_ID = CHAIN_ID_ETHEREAL;
@@ -727,8 +727,10 @@ const VaultsPageContent = () => {
 
   const isWhitelisted =
     DEPOSIT_WHITELIST.length === 0 ||
-    (address &&
-      DEPOSIT_WHITELIST.includes(address.toLowerCase() as `0x${string}`));
+    (currentAddress &&
+      DEPOSIT_WHITELIST.includes(
+        currentAddress.toLowerCase() as `0x${string}`
+      ));
 
   const utilizationDisplay = useMemo(() => {
     try {
