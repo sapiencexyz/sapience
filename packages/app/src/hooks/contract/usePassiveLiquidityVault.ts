@@ -11,7 +11,7 @@ import {
 } from 'viem';
 import type { Abi } from 'abitype';
 import { liquidityVaultAbi } from '@sapience/sdk';
-import { useReadContracts, useBalance } from 'wagmi';
+import { useReadContracts, useBalance, useReadContract } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -20,6 +20,9 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
+
+// wUSDe contract address on Ethereal
+const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 // Use ABI from SDK
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
@@ -267,6 +270,19 @@ export function usePassiveLiquidityVault(
     query: { enabled: !!currentAddress },
   });
 
+  // wUSDe balance (for combined balance display)
+  const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
+    abi: erc20Abi,
+    address: WUSDE_ADDRESS,
+    functionName: 'balanceOf',
+    args: currentAddress ? [currentAddress] : undefined,
+    chainId: TARGET_CHAIN_ID,
+    query: {
+      enabled: !!currentAddress,
+      refetchInterval: 5000,
+    },
+  });
+
   // Write contract hook
   const {
     writeContract: writeVaultContract,
@@ -277,6 +293,7 @@ export function usePassiveLiquidityVault(
       refetchVaultData();
       refetchUserData();
       refetchNativeBalance();
+      refetchWusdeBalance();
       try {
         refetchPendingMapping?.();
       } catch {
@@ -436,8 +453,11 @@ export function usePassiveLiquidityVault(
   // Native USDe always has 18 decimals
   const assetDecimals = 18;
 
-  // User's native USDe balance
-  const userAssetBalance = nativeBalance?.value || 0n;
+  // User's combined USDe balance (native + wrapped)
+  const nativeUsdeBalance = nativeBalance?.value || 0n;
+  const wrappedUsdeBalance =
+    typeof wusdeBalance === 'bigint' ? wusdeBalance : 0n;
+  const userAssetBalance = nativeUsdeBalance + wrappedUsdeBalance;
 
   // No pre-approval needed for native assets (wrapping handles it atomically)
   const currentAllowance = 0n;
@@ -668,37 +688,48 @@ export function usePassiveLiquidityVault(
           : [amountWei],
       });
 
-      // Ethereal deposit flow: wrap native USDe → approve wUSDe → deposit
-      const wrapCalldata = encodeFunctionData({
-        abi: parseAbi(['function deposit() payable']),
-        functionName: 'deposit',
-      });
+      // Smart wrapping: only wrap the delta if existing wUSDe is insufficient
+      const existingWusde = wrappedUsdeBalance;
+      const amountToWrap =
+        amountWei > existingWusde ? amountWei - existingWusde : 0n;
 
+      const calls: { to: Address; data: `0x${string}`; value: bigint }[] = [];
+
+      // Only add wrap call if we need to wrap some native USDe
+      if (amountToWrap > 0n) {
+        const wrapCalldata = encodeFunctionData({
+          abi: parseAbi(['function deposit() payable']),
+          functionName: 'deposit',
+        });
+        calls.push({
+          to: parsedVaultData.asset, // wUSDe contract address
+          data: wrapCalldata,
+          value: amountToWrap, // Only wrap what's needed
+        });
+      }
+
+      // Always add approve call
       const approveCalldata = encodeFunctionData({
         abi: erc20Abi,
         functionName: 'approve',
         args: [VAULT_ADDRESS, amountWei],
       });
+      calls.push({
+        to: parsedVaultData.asset, // wUSDe contract address
+        data: approveCalldata,
+        value: 0n,
+      });
+
+      // Add deposit call
+      calls.push({
+        to: VAULT_ADDRESS,
+        data: requestDepositCalldata,
+        value: 0n,
+      });
 
       await sendCalls({
         chainId,
-        calls: [
-          {
-            to: parsedVaultData.asset, // wUSDe contract address
-            data: wrapCalldata,
-            value: amountWei, // Native USDe to wrap
-          },
-          {
-            to: parsedVaultData.asset, // wUSDe contract address
-            data: approveCalldata,
-            value: 0n, // No value for approve
-          },
-          {
-            to: VAULT_ADDRESS,
-            data: requestDepositCalldata,
-            value: 0n, // No value for the deposit call itself
-          },
-        ],
+        calls,
       });
     },
     [
@@ -707,6 +738,7 @@ export function usePassiveLiquidityVault(
       hasFunctionCb,
       sendCalls,
       VAULT_ADDRESS,
+      wrappedUsdeBalance,
     ]
   );
 
@@ -933,5 +965,10 @@ export function usePassiveLiquidityVault(
     refetchVaultData,
     refetchUserData,
     refetchNativeBalance,
+    refetchWusdeBalance,
+
+    // Individual balance components (for UI transparency)
+    nativeUsdeBalance,
+    wrappedUsdeBalance,
   };
 }
