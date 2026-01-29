@@ -536,7 +536,9 @@ export function useSapienceWriteContract({
       console.log(
         `[SessionTx]   TOTAL:                   ${String(timings.totalMs).padStart(5)}ms`
       );
-      console.log('[SessionTx] (skipping on-chain wait - indexer polling will confirm)');
+      console.log(
+        '[SessionTx] (skipping on-chain wait - indexer polling will confirm)'
+      );
       console.log('[SessionTx] ═══════════════════════════════════════════');
 
       return userOpHash;
@@ -825,13 +827,18 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              console.log('[useSapienceWriteContract] Executing via session key...');
+              console.log(
+                '[useSapienceWriteContract] Executing via session key...'
+              );
               const userOpHash = await executeViaSessionKey(
                 sessionClient,
                 formattedCalls,
                 _chainId
               );
-              console.log('[useSapienceWriteContract] Session key execution complete, userOpHash:', userOpHash);
+              console.log(
+                '[useSapienceWriteContract] Session key execution complete, userOpHash:',
+                userOpHash
+              );
 
               // For session key path, don't set txHash to avoid useMonitorTxStatus error
               // The userOpHash is not a transaction hash and can't be looked up via getTransactionReceipt
