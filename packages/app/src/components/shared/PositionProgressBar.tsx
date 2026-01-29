@@ -15,7 +15,7 @@ const STAGE_LABELS: Record<PositionStage, string> = {
   [PositionStage.IDLE]: 'Ready',
   [PositionStage.SUBMITTING]: 'SUBMITTING TO ETHEREAL',
   [PositionStage.CONFIRMING]: 'CONFIRMING ONCHAIN',
-  [PositionStage.INDEXING]: 'CHECKING INDEXER',
+  [PositionStage.INDEXING]: 'INDEXING POSITION',
   [PositionStage.COMPLETE]: 'COMPLETE',
   [PositionStage.ERROR]: 'ERROR',
 };
