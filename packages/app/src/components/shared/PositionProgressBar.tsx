@@ -28,7 +28,7 @@ const STAGE_LABELS: Record<PositionStage, string> = {
 };
 
 // Show "taking longer" message after this many seconds
-const TAKING_LONGER_THRESHOLD_SECONDS = 10;
+const TAKING_LONGER_THRESHOLD_SECONDS = 6;
 
 // Duration for progress bar to reach ~99% (in seconds)
 const ANIMATION_DURATION_SECONDS = 18;
