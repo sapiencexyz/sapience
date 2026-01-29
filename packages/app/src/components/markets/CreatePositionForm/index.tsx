@@ -49,7 +49,7 @@ import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBidsAsync } from '~/lib/auction/validateBids';
+import { validateBidsWithSimulation } from '~/lib/auction/simulateBidMint';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
@@ -151,6 +151,7 @@ const CreatePositionFormInner = ({
     bids: rawBids,
     requestQuotes,
     buildMintRequestDataFromBid,
+    currentAuctionParams,
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
@@ -182,17 +183,37 @@ const CreatePositionFormInner = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Async validation of bids - checks market maker's balance and allowance on-chain
-  // This runs when bids arrive and validates them before showing as submittable
+  // Async validation of bids - validates by simulating the mint transaction
+  // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
     if (rawBids.length === 0) {
       setBids([]);
       return;
     }
 
-    // Need collateral token and prediction market address for validation
-    if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
+    // Need auction params and prediction market address for simulation
+    if (!currentAuctionParams || !PREDICTION_MARKET_ADDRESS) {
       // Can't validate yet, show bids as pending
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'pending' as const,
+        }))
+      );
+      return;
+    }
+
+    const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
+      currentAuctionParams;
+
+    // Need all auction context to simulate
+    if (
+      !taker ||
+      !wager ||
+      takerNonce === undefined ||
+      !predictedOutcomes?.[0] ||
+      !resolver
+    ) {
       setBids(
         rawBids.map((b) => ({
           ...b,
@@ -205,27 +226,24 @@ const CreatePositionFormInner = ({
     let cancelled = false;
 
     const runValidation = async () => {
-      try {
-        const validated = await validateBidsAsync(rawBids, {
-          chainId: positionChainId,
-          collateralTokenAddress: collateralToken,
-          predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-        });
+      const validated = await validateBidsWithSimulation(rawBids, {
+        chainId,
+        predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+        takerAddress: taker,
+        takerWager: wager,
+        takerNonce,
+        encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
+        resolver: resolver as `0x${string}`,
+      });
 
-        if (!cancelled) {
-          setBids(validated);
-        }
-      } catch (err) {
-        console.error('[Bid] Async validation error:', err);
-        if (!cancelled) {
-          // On error, mark all as pending (don't block the user)
-          setBids(
-            rawBids.map((b) => ({
-              ...b,
-              validationStatus: 'pending' as const,
-            }))
-          );
-        }
+      if (!cancelled) {
+        setBids(
+          validated.map(({ bid, validationStatus, validationError }) => ({
+            ...bid,
+            validationStatus,
+            validationError,
+          }))
+        );
       }
     };
 
@@ -234,7 +252,7 @@ const CreatePositionFormInner = ({
     return () => {
       cancelled = true;
     };
-  }, [rawBids, collateralToken, PREDICTION_MARKET_ADDRESS, positionChainId]);
+  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];

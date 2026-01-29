@@ -1306,7 +1306,7 @@ export default function PositionsTable({
       )}
       {isLoading && rows.length === 0 ? (
         <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-          <Loader size={24} />
+          <Loader className="w-6 h-6" />
         </div>
       ) : (
         <>
@@ -1323,7 +1323,7 @@ export default function PositionsTable({
             <div className="overflow-hidden bg-brand-black relative">
               {isLoading && rows.length > 0 && (
                 <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
-                  <Loader size={20} />
+                  <Loader className="w-5 h-5" />
                 </div>
               )}
               <Table className="w-full table-auto">
@@ -1476,7 +1476,7 @@ export default function PositionsTable({
               >
                 {isLoading ? (
                   <div className="flex items-center gap-2">
-                    <Loader size={12} />
+                    <Loader className="w-3 h-3" />
                     <span className="text-sm text-muted-foreground">
                       Loading more positions...
                     </span>

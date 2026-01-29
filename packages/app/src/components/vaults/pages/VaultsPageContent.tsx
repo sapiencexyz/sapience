@@ -789,7 +789,7 @@ const VaultsPageContent = () => {
             </div>
             {isAnalyticsLoading || !vaultData ? (
               <div className="flex justify-center py-4">
-                <Loader size={24} />
+                <Loader className="w-6 h-6" />
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -305,7 +305,7 @@ const SettingsPageContent = () => {
 
         {!hydrated ? (
           <div className="h-[720px] flex items-center justify-center">
-            <Loader size={20} />
+            <Loader className="w-5 h-5" />
           </div>
         ) : (
           <Tabs

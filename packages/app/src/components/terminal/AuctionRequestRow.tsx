@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useAuctionBids } from '~/lib/auction/useAuctionBids';
+import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
@@ -54,7 +54,6 @@ const AuctionRequestRow: React.FC<Props> = ({
   isExpanded: isExpandedProp,
   onToggleExpanded,
 }) => {
-  const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
   const chainId = CHAIN_ID_ETHEREAL;
@@ -138,36 +137,41 @@ const AuctionRequestRow: React.FC<Props> = ({
         enabled: Boolean(PREDICTION_MARKET_ADDRESS && taker),
       },
     });
+
   // Use controlled expanded state if provided, otherwise fall back to local state
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = isExpandedProp ?? localExpanded;
-  const [highlightNewBid, setHighlightNewBid] = useState(false);
-  const numBids = useMemo(
-    () => (Array.isArray(bids) ? bids.length : 0),
-    [bids]
+
+  // Use validated auction bids - validates bids by simulating mint transactions
+  // Only run validation when the row is expanded to save RPC calls
+  const { validBids, invalidBidCount, totalBidCount } = useValidatedAuctionBids(
+    auctionId,
+    {
+      chainId,
+      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+      takerAddress: taker as `0x${string}` | undefined,
+      takerWager: takerWager ?? undefined,
+      takerNonce: takerNonce ?? undefined,
+      encodedPredictedOutcomes: predictedOutcomes?.[0] as
+        | `0x${string}`
+        | undefined,
+      resolver: resolver as `0x${string}` | undefined,
+      enabled: isExpanded,
+    }
   );
+  const [highlightNewBid, setHighlightNewBid] = useState(false);
+  const numBids = totalBidCount;
   const bidsLabel = useMemo(
     () => (numBids === 1 ? '1 BID' : `${numBids} BIDS`),
     [numBids]
   );
 
+  // Compute best bid summary from valid bids only
+  // validBids are already filtered for non-expired and valid status
   const bestBidSummary = useMemo(() => {
     try {
-      if (!Array.isArray(bids) || bids.length === 0) return null;
-      const nowMs = Date.now();
-      const active = bids.filter((b) => {
-        // Filter out zero address bids
-        if (
-          !b?.maker ||
-          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
-        )
-          return false;
-        const deadlineSec = Number(b?.makerDeadline || 0);
-        if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-        return deadlineSec * 1000 > nowMs;
-      });
-      if (active.length === 0) return null;
-      const best = active.reduce((prev, curr) => {
+      if (!Array.isArray(validBids) || validBids.length === 0) return null;
+      const best = validBids.reduce((prev, curr) => {
         try {
           const currVal = BigInt(String(curr?.makerWager ?? '0'));
           const prevVal = BigInt(String(prev?.makerWager ?? '0'));
@@ -175,7 +179,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         } catch {
           return prev;
         }
-      }, active[0]);
+      }, validBids[0]);
       const makerBid = (() => {
         try {
           return BigInt(String(best?.makerWager ?? '0'));
@@ -234,7 +238,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [bids, takerWager]);
+  }, [validBids, takerWager]);
 
   const takerWagerDisplay = useMemo(() => {
     try {
@@ -670,17 +674,18 @@ const AuctionRequestRow: React.FC<Props> = ({
             }}
           >
             <AuctionRequestChart
-              bids={bids}
+              bids={validBids}
               takerWager={takerWager}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               taker={taker}
               hasMultipleConditions={conditionIds.length > 1}
               tokenDecimals={tokenDecimals}
+              invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
               uiTx={uiTx}
-              bids={bids}
+              bids={validBids}
               takerWager={takerWager}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
