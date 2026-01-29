@@ -82,9 +82,9 @@ contract MintPredictionMarketTokens is Script {
     }
 
     function _loadWagers() internal view returns (WagerConfig memory wagers) {
-        // Default: 100 tokens for predictor, ~33.33 for counterparty
+        // Default: .1 tokens for predictor, .03333 for counterparty
         wagers.predictorWager =
-            vm.envOr("PREDICTOR_WAGER", uint256(100 ether));
+            vm.envOr("PREDICTOR_WAGER", uint256(.1 ether));
         wagers.counterpartyWager =
             vm.envOr("COUNTERPARTY_WAGER", wagers.predictorWager / 3);
     }
