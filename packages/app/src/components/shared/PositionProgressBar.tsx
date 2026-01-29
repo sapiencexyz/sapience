@@ -188,7 +188,8 @@ export default function PositionProgressBar({
           // Adjust startTime so elapsed time corresponds to 50% progress
           const progressRatio = CATCHUP_TARGET / targetProgress; // 50/99
           const tForTarget = 1 - Math.sqrt(1 - progressRatio);
-          const elapsedForTarget = tForTarget * ANIMATION_DURATION_SECONDS * 1000;
+          const elapsedForTarget =
+            tForTarget * ANIMATION_DURATION_SECONDS * 1000;
           startTimeRef.current = Date.now() - elapsedForTarget;
 
           setCatchUpTarget(null);

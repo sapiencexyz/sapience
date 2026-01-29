@@ -136,15 +136,16 @@ const CreatePositionFormInner = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } = useUserPositions({
-    address: effectiveAddress
-      ? String(effectiveAddress).toLowerCase()
-      : undefined,
-    chainId: positionChainId,
-    take: 1, // Only need the latest one
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
+  const { data: userPositions, refetch: refetchUserPositions } =
+    useUserPositions({
+      address: effectiveAddress
+        ? String(effectiveAddress).toLowerCase()
+        : undefined,
+      chainId: positionChainId,
+      take: 1, // Only need the latest one
+      orderBy: 'mintedAt',
+      orderDirection: 'desc',
+    });
 
   const {
     bids: rawBids,
