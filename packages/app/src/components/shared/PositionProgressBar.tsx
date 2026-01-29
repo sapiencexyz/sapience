@@ -260,8 +260,8 @@ export default function PositionProgressBar({
         {stage === PositionStage.INDEXING && showTakingLonger && (
           <HoverCard openDelay={100} closeDelay={200}>
             <HoverCardTrigger asChild>
-              <span className="font-mono text-muted-foreground text-sm uppercase tracking-wider inline-flex items-center gap-1 cursor-help">
-                RE-QUERYING INDEXER
+              <span className="font-mono text-muted-foreground text-sm uppercase tracking-wider inline-flex items-center gap-1 cursor-help animate-in fade-in duration-300">
+                QUERYING INDEXER
                 <HelpCircle className="h-3.5 w-3.5" />
               </span>
             </HoverCardTrigger>
@@ -281,7 +281,7 @@ export default function PositionProgressBar({
                     >
                       block explorer
                     </a>{' '}
-                    to verify whether the trade succeeded, or ask
+                    to verify whether the trade succeeded or ask
                   </>
                 )}
                 {!userAddress && ' Ask'} for support in{' '}
