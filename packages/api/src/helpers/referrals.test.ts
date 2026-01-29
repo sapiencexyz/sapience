@@ -55,7 +55,9 @@ const prisma = dbModule.default as unknown as {
   };
 };
 
-const mockRecoverMessageAddress = recoverMessageAddress as ReturnType<typeof vi.fn>;
+const mockRecoverMessageAddress = recoverMessageAddress as ReturnType<
+  typeof vi.fn
+>;
 
 // =============================================================================
 // Helper Function Tests
@@ -104,21 +106,6 @@ describe('hashReferralCode', () => {
 // =============================================================================
 // Route Tests - Using mock request/response
 // =============================================================================
-
-// Helper to create mock Express request/response
-function createMockReqRes(body = {}, params = {}) {
-  const req = {
-    body,
-    params,
-  } as any;
-
-  const res = {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-  } as any;
-
-  return { req, res };
-}
 
 describe('Referral Code Claiming', () => {
   beforeEach(() => {
@@ -199,7 +186,9 @@ describe('Referral Code Claiming', () => {
       };
 
       // The route checks claimedBy >= maxClaims and returns 403
-      expect(mockCode._count.claimedBy).toBeGreaterThanOrEqual(mockCode.maxClaims);
+      expect(mockCode._count.claimedBy).toBeGreaterThanOrEqual(
+        mockCode.maxClaims
+      );
     });
 
     it('allows claim when under max capacity', async () => {
@@ -464,8 +453,6 @@ describe('Analytics', () => {
   });
 
   it('calculates trading volume for claimants', async () => {
-    const userAddresses = ['0xuser1', '0xuser2'];
-
     prisma.position.findMany.mockResolvedValue([
       {
         predictor: '0xuser1',

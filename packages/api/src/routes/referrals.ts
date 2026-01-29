@@ -346,14 +346,13 @@ router.post('/claim', async (req: Request, res: Response) => {
 // POST /referrals/admin/codes - create a new admin referral code
 router.post('/admin/codes', adminAuth, async (req: Request, res: Response) => {
   try {
-    const { code, description, maxClaims, expiresAt, createdBy } =
-      req.body as {
-        code?: string;
-        description?: string;
-        maxClaims?: number;
-        expiresAt?: number;
-        createdBy?: string;
-      };
+    const { code, description, maxClaims, expiresAt, createdBy } = req.body as {
+      code?: string;
+      description?: string;
+      maxClaims?: number;
+      expiresAt?: number;
+      createdBy?: string;
+    };
 
     if (!code || !createdBy) {
       return res.status(400).json({

@@ -1935,36 +1935,15 @@ type Question {
 
 type ReferralCode {
   _count: ReferralCodeCount
-
-  """Users who claimed this code"""
   claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-
-  """Plaintext code (for admin display). Optional for user-created codes."""
-  code: String
-
-  """keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex"""
+  code: String!
   codeHash: String!
   createdAt: DateTimeISO!
-
-  """Wallet address of creator (admin or user)"""
   createdBy: String!
-
-  """
-  Type of code: 'admin' (created by admin) or 'user' (created by user with volume)
-  """
-  creatorType: String!
-
-  """Optional description (e.g., "CryptoTwitter Campaign Q1 2026")"""
   description: String
-
-  """Optional expiration (Unix timestamp)"""
   expiresAt: Int
   id: Int!
-
-  """Whether code is currently active"""
   isActive: Boolean!
-
-  """Maximum claims allowed (0 = unlimited)"""
   maxClaims: Int!
   updatedAt: DateTimeISO!
 }
@@ -1980,11 +1959,10 @@ input ReferralCodeNullableRelationFilter {
 
 input ReferralCodeOrderByWithRelationInput {
   claimedBy: UserOrderByRelationAggregateInput
-  code: SortOrderInput
+  code: SortOrder
   codeHash: SortOrder
   createdAt: SortOrder
   createdBy: SortOrder
-  creatorType: SortOrder
   description: SortOrderInput
   expiresAt: SortOrderInput
   id: SortOrder
@@ -1998,11 +1976,10 @@ input ReferralCodeWhereInput {
   NOT: [ReferralCodeWhereInput!]
   OR: [ReferralCodeWhereInput!]
   claimedBy: UserListRelationFilter
-  code: StringNullableFilter
+  code: StringFilter
   codeHash: StringFilter
   createdAt: DateTimeFilter
   createdBy: StringFilter
-  creatorType: StringFilter
   description: StringNullableFilter
   expiresAt: IntNullableFilter
   id: IntFilter
