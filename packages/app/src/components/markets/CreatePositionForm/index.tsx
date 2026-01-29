@@ -136,7 +136,7 @@ const CreatePositionFormInner = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserPositions({
+  const { data: userPositions, refetch: refetchUserPositions } = useUserPositions({
     address: effectiveAddress
       ? String(effectiveAddress).toLowerCase()
       : undefined,
@@ -783,6 +783,13 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
+  // Handle position indexed - mark complete and refetch positions for accurate lastNftId on next trade
+  const handlePositionIndexed = useCallback(() => {
+    markPositionIndexed();
+    // Refetch positions so next trade has correct lastNftId
+    refetchUserPositions();
+  }, [markPositionIndexed, refetchUserPositions]);
+
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
       wagerAmount: string;
@@ -819,7 +826,7 @@ const CreatePositionFormInner = ({
       expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
       progressState={progressState}
-      onPositionIndexed={markPositionIndexed}
+      onPositionIndexed={handlePositionIndexed}
     />
   );
 

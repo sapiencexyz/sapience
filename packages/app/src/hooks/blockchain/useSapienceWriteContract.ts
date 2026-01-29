@@ -825,14 +825,18 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              const txHashFromSession = await executeViaSessionKey(
+              console.log('[useSapienceWriteContract] Executing via session key...');
+              const userOpHash = await executeViaSessionKey(
                 sessionClient,
                 formattedCalls,
                 _chainId
               );
+              console.log('[useSapienceWriteContract] Session key execution complete, userOpHash:', userOpHash);
 
-              // Use consistent completion handler (same as EOA path)
-              completeSendCallsWithHash(txHashFromSession);
+              // For session key path, don't set txHash to avoid useMonitorTxStatus error
+              // The userOpHash is not a transaction hash and can't be looked up via getTransactionReceipt
+              // We rely on GraphQL polling in OgShareDialogBase to confirm the trade
+              completeSendCallsWithoutHash();
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);

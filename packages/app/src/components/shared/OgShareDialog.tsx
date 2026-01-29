@@ -120,6 +120,7 @@ export default function OgShareDialogBase({
   const { effectiveAddress } = useSession();
   const chainId = CHAIN_ID_ETHEREAL;
   const [positionResolved, setPositionResolved] = useState(false);
+
   // Store resolved position data for share URL
   const [resolvedPositionData, setResolvedPositionData] = useState<{
     nftId: string;
@@ -173,8 +174,10 @@ export default function OgShareDialogBase({
         return false;
       }
 
+      // Only accept positions minted AFTER the dialog opened (when submission starts)
+      // Small 10-second buffer for clock skew between client and indexer
       const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000;
+        (dialogOpenTimestampRef.current || Date.now()) - 10 * 1000;
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       const candidatePositions = positionsToCheck.filter((p: Position) => {
