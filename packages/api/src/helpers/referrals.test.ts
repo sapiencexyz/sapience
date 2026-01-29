@@ -96,6 +96,12 @@ describe('hashReferralCode', () => {
     expect(() => hashReferralCode('   ')).toThrow();
   });
 
+  it('throws for codes exceeding 16 characters', () => {
+    expect(() => hashReferralCode('EXACTLY16CHARS!!')).not.toThrow(); // 16 chars
+    expect(() => hashReferralCode('SEVENTEENCHARS!!!')).toThrow(); // 17 chars
+    expect(() => hashReferralCode('THIS_IS_WAY_TOO_LONG_FOR_A_CODE')).toThrow();
+  });
+
   it('produces different hashes for different codes', () => {
     const hash1 = hashReferralCode('CODE1');
     const hash2 = hashReferralCode('CODE2');

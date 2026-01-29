@@ -564,15 +564,20 @@ const ReferralCodesTab = ({
               <label className="text-sm font-medium">Code</label>
               <Input
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => setCode(e.target.value.slice(0, 16))}
                 required={!editingId}
                 disabled={Boolean(editingId)}
                 placeholder={editingId ? '(User-created code)' : 'e.g. SUMMER2024'}
                 className="font-mono"
+                maxLength={16}
               />
-              {editingId && (
+              {editingId ? (
                 <p className="text-xs text-muted-foreground">
                   {code ? 'Code cannot be changed after creation' : 'User-created codes do not store plaintext'}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {code.length}/16 characters
                 </p>
               )}
             </div>
