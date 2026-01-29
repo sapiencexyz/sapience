@@ -20,7 +20,7 @@ const GlobalLoader = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <Loader size={24} />
+      <Loader className="w-6 h-6" />
     </div>
   );
 };

@@ -37,6 +37,11 @@ type ConditionTitleLinkProps = {
    * Optional description for the condition (currently unused but accepted for API consistency).
    */
   description?: string | null;
+  /**
+   * When provided, always show tooltip with this content (regardless of truncation).
+   * Useful for showing full question when displaying shortName.
+   */
+  tooltipTitle?: string | null;
 };
 
 export default function ConditionTitleLink({
@@ -47,6 +52,7 @@ export default function ConditionTitleLink({
   clampLines = 1,
   trailing,
   noWrap = false,
+  tooltipTitle,
 }: ConditionTitleLinkProps) {
   // Compute style based on clamp behavior
   const linkStyle: React.CSSProperties = React.useMemo(() => {
@@ -103,11 +109,38 @@ export default function ConditionTitleLink({
   // Wrapper display: block for single-line clamp, inline otherwise
   const wrapperDisplay = clampLines === 1 ? 'block' : 'inline align-baseline';
 
-  // Only show tooltip when text might be truncated (clamped)
-  const showTooltip = clampLines != null && !noWrap;
+  // Detect actual text truncation via ResizeObserver
+  const linkRef = React.useRef<HTMLAnchorElement>(null);
+  const [isTruncated, setIsTruncated] = React.useState(false);
+
+  React.useEffect(() => {
+    const el = linkRef.current;
+    if (!el || clampLines == null || noWrap) {
+      setIsTruncated(false);
+      return;
+    }
+
+    const check = () => {
+      if (clampLines === 1) {
+        setIsTruncated(el.scrollWidth > el.clientWidth);
+      } else {
+        setIsTruncated(el.scrollHeight > el.clientHeight);
+      }
+    };
+
+    check();
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [clampLines, noWrap, title]);
+
+  const canTruncate = clampLines != null && !noWrap;
+  // When tooltipTitle is provided, always show tooltip regardless of truncation
+  const forceTooltip = !!tooltipTitle;
 
   const linkElement = (
     <Link
+      ref={linkRef}
       href={href}
       className={`${baseClickableClass} min-w-0 max-w-full`}
       style={linkStyle}
@@ -116,16 +149,22 @@ export default function ConditionTitleLink({
     </Link>
   );
 
+  // Determine tooltip content and visibility
+  const showTooltip = forceTooltip || (canTruncate && isTruncated);
+  const tooltipContent = tooltipTitle || title;
+
   return (
     <span className={`${wrapperDisplay} min-w-0 max-w-full ${className ?? ''}`}>
-      {showTooltip ? (
-        <Tooltip>
+      {showTooltip || canTruncate ? (
+        <Tooltip
+          open={forceTooltip ? undefined : isTruncated ? undefined : false}
+        >
           <TooltipTrigger asChild>{linkElement}</TooltipTrigger>
           <TooltipContent
             side="top"
             className="max-w-xs text-xs whitespace-normal break-words"
           >
-            {title}
+            {tooltipContent}
           </TooltipContent>
         </Tooltip>
       ) : (

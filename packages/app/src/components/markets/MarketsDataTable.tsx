@@ -17,7 +17,8 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Loader2, Minus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import Loader from '../shared/Loader';
 import { format } from 'date-fns';
 import { formatEther } from 'viem';
 import {
@@ -251,7 +252,7 @@ function ForecastCell({
         variant="outline"
         className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
       >
-        PENDING
+        RESOLUTION PENDING
       </Badge>
     );
   }
@@ -290,7 +291,6 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     useCreatePositionContext();
 
   const isPastEnd = useIsPastEndTime(condition.endTime);
-  const displayQ = condition.shortName || condition.question;
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -310,7 +310,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     }
     addSelection({
       conditionId: condition.id,
-      question: displayQ,
+      question: condition.question,
+      shortName: condition.shortName,
       prediction: true,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
@@ -319,7 +320,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     condition.id,
     condition.category?.slug,
     condition.endTime,
-    displayQ,
+    condition.question,
+    condition.shortName,
     selections,
     removeSelection,
     addSelection,
@@ -334,7 +336,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     }
     addSelection({
       conditionId: condition.id,
-      question: displayQ,
+      question: condition.question,
+      shortName: condition.shortName,
       prediction: false,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
@@ -343,7 +346,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     condition.id,
     condition.category?.slug,
     condition.endTime,
-    displayQ,
+    condition.question,
+    condition.shortName,
     selections,
     removeSelection,
     addSelection,
@@ -463,11 +467,10 @@ function createColumns(
         const condition = data.condition;
         const categorySlug = condition.category?.slug;
         const color = getCategoryColor(categorySlug);
-        const displayQ = condition.shortName || condition.question;
         return (
           <div className="flex items-center gap-3 w-full min-w-0">
             <MarketBadge
-              label={displayQ}
+              label={condition.question}
               size={24}
               color={color}
               categorySlug={categorySlug}
@@ -475,7 +478,7 @@ function createColumns(
             <ConditionTitleLink
               conditionId={condition.id}
               resolverAddress={condition.resolver ?? undefined}
-              title={displayQ}
+              title={condition.question}
               clampLines={1}
               className="text-sm min-w-0"
             />
@@ -665,7 +668,6 @@ function ChildConditionRow({
   const conditionType = groupConditionToConditionType(condition);
   const categorySlug = condition.category?.slug;
   const color = getCategoryColor(categorySlug);
-  const displayQ = condition.shortName || condition.question;
   const openInterestWei = BigInt(condition.openInterest || '0');
   const etherValue = parseFloat(formatEther(openInterestWei));
   const formattedValue = etherValue.toFixed(2);
@@ -679,7 +681,7 @@ function ChildConditionRow({
       <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
         <div className="flex items-center gap-3 w-full min-w-0">
           <MarketBadge
-            label={displayQ}
+            label={condition.question}
             size={24}
             color={color}
             categorySlug={categorySlug}
@@ -687,7 +689,7 @@ function ChildConditionRow({
           <ConditionTitleLink
             conditionId={condition.id}
             resolverAddress={condition.resolver ?? undefined}
-            title={displayQ}
+            title={condition.question}
             clampLines={1}
             className="text-sm min-w-0"
           />
@@ -1077,14 +1079,14 @@ export default function MarketsDataTable({
             ))}
           </TableHeader>
           <TableBody className="bg-brand-black">
-            {isLoading ? (
+            {isLoading && displayedRows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader className="h-4 w-4" durationMs={1000} />
                     <span>Loading...</span>
                   </div>
                 </TableCell>

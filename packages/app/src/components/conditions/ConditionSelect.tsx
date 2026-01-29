@@ -116,7 +116,7 @@ const ConditionSelect: React.FC<ConditionSelectProps> = ({
                           return (
                             <MarketBadge
                               categorySlug={categorySlug}
-                              label={c.shortName || c.question}
+                              label={c.question}
                               size={28}
                               color={color}
                             />
@@ -124,7 +124,7 @@ const ConditionSelect: React.FC<ConditionSelectProps> = ({
                         })()}
                         <div className="flex flex-col min-w-0">
                           <span className="truncate text-sm text-brand-white">
-                            {c.shortName || c.question}
+                            {c.question}
                           </span>
                         </div>
                       </CommandItem>

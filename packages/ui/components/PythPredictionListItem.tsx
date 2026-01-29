@@ -163,8 +163,8 @@ export function PythPredictionListItem({
         <div
           className={
             layout === 'inline'
-              ? 'w-6 h-6 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10'
-              : 'w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10'
+              ? 'w-5 h-5 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10'
+              : 'w-5 h-5 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10'
           }
         >
           <TooltipProvider>
@@ -172,11 +172,7 @@ export function PythPredictionListItem({
               <TooltipTrigger asChild>
                 <div className="flex items-center justify-center">
                   <PythOracleMark
-                    className={
-                      layout === 'inline'
-                        ? 'w-3 h-3 text-foreground'
-                        : 'w-4 h-4 text-foreground'
-                    }
+                    className="w-3 h-3 text-foreground"
                     src="/pyth-network.svg"
                     alt="Pyth"
                   />
@@ -192,13 +188,7 @@ export function PythPredictionListItem({
       ) : null}
 
       <div className="flex-1 min-w-0">
-        <div
-          className={
-            layout === 'inline'
-              ? 'text-sm text-foreground'
-              : 'text-md text-foreground'
-          }
-        >
+        <div className="text-sm text-foreground">
           {layout === 'inline' ? (
             <div className="flex items-baseline gap-3 min-w-0 flex-nowrap">
               <div className="min-w-0">

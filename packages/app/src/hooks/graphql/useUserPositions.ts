@@ -47,6 +47,8 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
     $orderBy: String
     $orderDirection: String
     $chainId: Int
+    $status: String
+    $endsAtGte: Int
   ) {
     positions(
       address: $address
@@ -55,6 +57,8 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
       orderBy: $orderBy
       orderDirection: $orderDirection
       chainId: $chainId
+      status: $status
+      endsAtGte: $endsAtGte
     ) {
       id
       chainId
@@ -117,6 +121,8 @@ export function useUserPositions(params: {
   orderBy?: string;
   orderDirection?: string;
   chainId?: number;
+  status?: string;
+  endsAtGte?: number;
 }) {
   const {
     address,
@@ -125,6 +131,8 @@ export function useUserPositions(params: {
     orderBy,
     orderDirection,
     chainId,
+    status,
+    endsAtGte,
   } = params;
   const enabled = Boolean(address);
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -136,6 +144,8 @@ export function useUserPositions(params: {
       orderBy,
       orderDirection,
       chainId,
+      status,
+      endsAtGte,
     ],
     enabled,
     staleTime: 30_000,
@@ -153,6 +163,8 @@ export function useUserPositions(params: {
           orderBy,
           orderDirection,
           chainId: chainId ?? null,
+          status: status ?? null,
+          endsAtGte: endsAtGte ?? null,
         }
       );
       const base = resp?.positions ?? [];

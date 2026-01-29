@@ -337,3 +337,73 @@ export const useInfiniteForecasts = ({
     isFetchingNextPage: query.isFetchingNextPage,
   };
 };
+
+// Skip-based paginated hook for profile table (matches PositionsTable pattern)
+interface UseUserForecastsParams {
+  attesterAddress: string;
+  schemaId?: string;
+  conditionId?: string;
+  take: number;
+  skip: number;
+  orderBy: string;
+  orderDirection: 'asc' | 'desc';
+}
+
+export const useUserForecasts = ({
+  attesterAddress,
+  schemaId = SCHEMA_UID,
+  conditionId,
+  take,
+  skip,
+  orderBy,
+  orderDirection,
+}: UseUserForecastsParams) => {
+  let normalizedAttesterAddress = attesterAddress;
+  if (attesterAddress) {
+    try {
+      normalizedAttesterAddress = getAddress(attesterAddress);
+    } catch (_e) {
+      // swallow normalization error
+    }
+  }
+
+  const filters: Record<string, { equals: string }>[] = [];
+  if (normalizedAttesterAddress) {
+    filters.push({ attester: { equals: normalizedAttesterAddress } });
+  }
+  if (conditionId) {
+    filters.push({ conditionId: { equals: conditionId } });
+  }
+
+  return useQuery<FormattedAttestation[]>({
+    queryKey: [
+      'forecasts',
+      schemaId,
+      attesterAddress,
+      conditionId || null,
+      take,
+      skip,
+      orderBy,
+      orderDirection,
+    ],
+    queryFn: async () => {
+      const variables = {
+        where: {
+          schemaId: { equals: schemaId },
+          AND: filters,
+        },
+        take,
+        skip,
+        orderBy: [{ [orderBy]: orderDirection }],
+      };
+      const data = await graphqlRequest<AttestationsQueryResponse>(
+        GET_ATTESTATIONS_PAGINATED_QUERY,
+        variables
+      );
+      return (data.attestations || []).map((att) => formatAttestationData(att));
+    },
+    enabled: Boolean(attesterAddress),
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
+};

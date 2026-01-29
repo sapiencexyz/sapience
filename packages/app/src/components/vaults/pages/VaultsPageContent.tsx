@@ -34,8 +34,12 @@ import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 
+const DEPOSIT_WHITELIST: `0x${string}`[] = [
+  '0xdb5af497a73620d881561edb508012a5f84e9ba2',
+];
+
 const VaultsPageContent = () => {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
   // Constants for vault integration
   const VAULT_CHAIN_ID = CHAIN_ID_ETHEREAL;
@@ -385,7 +389,8 @@ const VaultsPageContent = () => {
               !!(pendingRequest && !pendingRequest.processed) ||
               isPermitLoading ||
               isRestricted ||
-              (!!depositAmount && exceedsVaultCapacity)
+              (!!depositAmount && exceedsVaultCapacity) ||
+              (isConnected && !isWhitelisted)
             }
             onClick={async () => {
               if (!isConnected) {
@@ -408,17 +413,19 @@ const VaultsPageContent = () => {
                 ? 'Processing...'
                 : vaultData?.paused
                   ? 'Vault Paused'
-                  : isInteractionDelayActive
-                    ? 'Cooldown in progress'
-                    : !!depositAmount && exceedsVaultCapacity
-                      ? 'Exceeds Vault Capacity'
-                      : quoteSignatureValid === false
-                        ? 'Waiting for Price Quote'
-                        : !pricePerShare || pricePerShare === '0'
-                          ? 'Cannot connect to vault'
-                          : requiresApproval
-                            ? 'Approve & Deposit'
-                            : 'Submit Deposit'}
+                  : isConnected && !isWhitelisted
+                    ? 'Not Whitelisted'
+                    : isInteractionDelayActive
+                      ? 'Cooldown in progress'
+                      : !!depositAmount && exceedsVaultCapacity
+                        ? 'Exceeds Vault Capacity'
+                        : quoteSignatureValid === false
+                          ? 'Waiting for Price Quote'
+                          : !pricePerShare || pricePerShare === '0'
+                            ? 'Cannot connect to vault'
+                            : requiresApproval
+                              ? 'Approve & Deposit'
+                              : 'Submit Deposit'}
           </Button>
         </div>
         <div className="h-1" />
@@ -689,12 +696,12 @@ const VaultsPageContent = () => {
     }
   }, [deployedWei, formatAssetAmount]);
 
-  // Vault capacity check (1000 USDe max)
+  // Vault capacity check (20000 USDe max)
   const VAULT_CAPACITY_WEI = useMemo(() => {
     try {
-      return parseUnits('1000', assetDecimals ?? 18);
+      return parseUnits('20000', assetDecimals ?? 18);
     } catch {
-      return parseUnits('1000', 18);
+      return parseUnits('20000', 18);
     }
   }, [assetDecimals]);
 
@@ -706,6 +713,11 @@ const VaultsPageContent = () => {
       return false;
     }
   }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
+  const isWhitelisted =
+    DEPOSIT_WHITELIST.length === 0 ||
+    (address &&
+      DEPOSIT_WHITELIST.includes(address.toLowerCase() as `0x${string}`));
 
   const utilizationDisplay = useMemo(() => {
     try {
@@ -747,7 +759,7 @@ const VaultsPageContent = () => {
     <div className="relative">
       {/* Main Content */}
       <div className="container max-w-[600px] mx-auto px-4 pt-10 md:pt-14 lg:pt-16 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
@@ -779,7 +791,7 @@ const VaultsPageContent = () => {
           <div className="flex flex-col gap-4">
             <div>
               <div className="text-sm font-mono uppercase tracking-wider text-accent-gold">
-                VAULT REWARDS
+                PROTOCOL VAULT REWARDS
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Ethena rewards are automatically distributed into the vault for
@@ -789,11 +801,11 @@ const VaultsPageContent = () => {
             </div>
             {isAnalyticsLoading || !vaultData ? (
               <div className="flex justify-center py-4">
-                <Loader size={24} />
+                <Loader className="w-6 h-6" />
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="pr-4 border-r border-brand-white/20">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:pr-4 sm:border-r border-brand-white/20">
                   <div className="text-3xl font-medium font-mono">
                     {yieldMetrics.effectiveApy}%
                   </div>
@@ -801,7 +813,7 @@ const VaultsPageContent = () => {
                     Approximate APY
                   </div>
                 </div>
-                <div className="pl-4">
+                <div className="sm:pl-4">
                   <div className="text-3xl font-medium font-mono">
                     {yieldMetrics.dailyYield} {collateralSymbol}
                   </div>

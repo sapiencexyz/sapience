@@ -414,27 +414,37 @@ export default function QuestionPageContent({
     }
   }, [hasPositions, primaryTab]);
 
-  // Calculate X axis domain and ticks based on predictions data
+  // Calculate X axis domain and ticks based on all chart data
   const { xDomain, xTicks, xTickLabels } = useMemo(() => {
-    if (scatterData.length === 0) {
-      // Default to last 7 days if no data
+    const allTimes = [
+      ...scatterData.map((d) => d.x),
+      ...forecastScatterData.map((d) => d.x),
+    ];
+
+    if (allTimes.length === 0) {
+      const endTimeMs = data?.endTime ? data.endTime * 1000 : null;
       const now = Date.now();
-      const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+      const right = endTimeMs && endTimeMs <= now ? endTimeMs : now;
+      const weekAgo = right - 7 * 24 * 60 * 60 * 1000;
       return {
-        xDomain: [weekAgo, now] as [number, number],
-        xTicks: [weekAgo, now - 3.5 * 24 * 60 * 60 * 1000, now],
+        xDomain: [weekAgo, right] as [number, number],
+        xTicks: [weekAgo, weekAgo + (right - weekAgo) / 2, right],
         xTickLabels: {} as Record<number, string>,
       };
     }
 
-    const times = scatterData.map((d) => d.x);
-    const minTime = Math.min(...times);
-    const maxTime = Math.max(...times);
+    const minTime = Math.min(...allTimes);
+    const maxTime = Math.max(...allTimes);
 
-    // Add some padding (10% on each side)
-    const range = maxTime - minTime || 24 * 60 * 60 * 1000; // Default to 1 day if single point
+    // Add some padding
+    const range = maxTime - minTime || 24 * 60 * 60 * 1000;
     const padding = range * 0.1;
-    const domain: [number, number] = [minTime - padding, maxTime + padding];
+
+    // Cap the right edge at the condition's end time if it has ended
+    const endTimeMs = data?.endTime ? data.endTime * 1000 : null;
+    const rightEdge =
+      endTimeMs && endTimeMs <= Date.now() ? endTimeMs : maxTime + padding;
+    const domain: [number, number] = [minTime - padding, rightEdge];
 
     // Create evenly spaced ticks
     const tickCount = 5;
@@ -448,7 +458,7 @@ export default function QuestionPageContent({
     }
 
     return { xDomain: domain, xTicks: ticks, xTickLabels: labels };
-  }, [scatterData]);
+  }, [scatterData, forecastScatterData, data?.endTime]);
 
   const { bids, requestQuotes } = useAuctionStart();
   const predictionMarketAddress =
@@ -470,7 +480,7 @@ export default function QuestionPageContent({
           minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
-        <Loader size={16} />
+        <Loader className="w-4 h-4" />
       </div>
     );
   }
@@ -515,7 +525,8 @@ export default function QuestionPageContent({
   const renderPredictionFormCard = () => (
     <PredictionForm
       conditionId={conditionId}
-      question={data.shortName || data.question || ''}
+      question={data.question || ''}
+      shortName={data.shortName}
       categorySlug={data.category?.slug}
       resolverAddress={resolverAddress}
       chainId={chainId}
@@ -627,19 +638,21 @@ export default function QuestionPageContent({
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
-          <div className="p-4 border-b border-border/60">
-            <ConditionForecastForm
-              conditionId={conditionId}
-              resolver={UMA_RESOLVER_ARBITRUM}
-              question={data.shortName || data.question || ''}
-              endTime={data.endTime ?? undefined}
-              categorySlug={data.category?.slug}
-              onSuccess={handleForecastSuccess}
-            />
-          </div>
+          {!isPastEndTime && (
+            <div className="p-4 border-b border-border/60">
+              <ConditionForecastForm
+                conditionId={conditionId}
+                resolver={UMA_RESOLVER_ARBITRUM}
+                question={data.question || ''}
+                endTime={data.endTime ?? undefined}
+                categorySlug={data.category?.slug}
+                onSuccess={handleForecastSuccess}
+              />
+            </div>
+          )}
           <Comments
             selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.shortName || data.question}
+            question={data.question}
             conditionId={conditionId}
             refetchTrigger={refetchTrigger}
           />
@@ -674,7 +687,7 @@ export default function QuestionPageContent({
         {/* Content area - Agent */}
         <TabsContent value="agent" className="m-0">
           <ResearchAgent
-            question={data.shortName || data.question}
+            question={data.question}
             endTime={data.endTime}
             description={data.description}
           />
@@ -734,19 +747,21 @@ export default function QuestionPageContent({
           <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
-          <div className="p-4 border-b border-border/60">
-            <ConditionForecastForm
-              conditionId={conditionId}
-              resolver={UMA_RESOLVER_ARBITRUM}
-              question={data.shortName || data.question || ''}
-              endTime={data.endTime ?? undefined}
-              categorySlug={data.category?.slug}
-              onSuccess={handleForecastSuccess}
-            />
-          </div>
+          {!isPastEndTime && (
+            <div className="p-4 border-b border-border/60">
+              <ConditionForecastForm
+                conditionId={conditionId}
+                resolver={UMA_RESOLVER_ARBITRUM}
+                question={data.question || ''}
+                endTime={data.endTime ?? undefined}
+                categorySlug={data.category?.slug}
+                onSuccess={handleForecastSuccess}
+              />
+            </div>
+          )}
           <Comments
             selectedCategory={CommentFilters.SelectedQuestion}
-            question={data.shortName || data.question}
+            question={data.question}
             conditionId={conditionId}
             refetchTrigger={refetchTrigger}
           />
@@ -779,7 +794,7 @@ export default function QuestionPageContent({
         </TabsContent>
         <TabsContent value="agent" className="m-0">
           <ResearchAgent
-            question={data.shortName || data.question}
+            question={data.question}
             endTime={data.endTime}
             description={data.description}
           />

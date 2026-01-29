@@ -14,6 +14,7 @@ import { predictionMarket } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 // Note: Owner's wallet signs bid requests (not session key) so relayer can verify
 // smart account ownership by computing the smart account address from the recovered signer.
@@ -82,7 +83,8 @@ export function useBidSubmission(
   const { signTypedDataAsync } = useSignTypedData();
   const chainId = CHAIN_ID_ETHEREAL;
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSmartAccount } = useSession();
+  const { toast } = useToast();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -135,6 +137,21 @@ export function useBidSubmission(
       // Validate required data
       if (!signerAddress) {
         return { success: false, error: 'Wallet not connected' };
+      }
+
+      // Smart account mode is not supported for terminal bidding
+      if (isUsingSmartAccount) {
+        toast({
+          title: 'Smart Account Not Supported',
+          description:
+            'The trading terminal does not currently support smart account mode. Please switch to EOA mode in settings to place bids.',
+          variant: 'destructive',
+          duration: 6000,
+        });
+        return {
+          success: false,
+          error: 'Smart account mode not supported for terminal bidding',
+        };
       }
 
       if (!auctionId) {
@@ -275,6 +292,8 @@ export function useBidSubmission(
       signTypedDataAsync,
       onSignatureRejected,
       effectiveAddress,
+      isUsingSmartAccount,
+      toast,
     ]
   );
 

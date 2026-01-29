@@ -120,6 +120,7 @@ export default function OgShareDialogBase({
   const { effectiveAddress } = useSession();
   const chainId = CHAIN_ID_ETHEREAL;
   const [positionResolved, setPositionResolved] = useState(false);
+
   // Store resolved position data for share URL
   const [resolvedPositionData, setResolvedPositionData] = useState<{
     nftId: string;
@@ -173,8 +174,10 @@ export default function OgShareDialogBase({
         return false;
       }
 
+      // Only accept positions minted AFTER the dialog opened (when submission starts)
+      // Small 10-second buffer for clock skew between client and indexer
       const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000;
+        (dialogOpenTimestampRef.current || Date.now()) - 10 * 1000;
       const minTimestampSeconds = Math.floor(minTimestamp / 1000);
 
       const candidatePositions = positionsToCheck.filter((p: Position) => {
@@ -210,8 +213,7 @@ export default function OgShareDialogBase({
       if (picks && picks.length > 0) {
         const foundPosition = filteredByNftId.find((p: Position) => {
           const positionPicks = (p.predictions || []).map((pred) => ({
-            question:
-              pred.condition?.shortName || pred.condition?.question || '',
+            question: pred.condition?.question || '',
             choice: pred.outcomeYes ? 'Yes' : 'No',
           }));
           return picksMatch(positionPicks, picks);
@@ -324,10 +326,7 @@ export default function OgShareDialogBase({
 
     let relativeUrl = '/share';
     if (nftId && marketAddress) {
-      const qp = new URLSearchParams();
-      qp.set('nftId', nftId);
-      qp.set('marketAddress', marketAddress);
-      relativeUrl = `/share?${qp.toString()}`;
+      relativeUrl = `/positions/${marketAddress}/${nftId}`;
     }
 
     if (typeof window === 'undefined') {
@@ -396,7 +395,10 @@ export default function OgShareDialogBase({
                     : 'opacity-100'
                 }`}
               >
-                <PositionProgressBar progressState={progressState} />
+                <PositionProgressBar
+                  progressState={progressState}
+                  userAddress={userAddress}
+                />
               </div>
             )}
             {/* Buttons - fade in on top of progress bar when resolved */}

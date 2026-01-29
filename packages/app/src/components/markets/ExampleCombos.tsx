@@ -105,7 +105,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const comboToLegs = React.useCallback(
     (combo: ComboPick[]): Pick[] =>
       combo.map((leg) => ({
-        question: leg.condition.shortName || leg.condition.question,
+        question: leg.condition.question,
         choice: leg.prediction ? ('Yes' as const) : ('No' as const),
         conditionId: leg.condition.id,
         resolverAddress: leg.condition.resolver,
@@ -344,7 +344,8 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
       combo.forEach((leg) => {
         addSelection({
           conditionId: leg.condition.id,
-          question: leg.condition.shortName || leg.condition.question,
+          question: leg.condition.question,
+          shortName: leg.condition.shortName,
           prediction: leg.prediction,
           categorySlug: leg.condition.category?.slug,
           resolverAddress: leg.condition.resolver,

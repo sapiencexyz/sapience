@@ -111,7 +111,7 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSession } = useSession();
 
   // Use effectiveAddress from session context, falling back to zero address for logged-out users
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -436,9 +436,16 @@ export default function PositionForm({
 
   // Auto-initiate auction when content (predictions/wager) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
+  // Only auto-trigger for:
+  // 1. Logged-out users (get unsigned estimates)
+  // 2. Smart account users with active session (session key signing, no popup)
+  // Skip for EOA users and smart account users without session - they must manually click "Request Bids"
   const autoAuctionDebounceRef = useRef<number | null>(null);
   useEffect(() => {
+    // Skip auto-auction for users who would get a wallet signature popup
+    // Only auto-trigger for logged-out users or smart account users with active session
+    if (hasConnectedWallet && !isUsingSession) return;
+
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
     if (hasConnectedWallet && isBalanceLoading) return;
@@ -479,6 +486,7 @@ export default function PositionForm({
     };
   }, [
     hasConnectedWallet,
+    isUsingSession,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,
@@ -599,10 +607,12 @@ export default function PositionForm({
             const categoryColor = getCategoryStyle(s.categorySlug).color;
             // Convert color to 10% opacity background (matches MarketBadge style)
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
+            // In CreatePositionForm: show shortName if available, always show question in tooltip
+            const displayTitle = s.shortName || s.question;
             const umaPrediction: UmaPrediction = {
               id: s.id,
               conditionId: s.conditionId,
-              question: s.question,
+              question: displayTitle,
               prediction: s.prediction,
               categorySlug: s.categorySlug,
             };
@@ -615,7 +625,7 @@ export default function PositionForm({
                   prediction={umaPrediction}
                   leading={
                     <div
-                      className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center"
+                      className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"
                       style={{ backgroundColor: bgWithAlpha }}
                     >
                       <CategoryIcon
@@ -628,8 +638,10 @@ export default function PositionForm({
                     <ConditionTitleLink
                       conditionId={s.conditionId}
                       resolverAddress={s.resolverAddress ?? undefined}
-                      title={s.question}
+                      title={displayTitle}
+                      tooltipTitle={s.question}
                       clampLines={1}
+                      className="text-sm"
                     />
                   }
                   onRemove={removeSelection}

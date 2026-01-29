@@ -49,7 +49,7 @@ import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBidsAsync } from '~/lib/auction/validateBids';
+import { validateBidsWithSimulation } from '~/lib/auction/simulateBidMint';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
@@ -122,7 +122,6 @@ const CreatePositionFormInner = ({
   const {
     progressState,
     startSubmission,
-    markTxSent,
     markReceiptReceived,
     markPositionIndexed,
     reset: resetProgress,
@@ -137,20 +136,22 @@ const CreatePositionFormInner = ({
 
   // Get latest NFT ID from positions for tracking
   // Always call hook unconditionally to maintain hook order
-  const { data: userPositions } = useUserPositions({
-    address: effectiveAddress
-      ? String(effectiveAddress).toLowerCase()
-      : undefined,
-    chainId: positionChainId,
-    take: 1, // Only need the latest one
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
+  const { data: userPositions, refetch: refetchUserPositions } =
+    useUserPositions({
+      address: effectiveAddress
+        ? String(effectiveAddress).toLowerCase()
+        : undefined,
+      chainId: positionChainId,
+      take: 1, // Only need the latest one
+      orderBy: 'mintedAt',
+      orderDirection: 'desc',
+    });
 
   const {
     bids: rawBids,
     requestQuotes,
     buildMintRequestDataFromBid,
+    currentAuctionParams,
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
@@ -182,17 +183,37 @@ const CreatePositionFormInner = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Async validation of bids - checks market maker's balance and allowance on-chain
-  // This runs when bids arrive and validates them before showing as submittable
+  // Async validation of bids - validates by simulating the mint transaction
+  // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
     if (rawBids.length === 0) {
       setBids([]);
       return;
     }
 
-    // Need collateral token and prediction market address for validation
-    if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
+    // Need auction params and prediction market address for simulation
+    if (!currentAuctionParams || !PREDICTION_MARKET_ADDRESS) {
       // Can't validate yet, show bids as pending
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'pending' as const,
+        }))
+      );
+      return;
+    }
+
+    const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
+      currentAuctionParams;
+
+    // Need all auction context to simulate
+    if (
+      !taker ||
+      !wager ||
+      takerNonce === undefined ||
+      !predictedOutcomes?.[0] ||
+      !resolver
+    ) {
       setBids(
         rawBids.map((b) => ({
           ...b,
@@ -205,27 +226,24 @@ const CreatePositionFormInner = ({
     let cancelled = false;
 
     const runValidation = async () => {
-      try {
-        const validated = await validateBidsAsync(rawBids, {
-          chainId: positionChainId,
-          collateralTokenAddress: collateralToken,
-          predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-        });
+      const validated = await validateBidsWithSimulation(rawBids, {
+        chainId,
+        predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+        takerAddress: taker,
+        takerWager: wager,
+        takerNonce,
+        encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
+        resolver: resolver as `0x${string}`,
+      });
 
-        if (!cancelled) {
-          setBids(validated);
-        }
-      } catch (err) {
-        console.error('[Bid] Async validation error:', err);
-        if (!cancelled) {
-          // On error, mark all as pending (don't block the user)
-          setBids(
-            rawBids.map((b) => ({
-              ...b,
-              validationStatus: 'pending' as const,
-            }))
-          );
-        }
+      if (!cancelled) {
+        setBids(
+          validated.map(({ bid, validationStatus, validationError }) => ({
+            ...bid,
+            validationStatus,
+            validationError,
+          }))
+        );
       }
     };
 
@@ -234,7 +252,7 @@ const CreatePositionFormInner = ({
     return () => {
       cancelled = true;
     };
-  }, [rawBids, collateralToken, PREDICTION_MARKET_ADDRESS, positionChainId]);
+  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
@@ -622,8 +640,8 @@ const CreatePositionFormInner = ({
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
-      onTxSent: markTxSent,
-      onReceiptConfirmed: markReceiptReceived,
+      onTxSent: markReceiptReceived, // Skip CONFIRMING, go directly to INDEXING
+      onReceiptConfirmed: markReceiptReceived, // Keep for safety (both trigger INDEXING)
     },
   });
 
@@ -696,8 +714,9 @@ const CreatePositionFormInner = ({
           }
 
           const dialogData = {
+            // OG images use shortName when available for more compact display
             picks: selections.map((s) => ({
-              question: s.question,
+              question: s.shortName || s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
             wager: wagerAmount,
@@ -784,6 +803,13 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
+  // Handle position indexed - mark complete and refetch positions for accurate lastNftId on next trade
+  const handlePositionIndexed = useCallback(() => {
+    markPositionIndexed();
+    // Refetch positions so next trade has correct lastNftId
+    refetchUserPositions();
+  }, [markPositionIndexed, refetchUserPositions]);
+
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
       wagerAmount: string;
@@ -820,7 +846,7 @@ const CreatePositionFormInner = ({
       expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
       progressState={progressState}
-      onPositionIndexed={markPositionIndexed}
+      onPositionIndexed={handlePositionIndexed}
     />
   );
 

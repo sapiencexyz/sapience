@@ -41,7 +41,8 @@ interface CreatePositionEntry {
 interface PositionSelection {
   id: string; // unique within position form
   conditionId: string;
-  question: string;
+  question: string; // Full question text (always shown in tooltips)
+  shortName?: string | null; // Short display name (used in CreatePositionForm only)
   prediction: boolean; // true = yes, false = no
   categorySlug?: string | null; // category slug for icon display
   resolverAddress?: string | null; // resolver address for canonical links

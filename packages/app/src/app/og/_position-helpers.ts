@@ -13,6 +13,11 @@ export const POSITION_BY_NFT_QUERY = `
       predictorCollateral
       counterpartyCollateral
       totalCollateral
+      status
+      mintedAt
+      settledAt
+      endsAt
+      predictorWon
       predictions {
         conditionId
         outcomeYes
@@ -20,6 +25,10 @@ export const POSITION_BY_NFT_QUERY = `
           id
           question
           shortName
+          endTime
+          settled
+          resolvedToYes
+          resolver
         }
       }
     }
@@ -34,6 +43,11 @@ export interface PositionPrediction {
     id?: string;
     question?: string | null;
     shortName?: string | null;
+    endTime?: number | null;
+    settled?: boolean;
+    resolvedToYes?: boolean;
+    resolver?: string | null;
+    categorySlug?: string | null;
   } | null;
 }
 
@@ -47,6 +61,11 @@ export interface PositionData {
   predictorCollateral?: string;
   counterpartyCollateral?: string;
   totalCollateral?: string;
+  status?: string;
+  mintedAt?: number;
+  settledAt?: number | null;
+  endsAt?: number | null;
+  predictorWon?: boolean | null;
   predictions?: PositionPrediction[];
 }
 

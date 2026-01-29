@@ -110,8 +110,8 @@ const AddressDisplay = ({
     });
   };
 
-  const containerGapClass = isCompact ? 'gap-1' : 'gap-3';
-  const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-1.5';
+  const containerGapClass = isCompact ? 'gap-1' : 'gap-1.5';
+  const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-0.5';
   const nameTextClass = isLarge
     ? 'text-2xl'
     : isCompact
