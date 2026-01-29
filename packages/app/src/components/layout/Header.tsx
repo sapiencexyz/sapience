@@ -58,6 +58,9 @@ const USER_REFERRAL_STATUS_QUERY = `
       referredBy {
         id
       }
+      referredByCode {
+        id
+      }
     }
   }
 `;
@@ -309,6 +312,7 @@ const Header = () => {
             address: string;
             refCodeHash?: string | null;
             referredBy?: { id: number } | null;
+            referredByCode?: { id: number } | null;
           } | null;
         }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
 
@@ -317,7 +321,7 @@ const Header = () => {
         const user = data?.user;
         const hasServerReferral = !!(
           user &&
-          (user.refCodeHash || user.referredBy)
+          (user.refCodeHash || user.referredBy || user.referredByCode)
         );
 
         // Update ref only after successful check to avoid race conditions
