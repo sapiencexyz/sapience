@@ -2492,33 +2492,24 @@ export type Question = {
   questionType: Scalars['String']['output'];
 };
 
-/** Admin-managed referral codes for campaigns */
+
 export type ReferralCode = {
   __typename?: 'ReferralCode';
   _count?: Maybe<ReferralCodeCount>;
-  /** Users who claimed this code */
   claimedBy: Array<User>;
-  /** The plaintext code (stored for admin convenience) */
   code: Scalars['String']['output'];
-  /** keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex */
   codeHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
-  /** Wallet address of admin who created it */
   createdBy: Scalars['String']['output'];
-  /** Optional description (e.g., "CryptoTwitter Campaign Q1 2026") */
   description?: Maybe<Scalars['String']['output']>;
-  /** Optional expiration (Unix timestamp) */
   expiresAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
-  /** Whether code is currently active */
   isActive: Scalars['Boolean']['output'];
-  /** Maximum claims allowed (0 = unlimited) */
   maxClaims: Scalars['Int']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
 
 
-/** Admin-managed referral codes for campaigns */
 export type ReferralCodeClaimedByArgs = {
   cursor?: InputMaybe<UserWhereUniqueInput>;
   distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
@@ -2673,12 +2664,10 @@ export type User = {
    * so codes are not usable until explicitly configured.
    */
   maxReferrals: Scalars['Int']['output'];
-  /** keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex. */
   refCodeHash?: Maybe<Scalars['String']['output']>;
   referrals: Array<User>;
   referredBy?: Maybe<User>;
   referredByCode?: Maybe<ReferralCode>;
-  /** Admin referral code that referred this user (mutually exclusive with referredById) */
   referredByCodeId?: Maybe<Scalars['Int']['output']>;
   referredById?: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['DateTimeISO']['output'];
