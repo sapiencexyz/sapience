@@ -35,8 +35,12 @@ import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
+const DEPOSIT_WHITELIST: `0x${string}`[] = [
+  '0xdb5af497a73620d881561edb508012a5f84e9ba2',
+];
+
 const VaultsPageContent = () => {
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
   // Constants for vault integration
   const VAULT_CHAIN_ID = CHAIN_ID_ETHEREAL;
@@ -388,7 +392,8 @@ const VaultsPageContent = () => {
               !!(pendingRequest && !pendingRequest.processed) ||
               isPermitLoading ||
               isRestricted ||
-              (!!depositAmount && exceedsVaultCapacity)
+              (!!depositAmount && exceedsVaultCapacity) ||
+              (isConnected && !isWhitelisted)
             }
             onClick={async () => {
               if (!isConnected) {
@@ -411,17 +416,19 @@ const VaultsPageContent = () => {
                 ? 'Processing...'
                 : vaultData?.paused
                   ? 'Vault Paused'
-                  : isInteractionDelayActive
-                    ? 'Cooldown in progress'
-                    : !!depositAmount && exceedsVaultCapacity
-                      ? 'Exceeds Vault Capacity'
-                      : quoteSignatureValid === false
-                        ? 'Waiting for Price Quote'
-                        : !pricePerShare || pricePerShare === '0'
-                          ? 'Cannot connect to vault'
-                          : requiresApproval
-                            ? 'Approve & Deposit'
-                            : 'Submit Deposit'}
+                  : isConnected && !isWhitelisted
+                    ? 'Not Whitelisted'
+                    : isInteractionDelayActive
+                      ? 'Cooldown in progress'
+                      : !!depositAmount && exceedsVaultCapacity
+                        ? 'Exceeds Vault Capacity'
+                        : quoteSignatureValid === false
+                          ? 'Waiting for Price Quote'
+                          : !pricePerShare || pricePerShare === '0'
+                            ? 'Cannot connect to vault'
+                            : requiresApproval
+                              ? 'Approve & Deposit'
+                              : 'Submit Deposit'}
           </Button>
         </div>
         <div className="relative h-4">
@@ -700,12 +707,12 @@ const VaultsPageContent = () => {
     }
   }, [deployedWei, formatAssetAmount]);
 
-  // Vault capacity check (1000 USDe max)
+  // Vault capacity check (20000 USDe max)
   const VAULT_CAPACITY_WEI = useMemo(() => {
     try {
-      return parseUnits('1000', assetDecimals ?? 18);
+      return parseUnits('20000', assetDecimals ?? 18);
     } catch {
-      return parseUnits('1000', 18);
+      return parseUnits('20000', 18);
     }
   }, [assetDecimals]);
 
@@ -717,6 +724,11 @@ const VaultsPageContent = () => {
       return false;
     }
   }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
+  const isWhitelisted =
+    DEPOSIT_WHITELIST.length === 0 ||
+    (address &&
+      DEPOSIT_WHITELIST.includes(address.toLowerCase() as `0x${string}`));
 
   const utilizationDisplay = useMemo(() => {
     try {
