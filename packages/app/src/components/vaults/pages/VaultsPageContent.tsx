@@ -35,7 +35,7 @@ import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
-  // Add whitelisted addresses here
+  '0xdb5af497a73620d881561edb508012a5f84e9ba2',
 ];
 
 const VaultsPageContent = () => {
