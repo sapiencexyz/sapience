@@ -1933,22 +1933,26 @@ type Question {
   questionType: String!
 }
 
-"""Admin-managed referral codes for campaigns"""
 type ReferralCode {
   _count: ReferralCodeCount
 
   """Users who claimed this code"""
   claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 
-  """The plaintext code (stored for admin convenience)"""
-  code: String!
+  """Plaintext code (for admin display). Optional for user-created codes."""
+  code: String
 
   """keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex"""
   codeHash: String!
   createdAt: DateTimeISO!
 
-  """Wallet address of admin who created it"""
+  """Wallet address of creator (admin or user)"""
   createdBy: String!
+
+  """
+  Type of code: 'admin' (created by admin) or 'user' (created by user with volume)
+  """
+  creatorType: String!
 
   """Optional description (e.g., "CryptoTwitter Campaign Q1 2026")"""
   description: String
@@ -1976,10 +1980,11 @@ input ReferralCodeNullableRelationFilter {
 
 input ReferralCodeOrderByWithRelationInput {
   claimedBy: UserOrderByRelationAggregateInput
-  code: SortOrder
+  code: SortOrderInput
   codeHash: SortOrder
   createdAt: SortOrder
   createdBy: SortOrder
+  creatorType: SortOrder
   description: SortOrderInput
   expiresAt: SortOrderInput
   id: SortOrder
@@ -1993,10 +1998,11 @@ input ReferralCodeWhereInput {
   NOT: [ReferralCodeWhereInput!]
   OR: [ReferralCodeWhereInput!]
   claimedBy: UserListRelationFilter
-  code: StringFilter
+  code: StringNullableFilter
   codeHash: StringFilter
   createdAt: DateTimeFilter
   createdBy: StringFilter
+  creatorType: StringFilter
   description: StringNullableFilter
   expiresAt: IntNullableFilter
   id: IntFilter
@@ -2112,10 +2118,6 @@ type User {
   referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
   referredBy(where: UserWhereInput): User
   referredByCode(where: ReferralCodeWhereInput): ReferralCode
-
-  """
-  Admin referral code that referred this user (mutually exclusive with referredById)
-  """
   referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO!

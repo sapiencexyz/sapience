@@ -35,13 +35,14 @@ import { useAdminApi } from '~/hooks/useAdminApi';
 
 type ReferralCodeRow = {
   id: number;
-  code: string;
+  code: string | null; // May be null for user-created codes
   codeHash: string;
   description: string | null;
   maxClaims: number;
   isActive: boolean;
   expiresAt: number | null;
   createdBy: string;
+  creatorType: 'admin' | 'user';
   createdAt: string;
   claimCount: number;
   // Required by DataTable generic constraint
@@ -49,7 +50,8 @@ type ReferralCodeRow = {
 };
 
 type AnalyticsData = {
-  code: string;
+  code: string | null;
+  codeHash: string;
   claimCount: number;
   claimants: Array<{
     address: string;
@@ -224,7 +226,7 @@ const ReferralCodesTab = ({
 
   const handleEdit = (row: ReferralCodeRow) => {
     setEditingId(row.id);
-    setCode(row.code);
+    setCode(row.code || ''); // May be null for user-created codes
     setDescription(row.description || '');
     setMaxClaims(row.maxClaims);
     setExpiresAt(
@@ -294,21 +296,26 @@ const ReferralCodesTab = ({
         header: 'Code',
         accessorKey: 'code',
         size: 150,
-        cell: ({ getValue }) => {
-          const codeValue = getValue() as string;
+        cell: ({ row }) => {
+          const codeValue = row.original.code;
+          const codeHash = row.original.codeHash;
+          const displayValue = codeValue || `${codeHash.slice(0, 10)}...`;
+          const copyValue = codeValue || codeHash;
           return (
             <div className="flex items-center gap-2">
-              <span className="font-mono font-medium">{codeValue}</span>
+              <span className={`font-mono font-medium ${!codeValue ? 'text-muted-foreground' : ''}`}>
+                {displayValue}
+              </span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
                 onClick={async (e) => {
                   e.stopPropagation();
-                  await navigator.clipboard.writeText(codeValue);
+                  await navigator.clipboard.writeText(copyValue);
                   toastRef.current({
                     title: 'Copied',
-                    description: 'Code copied to clipboard',
+                    description: codeValue ? 'Code copied to clipboard' : 'Hash copied to clipboard',
                     duration: 1500,
                   });
                 }}
@@ -376,6 +383,19 @@ const ReferralCodesTab = ({
           return (
             <Badge variant={variant}>
               {status.charAt(0).toUpperCase() + status.slice(1)}
+            </Badge>
+          );
+        },
+      },
+      {
+        header: 'Type',
+        accessorKey: 'creatorType',
+        size: 80,
+        cell: ({ getValue }) => {
+          const creatorType = getValue() as 'admin' | 'user';
+          return (
+            <Badge variant={creatorType === 'admin' ? 'outline' : 'secondary'}>
+              {creatorType === 'admin' ? 'Admin' : 'User'}
             </Badge>
           );
         },
@@ -545,14 +565,14 @@ const ReferralCodesTab = ({
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                required
+                required={!editingId}
                 disabled={Boolean(editingId)}
-                placeholder="e.g. SUMMER2024"
+                placeholder={editingId ? '(User-created code)' : 'e.g. SUMMER2024'}
                 className="font-mono"
               />
               {editingId && (
                 <p className="text-xs text-muted-foreground">
-                  Code cannot be changed after creation
+                  {code ? 'Code cannot be changed after creation' : 'User-created codes do not store plaintext'}
                 </p>
               )}
             </div>
@@ -620,7 +640,7 @@ const ReferralCodesTab = ({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Analytics: {analyticsData?.code || 'Loading...'}
+              Analytics: {analyticsData?.code || (analyticsData?.codeHash ? `${analyticsData.codeHash.slice(0, 10)}...` : 'Loading...')}
             </DialogTitle>
           </DialogHeader>
           {analyticsLoading ? (

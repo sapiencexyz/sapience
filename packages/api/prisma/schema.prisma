@@ -371,10 +371,12 @@ model ReferralCode {
   id           Int       @id @default(autoincrement())
   createdAt    DateTime  @default(now()) @db.Timestamp(6)
   updatedAt    DateTime  @updatedAt @db.Timestamp(6)
-  code         String    @unique @db.VarChar
 
   /// keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex
   codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
+
+  /// Plaintext code (for admin display). Optional for user-created codes.
+  code         String?   @db.VarChar
 
   /// Optional description (e.g., "CryptoTwitter Campaign Q1 2026")
   description  String?   @db.Text
@@ -388,14 +390,18 @@ model ReferralCode {
   /// Optional expiration (Unix timestamp)
   expiresAt    Int?
 
-  /// Wallet address of admin who created it
+  /// Wallet address of creator (admin or user)
   createdBy    String    @db.VarChar
+
+  /// Type of code: 'admin' (created by admin) or 'user' (created by user with volume)
+  creatorType  String    @default("admin") @db.VarChar(10)
 
   /// Users who claimed this code
   claimedBy    User[]    @relation("AdminCodeClaims")
 
   @@index([codeHash], map: "IDX_referral_code_hash")
   @@index([isActive], map: "IDX_referral_code_active")
+  @@index([createdBy], map: "IDX_referral_code_created_by")
   @@map("referral_code")
 }
 
