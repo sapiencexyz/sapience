@@ -248,7 +248,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
@@ -273,7 +273,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
@@ -293,7 +293,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
@@ -315,7 +315,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
                 ) : volumeChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -371,7 +371,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
                 ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -447,7 +447,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
                 ) : statsChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">

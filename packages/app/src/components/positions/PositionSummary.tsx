@@ -136,7 +136,7 @@ export default function PositionSummary({
             </div>
             {isOwnerLoading ? (
               <div className="flex items-center h-[24px]">
-                <Loader size={14} />
+                <Loader className="w-3.5 h-3.5" />
               </div>
             ) : currentOwner ? (
               <Link

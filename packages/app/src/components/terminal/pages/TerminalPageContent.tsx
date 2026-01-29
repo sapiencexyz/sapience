@@ -404,7 +404,7 @@ const TerminalPageContent: React.FC = () => {
             </span>
           );
         }
-        return <Loader size={16} />;
+        return <Loader className="w-4 h-4" />;
       }
 
       const legs = decoded.data.map((o) => {

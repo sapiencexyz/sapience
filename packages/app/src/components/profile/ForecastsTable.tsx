@@ -749,7 +749,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       </div>
       {isInitialLoading ? (
         <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-          <Loader size={24} />
+          <Loader className="w-6 h-6" />
         </div>
       ) : hasNoData ? (
         <EmptyTabState centered message="No forecasts found" />
@@ -930,7 +930,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
-                  <Loader size={12} />
+                  <Loader className="w-3 h-3" />
                   <span className="text-sm text-muted-foreground">
                     Loading more forecasts...
                   </span>

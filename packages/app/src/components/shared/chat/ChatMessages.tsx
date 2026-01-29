@@ -114,7 +114,7 @@ export function ChatMessages({
       )}
       {messages.length === 0 && showLoader && (
         <div className="w-full h-full flex items-center justify-center">
-          <Loader size={24} />
+          <Loader className="w-6 h-6" />
         </div>
       )}
       <div ref={endRef} />

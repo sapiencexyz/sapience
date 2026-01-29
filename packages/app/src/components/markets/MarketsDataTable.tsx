@@ -17,7 +17,8 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Loader2, Minus } from 'lucide-react';
+import { ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import Loader from '../shared/Loader';
 import { format } from 'date-fns';
 import { formatEther } from 'viem';
 import {
@@ -1078,14 +1079,14 @@ export default function MarketsDataTable({
             ))}
           </TableHeader>
           <TableBody className="bg-brand-black">
-            {isLoading ? (
+            {isLoading && displayedRows.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
                   className="h-24 text-center text-muted-foreground"
                 >
                   <div className="flex items-center justify-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader className="h-4 w-4" durationMs={1000} />
                     <span>Loading...</span>
                   </div>
                 </TableCell>

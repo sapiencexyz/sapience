@@ -480,7 +480,7 @@ export default function QuestionPageContent({
           minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
-        <Loader size={16} />
+        <Loader className="w-4 h-4" />
       </div>
     );
   }

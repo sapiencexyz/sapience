@@ -56,7 +56,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 
 const LoadingIndicator = () => (
   <div className="flex justify-center items-center min-h-[200px] w-full">
-    <Loader size={16} />
+    <Loader className="w-4 h-4" />
   </div>
 );
 
