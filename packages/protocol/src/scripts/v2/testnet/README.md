@@ -168,7 +168,7 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
 | 05 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
 | 06 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
-| 07 | ConfigureEtherealBridge | Ethereal | Set peer, config, fund for ACKs |
+| 07 | ConfigureEtherealBridge | Ethereal | Set peer and bridge config |
 | 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
 | 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |

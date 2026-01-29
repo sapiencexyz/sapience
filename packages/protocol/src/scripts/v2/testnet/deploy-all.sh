@@ -386,8 +386,8 @@ test_bridging_phase5() {
     # 10. Bridge to Remote
     run_script_no_verify "src/scripts/v2/testnet/10_TestBridgeToRemote.s.sol:TestBridgeToRemote" "$PM_NETWORK_RPC_URL" "Bridging tokens from PM Network to SM Network"
 
-    log_warn "Waiting 90 seconds for LayerZero delivery..."
-    sleep 90
+    log_warn "Waiting 180 seconds for LayerZero delivery..."
+    sleep 180
 
     # 11. Bridge Back
     run_script_no_verify "src/scripts/v2/testnet/11_TestBridgeBack.s.sol:TestBridgeBack" "$SM_NETWORK_RPC_URL" "Bridging tokens back from SM Network to PM Network"
