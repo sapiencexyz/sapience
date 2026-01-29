@@ -1,6 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { HelpCircle } from 'lucide-react';
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@sapience/ui/components/ui/hover-card';
 import {
   PositionStage,
   type PositionProgressState,
@@ -8,6 +14,7 @@ import {
 
 interface PositionProgressBarProps {
   progressState: PositionProgressState;
+  userAddress?: string;
 }
 
 // Base labels without dots - dots are animated separately
@@ -44,6 +51,7 @@ const CATCHUP_TARGET = 50;
 
 export default function PositionProgressBar({
   progressState,
+  userAddress,
 }: PositionProgressBarProps) {
   const [displayProgress, setDisplayProgress] = useState(0);
   const [displayLabel, setDisplayLabel] = useState('');
@@ -248,13 +256,48 @@ export default function PositionProgressBar({
           {displayLabel && '.'.repeat(dotCount)}
         </span>
 
-        {/* "Taking longer" message - fades in after threshold */}
-        <span
-          className="font-mono text-muted-foreground text-sm transition-opacity duration-500"
-          style={{ opacity: showTakingLonger ? 1 : 0 }}
-        >
-          Taking longer than expected.
-        </span>
+        {/* "Re-querying indexer" message with hover card - only in INDEXING stage after threshold */}
+        {stage === PositionStage.INDEXING && showTakingLonger && (
+          <HoverCard openDelay={100} closeDelay={200}>
+            <HoverCardTrigger asChild>
+              <span className="font-mono text-muted-foreground text-sm uppercase tracking-wider inline-flex items-center gap-1 cursor-help">
+                RE-QUERYING INDEXER
+                <HelpCircle className="h-3.5 w-3.5" />
+              </span>
+            </HoverCardTrigger>
+            <HoverCardContent align="end" className="w-80 text-sm">
+              <p>
+                The app is waiting for the indexer to find this position
+                onchain.
+                {userAddress && (
+                  <>
+                    {' '}
+                    Use the{' '}
+                    <a
+                      href={`https://explorer.ethereal.trade/address/${userAddress}?tab=token_transfers`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[hsl(var(--accent-gold))] hover:underline"
+                    >
+                      block explorer
+                    </a>{' '}
+                    to verify whether the trade succeeded, or ask
+                  </>
+                )}
+                {!userAddress && ' Ask'} for support in{' '}
+                <a
+                  href="https://discord.gg/sapience"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[hsl(var(--accent-gold))] hover:underline"
+                >
+                  Discord
+                </a>
+                .
+              </p>
+            </HoverCardContent>
+          </HoverCard>
+        )}
       </div>
 
       {/* Full-width progress bar */}

@@ -68,10 +68,11 @@ export function usePositionProgress() {
     }));
   }, []);
 
-  const markReceiptReceived = useCallback(() => {
+  const markReceiptReceived = useCallback((txHash?: string) => {
     setState((prev) => ({
       ...prev,
       stage: PositionStage.INDEXING,
+      txHash: txHash ?? prev.txHash,
       benchmarks: {
         ...prev.benchmarks,
         receiptReceivedAt: Date.now(),

@@ -395,7 +395,7 @@ export default function OgShareDialogBase({
                     : 'opacity-100'
                 }`}
               >
-                <PositionProgressBar progressState={progressState} />
+                <PositionProgressBar progressState={progressState} userAddress={userAddress} />
               </div>
             )}
             {/* Buttons - fade in on top of progress bar when resolved */}
