@@ -283,6 +283,22 @@ export function usePassiveLiquidityVault(
     },
   });
 
+  // wUSDe allowance to vault (to skip approve call when sufficient)
+  const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
+    useReadContract({
+      abi: erc20Abi,
+      address: WUSDE_ADDRESS,
+      functionName: 'allowance',
+      args:
+        currentAddress && VAULT_ADDRESS
+          ? [currentAddress, VAULT_ADDRESS]
+          : undefined,
+      chainId: TARGET_CHAIN_ID,
+      query: {
+        enabled: !!currentAddress && !!VAULT_ADDRESS,
+      },
+    });
+
   // Write contract hook
   const {
     writeContract: writeVaultContract,
@@ -294,6 +310,7 @@ export function usePassiveLiquidityVault(
       refetchUserData();
       refetchNativeBalance();
       refetchWusdeBalance();
+      refetchWusdeAllowance();
       try {
         refetchPendingMapping?.();
       } catch {
@@ -459,8 +476,9 @@ export function usePassiveLiquidityVault(
     typeof wusdeBalance === 'bigint' ? wusdeBalance : 0n;
   const userAssetBalance = nativeUsdeBalance + wrappedUsdeBalance;
 
-  // No pre-approval needed for native assets (wrapping handles it atomically)
-  const currentAllowance = 0n;
+  // wUSDe allowance to vault (used to skip redundant approve calls)
+  const currentAllowance =
+    typeof wusdeAllowance === 'bigint' ? wusdeAllowance : 0n;
 
   const minDeposit = (vaultData?.[9]?.result as bigint) || 0n; // MIN_DEPOSIT
 
@@ -708,17 +726,19 @@ export function usePassiveLiquidityVault(
         });
       }
 
-      // Always add approve call
-      const approveCalldata = encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [VAULT_ADDRESS, amountWei],
-      });
-      calls.push({
-        to: parsedVaultData.asset, // wUSDe contract address
-        data: approveCalldata,
-        value: 0n,
-      });
+      // Only add approve call if current allowance is insufficient
+      if (currentAllowance < amountWei) {
+        const approveCalldata = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [VAULT_ADDRESS, amountWei],
+        });
+        calls.push({
+          to: parsedVaultData.asset, // wUSDe contract address
+          data: approveCalldata,
+          value: 0n,
+        });
+      }
 
       // Add deposit call
       calls.push({
@@ -739,6 +759,7 @@ export function usePassiveLiquidityVault(
       sendCalls,
       VAULT_ADDRESS,
       wrappedUsdeBalance,
+      currentAllowance,
     ]
   );
 

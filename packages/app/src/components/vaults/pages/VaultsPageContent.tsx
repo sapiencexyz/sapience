@@ -964,13 +964,10 @@ const VaultsPageContent = () => {
                           Manage Position
                         </h4>
                         <p className="text-sm text-muted-foreground mb-4">
-                          Swap{' '}
-                          <span className="font-mono">{collateralSymbol}</span>{' '}
-                          for <span className="font-mono">sapLP</span> tokens,
-                          representing shares of the vault.{' '}
-                          <span className="font-mono">sapLP</span> is fully
-                          composable and can be used across DeFi like any other
-                          ERC-20.
+                          Swap {collateralSymbol} for sapLP, representing vault
+                          shares. sapLP is an ERC-20 token that can be
+                          transferred, traded, and used in other Ethereum DeFi
+                          protocols.
                         </p>
                         {renderVaultForm()}
                       </div>
