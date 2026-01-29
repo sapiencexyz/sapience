@@ -7,7 +7,7 @@
     "dev": "vocs dev",
     "build:vocs": "vocs build",
     "build:storybook": "cd ../ui && pnpm build-storybook && mkdir -p ../docs/docs/public && cp -r storybook-static ../docs/docs/public/components-storybook",
-    "build": "pnpm build:vocs && pnpm build:storybook",
+    "build": "pnpm build:storybook && pnpm build:vocs",
     "preview": "vocs preview"
   },
   "dependencies": {

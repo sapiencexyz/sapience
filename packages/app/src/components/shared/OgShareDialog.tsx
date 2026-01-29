@@ -213,8 +213,7 @@ export default function OgShareDialogBase({
       if (picks && picks.length > 0) {
         const foundPosition = filteredByNftId.find((p: Position) => {
           const positionPicks = (p.predictions || []).map((pred) => ({
-            question:
-              pred.condition?.shortName || pred.condition?.question || '',
+            question: pred.condition?.question || '',
             choice: pred.outcomeYes ? 'Yes' : 'No',
           }));
           return picksMatch(positionPicks, picks);

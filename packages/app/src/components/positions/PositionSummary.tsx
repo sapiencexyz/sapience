@@ -37,8 +37,6 @@ export interface PositionSummaryProps {
   isOwnerLoading?: boolean;
   predictorAddress?: string | null;
   counterpartyAddress?: string | null;
-  /** If true, header items flow left instead of justify-between (for modal view) */
-  compactHeader?: boolean;
 }
 
 export default function PositionSummary({
@@ -58,17 +56,14 @@ export default function PositionSummary({
   isOwnerLoading,
   predictorAddress,
   counterpartyAddress,
-  compactHeader,
 }: PositionSummaryProps) {
   const showAddressesRow =
     isOwnerLoading || currentOwner || predictorAddress || counterpartyAddress;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pt-2">
       {/* Header row */}
-      <div
-        className={`flex items-center gap-2 ${compactHeader ? '' : 'justify-between'}`}
-      >
+      <div className="flex items-center gap-2 pb-2">
         {/* Left group: Position ID, external link, counterparty badge */}
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">Position #{positionId}</h2>
@@ -85,13 +80,24 @@ export default function PositionSummary({
           )}
           {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
-        {/* Right group: Won badge, created time */}
-        <div className="flex items-center gap-2">
-          {isSettled && positionWon && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/20 text-green-400 uppercase">
-              Won
+        {/* Status badge */}
+        {isSettled ? (
+          positionWon ? (
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
+              WON
             </span>
-          )}
+          ) : (
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-no/40 bg-no/10 text-no">
+              LOST
+            </span>
+          )
+        ) : (
+          <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
+            ACTIVE
+          </span>
+        )}
+        {/* Created time - pushed right */}
+        <div className="flex items-center gap-2 ml-auto">
           {createdAt && (
             <TooltipProvider>
               <Tooltip>
@@ -130,7 +136,7 @@ export default function PositionSummary({
             </div>
             {isOwnerLoading ? (
               <div className="flex items-center h-[24px]">
-                <Loader size={14} />
+                <Loader className="w-3.5 h-3.5" />
               </div>
             ) : currentOwner ? (
               <Link

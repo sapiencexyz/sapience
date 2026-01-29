@@ -79,7 +79,7 @@ export default function PositionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-4xl pt-8">
         <PositionSummary
           positionId={position.positionId}
           isCounterpartyPosition={isCounterpartyPosition}
@@ -97,7 +97,6 @@ export default function PositionDialog({
           isOwnerLoading={isOwnerLoading}
           predictorAddress={position.predictor}
           counterpartyAddress={position.counterparty}
-          compactHeader
         />
 
         <PicksContent

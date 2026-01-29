@@ -20,6 +20,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
+import { useSession } from '~/lib/context/SessionContext';
 
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
@@ -96,6 +97,7 @@ export function usePassiveLiquidityVault(
   config?: UsePassiveLiquidityVaultConfig
 ) {
   const { address } = useAccount();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
 
   const VAULT_ADDRESS: Address = config?.vaultAddress || DEFAULT_VAULT_ADDRESS;
@@ -399,22 +401,27 @@ export function usePassiveLiquidityVault(
   const interactionDelay: bigint =
     (interactionDelayData?.[0]?.result as bigint) || 0n;
 
+  // Use effectiveAddress for cooldown check - this is the smart account address when using AA,
+  // or the EOA address when using direct wallet mode. The vault tracks cooldowns against
+  // the address that actually submits transactions.
+  const cooldownAddress = effectiveAddress ?? address;
+
   const { data: lastInteractionData } = useReadContracts({
     contracts:
-      address && hasFunction('lastUserInteractionTimestamp', 1)
+      cooldownAddress && hasFunction('lastUserInteractionTimestamp', 1)
         ? [
             {
               abi: PASSIVE_VAULT_ABI,
               address: VAULT_ADDRESS,
               functionName: 'lastUserInteractionTimestamp',
-              args: [address],
+              args: [cooldownAddress],
               chainId: TARGET_CHAIN_ID,
             },
           ]
         : [],
     query: {
       enabled:
-        !!address &&
+        !!cooldownAddress &&
         !!VAULT_ADDRESS &&
         hasFunction('lastUserInteractionTimestamp', 1),
     },

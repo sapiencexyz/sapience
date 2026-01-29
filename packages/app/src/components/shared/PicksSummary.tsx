@@ -97,7 +97,7 @@ export function PicksContent({
   positionStatus,
 }: PicksContentProps) {
   return (
-    <>
+    <div className="pt-4">
       {!hideHeader && (
         <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
           Position #{positionId}
@@ -134,8 +134,8 @@ export function PicksContent({
                 key={`${leg.conditionId || i}-${i}`}
                 className="border-b border-brand-white/5"
               >
-                <td className="py-2 pr-4 w-full">
-                  <div className="flex items-center gap-2">
+                <td className="py-2 pr-4 w-full max-w-[480px]">
+                  <div className="flex items-center gap-2 min-w-0">
                     {(() => {
                       const CategoryIcon = getCategoryIcon(leg.categorySlug);
                       const color = getCategoryStyle(leg.categorySlug).color;
@@ -153,11 +153,11 @@ export function PicksContent({
                         conditionId={leg.conditionId}
                         resolverAddress={leg.resolverAddress ?? undefined}
                         title={leg.question}
-                        clampLines={2}
+                        clampLines={1}
                         className="text-sm min-w-0"
                       />
                     ) : (
-                      <span className="line-clamp-2 text-brand-white font-mono text-sm min-w-0">
+                      <span className="truncate text-brand-white font-mono text-sm min-w-0">
                         {leg.question}
                       </span>
                     )}
@@ -179,7 +179,7 @@ export function PicksContent({
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }
 

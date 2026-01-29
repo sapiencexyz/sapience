@@ -114,7 +114,7 @@ export function PredictionScatterChart({
   if (isLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <Loader size={16} />
+        <Loader className="w-4 h-4" />
       </div>
     );
   }

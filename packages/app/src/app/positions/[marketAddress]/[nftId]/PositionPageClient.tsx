@@ -12,8 +12,7 @@ import { calculatePositionPnL } from '~/lib/utils/calculatePositionPnL';
 
 function positionToLegs(position: PositionData): Pick[] {
   return (position.predictions ?? []).map((pred) => ({
-    question:
-      pred.condition?.shortName || pred.condition?.question || pred.conditionId,
+    question: pred.condition?.question || pred.conditionId,
     choice: pred.outcomeYes ? 'YES' : 'NO',
     conditionId: pred.conditionId,
     categorySlug: pred.condition?.categorySlug ?? null,

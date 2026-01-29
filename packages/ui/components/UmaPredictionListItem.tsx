@@ -40,17 +40,17 @@ export function UmaPredictionListItem({
   return (
     <div className="flex items-center gap-2">
       {leading ?? (
-        <div className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10">
-          <img src="/uma.svg" alt="UMA" className="w-4 h-4" />
+        <div className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center bg-brand-white/10">
+          <img src="/uma.svg" alt="UMA" className="w-3 h-3" />
         </div>
       )}
 
       <div className="flex-1 min-w-0">
-        <div className="text-md text-foreground">
+        <div className="text-sm text-foreground">
           <div className="flex items-center gap-2 min-w-0">
             <div className="min-w-0 flex-1">
               {title ?? (
-                <div className="truncate text-brand-white font-mono">
+                <div className="truncate text-brand-white font-mono text-sm">
                   {prediction.question}
                 </div>
               )}
