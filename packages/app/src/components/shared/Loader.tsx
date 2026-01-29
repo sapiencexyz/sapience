@@ -40,7 +40,18 @@ const Loader = ({ className = '', durationMs = 429 }: LoaderProps) => {
       className={`relative ${className}`}
       aria-hidden="true"
     >
-      {size > 0 && (
+      {size === 0 ? (
+        // CSS fallback spinner while measuring container size
+        <div
+          className="absolute inset-[6.25%] rounded-full animate-spin"
+          style={{
+            animationDuration: `${durationMs}ms`,
+            animationTimingFunction: 'linear',
+            border: '1px solid hsl(var(--accent-gold) / 0.2)',
+            borderTopColor: 'hsl(var(--accent-gold) / 0.4)',
+          }}
+        />
+      ) : (
         <>
           {/* Base circle - subtle gold ring */}
           <svg

@@ -79,6 +79,8 @@ export function useValidatedAuctionBids(
 
   // Track which bids are currently being validated to avoid duplicate requests
   const validatingRef = useRef<Set<string>>(new Set());
+  // Track which bids have been validated (mirrors validationResults keys but as a ref)
+  const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
   // Check if we have all required options for validation
   const canValidate = useMemo(() => {
@@ -105,11 +107,12 @@ export function useValidatedAuctionBids(
   useEffect(() => {
     if (!canValidate || rawBids.length === 0) return;
 
-    // Find bids that haven't been validated yet
+    // Find bids that haven't been validated yet (use ref to avoid re-running on state updates)
     const newBids = rawBids.filter((bid) => {
       const signature = bid.makerSignature;
       return (
-        !validationResults.has(signature) && !validatingRef.current.has(signature)
+        !validatedSignaturesRef.current.has(signature) &&
+        !validatingRef.current.has(signature)
       );
     });
 
@@ -133,7 +136,10 @@ export function useValidatedAuctionBids(
 
     // Validate all new bids using shared function
     const runValidation = async () => {
-      const validated = await validateBidsWithSimulation(newBids, simulationOptions);
+      const validated = await validateBidsWithSimulation(
+        newBids,
+        simulationOptions
+      );
 
       // Update state with new results
       setValidationResults((prev) => {
@@ -144,6 +150,7 @@ export function useValidatedAuctionBids(
             error: validationError,
           };
           updated.set(bid.makerSignature, result);
+          validatedSignaturesRef.current.add(bid.makerSignature);
           validatingRef.current.delete(bid.makerSignature);
         }
         return updated;
@@ -163,17 +170,47 @@ export function useValidatedAuctionBids(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
-    validationResults,
   ]);
+
+  // Clean up validation results for bids that are no longer in rawBids
+  // This prevents unbounded memory growth when running indefinitely
+  useEffect(() => {
+    const currentSignatures = new Set(rawBids.map((b) => b.makerSignature));
+
+    // Clean up validatedSignaturesRef
+    for (const sig of validatedSignaturesRef.current) {
+      if (!currentSignatures.has(sig)) {
+        validatedSignaturesRef.current.delete(sig);
+      }
+    }
+
+    // Clean up validationResults state if there are stale entries
+    setValidationResults((prev) => {
+      let hasStale = false;
+      for (const sig of prev.keys()) {
+        if (!currentSignatures.has(sig)) {
+          hasStale = true;
+          break;
+        }
+      }
+
+      if (!hasStale) return prev;
+
+      const updated = new Map<string, SimulateBidResult>();
+      for (const [sig, result] of prev) {
+        if (currentSignatures.has(sig)) {
+          updated.set(sig, result);
+        }
+      }
+      return updated;
+    });
+  }, [rawBids]);
 
   // Build validated bids array with status
   const validatedBids = useMemo((): ValidatedAuctionBid[] => {
     return rawBids.map((bid): ValidatedAuctionBid => {
       // Filter out zero address bids immediately
-      if (
-        !bid.maker ||
-        bid.maker.toLowerCase() === ZERO_ADDRESS
-      ) {
+      if (!bid.maker || bid.maker.toLowerCase() === ZERO_ADDRESS) {
         return {
           ...bid,
           validationStatus: 'invalid',

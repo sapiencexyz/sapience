@@ -207,7 +207,13 @@ const CreatePositionFormInner = ({
       currentAuctionParams;
 
     // Need all auction context to simulate
-    if (!taker || !wager || takerNonce === undefined || !predictedOutcomes?.[0] || !resolver) {
+    if (
+      !taker ||
+      !wager ||
+      takerNonce === undefined ||
+      !predictedOutcomes?.[0] ||
+      !resolver
+    ) {
       setBids(
         rawBids.map((b) => ({
           ...b,

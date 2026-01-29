@@ -6,6 +6,9 @@ import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import * as Sentry from '@sentry/nextjs';
 
+/** Time after last bid expires before cleaning up entire auction (ms) */
+const STALE_THRESHOLD_MS = 60_000; // 1 minute
+
 export type AuctionBid = {
   auctionId: string;
   maker: string;
@@ -153,20 +156,46 @@ class AuctionBidsHub {
   }
 
   private prune() {
-    const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
-    // Prune stale auction bid lists
-    for (const [id, arr] of Array.from(this.bidsByAuctionId.entries())) {
-      const latest = arr && arr.length > 0 ? arr[0] : null;
-      const lastAt = Number(latest?.receivedAtMs || 0);
-      if (Number.isFinite(lastAt) && lastAt > 0 && lastAt < thirtyMinAgo) {
-        this.bidsByAuctionId.delete(id);
+    const expiryCutoff = Date.now() - STALE_THRESHOLD_MS;
+    const prunedAuctionIds: string[] = [];
+
+    // Prune auctions where the latest bid expired more than STALE_THRESHOLD_MS ago
+    for (const [id, bids] of this.bidsByAuctionId.entries()) {
+      if (bids.length === 0) {
+        // No bids - remove empty entry
+        prunedAuctionIds.push(id);
+        continue;
+      }
+
+      // Find the latest bid expiry (highest makerDeadline)
+      let latestExpiryMs = 0;
+      for (const bid of bids) {
+        const expiryMs = bid.makerDeadline * 1000;
+        if (expiryMs > latestExpiryMs) {
+          latestExpiryMs = expiryMs;
+        }
+      }
+
+      // If latest bid expired more than threshold ago, prune the auction
+      if (latestExpiryMs > 0 && latestExpiryMs < expiryCutoff) {
+        prunedAuctionIds.push(id);
       }
     }
-    // Prune stale signature timestamps from receivedAtRef
-    for (const [sig, ts] of Array.from(this.receivedAtRef.entries())) {
-      if (ts < thirtyMinAgo) {
-        this.receivedAtRef.delete(sig);
+
+    // Delete pruned auctions and clean up receivedAtRef
+    for (const id of prunedAuctionIds) {
+      const bids = this.bidsByAuctionId.get(id);
+      if (bids) {
+        for (const bid of bids) {
+          this.receivedAtRef.delete(bid.makerSignature);
+        }
       }
+      this.bidsByAuctionId.delete(id);
+    }
+
+    // Notify listeners if anything was pruned
+    if (prunedAuctionIds.length > 0) {
+      this.emit();
     }
   }
 }

@@ -123,7 +123,8 @@ const AuctionRequestChart: React.FC<Props> = ({
         </div>
         {invalidBidCount > 0 ? (
           <span className="text-muted-foreground whitespace-nowrap">
-            {invalidBidCount} invalid bid{invalidBidCount === 1 ? '' : 's'} hidden
+            {invalidBidCount} invalid bid{invalidBidCount === 1 ? '' : 's'}{' '}
+            hidden
           </span>
         ) : (
           <div />

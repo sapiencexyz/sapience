@@ -144,20 +144,21 @@ const AuctionRequestRow: React.FC<Props> = ({
 
   // Use validated auction bids - validates bids by simulating mint transactions
   // Only run validation when the row is expanded to save RPC calls
-  const {
-    validBids,
-    invalidBidCount,
-    totalBidCount,
-  } = useValidatedAuctionBids(auctionId, {
-    chainId,
-    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-    takerAddress: taker as `0x${string}` | undefined,
-    takerWager: takerWager ?? undefined,
-    takerNonce: takerNonce ?? undefined,
-    encodedPredictedOutcomes: predictedOutcomes?.[0] as `0x${string}` | undefined,
-    resolver: resolver as `0x${string}` | undefined,
-    enabled: isExpanded,
-  });
+  const { validBids, invalidBidCount, totalBidCount } = useValidatedAuctionBids(
+    auctionId,
+    {
+      chainId,
+      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+      takerAddress: taker as `0x${string}` | undefined,
+      takerWager: takerWager ?? undefined,
+      takerNonce: takerNonce ?? undefined,
+      encodedPredictedOutcomes: predictedOutcomes?.[0] as
+        | `0x${string}`
+        | undefined,
+      resolver: resolver as `0x${string}` | undefined,
+      enabled: isExpanded,
+    }
+  );
   const [highlightNewBid, setHighlightNewBid] = useState(false);
   const numBids = totalBidCount;
   const bidsLabel = useMemo(
