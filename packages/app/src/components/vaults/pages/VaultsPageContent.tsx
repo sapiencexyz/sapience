@@ -33,6 +33,7 @@ import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdic
 import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
 import Loader from '~/components/shared/Loader';
+import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 const VaultsPageContent = () => {
   const { isConnected } = useAccount();
@@ -783,7 +784,7 @@ const VaultsPageContent = () => {
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 Ethena rewards are automatically distributed into the vault for
-                depositors. This is separate from profit or loss realized from
+                depositors. This is separate from profit or loss realized by
                 its participation in prediction markets.
               </p>
             </div>
@@ -856,6 +857,16 @@ const VaultsPageContent = () => {
 
                   {/* Vault Stats */}
                   <div className="space-y-4">
+                    {/* Vault PnL Chart */}
+                    <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)]">
+                      <VaultPnlChart
+                        protocolStats={protocolStats ?? undefined}
+                        isLoading={isAnalyticsLoading}
+                        height={180}
+                        vaultAddress={VAULT_ADDRESS}
+                      />
+                    </div>
+
                     {/* Utilization Block */}
                     <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)]">
                       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2 text-foreground">
@@ -872,14 +883,6 @@ const VaultsPageContent = () => {
                           style={{ width: `${utilizationPercent}%` }}
                         />
                       </div>
-                      <p className="mt-2 text-xs">
-                        <Link
-                          href={`/profile/${VAULT_ADDRESS}`}
-                          className="gold-link"
-                        >
-                          View Portfolio
-                        </Link>
-                      </p>
                     </div>
                     {/* APY Row intentionally omitted until calculation available */}
                   </div>
