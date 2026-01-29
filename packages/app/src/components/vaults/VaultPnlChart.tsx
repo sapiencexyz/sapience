@@ -1,7 +1,7 @@
 'use client';
 
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -10,11 +10,19 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from 'recharts';
+import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import { useProtocolStats, type ProtocolStat } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
-import Link from 'next/link';
+import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
+
+type Period = '1W' | '1M' | '3M' | 'ALL';
+const PERIOD_DAYS: Record<Period, number> = {
+  '1W': 7,
+  '1M': 30,
+  '3M': 90,
+  'ALL': Infinity,
+};
 
 function formatLargeNumber(value: number): string {
   if (value >= 1_000_000) {
@@ -114,7 +122,7 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 10, left: 0, bottom: 0 };
+const CHART_MARGIN = { top: 10, right: 10, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
   /** Optional external protocol stats data. If not provided, will fetch internally. */
@@ -123,17 +131,15 @@ type VaultPnlChartProps = {
   isLoading?: boolean;
   /** Chart height in pixels */
   height?: number;
-  /** Vault address for the portfolio link */
-  vaultAddress?: string;
 };
 
 export default function VaultPnlChart({
   protocolStats: externalStats,
   isLoading: externalLoading,
   height = 200,
-  vaultAddress,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+  const [period, setPeriod] = useState<Period>('3M');
 
   // Use internal fetch if no external data provided
   const { data: internalStats, isLoading: internalLoading } = useProtocolStats();
@@ -147,27 +153,33 @@ export default function VaultPnlChart({
   const chartData = useMemo(() => {
     if (!protocolStats || protocolStats.length === 0) return [];
 
-    // Filter to last 90 days
-    const ninetyDaysAgo = Math.floor(Date.now() / 1000) - 90 * 24 * 60 * 60;
-    const recentStats = protocolStats.filter(
-      (stat) => parseInt(stat.timestamp, 10) >= ninetyDaysAgo
+    // Filter based on selected period
+    const periodDays = PERIOD_DAYS[period];
+    const cutoffTimestamp =
+      periodDays === Infinity
+        ? 0
+        : Math.floor(Date.now() / 1000) - periodDays * 24 * 60 * 60;
+
+    const filteredStats = protocolStats.filter(
+      (stat) => parseInt(stat.timestamp, 10) >= cutoffTimestamp
     );
 
-    if (recentStats.length === 0) return [];
+    if (filteredStats.length === 0) return [];
 
     // Get the initial TVL as baseline
-    const firstStat = recentStats[0];
+    const firstStat = filteredStats[0];
     const baselineTvl =
       (parseFloat(firstStat.vaultBalance) + parseFloat(firstStat.escrowBalance)) / 1e18;
 
-    return recentStats.map((point, index) => {
+    return filteredStats.map((point, index) => {
       const currentTvl =
         (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) / 1e18;
 
       // Placeholder PnL calculation: difference from baseline TVL
       // In production, this will come from the actual vaultPnl field
       // Adding some simulated variance for visual effect
-      const simulatedPnl = (currentTvl - baselineTvl) * 0.1 +
+      const simulatedPnl =
+        (currentTvl - baselineTvl) * 0.1 +
         Math.sin(index * 0.5) * (currentTvl * 0.02);
 
       return {
@@ -176,7 +188,32 @@ export default function VaultPnlChart({
         tvl: currentTvl,
       };
     });
-  }, [protocolStats]);
+  }, [protocolStats, period]);
+
+  // Calculate APY for the selected period based on TVL changes
+  const apy = useMemo(() => {
+    if (chartData.length < 2) return null;
+
+    const firstPoint = chartData[0];
+    const lastPoint = chartData[chartData.length - 1];
+
+    // Calculate days elapsed
+    const startTimestamp = parseInt(firstPoint.timestamp, 10);
+    const endTimestamp = parseInt(lastPoint.timestamp, 10);
+    const daysElapsed = (endTimestamp - startTimestamp) / (24 * 60 * 60);
+
+    // Require minimum 1 day of data for meaningful APY
+    if (daysElapsed < 1 || firstPoint.tvl <= 0) return null;
+
+    // Calculate return over period
+    const periodReturn = (lastPoint.tvl - firstPoint.tvl) / firstPoint.tvl;
+
+    // Annualize: APY = ((1 + periodReturn) ^ (365 / days) - 1) * 100
+    const annualizedReturn =
+      (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
+
+    return annualizedReturn;
+  }, [chartData]);
 
   // Calculate domain for Y axis - only extend as much as needed for the data
   const yDomain = useMemo(() => {
@@ -199,18 +236,28 @@ export default function VaultPnlChart({
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between mb-3">
-        <h4 className="text-sm font-mono uppercase tracking-wider text-muted-foreground">
-          Vault Profit/Loss
+      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <h4 className="text-base font-mono uppercase tracking-wider text-muted-foreground">
+          Profit/Loss
         </h4>
-        {vaultAddress && (
-          <Link
-            href={`/profile/${vaultAddress}`}
-            className="text-xs gold-link"
-          >
-            View Portfolio
-          </Link>
-        )}
+        <div className="flex items-center gap-3">
+          {apy !== null && (
+            <span
+              className={`text-base font-mono ${apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
+            >
+              {apy >= 0 ? '+' : ''}
+              {apy.toFixed(1)}% APY
+            </span>
+          )}
+          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+              <TabsTrigger value="1W">1W</TabsTrigger>
+              <TabsTrigger value="1M">1M</TabsTrigger>
+              <TabsTrigger value="3M">3M</TabsTrigger>
+              <TabsTrigger value="ALL">ALL</TabsTrigger>
+            </SegmentedTabsList>
+          </Tabs>
+        </div>
       </div>
       <div style={{ height }}>
         {isLoading ? (
@@ -219,7 +266,7 @@ export default function VaultPnlChart({
           </div>
         ) : chartData.length === 0 ? (
           <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No data available
+            No data for this period
           </div>
         ) : (
           <div className="w-full h-full transition-opacity duration-300">
@@ -257,12 +304,6 @@ export default function VaultPnlChart({
                       collateralSymbol={collateralSymbol}
                     />
                   )}
-                />
-                {/* Zero reference line */}
-                <ReferenceLine
-                  y={0}
-                  stroke="hsl(var(--brand-white) / 0.3)"
-                  strokeDasharray="3 3"
                 />
                 <Area
                   type="monotone"

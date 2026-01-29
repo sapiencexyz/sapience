@@ -775,46 +775,6 @@ const VaultsPageContent = () => {
           </div>
         </div>
 
-        {/* Vault Rewards Info */}
-        <div className="mb-8 bg-brand-black border border-ethena/40 rounded-md p-6 shadow-[0_0_12px_rgba(136,180,245,0.3)]">
-          <div className="flex flex-col gap-4">
-            <div>
-              <div className="text-sm font-mono uppercase tracking-wider text-accent-gold">
-                PROTOCOL VAULT REWARDS
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                Ethena rewards are automatically distributed into the vault for
-                depositors. This is separate from profit or loss realized by
-                its participation in prediction markets.
-              </p>
-            </div>
-            {isAnalyticsLoading || !vaultData ? (
-              <div className="flex justify-center py-4">
-                <Loader className="w-6 h-6" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:pr-4 sm:border-r border-brand-white/20">
-                  <div className="text-3xl font-medium font-mono">
-                    {yieldMetrics.effectiveApy}%
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Approximate APY
-                  </div>
-                </div>
-                <div className="sm:pl-4">
-                  <div className="text-3xl font-medium font-mono">
-                    {yieldMetrics.dailyYield} {collateralSymbol}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Approximate Daily Distribution
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 gap-8">
           {/* Vault */}
           <div>
@@ -826,69 +786,115 @@ const VaultsPageContent = () => {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   {/* Vault Header */}
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="text-2xl font-medium mb-1">
-                        Protocol Vault
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <EnsAvatar
-                          address={VAULT_ADDRESS}
-                          width={16}
-                          height={16}
-                          className="shrink-0"
-                        />
-                        <AddressDisplay
-                          address={VAULT_ADDRESS}
-                          compact
-                          className="text-xs text-muted-foreground"
-                        />
-                      </div>
-                    </div>
-                    <div className="sm:text-right">
-                      <div className="text-sm text-muted-foreground">
-                        Total Value Locked
-                      </div>
-                      <div className="text-xl font-normal font-mono">
-                        {tvlDisplay} {collateralSymbol}
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-2xl font-medium">
+                      Protocol Vault
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <EnsAvatar
+                        address={VAULT_ADDRESS}
+                        width={18}
+                        height={18}
+                        className="shrink-0"
+                      />
+                      <AddressDisplay
+                        address={VAULT_ADDRESS}
+                        className="text-sm text-muted-foreground"
+                      />
                     </div>
                   </div>
 
                   {/* Vault Stats */}
                   <div className="space-y-4">
+                    {/* Vault Rewards Info */}
+                    <div className="bg-brand-black border border-ethena/40 rounded-md p-5 shadow-[0_0_12px_rgba(136,180,245,0.3)]">
+                      <div className="flex flex-col gap-4">
+                        <div>
+                          <div className="text-sm font-mono uppercase tracking-wider text-accent-gold">
+                            VAULT REWARDS
+                          </div>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Ethena rewards are automatically distributed into the vault.
+                            This is separate from profit or loss realized by providing
+                            liquidity to prediction markets.
+                          </p>
+                        </div>
+                        {isAnalyticsLoading || !vaultData ? (
+                          <div className="flex justify-center py-4">
+                            <Loader className="w-6 h-6" />
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="sm:pr-4 sm:border-r border-brand-white/20">
+                              <div className="text-3xl font-medium font-mono">
+                                {yieldMetrics.effectiveApy}%
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Approximate APY
+                              </div>
+                            </div>
+                            <div className="sm:pl-4">
+                              <div className="text-3xl font-medium font-mono">
+                                {yieldMetrics.dailyYield} {collateralSymbol}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                Approximate Daily Distribution
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Vault PnL Chart */}
                     <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)]">
                       <VaultPnlChart
                         protocolStats={protocolStats ?? undefined}
                         isLoading={isAnalyticsLoading}
                         height={180}
-                        vaultAddress={VAULT_ADDRESS}
                       />
                     </div>
 
                     {/* Utilization Block */}
                     <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)]">
-                      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-2 text-foreground">
-                        <div className="text-sm font-normal">
-                          Utilization Rate: {utilizationDisplay}
-                        </div>
-                        <div className="text-sm font-normal">
-                          Deployed: {deployedDisplay} {collateralSymbol}
-                        </div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-base font-mono uppercase tracking-wider text-muted-foreground">
+                          Utilization Rate
+                        </h4>
+                        <span className="text-base font-mono text-foreground">
+                          {utilizationDisplay} DEPLOYED
+                        </span>
                       </div>
-                      <div className="w-full h-2 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
+                      <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
                         <div
-                          className="h-2 bg-accent-gold rounded-sm transition-all gold-sheen"
+                          className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
                           style={{ width: `${utilizationPercent}%` }}
                         />
                       </div>
+                      <div className="mt-2 flex items-baseline justify-between text-sm">
+                        <span className="text-muted-foreground">
+                          <span className="font-mono text-foreground">{deployedDisplay}</span>
+                          {' of '}
+                          <span className="font-mono text-foreground">{tvlDisplay}</span>
+                          {' '}{collateralSymbol} deployed
+                        </span>
+                        <Link
+                          href={`/profile/${VAULT_ADDRESS}`}
+                          className="text-sm gold-link"
+                        >
+                          View Profile
+                        </Link>
+                      </div>
                     </div>
-                    {/* APY Row intentionally omitted until calculation available */}
-                  </div>
 
-                  {/* Deposit/Withdraw Tabs */}
-                  {renderVaultForm()}
+                    {/* Deposit/Withdraw Tabs */}
+                    <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)]">
+                      <h4 className="text-base font-mono uppercase tracking-wider text-muted-foreground mb-3">
+                        Manage Position
+                      </h4>
+                      {renderVaultForm()}
+                    </div>
+                  </div>
 
                   {/* Pending Requests (mapping-based) */}
                   {pendingRequest && !pendingRequest.processed && (
