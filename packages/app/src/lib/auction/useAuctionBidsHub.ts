@@ -98,11 +98,24 @@ class AuctionBidsHub {
       }
     }
     if (updates.size > 0) {
-      for (const [id, arr] of updates.entries()) {
-        const capped = [...arr]
+      for (const [id, newBids] of updates.entries()) {
+        const existing = this.bidsByAuctionId.get(id) || [];
+
+        // Merge existing and new bids, deduplicating by signature
+        const bySignature = new Map<string, AuctionBid>();
+        for (const bid of existing) {
+          bySignature.set(bid.makerSignature, bid);
+        }
+        for (const bid of newBids) {
+          bySignature.set(bid.makerSignature, bid);
+        }
+
+        // Sort by receivedAt (newest first) and cap at 200
+        const merged = Array.from(bySignature.values())
           .sort((a, b) => b.receivedAtMs - a.receivedAtMs)
           .slice(0, 200);
-        this.bidsByAuctionId.set(id, capped);
+
+        this.bidsByAuctionId.set(id, merged);
       }
       this.emit();
     }

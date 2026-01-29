@@ -134,12 +134,18 @@ export function useValidatedAuctionBids(
       resolver: resolver!,
     };
 
+    // Track cancellation for cleanup
+    let cancelled = false;
+
     // Validate all new bids using shared function
     const runValidation = async () => {
       const validated = await validateBidsWithSimulation(
         newBids,
         simulationOptions
       );
+
+      // Skip state updates if cancelled (unmounted or deps changed)
+      if (cancelled) return;
 
       // Update state with new results
       setValidationResults((prev) => {
@@ -160,6 +166,10 @@ export function useValidatedAuctionBids(
     };
 
     runValidation();
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     rawBids,
     canValidate,
