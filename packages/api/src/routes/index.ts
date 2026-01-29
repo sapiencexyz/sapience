@@ -4,6 +4,7 @@ import { adminAuth } from '../middleware';
 import { router as conditionsRoutes } from './conditions';
 import { router as conditionGroupsRoutes } from './conditionGroups';
 import { router as referralsRoutes } from './referrals';
+import { router as adminReferralsRoutes } from './adminReferrals';
 
 const router = Router();
 const adminRouter = Router();
@@ -16,6 +17,7 @@ router.use('/referrals', referralsRoutes);
 adminRouter.use('/reindex', reindexRoutes);
 adminRouter.use('/conditions', conditionsRoutes);
 adminRouter.use('/conditionGroups', conditionGroupsRoutes);
+adminRouter.use('/referrals', adminReferralsRoutes);
 
 router.use('/admin', adminRouter);
 

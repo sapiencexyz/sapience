@@ -232,6 +232,104 @@ router.post('/claim', async (req: Request, res: Response) => {
   }
 
   try {
+    // Check if user already has ANY referral (either user code or admin code)
+    const existingUser = await prisma.user.findUnique({
+      where: { address: normalizeAddress(walletAddress) },
+    });
+
+    if (existingUser) {
+      // If user already has a user referral, check if it matches current code
+      if (existingUser.referredById) {
+        // Check if this is the same referrer's code
+        const referrer = await prisma.user.findFirst({
+          where: { refCodeHash: codeHash },
+        });
+
+        if (referrer && existingUser.referredById === referrer.id) {
+          // Already referred by this user, return their position
+          const referrals = await prisma.user.findMany({
+            where: { referredById: referrer.id },
+            orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+          });
+          const index = referrals.findIndex((u) => u.id === existingUser.id);
+          const position = index === -1 ? null : index + 1;
+          return res.status(200).json({
+            allowed: position !== null,
+            index: position,
+            maxReferrals: referrer.maxReferrals ?? 0,
+            type: 'user',
+          });
+        }
+
+        return res.status(409).json({
+          message: 'Already referred by a user',
+        });
+      }
+
+      // If user already has an admin code referral
+      if (existingUser.referredByCodeId) {
+        // Check if this is the same admin code
+        const adminCode = await prisma.referralCode.findFirst({
+          where: { codeHash },
+        });
+
+        if (adminCode && existingUser.referredByCodeId === adminCode.id) {
+          // Already claimed this admin code
+          return res.status(200).json({
+            allowed: true,
+            type: 'admin',
+            codeId: adminCode.id,
+          });
+        }
+
+        return res.status(409).json({
+          message: 'Already claimed a referral code',
+        });
+      }
+    }
+
+    // Check if it's an admin code first
+    const adminCode = await prisma.referralCode.findFirst({
+      where: { codeHash },
+      include: { _count: { select: { claimedBy: true } } },
+    });
+
+    if (adminCode) {
+      // Validate: isActive, not expired, under capacity
+      if (!adminCode.isActive) {
+        return res.status(403).json({ message: 'Code is no longer active' });
+      }
+
+      if (
+        adminCode.expiresAt &&
+        adminCode.expiresAt < Math.floor(Date.now() / 1000)
+      ) {
+        return res.status(403).json({ message: 'Code has expired' });
+      }
+
+      if (
+        adminCode.maxClaims > 0 &&
+        adminCode._count.claimedBy >= adminCode.maxClaims
+      ) {
+        return res.status(403).json({ message: 'Code has reached claim limit' });
+      }
+
+      // Create/update user with referredByCodeId
+      await prisma.user.upsert({
+        where: { address: normalizeAddress(walletAddress) },
+        create: {
+          address: normalizeAddress(walletAddress),
+          referredByCodeId: adminCode.id,
+        },
+        update: { referredByCodeId: adminCode.id },
+      });
+
+      return res
+        .status(200)
+        .json({ allowed: true, type: 'admin', codeId: adminCode.id });
+    }
+
+    // Fall through to existing user code logic
     const referrer = await prisma.user.findFirst({
       where: { refCodeHash: codeHash },
     });
@@ -242,48 +340,10 @@ router.post('/claim', async (req: Request, res: Response) => {
 
     const max = referrer.maxReferrals ?? 0;
 
-    // Load existing referee (if any) and current referrals for this referrer.
-    const existingReferee = await prisma.user.findUnique({
-      where: { address: normalizeAddress(walletAddress) },
-    });
-
     const referrals = await prisma.user.findMany({
       where: { referredById: referrer.id },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
-
-    // If the user is already referred by *this* referrer, just report their
-    // existing position relative to this referrer.
-    if (existingReferee && existingReferee.referredById === referrer.id) {
-      const index = referrals.findIndex((u) => u.id === existingReferee.id);
-      const position = index === -1 ? null : index + 1;
-      // Once a user is referred by this referrer, they remain allowed even if
-      // maxReferrals is later reduced. This endpoint is also used to query
-      // their current position, so we always treat an existing relationship
-      // as allowed.
-      const allowed = position !== null;
-
-      return res.status(200).json({
-        allowed,
-        index: position,
-        maxReferrals: max,
-      });
-    }
-
-    // If the user already has a different referrer, do not allow switching
-    // referral codes.
-    if (
-      existingReferee &&
-      existingReferee.referredById &&
-      existingReferee.referredById !== referrer.id
-    ) {
-      return res.status(409).json({
-        allowed: false,
-        index: null,
-        maxReferrals: max,
-        message: 'Referral already set for this wallet address.',
-      });
-    }
 
     // User is either not yet referred or is switching from another referrer
     // to this one. Enforce capacity: if this code is not configured
@@ -298,8 +358,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       });
     }
 
-    // Capacity available: create or update the user to point at this referrer,
-    // overwriting any previous referrer relationship.
+    // Capacity available: create or update the user to point at this referrer.
     await prisma.user.upsert({
       where: { address: normalizeAddress(walletAddress) },
       create: {
@@ -315,6 +374,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       allowed: true,
       index: prospectivePosition,
       maxReferrals: max,
+      type: 'user',
     });
   } catch (e) {
     console.error('Error claiming referral code:', e);

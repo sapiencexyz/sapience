@@ -359,8 +359,47 @@ model User {
   referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id])
   referrals    User[]  @relation("UserReferrals")
 
+  /// Admin referral code that referred this user (mutually exclusive with referredById)
+  referredByCodeId  Int?
+  referredByCode    ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
+
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
+}
+
+/// Admin-managed referral codes for campaigns
+model ReferralCode {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+
+  /// The plaintext code (stored for admin convenience)
+  code         String    @unique @db.VarChar
+
+  /// keccak256(utf8(trimmed_lowercase_code)) as 0x-prefixed hex
+  codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
+
+  /// Optional description (e.g., "CryptoTwitter Campaign Q1 2026")
+  description  String?   @db.Text
+
+  /// Maximum claims allowed (0 = unlimited)
+  maxClaims    Int       @default(0)
+
+  /// Whether code is currently active
+  isActive     Boolean   @default(true)
+
+  /// Optional expiration (Unix timestamp)
+  expiresAt    Int?
+
+  /// Wallet address of admin who created it
+  createdBy    String    @db.VarChar
+
+  /// Users who claimed this code
+  claimedBy    User[]    @relation("AdminCodeClaims")
+
+  @@index([codeHash], map: "IDX_referral_code_hash")
+  @@index([isActive], map: "IDX_referral_code_active")
+  @@map("referral_code")
 }
 
 /// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
