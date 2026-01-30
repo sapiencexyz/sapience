@@ -27,9 +27,10 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Copy, BarChart3, Pencil, Trash2 } from 'lucide-react';
+import { Copy, BarChart3, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { formatDistanceToNow, fromUnixTime, format } from 'date-fns';
+import { formatUnits } from 'viem';
 import DataTable from './data-table';
 import { useAdminApi } from '~/hooks/useAdminApi';
 
@@ -145,6 +146,11 @@ const ReferralCodesTab = ({
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | undefined>(undefined);
+
+  // Analytics sorting state
+  type SortKey = 'address' | 'volume' | 'positions';
+  type SortDir = 'asc' | 'desc';
+  const [analyticsSort, setAnalyticsSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'volume', dir: 'desc' });
 
   const fetchCodes = useCallback(async () => {
     setIsLoading(true);
@@ -641,7 +647,13 @@ const ReferralCodesTab = ({
       </Dialog>
 
       {/* Analytics Dialog */}
-      <Dialog open={analyticsOpen} onOpenChange={setAnalyticsOpen}>
+      <Dialog open={analyticsOpen} onOpenChange={(open) => {
+        setAnalyticsOpen(open);
+        if (!open) {
+          // Reset sort when closing
+          setAnalyticsSort({ key: 'volume', dir: 'desc' });
+        }
+      }}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -666,7 +678,7 @@ const ReferralCodesTab = ({
                 </div>
                 <div className="rounded-lg border p-4 text-center">
                   <div className="text-2xl font-bold">
-                    {analyticsData.totalVolume}
+                    {formatUnits(BigInt(analyticsData.totalVolume), 18)}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Total Volume
@@ -690,13 +702,74 @@ const ReferralCodesTab = ({
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50 sticky top-0">
                         <tr>
-                          <th className="p-2 text-left">Address</th>
-                          <th className="p-2 text-right">Trading Volume</th>
-                          <th className="p-2 text-right">Positions</th>
+                          <th className="p-2 text-left">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 hover:text-foreground text-muted-foreground"
+                              onClick={() => setAnalyticsSort(prev => ({
+                                key: 'address',
+                                dir: prev.key === 'address' && prev.dir === 'asc' ? 'desc' : 'asc'
+                              }))}
+                            >
+                              Address
+                              {analyticsSort.key === 'address' ? (
+                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-50" />
+                              )}
+                            </button>
+                          </th>
+                          <th className="p-2 text-right">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 hover:text-foreground text-muted-foreground ml-auto"
+                              onClick={() => setAnalyticsSort(prev => ({
+                                key: 'volume',
+                                dir: prev.key === 'volume' && prev.dir === 'desc' ? 'asc' : 'desc'
+                              }))}
+                            >
+                              Trading Volume
+                              {analyticsSort.key === 'volume' ? (
+                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-50" />
+                              )}
+                            </button>
+                          </th>
+                          <th className="p-2 text-right">
+                            <button
+                              type="button"
+                              className="flex items-center gap-1 hover:text-foreground text-muted-foreground ml-auto"
+                              onClick={() => setAnalyticsSort(prev => ({
+                                key: 'positions',
+                                dir: prev.key === 'positions' && prev.dir === 'desc' ? 'asc' : 'desc'
+                              }))}
+                            >
+                              Positions
+                              {analyticsSort.key === 'positions' ? (
+                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                              ) : (
+                                <ArrowUpDown className="h-3 w-3 opacity-50" />
+                              )}
+                            </button>
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {analyticsData.claimants.map((claimant) => (
+                        {[...analyticsData.claimants]
+                          .sort((a, b) => {
+                            const { key, dir } = analyticsSort;
+                            let cmp = 0;
+                            if (key === 'address') {
+                              cmp = a.address.localeCompare(b.address);
+                            } else if (key === 'volume') {
+                              cmp = Number(BigInt(a.tradingVolume) - BigInt(b.tradingVolume));
+                            } else if (key === 'positions') {
+                              cmp = a.positionCount - b.positionCount;
+                            }
+                            return dir === 'asc' ? cmp : -cmp;
+                          })
+                          .map((claimant) => (
                           <tr key={claimant.address} className="border-t">
                             <td className="p-2 font-mono text-xs">
                               <div className="flex items-center gap-2">
@@ -723,10 +796,10 @@ const ReferralCodesTab = ({
                                 </Button>
                               </div>
                             </td>
-                            <td className="p-2 text-right">
-                              {claimant.tradingVolume}
+                            <td className="p-2 text-right font-mono">
+                              {formatUnits(BigInt(claimant.tradingVolume), 18)}
                             </td>
-                            <td className="p-2 text-right">
+                            <td className="p-2 text-right font-mono">
                               {claimant.positionCount}
                             </td>
                           </tr>
