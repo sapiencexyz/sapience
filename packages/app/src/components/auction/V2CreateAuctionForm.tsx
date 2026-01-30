@@ -72,7 +72,7 @@ export default function V2CreateAuctionForm({
   });
 
   const { balance: collateralBalance, isLoading: isLoadingBalance } = useCollateralBalance({
-    address: address as `0x${string}` | undefined,
+    address: address,
     chainId,
   });
 

@@ -13,8 +13,8 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { WagerInput } from '~/components/markets/forms';
@@ -94,7 +94,7 @@ export default function PositionForm({
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL;
+  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
@@ -111,28 +111,38 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSmartAccount, signMessage: sessionSignMessage } = useSession();
 
-  // Use effectiveAddress from session context, falling back to zero address for logged-out users
+  // Determine the actual taker address based on signing method
+  // This MUST match the logic in useAuctionStart.requestQuotes
+  // - If using session signing (smart account with active session): use effectiveAddress (smart account)
+  // - Otherwise (signing with wallet): use takerAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? ZERO_ADDRESS;
+  const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+  const selectedTakerAddress = willUseSessionSigning
+    ? (effectiveAddress ?? takerAddress ?? ZERO_ADDRESS)
+    : (takerAddress ?? ZERO_ADDRESS);
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce from PredictionMarket contract
-  // Use refetch to get fresh nonce before auction requests
-  const { refetch: refetchTakerNonce } = useReadContract({
+  // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
+  // V2 (testnet) uses getNonce, V1 uses nonces
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
+    abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
+    functionName: isV2Chain ? 'getNonce' : 'nonces',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
       enabled: !!selectedTakerAddress && !!predictionMarketAddress,
     },
   });
+  if (nonceError) {
+    console.error('[Auction] Nonce read error:', nonceError);
+  }
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const wagerAmount = useWatch({
@@ -142,6 +152,8 @@ export default function PositionForm({
   const prevWagerAmountRef = useRef<string>(wagerAmount || '');
   // Track the request configuration to ignore stale bids
   const currentRequestKeyRef = useRef<string | null>(null);
+  // Guard to prevent multiple concurrent auction requests
+  const auctionRequestInFlightRef = useRef<boolean>(false);
 
   // Apply rainbow hover effect only for wagers over 1k
   const isRainbowHoverEnabled = useMemo(() => {
@@ -217,21 +229,48 @@ export default function PositionForm({
   // Only accept bids if they match the current request configuration
   useEffect(() => {
     const currentRequestKey = `${predictionsKey}:${wagerAmount || ''}`;
+    console.log('[V2-DBG] Checking bids to setValidBids:', {
+      bidsCount: bids.length,
+      currentRequestKeyRef: currentRequestKeyRef.current,
+      currentRequestKey,
+      match: currentRequestKeyRef.current === currentRequestKey,
+    });
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/wager changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
       // Configuration changed, ignore incoming bids
+      console.log('[V2-DBG] currentRequestKeyRef is null, ignoring bids');
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
+      console.log('[V2-DBG] Setting validBids:', bids);
       setValidBids(bids);
+    } else {
+      console.log('[V2-DBG] Request key mismatch, not setting validBids');
     }
   }, [bids, predictionsKey, wagerAmount]);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
+    if (validBids?.length > 0) {
+      console.log('[V2-DBG] Computing bestBid from validBids:', {
+        validBidsCount: validBids?.length || 0,
+        validBids: validBids?.map(b => ({
+          maker: b.maker,
+          makerWager: b.makerWager,
+          makerDeadline: b.makerDeadline,
+          deadlineMs: b.makerDeadline * 1000,
+          nowMs,
+          isExpired: b.makerDeadline * 1000 <= nowMs,
+          validationStatus: b.validationStatus,
+          validationError: b.validationError,
+        })),
+      });
+    }
+
     if (!validBids || validBids.length === 0) {
+      console.log('[V2-DBG] No validBids, returning null');
       return { bestBid: null, estimateBid: null };
     }
 
@@ -239,8 +278,10 @@ export default function PositionForm({
     const nonExpiredBids = validBids.filter(
       (bid) => bid.makerDeadline * 1000 > nowMs
     );
+    console.log('[V2-DBG] Non-expired bids:', nonExpiredBids.length);
 
     if (nonExpiredBids.length === 0) {
+      console.log('[V2-DBG] All bids expired, returning null');
       return { bestBid: null, estimateBid: null };
     }
 
@@ -248,6 +289,7 @@ export default function PositionForm({
     const validFilteredBids = nonExpiredBids.filter(
       (bid) => bid.validationStatus === 'valid'
     );
+    console.log('[V2-DBG] Valid filtered bids:', validFilteredBids.length);
 
     // If we have no valid bids and exactly one invalid bid, show it as an estimate.
     // This matches the "single failing bid shows ESTIMATE" behavior.
@@ -260,6 +302,7 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
+      console.log('[V2-DBG] No valid bids after filtering, returning estimate:', estimateFromFailed);
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
@@ -274,6 +317,7 @@ export default function PositionForm({
       }
     });
 
+    console.log('[V2-DBG] Found bestBid:', { maker: best.maker, makerWager: best.makerWager, validationStatus: best.validationStatus });
     return { bestBid: best, estimateBid: null };
   }, [validBids, nowMs]);
 
@@ -321,7 +365,18 @@ export default function PositionForm({
       forceRefresh?: boolean;
       requireSignature?: boolean;
     }) => {
-      if (!requestQuotes || !selectedTakerAddress) return;
+      console.log('[V2-DBG] triggerAuctionRequest called', { options, requestQuotes: !!requestQuotes, selectedTakerAddress, selectionsCount: selections.length, inFlight: auctionRequestInFlightRef.current });
+
+      // Prevent multiple concurrent auction requests
+      if (auctionRequestInFlightRef.current) {
+        console.log('[V2-DBG] Early return: auction request already in flight');
+        return;
+      }
+
+      if (!requestQuotes || !selectedTakerAddress) {
+        console.log('[V2-DBG] Early return: no requestQuotes or taker address');
+        return;
+      }
 
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
@@ -337,10 +392,19 @@ export default function PositionForm({
         });
         return;
       }
-      if (!hasUma && !hasPyth) return;
-      if (hasFormErrors) return;
+      if (!hasUma && !hasPyth) {
+        console.log('[V2-DBG] Early return: no predictions');
+        return;
+      }
+      if (hasFormErrors) {
+        console.log('[V2-DBG] Early return: form has errors', methods.formState.errors);
+        return;
+      }
 
       const wagerStr = wagerAmount || '0';
+
+      // Set in-flight flag to prevent concurrent requests
+      auctionRequestInFlightRef.current = true;
 
       try {
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
@@ -348,9 +412,15 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const { data: freshNonce } = await refetchTakerNonce();
+        console.log('[V2-DBG] Fetching nonce...');
+        const nonceResult = await refetchTakerNonce();
+        console.log('[V2-DBG] Nonce result:', nonceResult);
+        const freshNonce = nonceResult.data;
+        console.log('[V2-DBG] Nonce fetched:', freshNonce, 'takerAddress:', takerAddress);
 
         if (freshNonce === undefined && takerAddress) {
+          console.log('[V2-DBG] Early return: nonce undefined for connected user');
+          auctionRequestInFlightRef.current = false;
           return;
         }
 
@@ -373,10 +443,12 @@ export default function PositionForm({
               selections.map((s) => ({
                 marketId: s.conditionId || '0',
                 prediction: !!s.prediction,
+                resolverAddress: s.resolverAddress,
               })),
               chainId
             );
 
+        console.log('[V2-DBG] Payload built:', payload);
         const params: AuctionParams = {
           wager: wagerWei,
           resolver: payload.resolver,
@@ -385,6 +457,7 @@ export default function PositionForm({
           takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
+        console.log('[V2-DBG] Calling requestQuotes with params:', params);
 
         requestQuotes(params, {
           forceRefresh: options?.forceRefresh,
@@ -393,8 +466,16 @@ export default function PositionForm({
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
+
+        // Clear in-flight flag after a short delay to allow the debounced request to start
+        // This prevents duplicate requests while still allowing future requests
+        setTimeout(() => {
+          auctionRequestInFlightRef.current = false;
+        }, 500);
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
+        console.error('[V2-DBG] Error in triggerAuctionRequest:', err);
+        auctionRequestInFlightRef.current = false;
         const msg =
           err instanceof Error
             ? err.message
@@ -437,8 +518,13 @@ export default function PositionForm({
   // Auto-initiate auction when content (predictions/wager) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
   // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
-  const autoAuctionDebounceRef = useRef<number | null>(null);
+  // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
+  const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
+    // TEMPORARILY DISABLED for V2 testing - auto-triggers were invalidating received bids
+    // User must click "INITIATE AUCTION" manually
+    return;
+
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
     if (hasConnectedWallet && isBalanceLoading) return;
@@ -460,7 +546,7 @@ export default function PositionForm({
     if (hasConnectedWallet && wagerNum > userBalance) return;
 
     // Clear previous debounce timer
-    if (autoAuctionDebounceRef.current) {
+    if (autoAuctionDebounceRef.current !== undefined) {
       window.clearTimeout(autoAuctionDebounceRef.current);
     }
 
@@ -473,7 +559,7 @@ export default function PositionForm({
     }, 300);
 
     return () => {
-      if (autoAuctionDebounceRef.current) {
+      if (autoAuctionDebounceRef.current !== undefined) {
         window.clearTimeout(autoAuctionDebounceRef.current);
       }
     };

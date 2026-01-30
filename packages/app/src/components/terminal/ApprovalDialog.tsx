@@ -21,8 +21,8 @@ import {
   erc20Abi,
   parseAbi,
 } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -45,8 +45,12 @@ import { useApprovalDialog } from './ApprovalDialogContext';
 
 const GAS_RESERVE = 0.5;
 
-// wUSDe configuration for Ethereal chain
-const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+// wUSDe addresses per chain
+const WUSDE_ADDRESSES: Record<number, `0x${string}`> = {
+  [CHAIN_ID_ETHEREAL]: '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D',
+  [CHAIN_ID_ETHEREAL_TESTNET]: '0xb7AE43711D85C23Dc862C85B9C95A64DC6351F90',
+};
+
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
   'function withdraw(uint256 amount)',
@@ -57,7 +61,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId: number = CHAIN_ID_ETHEREAL_TESTNET;
   const { address } = useAccount();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();
@@ -65,18 +70,23 @@ const ApprovalDialog: React.FC = () => {
   const isEtherealChain =
     chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 
-  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
-    | `0x${string}`
-    | undefined;
+  const WUSDE_ADDRESS = WUSDE_ADDRESSES[chainId];
+
+  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const SPENDER_ADDRESS = (isV2Chain
+    ? predictionMarketEscrow[chainId]?.address
+    : predictionMarket[chainId]?.address) as `0x${string}` | undefined;
 
   // Read collateral token address from PredictionMarket contract config
+  // V2 uses collateralToken() directly, V1 uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: SPENDER_ADDRESS
       ? [
           {
             address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
+            abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
+            functionName: isV2Chain ? 'collateralToken' : 'getConfig',
             chainId: chainId,
           },
         ]
@@ -87,11 +97,15 @@ const ApprovalDialog: React.FC = () => {
   const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
+      // V2 returns address directly, V1 returns struct
+      if (isV2Chain) {
+        return item.result as `0x${string}`;
+      }
       const cfg = item.result as { collateralToken: `0x${string}` };
       return cfg?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [predictionMarketConfigRead.data, isV2Chain]);
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {

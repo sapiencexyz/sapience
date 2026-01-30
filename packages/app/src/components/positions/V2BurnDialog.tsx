@@ -119,7 +119,7 @@ export default function V2BurnDialog({
     setIsSubmitting(true);
 
     try {
-      const holderAddress = effectiveAddress as Address;
+      const holderAddress = effectiveAddress;
       const nonce = currentNonce ?? 0n;
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour deadline
 
@@ -180,8 +180,8 @@ export default function V2BurnDialog({
           counterpartyNonce: nonce + 1n,
           predictorDeadline: deadline,
           counterpartyDeadline: deadline,
-          predictorSignature: predictorSignature as Hex,
-          counterpartySignature: counterpartySignature as Hex,
+          predictorSignature: predictorSignature,
+          counterpartySignature: counterpartySignature,
           refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
           predictorSessionKeyData: '0x' as Hex,
           counterpartySessionKeyData: '0x' as Hex,

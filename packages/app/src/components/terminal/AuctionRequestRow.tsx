@@ -10,9 +10,9 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
+import { predictionMarket, predictionMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -57,7 +57,8 @@ const AuctionRequestRow: React.FC<Props> = ({
   const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   const terminalLogs = useTerminalLogsOptional();
@@ -82,10 +83,20 @@ const AuctionRequestRow: React.FC<Props> = ({
       });
     },
   });
-  // Resolve collateral token from PredictionMarket config (fallback to default constant)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
+  // Resolve contract address for the current chain
+  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isV2Chain
+    ? predictionMarketEscrow[chainId]?.address
+    : predictionMarket[chainId]?.address;
+  // For V2, use collateral token address directly from SDK
+  // For V1, read from PredictionMarket contract config
+  const V2_COLLATERAL_ADDRESS = isV2Chain
+    ? collateralToken[chainId]?.address
+    : undefined;
+
   const predictionMarketConfigRead = useReadContracts({
-    contracts: PREDICTION_MARKET_ADDRESS
+    contracts: !isV2Chain && PREDICTION_MARKET_ADDRESS
       ? [
           {
             address: PREDICTION_MARKET_ADDRESS,
@@ -95,9 +106,12 @@ const AuctionRequestRow: React.FC<Props> = ({
           },
         ]
       : [],
-    query: { enabled: !!PREDICTION_MARKET_ADDRESS },
+    query: { enabled: !isV2Chain && !!PREDICTION_MARKET_ADDRESS },
   });
   const COLLATERAL_ADDRESS = useMemo(() => {
+    // For V2, use SDK address directly
+    if (isV2Chain) return V2_COLLATERAL_ADDRESS;
+    // For V1, use config read
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       try {
@@ -108,7 +122,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       }
     }
     return collateralToken[DEFAULT_CHAIN_ID]?.address;
-  }, [predictionMarketConfigRead.data]);
+  }, [isV2Chain, V2_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,

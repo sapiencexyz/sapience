@@ -34,3 +34,27 @@ export const etherealChain = {
     },
   },
 } as const satisfies Chain;
+
+/**
+ * Ethereal Testnet chain definition for viem/wagmi.
+ * Single source of truth - import from @sapience/sdk/constants.
+ */
+export const etherealTestnetChain = {
+  id: CHAIN_ID_ETHEREAL_TESTNET,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'USDe',
+    symbol: 'USDe',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.etherealtest.net'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Ethereal Testnet Explorer',
+      url: 'https://explorer.etherealtest.net',
+    },
+  },
+  testnet: true,
+} as const satisfies Chain;

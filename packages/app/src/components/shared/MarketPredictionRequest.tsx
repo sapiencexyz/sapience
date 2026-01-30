@@ -307,7 +307,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   ]);
 
   // Only fire eager once both taker address and outcomes are ready
+  // TODO: Re-enable after V2 testing - disabled to prevent auto-auctions interfering with V2 flow
   React.useEffect(() => {
+    // TEMPORARILY DISABLED for V2 testing
+    return;
+
     if (!eager) return;
     if (prefetchedProbability != null) return;
     if (eagerlyRequestedRef.current) return;

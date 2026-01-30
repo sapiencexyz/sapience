@@ -9,7 +9,7 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import MarketsDataTable from '~/components/markets/MarketsDataTable';
@@ -35,7 +35,7 @@ const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
 
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);

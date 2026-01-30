@@ -10,7 +10,7 @@ import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
-import { etherealChain } from '@sapience/sdk/constants';
+import { etherealChain, etherealTestnetChain } from '@sapience/sdk/constants';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
@@ -56,9 +56,10 @@ const buildChainsAndTransports = () => {
         : 'https://arbitrum-rpc.publicnode.com'
     ),
     [etherealChain.id]: http('https://rpc.ethereal.trade'),
+    [etherealTestnetChain.id]: http('https://rpc.etherealtest.net'),
   };
 
-  const chains: Chain[] = [arbitrum, base, etherealChain];
+  const chains: Chain[] = [arbitrum, base, etherealChain, etherealTestnetChain];
 
   if (process.env.NODE_ENV !== 'production') {
     transports[cannonAtLocalhost.id] = http('http://localhost:8545');

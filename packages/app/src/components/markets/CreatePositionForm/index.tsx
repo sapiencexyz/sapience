@@ -32,8 +32,8 @@ import {
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
@@ -58,7 +58,7 @@ import {
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,
@@ -100,7 +100,7 @@ const CreatePositionFormInner = ({
   const { address } = useAccount();
   const { effectiveAddress } = useSession();
   const { toast } = useToast();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
 
   // Track whether wager has been initialized and for which address
   const [isWagerInitialized, setIsWagerInitialized] = useState(false);
@@ -154,18 +154,23 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
+  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
+  const isV2Chain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isV2Chain
+    ? predictionMarketEscrow[positionChainId]?.address
+    : predictionMarket[positionChainId]?.address;
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
+  // V2 uses collateralToken() directly, V1 uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: predictionMarketAbi,
-        functionName: 'getConfig',
+        abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
+        functionName: isV2Chain ? 'collateralToken' : 'getConfig',
         chainId: positionChainId,
       },
     ],
@@ -177,21 +182,31 @@ const CreatePositionFormInner = ({
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
+      // V2 returns address directly, V1 returns struct with collateralToken
+      if (isV2Chain) {
+        return item.result as Address;
+      }
       return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [predictionMarketConfigRead.data, isV2Chain]);
 
   // Async validation of bids - checks market maker's balance and allowance on-chain
   // This runs when bids arrive and validates them before showing as submittable
   useEffect(() => {
+    console.log('[V2-DBG] rawBids changed:', rawBids.length, rawBids);
     if (rawBids.length === 0) {
+      console.log('[V2-DBG] rawBids empty, clearing bids');
       setBids([]);
       return;
     }
 
     // Need collateral token and prediction market address for validation
     if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
+      console.log('[V2-DBG] Missing collateral/market address, setting bids as pending', {
+        collateralToken,
+        PREDICTION_MARKET_ADDRESS,
+      });
       // Can't validate yet, show bids as pending
       setBids(
         rawBids.map((b) => ({
@@ -206,17 +221,19 @@ const CreatePositionFormInner = ({
 
     const runValidation = async () => {
       try {
+        console.log('[V2-DBG] Validating bids...', { chainId: positionChainId, collateralToken, PREDICTION_MARKET_ADDRESS });
         const validated = await validateBidsAsync(rawBids, {
           chainId: positionChainId,
           collateralTokenAddress: collateralToken,
           predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
         });
 
+        console.log('[V2-DBG] Validation complete:', validated);
         if (!cancelled) {
           setBids(validated);
         }
       } catch (err) {
-        console.error('[Bid] Async validation error:', err);
+        console.error('[V2-DBG] Async validation error:', err);
         if (!cancelled) {
           // On error, mark all as pending (don't block the user)
           setBids(
@@ -237,12 +254,14 @@ const CreatePositionFormInner = ({
   }, [rawBids, collateralToken, PREDICTION_MARKET_ADDRESS, positionChainId]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
+    // V2 doesn't have minCollateral concept, so return undefined
+    if (isV2Chain) return undefined;
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
       return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [predictionMarketConfigRead.data, isV2Chain]);
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';

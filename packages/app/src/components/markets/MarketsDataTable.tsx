@@ -314,11 +314,13 @@ function PredictCell({ condition }: { condition: ConditionType }) {
       prediction: true,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
+      resolverAddress: condition.resolver,
     });
   }, [
     condition.id,
     condition.category?.slug,
     condition.endTime,
+    condition.resolver,
     displayQ,
     selections,
     removeSelection,
@@ -338,11 +340,13 @@ function PredictCell({ condition }: { condition: ConditionType }) {
       prediction: false,
       categorySlug: condition.category?.slug,
       endTime: condition.endTime,
+      resolverAddress: condition.resolver,
     });
   }, [
     condition.id,
     condition.category?.slug,
     condition.endTime,
+    condition.resolver,
     displayQ,
     selections,
     removeSelection,

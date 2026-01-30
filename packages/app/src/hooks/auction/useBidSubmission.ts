@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * @deprecated V1 bid submission hook. For V2 protocol, use useV2BidSubmission
- * which supports the new MintApproval EIP-712 signature format.
+ * Bid submission hook supporting both V1 (mainnet) and V2 (testnet) protocols.
+ * V1: Uses SignatureProcessor.Approve EIP-712 format
+ * V2: Uses MintApproval EIP-712 format from PredictionMarketEscrow
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
@@ -13,15 +14,20 @@ import {
   getAddress,
   parseUnits,
   formatUnits,
+  type Address,
 } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-// Note: Owner's wallet signs bid requests (not session key) so relayer can verify
-// smart account ownership by computing the smart account address from the recovered signer.
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import {
+  decodeAuctionPredictedOutcomes,
+  decodedOutcomesToV2Picks,
+} from '~/lib/auction/decodePredictedOutcomes';
+import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 
 export type BidSubmissionParams = {
   auctionId: string;
@@ -84,15 +90,25 @@ export function useBidSubmission(
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
   const { effectiveAddress } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
-  const verifyingContract = predictionMarket[chainId]?.address as
-    | `0x${string}`
-    | undefined;
+  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const verifyingContract = (isV2Chain
+    ? predictionMarketEscrow[chainId]?.address
+    : predictionMarket[chainId]?.address) as `0x${string}` | undefined;
+
+  // Get V2 nonce for counterparty signing (only used on V2 chains)
+  const { nonce: v2Nonce } = useV2Nonce({
+    address: effectiveAddress as Address | undefined,
+    chainId,
+    enabled: isV2Chain,
+  });
 
   // Default to 18 decimals, can be overridden in format/parse calls
   const tokenDecimals = 18;
@@ -181,62 +197,111 @@ export function useBidSubmission(
       })();
       const makerDeadline = nowSec + clampedExpiry;
 
-      // Build inner message hash (bytes, uint256, uint256, address, address, uint256, uint256)
-      const innerMessageHash = keccak256(
-        encodeAbiParameters(
-          parseAbiParameters(
-            'bytes, uint256, uint256, address, address, uint256, uint256'
-          ),
-          [
-            encodedPredicted,
-            makerWager,
-            takerWager,
-            getAddress(resolver),
-            getAddress(taker),
-            BigInt(makerDeadline),
-            BigInt(takerNonce),
-          ]
-        )
-      );
-
-      // EIP-712 domain and types per SignatureProcessor
-      const domain = {
-        name: 'SignatureProcessor',
-        version: '1',
-        chainId: chainId,
-        verifyingContract,
-      } as const;
-
-      const types = {
-        Approve: [
-          { name: 'messageHash', type: 'bytes32' },
-          { name: 'owner', type: 'address' },
-        ],
-      } as const;
-
-      const message = {
-        messageHash: innerMessageHash,
-        owner: getAddress(signerAddress),
-      } as const;
-
-      // Always use owner's wallet for signing (even when session is active)
-      // Relayer verifies ownership by computing smart account from recovered signer
       let makerSignature: `0x${string}`;
-      try {
-        makerSignature = await signTypedDataAsync({
-          domain,
-          types,
-          primaryType: 'Approve',
-          message,
+
+      if (isV2Chain) {
+        // V2 signing: Use MintApproval typed data
+        // Decode predictedOutcomes to V2 picks
+        const decoded = decodeAuctionPredictedOutcomes({
+          resolver,
+          predictedOutcomes,
         });
-      } catch (e: any) {
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
-        onSignatureRejected?.(error);
-        return {
-          success: false,
-          error: `Signature rejected: ${error.message}`,
-        };
+        const picks = decodedOutcomesToV2Picks(decoded, resolver);
+
+        if (picks.length === 0) {
+          return { success: false, error: 'Could not decode picks for V2 signing' };
+        }
+
+        // Get counterparty nonce (bidder's nonce)
+        const counterpartyNonce = v2Nonce ?? 0n;
+
+        // Build V2 typed data for counterparty (bidder)
+        // In V2 terms: predictor = taker (auction creator), counterparty = maker (bidder)
+        const typedData = buildCounterpartyMintTypedData({
+          picks,
+          predictorWager: takerWager,        // auction creator's wager
+          counterpartyWager: makerWager,      // bidder's wager
+          predictor: taker,        // auction creator
+          counterparty: signerAddress, // bidder (us)
+          counterpartyNonce,
+          counterpartyDeadline: BigInt(makerDeadline),
+          verifyingContract: verifyingContract,
+          chainId,
+        });
+
+        try {
+          makerSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        } catch (e: any) {
+          const error =
+            e instanceof Error ? e : new Error(String(e?.message || e));
+          onSignatureRejected?.(error);
+          return {
+            success: false,
+            error: `Signature rejected: ${error.message}`,
+          };
+        }
+      } else {
+        // V1 signing: Use SignatureProcessor.Approve typed data
+        const innerMessageHash = keccak256(
+          encodeAbiParameters(
+            parseAbiParameters(
+              'bytes, uint256, uint256, address, address, uint256, uint256'
+            ),
+            [
+              encodedPredicted,
+              makerWager,
+              takerWager,
+              getAddress(resolver),
+              getAddress(taker),
+              BigInt(makerDeadline),
+              BigInt(takerNonce),
+            ]
+          )
+        );
+
+        const domain = {
+          name: 'SignatureProcessor',
+          version: '1',
+          chainId: chainId,
+          verifyingContract,
+        } as const;
+
+        const types = {
+          Approve: [
+            { name: 'messageHash', type: 'bytes32' },
+            { name: 'owner', type: 'address' },
+          ],
+        } as const;
+
+        const message = {
+          messageHash: innerMessageHash,
+          owner: getAddress(signerAddress),
+        } as const;
+
+        try {
+          makerSignature = await signTypedDataAsync({
+            domain,
+            types,
+            primaryType: 'Approve',
+            message,
+          });
+        } catch (e: any) {
+          const error =
+            e instanceof Error ? e : new Error(String(e?.message || e));
+          onSignatureRejected?.(error);
+          return {
+            success: false,
+            error: `Signature rejected: ${error.message}`,
+          };
+        }
       }
 
       if (!makerSignature) {
@@ -279,6 +344,8 @@ export function useBidSubmission(
       signTypedDataAsync,
       onSignatureRejected,
       effectiveAddress,
+      isV2Chain,
+      v2Nonce,
     ]
   );
 

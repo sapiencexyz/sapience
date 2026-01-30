@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage } from 'wagmi';
 import {
   createAuctionStartSiweMessage,
   extractSiweDomainAndUri,
@@ -77,6 +77,7 @@ export function useAuctionStart() {
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
+  const { address: walletAddress } = useAccount();
   const {
     etherealSessionApproval,
     signMessage: sessionSignMessage,
@@ -132,8 +133,6 @@ export function useAuctionStart() {
           if (targetAuctionId !== latestAuctionIdRef.current) {
             return;
           }
-
-          console.log(`[Auction] Received ${rawBids.length} bid(s)`);
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
@@ -176,8 +175,13 @@ export function useAuctionStart() {
     ) => {
       if (!params || !wsUrl) return;
 
-      // Use effectiveAddress from session context if available, otherwise use params.taker
-      const effectiveTaker = effectiveAddress ?? params.taker;
+      // Determine if we'll use session signing or wallet signing
+      // Session signing: use smart account address as taker
+      // Wallet signing: use wallet address as taker (signature must match taker for verification)
+      const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+      const effectiveTaker = willUseSessionSigning
+        ? (effectiveAddress ?? params.taker)
+        : (walletAddress ?? params.taker);
 
       const requestPayload = {
         wager: params.wager,
@@ -226,9 +230,9 @@ export function useAuctionStart() {
               issuedAt
             );
 
-            // Use session key signing when using smart account (no wallet popup)
+            // Use session key signing when using smart account with active session
             // Otherwise fall back to owner's wallet signing
-            if (isUsingSmartAccount && sessionSignMessage) {
+            if (willUseSessionSigning) {
               takerSignature = await sessionSignMessage(message);
             } else {
               takerSignature = await signMessageAsync({ message });
@@ -250,8 +254,9 @@ export function useAuctionStart() {
           ...(takerSignature && takerSignedAt
             ? { takerSignature, takerSignedAt }
             : {}),
-          // Add session approval data for smart account authentication (only when using smart account)
-          ...(isUsingSmartAccount && etherealSessionApproval
+          // Add session approval data ONLY when actually using session signing
+          // This tells the relayer to verify via smart account (EIP-1271) vs EOA (ecrecover)
+          ...(willUseSessionSigning && etherealSessionApproval
             ? {
                 sessionApproval: etherealSessionApproval.approval,
                 sessionTypedData: etherealSessionApproval.typedData,
@@ -291,6 +296,7 @@ export function useAuctionStart() {
       signMessageAsync,
       isUsingSmartAccount,
       effectiveAddress,
+      walletAddress,
       etherealSessionApproval,
       sessionSignMessage,
     ]
