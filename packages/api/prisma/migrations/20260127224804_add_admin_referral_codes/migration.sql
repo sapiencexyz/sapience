@@ -13,7 +13,7 @@ CREATE TABLE "referral_code" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "expiresAt" INTEGER,
     "createdBy" VARCHAR NOT NULL,
-    "creatorType" VARCHAR(10) NOT NULL DEFAULT 'admin',
+    "creatorType" VARCHAR(10) NOT NULL DEFAULT 'user',
 
     CONSTRAINT "referral_code_pkey" PRIMARY KEY ("id")
 );
