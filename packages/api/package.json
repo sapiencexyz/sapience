@@ -44,8 +44,7 @@
     "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
     "prisma:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
-    "migrate:referrals": "tsx src/scripts/migrateReferralCodes.ts"
+    "db:seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "dependencies": {
