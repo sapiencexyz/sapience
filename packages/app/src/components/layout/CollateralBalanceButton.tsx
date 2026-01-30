@@ -369,7 +369,7 @@ export default function CollateralBalanceButton({
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                {displayedBalance.toFixed(2)} {symbol}
+                {formatDollarLikeBalance(displayedBalance)} {symbol}
               </span>
             </div>
           </div>
@@ -395,7 +395,7 @@ export default function CollateralBalanceButton({
                   </div>
                 )}
                 <p className="text-2xl font-mono pt-1">
-                  {displayedBalance.toFixed(2)} {symbol}
+                  {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </p>
               </div>
               <Button
@@ -553,7 +553,7 @@ export default function CollateralBalanceButton({
                     <HoverCardTrigger asChild>
                       <div className="flex items-baseline gap-1.5 cursor-default">
                         <span className="font-mono text-lg font-medium text-brand-white">
-                          {smartAccountBalance.toFixed(2)}
+                          {formatDollarLikeBalance(smartAccountBalance)}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {symbol}
@@ -698,7 +698,7 @@ export default function CollateralBalanceButton({
                     <HoverCardTrigger asChild>
                       <div className="flex items-baseline gap-1.5 cursor-default">
                         <span className="font-mono text-lg font-medium text-brand-white">
-                          {smartAccountBalance.toFixed(2)}
+                          {formatDollarLikeBalance(smartAccountBalance)}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {symbol}

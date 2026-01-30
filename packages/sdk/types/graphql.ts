@@ -2057,7 +2057,15 @@ export type ProtocolStat = {
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
   timestamp: Scalars['String']['output'];
+  vaultAirdropGains: Scalars['String']['output'];
+  vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];
+  vaultCumulativePnL: Scalars['String']['output'];
+  vaultDeployed: Scalars['String']['output'];
+  vaultDeposits: Scalars['String']['output'];
+  vaultPositionsLost: Scalars['Int']['output'];
+  vaultPositionsWon: Scalars['Int']['output'];
+  vaultWithdrawals: Scalars['String']['output'];
 };
 
 export type Query = {

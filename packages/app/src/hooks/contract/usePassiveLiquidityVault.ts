@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   erc20Abi,
   formatUnits,
@@ -15,15 +11,18 @@ import {
 } from 'viem';
 import type { Abi } from 'abitype';
 import { liquidityVaultAbi } from '@sapience/sdk';
-import { useReadContracts, useAccount, useBalance } from 'wagmi';
+import { useReadContracts, useBalance, useReadContract } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
-import { useSession } from '~/lib/context/SessionContext';
 
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
+
+// wUSDe contract address on Ethereal
+const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 // Use ABI from SDK
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
@@ -96,8 +95,8 @@ interface UsePassiveLiquidityVaultConfig {
 export function usePassiveLiquidityVault(
   config?: UsePassiveLiquidityVaultConfig
 ) {
-  const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const { currentAddress, isCalculating: isCalculatingAddress } =
+    useCurrentAddress();
   const { toast } = useToast();
 
   const VAULT_ADDRESS: Address = config?.vaultAddress || DEFAULT_VAULT_ADDRESS;
@@ -182,47 +181,47 @@ export function usePassiveLiquidityVault(
     isLoading: isLoadingUserData,
     refetch: refetchUserData,
   } = useReadContracts({
-    contracts: address
+    contracts: currentAddress
       ? [
           {
             abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'balanceOf',
-            args: [address],
+            args: [currentAddress],
             chainId: TARGET_CHAIN_ID,
           },
           {
             abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'getPendingWithdrawal',
-            args: [address],
+            args: [currentAddress],
             chainId: TARGET_CHAIN_ID,
           },
           {
             abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'userWithdrawalIndex',
-            args: [address],
+            args: [currentAddress],
             chainId: TARGET_CHAIN_ID,
           },
           {
             abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'getPendingDeposit',
-            args: [address],
+            args: [currentAddress],
             chainId: TARGET_CHAIN_ID,
           },
           {
             abi: PASSIVE_VAULT_ABI,
             address: VAULT_ADDRESS,
             functionName: 'userDepositIndex',
-            args: [address],
+            args: [currentAddress],
             chainId: TARGET_CHAIN_ID,
           },
         ]
       : [],
     query: {
-      enabled: !!address && !!VAULT_ADDRESS,
+      enabled: !!currentAddress && !!VAULT_ADDRESS,
     },
   });
 
@@ -264,53 +263,41 @@ export function usePassiveLiquidityVault(
     },
   });
 
-  // Check if we're on an Ethereal chain
-  const isEtherealChain =
-    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL ||
-    TARGET_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
-
-  // Native balance for Ethereal chains
+  // Native balance (vault is always on Ethereal, uses native USDe)
   const { data: nativeBalance, refetch: refetchNativeBalance } = useBalance({
-    address,
+    address: currentAddress,
     chainId: TARGET_CHAIN_ID,
-    query: { enabled: !!address && isEtherealChain },
+    query: { enabled: !!currentAddress },
   });
 
-  // Read asset balance (ERC20 token for non-Ethereal chains)
-  const {
-    data: assetBalance,
-    isLoading: isLoadingAssetBalance,
-    refetch: refetchAssetBalance,
-  } = useReadContracts({
-    contracts:
-      address && vaultData?.[7]?.result && !isEtherealChain
-        ? [
-            {
-              abi: erc20Abi,
-              address: vaultData[7].result as Address,
-              functionName: 'balanceOf',
-              args: [address],
-              chainId: TARGET_CHAIN_ID,
-            },
-            {
-              abi: erc20Abi,
-              address: vaultData[7].result as Address,
-              functionName: 'decimals',
-              chainId: TARGET_CHAIN_ID,
-            },
-            {
-              abi: erc20Abi,
-              address: vaultData[7].result as Address,
-              functionName: 'allowance',
-              args: [address, VAULT_ADDRESS],
-              chainId: TARGET_CHAIN_ID,
-            },
-          ]
-        : [],
+  // wUSDe balance (for combined balance display)
+  const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
+    abi: erc20Abi,
+    address: WUSDE_ADDRESS,
+    functionName: 'balanceOf',
+    args: currentAddress ? [currentAddress] : undefined,
+    chainId: TARGET_CHAIN_ID,
     query: {
-      enabled: !!address && !!vaultData?.[7]?.result && !isEtherealChain,
+      enabled: !!currentAddress,
+      refetchInterval: 5000,
     },
   });
+
+  // wUSDe allowance to vault (to skip approve call when sufficient)
+  const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
+    useReadContract({
+      abi: erc20Abi,
+      address: WUSDE_ADDRESS,
+      functionName: 'allowance',
+      args:
+        currentAddress && VAULT_ADDRESS
+          ? [currentAddress, VAULT_ADDRESS]
+          : undefined,
+      chainId: TARGET_CHAIN_ID,
+      query: {
+        enabled: !!currentAddress && !!VAULT_ADDRESS,
+      },
+    });
 
   // Write contract hook
   const {
@@ -321,11 +308,9 @@ export function usePassiveLiquidityVault(
     onSuccess: () => {
       refetchVaultData();
       refetchUserData();
-      if (isEtherealChain) {
-        refetchNativeBalance();
-      } else {
-        refetchAssetBalance();
-      }
+      refetchNativeBalance();
+      refetchWusdeBalance();
+      refetchWusdeAllowance();
       try {
         refetchPendingMapping?.();
       } catch {
@@ -382,50 +367,50 @@ export function usePassiveLiquidityVault(
     (extraVaultFields?.[0]?.result as bigint) || 0n;
 
   // Interaction delay and last interaction timestamp
-  const { data: interactionDelayData } = useReadContracts({
-    contracts: hasFunction('interactionDelay', 0)
-      ? [
-          {
-            abi: PASSIVE_VAULT_ABI,
-            address: VAULT_ADDRESS,
-            functionName: 'interactionDelay',
-            chainId: TARGET_CHAIN_ID,
-          },
-        ]
-      : [],
-    query: {
-      enabled: !!VAULT_ADDRESS && hasFunction('interactionDelay', 0),
-    },
-  });
-
-  const interactionDelay: bigint =
-    (interactionDelayData?.[0]?.result as bigint) || 0n;
-
-  // Use effectiveAddress for cooldown check - this is the smart account address when using AA,
-  // or the EOA address when using direct wallet mode. The vault tracks cooldowns against
-  // the address that actually submits transactions.
-  const cooldownAddress = effectiveAddress ?? address;
-
-  const { data: lastInteractionData } = useReadContracts({
-    contracts:
-      cooldownAddress && hasFunction('lastUserInteractionTimestamp', 1)
+  const { data: interactionDelayData, isPending: isInteractionDelayPending } =
+    useReadContracts({
+      contracts: hasFunction('interactionDelay', 0)
         ? [
             {
               abi: PASSIVE_VAULT_ABI,
               address: VAULT_ADDRESS,
-              functionName: 'lastUserInteractionTimestamp',
-              args: [cooldownAddress],
+              functionName: 'interactionDelay',
               chainId: TARGET_CHAIN_ID,
             },
           ]
         : [],
-    query: {
-      enabled:
-        !!cooldownAddress &&
-        !!VAULT_ADDRESS &&
-        hasFunction('lastUserInteractionTimestamp', 1),
-    },
-  });
+      query: {
+        enabled: !!VAULT_ADDRESS && hasFunction('interactionDelay', 0),
+      },
+    });
+
+  const interactionDelay: bigint =
+    (interactionDelayData?.[0]?.result as bigint) || 0n;
+
+  // Use currentAddress for cooldown check - this is the smart account address when using AA,
+  // or the EOA address when using direct wallet mode. The vault tracks cooldowns against
+  // the address that actually submits transactions.
+  const { data: lastInteractionData, isPending: isLastInteractionPending } =
+    useReadContracts({
+      contracts:
+        currentAddress && hasFunction('lastUserInteractionTimestamp', 1)
+          ? [
+              {
+                abi: PASSIVE_VAULT_ABI,
+                address: VAULT_ADDRESS,
+                functionName: 'lastUserInteractionTimestamp',
+                args: [currentAddress],
+                chainId: TARGET_CHAIN_ID,
+              },
+            ]
+          : [],
+      query: {
+        enabled:
+          !!currentAddress &&
+          !!VAULT_ADDRESS &&
+          hasFunction('lastUserInteractionTimestamp', 1),
+      },
+    });
 
   const lastInteractionAt: bigint =
     (lastInteractionData?.[0]?.result as bigint) || 0n;
@@ -442,25 +427,32 @@ export function usePassiveLiquidityVault(
     }
   }, [lastInteractionAt, interactionDelay]);
 
-  const isInteractionDelayActive = interactionDelayRemainingSec > 0;
+  // Only consider cooldown active if address has stabilized and queries have loaded
+  const isInteractionDelayActive =
+    !isCalculatingAddress &&
+    !isInteractionDelayPending &&
+    !isLastInteractionPending &&
+    interactionDelayRemainingSec > 0;
 
   const { data: pendingMapping, refetch: refetchPendingMapping } =
     useReadContracts({
       contracts:
-        address && hasFunction('pendingRequests', 1)
+        currentAddress && hasFunction('pendingRequests', 1)
           ? [
               {
                 abi: PASSIVE_VAULT_ABI,
                 address: VAULT_ADDRESS,
                 functionName: 'pendingRequests',
-                args: [address],
+                args: [currentAddress],
                 chainId: TARGET_CHAIN_ID,
               },
             ]
           : [],
       query: {
         enabled:
-          !!address && !!VAULT_ADDRESS && hasFunction('pendingRequests', 1),
+          !!currentAddress &&
+          !!VAULT_ADDRESS &&
+          hasFunction('pendingRequests', 1),
       },
     });
 
@@ -475,18 +467,18 @@ export function usePassiveLiquidityVault(
       }
     : null;
 
-  // Get asset decimals (default to 18 while loading to avoid UI flash)
-  const assetDecimals = isEtherealChain
-    ? 18 // Native USDe always has 18 decimals
-    : (assetBalance?.[1]?.result as number) || 18;
+  // Native USDe always has 18 decimals
+  const assetDecimals = 18;
 
-  const userAssetBalance = isEtherealChain
-    ? nativeBalance?.value || 0n // Use native balance on Ethereal
-    : (assetBalance?.[0]?.result as bigint) || 0n; // Use ERC20 balance on other chains
+  // User's combined USDe balance (native + wrapped)
+  const nativeUsdeBalance = nativeBalance?.value || 0n;
+  const wrappedUsdeBalance =
+    typeof wusdeBalance === 'bigint' ? wusdeBalance : 0n;
+  const userAssetBalance = nativeUsdeBalance + wrappedUsdeBalance;
 
-  const currentAllowance = isEtherealChain
-    ? 0n // No allowance needed for native assets
-    : (assetBalance?.[2]?.result as bigint) || 0n;
+  // wUSDe allowance to vault (used to skip redundant approve calls)
+  const currentAllowance =
+    typeof wusdeAllowance === 'bigint' ? wusdeAllowance : 0n;
 
   const minDeposit = (vaultData?.[9]?.result as bigint) || 0n; // MIN_DEPOSIT
 
@@ -714,84 +706,60 @@ export function usePassiveLiquidityVault(
           : [amountWei],
       });
 
-      if (isEtherealChain) {
+      // Smart wrapping: only wrap the delta if existing wUSDe is insufficient
+      const existingWusde = wrappedUsdeBalance;
+      const amountToWrap =
+        amountWei > existingWusde ? amountWei - existingWusde : 0n;
+
+      const calls: { to: Address; data: `0x${string}`; value: bigint }[] = [];
+
+      // Only add wrap call if we need to wrap some native USDe
+      if (amountToWrap > 0n) {
         const wrapCalldata = encodeFunctionData({
           abi: parseAbi(['function deposit() payable']),
           functionName: 'deposit',
         });
-
-        const approveCalldata = encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [VAULT_ADDRESS, amountWei],
+        calls.push({
+          to: parsedVaultData.asset, // wUSDe contract address
+          data: wrapCalldata,
+          value: amountToWrap, // Only wrap what's needed
         });
-
-        await sendCalls({
-          chainId,
-          calls: [
-            {
-              to: parsedVaultData.asset, // wUSDe contract address
-              data: wrapCalldata,
-              value: amountWei, // Native USDe to wrap
-            },
-            {
-              to: parsedVaultData.asset, // wUSDe contract address
-              data: approveCalldata,
-              value: 0n, // No value for approve
-            },
-            {
-              to: VAULT_ADDRESS,
-              data: requestDepositCalldata,
-              value: 0n, // No value for the deposit call itself
-            },
-          ],
-        });
-        return;
       }
 
-      // For non-Ethereal chains, use ERC20 approval flow
-      // If approval is required, batch approve + requestDeposit
+      // Only add approve call if current allowance is insufficient
       if (currentAllowance < amountWei) {
         const approveCalldata = encodeFunctionData({
           abi: erc20Abi,
           functionName: 'approve',
           args: [VAULT_ADDRESS, amountWei],
         });
-        await sendCalls({
-          chainId,
-          calls: [
-            { to: parsedVaultData.asset, data: approveCalldata },
-            { to: VAULT_ADDRESS, data: requestDepositCalldata },
-          ],
+        calls.push({
+          to: parsedVaultData.asset, // wUSDe contract address
+          data: approveCalldata,
+          value: 0n,
         });
-        return;
       }
 
-      // Otherwise single call
-      await writeVaultContract({
+      // Add deposit call
+      calls.push({
+        to: VAULT_ADDRESS,
+        data: requestDepositCalldata,
+        value: 0n,
+      });
+
+      await sendCalls({
         chainId,
-        address: VAULT_ADDRESS,
-        abi:
-          requestFunctionName === 'requestDeposit' &&
-          !supportsRequestDepositWithMin
-            ? PASSIVE_VAULT_ABI
-            : requestDepositAbi,
-        functionName: requestFunctionName as any,
-        args: supportsRequestDepositWithMin
-          ? [amountWei, minSharesWei]
-          : [amountWei],
+        calls,
       });
     },
     [
       parsedVaultData?.asset,
-      assetDecimals,
       pricePerShareDecimal,
       hasFunctionCb,
-      writeVaultContract,
       sendCalls,
-      address,
-      currentAllowance,
       VAULT_ADDRESS,
+      wrappedUsdeBalance,
+      currentAllowance,
     ]
   );
 
@@ -993,11 +961,12 @@ export function usePassiveLiquidityVault(
     lastInteractionAt,
     interactionDelayRemainingSec,
     isInteractionDelayActive,
+    accountAddress: currentAddress,
 
     // Loading states
     isLoadingVaultData,
     isLoadingUserData,
-    isLoadingAssetBalance,
+    isCalculatingAddress,
     isVaultPending,
 
     // Actions
@@ -1016,6 +985,11 @@ export function usePassiveLiquidityVault(
     // Refetch functions
     refetchVaultData,
     refetchUserData,
-    refetchAssetBalance,
+    refetchNativeBalance,
+    refetchWusdeBalance,
+
+    // Individual balance components (for UI transparency)
+    nativeUsdeBalance,
+    wrappedUsdeBalance,
   };
 }
