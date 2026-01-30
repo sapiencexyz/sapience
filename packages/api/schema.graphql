@@ -1868,7 +1868,14 @@ type ProtocolStat {
   escrowBalance: String!
   openInterest: String!
   timestamp: String!
+  vaultAirdropGains: String!
   vaultBalance: String!
+  vaultCumulativePnL: String!
+  vaultDeployed: String!
+  vaultDeposits: String!
+  vaultPositionsLost: Int!
+  vaultPositionsWon: Int!
+  vaultWithdrawals: String!
 }
 
 type Query {

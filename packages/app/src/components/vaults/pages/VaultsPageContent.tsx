@@ -742,26 +742,27 @@ const VaultsPageContent = () => {
   }, [utilizationPercent]);
 
   const yieldMetrics = useMemo(() => {
-    // Protocol collateral = vault undeployed reserve + escrow balance (from snapshots)
-    // vaultBalance = wUSDe.balanceOf(vault) only (excludes deployed)
-    // escrowBalance = wUSDe.balanceOf(predictionMarket) (includes vault's deployed funds)
-    // No double-counting since vaultBalance excludes totalDeployed
+    // Protocol TVL = vault balance + escrow balance (from snapshots)
     const lastStat = protocolStats?.[protocolStats.length - 1];
     const protocolTvlWei = lastStat
       ? BigInt(lastStat.vaultBalance || '0') +
         BigInt(lastStat.escrowBalance || '0')
       : 0n;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    // Vault TVL from real-time on-chain data (includes pending deposits)
+    // Vault TVL from real-time on-chain data
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
-    // 5% APY is earned on the protocol TVL but distributed to vault depositors
-    const annualYieldToVault = protocolTvlNum * 0.05;
-    const dailyYield = annualYieldToVault / 365;
+    // Ethena base APY (approximately 5%)
+    const ETHENA_BASE_APY = 5;
 
-    // Effective APY for vault depositors = (annual yield to vault / vault TVL) * 100
+    // Effective APY: Protocol earns 5% on its TVL, distributed to vault depositors
+    // effectiveApy = (protocolTvl / vaultTvl) * baseApy
     const effectiveApy =
-      vaultTvlNum > 0 ? (annualYieldToVault / vaultTvlNum) * 100 : 0;
+      vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
+
+    // Daily yield estimate based on effective APY
+    const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
+    const dailyYield = annualYieldToVault / 365;
 
     return {
       protocolTvl: formatDecimalWithCommasFixed2(protocolTvlNum.toString()),

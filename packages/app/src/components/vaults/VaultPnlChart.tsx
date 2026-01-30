@@ -167,9 +167,7 @@ export default function VaultPnlChart({
   const protocolStats = externalStats ?? internalStats;
   const isLoading = externalLoading ?? internalLoading;
 
-  // Transform protocol stats into PnL chart data
-  // For now, using placeholder logic: simulate PnL based on TVL changes
-  // This will be replaced with actual PnL data from the resolver
+  // Transform protocol stats into PnL chart data using real vaultCumulativePnL
   const chartData = useMemo(() => {
     if (!protocolStats || protocolStats.length === 0) return [];
 
@@ -186,34 +184,25 @@ export default function VaultPnlChart({
 
     if (filteredStats.length === 0) return [];
 
-    // Get the initial TVL as baseline
-    const firstStat = filteredStats[0];
-    const baselineTvl =
-      (parseFloat(firstStat.vaultBalance) +
-        parseFloat(firstStat.escrowBalance)) /
-      1e18;
-
-    return filteredStats.map((point, index) => {
+    return filteredStats.map((point) => {
       const currentTvl =
         (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) /
         1e18;
 
-      // Placeholder PnL calculation: difference from baseline TVL
-      // In production, this will come from the actual vaultPnl field
-      // Adding some simulated variance for visual effect
-      const simulatedPnl =
-        (currentTvl - baselineTvl) * 0.1 +
-        Math.sin(index * 0.5) * (currentTvl * 0.02);
+      // Use real vaultCumulativePnL from backend (stored as wei string)
+      const pnl = point.vaultCumulativePnL
+        ? parseFloat(point.vaultCumulativePnL) / 1e18
+        : 0;
 
       return {
         timestamp: point.timestamp,
-        pnl: simulatedPnl,
+        pnl,
         tvl: currentTvl,
       };
     });
   }, [protocolStats, period]);
 
-  // Calculate APY for the selected period based on TVL changes
+  // Calculate APY for the selected period based on actual PnL relative to average TVL
   const apy = useMemo(() => {
     if (chartData.length < 2) return null;
 
@@ -226,10 +215,19 @@ export default function VaultPnlChart({
     const daysElapsed = (endTimestamp - startTimestamp) / (24 * 60 * 60);
 
     // Require minimum 1 day of data for meaningful APY
-    if (daysElapsed < 1 || firstPoint.tvl <= 0) return null;
+    if (daysElapsed < 1) return null;
 
-    // Calculate return over period
-    const periodReturn = (lastPoint.tvl - firstPoint.tvl) / firstPoint.tvl;
+    // Calculate PnL change over the period
+    const pnlChange = lastPoint.pnl - firstPoint.pnl;
+
+    // Calculate average TVL over the period
+    const avgTvl =
+      chartData.reduce((sum, point) => sum + point.tvl, 0) / chartData.length;
+
+    if (avgTvl <= 0) return null;
+
+    // Calculate period return relative to average TVL
+    const periodReturn = pnlChange / avgTvl;
 
     // Annualize: APY = ((1 + periodReturn) ^ (365 / days) - 1) * 100
     const annualizedReturn =

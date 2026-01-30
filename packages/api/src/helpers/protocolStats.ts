@@ -3,6 +3,7 @@ import prisma from '../db';
 import { PositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
+import { liquidityVaultAbi } from '@sapience/sdk/abis';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 interface VaultPnLResult {
@@ -20,6 +21,7 @@ interface VaultFlowsResult {
 
 interface ProtocolStatsData {
   vaultBalance: bigint;
+  vaultDeployed: bigint;
   escrowBalance: bigint;
   vaultRealizedPnL: bigint;
   vaultAirdropGains: bigint;
@@ -56,6 +58,54 @@ export async function fetchVaultTVL(
   });
 
   return wUsdeBalance;
+}
+
+/**
+ * Fetch Vault deployed funds: vault.totalDeployed()
+ */
+export async function fetchVaultDeployed(
+  chainId: number = CHAIN_ID_ETHEREAL
+): Promise<bigint> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+
+  if (!vaultAddress) {
+    throw new Error(`Vault not configured for chain ${chainId}`);
+  }
+
+  const totalDeployed = (await client.readContract({
+    address: vaultAddress,
+    abi: liquidityVaultAbi,
+    functionName: 'totalDeployed',
+    args: [],
+  })) as bigint;
+
+  return totalDeployed;
+}
+
+/**
+ * Fetch Vault deployed funds at a specific block number.
+ */
+export async function fetchVaultDeployedAtBlock(
+  chainId: number,
+  blockNumber: bigint
+): Promise<bigint> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+
+  if (!vaultAddress) {
+    throw new Error(`Vault not configured for chain ${chainId}`);
+  }
+
+  const totalDeployed = (await client.readContract({
+    address: vaultAddress,
+    abi: liquidityVaultAbi,
+    functionName: 'totalDeployed',
+    args: [],
+    blockNumber,
+  })) as bigint;
+
+  return totalDeployed;
 }
 
 /**
@@ -325,6 +375,7 @@ async function upsertProtocolStatsSnapshot(
       timestamp,
       chainId,
       vaultBalance: data.vaultBalance.toString(),
+      vaultDeployed: data.vaultDeployed.toString(),
       escrowBalance: data.escrowBalance.toString(),
       vaultRealizedPnL: data.vaultRealizedPnL.toString(),
       vaultAirdropGains: data.vaultAirdropGains.toString(),
@@ -338,6 +389,7 @@ async function upsertProtocolStatsSnapshot(
     update: {
       chainId,
       vaultBalance: data.vaultBalance.toString(),
+      vaultDeployed: data.vaultDeployed.toString(),
       escrowBalance: data.escrowBalance.toString(),
       vaultRealizedPnL: data.vaultRealizedPnL.toString(),
       vaultAirdropGains: data.vaultAirdropGains.toString(),
@@ -366,9 +418,12 @@ export async function computeAndStoreProtocolStats(
 
   // Fetch balances
   const vaultBalance = await fetchVaultTVL(chainId);
-  console.log(`[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} USDe`);
-
+  const vaultDeployed = await fetchVaultDeployed(chainId);
   const escrowBalance = await fetchPredictionMarketTVL(chainId);
+
+  console.log(
+    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} idle, ${formatUnits(vaultDeployed, 18)} deployed`
+  );
   console.log(`[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe`);
 
   // Calculate vault PnL
@@ -383,11 +438,30 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}`
   );
 
+  // Calculate airdrop gains: unexplained balance increases
+  // Actual total assets = vaultBalance + vaultDeployed
+  // Expected total assets = deposits - withdrawals + realizedPnL
+  // Airdrop gains = actual - expected
+  const actualTotalAssets = vaultBalance + vaultDeployed;
+  const expectedTotalAssets =
+    flowsResult.totalDeposits -
+    flowsResult.totalWithdrawals +
+    pnlResult.realizedPnL;
+  const airdropGains =
+    actualTotalAssets > expectedTotalAssets
+      ? actualTotalAssets - expectedTotalAssets
+      : 0n;
+
+  console.log(
+    `[ProtocolStats] Airdrop gains: ${formatUnits(airdropGains, 18)} USDe`
+  );
+
   await upsertProtocolStatsSnapshot(timestamp, chainId, {
     vaultBalance,
+    vaultDeployed,
     escrowBalance,
     vaultRealizedPnL: pnlResult.realizedPnL,
-    vaultAirdropGains: 0n,
+    vaultAirdropGains: airdropGains,
     vaultDeposits: flowsResult.totalDeposits,
     vaultWithdrawals: flowsResult.totalWithdrawals,
     vaultPositionsWon: pnlResult.positionsWon,
@@ -464,6 +538,10 @@ export async function backfillProtocolStats(
     try {
       // Query historical balances
       const vaultBalance = await fetchVaultTVLAtBlock(chainId, blockNumber);
+      const vaultDeployed = await fetchVaultDeployedAtBlock(
+        chainId,
+        blockNumber
+      );
       const escrowBalance = await fetchPredictionMarketTVLAtBlock(
         chainId,
         blockNumber
@@ -473,11 +551,23 @@ export async function backfillProtocolStats(
       const pnlResult = await calculateVaultPnL(chainId, timestamp);
       const flowsResult = await calculateVaultFlows(chainId, timestamp);
 
+      // Calculate airdrop gains
+      const actualTotalAssets = vaultBalance + vaultDeployed;
+      const expectedTotalAssets =
+        flowsResult.totalDeposits -
+        flowsResult.totalWithdrawals +
+        pnlResult.realizedPnL;
+      const airdropGains =
+        actualTotalAssets > expectedTotalAssets
+          ? actualTotalAssets - expectedTotalAssets
+          : 0n;
+
       await upsertProtocolStatsSnapshot(timestamp, chainId, {
         vaultBalance,
+        vaultDeployed,
         escrowBalance,
         vaultRealizedPnL: pnlResult.realizedPnL,
-        vaultAirdropGains: 0n,
+        vaultAirdropGains: airdropGains,
         vaultDeposits: flowsResult.totalDeposits,
         vaultWithdrawals: flowsResult.totalWithdrawals,
         vaultPositionsWon: pnlResult.positionsWon,
@@ -487,7 +577,7 @@ export async function backfillProtocolStats(
       });
 
       console.log(
-        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)}, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}`
+        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)} + ${formatUnits(vaultDeployed, 18)} deployed, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}, Airdrops: ${formatUnits(airdropGains, 18)}`
       );
       successCount++;
     } catch (error) {

@@ -6,7 +6,14 @@ interface ProtocolStat {
   cumulativeVolume: string;
   openInterest: string;
   vaultBalance: string;
+  vaultDeployed: string;
   escrowBalance: string;
+  vaultCumulativePnL: string;
+  vaultPositionsWon: number;
+  vaultPositionsLost: number;
+  vaultDeposits: string;
+  vaultWithdrawals: string;
+  vaultAirdropGains: string;
 }
 
 interface DailyVolume {
@@ -21,7 +28,14 @@ const GET_PROTOCOL_STATS = /* GraphQL */ `
       cumulativeVolume
       openInterest
       vaultBalance
+      vaultDeployed
       escrowBalance
+      vaultCumulativePnL
+      vaultPositionsWon
+      vaultPositionsLost
+      vaultDeposits
+      vaultWithdrawals
+      vaultAirdropGains
     }
   }
 `;
