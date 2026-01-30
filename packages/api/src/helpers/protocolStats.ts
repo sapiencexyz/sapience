@@ -2,11 +2,11 @@ import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
-import { liquidityVaultAbi } from '@sapience/sdk/abis';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 /**
- * Fetch Vault TVL: wUSDe.balanceOf(vault) + vault.totalDeployed()
+ * Fetch Vault balance: wUSDe.balanceOf(vault) only (excludes deployed funds).
+ * This prevents double-counting since escrowBalance already includes vault's deployed funds.
  */
 export async function fetchVaultTVL(
   chainId: number = CHAIN_ID_ETHEREAL
@@ -22,7 +22,7 @@ export async function fetchVaultTVL(
     );
   }
 
-  // Fetch wUSDe balance of the vault
+  // Fetch wUSDe balance of the vault (undeployed reserve only)
   const wUsdeBalance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
@@ -30,15 +30,7 @@ export async function fetchVaultTVL(
     args: [vaultAddress],
   });
 
-  // Fetch totalDeployed from vault contract
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-  })) as bigint;
-
-  return wUsdeBalance + totalDeployed;
+  return wUsdeBalance;
 }
 
 /**
@@ -70,7 +62,8 @@ export async function fetchPredictionMarketTVL(
 }
 
 /**
- * Fetch Vault TVL at a specific block number (for historical queries).
+ * Fetch Vault balance at a specific block number (for historical queries).
+ * Returns wUSDe.balanceOf(vault) only (excludes deployed funds).
  */
 export async function fetchVaultTVLAtBlock(
   chainId: number,
@@ -95,15 +88,7 @@ export async function fetchVaultTVLAtBlock(
     blockNumber,
   });
 
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-    blockNumber,
-  })) as bigint;
-
-  return wUsdeBalance + totalDeployed;
+  return wUsdeBalance;
 }
 
 /**

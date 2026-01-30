@@ -728,15 +728,17 @@ const VaultsPageContent = () => {
   }, [utilizationPercent]);
 
   const yieldMetrics = useMemo(() => {
-    // Protocol TVL is the total collateral in all positions (in wei, 18 decimals)
-    // Computed from the last protocol stat (vaultBalance + escrowBalance)
+    // Protocol collateral = vault undeployed reserve + escrow balance (from snapshots)
+    // vaultBalance = wUSDe.balanceOf(vault) only (excludes deployed)
+    // escrowBalance = wUSDe.balanceOf(predictionMarket) (includes vault's deployed funds)
+    // No double-counting since vaultBalance excludes totalDeployed
     const lastStat = protocolStats?.[protocolStats.length - 1];
     const protocolTvlWei = lastStat
       ? BigInt(lastStat.vaultBalance || '0') +
         BigInt(lastStat.escrowBalance || '0')
       : 0n;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    // Vault TVL is this vault's assets
+    // Vault TVL from real-time on-chain data (includes pending deposits)
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
     // 5% APY is earned on the protocol TVL but distributed to vault depositors

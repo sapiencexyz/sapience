@@ -371,7 +371,7 @@ model ProtocolStatsSnapshot {
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
   timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
 
-  /// Vault balance: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
+  /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
   vaultBalance  String   @db.VarChar
 
   /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
