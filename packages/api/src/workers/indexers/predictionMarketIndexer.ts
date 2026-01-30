@@ -2199,38 +2199,31 @@ class PredictionMarketIndexer implements IIndexer {
         timestamp: Number(block.timestamp),
       };
 
-      // Skip duplicates using unique constraint
+      // Use upsert to handle concurrent indexing safely
       const eventKey = {
         chainId: this.chainId,
         transactionHash: log.transactionHash || '',
         logIndex: log.logIndex || 0,
       } as const;
 
-      const existingEvent = await prisma.vaultFlowEvent.findUnique({
+      const eventRecord = {
+        chainId: this.chainId,
+        blockNumber: eventData.blockNumber,
+        transactionHash: eventData.transactionHash || '',
+        timestamp: eventData.timestamp,
+        logIndex: eventData.logIndex || 0,
+        eventType: eventData.eventType,
+        user: eventData.user.toLowerCase(),
+        assets: eventData.assets,
+        shares: eventData.shares,
+      };
+
+      await prisma.vaultFlowEvent.upsert({
         where: {
           chainId_transactionHash_logIndex: eventKey,
         },
-      });
-
-      if (existingEvent) {
-        console.log(
-          `[PredictionMarketIndexer] Skipping duplicate PendingRequestProcessed event tx=${eventKey.transactionHash} logIndex=${eventKey.logIndex}`
-        );
-        return;
-      }
-
-      await prisma.vaultFlowEvent.create({
-        data: {
-          chainId: this.chainId,
-          blockNumber: eventData.blockNumber,
-          transactionHash: eventData.transactionHash || '',
-          timestamp: eventData.timestamp,
-          logIndex: eventData.logIndex || 0,
-          eventType: eventData.eventType,
-          user: eventData.user.toLowerCase(),
-          assets: eventData.assets,
-          shares: eventData.shares,
-        },
+        create: eventRecord,
+        update: {}, // No-op if already exists
       });
 
       console.log(
