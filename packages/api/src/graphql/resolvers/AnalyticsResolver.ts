@@ -1,4 +1,4 @@
-import { Field, ObjectType, Query, Resolver } from 'type-graphql';
+import { Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
@@ -19,6 +19,21 @@ class ProtocolStat {
 
   @Field(() => String)
   escrowBalance!: string;
+
+  @Field(() => String)
+  vaultCumulativePnL!: string;
+
+  @Field(() => Int)
+  vaultPositionsWon!: number;
+
+  @Field(() => Int)
+  vaultPositionsLost!: number;
+
+  @Field(() => String)
+  vaultDeposits!: string;
+
+  @Field(() => String)
+  vaultWithdrawals!: string;
 }
 
 @ObjectType()
@@ -108,22 +123,35 @@ export class AnalyticsResolver {
         GROUP BY d.date
         ORDER BY timestamp
       `,
-      // Protocol balance snapshots - last 90 days
+      // Protocol stats snapshots (includes balance + vault PnL) - last 90 days
       getProtocolStatsTimeSeries(90),
     ]);
 
     const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
     const oiMap = buildTimestampMap(dailyOI, 'open_interest');
 
-    // Build protocol balance map using timestamps directly from DB
-    const balanceMap = new Map<
+    // Build unified snapshot map using timestamps directly from DB
+    const snapshotMap = new Map<
       number,
-      { vaultBalance: string; escrowBalance: string }
+      {
+        vaultBalance: string;
+        escrowBalance: string;
+        vaultRealizedPnL: string;
+        vaultPositionsWon: number;
+        vaultPositionsLost: number;
+        vaultDeposits: string;
+        vaultWithdrawals: string;
+      }
     >();
     for (const snapshot of protocolSnapshots) {
-      balanceMap.set(snapshot.timestamp, {
+      snapshotMap.set(snapshot.timestamp, {
         vaultBalance: snapshot.vaultBalance,
         escrowBalance: snapshot.escrowBalance,
+        vaultRealizedPnL: snapshot.vaultRealizedPnL,
+        vaultPositionsWon: snapshot.vaultPositionsWon,
+        vaultPositionsLost: snapshot.vaultPositionsLost,
+        vaultDeposits: snapshot.vaultDeposits,
+        vaultWithdrawals: snapshot.vaultWithdrawals,
       });
     }
 
@@ -131,7 +159,7 @@ export class AnalyticsResolver {
     const allTimestamps = new Set([
       ...volumeMap.keys(),
       ...oiMap.keys(),
-      ...balanceMap.keys(),
+      ...snapshotMap.keys(),
     ]);
     const sortedTimestamps = Array.from(allTimestamps).sort((a, b) => a - b);
 
@@ -139,7 +167,7 @@ export class AnalyticsResolver {
     let lastCumulativeVolume = '0';
 
     return sortedTimestamps.map((timestamp) => {
-      const balanceData = balanceMap.get(timestamp);
+      const snapshotData = snapshotMap.get(timestamp);
       // Carry forward cumulative volume for days without new positions
       const currentVolume = volumeMap.get(timestamp);
       if (currentVolume !== undefined) {
@@ -149,8 +177,13 @@ export class AnalyticsResolver {
         timestamp: timestamp.toString(),
         cumulativeVolume: lastCumulativeVolume,
         openInterest: oiMap.get(timestamp) || '0',
-        vaultBalance: balanceData?.vaultBalance || '0',
-        escrowBalance: balanceData?.escrowBalance || '0',
+        vaultBalance: snapshotData?.vaultBalance || '0',
+        escrowBalance: snapshotData?.escrowBalance || '0',
+        vaultCumulativePnL: snapshotData?.vaultRealizedPnL || '0',
+        vaultPositionsWon: snapshotData?.vaultPositionsWon || 0,
+        vaultPositionsLost: snapshotData?.vaultPositionsLost || 0,
+        vaultDeposits: snapshotData?.vaultDeposits || '0',
+        vaultWithdrawals: snapshotData?.vaultWithdrawals || '0',
       };
     });
   }

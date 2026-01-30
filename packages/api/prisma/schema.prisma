@@ -370,6 +370,7 @@ model ProtocolStatsSnapshot {
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
   timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+  chainId       Int      @default(5064014)
 
   /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
   vaultBalance  String   @db.VarChar
@@ -377,6 +378,37 @@ model ProtocolStatsSnapshot {
   /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
   escrowBalance String   @db.VarChar
 
+  /// Vault PnL metrics
+  vaultRealizedPnL      String   @default("0") @db.VarChar  // Total realized PnL from predictions
+  vaultAirdropGains     String   @default("0") @db.VarChar  // Unexpected balance increases
+  vaultDeposits         String   @default("0") @db.VarChar  // Total user deposits
+  vaultWithdrawals      String   @default("0") @db.VarChar  // Total user withdrawals
+  vaultPositionsWon     Int      @default(0)
+  vaultPositionsLost    Int      @default(0)
+  vaultCollateralWon    String   @default("0") @db.VarChar
+  vaultCollateralLost   String   @default("0") @db.VarChar
+
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
+  @@index([chainId])
   @@map("protocol_stats_snapshot")
+}
+
+/// Indexed vault deposit/withdrawal events for accurate PnL tracking
+model VaultFlowEvent {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  chainId         Int
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  timestamp       Int
+  logIndex        Int
+  eventType       String   @db.VarChar  // 'deposit' or 'withdrawal'
+  user            String   @db.VarChar
+  assets          String   @db.VarChar  // Amount in wei
+  shares          String   @db.VarChar  // Shares minted/burned
+
+  @@unique([chainId, transactionHash, logIndex])
+  @@index([chainId, timestamp])
+  @@index([eventType])
+  @@map("vault_flow_event")
 }

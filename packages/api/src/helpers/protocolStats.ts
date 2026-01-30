@@ -1,12 +1,38 @@
 import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
+import { PositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
+interface VaultPnLResult {
+  realizedPnL: bigint;
+  positionsWon: number;
+  positionsLost: number;
+  totalCollateralWon: bigint;
+  totalCollateralLost: bigint;
+}
+
+interface VaultFlowsResult {
+  totalDeposits: bigint;
+  totalWithdrawals: bigint;
+}
+
+interface ProtocolStatsData {
+  vaultBalance: bigint;
+  escrowBalance: bigint;
+  vaultRealizedPnL: bigint;
+  vaultAirdropGains: bigint;
+  vaultDeposits: bigint;
+  vaultWithdrawals: bigint;
+  vaultPositionsWon: number;
+  vaultPositionsLost: number;
+  vaultCollateralWon: bigint;
+  vaultCollateralLost: bigint;
+}
+
 /**
  * Fetch Vault balance: wUSDe.balanceOf(vault) only (excludes deployed funds).
- * This prevents double-counting since escrowBalance already includes vault's deployed funds.
  */
 export async function fetchVaultTVL(
   chainId: number = CHAIN_ID_ETHEREAL
@@ -22,7 +48,6 @@ export async function fetchVaultTVL(
     );
   }
 
-  // Fetch wUSDe balance of the vault (undeployed reserve only)
   const wUsdeBalance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
@@ -50,7 +75,6 @@ export async function fetchPredictionMarketTVL(
     );
   }
 
-  // Fetch wUSDe balance of the PredictionMarket
   const wUsdeBalance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
@@ -63,7 +87,6 @@ export async function fetchPredictionMarketTVL(
 
 /**
  * Fetch Vault balance at a specific block number (for historical queries).
- * Returns wUSDe.balanceOf(vault) only (excludes deployed funds).
  */
 export async function fetchVaultTVLAtBlock(
   chainId: number,
@@ -121,6 +144,164 @@ export async function fetchPredictionMarketTVLAtBlock(
 }
 
 /**
+ * Calculate vault's realized PnL from prediction positions.
+ */
+async function calculateVaultPnL(
+  chainId: number,
+  beforeTimestamp?: number
+): Promise<VaultPnLResult> {
+  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  if (!vaultAddress) {
+    return {
+      realizedPnL: 0n,
+      positionsWon: 0,
+      positionsLost: 0,
+      totalCollateralWon: 0n,
+      totalCollateralLost: 0n,
+    };
+  }
+  const vaultAddressLower = vaultAddress.toLowerCase();
+
+  const whereClause: {
+    status: { in: PositionStatus[] };
+    predictorWon: { not: null };
+    chainId: number;
+    settledAt?: { lte: number };
+    OR: Array<{ predictor: string } | { counterparty: string }>;
+  } = {
+    status: { in: [PositionStatus.settled, PositionStatus.consolidated] },
+    predictorWon: { not: null },
+    chainId,
+    OR: [{ predictor: vaultAddressLower }, { counterparty: vaultAddressLower }],
+  };
+
+  if (beforeTimestamp) {
+    whereClause.settledAt = { lte: beforeTimestamp };
+  }
+
+  const positions = await prisma.position.findMany({ where: whereClause });
+
+  // Get mint events for collateral breakdown
+  const mintTimestamps = Array.from(
+    new Set(positions.map((p) => BigInt(p.mintedAt)))
+  );
+  const mintEvents = await prisma.event.findMany({
+    where: { timestamp: { in: mintTimestamps } },
+  });
+
+  const mintEventMap = new Map<
+    string,
+    {
+      makerCollateral: string;
+      takerCollateral: string;
+      totalCollateral: string;
+    }
+  >();
+  for (const event of mintEvents) {
+    try {
+      const data = event.logData as {
+        eventType?: string;
+        makerNftTokenId?: string;
+        takerNftTokenId?: string;
+        makerCollateral?: string;
+        takerCollateral?: string;
+        totalCollateral?: string;
+      };
+      if (data.eventType === 'PredictionMinted') {
+        const key = `${data.makerNftTokenId}-${data.takerNftTokenId}`;
+        mintEventMap.set(key, {
+          makerCollateral: data.makerCollateral || '0',
+          takerCollateral: data.takerCollateral || '0',
+          totalCollateral: data.totalCollateral || '0',
+        });
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  let realizedPnL = 0n;
+  let positionsWon = 0;
+  let positionsLost = 0;
+  let totalCollateralWon = 0n;
+  let totalCollateralLost = 0n;
+
+  for (const position of positions) {
+    const mintKey = `${position.predictorNftTokenId}-${position.counterpartyNftTokenId}`;
+    const mintData = mintEventMap.get(mintKey);
+
+    const predictorCollateral = BigInt(
+      position.predictorCollateral || mintData?.makerCollateral || '0'
+    );
+    const counterpartyCollateral = BigInt(
+      position.counterpartyCollateral || mintData?.takerCollateral || '0'
+    );
+    const totalCollateral = BigInt(position.totalCollateral || '0');
+
+    const isVaultPredictor =
+      position.predictor.toLowerCase() === vaultAddressLower;
+    const vaultCollateral = isVaultPredictor
+      ? predictorCollateral
+      : counterpartyCollateral;
+
+    const vaultWon = isVaultPredictor
+      ? position.predictorWon === true
+      : position.predictorWon === false;
+
+    if (vaultWon) {
+      const gains = totalCollateral - vaultCollateral;
+      realizedPnL += gains;
+      positionsWon++;
+      totalCollateralWon += gains;
+    } else {
+      realizedPnL -= vaultCollateral;
+      positionsLost++;
+      totalCollateralLost += vaultCollateral;
+    }
+  }
+
+  return {
+    realizedPnL,
+    positionsWon,
+    positionsLost,
+    totalCollateralWon,
+    totalCollateralLost,
+  };
+}
+
+/**
+ * Calculate vault's cumulative deposits and withdrawals from indexed flow events.
+ */
+async function calculateVaultFlows(
+  chainId: number,
+  beforeTimestamp?: number
+): Promise<VaultFlowsResult> {
+  const whereClause: { chainId: number; timestamp?: { lte: number } } = {
+    chainId,
+  };
+
+  if (beforeTimestamp) {
+    whereClause.timestamp = { lte: beforeTimestamp };
+  }
+
+  const events = await prisma.vaultFlowEvent.findMany({ where: whereClause });
+
+  let totalDeposits = 0n;
+  let totalWithdrawals = 0n;
+
+  for (const event of events) {
+    const assets = BigInt(event.assets);
+    if (event.eventType === 'deposit') {
+      totalDeposits += assets;
+    } else {
+      totalWithdrawals += assets;
+    }
+  }
+
+  return { totalDeposits, totalWithdrawals };
+}
+
+/**
  * Get UTC midnight timestamp for a given date.
  */
 function getUtcMidnightTimestamp(date: Date): number {
@@ -131,61 +312,91 @@ function getUtcMidnightTimestamp(date: Date): number {
 }
 
 /**
- * Create or update stats snapshot.
+ * Create or update stats snapshot with all data.
  */
-export async function upsertProtocolStatsSnapshot(
+async function upsertProtocolStatsSnapshot(
   timestamp: number,
-  vaultBalance: bigint,
-  escrowBalance: bigint
+  chainId: number,
+  data: ProtocolStatsData
 ): Promise<void> {
   await prisma.protocolStatsSnapshot.upsert({
-    where: {
-      timestamp,
-    },
+    where: { timestamp },
     create: {
       timestamp,
-      vaultBalance: vaultBalance.toString(),
-      escrowBalance: escrowBalance.toString(),
+      chainId,
+      vaultBalance: data.vaultBalance.toString(),
+      escrowBalance: data.escrowBalance.toString(),
+      vaultRealizedPnL: data.vaultRealizedPnL.toString(),
+      vaultAirdropGains: data.vaultAirdropGains.toString(),
+      vaultDeposits: data.vaultDeposits.toString(),
+      vaultWithdrawals: data.vaultWithdrawals.toString(),
+      vaultPositionsWon: data.vaultPositionsWon,
+      vaultPositionsLost: data.vaultPositionsLost,
+      vaultCollateralWon: data.vaultCollateralWon.toString(),
+      vaultCollateralLost: data.vaultCollateralLost.toString(),
     },
     update: {
-      vaultBalance: vaultBalance.toString(),
-      escrowBalance: escrowBalance.toString(),
+      chainId,
+      vaultBalance: data.vaultBalance.toString(),
+      escrowBalance: data.escrowBalance.toString(),
+      vaultRealizedPnL: data.vaultRealizedPnL.toString(),
+      vaultAirdropGains: data.vaultAirdropGains.toString(),
+      vaultDeposits: data.vaultDeposits.toString(),
+      vaultWithdrawals: data.vaultWithdrawals.toString(),
+      vaultPositionsWon: data.vaultPositionsWon,
+      vaultPositionsLost: data.vaultPositionsLost,
+      vaultCollateralWon: data.vaultCollateralWon.toString(),
+      vaultCollateralLost: data.vaultCollateralLost.toString(),
     },
   });
 }
 
 /**
- * Main function to compute and store daily Protocol stats snapshot.
+ * Main function to compute and store daily protocol stats snapshot.
  */
 export async function computeAndStoreProtocolStats(
   chainId: number = CHAIN_ID_ETHEREAL
-): Promise<{
-  vaultBalance: bigint;
-  escrowBalance: bigint;
-  totalBalance: bigint;
-}> {
+): Promise<void> {
   console.log(
     `[ProtocolStats] Starting stats computation for chain ${chainId}`
   );
 
-  // 1. Fetch Vault balance
+  // Use current timestamp for flexible snapshot frequency
+  const timestamp = Math.floor(Date.now() / 1000);
+
+  // Fetch balances
   const vaultBalance = await fetchVaultTVL(chainId);
   console.log(`[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} USDe`);
 
-  // 2. Fetch Escrow balance
   const escrowBalance = await fetchPredictionMarketTVL(chainId);
   console.log(`[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe`);
 
-  // 3. Calculate total
-  const totalBalance = vaultBalance + escrowBalance;
-  console.log(`[ProtocolStats] Total: ${formatUnits(totalBalance, 18)} USDe`);
+  // Calculate vault PnL
+  const pnlResult = await calculateVaultPnL(chainId);
+  console.log(
+    `[ProtocolStats] Vault PnL: ${formatUnits(pnlResult.realizedPnL, 18)} USDe (won: ${pnlResult.positionsWon}, lost: ${pnlResult.positionsLost})`
+  );
 
-  // 4. Store snapshot with today's UTC midnight timestamp
-  const timestamp = getUtcMidnightTimestamp(new Date());
-  await upsertProtocolStatsSnapshot(timestamp, vaultBalance, escrowBalance);
+  // Calculate vault flows
+  const flowsResult = await calculateVaultFlows(chainId);
+  console.log(
+    `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}`
+  );
+
+  await upsertProtocolStatsSnapshot(timestamp, chainId, {
+    vaultBalance,
+    escrowBalance,
+    vaultRealizedPnL: pnlResult.realizedPnL,
+    vaultAirdropGains: 0n,
+    vaultDeposits: flowsResult.totalDeposits,
+    vaultWithdrawals: flowsResult.totalWithdrawals,
+    vaultPositionsWon: pnlResult.positionsWon,
+    vaultPositionsLost: pnlResult.positionsLost,
+    vaultCollateralWon: pnlResult.totalCollateralWon,
+    vaultCollateralLost: pnlResult.totalCollateralLost,
+  });
+
   console.log(`[ProtocolStats] Snapshot stored successfully`);
-
-  return { vaultBalance, escrowBalance, totalBalance };
 }
 
 /**
@@ -212,8 +423,7 @@ export async function getProtocolStatsTimeSeries(days: number = 90) {
 }
 
 /**
- * Backfill historical Protocol stats by querying on-chain state at past blocks.
- * Requires archive node support for historical state queries.
+ * Backfill historical protocol stats by querying on-chain state at past blocks.
  */
 export async function backfillProtocolStats(
   chainId: number = CHAIN_ID_ETHEREAL,
@@ -225,7 +435,6 @@ export async function backfillProtocolStats(
     `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}`
   );
 
-  // Generate list of timestamps to backfill (UTC midnight)
   const todayMidnight = getUtcMidnightTimestamp(new Date());
   const timestamps: number[] = [];
   for (let i = days - 1; i >= 0; i--) {
@@ -239,7 +448,6 @@ export async function backfillProtocolStats(
     const timestamp = timestamps[idx];
     const dateStr = new Date(timestamp * 1000).toISOString().split('T')[0];
 
-    // Find block at this timestamp using binary search
     const block = await getBlockByTimestamp(client, timestamp);
     const blockNumber = block.number;
 
@@ -261,15 +469,28 @@ export async function backfillProtocolStats(
         blockNumber
       );
 
-      // Store snapshot (upsert handles existing records)
-      await upsertProtocolStatsSnapshot(timestamp, vaultBalance, escrowBalance);
+      // Calculate PnL up to this timestamp
+      const pnlResult = await calculateVaultPnL(chainId, timestamp);
+      const flowsResult = await calculateVaultFlows(chainId, timestamp);
+
+      await upsertProtocolStatsSnapshot(timestamp, chainId, {
+        vaultBalance,
+        escrowBalance,
+        vaultRealizedPnL: pnlResult.realizedPnL,
+        vaultAirdropGains: 0n,
+        vaultDeposits: flowsResult.totalDeposits,
+        vaultWithdrawals: flowsResult.totalWithdrawals,
+        vaultPositionsWon: pnlResult.positionsWon,
+        vaultPositionsLost: pnlResult.positionsLost,
+        vaultCollateralWon: pnlResult.totalCollateralWon,
+        vaultCollateralLost: pnlResult.totalCollateralLost,
+      });
 
       console.log(
-        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)}, Escrow: ${formatUnits(escrowBalance, 18)}`
+        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)}, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}`
       );
       successCount++;
     } catch (error) {
-      // Contract may not have existed at this block - skip and continue
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       if (
@@ -281,12 +502,10 @@ export async function backfillProtocolStats(
         );
         skipCount++;
       } else {
-        // Re-throw unexpected errors
         throw error;
       }
     }
 
-    // Rate limit: 100ms delay between days
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
