@@ -145,8 +145,8 @@ export const predictionMarketEscrow: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal testnet
+    address: '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
     legacy: [] as const,
   },
 } as const;
@@ -197,8 +197,8 @@ export const manualConditionResolver: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal testnet
+    address: '0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A',
     legacy: [] as const,
   },
 } as const;
@@ -231,8 +231,8 @@ export const predictionMarketBridge: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal testnet
+    address: '0x275Ba9B8DB207afb33022043848216BB7195eDb5',
     legacy: [] as const,
   },
 } as const;
@@ -248,8 +248,8 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
     legacy: [] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Arbitrum Sepolia testnet
+    address: '0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c',
     legacy: [] as const,
   },
 } as const;
@@ -265,8 +265,8 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     legacy: [] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Arbitrum Sepolia testnet
+    address: '0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3',
     legacy: [] as const,
   },
 } as const;
