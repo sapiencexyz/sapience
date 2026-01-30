@@ -20,7 +20,7 @@ import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 
 const TAB_VALUES = ['positions', 'v2positions', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
@@ -150,7 +150,7 @@ const ProfilePageContent = () => {
               <V2PositionsTable
                 account={address}
                 showHeaderText={false}
-                chainId={chainId}
+                chainId={CHAIN_ID_ETHEREAL_TESTNET}
                 leftSlot={tabSwitcher}
               />
             </TabsContent>

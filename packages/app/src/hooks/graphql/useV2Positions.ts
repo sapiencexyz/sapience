@@ -4,66 +4,29 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
- * V2 Pick type - individual condition selection in a prediction
- */
-export type V2Pick = {
-  conditionResolver: string;
-  conditionId: string;
-  predictedOutcome: number; // 0 = YES, 1 = NO
-  condition?: {
-    id: string;
-    question?: string | null;
-    shortName?: string | null;
-    endTime?: number | null;
-    settled?: boolean;
-    resolvedToYes?: boolean;
-  } | null;
-};
-
-/**
- * V2 Pick Configuration - shared parimutuel pool
- */
-export type V2PickConfiguration = {
-  id: string; // pickConfigId
-  chainId: number;
-  marketAddress: string;
-  totalPredictorCollateral: string;
-  totalCounterpartyCollateral: string;
-  claimedPredictorCollateral: string;
-  claimedCounterpartyCollateral: string;
-  resolved: boolean;
-  result: 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE';
-  resolvedAt?: number | null;
-  predictorToken?: string | null;
-  counterpartyToken?: string | null;
-  endsAt?: number | null;
-  picks: V2Pick[];
-};
-
-/**
- * V2 Prediction - individual prediction within a pick configuration
+ * V2 Prediction - individual prediction record
  */
 export type V2Prediction = {
   id: number;
   predictionId: string;
   chainId: number;
   marketAddress: string;
-  pickConfigId: string;
   predictor: string;
   counterparty: string;
+  predictorToken: string;
+  counterpartyToken: string;
   predictorWager: string;
   counterpartyWager: string;
-  predictorTokensMinted: string;
-  counterpartyTokensMinted: string;
-  predictorNonce: string;
-  counterpartyNonce: string;
+  collateralDeposited?: string | null;
+  collateralDepositedAt?: number | null;
   settled: boolean;
   settledAt?: number | null;
-  mintedAt: number;
-  mintTxHash: string;
   settleTxHash?: string | null;
+  result: 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE';
+  predictorClaimable?: string | null;
+  counterpartyClaimable?: string | null;
+  createTxHash: string;
   refCode?: string | null;
-  pickConfig?: V2PickConfiguration;
 };
 
 /**
@@ -77,7 +40,6 @@ export type V2PositionBalance = {
   isPredictorToken: boolean;
   holder: string;
   balance: string;
-  pickConfig?: V2PickConfiguration;
 };
 
 // GraphQL queries for V2 data
@@ -98,49 +60,22 @@ const V2_PREDICTIONS_QUERY = /* GraphQL */ `
       predictionId
       chainId
       marketAddress
-      pickConfigId
       predictor
       counterparty
+      predictorToken
+      counterpartyToken
       predictorWager
       counterpartyWager
-      predictorTokensMinted
-      counterpartyTokensMinted
-      predictorNonce
-      counterpartyNonce
+      collateralDeposited
+      collateralDepositedAt
       settled
       settledAt
-      mintedAt
-      mintTxHash
       settleTxHash
+      result
+      predictorClaimable
+      counterpartyClaimable
+      createTxHash
       refCode
-      pickConfig {
-        id
-        chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        claimedPredictorCollateral
-        claimedCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        picks {
-          conditionResolver
-          conditionId
-          predictedOutcome
-          condition {
-            id
-            question
-            shortName
-            endTime
-            settled
-            resolvedToYes
-          }
-        }
-      }
     }
   }
 `;
@@ -161,32 +96,6 @@ const V2_POSITION_BALANCES_QUERY = /* GraphQL */ `
       isPredictorToken
       holder
       balance
-      pickConfig {
-        id
-        chainId
-        marketAddress
-        totalPredictorCollateral
-        totalCounterpartyCollateral
-        resolved
-        result
-        resolvedAt
-        predictorToken
-        counterpartyToken
-        endsAt
-        picks {
-          conditionResolver
-          conditionId
-          predictedOutcome
-          condition {
-            id
-            question
-            shortName
-            endTime
-            settled
-            resolvedToYes
-          }
-        }
-      }
     }
   }
 `;
@@ -273,13 +182,12 @@ export function useV2PositionBalances(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ v2PositionBalances: V2PositionBalance[] }>(
-        V2_POSITION_BALANCES_QUERY,
-        {
-          holder,
-          chainId: chainId ?? null,
-        }
-      );
+      const resp = await graphqlRequest<{
+        v2PositionBalances: V2PositionBalance[];
+      }>(V2_POSITION_BALANCES_QUERY, {
+        holder,
+        chainId: chainId ?? null,
+      });
       return resp?.v2PositionBalances ?? [];
     },
   });
