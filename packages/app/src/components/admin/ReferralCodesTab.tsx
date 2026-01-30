@@ -130,7 +130,7 @@ const ReferralCodesTab = ({
   // Form state
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
-  const [maxClaims, setMaxClaims] = useState<number>(0);
+  const [maxClaims, setMaxClaims] = useState<number>(1);
   const [expiresAt, setExpiresAt] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
   const [editingId, setEditingId] = useState<number | undefined>(undefined);
@@ -567,13 +567,13 @@ const ReferralCodesTab = ({
                 onChange={(e) => setCode(e.target.value.slice(0, 16))}
                 required={!editingId}
                 disabled={Boolean(editingId)}
-                placeholder={editingId ? '(User-created code)' : 'e.g. SUMMER2024'}
+                placeholder={editingId ? '(User-created code)' : ''}
                 className="font-mono"
                 maxLength={16}
               />
               {editingId ? (
                 <p className="text-xs text-muted-foreground">
-                  {code ? 'Code cannot be changed after creation' : 'User-created codes do not store plaintext'}
+                  {code ? 'Code cannot be changed after creation' : ''}
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -598,13 +598,13 @@ const ReferralCodesTab = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Max Claims (0 = unlimited)
+                Max Claims 
               </label>
               <Input
                 type="number"
-                min={0}
+                min={1}
                 value={maxClaims}
-                onChange={(e) => setMaxClaims(parseInt(e.target.value, 10) || 0)}
+                onChange={(e) => setMaxClaims(parseInt(e.target.value, 10) ?? 1)}
               />
             </div>
 

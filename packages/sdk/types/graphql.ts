@@ -2492,15 +2492,15 @@ export type Question = {
   questionType: Scalars['String']['output'];
 };
 
-
 export type ReferralCode = {
   __typename?: 'ReferralCode';
   _count?: Maybe<ReferralCodeCount>;
   claimedBy: Array<User>;
-  code: Scalars['String']['output'];
+  code?: Maybe<Scalars['String']['output']>;
   codeHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
+  creatorType: Scalars['String']['output'];
   description?: Maybe<Scalars['String']['output']>;
   expiresAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
@@ -2508,7 +2508,6 @@ export type ReferralCode = {
   maxClaims: Scalars['Int']['output'];
   updatedAt: Scalars['DateTimeISO']['output'];
 };
-
 
 
 export type ReferralCodeClaimedByArgs = {
@@ -2537,10 +2536,11 @@ export type ReferralCodeNullableRelationFilter = {
 
 export type ReferralCodeOrderByWithRelationInput = {
   claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
-  code?: InputMaybe<SortOrder>;
+  code?: InputMaybe<SortOrderInput>;
   codeHash?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
+  creatorType?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrderInput>;
   expiresAt?: InputMaybe<SortOrderInput>;
   id?: InputMaybe<SortOrder>;
@@ -2554,10 +2554,11 @@ export type ReferralCodeWhereInput = {
   NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
   OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
   claimedBy?: InputMaybe<UserListRelationFilter>;
-  code?: InputMaybe<StringFilter>;
+  code?: InputMaybe<StringNullableFilter>;
   codeHash?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;
+  creatorType?: InputMaybe<StringFilter>;
   description?: InputMaybe<StringNullableFilter>;
   expiresAt?: InputMaybe<IntNullableFilter>;
   id?: InputMaybe<IntFilter>;
@@ -2676,6 +2677,10 @@ export type User = {
 };
 
 
+/**
+ * Application-level user record, keyed by wallet address,
+ * used for referrals and other per-wallet metadata.
+ */
 export type UserReferralsArgs = {
   cursor?: InputMaybe<UserWhereUniqueInput>;
   distinct?: InputMaybe<Array<UserScalarFieldEnum>>;
