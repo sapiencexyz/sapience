@@ -18,6 +18,9 @@ class ProtocolStat {
   vaultBalance!: string;
 
   @Field(() => String)
+  vaultAvailableAssets!: string;
+
+  @Field(() => String)
   vaultDeployed!: string;
 
   @Field(() => String)
@@ -138,6 +141,7 @@ export class AnalyticsResolver {
       cumulativeVolume: volumeMap.get(snapshot.timestamp) || '0',
       openInterest: oiMap.get(snapshot.timestamp) || '0',
       vaultBalance: snapshot.vaultBalance,
+      vaultAvailableAssets: snapshot.vaultAvailableAssets,
       vaultDeployed: snapshot.vaultDeployed,
       escrowBalance: snapshot.escrowBalance,
       vaultCumulativePnL: snapshot.vaultRealizedPnL,

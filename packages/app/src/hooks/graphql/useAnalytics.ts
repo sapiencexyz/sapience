@@ -6,6 +6,7 @@ interface ProtocolStat {
   cumulativeVolume: string;
   openInterest: string;
   vaultBalance: string;
+  vaultAvailableAssets: string;
   vaultDeployed: string;
   escrowBalance: string;
   vaultCumulativePnL: string;
@@ -28,6 +29,7 @@ const GET_PROTOCOL_STATS = /* GraphQL */ `
       cumulativeVolume
       openInterest
       vaultBalance
+      vaultAvailableAssets
       vaultDeployed
       escrowBalance
       vaultCumulativePnL

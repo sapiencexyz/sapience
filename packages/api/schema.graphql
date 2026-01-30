@@ -1869,6 +1869,7 @@ type ProtocolStat {
   openInterest: String!
   timestamp: String!
   vaultAirdropGains: String!
+  vaultAvailableAssets: String!
   vaultBalance: String!
   vaultCumulativePnL: String!
   vaultDeployed: String!

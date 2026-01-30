@@ -2058,6 +2058,7 @@ export type ProtocolStat = {
   openInterest: Scalars['String']['output'];
   timestamp: Scalars['String']['output'];
   vaultAirdropGains: Scalars['String']['output'];
+  vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];
   vaultCumulativePnL: Scalars['String']['output'];
   vaultDeployed: Scalars['String']['output'];

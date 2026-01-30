@@ -375,6 +375,9 @@ model ProtocolStatsSnapshot {
   /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
   vaultBalance  String   @db.VarChar
 
+  /// Vault available assets: vault.availableAssets() - excludes pending deposits (in wei)
+  vaultAvailableAssets String @default("0") @db.VarChar
+
   /// Vault deployed: vault.totalDeployed() - funds deployed to escrow (in wei)
   vaultDeployed String   @default("0") @db.VarChar
 

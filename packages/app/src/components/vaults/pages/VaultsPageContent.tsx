@@ -742,14 +742,16 @@ const VaultsPageContent = () => {
   }, [utilizationPercent]);
 
   const yieldMetrics = useMemo(() => {
-    // Protocol TVL = vault balance + escrow balance (from snapshots)
     const lastStat = protocolStats?.[protocolStats.length - 1];
+
+    // Protocol TVL = vault balance + escrow balance (total wUSDe earning Ethena rewards)
     const protocolTvlWei = lastStat
       ? BigInt(lastStat.vaultBalance || '0') +
         BigInt(lastStat.escrowBalance || '0')
       : 0n;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    // Vault TVL from real-time on-chain data
+
+    // Vault TVL from live on-chain data (availableAssets + totalDeployed)
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
     // Ethena base APY (approximately 5%)

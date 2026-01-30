@@ -21,6 +21,7 @@ interface VaultFlowsResult {
 
 interface ProtocolStatsData {
   vaultBalance: bigint;
+  vaultAvailableAssets: bigint;
   vaultDeployed: bigint;
   escrowBalance: bigint;
   vaultRealizedPnL: bigint;
@@ -106,6 +107,54 @@ export async function fetchVaultDeployedAtBlock(
   })) as bigint;
 
   return totalDeployed;
+}
+
+/**
+ * Fetch Vault available assets: vault.availableAssets() (excludes pending deposits)
+ */
+export async function fetchVaultAvailableAssets(
+  chainId: number = CHAIN_ID_ETHEREAL
+): Promise<bigint> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+
+  if (!vaultAddress) {
+    throw new Error(`Vault not configured for chain ${chainId}`);
+  }
+
+  const availableAssets = (await client.readContract({
+    address: vaultAddress,
+    abi: liquidityVaultAbi,
+    functionName: 'availableAssets',
+    args: [],
+  })) as bigint;
+
+  return availableAssets;
+}
+
+/**
+ * Fetch Vault available assets at a specific block number.
+ */
+export async function fetchVaultAvailableAssetsAtBlock(
+  chainId: number,
+  blockNumber: bigint
+): Promise<bigint> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+
+  if (!vaultAddress) {
+    throw new Error(`Vault not configured for chain ${chainId}`);
+  }
+
+  const availableAssets = (await client.readContract({
+    address: vaultAddress,
+    abi: liquidityVaultAbi,
+    functionName: 'availableAssets',
+    args: [],
+    blockNumber,
+  })) as bigint;
+
+  return availableAssets;
 }
 
 /**
@@ -375,6 +424,7 @@ async function upsertProtocolStatsSnapshot(
       timestamp,
       chainId,
       vaultBalance: data.vaultBalance.toString(),
+      vaultAvailableAssets: data.vaultAvailableAssets.toString(),
       vaultDeployed: data.vaultDeployed.toString(),
       escrowBalance: data.escrowBalance.toString(),
       vaultRealizedPnL: data.vaultRealizedPnL.toString(),
@@ -389,6 +439,7 @@ async function upsertProtocolStatsSnapshot(
     update: {
       chainId,
       vaultBalance: data.vaultBalance.toString(),
+      vaultAvailableAssets: data.vaultAvailableAssets.toString(),
       vaultDeployed: data.vaultDeployed.toString(),
       escrowBalance: data.escrowBalance.toString(),
       vaultRealizedPnL: data.vaultRealizedPnL.toString(),
@@ -418,11 +469,12 @@ export async function computeAndStoreProtocolStats(
 
   // Fetch balances
   const vaultBalance = await fetchVaultTVL(chainId);
+  const vaultAvailableAssets = await fetchVaultAvailableAssets(chainId);
   const vaultDeployed = await fetchVaultDeployed(chainId);
   const escrowBalance = await fetchPredictionMarketTVL(chainId);
 
   console.log(
-    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} idle, ${formatUnits(vaultDeployed, 18)} deployed`
+    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available, ${formatUnits(vaultDeployed, 18)} deployed`
   );
   console.log(`[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe`);
 
@@ -458,6 +510,7 @@ export async function computeAndStoreProtocolStats(
 
   await upsertProtocolStatsSnapshot(timestamp, chainId, {
     vaultBalance,
+    vaultAvailableAssets,
     vaultDeployed,
     escrowBalance,
     vaultRealizedPnL: pnlResult.realizedPnL,
@@ -538,6 +591,10 @@ export async function backfillProtocolStats(
     try {
       // Query historical balances
       const vaultBalance = await fetchVaultTVLAtBlock(chainId, blockNumber);
+      const vaultAvailableAssets = await fetchVaultAvailableAssetsAtBlock(
+        chainId,
+        blockNumber
+      );
       const vaultDeployed = await fetchVaultDeployedAtBlock(
         chainId,
         blockNumber
@@ -564,6 +621,7 @@ export async function backfillProtocolStats(
 
       await upsertProtocolStatsSnapshot(timestamp, chainId, {
         vaultBalance,
+        vaultAvailableAssets,
         vaultDeployed,
         escrowBalance,
         vaultRealizedPnL: pnlResult.realizedPnL,
@@ -577,7 +635,7 @@ export async function backfillProtocolStats(
       });
 
       console.log(
-        `[ProtocolStats]   Vault: ${formatUnits(vaultBalance, 18)} + ${formatUnits(vaultDeployed, 18)} deployed, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}, Airdrops: ${formatUnits(airdropGains, 18)}`
+        `[ProtocolStats]   Vault: ${formatUnits(vaultAvailableAssets, 18)} available + ${formatUnits(vaultDeployed, 18)} deployed, Escrow: ${formatUnits(escrowBalance, 18)}, PnL: ${formatUnits(pnlResult.realizedPnL, 18)}, Airdrops: ${formatUnits(airdropGains, 18)}`
       );
       successCount++;
     } catch (error) {
