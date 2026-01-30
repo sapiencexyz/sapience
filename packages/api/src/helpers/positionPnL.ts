@@ -126,7 +126,7 @@ export async function calculatePositionPnL(
  * V2 P&L is calculated from:
  * 1. Redemptions: collateralPaid - original wager
  * 2. Burns (early exits): payout - proportional original wager
- * 3. Unredeemed resolved positions: theoretical payout - original wager
+ * 3. Unredeemed settled positions: claimable - original wager
  *
  * Settlement results:
  * - PREDICTOR_WINS: Predictors get proportional share of total pool
@@ -175,72 +175,47 @@ export async function calculateV2PositionPnL(
     where: buildWhereClause(),
   });
 
-  // Get predictions for redemption context
+  // Get predictions for redemption context (linked directly via predictionId)
   const predictionIds = new Set<string>();
-  const pickConfigIds = new Set<string>();
 
   for (const redemption of redemptions) {
-    pickConfigIds.add(redemption.pickConfigId);
+    predictionIds.add(redemption.predictionId);
   }
 
-  // Get all predictions for these pick configs to find original wagers
+  // Get all predictions to find original wagers
   const predictions = await prisma.v2Prediction.findMany({
     where: {
-      pickConfigId: { in: Array.from(pickConfigIds) },
+      predictionId: { in: Array.from(predictionIds) },
     },
   });
 
-  // Build lookup maps for predictions
-  const predictionsByPickConfig = new Map<string, typeof predictions>();
-  for (const pred of predictions) {
-    const existing = predictionsByPickConfig.get(pred.pickConfigId) || [];
-    existing.push(pred);
-    predictionsByPickConfig.set(pred.pickConfigId, existing);
-  }
-
-  // Get pick configurations for settlement results
-  const pickConfigs = await prisma.v2PickConfiguration.findMany({
-    where: {
-      id: { in: Array.from(pickConfigIds) },
-    },
-  });
-
-  const pickConfigById = new Map(pickConfigs.map((pc) => [pc.id, pc]));
+  // Build lookup map for predictions by predictionId
+  const predictionById = new Map(predictions.map((p) => [p.predictionId, p]));
 
   // Process redemptions
   for (const redemption of redemptions) {
-    const redeemer = redemption.redeemer.toLowerCase();
+    const holder = redemption.holder.toLowerCase();
 
     if (owners?.length) {
       const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
-      if (!ownerSet.has(redeemer)) continue;
+      if (!ownerSet.has(holder)) continue;
     }
 
-    const stats = initOwner(redeemer);
+    const stats = initOwner(holder);
 
-    // Find original wager for this redeemer
-    const relatedPredictions = predictionsByPickConfig.get(redemption.pickConfigId) || [];
+    // Find original wager for this holder from the prediction
+    const prediction = predictionById.get(redemption.predictionId);
+    if (!prediction) continue;
+
     let originalWager = 0n;
+    const tokensRedeemed = BigInt(redemption.tokensBurned);
 
-    // Check if redeemer was predictor or counterparty in any related prediction
-    for (const pred of relatedPredictions) {
-      if (pred.predictor.toLowerCase() === redeemer) {
-        // Proportional wager based on tokens redeemed vs minted
-        const tokensMinted = BigInt(pred.predictorTokensMinted);
-        const tokensRedeemed = BigInt(redemption.tokenAmount);
-        const wager = BigInt(pred.predictorWager);
-        if (tokensMinted > 0n) {
-          originalWager += (wager * tokensRedeemed) / tokensMinted;
-        }
-      }
-      if (pred.counterparty.toLowerCase() === redeemer) {
-        const tokensMinted = BigInt(pred.counterpartyTokensMinted);
-        const tokensRedeemed = BigInt(redemption.tokenAmount);
-        const wager = BigInt(pred.counterpartyWager);
-        if (tokensMinted > 0n) {
-          originalWager += (wager * tokensRedeemed) / tokensMinted;
-        }
-      }
+    // Determine if holder was predictor or counterparty
+    if (prediction.predictor.toLowerCase() === holder) {
+      // For predictor, wager equals tokens (1:1 ratio in V2)
+      originalWager = BigInt(prediction.predictorWager);
+    } else if (prediction.counterparty.toLowerCase() === holder) {
+      originalWager = BigInt(prediction.counterpartyWager);
     }
 
     const collateralPaid = BigInt(redemption.collateralPaid);
@@ -264,23 +239,12 @@ export async function calculateV2PositionPnL(
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictorHolder)) {
       const stats = initOwner(predictorHolder);
 
-      // Find original wager proportion
-      const relatedPredictions = predictionsByPickConfig.get(burn.pickConfigId) || [];
-      let originalWager = 0n;
-
-      for (const pred of relatedPredictions) {
-        if (pred.predictor.toLowerCase() === predictorHolder) {
-          const tokensMinted = BigInt(pred.predictorTokensMinted);
-          const tokensBurned = BigInt(burn.predictorTokenAmount);
-          const wager = BigInt(pred.predictorWager);
-          if (tokensMinted > 0n) {
-            originalWager += (wager * tokensBurned) / tokensMinted;
-          }
-        }
-      }
-
+      // In V2, tokens burned equals wager portion
+      const tokensBurned = BigInt(burn.predictorTokensBurned);
       const payout = BigInt(burn.predictorPayout);
-      stats.realizedPnL += payout - originalWager;
+
+      // P&L = payout - tokens burned (tokens = wager in V2)
+      stats.realizedPnL += payout - tokensBurned;
       stats.burnCount++;
       stats.positionCount++;
     }
@@ -289,120 +253,47 @@ export async function calculateV2PositionPnL(
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterpartyHolder)) {
       const stats = initOwner(counterpartyHolder);
 
-      const relatedPredictions = predictionsByPickConfig.get(burn.pickConfigId) || [];
-      let originalWager = 0n;
-
-      for (const pred of relatedPredictions) {
-        if (pred.counterparty.toLowerCase() === counterpartyHolder) {
-          const tokensMinted = BigInt(pred.counterpartyTokensMinted);
-          const tokensBurned = BigInt(burn.counterpartyTokenAmount);
-          const wager = BigInt(pred.counterpartyWager);
-          if (tokensMinted > 0n) {
-            originalWager += (wager * tokensBurned) / tokensMinted;
-          }
-        }
-      }
-
+      const tokensBurned = BigInt(burn.counterpartyTokensBurned);
       const payout = BigInt(burn.counterpartyPayout);
-      stats.realizedPnL += payout - originalWager;
+
+      stats.realizedPnL += payout - tokensBurned;
       stats.burnCount++;
       stats.positionCount++;
     }
   }
 
-  // 3. Calculate unrealized P&L from resolved but unredeemed positions
-  const resolvedConfigs = await prisma.v2PickConfiguration.findMany({
+  // 3. Calculate unrealized P&L from settled but unredeemed predictions
+  const settledPredictions = await prisma.v2Prediction.findMany({
     where: {
       ...buildWhereClause(),
-      resolved: true,
+      settled: true,
       result: { not: V2SettlementResult.UNRESOLVED },
     },
   });
 
-  // Get position balances for resolved configs
-  const resolvedConfigIds = resolvedConfigs.map((c) => c.id);
-  const positionBalances = await prisma.v2PositionBalance.findMany({
-    where: {
-      pickConfigId: { in: resolvedConfigIds },
-      balance: { not: '0' },
-    },
-  });
+  for (const prediction of settledPredictions) {
+    const predictor = prediction.predictor.toLowerCase();
+    const counterparty = prediction.counterparty.toLowerCase();
 
-  const resolvedConfigById = new Map(resolvedConfigs.map((c) => [c.id, c]));
+    // Calculate unrealized P&L for predictor
+    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictor)) {
+      const stats = initOwner(predictor);
+      const wager = BigInt(prediction.predictorWager);
+      const claimable = BigInt(prediction.predictorClaimable || '0');
 
-  for (const balance of positionBalances) {
-    const holder = balance.holder.toLowerCase();
-
-    if (owners?.length) {
-      const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
-      if (!ownerSet.has(holder)) continue;
+      stats.unrealizedPnL += claimable - wager;
+      stats.positionCount++;
     }
 
-    const config = resolvedConfigById.get(balance.pickConfigId);
-    if (!config) continue;
+    // Calculate unrealized P&L for counterparty
+    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterparty)) {
+      const stats = initOwner(counterparty);
+      const wager = BigInt(prediction.counterpartyWager);
+      const claimable = BigInt(prediction.counterpartyClaimable || '0');
 
-    const stats = initOwner(holder);
-
-    const totalPredictorCollateral = BigInt(config.totalPredictorCollateral);
-    const totalCounterpartyCollateral = BigInt(config.totalCounterpartyCollateral);
-    const totalPool = totalPredictorCollateral + totalCounterpartyCollateral;
-    const tokenBalance = BigInt(balance.balance);
-
-    // Find original wager for this holder
-    const relatedPredictions = predictionsByPickConfig.get(balance.pickConfigId) || [];
-    let originalWager = 0n;
-    let tokensMinted = 0n;
-
-    for (const pred of relatedPredictions) {
-      if (balance.isPredictorToken && pred.predictor.toLowerCase() === holder) {
-        originalWager += BigInt(pred.predictorWager);
-        tokensMinted += BigInt(pred.predictorTokensMinted);
-      }
-      if (!balance.isPredictorToken && pred.counterparty.toLowerCase() === holder) {
-        originalWager += BigInt(pred.counterpartyWager);
-        tokensMinted += BigInt(pred.counterpartyTokensMinted);
-      }
+      stats.unrealizedPnL += claimable - wager;
+      stats.positionCount++;
     }
-
-    // Calculate theoretical payout based on settlement result
-    let theoreticalPayout = 0n;
-
-    switch (config.result) {
-      case V2SettlementResult.PREDICTOR_WINS:
-        if (balance.isPredictorToken && totalPredictorCollateral > 0n) {
-          // Predictors split the total pool proportionally
-          theoreticalPayout = (tokenBalance * totalPool) / totalPredictorCollateral;
-        }
-        // Counterparty tokens are worthless
-        break;
-
-      case V2SettlementResult.COUNTERPARTY_WINS:
-        if (!balance.isPredictorToken && totalCounterpartyCollateral > 0n) {
-          // Counterparties split the total pool proportionally
-          theoreticalPayout = (tokenBalance * totalPool) / totalCounterpartyCollateral;
-        }
-        // Predictor tokens are worthless
-        break;
-
-      case V2SettlementResult.NON_DECISIVE:
-        // Both sides get back their proportional collateral
-        if (balance.isPredictorToken && totalPredictorCollateral > 0n) {
-          theoreticalPayout = (tokenBalance * totalPredictorCollateral) / totalPredictorCollateral;
-        } else if (!balance.isPredictorToken && totalCounterpartyCollateral > 0n) {
-          theoreticalPayout = (tokenBalance * totalCounterpartyCollateral) / totalCounterpartyCollateral;
-        }
-        break;
-    }
-
-    // Calculate proportional original wager based on balance vs minted
-    let proportionalWager = 0n;
-    if (tokensMinted > 0n) {
-      proportionalWager = (originalWager * tokenBalance) / tokensMinted;
-    }
-
-    const unrealizedPnL = theoreticalPayout - proportionalWager;
-    stats.unrealizedPnL += unrealizedPnL;
-    stats.positionCount++;
   }
 
   return Array.from(ownerStats.entries()).map(([owner, stats]) => ({

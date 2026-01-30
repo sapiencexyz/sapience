@@ -147,6 +147,7 @@ export const predictionMarketEscrow: ChainAddressMap = {
   13374202: {
     // Ethereal testnet
     address: '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
+    blockCreated: 2107812,
     legacy: [] as const,
   },
 } as const;

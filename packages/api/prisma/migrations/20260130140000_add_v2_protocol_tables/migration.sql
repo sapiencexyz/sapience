@@ -40,20 +40,22 @@ CREATE TABLE "v2_prediction" (
     "predictionId" VARCHAR NOT NULL,
     "chainId" INTEGER NOT NULL,
     "marketAddress" VARCHAR NOT NULL,
-    "pickConfigId" VARCHAR NOT NULL,
     "predictor" VARCHAR NOT NULL,
     "counterparty" VARCHAR NOT NULL,
+    "predictorToken" VARCHAR NOT NULL,
+    "counterpartyToken" VARCHAR NOT NULL,
     "predictorWager" VARCHAR NOT NULL,
     "counterpartyWager" VARCHAR NOT NULL,
-    "predictorTokensMinted" VARCHAR NOT NULL,
-    "counterpartyTokensMinted" VARCHAR NOT NULL,
-    "predictorNonce" VARCHAR NOT NULL,
-    "counterpartyNonce" VARCHAR NOT NULL,
+    "collateralDeposited" VARCHAR,
+    "collateralDepositedAt" INTEGER,
     "settled" BOOLEAN NOT NULL DEFAULT false,
     "settledAt" INTEGER,
-    "mintedAt" INTEGER NOT NULL,
-    "mintTxHash" VARCHAR NOT NULL,
     "settleTxHash" VARCHAR,
+    "result" "V2SettlementResult" NOT NULL DEFAULT 'UNRESOLVED',
+    "predictorClaimable" VARCHAR,
+    "counterpartyClaimable" VARCHAR,
+    "onChainCreatedAt" INTEGER NOT NULL,
+    "createTxHash" VARCHAR NOT NULL,
     "refCode" VARCHAR,
 
     CONSTRAINT "v2_prediction_pkey" PRIMARY KEY ("id")
@@ -83,8 +85,8 @@ CREATE TABLE "v2_burn_record" (
     "pickConfigId" VARCHAR NOT NULL,
     "predictorHolder" VARCHAR NOT NULL,
     "counterpartyHolder" VARCHAR NOT NULL,
-    "predictorTokenAmount" VARCHAR NOT NULL,
-    "counterpartyTokenAmount" VARCHAR NOT NULL,
+    "predictorTokensBurned" VARCHAR NOT NULL,
+    "counterpartyTokensBurned" VARCHAR NOT NULL,
     "predictorPayout" VARCHAR NOT NULL,
     "counterpartyPayout" VARCHAR NOT NULL,
     "burnedAt" INTEGER NOT NULL,
@@ -100,13 +102,14 @@ CREATE TABLE "v2_redemption_record" (
     "createdAt" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "chainId" INTEGER NOT NULL,
     "marketAddress" VARCHAR NOT NULL,
-    "pickConfigId" VARCHAR NOT NULL,
-    "redeemer" VARCHAR NOT NULL,
+    "predictionId" VARCHAR NOT NULL,
+    "holder" VARCHAR NOT NULL,
     "positionToken" VARCHAR NOT NULL,
-    "tokenAmount" VARCHAR NOT NULL,
+    "tokensBurned" VARCHAR NOT NULL,
     "collateralPaid" VARCHAR NOT NULL,
     "redeemedAt" INTEGER NOT NULL,
     "txHash" VARCHAR NOT NULL,
+    "refCode" VARCHAR,
 
     CONSTRAINT "v2_redemption_record_pkey" PRIMARY KEY ("id")
 );
@@ -152,9 +155,6 @@ CREATE INDEX "IDX_v2_prediction_predictor" ON "v2_prediction"("predictor");
 CREATE INDEX "IDX_v2_prediction_counterparty" ON "v2_prediction"("counterparty");
 
 -- CreateIndex
-CREATE INDEX "IDX_v2_prediction_pick_config" ON "v2_prediction"("pickConfigId");
-
--- CreateIndex
 CREATE INDEX "IDX_v2_prediction_chain_market" ON "v2_prediction"("chainId", "marketAddress");
 
 -- CreateIndex
@@ -182,10 +182,10 @@ CREATE INDEX "IDX_v2_burn_record_predictor" ON "v2_burn_record"("predictorHolder
 CREATE INDEX "IDX_v2_burn_record_counterparty" ON "v2_burn_record"("counterpartyHolder");
 
 -- CreateIndex
-CREATE INDEX "IDX_v2_redemption_pick_config" ON "v2_redemption_record"("pickConfigId");
+CREATE INDEX "IDX_v2_redemption_prediction" ON "v2_redemption_record"("predictionId");
 
 -- CreateIndex
-CREATE INDEX "IDX_v2_redemption_redeemer" ON "v2_redemption_record"("redeemer");
+CREATE INDEX "IDX_v2_redemption_holder" ON "v2_redemption_record"("holder");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "v2_indexer_state_chainId_key" ON "v2_indexer_state"("chainId");
@@ -195,6 +195,3 @@ ALTER TABLE "v2_pick" ADD CONSTRAINT "v2_pick_pickConfigId_fkey" FOREIGN KEY ("p
 
 -- AddForeignKey
 ALTER TABLE "v2_pick" ADD CONSTRAINT "v2_pick_conditionId_fkey" FOREIGN KEY ("conditionId") REFERENCES "condition"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "v2_prediction" ADD CONSTRAINT "v2_prediction_pickConfigId_fkey" FOREIGN KEY ("pickConfigId") REFERENCES "v2_pick_configuration"("id") ON DELETE CASCADE ON UPDATE CASCADE;

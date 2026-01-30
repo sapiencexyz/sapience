@@ -416,8 +416,7 @@ model V2PickConfiguration {
   endsAt Int?
 
   // Relations
-  picks       V2Pick[]
-  predictions V2Prediction[]
+  picks V2Pick[]
 
   @@unique([chainId, marketAddress, id], map: "UQ_v2_pick_config_chain_market_id")
   @@index([chainId, marketAddress], map: "IDX_v2_pick_config_chain_market")
@@ -456,8 +455,8 @@ model V2Pick {
   @@map("v2_pick")
 }
 
-/// V2 Prediction - Individual prediction record (minted position pair)
-/// Corresponds to on-chain predictionId
+/// V2 Prediction - Individual prediction record
+/// Corresponds to on-chain predictionId from PredictionCreated event
 model V2Prediction {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now()) @db.Timestamp(6)
@@ -467,34 +466,33 @@ model V2Prediction {
   chainId       Int
   marketAddress String @db.VarChar // PredictionMarketEscrow address
 
-  // Pick configuration
-  pickConfigId      String              @db.VarChar
-  pickConfiguration V2PickConfiguration @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
-
   // Parties
   predictor    String @db.VarChar // EOA or smart account
   counterparty String @db.VarChar // EOA or smart account
+
+  // Position tokens
+  predictorToken    String @db.VarChar // ERC20 token address
+  counterpartyToken String @db.VarChar // ERC20 token address
 
   // Wagers
   predictorWager    String @db.VarChar // wei
   counterpartyWager String @db.VarChar // wei
 
-  // Tokens minted
-  predictorTokensMinted    String @db.VarChar // ERC20 amount
-  counterpartyTokensMinted String @db.VarChar // ERC20 amount
+  // Collateral deposited (from CollateralDeposited event)
+  collateralDeposited   String? @db.VarChar // wei
+  collateralDepositedAt Int?
 
-  // Nonces used (for signature replay protection tracking)
-  predictorNonce    String @db.VarChar
-  counterpartyNonce String @db.VarChar
-
-  // Status
-  settled   Boolean @default(false)
-  settledAt Int?
+  // Settlement status (from PredictionSettled event)
+  settled              Boolean            @default(false)
+  settledAt            Int?
+  settleTxHash         String?            @db.VarChar
+  result               V2SettlementResult @default(UNRESOLVED)
+  predictorClaimable   String?            @db.VarChar // wei
+  counterpartyClaimable String?           @db.VarChar // wei
 
   // Transaction info
-  mintedAt     Int // block timestamp
-  mintTxHash   String  @db.VarChar
-  settleTxHash String? @db.VarChar
+  onChainCreatedAt Int // block timestamp when prediction was created
+  createTxHash     String @db.VarChar
 
   // Referral
   refCode String? @db.VarChar // bytes32
@@ -502,7 +500,6 @@ model V2Prediction {
   @@unique([chainId, marketAddress, predictionId], map: "UQ_v2_prediction_chain_market_id")
   @@index([predictor], map: "IDX_v2_prediction_predictor")
   @@index([counterparty], map: "IDX_v2_prediction_counterparty")
-  @@index([pickConfigId], map: "IDX_v2_prediction_pick_config")
   @@index([chainId, marketAddress], map: "IDX_v2_prediction_chain_market")
   @@map("v2_prediction")
 }
@@ -532,7 +529,7 @@ model V2PositionBalance {
   @@map("v2_position_balance")
 }
 
-/// V2 Burn Record - Track bilateral burns (pre-resolution exits)
+/// V2 Burn Record - Track bilateral burns (PositionsBurned event)
 model V2BurnRecord {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now()) @db.Timestamp(6)
@@ -540,15 +537,15 @@ model V2BurnRecord {
   // On-chain identifiers
   chainId       Int
   marketAddress String @db.VarChar
-  pickConfigId  String @db.VarChar
+  pickConfigId  String @db.VarChar // bytes32
 
   // Parties
   predictorHolder    String @db.VarChar
   counterpartyHolder String @db.VarChar
 
   // Token amounts burned
-  predictorTokenAmount    String @db.VarChar
-  counterpartyTokenAmount String @db.VarChar
+  predictorTokensBurned    String @db.VarChar
+  counterpartyTokensBurned String @db.VarChar
 
   // Payouts
   predictorPayout    String @db.VarChar
@@ -567,7 +564,7 @@ model V2BurnRecord {
   @@map("v2_burn_record")
 }
 
-/// V2 Redemption Record - Track post-resolution redemptions
+/// V2 Redemption Record - Track post-resolution redemptions (TokensRedeemed event)
 model V2RedemptionRecord {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now()) @db.Timestamp(6)
@@ -575,22 +572,25 @@ model V2RedemptionRecord {
   // On-chain identifiers
   chainId       Int
   marketAddress String @db.VarChar
-  pickConfigId  String @db.VarChar
+  predictionId  String @db.VarChar // bytes32
 
-  // Redeemer
-  redeemer      String @db.VarChar // EOA or smart account
+  // Holder
+  holder        String @db.VarChar // EOA or smart account
   positionToken String @db.VarChar // Token address redeemed
 
   // Amounts
-  tokenAmount    String @db.VarChar // Tokens burned
+  tokensBurned   String @db.VarChar // Tokens burned
   collateralPaid String @db.VarChar // Collateral received
 
   // Transaction info
   redeemedAt Int // block timestamp
   txHash     String @db.VarChar
 
-  @@index([pickConfigId], map: "IDX_v2_redemption_pick_config")
-  @@index([redeemer], map: "IDX_v2_redemption_redeemer")
+  // Referral
+  refCode String? @db.VarChar // bytes32
+
+  @@index([predictionId], map: "IDX_v2_redemption_prediction")
+  @@index([holder], map: "IDX_v2_redemption_holder")
   @@map("v2_redemption_record")
 }
 

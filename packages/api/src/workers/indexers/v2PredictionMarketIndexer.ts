@@ -5,144 +5,63 @@ import {
   decodeEventLog,
   type Log,
   type Block,
-  type Abi,
 } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 
-// ============================================================================
-// V2 PredictionMarketEscrow Event ABIs
-// ============================================================================
-
-const PREDICTION_MARKET_ESCROW_ABI = [
-  // Minted event - fired when a new prediction is minted
-  {
-    type: 'event',
-    name: 'Minted',
-    inputs: [
-      { name: 'predictionId', type: 'bytes32', indexed: true },
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'predictor', type: 'address', indexed: true },
-      { name: 'counterparty', type: 'address', indexed: false },
-      { name: 'predictorWager', type: 'uint256', indexed: false },
-      { name: 'counterpartyWager', type: 'uint256', indexed: false },
-      { name: 'predictorTokensMinted', type: 'uint256', indexed: false },
-      { name: 'counterpartyTokensMinted', type: 'uint256', indexed: false },
-      { name: 'predictorNonce', type: 'uint256', indexed: false },
-      { name: 'counterpartyNonce', type: 'uint256', indexed: false },
-      { name: 'refCode', type: 'bytes32', indexed: false },
-    ],
-  },
-  // Burned event - fired on bilateral burn (pre-resolution exit)
-  {
-    type: 'event',
-    name: 'Burned',
-    inputs: [
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'predictorHolder', type: 'address', indexed: true },
-      { name: 'counterpartyHolder', type: 'address', indexed: true },
-      { name: 'predictorTokenAmount', type: 'uint256', indexed: false },
-      { name: 'counterpartyTokenAmount', type: 'uint256', indexed: false },
-      { name: 'predictorPayout', type: 'uint256', indexed: false },
-      { name: 'counterpartyPayout', type: 'uint256', indexed: false },
-      { name: 'refCode', type: 'bytes32', indexed: false },
-    ],
-  },
-  // Settled event - fired when a prediction is settled
-  {
-    type: 'event',
-    name: 'Settled',
-    inputs: [
-      { name: 'predictionId', type: 'bytes32', indexed: true },
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'result', type: 'uint8', indexed: false },
-    ],
-  },
-  // Redeemed event - fired when tokens are redeemed for collateral
-  {
-    type: 'event',
-    name: 'Redeemed',
-    inputs: [
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'redeemer', type: 'address', indexed: true },
-      { name: 'positionToken', type: 'address', indexed: false },
-      { name: 'tokenAmount', type: 'uint256', indexed: false },
-      { name: 'collateralPaid', type: 'uint256', indexed: false },
-    ],
-  },
-  // PickConfigurationCreated event - fired when a new pick configuration is created
-  {
-    type: 'event',
-    name: 'PickConfigurationCreated',
-    inputs: [
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'predictorToken', type: 'address', indexed: false },
-      { name: 'counterpartyToken', type: 'address', indexed: false },
-    ],
-  },
-  // PickConfigurationResolved event - fired when picks are resolved
-  {
-    type: 'event',
-    name: 'PickConfigurationResolved',
-    inputs: [
-      { name: 'pickConfigId', type: 'bytes32', indexed: true },
-      { name: 'result', type: 'uint8', indexed: false },
-    ],
-  },
-] as const;
-
-// Event type interfaces
-interface MintedEvent {
+// Event type interfaces (matching IV2Events.sol)
+interface PredictionCreatedEvent {
   predictionId: `0x${string}`;
-  pickConfigId: `0x${string}`;
   predictor: `0x${string}`;
   counterparty: `0x${string}`;
+  predictorToken: `0x${string}`;
+  counterpartyToken: `0x${string}`;
   predictorWager: bigint;
   counterpartyWager: bigint;
-  predictorTokensMinted: bigint;
-  counterpartyTokensMinted: bigint;
-  predictorNonce: bigint;
-  counterpartyNonce: bigint;
   refCode: `0x${string}`;
 }
 
-interface BurnedEvent {
+interface PredictionSettledEvent {
+  predictionId: `0x${string}`;
+  result: number;
+  predictorClaimable: bigint;
+  counterpartyClaimable: bigint;
+  refCode: `0x${string}`;
+}
+
+interface TokensRedeemedEvent {
+  predictionId: `0x${string}`;
+  holder: `0x${string}`;
+  positionToken: `0x${string}`;
+  tokensBurned: bigint;
+  collateralPaid: bigint;
+  refCode: `0x${string}`;
+}
+
+interface CollateralDepositedEvent {
+  predictionId: `0x${string}`;
+  totalAmount: bigint;
+}
+
+interface DustSweptEvent {
+  pickConfigId: `0x${string}`;
+  recipient: `0x${string}`;
+  amount: bigint;
+}
+
+interface PositionsBurnedEvent {
   pickConfigId: `0x${string}`;
   predictorHolder: `0x${string}`;
   counterpartyHolder: `0x${string}`;
-  predictorTokenAmount: bigint;
-  counterpartyTokenAmount: bigint;
+  predictorTokensBurned: bigint;
+  counterpartyTokensBurned: bigint;
   predictorPayout: bigint;
   counterpartyPayout: bigint;
   refCode: `0x${string}`;
-}
-
-interface SettledEvent {
-  predictionId: `0x${string}`;
-  pickConfigId: `0x${string}`;
-  result: number;
-}
-
-interface RedeemedEvent {
-  pickConfigId: `0x${string}`;
-  redeemer: `0x${string}`;
-  positionToken: `0x${string}`;
-  tokenAmount: bigint;
-  collateralPaid: bigint;
-}
-
-interface PickConfigurationCreatedEvent {
-  pickConfigId: `0x${string}`;
-  predictorToken: `0x${string}`;
-  counterpartyToken: `0x${string}`;
-}
-
-interface PickConfigurationResolvedEvent {
-  pickConfigId: `0x${string}`;
-  result: number;
 }
 
 // Map settlement result number to enum value
@@ -162,13 +81,18 @@ const ZERO_BYTES32 = '0x00000000000000000000000000000000000000000000000000000000
  * V2 Prediction Market Indexer
  * Indexes events from the PredictionMarketEscrow contract
  */
+// Polling interval in milliseconds (10 seconds)
+const POLLING_INTERVAL_MS = 10_000;
+
 class V2PredictionMarketIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private chainId: number;
   private contractAddress: `0x${string}`;
+  private blockCreated: bigint;
   private sigintHandler: (() => void) | null = null;
-  private currentUnwatch: (() => void) | null = null;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  private lastProcessedBlock: bigint = 0n;
 
   constructor(chainId: number) {
     this.chainId = chainId;
@@ -182,9 +106,10 @@ class V2PredictionMarketIndexer implements IIndexer {
       );
     }
     this.contractAddress = contractEntry.address as `0x${string}`;
+    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[V2PredictionMarketIndexer] Initialized for chain ${chainId} with contract ${this.contractAddress}`
+      `[V2PredictionMarketIndexer] Initialized for chain ${chainId} with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
     );
   }
 
@@ -306,7 +231,7 @@ class V2PredictionMarketIndexer implements IIndexer {
     }
 
     console.log(
-      `[V2PredictionMarketIndexer] Starting to watch contract ${this.contractAddress} on chain ${this.chainId} for ${resourceSlug}`
+      `[V2PredictionMarketIndexer] Starting to poll contract ${this.contractAddress} on chain ${this.chainId} for ${resourceSlug}`
     );
 
     this.isWatching = true;
@@ -319,46 +244,83 @@ class V2PredictionMarketIndexer implements IIndexer {
     };
     process.on('SIGINT', this.sigintHandler);
 
-    // Watch for new events
-    this.currentUnwatch = this.client.watchContractEvent({
-      address: this.contractAddress,
-      abi: PREDICTION_MARKET_ESCROW_ABI as Abi,
-      onLogs: async (logs: Log[]) => {
-        for (const log of logs) {
-          try {
-            const block = await this.client.getBlock({
-              blockNumber: log.blockNumber!,
-            });
-            await this.processLog(log, block);
-          } catch (error) {
-            console.error('[V2PredictionMarketIndexer] Error processing watched log:', error);
-            Sentry.captureException(error);
-          }
+    // Get the starting block (use blockCreated for historical indexing, or current block)
+    if (this.lastProcessedBlock === 0n) {
+      if (this.blockCreated > 0n) {
+        // Start from contract creation block to index historical events
+        this.lastProcessedBlock = this.blockCreated - 1n;
+        console.log(
+          `[V2PredictionMarketIndexer] Starting from blockCreated ${this.blockCreated} for historical indexing`
+        );
+      } else {
+        try {
+          this.lastProcessedBlock = await this.client.getBlockNumber();
+          console.log(
+            `[V2PredictionMarketIndexer] Starting from current block ${this.lastProcessedBlock}`
+          );
+        } catch (error) {
+          console.error('[V2PredictionMarketIndexer] Error getting initial block:', error);
+          this.lastProcessedBlock = 0n;
         }
-      },
-      onError: (error: Error) => {
-        console.error('[V2PredictionMarketIndexer] Watch error:', error);
-        Sentry.captureException(error);
-        // Attempt to restart watching after a delay
-        this.isWatching = false;
-        setTimeout(() => {
-          if (!this.isWatching) {
-            console.log('[V2PredictionMarketIndexer] Restarting event watcher...');
-            this.watchBlocksForResource(resourceSlug).catch((restartError: Error) => {
-              console.error('[V2PredictionMarketIndexer] Failed to restart:', restartError);
-              Sentry.captureException(restartError);
-            });
+      }
+    }
+
+    // Poll for new events using getLogs (compatible with RPCs that don't support filters)
+    const pollForEvents = async () => {
+      if (!this.isWatching) return;
+
+      try {
+        const currentBlock = await this.client.getBlockNumber();
+
+        // Only query if there are new blocks
+        if (currentBlock > this.lastProcessedBlock) {
+          const fromBlock = this.lastProcessedBlock + 1n;
+          const toBlock = currentBlock;
+
+          const logs = await this.client.getLogs({
+            address: this.contractAddress,
+            fromBlock,
+            toBlock,
+          });
+
+          if (logs.length > 0) {
+            console.log(
+              `[V2PredictionMarketIndexer] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
+            );
+
+            for (const log of logs) {
+              try {
+                const block = await this.client.getBlock({
+                  blockNumber: log.blockNumber!,
+                });
+                await this.processLog(log, block);
+              } catch (error) {
+                console.error('[V2PredictionMarketIndexer] Error processing log:', error);
+                Sentry.captureException(error);
+              }
+            }
           }
-        }, 5000);
-      },
-    });
+
+          this.lastProcessedBlock = currentBlock;
+        }
+      } catch (error) {
+        console.error('[V2PredictionMarketIndexer] Polling error:', error);
+        Sentry.captureException(error);
+      }
+    };
+
+    // Run initial poll
+    await pollForEvents();
+
+    // Set up polling interval
+    this.pollingInterval = setInterval(pollForEvents, POLLING_INTERVAL_MS);
   }
 
   stop(): void {
     this.isWatching = false;
-    if (this.currentUnwatch) {
-      this.currentUnwatch();
-      this.currentUnwatch = null;
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
     }
     if (this.sigintHandler) {
       process.off('SIGINT', this.sigintHandler);
@@ -369,34 +331,42 @@ class V2PredictionMarketIndexer implements IIndexer {
 
   private async processLog(log: Log, block: Block): Promise<void> {
     try {
-      // Decode and route based on event type
-      const decoded = decodeEventLog({
-        abi: PREDICTION_MARKET_ESCROW_ABI,
-        data: log.data,
-        topics: log.topics,
-      });
+      // Try to decode the event - will throw if not in our ABI
+      let decoded;
+      try {
+        decoded = decodeEventLog({
+          abi: predictionMarketEscrowAbi,
+          data: log.data,
+          topics: log.topics,
+        });
+      } catch {
+        // Skip events not in our ABI (e.g., OwnershipTransferred, etc.)
+        return;
+      }
 
-      switch (decoded.eventName) {
-        case 'Minted':
-          await this.processMinted(decoded.args as MintedEvent, log, block);
+      const eventName = decoded.eventName as unknown as string;
+      switch (eventName) {
+        case 'PredictionCreated':
+          await this.processPredictionCreated(decoded.args as unknown as PredictionCreatedEvent, log, block);
           break;
-        case 'Burned':
-          await this.processBurned(decoded.args as BurnedEvent, log, block);
+        case 'PredictionSettled':
+          await this.processPredictionSettled(decoded.args as unknown as PredictionSettledEvent, log, block);
           break;
-        case 'Settled':
-          await this.processSettled(decoded.args as SettledEvent, log, block);
+        case 'TokensRedeemed':
+          await this.processTokensRedeemed(decoded.args as unknown as TokensRedeemedEvent, log, block);
           break;
-        case 'Redeemed':
-          await this.processRedeemed(decoded.args as RedeemedEvent, log, block);
+        case 'CollateralDeposited':
+          await this.processCollateralDeposited(decoded.args as unknown as CollateralDepositedEvent, log, block);
           break;
-        case 'PickConfigurationCreated':
-          await this.processPickConfigCreated(decoded.args as PickConfigurationCreatedEvent, log, block);
+        case 'DustSwept':
+          await this.processDustSwept(decoded.args as unknown as DustSweptEvent, log, block);
           break;
-        case 'PickConfigurationResolved':
-          await this.processPickConfigResolved(decoded.args as PickConfigurationResolvedEvent, log, block);
+        case 'PositionsBurned':
+          await this.processPositionsBurned(decoded.args as unknown as PositionsBurnedEvent, log, block);
           break;
         default:
-          console.log(`[V2PredictionMarketIndexer] Unknown event`);
+          // Silently skip other events (e.g., OwnershipTransferred)
+          break;
       }
     } catch (error) {
       console.error('[V2PredictionMarketIndexer] Error processing log:', error);
@@ -404,52 +374,17 @@ class V2PredictionMarketIndexer implements IIndexer {
     }
   }
 
-  private async processMinted(
-    event: MintedEvent,
+  private async processPredictionCreated(
+    event: PredictionCreatedEvent,
     log: Log,
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing Minted event: predictionId=${event.predictionId}`
+      `[V2PredictionMarketIndexer] Processing PredictionCreated event: predictionId=${event.predictionId}`
     );
 
-    const timestamp = Number(block.timestamp);
     const predictionIdLower = event.predictionId.toLowerCase();
-    const pickConfigIdLower = event.pickConfigId.toLowerCase();
-
-    // Handle pick configuration upsert with collateral accumulation
-    const existingConfig = await prisma.v2PickConfiguration.findUnique({
-      where: { id: pickConfigIdLower },
-    });
-
-    if (existingConfig) {
-      // Accumulate collateral
-      const newPredictorCollateral = (
-        BigInt(existingConfig.totalPredictorCollateral) + event.predictorWager
-      ).toString();
-      const newCounterpartyCollateral = (
-        BigInt(existingConfig.totalCounterpartyCollateral) + event.counterpartyWager
-      ).toString();
-
-      await prisma.v2PickConfiguration.update({
-        where: { id: pickConfigIdLower },
-        data: {
-          totalPredictorCollateral: newPredictorCollateral,
-          totalCounterpartyCollateral: newCounterpartyCollateral,
-        },
-      });
-    } else {
-      // Create new configuration
-      await prisma.v2PickConfiguration.create({
-        data: {
-          id: pickConfigIdLower,
-          chainId: this.chainId,
-          marketAddress: this.contractAddress.toLowerCase(),
-          totalPredictorCollateral: event.predictorWager.toString(),
-          totalCounterpartyCollateral: event.counterpartyWager.toString(),
-        },
-      });
-    }
+    const timestamp = Number(block.timestamp);
 
     // Create prediction record
     await prisma.v2Prediction.upsert({
@@ -458,17 +393,14 @@ class V2PredictionMarketIndexer implements IIndexer {
         predictionId: predictionIdLower,
         chainId: this.chainId,
         marketAddress: this.contractAddress.toLowerCase(),
-        pickConfigId: pickConfigIdLower,
         predictor: event.predictor.toLowerCase(),
         counterparty: event.counterparty.toLowerCase(),
+        predictorToken: event.predictorToken.toLowerCase(),
+        counterpartyToken: event.counterpartyToken.toLowerCase(),
         predictorWager: event.predictorWager.toString(),
         counterpartyWager: event.counterpartyWager.toString(),
-        predictorTokensMinted: event.predictorTokensMinted.toString(),
-        counterpartyTokensMinted: event.counterpartyTokensMinted.toString(),
-        predictorNonce: event.predictorNonce.toString(),
-        counterpartyNonce: event.counterpartyNonce.toString(),
-        mintedAt: timestamp,
-        mintTxHash: log.transactionHash || '',
+        onChainCreatedAt: timestamp,
+        createTxHash: log.transactionHash || '',
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
       },
       update: {
@@ -477,17 +409,121 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Created prediction ${predictionIdLower} for pickConfig ${pickConfigIdLower}`
+      `[V2PredictionMarketIndexer] Created prediction ${predictionIdLower}`
     );
   }
 
-  private async processBurned(
-    event: BurnedEvent,
+  private async processPredictionSettled(
+    event: PredictionSettledEvent,
     log: Log,
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing Burned event: pickConfigId=${event.pickConfigId}`
+      `[V2PredictionMarketIndexer] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
+    );
+
+    const timestamp = Number(block.timestamp);
+    const predictionIdLower = event.predictionId.toLowerCase();
+
+    // Update prediction as settled
+    await prisma.v2Prediction.updateMany({
+      where: { predictionId: predictionIdLower },
+      data: {
+        settled: true,
+        settledAt: timestamp,
+        settleTxHash: log.transactionHash || '',
+        result: mapSettlementResult(event.result),
+        predictorClaimable: event.predictorClaimable.toString(),
+        counterpartyClaimable: event.counterpartyClaimable.toString(),
+      },
+    });
+
+    console.log(
+      `[V2PredictionMarketIndexer] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
+    );
+  }
+
+  private async processTokensRedeemed(
+    event: TokensRedeemedEvent,
+    log: Log,
+    block: Block
+  ): Promise<void> {
+    console.log(
+      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: predictionId=${event.predictionId}, holder=${event.holder}`
+    );
+
+    const timestamp = Number(block.timestamp);
+    const predictionIdLower = event.predictionId.toLowerCase();
+
+    // Create redemption record
+    await prisma.v2RedemptionRecord.create({
+      data: {
+        chainId: this.chainId,
+        marketAddress: this.contractAddress.toLowerCase(),
+        predictionId: predictionIdLower,
+        holder: event.holder.toLowerCase(),
+        positionToken: event.positionToken.toLowerCase(),
+        tokensBurned: event.tokensBurned.toString(),
+        collateralPaid: event.collateralPaid.toString(),
+        redeemedAt: timestamp,
+        txHash: log.transactionHash || '',
+        refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+      },
+    });
+
+    console.log(
+      `[V2PredictionMarketIndexer] Created redemption record for prediction ${predictionIdLower}`
+    );
+  }
+
+  private async processCollateralDeposited(
+    event: CollateralDepositedEvent,
+    log: Log,
+    block: Block
+  ): Promise<void> {
+    console.log(
+      `[V2PredictionMarketIndexer] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
+    );
+
+    const timestamp = Number(block.timestamp);
+    const predictionIdLower = event.predictionId.toLowerCase();
+
+    // Update prediction with deposited collateral
+    await prisma.v2Prediction.updateMany({
+      where: { predictionId: predictionIdLower },
+      data: {
+        collateralDeposited: event.totalAmount.toString(),
+        collateralDepositedAt: timestamp,
+      },
+    });
+
+    console.log(
+      `[V2PredictionMarketIndexer] Updated collateral deposited for prediction ${predictionIdLower}`
+    );
+  }
+
+  private async processDustSwept(
+    event: DustSweptEvent,
+    log: Log,
+    block: Block
+  ): Promise<void> {
+    console.log(
+      `[V2PredictionMarketIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
+    );
+
+    // DustSwept is informational - log it but no DB action needed
+    console.log(
+      `[V2PredictionMarketIndexer] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
+    );
+  }
+
+  private async processPositionsBurned(
+    event: PositionsBurnedEvent,
+    log: Log,
+    block: Block
+  ): Promise<void> {
+    console.log(
+      `[V2PredictionMarketIndexer] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
     );
 
     const timestamp = Number(block.timestamp);
@@ -501,8 +537,8 @@ class V2PredictionMarketIndexer implements IIndexer {
         pickConfigId: pickConfigIdLower,
         predictorHolder: event.predictorHolder.toLowerCase(),
         counterpartyHolder: event.counterpartyHolder.toLowerCase(),
-        predictorTokenAmount: event.predictorTokenAmount.toString(),
-        counterpartyTokenAmount: event.counterpartyTokenAmount.toString(),
+        predictorTokensBurned: event.predictorTokensBurned.toString(),
+        counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
         predictorPayout: event.predictorPayout.toString(),
         counterpartyPayout: event.counterpartyPayout.toString(),
         burnedAt: timestamp,
@@ -513,153 +549,6 @@ class V2PredictionMarketIndexer implements IIndexer {
 
     console.log(
       `[V2PredictionMarketIndexer] Created burn record for pickConfig ${pickConfigIdLower}`
-    );
-  }
-
-  private async processSettled(
-    event: SettledEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
-    console.log(
-      `[V2PredictionMarketIndexer] Processing Settled event: predictionId=${event.predictionId}`
-    );
-
-    const timestamp = Number(block.timestamp);
-    const predictionIdLower = event.predictionId.toLowerCase();
-
-    // Update prediction as settled
-    await prisma.v2Prediction.updateMany({
-      where: { predictionId: predictionIdLower },
-      data: {
-        settled: true,
-        settledAt: timestamp,
-        settleTxHash: log.transactionHash || '',
-      },
-    });
-
-    console.log(
-      `[V2PredictionMarketIndexer] Marked prediction ${predictionIdLower} as settled`
-    );
-  }
-
-  private async processRedeemed(
-    event: RedeemedEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
-    console.log(
-      `[V2PredictionMarketIndexer] Processing Redeemed event: pickConfigId=${event.pickConfigId}, redeemer=${event.redeemer}`
-    );
-
-    const timestamp = Number(block.timestamp);
-    const pickConfigIdLower = event.pickConfigId.toLowerCase();
-
-    // Create redemption record
-    await prisma.v2RedemptionRecord.create({
-      data: {
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        pickConfigId: pickConfigIdLower,
-        redeemer: event.redeemer.toLowerCase(),
-        positionToken: event.positionToken.toLowerCase(),
-        tokenAmount: event.tokenAmount.toString(),
-        collateralPaid: event.collateralPaid.toString(),
-        redeemedAt: timestamp,
-        txHash: log.transactionHash || '',
-      },
-    });
-
-    // Update claimed collateral on pick configuration
-    const pickConfig = await prisma.v2PickConfiguration.findUnique({
-      where: { id: pickConfigIdLower },
-    });
-
-    if (pickConfig) {
-      const isPredictorToken = pickConfig.predictorToken?.toLowerCase() === event.positionToken.toLowerCase();
-
-      if (isPredictorToken) {
-        const newClaimed = (
-          BigInt(pickConfig.claimedPredictorCollateral) + event.collateralPaid
-        ).toString();
-        await prisma.v2PickConfiguration.update({
-          where: { id: pickConfigIdLower },
-          data: { claimedPredictorCollateral: newClaimed },
-        });
-      } else {
-        const newClaimed = (
-          BigInt(pickConfig.claimedCounterpartyCollateral) + event.collateralPaid
-        ).toString();
-        await prisma.v2PickConfiguration.update({
-          where: { id: pickConfigIdLower },
-          data: { claimedCounterpartyCollateral: newClaimed },
-        });
-      }
-    }
-
-    console.log(
-      `[V2PredictionMarketIndexer] Created redemption record for pickConfig ${pickConfigIdLower}`
-    );
-  }
-
-  private async processPickConfigCreated(
-    event: PickConfigurationCreatedEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
-    console.log(
-      `[V2PredictionMarketIndexer] Processing PickConfigurationCreated event: pickConfigId=${event.pickConfigId}`
-    );
-
-    const pickConfigIdLower = event.pickConfigId.toLowerCase();
-
-    // Update pick configuration with token addresses
-    await prisma.v2PickConfiguration.upsert({
-      where: { id: pickConfigIdLower },
-      create: {
-        id: pickConfigIdLower,
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        totalPredictorCollateral: '0',
-        totalCounterpartyCollateral: '0',
-        predictorToken: event.predictorToken.toLowerCase(),
-        counterpartyToken: event.counterpartyToken.toLowerCase(),
-      },
-      update: {
-        predictorToken: event.predictorToken.toLowerCase(),
-        counterpartyToken: event.counterpartyToken.toLowerCase(),
-      },
-    });
-
-    console.log(
-      `[V2PredictionMarketIndexer] Set token addresses for pickConfig ${pickConfigIdLower}`
-    );
-  }
-
-  private async processPickConfigResolved(
-    event: PickConfigurationResolvedEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
-    console.log(
-      `[V2PredictionMarketIndexer] Processing PickConfigurationResolved event: pickConfigId=${event.pickConfigId}, result=${event.result}`
-    );
-
-    const timestamp = Number(block.timestamp);
-    const pickConfigIdLower = event.pickConfigId.toLowerCase();
-
-    // Update pick configuration as resolved
-    await prisma.v2PickConfiguration.updateMany({
-      where: { id: pickConfigIdLower },
-      data: {
-        resolved: true,
-        result: mapSettlementResult(event.result),
-        resolvedAt: timestamp,
-      },
-    });
-
-    console.log(
-      `[V2PredictionMarketIndexer] Marked pickConfig ${pickConfigIdLower} as resolved with result ${mapSettlementResult(event.result)}`
     );
   }
 }

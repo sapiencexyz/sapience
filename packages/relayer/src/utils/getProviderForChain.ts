@@ -66,10 +66,10 @@ export const etherealTestnetChain: viem.Chain = {
     default: {
       http: [
         process.env.CHAIN_13374202_RPC_URL ||
-          'https://testnet.ethereal.network/rpc',
+          'https://rpc.etherealtest.net/',
       ],
     },
-    public: { http: ['https://testnet.ethereal.network/rpc'] },
+    public: { http: ['https://rpc.etherealtest.net/'] },
   },
 };
 
@@ -138,7 +138,7 @@ const createChainClient = (
   if (chain.id === 13374202) {
     const rpcUrl =
       process.env.CHAIN_13374202_RPC_URL ||
-      'https://testnet.ethereal.network/rpc';
+      'https://rpc.etherealtest.net/';
     return createPublicClient({
       chain,
       transport: http(rpcUrl),

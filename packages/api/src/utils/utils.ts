@@ -44,10 +44,30 @@ export const etherealChain: viem.Chain = {
   },
 };
 
+export const etherealTestnetChain: viem.Chain = {
+  id: 13374202,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    name: 'Ethena USDe',
+    symbol: 'USDe',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: [
+        process.env.CHAIN_13374202_RPC_URL ||
+          'https://rpc.etherealtest.net/',
+      ],
+    },
+    public: { http: ['https://rpc.etherealtest.net/'] },
+  },
+};
+
 export const chains: viem.Chain[] = [
   ...Object.values(viemChains),
   convergeChain,
   etherealChain,
+  etherealTestnetChain,
 ];
 
 // Load environment variables
@@ -90,7 +110,21 @@ const createChainClient = (
   }
 
   if (chain.id === 5064014) {
-    const rpcUrl = 'https://rpc.ethereal.trade';
+    const rpcUrl =
+      process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
+    return createPublicClient({
+      chain,
+      transport: http(rpcUrl),
+      batch: {
+        multicall: true,
+      },
+    });
+  }
+
+  if (chain.id === 13374202) {
+    const rpcUrl =
+      process.env.CHAIN_13374202_RPC_URL ||
+      'https://rpc.etherealtest.net/';
     return createPublicClient({
       chain,
       transport: http(rpcUrl),
@@ -149,6 +183,9 @@ export function getProviderForChain(chainId: number): PublicClient {
       break;
     case 5064014:
       newClient = createChainClient(etherealChain, 'ethereal');
+      break;
+    case 13374202:
+      newClient = createChainClient(etherealTestnetChain, 'ethereal-testnet');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);

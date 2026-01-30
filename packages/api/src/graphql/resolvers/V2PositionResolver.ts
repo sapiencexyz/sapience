@@ -67,9 +67,6 @@ class V2PickConfigurationType {
 
   @Field(() => [V2PickType])
   picks!: V2PickType[];
-
-  @Field(() => Int)
-  predictionsCount!: number;
 }
 
 @ObjectType()
@@ -87,13 +84,16 @@ class V2PredictionType {
   marketAddress!: string;
 
   @Field(() => String)
-  pickConfigId!: string;
-
-  @Field(() => String)
   predictor!: string;
 
   @Field(() => String)
   counterparty!: string;
+
+  @Field(() => String)
+  predictorToken!: string;
+
+  @Field(() => String)
+  counterpartyToken!: string;
 
   @Field(() => String)
   predictorWager!: string;
@@ -101,17 +101,11 @@ class V2PredictionType {
   @Field(() => String)
   counterpartyWager!: string;
 
-  @Field(() => String)
-  predictorTokensMinted!: string;
+  @Field(() => String, { nullable: true })
+  collateralDeposited?: string | null;
 
-  @Field(() => String)
-  counterpartyTokensMinted!: string;
-
-  @Field(() => String)
-  predictorNonce!: string;
-
-  @Field(() => String)
-  counterpartyNonce!: string;
+  @Field(() => Int, { nullable: true })
+  collateralDepositedAt?: number | null;
 
   @Field(() => Boolean)
   settled!: boolean;
@@ -119,20 +113,23 @@ class V2PredictionType {
   @Field(() => Int, { nullable: true })
   settledAt?: number | null;
 
-  @Field(() => Int)
-  mintedAt!: number;
+  @Field(() => String)
+  result!: string;
+
+  @Field(() => String, { nullable: true })
+  predictorClaimable?: string | null;
+
+  @Field(() => String, { nullable: true })
+  counterpartyClaimable?: string | null;
 
   @Field(() => String)
-  mintTxHash!: string;
+  createTxHash!: string;
 
   @Field(() => String, { nullable: true })
   settleTxHash?: string | null;
 
   @Field(() => String, { nullable: true })
   refCode?: string | null;
-
-  @Field(() => V2PickConfigurationType, { nullable: true })
-  pickConfiguration?: V2PickConfigurationType | null;
 }
 
 @ObjectType()
@@ -180,10 +177,10 @@ class V2BurnRecordType {
   counterpartyHolder!: string;
 
   @Field(() => String)
-  predictorTokenAmount!: string;
+  predictorTokensBurned!: string;
 
   @Field(() => String)
-  counterpartyTokenAmount!: string;
+  counterpartyTokensBurned!: string;
 
   @Field(() => String)
   predictorPayout!: string;
@@ -213,16 +210,16 @@ class V2RedemptionRecordType {
   marketAddress!: string;
 
   @Field(() => String)
-  pickConfigId!: string;
+  predictionId!: string;
 
   @Field(() => String)
-  redeemer!: string;
+  holder!: string;
 
   @Field(() => String)
   positionToken!: string;
 
   @Field(() => String)
-  tokenAmount!: string;
+  tokensBurned!: string;
 
   @Field(() => String)
   collateralPaid!: string;
@@ -232,6 +229,9 @@ class V2RedemptionRecordType {
 
   @Field(() => String)
   txHash!: string;
+
+  @Field(() => String, { nullable: true })
+  refCode?: string | null;
 }
 
 // ============================================================================
@@ -266,12 +266,10 @@ export class V2PositionResolver {
     @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true }) orderDirection?: string
   ): Promise<V2PredictionType[]> {
     const addr = address?.toLowerCase();
-    const pickConfigIdLower = pickConfigId?.toLowerCase();
 
     const where: Prisma.V2PredictionWhereInput = {};
 
@@ -284,21 +282,18 @@ export class V2PositionResolver {
     if (settled !== undefined && settled !== null) {
       where.settled = settled;
     }
-    if (pickConfigIdLower) {
-      where.pickConfigId = pickConfigIdLower;
-    }
 
     // If no filters provided, return empty
-    if (!addr && !pickConfigIdLower) {
+    if (!addr) {
       return [];
     }
 
     let orderByClause: Prisma.V2PredictionOrderByWithRelationInput = {
-      mintedAt: 'desc',
+      createdAt: 'desc',
     };
 
-    if (orderBy === 'mintedAt') {
-      orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
+    if (orderBy === 'createdAt') {
+      orderByClause = { createdAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     } else if (orderBy === 'settledAt') {
       orderByClause = { settledAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
@@ -308,13 +303,6 @@ export class V2PositionResolver {
       orderBy: orderByClause,
       take,
       skip,
-      include: {
-        pickConfiguration: {
-          include: {
-            picks: true,
-          },
-        },
-      },
     });
 
     return rows.map((r) => ({
@@ -322,46 +310,22 @@ export class V2PositionResolver {
       predictionId: r.predictionId,
       chainId: r.chainId,
       marketAddress: r.marketAddress,
-      pickConfigId: r.pickConfigId,
       predictor: r.predictor,
       counterparty: r.counterparty,
+      predictorToken: r.predictorToken,
+      counterpartyToken: r.counterpartyToken,
       predictorWager: r.predictorWager,
       counterpartyWager: r.counterpartyWager,
-      predictorTokensMinted: r.predictorTokensMinted,
-      counterpartyTokensMinted: r.counterpartyTokensMinted,
-      predictorNonce: r.predictorNonce,
-      counterpartyNonce: r.counterpartyNonce,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
       settled: r.settled,
       settledAt: r.settledAt ?? null,
-      mintedAt: r.mintedAt,
-      mintTxHash: r.mintTxHash,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfiguration: r.pickConfiguration
-        ? {
-            id: r.pickConfiguration.id,
-            chainId: r.pickConfiguration.chainId,
-            marketAddress: r.pickConfiguration.marketAddress,
-            totalPredictorCollateral: r.pickConfiguration.totalPredictorCollateral,
-            totalCounterpartyCollateral: r.pickConfiguration.totalCounterpartyCollateral,
-            claimedPredictorCollateral: r.pickConfiguration.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: r.pickConfiguration.claimedCounterpartyCollateral,
-            resolved: r.pickConfiguration.resolved,
-            result: r.pickConfiguration.result,
-            resolvedAt: r.pickConfiguration.resolvedAt ?? null,
-            predictorToken: r.pickConfiguration.predictorToken ?? null,
-            counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
-            endsAt: r.pickConfiguration.endsAt ?? null,
-            picks: r.pickConfiguration.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-            predictionsCount: 0, // Will be filled by separate query if needed
-          }
-        : null,
     }));
   }
 
@@ -373,16 +337,6 @@ export class V2PositionResolver {
 
     const r = await prisma.v2Prediction.findUnique({
       where: { predictionId: predictionIdLower },
-      include: {
-        pickConfiguration: {
-          include: {
-            picks: true,
-            _count: {
-              select: { predictions: true },
-            },
-          },
-        },
-      },
     });
 
     if (!r) return null;
@@ -392,46 +346,22 @@ export class V2PositionResolver {
       predictionId: r.predictionId,
       chainId: r.chainId,
       marketAddress: r.marketAddress,
-      pickConfigId: r.pickConfigId,
       predictor: r.predictor,
       counterparty: r.counterparty,
+      predictorToken: r.predictorToken,
+      counterpartyToken: r.counterpartyToken,
       predictorWager: r.predictorWager,
       counterpartyWager: r.counterpartyWager,
-      predictorTokensMinted: r.predictorTokensMinted,
-      counterpartyTokensMinted: r.counterpartyTokensMinted,
-      predictorNonce: r.predictorNonce,
-      counterpartyNonce: r.counterpartyNonce,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
       settled: r.settled,
       settledAt: r.settledAt ?? null,
-      mintedAt: r.mintedAt,
-      mintTxHash: r.mintTxHash,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfiguration: r.pickConfiguration
-        ? {
-            id: r.pickConfiguration.id,
-            chainId: r.pickConfiguration.chainId,
-            marketAddress: r.pickConfiguration.marketAddress,
-            totalPredictorCollateral: r.pickConfiguration.totalPredictorCollateral,
-            totalCounterpartyCollateral: r.pickConfiguration.totalCounterpartyCollateral,
-            claimedPredictorCollateral: r.pickConfiguration.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: r.pickConfiguration.claimedCounterpartyCollateral,
-            resolved: r.pickConfiguration.resolved,
-            result: r.pickConfiguration.result,
-            resolvedAt: r.pickConfiguration.resolvedAt ?? null,
-            predictorToken: r.pickConfiguration.predictorToken ?? null,
-            counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
-            endsAt: r.pickConfiguration.endsAt ?? null,
-            picks: r.pickConfiguration.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-            predictionsCount: r.pickConfiguration._count.predictions,
-          }
-        : null,
     };
   }
 
@@ -466,9 +396,6 @@ export class V2PositionResolver {
       skip,
       include: {
         picks: true,
-        _count: {
-          select: { predictions: true },
-        },
       },
     });
 
@@ -493,7 +420,6 @@ export class V2PositionResolver {
         conditionId: p.conditionId,
         predictedOutcome: p.predictedOutcome,
       })),
-      predictionsCount: r._count.predictions,
     }));
   }
 
@@ -507,9 +433,6 @@ export class V2PositionResolver {
       where: { id: idLower },
       include: {
         picks: true,
-        _count: {
-          select: { predictions: true },
-        },
       },
     });
 
@@ -536,7 +459,6 @@ export class V2PositionResolver {
         conditionId: p.conditionId,
         predictedOutcome: p.predictedOutcome,
       })),
-      predictionsCount: r._count.predictions,
     };
   }
 
@@ -633,8 +555,8 @@ export class V2PositionResolver {
       pickConfigId: r.pickConfigId,
       predictorHolder: r.predictorHolder,
       counterpartyHolder: r.counterpartyHolder,
-      predictorTokenAmount: r.predictorTokenAmount,
-      counterpartyTokenAmount: r.counterpartyTokenAmount,
+      predictorTokensBurned: r.predictorTokensBurned,
+      counterpartyTokensBurned: r.counterpartyTokensBurned,
       predictorPayout: r.predictorPayout,
       counterpartyPayout: r.counterpartyPayout,
       burnedAt: r.burnedAt,
@@ -651,27 +573,27 @@ export class V2PositionResolver {
   async v2RedemptionRecords(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
-    @Arg('redeemer', () => String, { nullable: true }) redeemer?: string,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('holder', () => String, { nullable: true }) holder?: string,
+    @Arg('predictionId', () => String, { nullable: true }) predictionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<V2RedemptionRecordType[]> {
-    const redeemerLower = redeemer?.toLowerCase();
-    const pickConfigIdLower = pickConfigId?.toLowerCase();
+    const holderLower = holder?.toLowerCase();
+    const predictionIdLower = predictionId?.toLowerCase();
 
     const where: Prisma.V2RedemptionRecordWhereInput = {};
 
-    if (redeemerLower) {
-      where.redeemer = redeemerLower;
+    if (holderLower) {
+      where.holder = holderLower;
     }
-    if (pickConfigIdLower) {
-      where.pickConfigId = pickConfigIdLower;
+    if (predictionIdLower) {
+      where.predictionId = predictionIdLower;
     }
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
 
     // Require at least one filter
-    if (!redeemerLower && !pickConfigIdLower) {
+    if (!holderLower && !predictionIdLower) {
       return [];
     }
 
@@ -686,13 +608,14 @@ export class V2PositionResolver {
       id: r.id,
       chainId: r.chainId,
       marketAddress: r.marketAddress,
-      pickConfigId: r.pickConfigId,
-      redeemer: r.redeemer,
+      predictionId: r.predictionId,
+      holder: r.holder,
       positionToken: r.positionToken,
-      tokenAmount: r.tokenAmount,
+      tokensBurned: r.tokensBurned,
       collateralPaid: r.collateralPaid,
       redeemedAt: r.redeemedAt,
       txHash: r.txHash,
+      refCode: r.refCode ?? null,
     }));
   }
 }
