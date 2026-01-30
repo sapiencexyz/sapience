@@ -172,12 +172,14 @@ function AnalyticsPageContent(): React.ReactElement {
 
     return protocolStats.map((point) => {
       const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
+      const vaultDeployed = parseFloat(point.vaultDeployed) / 1e18;
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       return {
         timestamp: point.timestamp,
         openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + escrowBalance,
+        totalBalance: vaultBalance + vaultDeployed + escrowBalance,
         vaultBalance,
+        vaultDeployed,
         escrowBalance,
       };
     });
@@ -206,7 +208,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -237,7 +239,12 @@ function AnalyticsPageContent(): React.ReactElement {
                           Protocol Vault Reserve
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.vaultBalance || '0')}{' '}
+                          {formatNumber(
+                            String(
+                              BigInt(summary?.vaultBalance || '0') +
+                                BigInt(summary?.vaultDeployed || '0')
+                            )
+                          )}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -255,6 +262,7 @@ function AnalyticsPageContent(): React.ReactElement {
                     {formatNumber(
                       String(
                         BigInt(summary?.vaultBalance || '0') +
+                          BigInt(summary?.vaultDeployed || '0') +
                           BigInt(summary?.escrowBalance || '0')
                       )
                     )}{' '}
@@ -307,7 +315,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Charts */}
-        <div className="space-y-8">
+        <div className="space-y-4 md:space-y-8">
           {/* Volume Chart - Daily Bar */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">

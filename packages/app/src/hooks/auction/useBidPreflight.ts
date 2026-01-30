@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
@@ -9,6 +9,7 @@ import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 type PreflightBlockedReason =
   | 'chain_switch_failed'
@@ -63,7 +64,7 @@ export function useBidPreflight(
   options: UseBidPreflightOptions = {}
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
-  const { address } = useAccount();
+  const { currentAddress } = useCurrentAddress();
   const chainId = CHAIN_ID_ETHEREAL;
 
   const {
@@ -73,9 +74,9 @@ export function useBidPreflight(
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
   } = useCollateralBalance({
-    address,
+    address: currentAddress,
     chainId,
-    enabled: Boolean(address),
+    enabled: Boolean(currentAddress),
   });
 
   const { validateAndSwitchChain } = useChainValidation({
@@ -115,19 +116,19 @@ export function useBidPreflight(
   // Read allowance for connected address -> PredictionMarket
   const allowanceRead = useReadContracts({
     contracts:
-      address && COLLATERAL_ADDRESS && SPENDER_ADDRESS
+      currentAddress && COLLATERAL_ADDRESS && SPENDER_ADDRESS
         ? [
             {
               address: COLLATERAL_ADDRESS,
               abi: erc20Abi as any,
               functionName: 'allowance',
-              args: [address, SPENDER_ADDRESS],
+              args: [currentAddress, SPENDER_ADDRESS],
               chainId: chainId,
             },
           ]
         : [],
     query: {
-      enabled: Boolean(address && COLLATERAL_ADDRESS && SPENDER_ADDRESS),
+      enabled: Boolean(currentAddress && COLLATERAL_ADDRESS && SPENDER_ADDRESS),
     },
   });
 
@@ -159,7 +160,7 @@ export function useBidPreflight(
    */
   const checkReadiness = useCallback(
     (requiredAmount: number): PreflightResult => {
-      if (!address) {
+      if (!currentAddress) {
         return {
           canProceed: false,
           blockedReason: 'wallet_not_connected',
@@ -206,7 +207,7 @@ export function useBidPreflight(
         blockedReason: null,
       };
     },
-    [address, balance, allowanceValue]
+    [currentAddress, balance, allowanceValue]
   );
 
   /**
@@ -214,7 +215,7 @@ export function useBidPreflight(
    */
   const runPreflight = useCallback(
     async (requiredAmount: number): Promise<PreflightResult> => {
-      if (!address) {
+      if (!currentAddress) {
         return {
           canProceed: false,
           blockedReason: 'wallet_not_connected',
@@ -275,7 +276,7 @@ export function useBidPreflight(
         blockedReason: null,
       };
     },
-    [address, chainId, balance, allowanceValue, validateAndSwitchChain]
+    [currentAddress, chainId, balance, allowanceValue, validateAndSwitchChain]
   );
 
   return {
