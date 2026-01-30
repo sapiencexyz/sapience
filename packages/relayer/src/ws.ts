@@ -350,7 +350,12 @@ export function createAuctionWebSocketServer() {
       })
       .catch(() => undefined)) as string | undefined;
     const set = new Set<string>();
-    if (manager) set.add(manager.toLowerCase());
+    if (manager) {
+      set.add(manager.toLowerCase());
+    } else if (config.DEFAULT_VAULT_MANAGER) {
+      // Fallback to default manager if vault contract not deployed
+      set.add(config.DEFAULT_VAULT_MANAGER.toLowerCase());
+    }
     return set;
   }
   function buildVaultCanonicalMessage(
