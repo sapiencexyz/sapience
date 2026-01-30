@@ -37,6 +37,7 @@ import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
+  '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
 ];
 
 const VaultsPageContent = () => {
