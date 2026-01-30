@@ -206,7 +206,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -307,7 +307,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Charts */}
-        <div className="space-y-8">
+        <div className="space-y-4 md:space-y-8">
           {/* Volume Chart - Daily Bar */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">

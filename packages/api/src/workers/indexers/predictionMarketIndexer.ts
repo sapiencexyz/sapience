@@ -20,8 +20,14 @@ import {
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
-import { lzConditionalTokenResolverAbi } from '@sapience/sdk/abis';
+import {
+  predictionMarketLZConditionalTokensResolver,
+  passiveLiquidityVault,
+} from '@sapience/sdk/contracts';
+import {
+  lzConditionalTokenResolverAbi,
+  liquidityVaultAbi,
+} from '@sapience/sdk/abis';
 
 /**
  * Pyth markets are synthetic placeholders created from on-chain Pyth outcomes.
@@ -204,6 +210,20 @@ const CONDITION_RESOLVED_EVENT_ABI = [
       { name: 'noPayout', type: 'uint256', indexed: false },
       { name: 'yesPayout', type: 'uint256', indexed: false },
       { name: 'timestamp', type: 'uint256', indexed: false },
+    ],
+  },
+] as const;
+
+// PendingRequestProcessed event ABI for vault deposit/withdrawal tracking
+const PENDING_REQUEST_PROCESSED_ABI = [
+  {
+    type: 'event',
+    name: 'PendingRequestProcessed',
+    inputs: [
+      { name: 'user', type: 'address', indexed: true },
+      { name: 'direction', type: 'bool', indexed: false },
+      { name: 'shares', type: 'uint256', indexed: false },
+      { name: 'assets', type: 'uint256', indexed: false },
     ],
   },
 ] as const;
@@ -392,6 +412,13 @@ interface ConditionResolvedEvent {
   timestamp: bigint;
 }
 
+interface PendingRequestProcessedEvent {
+  user: string;
+  direction: boolean; // true = deposit, false = withdrawal
+  shares: bigint;
+  assets: bigint;
+}
+
 class PredictionMarketIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
@@ -399,6 +426,7 @@ class PredictionMarketIndexer implements IIndexer {
   private contractAddress: `0x${string}`;
   private resolverAddress: `0x${string}` | undefined;
   private lzConditionalTokenResolverAddress: `0x${string}` | undefined;
+  private vaultAddress: `0x${string}` | undefined;
   private sigintHandler: (() => void) | null = null;
   private currentUnwatch: (() => void) | null = null;
 
@@ -442,6 +470,16 @@ class PredictionMarketIndexer implements IIndexer {
         lzConditionalTokenResolverEntry.address as `0x${string}`;
       console.log(
         `[PredictionMarketIndexer] Found LZ Conditional Token Resolver address for chain ${chainId}: ${this.lzConditionalTokenResolverAddress}`
+      );
+    }
+
+    // Get the vault address for flow event indexing
+    const vaultEntry =
+      passiveLiquidityVault[chainId as keyof typeof passiveLiquidityVault];
+    if (vaultEntry?.address) {
+      this.vaultAddress = vaultEntry.address as `0x${string}`;
+      console.log(
+        `[PredictionMarketIndexer] Found vault address for chain ${chainId}: ${this.vaultAddress}`
       );
     }
   }
@@ -566,6 +604,9 @@ class PredictionMarketIndexer implements IIndexer {
               this.lzConditionalTokenResolverAddress as `0x${string}`
             );
           }
+          if (this.vaultAddress) {
+            addresses.push(this.vaultAddress as `0x${string}`);
+          }
           const logs = await this.client.getLogs({
             address: addresses,
             fromBlock: BigInt(fromBlock),
@@ -645,6 +686,9 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.lzConditionalTokenResolverAddress) {
         addresses.push(this.lzConditionalTokenResolverAddress as `0x${string}`);
       }
+      if (this.vaultAddress) {
+        addresses.push(this.vaultAddress as `0x${string}`);
+      }
       const logs = await this.client.getLogs({
         address: addresses,
         fromBlock: BigInt(blockNumber),
@@ -685,6 +729,9 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.lzConditionalTokenResolverAddress) {
         addressesToCheck.push(this.lzConditionalTokenResolverAddress);
       }
+      if (this.vaultAddress) {
+        addressesToCheck.push(this.vaultAddress);
+      }
 
       if (
         !addressesToCheck
@@ -692,7 +739,7 @@ class PredictionMarketIndexer implements IIndexer {
           .includes(log.address.toLowerCase())
       ) {
         console.log(
-          `[PredictionMarketIndexer] Skipping log: ${log.address} is not the PredictionMarket or Resolver contract`
+          `[PredictionMarketIndexer] Skipping log: ${log.address} is not the PredictionMarket, Resolver, or Vault contract`
         );
         return;
       }
@@ -735,6 +782,9 @@ class PredictionMarketIndexer implements IIndexer {
           'ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)'
         )
       );
+      const pendingRequestProcessedTopic = keccak256(
+        toHex('PendingRequestProcessed(address,bool,uint256,uint256)')
+      );
 
       if (log.topics[0] === predictionMintedTopic) {
         await this.processPredictionMinted(log, block);
@@ -754,6 +804,8 @@ class PredictionMarketIndexer implements IIndexer {
         await this.processMarketSubmittedToUMA(log, block);
       } else if (log.topics[0] === conditionResolvedTopic) {
         await this.processConditionResolved(log, block);
+      } else if (log.topics[0] === pendingRequestProcessedTopic) {
+        await this.processPendingRequestProcessed(log, block);
       }
     } catch (error) {
       console.error('[PredictionMarketIndexer] Error processing log:', error);
@@ -2123,6 +2175,76 @@ class PredictionMarketIndexer implements IIndexer {
     }
   }
 
+  private async processPendingRequestProcessed(
+    log: Log,
+    block: Block
+  ): Promise<void> {
+    try {
+      const decoded = decodeEventLog({
+        abi: PENDING_REQUEST_PROCESSED_ABI,
+        data: log.data,
+        topics: log.topics,
+      }) as { args: PendingRequestProcessedEvent };
+
+      const eventType = decoded.args.direction ? 'deposit' : 'withdrawal';
+
+      const eventData = {
+        eventType,
+        user: decoded.args.user,
+        assets: decoded.args.assets.toString(),
+        shares: decoded.args.shares.toString(),
+        blockNumber: Number(log.blockNumber),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex,
+        timestamp: Number(block.timestamp),
+      };
+
+      // Skip duplicates using unique constraint
+      const eventKey = {
+        chainId: this.chainId,
+        transactionHash: log.transactionHash || '',
+        logIndex: log.logIndex || 0,
+      } as const;
+
+      const existingEvent = await prisma.vaultFlowEvent.findUnique({
+        where: {
+          chainId_transactionHash_logIndex: eventKey,
+        },
+      });
+
+      if (existingEvent) {
+        console.log(
+          `[PredictionMarketIndexer] Skipping duplicate PendingRequestProcessed event tx=${eventKey.transactionHash} logIndex=${eventKey.logIndex}`
+        );
+        return;
+      }
+
+      await prisma.vaultFlowEvent.create({
+        data: {
+          chainId: this.chainId,
+          blockNumber: eventData.blockNumber,
+          transactionHash: eventData.transactionHash || '',
+          timestamp: eventData.timestamp,
+          logIndex: eventData.logIndex || 0,
+          eventType: eventData.eventType,
+          user: eventData.user.toLowerCase(),
+          assets: eventData.assets,
+          shares: eventData.shares,
+        },
+      });
+
+      console.log(
+        `[PredictionMarketIndexer] Processed PendingRequestProcessed: ${eventType} user=${eventData.user} assets=${eventData.assets}`
+      );
+    } catch (error) {
+      console.error(
+        '[PredictionMarketIndexer] Error processing PendingRequestProcessed:',
+        error
+      );
+      Sentry.captureException(error);
+    }
+  }
+
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
       console.log(
@@ -2167,11 +2289,15 @@ class PredictionMarketIndexer implements IIndexer {
       if (this.lzConditionalTokenResolverAddress) {
         addresses.push(this.lzConditionalTokenResolverAddress);
       }
+      if (this.vaultAddress) {
+        addresses.push(this.vaultAddress);
+      }
 
       // Combined ABI for watching all relevant events
       const combinedAbi = [
         ...PREDICTION_MARKET_ABI,
         ...lzConditionalTokenResolverAbi,
+        ...liquidityVaultAbi,
       ];
 
       // Watch for all PredictionMarket events in a single watcher
