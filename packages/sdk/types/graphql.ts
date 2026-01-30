@@ -2496,7 +2496,6 @@ export type ReferralCode = {
   __typename?: 'ReferralCode';
   _count?: Maybe<ReferralCodeCount>;
   claimedBy: Array<User>;
-  code?: Maybe<Scalars['String']['output']>;
   codeHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
@@ -2536,7 +2535,6 @@ export type ReferralCodeNullableRelationFilter = {
 
 export type ReferralCodeOrderByWithRelationInput = {
   claimedBy?: InputMaybe<UserOrderByRelationAggregateInput>;
-  code?: InputMaybe<SortOrderInput>;
   codeHash?: InputMaybe<SortOrder>;
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
@@ -2554,7 +2552,6 @@ export type ReferralCodeWhereInput = {
   NOT?: InputMaybe<Array<ReferralCodeWhereInput>>;
   OR?: InputMaybe<Array<ReferralCodeWhereInput>>;
   claimedBy?: InputMaybe<UserListRelationFilter>;
-  code?: InputMaybe<StringNullableFilter>;
   codeHash?: InputMaybe<StringFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;

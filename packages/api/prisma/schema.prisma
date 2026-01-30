@@ -374,9 +374,7 @@ model ReferralCode {
 
 
   codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
-  code         String?   @db.VarChar
-  description  String?   @db.Text
-  maxClaims    Int       @default(0)
+  maxClaims    Int
   isActive     Boolean   @default(true)
   expiresAt    Int?
   createdBy    String    @db.VarChar

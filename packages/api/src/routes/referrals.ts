@@ -168,35 +168,53 @@ router.post('/code', async (req: Request, res: Response) => {
     return res.status(500).json({ message: 'Failed to verify trading volume' });
   }
 
-  // Check if code already exists in unified ReferralCode table
   try {
-    const existingCode = await prisma.referralCode.findFirst({
+    // Check if this hash is already taken by someone else
+    const existingCodeWithHash = await prisma.referralCode.findFirst({
       where: { codeHash },
     });
 
-    if (existingCode) {
-      // If user already owns this code, return success (idempotent)
+    if (existingCodeWithHash) {
+      // If user already owns this exact code, return success (idempotent)
       if (
-        normalizeAddress(existingCode.createdBy) ===
+        normalizeAddress(existingCodeWithHash.createdBy) ===
         normalizeAddress(walletAddress)
       ) {
         return res.status(200).json({
-          codeHash: existingCode.codeHash,
-          maxClaims: existingCode.maxClaims,
-          creatorType: existingCode.creatorType,
+          codeHash: existingCodeWithHash.codeHash,
+          maxClaims: existingCodeWithHash.maxClaims,
+          creatorType: existingCodeWithHash.creatorType,
         });
       }
+      // Hash taken by someone else
       return res.status(400).json({
         message: 'Unable to set referral code. Please choose a different code.',
       });
     }
-  } catch (e) {
-    console.error('Error checking existing codes', e);
-    return res.status(500).json({ message: 'Internal Server Error' });
-  }
 
-  try {
-    // Create unified referral code entry
+    // Check if user already has a code (to update hash instead of creating new)
+    const existingUserCode = await prisma.referralCode.findFirst({
+      where: {
+        createdBy: normalizeAddress(walletAddress),
+        creatorType: 'user',
+      },
+    });
+
+    if (existingUserCode) {
+      // Update hash on existing record (preserves claimants and claim count)
+      const updatedCode = await prisma.referralCode.update({
+        where: { id: existingUserCode.id },
+        data: { codeHash },
+      });
+
+      return res.status(200).json({
+        codeHash: updatedCode.codeHash,
+        maxClaims: updatedCode.maxClaims,
+        creatorType: updatedCode.creatorType,
+      });
+    }
+
+    // No existing code - create new
     const newCode = await prisma.referralCode.create({
       data: {
         codeHash,
@@ -300,14 +318,14 @@ router.post('/claim', async (req: Request, res: Response) => {
 
     // Validate: isActive, not expired, under capacity
     if (!code.isActive) {
-      return res.status(403).json({ message: 'Code is no longer active' });
+      return res.status(403).json({ message: 'Code is not active' });
     }
 
     if (code.expiresAt && code.expiresAt < Math.floor(Date.now() / 1000)) {
       return res.status(403).json({ message: 'Code has expired' });
     }
 
-    if (code.maxClaims > 0 && code._count.claimedBy >= code.maxClaims) {
+    if (code._count.claimedBy >= code.maxClaims) {
       return res.status(403).json({ message: 'Code has reached claim limit' });
     }
 
@@ -328,10 +346,6 @@ router.post('/claim', async (req: Request, res: Response) => {
 
     return res.status(200).json({
       allowed: true,
-      codeId: code.id,
-      creatorType: code.creatorType,
-      claimCount: code._count.claimedBy + 1,
-      maxClaims: code.maxClaims,
     });
   } catch (e) {
     console.error('Error claiming referral code:', e);
@@ -346,9 +360,8 @@ router.post('/claim', async (req: Request, res: Response) => {
 // POST /referrals/admin/codes - create a new admin referral code
 router.post('/admin/codes', adminAuth, async (req: Request, res: Response) => {
   try {
-    const { code, description, maxClaims, expiresAt, createdBy } = req.body as {
+    const { code, maxClaims, expiresAt, createdBy } = req.body as {
       code?: string;
-      description?: string;
       maxClaims?: number;
       expiresAt?: number;
       createdBy?: string;
@@ -382,32 +395,23 @@ router.post('/admin/codes', adminAuth, async (req: Request, res: Response) => {
     const referralCode = await prisma.referralCode.create({
       data: {
         codeHash,
-        code, // Store plaintext for admin display
-        description: description ?? null,
-        maxClaims: maxClaims ?? 0,
+        maxClaims: maxClaims ?? 1,
         expiresAt: expiresAt ?? null,
         createdBy: normalizeAddress(createdBy),
         creatorType: 'admin',
-      },
-      include: {
-        _count: {
-          select: { claimedBy: true },
-        },
       },
     });
 
     return res.status(201).json({
       id: referralCode.id,
-      code: referralCode.code,
       codeHash: referralCode.codeHash,
-      description: referralCode.description,
       maxClaims: referralCode.maxClaims,
       isActive: referralCode.isActive,
       expiresAt: referralCode.expiresAt,
       createdBy: referralCode.createdBy,
       creatorType: referralCode.creatorType,
       createdAt: referralCode.createdAt,
-      claimCount: referralCode._count.claimedBy,
+      claimCount: 0,
     });
   } catch (e) {
     console.error('Error creating referral code:', e);
@@ -430,9 +434,7 @@ router.get('/admin/codes', adminAuth, async (_req: Request, res: Response) => {
     return res.status(200).json(
       codes.map((c) => ({
         id: c.id,
-        code: c.code, // May be null for user-created codes
         codeHash: c.codeHash,
-        description: c.description,
         maxClaims: c.maxClaims,
         isActive: c.isActive,
         expiresAt: c.expiresAt,
@@ -478,9 +480,7 @@ router.get(
 
       return res.status(200).json({
         id: code.id,
-        code: code.code,
         codeHash: code.codeHash,
-        description: code.description,
         maxClaims: code.maxClaims,
         isActive: code.isActive,
         expiresAt: code.expiresAt,
@@ -517,8 +517,7 @@ router.put(
         return res.status(404).json({ message: 'Referral code not found' });
       }
 
-      const { description, maxClaims, isActive, expiresAt } = req.body as {
-        description?: string | null;
+      const { maxClaims, isActive, expiresAt } = req.body as {
         maxClaims?: number;
         isActive?: boolean;
         expiresAt?: number | null;
@@ -527,7 +526,6 @@ router.put(
       const updatedCode = await prisma.referralCode.update({
         where: { id },
         data: {
-          ...(typeof description !== 'undefined' ? { description } : {}),
           ...(typeof maxClaims !== 'undefined' ? { maxClaims } : {}),
           ...(typeof isActive !== 'undefined' ? { isActive } : {}),
           ...(typeof expiresAt !== 'undefined' ? { expiresAt } : {}),
@@ -541,9 +539,7 @@ router.put(
 
       return res.status(200).json({
         id: updatedCode.id,
-        code: updatedCode.code,
         codeHash: updatedCode.codeHash,
-        description: updatedCode.description,
         maxClaims: updatedCode.maxClaims,
         isActive: updatedCode.isActive,
         expiresAt: updatedCode.expiresAt,
@@ -618,7 +614,6 @@ router.get(
 
       if (userAddresses.length === 0) {
         return res.status(200).json({
-          code: code.code,
           codeHash: code.codeHash,
           claimCount: 0,
           claimants: [],
@@ -709,7 +704,6 @@ router.get(
       });
 
       return res.status(200).json({
-        code: code.code,
         codeHash: code.codeHash,
         claimCount: code.claimedBy.length,
         claimants,

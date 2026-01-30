@@ -2,7 +2,6 @@
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Textarea } from '@sapience/ui/components/ui/textarea';
 import { Switch } from '@sapience/ui/components/ui/switch';
 import {
   Select,
@@ -36,9 +35,7 @@ import { useAdminApi } from '~/hooks/useAdminApi';
 
 type ReferralCodeRow = {
   id: number;
-  code: string | null; // May be null for user-created codes
   codeHash: string;
-  description: string | null;
   maxClaims: number;
   isActive: boolean;
   expiresAt: number | null;
@@ -51,7 +48,6 @@ type ReferralCodeRow = {
 };
 
 type AnalyticsData = {
-  code: string | null;
   codeHash: string;
   claimCount: number;
   claimants: Array<{
@@ -130,7 +126,6 @@ const ReferralCodesTab = ({
 
   // Form state
   const [code, setCode] = useState('');
-  const [description, setDescription] = useState('');
   const [maxClaims, setMaxClaims] = useState<number>(1);
   const [expiresAt, setExpiresAt] = useState<string>('');
   const [isActive, setIsActive] = useState(true);
@@ -178,8 +173,7 @@ const ReferralCodesTab = ({
 
   const resetForm = () => {
     setCode('');
-    setDescription('');
-    setMaxClaims(0);
+    setMaxClaims(1);
     setExpiresAt('');
     setIsActive(true);
     setEditingId(undefined);
@@ -191,7 +185,6 @@ const ReferralCodesTab = ({
       if (editingId) {
         // Update existing code
         await referralFetch(`/referrals/admin/codes/${editingId}`, 'PUT', {
-          description: description || null,
           maxClaims,
           expiresAt: expiresAt
             ? Math.floor(new Date(expiresAt).getTime() / 1000)
@@ -200,13 +193,11 @@ const ReferralCodesTab = ({
         });
         toastRef.current({
           title: 'Saved',
-          description: 'Referral code updated',
         });
       } else {
         // Create new code
         await referralFetch('/referrals/admin/codes', 'POST', {
           code,
-          description: description || null,
           maxClaims,
           expiresAt: expiresAt
             ? Math.floor(new Date(expiresAt).getTime() / 1000)
@@ -215,7 +206,6 @@ const ReferralCodesTab = ({
         });
         toastRef.current({
           title: 'Created',
-          description: 'Referral code created',
         });
       }
       await fetchCodes();
@@ -232,8 +222,7 @@ const ReferralCodesTab = ({
 
   const handleEdit = (row: ReferralCodeRow) => {
     setEditingId(row.id);
-    setCode(row.code || ''); // May be null for user-created codes
-    setDescription(row.description || '');
+    setCode(row.codeHash); // Show hash since plaintext is not stored
     setMaxClaims(row.maxClaims);
     setExpiresAt(
       row.expiresAt
@@ -299,18 +288,15 @@ const ReferralCodesTab = ({
   const columns: ColumnDef<ReferralCodeRow>[] = useMemo(
     () => [
       {
-        header: 'Code',
-        accessorKey: 'code',
+        header: 'Code Hash',
+        accessorKey: 'codeHash',
         size: 150,
         cell: ({ row }) => {
-          const codeValue = row.original.code;
           const codeHash = row.original.codeHash;
-          const displayValue = codeValue || `${codeHash.slice(0, 10)}...`;
-          const copyValue = codeValue || codeHash;
           return (
             <div className="flex items-center gap-2">
-              <span className={`font-mono font-medium ${!codeValue ? 'text-muted-foreground' : ''}`}>
-                {displayValue}
+              <span className="font-mono font-medium text-muted-foreground">
+                {codeHash.slice(0, 10)}...
               </span>
               <Button
                 variant="ghost"
@@ -318,45 +304,18 @@ const ReferralCodesTab = ({
                 className="h-6 w-6"
                 onClick={async (e) => {
                   e.stopPropagation();
-                  await navigator.clipboard.writeText(copyValue);
+                  await navigator.clipboard.writeText(codeHash);
                   toastRef.current({
                     title: 'Copied',
-                    description: codeValue ? 'Code copied to clipboard' : 'Hash copied to clipboard',
+                    description: 'Hash copied to clipboard',
                     duration: 1500,
                   });
                 }}
-                aria-label="Copy code"
+                aria-label="Copy hash"
               >
                 <Copy className="h-3 w-3 text-muted-foreground hover:text-foreground" />
               </Button>
             </div>
-          );
-        },
-      },
-      {
-        header: 'Description',
-        accessorKey: 'description',
-        size: 200,
-        cell: ({ getValue }) => {
-          const desc = getValue() as string | null;
-          if (!desc) return <span className="text-muted-foreground">-</span>;
-          const isLong = desc.length > 50;
-          const truncated = isLong ? `${desc.slice(0, 50)}...` : desc;
-          return (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span className={isLong ? 'cursor-help' : ''}>
-                    {truncated}
-                  </span>
-                </TooltipTrigger>
-                {isLong && (
-                  <TooltipContent className="max-w-xs">
-                    <p>{desc}</p>
-                  </TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
           );
         },
       },
@@ -369,7 +328,7 @@ const ReferralCodesTab = ({
           const max = row.original.maxClaims;
           return (
             <Badge variant="secondary">
-              {claimCount} / {max === 0 ? '\u221E' : max}
+              {claimCount} / {max}
             </Badge>
           );
         },
@@ -566,20 +525,27 @@ const ReferralCodesTab = ({
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={onSubmit} className="space-y-4">
+            {!editingId && (
+              <div className="rounded-md bg-yellow-500/10 border border-yellow-500/20 p-3">
+                <p className="text-sm text-yellow-600 dark:text-yellow-500">
+                  Save this code somewhere safe. Only the hash is stored.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Code</label>
+              <label className="text-sm font-medium">{editingId ? 'Code Hash' : 'Code'}</label>
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.slice(0, 16))}
                 required={!editingId}
                 disabled={Boolean(editingId)}
-                placeholder={editingId ? '(User-created code)' : ''}
+                placeholder=""
                 className="font-mono"
-                maxLength={16}
+                maxLength={editingId ? undefined : 16}
               />
               {editingId ? (
                 <p className="text-xs text-muted-foreground">
-                  {code ? 'Code cannot be changed after creation' : ''}
+                  Plaintext codes are not stored.
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -590,21 +556,7 @@ const ReferralCodesTab = ({
 
             <div className="space-y-2">
               <label className="text-sm font-medium">
-                Description (optional)
-              </label>
-              <Textarea
-                value={description}
-                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
-                  setDescription(e.target.value)
-                }
-                placeholder="Internal notes about this code..."
-                rows={3}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Max Claims 
+                Max Claims
               </label>
               <Input
                 type="number"
@@ -657,7 +609,7 @@ const ReferralCodesTab = ({
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Analytics: {analyticsData?.code || (analyticsData?.codeHash ? `${analyticsData.codeHash.slice(0, 10)}...` : 'Loading...')}
+              Analytics: {analyticsData?.codeHash ? `${analyticsData.codeHash.slice(0, 10)}...` : 'Loading...'}
             </DialogTitle>
           </DialogHeader>
           {analyticsLoading ? (

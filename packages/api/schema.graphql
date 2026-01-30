@@ -1936,12 +1936,10 @@ type Question {
 type ReferralCode {
   _count: ReferralCodeCount
   claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-  code: String
   codeHash: String!
   createdAt: DateTimeISO!
   createdBy: String!
   creatorType: String!
-  description: String
   expiresAt: Int
   id: Int!
   isActive: Boolean!
@@ -1960,12 +1958,10 @@ input ReferralCodeNullableRelationFilter {
 
 input ReferralCodeOrderByWithRelationInput {
   claimedBy: UserOrderByRelationAggregateInput
-  code: SortOrderInput
   codeHash: SortOrder
   createdAt: SortOrder
   createdBy: SortOrder
   creatorType: SortOrder
-  description: SortOrderInput
   expiresAt: SortOrderInput
   id: SortOrder
   isActive: SortOrder
@@ -1978,12 +1974,10 @@ input ReferralCodeWhereInput {
   NOT: [ReferralCodeWhereInput!]
   OR: [ReferralCodeWhereInput!]
   claimedBy: UserListRelationFilter
-  code: StringNullableFilter
   codeHash: StringFilter
   createdAt: DateTimeFilter
   createdBy: StringFilter
   creatorType: StringFilter
-  description: StringNullableFilter
   expiresAt: IntNullableFilter
   id: IntFilter
   isActive: BoolFilter
