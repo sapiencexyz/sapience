@@ -359,8 +359,31 @@ model User {
   referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id])
   referrals    User[]  @relation("UserReferrals")
 
+  referredByCodeId  Int?
+  referredByCode    ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
+
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
+}
+
+
+model ReferralCode {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+
+
+  codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
+  maxClaims    Int
+  isActive     Boolean   @default(true)
+  expiresAt    Int?
+  createdBy    String    @db.VarChar
+  creatorType  String    @default("user") @db.VarChar(10)
+  claimedBy    User[]    @relation("AdminCodeClaims")
+  @@index([codeHash], map: "IDX_referral_code_hash")
+  @@index([isActive], map: "IDX_referral_code_active")
+  @@index([createdBy], map: "IDX_referral_code_created_by")
+  @@map("referral_code")
 }
 
 /// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
