@@ -200,22 +200,13 @@ const CreatePositionFormInner = ({
   // Async validation of bids - checks market maker's balance and allowance on-chain
   // This runs when bids arrive and validates them before showing as submittable
   useEffect(() => {
-    console.log('[V2-DBG] rawBids changed:', rawBids.length, rawBids);
     if (rawBids.length === 0) {
-      console.log('[V2-DBG] rawBids empty, clearing bids');
       setBids([]);
       return;
     }
 
     // Need collateral token and prediction market address for validation
     if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
-      console.log(
-        '[V2-DBG] Missing collateral/market address, setting bids as pending',
-        {
-          collateralToken,
-          PREDICTION_MARKET_ADDRESS,
-        }
-      );
       // Can't validate yet, show bids as pending
       setBids(
         rawBids.map((b) => ({
@@ -230,23 +221,16 @@ const CreatePositionFormInner = ({
 
     const runValidation = async () => {
       try {
-        console.log('[V2-DBG] Validating bids...', {
-          chainId: positionChainId,
-          collateralToken,
-          PREDICTION_MARKET_ADDRESS,
-        });
         const validated = await validateBidsAsync(rawBids, {
           chainId: positionChainId,
           collateralTokenAddress: collateralToken,
           predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
         });
 
-        console.log('[V2-DBG] Validation complete:', validated);
         if (!cancelled) {
           setBids(validated);
         }
-      } catch (err) {
-        console.error('[V2-DBG] Async validation error:', err);
+      } catch {
         if (!cancelled) {
           // On error, mark all as pending (don't block the user)
           setBids(

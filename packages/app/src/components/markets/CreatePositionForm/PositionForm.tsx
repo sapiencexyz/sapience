@@ -241,48 +241,21 @@ export default function PositionForm({
   // Only accept bids if they match the current request configuration
   useEffect(() => {
     const currentRequestKey = `${predictionsKey}:${wagerAmount || ''}`;
-    console.log('[V2-DBG] Checking bids to setValidBids:', {
-      bidsCount: bids.length,
-      currentRequestKeyRef: currentRequestKeyRef.current,
-      currentRequestKey,
-      match: currentRequestKeyRef.current === currentRequestKey,
-    });
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/wager changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
       // Configuration changed, ignore incoming bids
-      console.log('[V2-DBG] currentRequestKeyRef is null, ignoring bids');
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
-      console.log('[V2-DBG] Setting validBids:', bids);
       setValidBids(bids);
-    } else {
-      console.log('[V2-DBG] Request key mismatch, not setting validBids');
     }
   }, [bids, predictionsKey, wagerAmount]);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
-    if (validBids?.length > 0) {
-      console.log('[V2-DBG] Computing bestBid from validBids:', {
-        validBidsCount: validBids?.length || 0,
-        validBids: validBids?.map((b) => ({
-          maker: b.maker,
-          makerWager: b.makerWager,
-          makerDeadline: b.makerDeadline,
-          deadlineMs: b.makerDeadline * 1000,
-          nowMs,
-          isExpired: b.makerDeadline * 1000 <= nowMs,
-          validationStatus: b.validationStatus,
-          validationError: b.validationError,
-        })),
-      });
-    }
-
     if (!validBids || validBids.length === 0) {
-      console.log('[V2-DBG] No validBids, returning null');
       return { bestBid: null, estimateBid: null };
     }
 
@@ -290,10 +263,8 @@ export default function PositionForm({
     const nonExpiredBids = validBids.filter(
       (bid) => bid.makerDeadline * 1000 > nowMs
     );
-    console.log('[V2-DBG] Non-expired bids:', nonExpiredBids.length);
 
     if (nonExpiredBids.length === 0) {
-      console.log('[V2-DBG] All bids expired, returning null');
       return { bestBid: null, estimateBid: null };
     }
 
@@ -301,7 +272,6 @@ export default function PositionForm({
     const validFilteredBids = nonExpiredBids.filter(
       (bid) => bid.validationStatus === 'valid'
     );
-    console.log('[V2-DBG] Valid filtered bids:', validFilteredBids.length);
 
     // If we have no valid bids and exactly one invalid bid, show it as an estimate.
     // This matches the "single failing bid shows ESTIMATE" behavior.
@@ -314,10 +284,6 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
-      console.log(
-        '[V2-DBG] No valid bids after filtering, returning estimate:',
-        estimateFromFailed
-      );
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
@@ -332,11 +298,6 @@ export default function PositionForm({
       }
     });
 
-    console.log('[V2-DBG] Found bestBid:', {
-      maker: best.maker,
-      makerWager: best.makerWager,
-      validationStatus: best.validationStatus,
-    });
     return { bestBid: best, estimateBid: null };
   }, [validBids, nowMs]);
 
@@ -384,22 +345,12 @@ export default function PositionForm({
       forceRefresh?: boolean;
       requireSignature?: boolean;
     }) => {
-      console.log('[V2-DBG] triggerAuctionRequest called', {
-        options,
-        requestQuotes: !!requestQuotes,
-        selectedTakerAddress,
-        selectionsCount: selections.length,
-        inFlight: auctionRequestInFlightRef.current,
-      });
-
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
-        console.log('[V2-DBG] Early return: auction request already in flight');
         return;
       }
 
       if (!requestQuotes || !selectedTakerAddress) {
-        console.log('[V2-DBG] Early return: no requestQuotes or taker address');
         return;
       }
 
@@ -418,14 +369,9 @@ export default function PositionForm({
         return;
       }
       if (!hasUma && !hasPyth) {
-        console.log('[V2-DBG] Early return: no predictions');
         return;
       }
       if (hasFormErrors) {
-        console.log(
-          '[V2-DBG] Early return: form has errors',
-          methods.formState.errors
-        );
         return;
       }
 
@@ -440,21 +386,10 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        console.log('[V2-DBG] Fetching nonce...');
         const nonceResult = await refetchTakerNonce();
-        console.log('[V2-DBG] Nonce result:', nonceResult);
         const freshNonce = nonceResult.data;
-        console.log(
-          '[V2-DBG] Nonce fetched:',
-          freshNonce,
-          'takerAddress:',
-          takerAddress
-        );
 
         if (freshNonce === undefined && takerAddress) {
-          console.log(
-            '[V2-DBG] Early return: nonce undefined for connected user'
-          );
           auctionRequestInFlightRef.current = false;
           return;
         }
@@ -483,7 +418,6 @@ export default function PositionForm({
               chainId
             );
 
-        console.log('[V2-DBG] Payload built:', payload);
         const params: AuctionParams = {
           wager: wagerWei,
           resolver: payload.resolver,
@@ -492,7 +426,6 @@ export default function PositionForm({
           takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
-        console.log('[V2-DBG] Calling requestQuotes with params:', params);
 
         requestQuotes(params, {
           forceRefresh: options?.forceRefresh,
@@ -509,7 +442,6 @@ export default function PositionForm({
         }, 500);
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
-        console.error('[V2-DBG] Error in triggerAuctionRequest:', err);
         auctionRequestInFlightRef.current = false;
         const msg =
           err instanceof Error
