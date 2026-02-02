@@ -16,7 +16,10 @@ import {
   formatUnits,
   type Address,
 } from 'viem';
-import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -99,9 +102,11 @@ export function useBidSubmission(
 
   // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
   const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const verifyingContract = (isV2Chain
-    ? predictionMarketEscrow[chainId]?.address
-    : predictionMarket[chainId]?.address) as `0x${string}` | undefined;
+  const verifyingContract = (
+    isV2Chain
+      ? predictionMarketEscrow[chainId]?.address
+      : predictionMarket[chainId]?.address
+  ) as `0x${string}` | undefined;
 
   // Get V2 nonce for counterparty signing (only used on V2 chains)
   const { nonce: v2Nonce } = useV2Nonce({
@@ -209,7 +214,10 @@ export function useBidSubmission(
         const picks = decodedOutcomesToV2Picks(decoded, resolver);
 
         if (picks.length === 0) {
-          return { success: false, error: 'Could not decode picks for V2 signing' };
+          return {
+            success: false,
+            error: 'Could not decode picks for V2 signing',
+          };
         }
 
         // Get counterparty nonce (bidder's nonce)
@@ -219,9 +227,9 @@ export function useBidSubmission(
         // In V2 terms: predictor = taker (auction creator), counterparty = maker (bidder)
         const typedData = buildCounterpartyMintTypedData({
           picks,
-          predictorWager: takerWager,        // auction creator's wager
-          counterpartyWager: makerWager,      // bidder's wager
-          predictor: taker,        // auction creator
+          predictorWager: takerWager, // auction creator's wager
+          counterpartyWager: makerWager, // bidder's wager
+          predictor: taker, // auction creator
           counterparty: signerAddress, // bidder (us)
           counterpartyNonce,
           counterpartyDeadline: BigInt(makerDeadline),

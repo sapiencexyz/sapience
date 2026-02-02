@@ -94,7 +94,9 @@ export default function V2BurnDialog({
     chainId,
   });
 
-  const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
+  const verifyingContract = predictionMarketEscrow[chainId]?.address as
+    | Address
+    | undefined;
 
   const handleBurn = useCallback(async () => {
     if (!effectiveAddress || !verifyingContract || !signTypedData) {
@@ -108,7 +110,9 @@ export default function V2BurnDialog({
     }
 
     if (!canSelfBurn) {
-      setError('You need to hold both predictor and counterparty tokens to burn');
+      setError(
+        'You need to hold both predictor and counterparty tokens to burn'
+      );
       return;
     }
 
@@ -160,8 +164,12 @@ export default function V2BurnDialog({
       });
 
       // Sign both (user signs twice for self-burn)
-      const predictorSignature = await signTypedData(toSignableTypedData(predictorTypedData));
-      const counterpartySignature = await signTypedData(toSignableTypedData(counterpartyTypedData));
+      const predictorSignature = await signTypedData(
+        toSignableTypedData(predictorTypedData)
+      );
+      const counterpartySignature = await signTypedData(
+        toSignableTypedData(counterpartyTypedData)
+      );
 
       // Execute burn
       const result = await burn({
@@ -179,7 +187,8 @@ export default function V2BurnDialog({
           counterpartyDeadline: deadline,
           predictorSignature: predictorSignature,
           counterpartySignature: counterpartySignature,
-          refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
+          refCode:
+            '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
           predictorSessionKeyData: '0x' as Hex,
           counterpartySessionKeyData: '0x' as Hex,
         },
@@ -237,7 +246,8 @@ export default function V2BurnDialog({
         <div className="space-y-4 py-4">
           <p className="text-sm text-muted-foreground">
             You hold both predictor and counterparty tokens for this position.
-            You can burn matching amounts to exit before resolution and recover your collateral.
+            You can burn matching amounts to exit before resolution and recover
+            your collateral.
           </p>
 
           {/* Current balances */}
@@ -251,7 +261,9 @@ export default function V2BurnDialog({
               />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Counterparty Balance</p>
+              <p className="text-xs text-muted-foreground">
+                Counterparty Balance
+              </p>
               <NumberDisplay
                 value={parseFloat(formatEther(userCounterpartyBalance))}
                 appendedText={collateralSymbol}
@@ -264,7 +276,9 @@ export default function V2BurnDialog({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label>Burn Amount</Label>
-              <span className="text-sm text-muted-foreground">{burnPercentage}%</span>
+              <span className="text-sm text-muted-foreground">
+                {burnPercentage}%
+              </span>
             </div>
             <Slider
               value={[burnPercentage]}
@@ -307,8 +321,8 @@ export default function V2BurnDialog({
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Total payout equals total burned (conservation constraint).
-              For self-burn, you receive back what you burn.
+              Total payout equals total burned (conservation constraint). For
+              self-burn, you receive back what you burn.
             </AlertDescription>
           </Alert>
 

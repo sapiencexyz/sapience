@@ -98,7 +98,10 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
       }
 
       if (!verifyingContract) {
-        return { success: false, error: 'V2 contract not available for this chain' };
+        return {
+          success: false,
+          error: 'V2 contract not available for this chain',
+        };
       }
 
       if (!wsUrl) {
@@ -144,7 +147,8 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         });
       } catch (e: any) {
         setIsSubmitting(false);
-        const error = e instanceof Error ? e : new Error(String(e?.message || e));
+        const error =
+          e instanceof Error ? e : new Error(String(e?.message || e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -179,26 +183,30 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         const client = getSharedAuctionWsClient(wsUrl);
 
         // Send and wait for ack
-        const response = await new Promise<{ auctionId?: string; error?: string }>(
-          (resolve, reject) => {
-            const timeout = setTimeout(() => {
+        const response = await new Promise<{
+          auctionId?: string;
+          error?: string;
+        }>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            removeListener();
+            reject(new Error('Auction start timeout'));
+          }, 10000);
+
+          // Listen for ack using the proper API
+          const removeListener = client.addMessageListener((msg: unknown) => {
+            const data = msg as {
+              type?: string;
+              payload?: { auctionId?: string; error?: string };
+            };
+            if (data?.type === 'v2.auction.ack') {
+              clearTimeout(timeout);
               removeListener();
-              reject(new Error('Auction start timeout'));
-            }, 10000);
+              resolve(data.payload ?? {});
+            }
+          });
 
-            // Listen for ack using the proper API
-            const removeListener = client.addMessageListener((msg: unknown) => {
-              const data = msg as { type?: string; payload?: { auctionId?: string; error?: string } };
-              if (data?.type === 'v2.auction.ack') {
-                clearTimeout(timeout);
-                removeListener();
-                resolve(data.payload ?? {});
-              }
-            });
-
-            client.send({ type: 'v2.auction.start', payload });
-          }
-        );
+          client.send({ type: 'v2.auction.start', payload });
+        });
 
         setIsSubmitting(false);
 

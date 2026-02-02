@@ -3,7 +3,11 @@
 import { useCallback, useMemo } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
-import { predictionMarket, predictionMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
@@ -87,9 +91,11 @@ export function useBidPreflight(
   // Get spender address for the current chain
   // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
   const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const SPENDER_ADDRESS = (isV2Chain
-    ? predictionMarketEscrow[chainId]?.address
-    : predictionMarket[chainId]?.address) as `0x${string}` | undefined;
+  const SPENDER_ADDRESS = (
+    isV2Chain
+      ? predictionMarketEscrow[chainId]?.address
+      : predictionMarket[chainId]?.address
+  ) as `0x${string}` | undefined;
 
   // For V2, use collateral token address directly from SDK
   // For V1, read from PredictionMarket contract config
@@ -99,16 +105,17 @@ export function useBidPreflight(
 
   // Read collateral token address from PredictionMarket contract config (V1 only)
   const predictionMarketConfigRead = useReadContracts({
-    contracts: !isV2Chain && SPENDER_ADDRESS
-      ? [
-          {
-            address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
+    contracts:
+      !isV2Chain && SPENDER_ADDRESS
+        ? [
+            {
+              address: SPENDER_ADDRESS,
+              abi: predictionMarketAbi,
+              functionName: 'getConfig',
+              chainId: chainId,
+            },
+          ]
+        : [],
     query: { enabled: !isV2Chain && !!SPENDER_ADDRESS },
   });
 

@@ -180,7 +180,11 @@ export function useInfiniteQuestions(
   // Fetch current page (+ 1 extra to detect if more exist)
   // Use isFetching (not isLoading) - isLoading is only true on first load,
   // isFetching is true whenever data is being fetched
-  const { data: rawData, isFetching, isError } = useQuery<QuestionType[], Error>({
+  const {
+    data: rawData,
+    isFetching,
+    isError,
+  } = useQuery<QuestionType[], Error>({
     queryKey: [
       'infiniteQuestions',
       pageSize,

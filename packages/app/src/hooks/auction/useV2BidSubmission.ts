@@ -3,10 +3,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex, formatUnits, parseUnits } from 'viem';
-import {
-  buildCounterpartyMintTypedData,
-} from '@sapience/sdk/auction/v2Signing';
-import type { Pick, V2BidPayload, V2AuctionDetails } from '@sapience/sdk/types/v2';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import type {
+  Pick,
+  V2BidPayload,
+  V2AuctionDetails,
+} from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -101,7 +103,10 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
         | undefined;
 
       if (!verifyingContract) {
-        return { success: false, error: 'V2 contract not available for this chain' };
+        return {
+          success: false,
+          error: 'V2 contract not available for this chain',
+        };
       }
 
       // Cannot bid on own auction
@@ -119,7 +124,9 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
 
       // Calculate deadline
       const nowSec = Math.floor(Date.now() / 1000);
-      const counterpartyDeadline = BigInt(nowSec + Math.max(60, deadlineSeconds));
+      const counterpartyDeadline = BigInt(
+        nowSec + Math.max(60, deadlineSeconds)
+      );
 
       // Convert picks from JSON to SDK format
       const picks: Pick[] = auction.picks.map((p) => ({
@@ -156,7 +163,8 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
         });
       } catch (e: any) {
         setIsSubmitting(false);
-        const error = e instanceof Error ? e : new Error(String(e?.message || e));
+        const error =
+          e instanceof Error ? e : new Error(String(e?.message || e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -189,7 +197,10 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
 
             // Listen for ack using the proper API
             const removeListener = client.addMessageListener((msg: unknown) => {
-              const data = msg as { type?: string; payload?: { bidId?: string; error?: string } };
+              const data = msg as {
+                type?: string;
+                payload?: { bidId?: string; error?: string };
+              };
               if (data?.type === 'v2.bid.ack') {
                 clearTimeout(timeout);
                 removeListener();
@@ -208,7 +219,9 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
         }
 
         if (response.bidId || !response.error) {
-          const bidId = response.bidId ?? `${auction.auctionId}-${signerAddress.slice(0, 8)}`;
+          const bidId =
+            response.bidId ??
+            `${auction.auctionId}-${signerAddress.slice(0, 8)}`;
           onBidSubmitted?.(bidId);
 
           // Dispatch event for UI updates

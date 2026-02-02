@@ -1,7 +1,11 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -40,7 +44,10 @@ export function useV2Write(params: { chainId?: number } = {}) {
       predictionId: Hex;
       refCode?: Hex;
     }): Promise<{ success: boolean; txHash?: Hex; error?: string }> => {
-      const { predictionId, refCode = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex } = params;
+      const {
+        predictionId,
+        refCode = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
+      } = params;
 
       if (!contractAddress) {
         return { success: false, error: 'V2 contract not available' };
@@ -80,7 +87,11 @@ export function useV2Write(params: { chainId?: number } = {}) {
       amount: bigint;
       refCode?: Hex;
     }): Promise<{ success: boolean; txHash?: Hex; error?: string }> => {
-      const { positionToken, amount, refCode = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex } = params;
+      const {
+        positionToken,
+        amount,
+        refCode = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
+      } = params;
 
       if (!contractAddress) {
         return { success: false, error: 'V2 contract not available' };

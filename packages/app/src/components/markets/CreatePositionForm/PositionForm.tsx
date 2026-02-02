@@ -13,8 +13,15 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk/abis';
-import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  predictionMarketAbi,
+  predictionMarketEscrowAbi,
+} from '@sapience/sdk/abis';
+import {
+  COLLATERAL_SYMBOLS,
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { WagerInput } from '~/components/markets/forms';
@@ -94,7 +101,8 @@ export default function PositionForm({
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const isEtherealChain =
+    chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
@@ -111,7 +119,11 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress, isUsingSmartAccount, signMessage: sessionSignMessage } = useSession();
+  const {
+    effectiveAddress,
+    isUsingSmartAccount,
+    signMessage: sessionSignMessage,
+  } = useSession();
 
   // Determine the actual taker address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -256,7 +268,7 @@ export default function PositionForm({
     if (validBids?.length > 0) {
       console.log('[V2-DBG] Computing bestBid from validBids:', {
         validBidsCount: validBids?.length || 0,
-        validBids: validBids?.map(b => ({
+        validBids: validBids?.map((b) => ({
           maker: b.maker,
           makerWager: b.makerWager,
           makerDeadline: b.makerDeadline,
@@ -302,7 +314,10 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
-      console.log('[V2-DBG] No valid bids after filtering, returning estimate:', estimateFromFailed);
+      console.log(
+        '[V2-DBG] No valid bids after filtering, returning estimate:',
+        estimateFromFailed
+      );
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
@@ -317,7 +332,11 @@ export default function PositionForm({
       }
     });
 
-    console.log('[V2-DBG] Found bestBid:', { maker: best.maker, makerWager: best.makerWager, validationStatus: best.validationStatus });
+    console.log('[V2-DBG] Found bestBid:', {
+      maker: best.maker,
+      makerWager: best.makerWager,
+      validationStatus: best.validationStatus,
+    });
     return { bestBid: best, estimateBid: null };
   }, [validBids, nowMs]);
 
@@ -365,7 +384,13 @@ export default function PositionForm({
       forceRefresh?: boolean;
       requireSignature?: boolean;
     }) => {
-      console.log('[V2-DBG] triggerAuctionRequest called', { options, requestQuotes: !!requestQuotes, selectedTakerAddress, selectionsCount: selections.length, inFlight: auctionRequestInFlightRef.current });
+      console.log('[V2-DBG] triggerAuctionRequest called', {
+        options,
+        requestQuotes: !!requestQuotes,
+        selectedTakerAddress,
+        selectionsCount: selections.length,
+        inFlight: auctionRequestInFlightRef.current,
+      });
 
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
@@ -397,7 +422,10 @@ export default function PositionForm({
         return;
       }
       if (hasFormErrors) {
-        console.log('[V2-DBG] Early return: form has errors', methods.formState.errors);
+        console.log(
+          '[V2-DBG] Early return: form has errors',
+          methods.formState.errors
+        );
         return;
       }
 
@@ -416,10 +444,17 @@ export default function PositionForm({
         const nonceResult = await refetchTakerNonce();
         console.log('[V2-DBG] Nonce result:', nonceResult);
         const freshNonce = nonceResult.data;
-        console.log('[V2-DBG] Nonce fetched:', freshNonce, 'takerAddress:', takerAddress);
+        console.log(
+          '[V2-DBG] Nonce fetched:',
+          freshNonce,
+          'takerAddress:',
+          takerAddress
+        );
 
         if (freshNonce === undefined && takerAddress) {
-          console.log('[V2-DBG] Early return: nonce undefined for connected user');
+          console.log(
+            '[V2-DBG] Early return: nonce undefined for connected user'
+          );
           auctionRequestInFlightRef.current = false;
           return;
         }

@@ -48,8 +48,14 @@ function useV2AuctionBids(auctionId: string | null) {
 
     // Listen for bid updates
     const removeListener = client.addMessageListener((msg: unknown) => {
-      const data = msg as { type?: string; payload?: { auctionId?: string; bids?: V2ValidatedBid[] } };
-      if (data?.type === 'v2.auction.bids' && data.payload?.auctionId === auctionId) {
+      const data = msg as {
+        type?: string;
+        payload?: { auctionId?: string; bids?: V2ValidatedBid[] };
+      };
+      if (
+        data?.type === 'v2.auction.bids' &&
+        data.payload?.auctionId === auctionId
+      ) {
         setBids(data.payload.bids ?? []);
       }
     });
@@ -89,8 +95,12 @@ const V2AuctionBidsDialog: React.FC<Props> = ({
     return () => clearInterval(id);
   }, [open]);
 
-  const predictorWagerNum = auction?.predictorWager ? parseFloat(formatEther(BigInt(auction.predictorWager))) : 0;
-  const counterpartyWagerNum = auction?.counterpartyWager ? parseFloat(formatEther(BigInt(auction.counterpartyWager))) : 0;
+  const predictorWagerNum = auction?.predictorWager
+    ? parseFloat(formatEther(BigInt(auction.predictorWager)))
+    : 0;
+  const counterpartyWagerNum = auction?.counterpartyWager
+    ? parseFloat(formatEther(BigInt(auction.counterpartyWager)))
+    : 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -121,11 +131,17 @@ const V2AuctionBidsDialog: React.FC<Props> = ({
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">Predictor Wager:</span>{' '}
-              <NumberDisplay value={predictorWagerNum} appendedText={collateralSymbol} />
+              <NumberDisplay
+                value={predictorWagerNum}
+                appendedText={collateralSymbol}
+              />
             </div>
             <div>
               <span className="text-muted-foreground">Counterparty Wager:</span>{' '}
-              <NumberDisplay value={counterpartyWagerNum} appendedText={collateralSymbol} />
+              <NumberDisplay
+                value={counterpartyWagerNum}
+                appendedText={collateralSymbol}
+              />
             </div>
           </div>
         </div>
@@ -178,7 +194,9 @@ const V2AuctionBidsDialog: React.FC<Props> = ({
                   const totalPoolNum = (() => {
                     try {
                       const predictor = BigInt(auction?.predictorWager ?? '0');
-                      const counterparty = BigInt(auction?.counterpartyWager ?? '0');
+                      const counterparty = BigInt(
+                        auction?.counterpartyWager ?? '0'
+                      );
                       return parseFloat(formatEther(predictor + counterparty));
                     } catch {
                       return 0;
@@ -187,13 +205,20 @@ const V2AuctionBidsDialog: React.FC<Props> = ({
 
                   // Format received time
                   const receivedLabel = bid.receivedAt
-                    ? formatDistanceToNowStrict(new Date(bid.receivedAt), { addSuffix: true })
+                    ? formatDistanceToNowStrict(new Date(bid.receivedAt), {
+                        addSuffix: true,
+                      })
                     : '—';
 
                   return (
-                    <tr key={i} className="border-b last:border-b-0 hover:bg-muted/20">
+                    <tr
+                      key={i}
+                      className="border-b last:border-b-0 hover:bg-muted/20"
+                    >
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <span className={isExpired ? 'text-destructive' : undefined}>
+                        <span
+                          className={isExpired ? 'text-destructive' : undefined}
+                        >
                           {expiresLabel}
                         </span>
                       </td>
@@ -206,7 +231,10 @@ const V2AuctionBidsDialog: React.FC<Props> = ({
                             height={20}
                           />
                           <div className="min-w-0">
-                            <AddressDisplay address={bid?.counterparty || ''} compact />
+                            <AddressDisplay
+                              address={bid?.counterparty || ''}
+                              compact
+                            />
                           </div>
                         </div>
                       </td>

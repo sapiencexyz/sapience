@@ -24,7 +24,10 @@ import {
 // Settlement result display
 const SETTLEMENT_RESULT_LABELS: Record<
   string,
-  { label: string; variant: 'default' | 'success' | 'destructive' | 'secondary' }
+  {
+    label: string;
+    variant: 'default' | 'success' | 'destructive' | 'secondary';
+  }
 > = {
   UNRESOLVED: { label: 'Pending', variant: 'secondary' },
   PREDICTOR_WINS: { label: 'Predictor Wins', variant: 'success' },
@@ -121,7 +124,11 @@ export default function V2PositionsTable({
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 5064014] || 'USDe';
 
   // Fetch V2 predictions for this user
-  const { data: predictions, isLoading, error } = useV2Predictions({
+  const {
+    data: predictions,
+    isLoading,
+    error,
+  } = useV2Predictions({
     address: account,
     chainId,
   });

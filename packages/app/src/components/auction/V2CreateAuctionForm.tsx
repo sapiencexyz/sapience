@@ -6,7 +6,13 @@ import { parseEther, type Address, type Hex } from 'viem';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@sapience/ui/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '@sapience/ui/components/ui/card';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Select,
@@ -67,7 +73,8 @@ export default function V2CreateAuctionForm({
   } = useV2AuctionStart({
     chainId,
     onAuctionCreated,
-    onSignatureRejected: (err) => setError(`Signature rejected: ${err.message}`),
+    onSignatureRejected: (err) =>
+      setError(`Signature rejected: ${err.message}`),
   });
 
   const { balance: collateralBalance } = useCollateralBalance({
@@ -89,13 +96,16 @@ export default function V2CreateAuctionForm({
   }, []);
 
   // Update a pick
-  const updatePick = useCallback((index: number, field: keyof PickFormData, value: string | number) => {
-    setPicks((prev) =>
-      prev.map((pick, i) =>
-        i === index ? { ...pick, [field]: value } : pick
-      )
-    );
-  }, []);
+  const updatePick = useCallback(
+    (index: number, field: keyof PickFormData, value: string | number) => {
+      setPicks((prev) =>
+        prev.map((pick, i) =>
+          i === index ? { ...pick, [field]: value } : pick
+        )
+      );
+    },
+    []
+  );
 
   // Validate form
   const validateForm = useCallback((): string | null => {
@@ -113,7 +123,10 @@ export default function V2CreateAuctionForm({
 
     for (let i = 0; i < picks.length; i++) {
       const pick = picks[i];
-      if (!pick.conditionResolver || !/^0x[a-fA-F0-9]{40}$/.test(pick.conditionResolver)) {
+      if (
+        !pick.conditionResolver ||
+        !/^0x[a-fA-F0-9]{40}$/.test(pick.conditionResolver)
+      ) {
         return `Pick ${i + 1}: Invalid condition resolver address`;
       }
       if (!pick.conditionId || !/^0x[a-fA-F0-9]{64}$/.test(pick.conditionId)) {
@@ -131,53 +144,76 @@ export default function V2CreateAuctionForm({
     }
 
     const counterpartyWagerNum = parseFloat(counterpartyWager);
-    if (!counterpartyWager || isNaN(counterpartyWagerNum) || counterpartyWagerNum <= 0) {
+    if (
+      !counterpartyWager ||
+      isNaN(counterpartyWagerNum) ||
+      counterpartyWagerNum <= 0
+    ) {
       return 'Please enter a valid counterparty wager';
     }
 
     return null;
-  }, [isConnected, verifyingContract, picks, predictorWager, counterpartyWager, collateralBalance, collateralSymbol]);
+  }, [
+    isConnected,
+    verifyingContract,
+    picks,
+    predictorWager,
+    counterpartyWager,
+    collateralBalance,
+    collateralSymbol,
+  ]);
 
   // Handle form submission
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
 
-    const validationError = validateForm();
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
-    try {
-      // Convert picks to SDK format
-      const sdkPicks: Pick[] = picks.map((p) => ({
-        conditionResolver: p.conditionResolver as Address,
-        conditionId: p.conditionId as Hex,
-        predictedOutcome: p.predictedOutcome,
-      }));
-
-      const result = await startAuction({
-        picks: sdkPicks,
-        predictorWager: parseEther(predictorWager),
-        counterpartyWager: parseEther(counterpartyWager),
-        deadlineSeconds: parseInt(deadlineMinutes) * 60,
-      });
-
-      if (!result.success) {
-        setError(result.error || 'Failed to create auction');
+      const validationError = validateForm();
+      if (validationError) {
+        setError(validationError);
+        return;
       }
-    } catch (err: any) {
-      setError(err?.message || 'An error occurred');
-    }
-  }, [picks, predictorWager, counterpartyWager, deadlineMinutes, validateForm, startAuction]);
+
+      try {
+        // Convert picks to SDK format
+        const sdkPicks: Pick[] = picks.map((p) => ({
+          conditionResolver: p.conditionResolver as Address,
+          conditionId: p.conditionId as Hex,
+          predictedOutcome: p.predictedOutcome,
+        }));
+
+        const result = await startAuction({
+          picks: sdkPicks,
+          predictorWager: parseEther(predictorWager),
+          counterpartyWager: parseEther(counterpartyWager),
+          deadlineSeconds: parseInt(deadlineMinutes) * 60,
+        });
+
+        if (!result.success) {
+          setError(result.error || 'Failed to create auction');
+        }
+      } catch (err: any) {
+        setError(err?.message || 'An error occurred');
+      }
+    },
+    [
+      picks,
+      predictorWager,
+      counterpartyWager,
+      deadlineMinutes,
+      validateForm,
+      startAuction,
+    ]
+  );
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Create V2 Prediction</CardTitle>
         <CardDescription>
-          Create a new prediction auction. Counterparties can bid to fill your prediction.
+          Create a new prediction auction. Counterparties can bid to fill your
+          prediction.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -199,7 +235,10 @@ export default function V2CreateAuctionForm({
             </div>
 
             {picks.map((pick, index) => (
-              <div key={index} className="p-4 border rounded-lg space-y-3 bg-muted/30">
+              <div
+                key={index}
+                className="p-4 border rounded-lg space-y-3 bg-muted/30"
+              >
                 <div className="flex items-center justify-between">
                   <Badge variant="outline">Pick {index + 1}</Badge>
                   {picks.length > 1 && (
@@ -216,12 +255,16 @@ export default function V2CreateAuctionForm({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label htmlFor={`resolver-${index}`}>Condition Resolver</Label>
+                    <Label htmlFor={`resolver-${index}`}>
+                      Condition Resolver
+                    </Label>
                     <Input
                       id={`resolver-${index}`}
                       placeholder="0x..."
                       value={pick.conditionResolver}
-                      onChange={(e) => updatePick(index, 'conditionResolver', e.target.value)}
+                      onChange={(e) =>
+                        updatePick(index, 'conditionResolver', e.target.value)
+                      }
                     />
                   </div>
                   <div className="space-y-2">
@@ -230,7 +273,9 @@ export default function V2CreateAuctionForm({
                       id={`conditionId-${index}`}
                       placeholder="0x..."
                       value={pick.conditionId}
-                      onChange={(e) => updatePick(index, 'conditionId', e.target.value)}
+                      onChange={(e) =>
+                        updatePick(index, 'conditionId', e.target.value)
+                      }
                     />
                   </div>
                 </div>
@@ -239,14 +284,18 @@ export default function V2CreateAuctionForm({
                   <Label>Predicted Outcome</Label>
                   <Select
                     value={String(pick.predictedOutcome)}
-                    onValueChange={(v) => updatePick(index, 'predictedOutcome', parseInt(v))}
+                    onValueChange={(v) =>
+                      updatePick(index, 'predictedOutcome', parseInt(v))
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="0">
-                        <span className="text-emerald-500 font-medium">YES</span>
+                        <span className="text-emerald-500 font-medium">
+                          YES
+                        </span>
                       </SelectItem>
                       <SelectItem value="1">
                         <span className="text-red-500 font-medium">NO</span>
@@ -261,7 +310,9 @@ export default function V2CreateAuctionForm({
           {/* Wager inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="predictorWager">Your Wager ({collateralSymbol})</Label>
+              <Label htmlFor="predictorWager">
+                Your Wager ({collateralSymbol})
+              </Label>
               <Input
                 id="predictorWager"
                 type="number"
@@ -272,11 +323,17 @@ export default function V2CreateAuctionForm({
                 onChange={(e) => setPredictorWager(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
-                Balance: <NumberDisplay value={collateralBalance} appendedText={collateralSymbol} />
+                Balance:{' '}
+                <NumberDisplay
+                  value={collateralBalance}
+                  appendedText={collateralSymbol}
+                />
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="counterpartyWager">Counterparty Wager ({collateralSymbol})</Label>
+              <Label htmlFor="counterpartyWager">
+                Counterparty Wager ({collateralSymbol})
+              </Label>
               <Input
                 id="counterpartyWager"
                 type="number"
@@ -324,17 +381,28 @@ export default function V2CreateAuctionForm({
                 <div>Total Pool:</div>
                 <div className="font-medium text-foreground">
                   <NumberDisplay
-                    value={parseFloat(predictorWager || '0') + parseFloat(counterpartyWager || '0')}
+                    value={
+                      parseFloat(predictorWager || '0') +
+                      parseFloat(counterpartyWager || '0')
+                    }
                     appendedText={collateralSymbol}
                   />
                 </div>
                 <div>If you win:</div>
                 <div className="font-medium text-emerald-500">
-                  +<NumberDisplay value={parseFloat(counterpartyWager || '0')} appendedText={collateralSymbol} />
+                  +
+                  <NumberDisplay
+                    value={parseFloat(counterpartyWager || '0')}
+                    appendedText={collateralSymbol}
+                  />
                 </div>
                 <div>If you lose:</div>
                 <div className="font-medium text-red-500">
-                  -<NumberDisplay value={parseFloat(predictorWager || '0')} appendedText={collateralSymbol} />
+                  -
+                  <NumberDisplay
+                    value={parseFloat(predictorWager || '0')}
+                    appendedText={collateralSymbol}
+                  />
                 </div>
               </div>
             </div>

@@ -21,7 +21,10 @@ import {
   erc20Abi,
   parseAbi,
 } from 'viem';
-import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
@@ -74,9 +77,11 @@ const ApprovalDialog: React.FC = () => {
 
   // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
   const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const SPENDER_ADDRESS = (isV2Chain
-    ? predictionMarketEscrow[chainId]?.address
-    : predictionMarket[chainId]?.address) as `0x${string}` | undefined;
+  const SPENDER_ADDRESS = (
+    isV2Chain
+      ? predictionMarketEscrow[chainId]?.address
+      : predictionMarket[chainId]?.address
+  ) as `0x${string}` | undefined;
 
   // Read collateral token address from PredictionMarket contract config
   // V2 uses collateralToken() directly, V1 uses getConfig()

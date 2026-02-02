@@ -10,9 +10,16 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { predictionMarket, predictionMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -96,16 +103,17 @@ const AuctionRequestRow: React.FC<Props> = ({
     : undefined;
 
   const predictionMarketConfigRead = useReadContracts({
-    contracts: !isV2Chain && PREDICTION_MARKET_ADDRESS
-      ? [
-          {
-            address: PREDICTION_MARKET_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
+    contracts:
+      !isV2Chain && PREDICTION_MARKET_ADDRESS
+        ? [
+            {
+              address: PREDICTION_MARKET_ADDRESS,
+              abi: predictionMarketAbi,
+              functionName: 'getConfig',
+              chainId: chainId,
+            },
+          ]
+        : [],
     query: { enabled: !isV2Chain && !!PREDICTION_MARKET_ADDRESS },
   });
   const COLLATERAL_ADDRESS = useMemo(() => {

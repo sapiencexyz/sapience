@@ -32,8 +32,14 @@ import {
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk/abis';
-import { predictionMarket, predictionMarketEscrow } from '@sapience/sdk/contracts';
+import {
+  predictionMarketAbi,
+  predictionMarketEscrowAbi,
+} from '@sapience/sdk/abis';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
@@ -203,10 +209,13 @@ const CreatePositionFormInner = ({
 
     // Need collateral token and prediction market address for validation
     if (!collateralToken || !PREDICTION_MARKET_ADDRESS) {
-      console.log('[V2-DBG] Missing collateral/market address, setting bids as pending', {
-        collateralToken,
-        PREDICTION_MARKET_ADDRESS,
-      });
+      console.log(
+        '[V2-DBG] Missing collateral/market address, setting bids as pending',
+        {
+          collateralToken,
+          PREDICTION_MARKET_ADDRESS,
+        }
+      );
       // Can't validate yet, show bids as pending
       setBids(
         rawBids.map((b) => ({
@@ -221,7 +230,11 @@ const CreatePositionFormInner = ({
 
     const runValidation = async () => {
       try {
-        console.log('[V2-DBG] Validating bids...', { chainId: positionChainId, collateralToken, PREDICTION_MARKET_ADDRESS });
+        console.log('[V2-DBG] Validating bids...', {
+          chainId: positionChainId,
+          collateralToken,
+          PREDICTION_MARKET_ADDRESS,
+        });
         const validated = await validateBidsAsync(rawBids, {
           chainId: positionChainId,
           collateralTokenAddress: collateralToken,

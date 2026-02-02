@@ -12,7 +12,9 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
  */
 export function useV2ContractAddress(chainId?: number) {
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  return predictionMarketEscrow[effectiveChainId]?.address as Address | undefined;
+  return predictionMarketEscrow[effectiveChainId]?.address as
+    | Address
+    | undefined;
 }
 
 /**
@@ -147,7 +149,12 @@ export function useV2TokenBalance(params: {
   const { tokenAddress, holder, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
 
-  const { data: balance, isLoading: isLoadingBalance, error: balanceError, refetch: refetchBalance } = useReadContract({
+  const {
+    data: balance,
+    isLoading: isLoadingBalance,
+    error: balanceError,
+    refetch: refetchBalance,
+  } = useReadContract({
     abi: erc20Abi,
     address: tokenAddress,
     functionName: 'balanceOf',
@@ -225,7 +232,13 @@ export function useV2ClaimableAmount(params: {
   chainId?: number;
   enabled?: boolean;
 }) {
-  const { pickConfigId, tokenAddress, amount, chainId, enabled = true } = params;
+  const {
+    pickConfigId,
+    tokenAddress,
+    amount,
+    chainId,
+    enabled = true,
+  } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
   const contractAddress = useV2ContractAddress(effectiveChainId);
 
@@ -233,12 +246,18 @@ export function useV2ClaimableAmount(params: {
     abi: predictionMarketEscrowAbi,
     address: contractAddress,
     functionName: 'getClaimableAmount',
-    args: pickConfigId && tokenAddress && amount !== undefined
-      ? [pickConfigId, tokenAddress, amount]
-      : undefined,
+    args:
+      pickConfigId && tokenAddress && amount !== undefined
+        ? [pickConfigId, tokenAddress, amount]
+        : undefined,
     chainId: effectiveChainId,
     query: {
-      enabled: enabled && Boolean(pickConfigId) && Boolean(tokenAddress) && amount !== undefined && Boolean(contractAddress),
+      enabled:
+        enabled &&
+        Boolean(pickConfigId) &&
+        Boolean(tokenAddress) &&
+        amount !== undefined &&
+        Boolean(contractAddress),
     },
   });
 
