@@ -201,25 +201,21 @@ export async function simulateBundlerMint(
       `Bundler simulation: ${calls.length} call(s), needsWrap=${needsWrap}, needsApprove=${needsApprove}`
     );
 
-    // Encode the calls for the smart account
-    const encodedCalls = await sessionClient.account.encodeCalls(calls);
-
-    // Use prepareUserOperation with the full sessionClient (including paymaster)
-    // This is symmetric to actual execution - it does gas estimation + paymaster sponsorship
-    // but stops before signing and sending
-    const preparedUserOp = await sessionClient.prepareUserOperation({
+    // Use estimateUserOperationGas directly with calls array
+    // This bypasses paymaster signature validation (AA23 issue) and just simulates the calls
+    const gasEstimate = await sessionClient.estimateUserOperationGas({
       account: sessionClient.account,
-      callData: encodedCalls,
+      calls: calls,
     });
 
-    // If we got here, the simulation passed (including paymaster sponsorship check)
+    // If we got here, the simulation passed
     logBidValidation(
-      `Bundler simulation passed: callGasLimit=${preparedUserOp.callGasLimit}`
+      `Bundler simulation passed: callGasLimit=${gasEstimate.callGasLimit}`
     );
 
     return {
       isValid: true,
-      estimatedGas: preparedUserOp.callGasLimit,
+      estimatedGas: gasEstimate.callGasLimit,
       needsWrap,
       needsApprove,
     };
@@ -236,17 +232,27 @@ export async function simulateBundlerMint(
       const msg = err.message;
       console.log('Error message:', msg.slice(0, 500));
 
-      // Paymaster/bundler infrastructure errors - signal fallback needed
+      // Bundler infrastructure errors - signal fallback needed
       // These indicate we can't use bundler simulation, not that the bid is invalid
       if (
-        msg.includes('zd_sponsorUserOperation') ||
         msg.includes('does not exist') ||
         msg.includes('not available') ||
-        msg.includes('AA31') ||
-        msg.includes('paymaster')
+        msg.includes('bundler') ||
+        msg.includes('RPC') ||
+        msg.includes('eth_estimateUserOperationGas')
       ) {
         logBidValidationWarn(
-          'Bundler simulation unavailable (paymaster error), requesting fallback to state-override:',
+          'Bundler simulation unavailable (RPC error), requesting fallback to state-override:',
+          msg.slice(0, 200)
+        );
+        return { isValid: true, fallbackToStateOverride: true };
+      }
+
+      // AA23 = signature validation failed - this shouldn't happen with estimateUserOperationGas
+      // but if it does, fall back to state-override
+      if (msg.includes('AA23')) {
+        logBidValidationWarn(
+          'Bundler simulation AA23 error, requesting fallback to state-override:',
           msg.slice(0, 200)
         );
         return { isValid: true, fallbackToStateOverride: true };
@@ -310,6 +316,12 @@ export async function simulateBundlerMint(
         errorMessage = 'Bidder has insufficient allowance';
       } else if (msg.includes('InsufficientBalance')) {
         errorMessage = 'Bidder has insufficient balance';
+      } else if (
+        msg.includes('AllowanceExpired') ||
+        msg.includes('0x13be252b')
+      ) {
+        // Permit2-style allowance has expired or was never set with proper expiration
+        errorMessage = "Bidder's allowance has expired";
       } else if (msg.includes('execution reverted')) {
         // Try to extract selector
         const selectorMatch = msg.match(/0x[a-fA-F0-9]{8}/);
