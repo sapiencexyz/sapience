@@ -45,18 +45,28 @@ import {
 } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ARBITRUM,
   etherealChain,
+  etherealTestnetChain,
 } from '@sapience/sdk/constants';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
 
-const WUSDE_ADDRESS_ETHEREAL =
-  collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
-const PREDICTION_MARKET_ETHEREAL =
-  predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
-const VAULT_ETHEREAL = vaultAddresses[CHAIN_ID_ETHEREAL].address;
+// Contract addresses - resolved dynamically based on chainId
+function getEtherealContractAddresses(chainId: number) {
+  const effectiveChainId =
+    chainId === CHAIN_ID_ETHEREAL_TESTNET
+      ? CHAIN_ID_ETHEREAL_TESTNET
+      : CHAIN_ID_ETHEREAL;
+  return {
+    wusde: collateralTokenAddresses[effectiveChainId].address,
+    predictionMarket: predictionMarketAddresses[effectiveChainId].address,
+    vault: vaultAddresses[effectiveChainId].address,
+  };
+}
+
 const EAS_ARBITRUM = easAddresses[CHAIN_ID_ARBITRUM].address;
 
 const WUSDE_ABI = parseAbi([
@@ -92,6 +102,10 @@ function getZeroDevUrls(chainId: number): {
     [etherealChain.id]: {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL,
+    },
+    [etherealTestnetChain.id]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL_TESTNET,
+      paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL_TESTNET,
     },
     [arbitrum.id]: {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM,
@@ -157,6 +171,8 @@ export interface SerializedSession {
   // This allows the relayer to verify the enable signature without reconstructing typed data
   etherealEnableTypedData?: EnableTypedData;
   arbitrumEnableTypedData?: EnableTypedData;
+  // Which Ethereal chain was used (mainnet or testnet)
+  etherealChainId?: number;
 }
 
 // Session result with chain clients
@@ -208,31 +224,46 @@ export async function getSmartAccountAddress(
   return account.address;
 }
 
-// Public clients are created once and reused
-function getPublicClients() {
-  const etherealPublicClient = createPublicClient({
-    transport: http(etherealChain.rpcUrls.default.http[0]),
-    chain: etherealChain,
-  });
+/**
+ * Get the Ethereal chain config based on chainId.
+ */
+function getEtherealChain(chainId: number): Chain {
+  return chainId === CHAIN_ID_ETHEREAL_TESTNET
+    ? etherealTestnetChain
+    : etherealChain;
+}
 
-  const arbitrumPublicClient = createPublicClient({
+// Public clients - Arbitrum is static, Ethereal is created based on chainId
+function getArbitrumPublicClient() {
+  return createPublicClient({
     transport: http(
       process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
     ),
     chain: arbitrum,
   });
+}
 
-  return { etherealPublicClient, arbitrumPublicClient };
+function getEtherealPublicClient(chainId: number) {
+  const chain = getEtherealChain(chainId);
+  return createPublicClient({
+    transport: http(chain.rpcUrls.default.http[0]),
+    chain,
+  });
 }
 
 /**
  * Create a new session with time-limited permissions.
  * Uses ZeroDev's serializePermissionAccount to capture owner's EIP-712 approval.
  * Only creates Ethereal session on login - Arbitrum session is created lazily.
+ *
+ * @param ownerSigner - The owner's wallet signer
+ * @param durationHours - Session duration in hours
+ * @param etherealChainId - Which Ethereal chain to use (mainnet or testnet). Defaults to mainnet.
  */
 export async function createSession(
   ownerSigner: OwnerSigner,
-  durationHours: number
+  durationHours: number,
+  etherealChainId: number = CHAIN_ID_ETHEREAL
 ): Promise<SessionResult> {
   console.debug('[SessionKeyManager] Creating new session...');
 
@@ -266,8 +297,16 @@ export async function createSession(
     validUntil: validUntilInSeconds,
   });
 
-  // Get public clients
-  const { etherealPublicClient } = getPublicClients();
+  // Get the selected Ethereal chain and public client
+  const selectedEtherealChain = getEtherealChain(etherealChainId);
+  const etherealPublicClient = getEtherealPublicClient(etherealChainId);
+
+  // Get contract addresses for the selected chain
+  const etherealContracts = getEtherealContractAddresses(etherealChainId);
+
+  console.debug(
+    `[SessionKeyManager] Using Ethereal chain: ${selectedEtherealChain.name} (${etherealChainId})`
+  );
 
   // Note: CallPolicy computes permissionHash from (callType, target, selector) only,
   // NOT including args. So we CANNOT have two permissions for the same target+function.
@@ -276,56 +315,56 @@ export async function createSession(
     policyVersion: CallPolicyVersion.V0_0_4,
     permissions: [
       {
-        target: WUSDE_ADDRESS_ETHEREAL,
+        target: etherealContracts.wusde,
         abi: WUSDE_ABI,
         functionName: 'deposit',
       },
       {
         // Single approve permission using ONE_OF to allow both PredictionMarket and Vault
-        target: WUSDE_ADDRESS_ETHEREAL,
+        target: etherealContracts.wusde,
         abi: collateralTokenAbi,
         functionName: 'approve',
         args: [
           {
             condition: ParamCondition.ONE_OF,
-            value: [PREDICTION_MARKET_ETHEREAL, VAULT_ETHEREAL],
+            value: [etherealContracts.predictionMarket, etherealContracts.vault],
           },
           null,
         ],
       },
       {
-        target: PREDICTION_MARKET_ETHEREAL,
+        target: etherealContracts.predictionMarket,
         abi: predictionMarketAbi,
         functionName: 'mint',
       },
       {
-        target: PREDICTION_MARKET_ETHEREAL,
+        target: etherealContracts.predictionMarket,
         abi: predictionMarketAbi,
         functionName: 'burn',
       },
       {
-        target: PREDICTION_MARKET_ETHEREAL,
+        target: etherealContracts.predictionMarket,
         abi: predictionMarketAbi,
         functionName: 'consolidatePrediction',
       },
       // Vault functions for gasless deposits/withdrawals
       {
-        target: VAULT_ETHEREAL,
+        target: etherealContracts.vault,
         abi: liquidityVaultAbi,
         functionName: 'requestDeposit',
       },
       {
-        target: VAULT_ETHEREAL,
+        target: etherealContracts.vault,
         abi: liquidityVaultAbi,
         functionName: 'requestWithdrawal',
       },
       {
-        target: VAULT_ETHEREAL,
+        target: etherealContracts.vault,
         abi: liquidityVaultAbi,
         functionName: 'cancelDeposit',
       },
       {
-        target: VAULT_ETHEREAL,
+        target: etherealContracts.vault,
         abi: liquidityVaultAbi,
         functionName: 'cancelWithdrawal',
       },
@@ -336,16 +375,20 @@ export async function createSession(
   const { serializePermissionAccount } = await import('@zerodev/permissions');
 
   // Validate Ethereal bundler/paymaster URLs (will throw if not configured)
-  getZeroDevUrls(etherealChain.id);
+  getZeroDevUrls(etherealChainId);
 
   let etherealEnableTypedData: EnableTypedData | undefined;
 
   // --- ETHEREAL CHAIN SETUP (required) ---
-  console.debug('[SessionKeyManager] Setting up Ethereal session...');
+  console.debug(
+    `[SessionKeyManager] Setting up Ethereal session on chain ${etherealChainId}...`
+  );
 
   // Switch to Ethereal chain
-  console.debug('[SessionKeyManager] Switching to Ethereal chain...');
-  await ownerSigner.switchChain(etherealChain.id);
+  console.debug(
+    `[SessionKeyManager] Switching to Ethereal chain ${etherealChainId}...`
+  );
+  await ownerSigner.switchChain(etherealChainId);
 
   // Create ECDSA validator for owner on Ethereal
   const etherealOwnerValidator = await signerToEcdsaValidator(
@@ -434,7 +477,7 @@ export async function createSession(
   );
 
   // Create Ethereal client
-  const etherealClient = createChainClient(etherealChain, etherealAccount);
+  const etherealClient = createChainClient(selectedEtherealChain, etherealAccount);
 
   console.debug('[SessionKeyManager] Owner approval obtained, session created');
   console.debug(
@@ -456,6 +499,7 @@ export async function createSession(
     etherealApproval,
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
+    etherealChainId,
   };
 
   return {
@@ -500,7 +544,7 @@ export async function createArbitrumSession(
   });
 
   // Get Arbitrum public client
-  const { arbitrumPublicClient } = getPublicClients();
+  const arbitrumPublicClient = getArbitrumPublicClient();
 
   // Validate Arbitrum bundler/paymaster URLs (will throw if not configured)
   getZeroDevUrls(arbitrum.id);
@@ -620,8 +664,15 @@ export async function restoreSession(
 
   const config: SessionConfig = serialized.config;
 
-  // Get public clients
-  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
+  // Determine which Ethereal chain was used (default to mainnet for backwards compatibility)
+  const etherealChainId = serialized.etherealChainId ?? CHAIN_ID_ETHEREAL;
+  const selectedEtherealChain = getEtherealChain(etherealChainId);
+  const etherealPublicClient = getEtherealPublicClient(etherealChainId);
+  const arbitrumPublicClient = getArbitrumPublicClient();
+
+  console.debug(
+    `[SessionKeyManager] Restoring session for Ethereal chain ${etherealChainId}`
+  );
 
   // Recreate session key signer from stored private key
   const sessionKeyAccount = privateKeyToAccount(serialized.sessionPrivateKey);
@@ -630,7 +681,7 @@ export async function restoreSession(
   });
 
   // Restore Ethereal session (required)
-  getZeroDevUrls(etherealChain.id); // Will throw if not configured
+  getZeroDevUrls(etherealChainId); // Will throw if not configured
   const etherealAccount = await deserializePermissionAccount(
     etherealPublicClient,
     ENTRY_POINT,
@@ -638,12 +689,13 @@ export async function restoreSession(
     serialized.etherealApproval,
     sessionKeySigner
   );
-  const etherealClient = createChainClient(etherealChain, etherealAccount);
+  const etherealClient = createChainClient(selectedEtherealChain, etherealAccount);
   console.debug('[SessionKeyManager] Ethereal session restored');
 
   // Restore Arbitrum session (optional - may not exist yet)
   let arbitrumClient: KernelAccountClient | null = null;
   if (serialized.arbitrumApproval) {
+    getZeroDevUrls(arbitrum.id); // Will throw if not configured
     const arbitrumAccount = await deserializePermissionAccount(
       arbitrumPublicClient,
       ENTRY_POINT,
@@ -795,10 +847,16 @@ export async function executeSudoTransaction(
   );
 
   // Get the appropriate chain config and public client
-  const chain = chainId === etherealChain.id ? etherealChain : arbitrum;
-  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
-  const publicClient =
-    chainId === etherealChain.id ? etherealPublicClient : arbitrumPublicClient;
+  // Support Ethereal mainnet, Ethereal testnet, and Arbitrum
+  let chain: Chain;
+  let publicClient;
+  if (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET) {
+    chain = getEtherealChain(chainId);
+    publicClient = getEtherealPublicClient(chainId);
+  } else {
+    chain = arbitrum;
+    publicClient = getArbitrumPublicClient();
+  }
 
   // Switch to the correct chain
   console.debug(`[SessionKeyManager] Switching to chain ${chainId}...`);

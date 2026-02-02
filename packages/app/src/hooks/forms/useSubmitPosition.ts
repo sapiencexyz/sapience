@@ -113,7 +113,7 @@ export function useSubmitPosition({
   onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession } = useSession();
   const { signTypedDataAsync } = useSignTypedData();
 
   // V2 chain detection
@@ -546,15 +546,28 @@ export function useSubmitPosition({
 
           let predictorSignature: `0x${string}`;
           try {
-            predictorSignature = await signTypedDataAsync({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message,
-            });
+            // Use session key signing if session is active, otherwise use wallet
+            if (isUsingSession && sessionSignTypedData) {
+              predictorSignature = await sessionSignTypedData({
+                domain: {
+                  ...typedData.domain,
+                  chainId: Number(typedData.domain.chainId),
+                },
+                types: typedData.types,
+                primaryType: typedData.primaryType,
+                message: typedData.message as Record<string, unknown>,
+              });
+            } else {
+              predictorSignature = await signTypedDataAsync({
+                domain: {
+                  ...typedData.domain,
+                  chainId: Number(typedData.domain.chainId),
+                },
+                types: typedData.types,
+                primaryType: typedData.primaryType,
+                message: typedData.message,
+              });
+            }
           } catch (e: any) {
             const error =
               e instanceof Error ? e : new Error(String(e?.message || e));
@@ -664,6 +677,8 @@ export function useSubmitPosition({
       collateralTokenAddress,
       targetContractAddress,
       signTypedDataAsync,
+      isUsingSession,
+      sessionSignTypedData,
     ]
   );
 

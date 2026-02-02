@@ -96,7 +96,7 @@ export function useBidSubmission(
   // TODO: Get chainId from context/props when supporting multiple chains
   const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -238,15 +238,28 @@ export function useBidSubmission(
         });
 
         try {
-          makerSignature = await signTypedDataAsync({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message,
-          });
+          // Use session key signing if session is active, otherwise use wallet
+          if (isUsingSession && sessionSignTypedData) {
+            makerSignature = await sessionSignTypedData({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message as Record<string, unknown>,
+            });
+          } else {
+            makerSignature = await signTypedDataAsync({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+            });
+          }
         } catch (e: any) {
           const error =
             e instanceof Error ? e : new Error(String(e?.message || e));
@@ -295,12 +308,22 @@ export function useBidSubmission(
         } as const;
 
         try {
-          makerSignature = await signTypedDataAsync({
-            domain,
-            types,
-            primaryType: 'Approve',
-            message,
-          });
+          // Use session key signing if session is active, otherwise use wallet
+          if (isUsingSession && sessionSignTypedData) {
+            makerSignature = await sessionSignTypedData({
+              domain,
+              types,
+              primaryType: 'Approve',
+              message: message as Record<string, unknown>,
+            });
+          } else {
+            makerSignature = await signTypedDataAsync({
+              domain,
+              types,
+              primaryType: 'Approve',
+              message,
+            });
+          }
         } catch (e: any) {
           const error =
             e instanceof Error ? e : new Error(String(e?.message || e));
@@ -354,6 +377,8 @@ export function useBidSubmission(
       effectiveAddress,
       isV2Chain,
       v2Nonce,
+      isUsingSession,
+      sessionSignTypedData,
     ]
   );
 
