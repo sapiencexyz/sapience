@@ -2,13 +2,27 @@
 
 import * as React from 'react';
 import { formatEther, type Address } from 'viem';
-import { Card, CardContent, CardHeader, CardTitle } from '@sapience/ui/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@sapience/ui/components/ui/card';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { formatDistanceToNowStrict } from 'date-fns';
-import { CheckCircle2, Clock, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import {
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import type { V2PositionBalance, V2Pick } from '~/hooks/graphql/useV2Positions';
+import type {
+  V2PositionBalance,
+  V2PickData,
+} from '~/hooks/graphql/useV2Positions';
 import { useV2ClaimableAmount } from '~/hooks/blockchain/useV2Contract';
 import { useV2Write } from '~/hooks/blockchain/useV2Write';
 
@@ -46,20 +60,16 @@ const RESULT_CONFIG = {
   },
 };
 
-function PickDisplay({ pick }: { pick: V2Pick }) {
+function PickDisplay({ pick }: { pick: V2PickData }) {
   const outcomeLabel = pick.predictedOutcome === 0 ? 'YES' : 'NO';
-  const outcomeColor = pick.predictedOutcome === 0 ? 'text-emerald-500' : 'text-red-500';
-  const question = pick.condition?.shortName || pick.condition?.question || `Condition ${pick.conditionId.slice(0, 10)}...`;
-
-  // Check if this pick's condition is settled
-  const isSettled = pick.condition?.settled ?? false;
-  const resolvedToYes = pick.condition?.resolvedToYes;
-  const isCorrect = isSettled && resolvedToYes === (pick.predictedOutcome === 0);
+  const outcomeColor =
+    pick.predictedOutcome === 0 ? 'text-emerald-500' : 'text-red-500';
+  const question = `Condition ${pick.conditionId.slice(0, 10)}...`;
 
   return (
     <div className="flex items-center justify-between py-2 border-b border-border/50 last:border-b-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm truncate" title={question}>
+        <p className="text-sm truncate" title={pick.conditionId}>
           {question}
         </p>
       </div>
@@ -67,11 +77,6 @@ function PickDisplay({ pick }: { pick: V2Pick }) {
         <Badge variant="outline" className={outcomeColor}>
           {outcomeLabel}
         </Badge>
-        {isSettled && (
-          <Badge variant={isCorrect ? 'default' : 'destructive'} className="text-xs">
-            {isCorrect ? 'Correct' : 'Wrong'}
-          </Badge>
-        )}
       </div>
     </div>
   );
@@ -91,25 +96,30 @@ export default function V2PositionCard({
   const { redeem } = useV2Write({ chainId: position.chainId });
 
   // Determine if this position is a winner
-  const isWinner = isResolved && (
-    (isPredictor && result === 'PREDICTOR_WINS') ||
-    (!isPredictor && result === 'COUNTERPARTY_WINS') ||
-    result === 'NON_DECISIVE'
-  );
+  const isWinner =
+    isResolved &&
+    ((isPredictor && result === 'PREDICTOR_WINS') ||
+      (!isPredictor && result === 'COUNTERPARTY_WINS') ||
+      result === 'NON_DECISIVE');
 
   // Get claimable amount
-  const { claimableAmount, isLoading: isLoadingClaimable } = useV2ClaimableAmount({
-    pickConfigId: pickConfig?.id as `0x${string}`,
-    tokenAddress: position.tokenAddress as Address,
-    amount: BigInt(position.balance),
-    chainId: position.chainId,
-    enabled: isResolved && BigInt(position.balance) > 0n,
-  });
+  const { claimableAmount, isLoading: isLoadingClaimable } =
+    useV2ClaimableAmount({
+      pickConfigId: pickConfig?.id as `0x${string}`,
+      tokenAddress: position.tokenAddress as Address,
+      amount: BigInt(position.balance),
+      chainId: position.chainId,
+      enabled: isResolved && BigInt(position.balance) > 0n,
+    });
 
   const balanceFormatted = parseFloat(formatEther(BigInt(position.balance)));
-  const claimableFormatted = claimableAmount ? parseFloat(formatEther(claimableAmount)) : 0;
+  const claimableFormatted = claimableAmount
+    ? parseFloat(formatEther(claimableAmount))
+    : 0;
 
-  const resultConfig = RESULT_CONFIG[result as keyof typeof RESULT_CONFIG] || RESULT_CONFIG.UNRESOLVED;
+  const resultConfig =
+    RESULT_CONFIG[result as keyof typeof RESULT_CONFIG] ||
+    RESULT_CONFIG.UNRESOLVED;
   const ResultIcon = resultConfig.icon;
 
   // Calculate time remaining
@@ -143,11 +153,14 @@ export default function V2PositionCard({
                 {isPredictor ? 'Predictor' : 'Counterparty'}
               </Badge>
               <span className="text-muted-foreground font-normal text-sm">
-                {pickConfig?.picks?.length ?? 0} pick{(pickConfig?.picks?.length ?? 0) !== 1 ? 's' : ''}
+                {pickConfig?.picks?.length ?? 0} pick
+                {(pickConfig?.picks?.length ?? 0) !== 1 ? 's' : ''}
               </span>
             </CardTitle>
           </div>
-          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${resultConfig.bgColor}`}>
+          <div
+            className={`flex items-center gap-1.5 px-2 py-1 rounded-md ${resultConfig.bgColor}`}
+          >
             <ResultIcon className={`w-4 h-4 ${resultConfig.color}`} />
             <span className={`text-sm font-medium ${resultConfig.color}`}>
               {resultConfig.label}
@@ -175,7 +188,9 @@ export default function V2PositionCard({
                 value={balanceFormatted}
                 className="text-lg font-semibold"
               />
-              <span className="text-sm text-muted-foreground">{collateralSymbol}</span>
+              <span className="text-sm text-muted-foreground">
+                {collateralSymbol}
+              </span>
             </div>
           </div>
 
@@ -189,13 +204,19 @@ export default function V2PositionCard({
                   value={claimableFormatted}
                   className={`text-lg font-semibold ${isWinner ? 'text-emerald-500' : 'text-muted-foreground'}`}
                 />
-                <span className="text-sm text-muted-foreground">{collateralSymbol}</span>
+                <span className="text-sm text-muted-foreground">
+                  {collateralSymbol}
+                </span>
               </div>
             ) : endsAtMs ? (
-              <p className={`text-lg font-semibold ${isPast ? 'text-amber-500' : ''}`}>
+              <p
+                className={`text-lg font-semibold ${isPast ? 'text-amber-500' : ''}`}
+              >
                 {isPast
                   ? 'Awaiting Settlement'
-                  : formatDistanceToNowStrict(new Date(endsAtMs), { roundingMethod: 'round' })}
+                  : formatDistanceToNowStrict(new Date(endsAtMs), {
+                      roundingMethod: 'round',
+                    })}
               </p>
             ) : (
               <p className="text-lg font-semibold text-muted-foreground">—</p>
@@ -208,14 +229,20 @@ export default function V2PositionCard({
           <div>
             <span>Total Predictor Pool: </span>
             <NumberDisplay
-              value={parseFloat(formatEther(BigInt(pickConfig?.totalPredictorCollateral ?? '0')))}
+              value={parseFloat(
+                formatEther(BigInt(pickConfig?.totalPredictorCollateral ?? '0'))
+              )}
               appendedText={collateralSymbol}
             />
           </div>
           <div>
             <span>Total Counterparty Pool: </span>
             <NumberDisplay
-              value={parseFloat(formatEther(BigInt(pickConfig?.totalCounterpartyCollateral ?? '0')))}
+              value={parseFloat(
+                formatEther(
+                  BigInt(pickConfig?.totalCounterpartyCollateral ?? '0')
+                )
+              )}
               appendedText={collateralSymbol}
             />
           </div>

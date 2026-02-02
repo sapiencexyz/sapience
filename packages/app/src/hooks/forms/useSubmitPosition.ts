@@ -7,7 +7,10 @@ import { useCallback, useState, useMemo } from 'react';
 import { encodeFunctionData, erc20Abi, parseAbi, type Address } from 'viem';
 
 import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
@@ -120,9 +123,8 @@ export function useSubmitPosition({
     : undefined;
 
   // For V2, use the escrow contract; for V1, use the prediction market
-  const targetContractAddress = isV2Chain && v2EscrowAddress
-    ? v2EscrowAddress
-    : predictionMarketAddress;
+  const targetContractAddress =
+    isV2Chain && v2EscrowAddress ? v2EscrowAddress : predictionMarketAddress;
 
   // Get WUSDe address for this chain
   const wusdeAddress = WUSDE_ADDRESSES[chainId];
@@ -135,7 +137,11 @@ export function useSubmitPosition({
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!effectiveAddress && enabled && isEtherealChain(chainId) && !!wusdeAddress,
+      enabled:
+        !!effectiveAddress &&
+        enabled &&
+        isEtherealChain(chainId) &&
+        !!wusdeAddress,
     },
   });
 
@@ -154,7 +160,11 @@ export function useSubmitPosition({
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!effectiveAddress && !!predictionMarketAddress && enabled && !isV2Chain,
+      enabled:
+        !!effectiveAddress &&
+        !!predictionMarketAddress &&
+        enabled &&
+        !isV2Chain,
     },
   });
 
@@ -374,9 +384,7 @@ export function useSubmitPosition({
         const wrappedBal =
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
         const amountToWrap =
-          predictorWagerWei > wrappedBal
-            ? predictorWagerWei - wrappedBal
-            : 0n;
+          predictorWagerWei > wrappedBal ? predictorWagerWei - wrappedBal : 0n;
 
         if (amountToWrap > 0n) {
           const wrapCalldata = encodeFunctionData({
@@ -490,7 +498,8 @@ export function useSubmitPosition({
           }
 
           // Get fresh predictor nonce
-          const { data: freshV2Nonce } = await refetchV2Nonce();
+          const refetchResult = await refetchV2Nonce();
+          const freshV2Nonce = refetchResult.data as bigint | undefined;
           const predictorNonce = freshV2Nonce ?? v2Nonce ?? 0n;
 
           // Decode predictedOutcomes to V2 picks
@@ -547,7 +556,8 @@ export function useSubmitPosition({
               message: typedData.message,
             });
           } catch (e: any) {
-            const error = e instanceof Error ? e : new Error(String(e?.message || e));
+            const error =
+              e instanceof Error ? e : new Error(String(e?.message || e));
             throw new Error(`Signature rejected: ${error.message}`);
           }
 
@@ -620,7 +630,8 @@ export function useSubmitPosition({
         setIsProcessing(false);
       } catch (err: any) {
         const msg = (err?.message || '').toString();
-        const isNonceErr = msg.includes('InvalidMakerNonce') || msg.includes('InvalidNonce');
+        const isNonceErr =
+          msg.includes('InvalidMakerNonce') || msg.includes('InvalidNonce');
         if (isNonceErr) {
           setError('The bid has become stale. Please request new bids.');
         } else {

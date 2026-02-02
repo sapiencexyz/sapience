@@ -154,6 +154,9 @@ class V2PositionBalanceType {
 
   @Field(() => String)
   balance!: string;
+
+  @Field(() => V2PickConfigurationType, { nullable: true })
+  pickConfig?: V2PickConfigurationType | null;
 }
 
 @ObjectType()
@@ -493,6 +496,13 @@ export class V2PositionResolver {
       orderBy: { updatedAt: 'desc' },
       take,
       skip,
+      include: {
+        pickConfiguration: {
+          include: {
+            picks: true,
+          },
+        },
+      },
     });
 
     return rows.map((r) => ({
@@ -503,6 +513,30 @@ export class V2PositionResolver {
       isPredictorToken: r.isPredictorToken,
       holder: r.holder,
       balance: r.balance,
+      pickConfig: r.pickConfiguration
+        ? {
+            id: r.pickConfiguration.id,
+            chainId: r.pickConfiguration.chainId,
+            marketAddress: r.pickConfiguration.marketAddress,
+            totalPredictorCollateral: r.pickConfiguration.totalPredictorCollateral,
+            totalCounterpartyCollateral: r.pickConfiguration.totalCounterpartyCollateral,
+            claimedPredictorCollateral: r.pickConfiguration.claimedPredictorCollateral,
+            claimedCounterpartyCollateral: r.pickConfiguration.claimedCounterpartyCollateral,
+            resolved: r.pickConfiguration.resolved,
+            result: r.pickConfiguration.result,
+            resolvedAt: r.pickConfiguration.resolvedAt ?? null,
+            predictorToken: r.pickConfiguration.predictorToken ?? null,
+            counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
+            endsAt: r.pickConfiguration.endsAt ?? null,
+            picks: r.pickConfiguration.picks.map((p) => ({
+              id: p.id,
+              pickConfigId: p.pickConfigId,
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+          }
+        : null,
     }));
   }
 

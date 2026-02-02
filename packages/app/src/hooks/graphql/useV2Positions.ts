@@ -22,11 +22,42 @@ export type V2Prediction = {
   settled: boolean;
   settledAt?: number | null;
   settleTxHash?: string | null;
-  result: 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE';
+  result:
+    | 'UNRESOLVED'
+    | 'PREDICTOR_WINS'
+    | 'COUNTERPARTY_WINS'
+    | 'NON_DECISIVE';
   predictorClaimable?: string | null;
   counterpartyClaimable?: string | null;
   createTxHash: string;
   refCode?: string | null;
+};
+
+/** V2 Pick in a pick configuration */
+export type V2PickData = {
+  id: number;
+  pickConfigId: string;
+  conditionResolver: string;
+  conditionId: string;
+  predictedOutcome: number;
+};
+
+/** V2 Pick Configuration data */
+export type V2PickConfigData = {
+  id: string;
+  chainId: number;
+  marketAddress: string;
+  totalPredictorCollateral: string;
+  totalCounterpartyCollateral: string;
+  claimedPredictorCollateral: string;
+  claimedCounterpartyCollateral: string;
+  resolved: boolean;
+  result: string;
+  resolvedAt?: number | null;
+  predictorToken?: string | null;
+  counterpartyToken?: string | null;
+  endsAt?: number | null;
+  picks: V2PickData[];
 };
 
 /**
@@ -40,6 +71,7 @@ export type V2PositionBalance = {
   isPredictorToken: boolean;
   holder: string;
   balance: string;
+  pickConfig?: V2PickConfigData | null;
 };
 
 // GraphQL queries for V2 data
@@ -96,6 +128,28 @@ const V2_POSITION_BALANCES_QUERY = /* GraphQL */ `
       isPredictorToken
       holder
       balance
+      pickConfig {
+        id
+        chainId
+        marketAddress
+        totalPredictorCollateral
+        totalCounterpartyCollateral
+        claimedPredictorCollateral
+        claimedCounterpartyCollateral
+        resolved
+        result
+        resolvedAt
+        predictorToken
+        counterpartyToken
+        endsAt
+        picks {
+          id
+          pickConfigId
+          conditionResolver
+          conditionId
+          predictedOutcome
+        }
+      }
     }
   }
 `;
