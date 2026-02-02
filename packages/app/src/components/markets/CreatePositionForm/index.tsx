@@ -244,6 +244,7 @@ const CreatePositionFormInner = ({
         takerNonce,
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,
+        collateralTokenAddress: collateralToken,
       });
 
       if (!cancelled) {
@@ -271,7 +272,12 @@ const CreatePositionFormInner = ({
     return () => {
       cancelled = true;
     };
-  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
+  }, [
+    rawBids,
+    currentAuctionParams,
+    PREDICTION_MARKET_ADDRESS,
+    collateralToken,
+  ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];

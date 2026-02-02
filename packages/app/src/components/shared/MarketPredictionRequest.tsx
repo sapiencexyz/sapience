@@ -94,7 +94,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
 
   const { address: takerAddress } = useAccount();
-  const { requestQuotes, bids } = useAuctionStart();
+  // Disable logging for forecast-only components to avoid noisy console output
+  const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
   const chainId = CHAIN_ID_ETHEREAL;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||

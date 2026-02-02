@@ -75,7 +75,16 @@ function jsonStableStringify(value: unknown): string {
   return JSON.stringify(serialize(value));
 }
 
-export function useAuctionStart() {
+export interface UseAuctionStartOptions {
+  /** Disable logging for this hook instance (use for forecast-only components) */
+  disableLogging?: boolean;
+}
+
+export function useAuctionStart(options?: UseAuctionStartOptions) {
+  const shouldLog = !options?.disableLogging;
+  // Create conditional log functions to avoid noisy logs from forecast-only components
+  const log = shouldLog ? logAuction : () => {};
+  const logWarn = shouldLog ? logAuctionWarn : () => {};
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const inflightRef = useRef<string>('');
@@ -135,17 +144,17 @@ export function useAuctionStart() {
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
-            logAuction(
+            log(
               `Ignoring ${rawBids.length} bid(s) for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
             );
             return;
           }
 
-          logAuction(
+          log(
             `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
           );
           rawBids.forEach((b) => {
-            logAuction(`  - ${formatBidForLog(b)}`);
+            log(`  - ${formatBidForLog(b)}`);
           });
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
@@ -249,7 +258,7 @@ export function useAuctionStart() {
             takerSignedAt = issuedAt;
           } catch (signError) {
             // If signature is required and fails, log and return early
-            logAuctionWarn('Failed to sign auction request:', signError);
+            logWarn('Failed to sign auction request:', signError);
             return;
           }
         }
@@ -279,7 +288,7 @@ export function useAuctionStart() {
         lastAuctionRef.current = { ...params, taker: effectiveTaker };
         setCurrentAuctionParams({ ...params, taker: effectiveTaker });
 
-        logAuction(
+        log(
           `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, taker=${effectiveTaker.slice(0, 10)}...`
         );
 
@@ -294,11 +303,11 @@ export function useAuctionStart() {
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
           setAuctionId(newId);
-          logAuction(`Auction started: id=${newId}`);
+          log(`Auction started: id=${newId}`);
         } catch (err) {
           // On timeout or error, clear inflight but keep params for retry
           inflightRef.current = '';
-          logAuction(`Auction request failed:`, err);
+          log(`Auction request failed:`, err);
         }
       }, 400);
     },
@@ -356,7 +365,7 @@ export function useAuctionStart() {
 
       // Validate bid is from the current auction to avoid stale nonce errors
       if (args.selectedBid.auctionId !== auctionId) {
-        logAuction(
+        log(
           `Stale bid rejected - auctionId mismatch: bid=${args.selectedBid.auctionId}, current=${auctionId}`
         );
         return null;

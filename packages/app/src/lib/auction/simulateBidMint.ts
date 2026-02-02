@@ -1,4 +1,5 @@
 import { predictionMarketAbi } from '@sapience/sdk';
+import { encodePacked, keccak256, toHex } from 'viem';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import {
   logBidValidation,
@@ -22,6 +23,8 @@ export interface SimulateBidMintOptions {
   // Market data
   encodedPredictedOutcomes: `0x${string}`;
   resolver: `0x${string}`;
+  // Collateral token for state override (user's allowance/balance)
+  collateralTokenAddress?: `0x${string}`;
 }
 
 export interface SimulateBidResult {
@@ -61,6 +64,32 @@ const ZERO_BYTES32: `0x${string}` = `0x${'0'.repeat(64)}`;
  * @param options - Auction context and contract addresses
  * @returns Promise<SimulateBidResult> - { isValid: true } on success, { isValid: false, error: string } on failure
  */
+/**
+ * Compute the ERC20 storage slot for allowance mapping.
+ * Standard ERC20 layout: allowance is at slot 1, mapping key is keccak256(spender . keccak256(owner . slot))
+ * This assumes standard OpenZeppelin ERC20 storage layout.
+ */
+function computeAllowanceSlot(
+  owner: `0x${string}`,
+  spender: `0x${string}`
+): `0x${string}` {
+  // allowance mapping is typically at slot 1 in OpenZeppelin ERC20
+  // slot = keccak256(abi.encode(spender, keccak256(abi.encode(owner, 1))))
+  const ownerSlot = keccak256(
+    encodePacked(['address', 'uint256'], [owner, 1n])
+  );
+  return keccak256(encodePacked(['address', 'bytes32'], [spender, ownerSlot]));
+}
+
+/**
+ * Compute the ERC20 storage slot for balance mapping.
+ * Standard ERC20 layout: balanceOf is at slot 0.
+ */
+function computeBalanceSlot(account: `0x${string}`): `0x${string}` {
+  // balanceOf mapping is typically at slot 0 in OpenZeppelin ERC20
+  return keccak256(encodePacked(['address', 'uint256'], [account, 0n]));
+}
+
 export async function simulateBidMint(
   bid: BidData,
   options: SimulateBidMintOptions
@@ -73,6 +102,7 @@ export async function simulateBidMint(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
+    collateralTokenAddress,
   } = options;
 
   // Build the MintPredictionRequestData struct
@@ -99,14 +129,43 @@ export async function simulateBidMint(
 
   const publicClient = getPublicClientForChainId(chainId);
 
+  // Build state overrides to simulate post-wrap and post-approve state for the user.
+  // This way we only validate the bidder's ability to fulfill (signature, balance, allowance, etc.)
+  // The user's wrap + approve are handled automatically at submission time.
+  const MAX_UINT256 = toHex(2n ** 256n - 1n, { size: 32 });
+  let stateOverride:
+    | Record<`0x${string}`, { stateDiff: Record<`0x${string}`, `0x${string}`> }>
+    | undefined;
+
+  if (collateralTokenAddress) {
+    const userAllowanceSlot = computeAllowanceSlot(
+      takerAddress,
+      predictionMarketAddress
+    );
+    const userBalanceSlot = computeBalanceSlot(takerAddress);
+
+    stateOverride = {
+      [collateralTokenAddress]: {
+        stateDiff: {
+          // Give user infinite allowance to PredictionMarket
+          [userAllowanceSlot]: MAX_UINT256,
+          // Give user infinite balance
+          [userBalanceSlot]: MAX_UINT256,
+        },
+      },
+    };
+  }
+
   try {
-    // Simulate the mint call with the auction requester as the account
+    // Simulate the mint call with state overrides for the user's allowance/balance.
+    // This simulates the state AFTER wrap + approve transactions in the bundle.
     await publicClient.simulateContract({
       address: predictionMarketAddress,
       abi: predictionMarketAbi,
       functionName: 'mint',
       args: [mintPredictionRequestData],
       account: takerAddress,
+      stateOverride,
     });
 
     return { isValid: true };
@@ -126,6 +185,10 @@ export async function simulateBidMint(
         errorMessage = 'Nonce already used';
       } else if (msg.includes('SafeERC20FailedOperation')) {
         errorMessage = 'Bidder has insufficient funds or allowance';
+      } else if (msg.includes('InsufficientAllowance')) {
+        errorMessage = 'Bidder has insufficient allowance';
+      } else if (msg.includes('InsufficientBalance')) {
+        errorMessage = 'Bidder has insufficient balance';
       } else if (msg.includes('CollateralBelowMinimum')) {
         errorMessage = 'Collateral below minimum';
       } else if (msg.includes('MakerCollateralMustBeGreaterThanZero')) {
