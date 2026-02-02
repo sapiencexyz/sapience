@@ -1,4 +1,4 @@
-import { decodeAbiParameters, type Address, type Hex } from 'viem';
+import { decodeAbiParameters, type Address } from 'viem';
 import {
   pythResolver,
   umaResolver,

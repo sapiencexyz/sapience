@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatEther } from 'viem';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Button } from '@sapience/ui/components/ui/button';

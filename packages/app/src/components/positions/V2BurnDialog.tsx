@@ -1,8 +1,7 @@
 'use client';
 
-import * as React from 'react';
 import { useState, useCallback, useMemo } from 'react';
-import { formatEther, parseEther, type Address, type Hex } from 'viem';
+import { formatEther, type Address, type Hex } from 'viem';
 import {
   Dialog,
   DialogContent,
@@ -12,13 +11,11 @@ import {
   DialogFooter,
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
-import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
 import Slider from '@sapience/ui/components/ui/slider';
 import { AlertCircle, Flame, Loader2 } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { useV2Write } from '~/hooks/blockchain/useV2Write';
 import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 import { useSession } from '~/lib/context/SessionContext';
@@ -52,12 +49,12 @@ interface V2BurnDialogProps {
  */
 export default function V2BurnDialog({
   pickConfigId,
-  predictorToken,
-  counterpartyToken,
+  predictorToken: _predictorToken,
+  counterpartyToken: _counterpartyToken,
   userPredictorBalance,
   userCounterpartyBalance,
-  totalPredictorCollateral,
-  totalCounterpartyCollateral,
+  totalPredictorCollateral: _totalPredictorCollateral,
+  totalCounterpartyCollateral: _totalCounterpartyCollateral,
   chainId,
   collateralSymbol,
   onBurnComplete,
@@ -89,7 +86,7 @@ export default function V2BurnDialog({
   const totalPayout = predictorPayout + counterpartyPayout;
 
   // Hooks
-  const { address } = useAccount();
+  useAccount();
   const { signTypedData, effectiveAddress } = useSession();
   const { burn, isPending } = useV2Write({ chainId });
   const { nonce: currentNonce } = useV2Nonce({

@@ -7,7 +7,7 @@ import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
 import type { Pick, V2AuctionRequestPayload } from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';

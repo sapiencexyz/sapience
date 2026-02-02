@@ -13,7 +13,6 @@ import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 
 export interface V2BidSubmissionParams {
   /** The auction to bid on */

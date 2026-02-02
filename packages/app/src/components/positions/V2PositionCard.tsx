@@ -5,17 +5,10 @@ import { formatEther, type Address } from 'viem';
 import { Card, CardContent, CardHeader, CardTitle } from '@sapience/ui/components/ui/card';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { CheckCircle2, Clock, AlertCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import type { V2PositionBalance, V2PickConfiguration, V2Pick } from '~/hooks/graphql/useV2Positions';
+import type { V2PositionBalance, V2Pick } from '~/hooks/graphql/useV2Positions';
 import { useV2ClaimableAmount } from '~/hooks/blockchain/useV2Contract';
 import { useV2Write } from '~/hooks/blockchain/useV2Write';
 

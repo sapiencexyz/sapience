@@ -64,14 +64,13 @@ export default function V2CreateAuctionForm({
     isConnected,
     address,
     verifyingContract,
-    currentNonce,
   } = useV2AuctionStart({
     chainId,
     onAuctionCreated,
     onSignatureRejected: (err) => setError(`Signature rejected: ${err.message}`),
   });
 
-  const { balance: collateralBalance, isLoading: isLoadingBalance } = useCollateralBalance({
+  const { balance: collateralBalance } = useCollateralBalance({
     address: address,
     chainId,
   });
