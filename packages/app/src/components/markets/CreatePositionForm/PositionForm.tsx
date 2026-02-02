@@ -39,6 +39,7 @@ import {
   type PythPrediction,
   type UmaPrediction,
 } from '@sapience/ui';
+import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -181,6 +182,10 @@ export default function PositionForm({
   // Clear bids when wager amount changes (for animations)
   useEffect(() => {
     if (prevWagerAmountRef.current !== (wagerAmount || '')) {
+      logPositionForm(
+        `Wager amount changed: ${prevWagerAmountRef.current || '(empty)'} -> ${wagerAmount || '(empty)'}`
+      );
+      logPositionForm('Clearing bids due to configuration change (wager)');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when wager changes
@@ -194,6 +199,10 @@ export default function PositionForm({
   const prevHasConnectedWalletRef = useRef(hasConnectedWallet);
   useEffect(() => {
     if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
+      logPositionForm(
+        `Wallet connection changed: ${prevHasConnectedWalletRef.current ? 'connected' : 'disconnected'} -> ${hasConnectedWallet ? 'connected' : 'disconnected'}`
+      );
+      logPositionForm('Clearing bids due to configuration change (wallet)');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null);
@@ -205,6 +214,12 @@ export default function PositionForm({
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
     if (prevPredictionsKeyRef.current !== predictionsKey) {
+      logPositionForm('Predictions changed');
+      logPositionForm(`  Previous: "${prevPredictionsKeyRef.current}"`);
+      logPositionForm(`  Current: "${predictionsKey}"`);
+      logPositionForm(
+        'Clearing bids due to configuration change (predictions)'
+      );
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
@@ -221,11 +236,23 @@ export default function PositionForm({
     // If request key is null, it means selections/wager changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
       // Configuration changed, ignore incoming bids
+      if (bids.length > 0) {
+        logPositionForm(
+          `Ignoring ${bids.length} bid(s): requestKey is null (configuration changed)`
+        );
+      }
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
+      logPositionForm(
+        `Processing ${bids.length} validated bid(s) (requestKey matches)`
+      );
       setValidBids(bids);
+    } else if (bids.length > 0) {
+      logPositionForm(`Ignoring ${bids.length} bid(s): requestKey mismatch`);
+      logPositionForm(`  Current: "${currentRequestKey}"`);
+      logPositionForm(`  Expected: "${currentRequestKeyRef.current}"`);
     }
   }, [bids, predictionsKey, wagerAmount]);
 
@@ -235,12 +262,29 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: null };
     }
 
+    const nowSec = Math.floor(nowMs / 1000);
+
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
       (bid) => bid.makerDeadline * 1000 > nowMs
     );
+    const expiredBids = validBids.filter(
+      (bid) => bid.makerDeadline * 1000 <= nowMs
+    );
+
+    if (expiredBids.length > 0) {
+      logPositionForm(
+        `Filtering: ${validBids.length} total -> ${nonExpiredBids.length} non-expired (${expiredBids.length} expired)`
+      );
+      expiredBids.forEach((b) => {
+        logPositionForm(
+          `  Expired: ${b.maker.slice(0, 8)}... deadline=${b.makerDeadline} < now=${nowSec}`
+        );
+      });
+    }
 
     if (nonExpiredBids.length === 0) {
+      logPositionForm('No bids to display (all expired)');
       return { bestBid: null, estimateBid: null };
     }
 
@@ -254,12 +298,28 @@ export default function PositionForm({
     const failedBids = nonExpiredBids.filter(
       (bid) => bid.validationStatus === 'invalid'
     );
+
+    logPositionForm(
+      `Filtering: ${nonExpiredBids.length} non-expired -> ${validFilteredBids.length} valid, ${failedBids.length} invalid`
+    );
+
     const estimateFromFailed =
       validFilteredBids.length === 0 && failedBids.length === 1
         ? failedBids[0]
         : null;
 
     if (validFilteredBids.length === 0) {
+      if (estimateFromFailed) {
+        logPositionForm(
+          `No valid bids. Using estimate from failed bid: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+        );
+      } else if (failedBids.length > 1) {
+        logPositionForm(
+          `No valid bids and ${failedBids.length} failed bids (too many for estimate)`
+        );
+      } else {
+        logPositionForm('No valid bids and no estimate available');
+      }
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
@@ -274,8 +334,12 @@ export default function PositionForm({
       }
     });
 
+    logPositionForm(
+      `Best bid selected: ${formatBidForLog(best, collateralDecimals)}`
+    );
+
     return { bestBid: best, estimateBid: null };
-  }, [validBids, nowMs]);
+  }, [validBids, nowMs, collateralDecimals]);
 
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
@@ -428,6 +492,7 @@ export default function PositionForm({
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
   const handleRequestBids = useCallback(() => {
+    logPositionForm('Manual "Request Bids" clicked');
     triggerAuctionRequest({
       forceRefresh: true,
       requireSignature: hasConnectedWallet,
@@ -473,6 +538,9 @@ export default function PositionForm({
 
     // Debounce for 300ms to let user finish typing/selecting
     autoAuctionDebounceRef.current = window.setTimeout(() => {
+      logPositionForm(
+        `Auto-auction triggered (${hasConnectedWallet ? 'session user' : 'logged-out user'})`
+      );
       triggerAuctionRequest({
         forceRefresh: true,
         requireSignature: hasConnectedWallet,
@@ -522,6 +590,10 @@ export default function PositionForm({
 
     if (showNoBidsWarning) {
       if (!hintMounted) {
+        logPositionForm('No bids received within cooldown period');
+        logPositionForm(
+          'Showing "Some combinations may not receive bids" hint'
+        );
         // Hide disclaimer, then show hint
         timeout1 = window.setTimeout(() => {
           setDisclaimerMounted(false);

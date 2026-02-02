@@ -50,6 +50,7 @@ import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import { validateBidsWithSimulation } from '~/lib/auction/simulateBidMint';
+import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_WAGER_AMOUNT,
@@ -194,6 +195,9 @@ const CreatePositionFormInner = ({
     // Need auction params and prediction market address for simulation
     if (!currentAuctionParams || !PREDICTION_MARKET_ADDRESS) {
       // Can't validate yet, show bids as pending
+      logPositionForm(
+        `Received ${rawBids.length} raw bid(s), marking as pending (missing auction params or market address)`
+      );
       setBids(
         rawBids.map((b) => ({
           ...b,
@@ -214,6 +218,9 @@ const CreatePositionFormInner = ({
       !predictedOutcomes?.[0] ||
       !resolver
     ) {
+      logPositionForm(
+        `Received ${rawBids.length} raw bid(s), marking as pending (incomplete auction context)`
+      );
       setBids(
         rawBids.map((b) => ({
           ...b,
@@ -226,6 +233,9 @@ const CreatePositionFormInner = ({
     let cancelled = false;
 
     const runValidation = async () => {
+      logPositionForm(
+        `Starting validation pipeline for ${rawBids.length} bid(s)...`
+      );
       const validated = await validateBidsWithSimulation(rawBids, {
         chainId,
         predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
@@ -237,6 +247,15 @@ const CreatePositionFormInner = ({
       });
 
       if (!cancelled) {
+        const validCount = validated.filter(
+          (v) => v.validationStatus === 'valid'
+        ).length;
+        const invalidCount = validated.filter(
+          (v) => v.validationStatus === 'invalid'
+        ).length;
+        logPositionForm(
+          `Validation pipeline complete: ${validCount} valid, ${invalidCount} invalid`
+        );
         setBids(
           validated.map(({ bid, validationStatus, validationError }) => ({
             ...bid,

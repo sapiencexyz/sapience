@@ -1,5 +1,9 @@
 import { predictionMarketAbi } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import {
+  logBidValidation,
+  logBidValidationWarn,
+} from '~/lib/auction/bidLogger';
 
 /**
  * Options for simulating a bid mint transaction.
@@ -165,6 +169,8 @@ export async function validateBidsWithSimulation<T extends BidData>(
   bids: T[],
   options: SimulateBidMintOptions
 ): Promise<ValidatedBid<T>[]> {
+  logBidValidation(`Validating batch of ${bids.length} bids...`);
+
   const results = await Promise.all(
     bids.map(async (bid): Promise<ValidatedBid<T>> => {
       try {
@@ -176,8 +182,8 @@ export async function validateBidsWithSimulation<T extends BidData>(
         };
       } catch (err) {
         // On RPC or unexpected errors, treat as valid to avoid blocking
-        console.warn(
-          '[validateBidsWithSimulation] Unexpected error for bid:',
+        logBidValidationWarn(
+          'Unexpected error for bid:',
           bid.makerSignature?.slice(0, 10),
           err
         );
@@ -189,6 +195,25 @@ export async function validateBidsWithSimulation<T extends BidData>(
       }
     })
   );
+
+  // Log validation results
+  const validCount = results.filter(
+    (r) => r.validationStatus === 'valid'
+  ).length;
+  const invalidCount = results.filter(
+    (r) => r.validationStatus === 'invalid'
+  ).length;
+  logBidValidation(`Results: ${validCount} valid, ${invalidCount} invalid`);
+  results.forEach((r) => {
+    const makerShort = `${r.bid.maker.slice(0, 8)}...`;
+    if (r.validationStatus === 'valid') {
+      logBidValidation(`  - ${makerShort} -> valid`);
+    } else {
+      logBidValidation(
+        `  - ${makerShort} -> invalid: ${r.validationError || 'unknown reason'}`
+      );
+    }
+  });
 
   return results;
 }

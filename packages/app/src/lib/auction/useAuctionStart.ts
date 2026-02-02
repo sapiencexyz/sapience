@@ -11,6 +11,11 @@ import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import {
+  logAuction,
+  logAuctionWarn,
+  formatBidForLog,
+} from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
   wager: string; // wei string - taker's wager amount
@@ -130,10 +135,18 @@ export function useAuctionStart() {
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
+            logAuction(
+              `Ignoring ${rawBids.length} bid(s) for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
+            );
             return;
           }
 
-          console.log(`[Auction] Received ${rawBids.length} bid(s)`);
+          logAuction(
+            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
+          );
+          rawBids.forEach((b) => {
+            logAuction(`  - ${formatBidForLog(b)}`);
+          });
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
@@ -236,10 +249,7 @@ export function useAuctionStart() {
             takerSignedAt = issuedAt;
           } catch (signError) {
             // If signature is required and fails, log and return early
-            console.warn(
-              '[AuctionStart] Failed to sign auction request:',
-              signError
-            );
+            logAuctionWarn('Failed to sign auction request:', signError);
             return;
           }
         }
@@ -269,6 +279,10 @@ export function useAuctionStart() {
         lastAuctionRef.current = { ...params, taker: effectiveTaker };
         setCurrentAuctionParams({ ...params, taker: effectiveTaker });
 
+        logAuction(
+          `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, taker=${effectiveTaker.slice(0, 10)}...`
+        );
+
         // Use sendWithAck for proper request/response correlation
         // Server echoes back the request ID, allowing parallel requests
         try {
@@ -280,9 +294,11 @@ export function useAuctionStart() {
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
           setAuctionId(newId);
-        } catch {
+          logAuction(`Auction started: id=${newId}`);
+        } catch (err) {
           // On timeout or error, clear inflight but keep params for retry
           inflightRef.current = '';
+          logAuction(`Auction request failed:`, err);
         }
       }, 400);
     },
@@ -340,10 +356,9 @@ export function useAuctionStart() {
 
       // Validate bid is from the current auction to avoid stale nonce errors
       if (args.selectedBid.auctionId !== auctionId) {
-        console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
-          bidAuctionId: args.selectedBid.auctionId,
-          currentAuctionId: auctionId,
-        });
+        logAuction(
+          `Stale bid rejected - auctionId mismatch: bid=${args.selectedBid.auctionId}, current=${auctionId}`
+        );
         return null;
       }
 
