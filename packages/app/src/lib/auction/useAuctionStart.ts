@@ -120,6 +120,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);
+  // Track which stale auction IDs we've already logged to reduce noise
+  // (ExampleCombos creates multiple auctions that trigger stale bid warnings)
+  const loggedStaleAuctionsRef = useRef<Set<string>>(new Set());
   // Track the current pending request to handle race conditions
   // When a new request is made, we generate a unique ID. Only the response
   // matching the latest request ID will update the auction state.
@@ -148,9 +151,14 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
-            log(
-              `Ignoring ${rawBids.length} bid(s) for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
-            );
+            // Only log once per stale auction ID to reduce noise
+            // (ExampleCombos creates multiple auctions that would spam logs)
+            if (!loggedStaleAuctionsRef.current.has(targetAuctionId)) {
+              loggedStaleAuctionsRef.current.add(targetAuctionId);
+              log(
+                `Ignoring bids for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
+              );
+            }
             return;
           }
 
@@ -336,6 +344,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
+          // Clear logged stale auctions when a new auction starts
+          loggedStaleAuctionsRef.current.clear();
           setAuctionId(newId);
           log(`Auction started: id=${newId}`);
         } catch (err) {

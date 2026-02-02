@@ -1,32 +1,60 @@
 import { predictionMarketAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
+import { encodeAbiParameters, keccak256, toHex } from 'viem';
+import type { KernelAccountClient } from '@zerodev/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import {
   logBidValidation,
   logBidValidationWarn,
 } from '~/lib/auction/bidLogger';
+import { simulateBundlerMint } from './simulateBundlerMint';
 
-// Multicall3 is deployed at the same address on all chains
-const MULTICALL3_ADDRESS: `0x${string}` =
-  '0xcA11bde05977b3631167028862bE2a173976CA11';
+/**
+ * Compute storage slot for a mapping(address => uint256) at a given slot.
+ * Standard Solidity storage layout: keccak256(abi.encode(key, slot))
+ */
+function getMappingSlot(
+  key: `0x${string}`,
+  mappingSlot: bigint
+): `0x${string}` {
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: 'address' }, { type: 'uint256' }],
+      [key, mappingSlot]
+    )
+  );
+}
 
-// wUSDe contract on Ethereal chain
-const WUSDE_ADDRESS: `0x${string}` =
-  '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+/**
+ * Get balance storage slot for standard ERC20 (_balances at slot 0)
+ */
+function getBalanceSlot(owner: `0x${string}`): `0x${string}` {
+  return getMappingSlot(owner, 0n);
+}
 
-// Multicall3 ABI for aggregate3
-const multicall3Abi = parseAbi([
-  'struct Call3 { address target; bool allowFailure; bytes callData; }',
-  'struct Result { bool success; bytes returnData; }',
-  'function aggregate3(Call3[] calldata calls) external payable returns (Result[] memory returnData)',
-]);
+/**
+ * Get allowance storage slot for standard ERC20 (_allowances at slot 1)
+ * allowance[owner][spender] is a nested mapping
+ */
+function getAllowanceSlot(
+  owner: `0x${string}`,
+  spender: `0x${string}`
+): `0x${string}` {
+  const innerSlot = getMappingSlot(owner, 1n);
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: 'address' }, { type: 'bytes32' }],
+      [spender, innerSlot]
+    )
+  );
+}
 
-// WUSDe ABI for wrapping
-const wusdeAbi = parseAbi([
-  'function deposit() external payable',
-  'function balanceOf(address account) external view returns (uint256)',
-]);
+/**
+ * Execution mode for bid simulation.
+ * - 'eoa': EOA mode - use state override simulation (preserves msg.sender)
+ * - 'session': Smart account with active session - use bundler simulation via sessionClient
+ * - 'owner': Smart account without session - use bundler simulation via owner kernel client
+ */
+export type ExecutionMode = 'eoa' | 'session' | 'owner';
 
 /**
  * Options for simulating a bid mint transaction.
@@ -45,11 +73,19 @@ export interface SimulateBidMintOptions {
   // Market data
   encodedPredictedOutcomes: `0x${string}`;
   resolver: `0x${string}`;
-  // Collateral token address (required for bundle simulation)
-  collateralTokenAddress?: `0x${string}`;
-  // User's current state (for determining which calls to include in bundle)
-  userWusdeBalance?: bigint; // User's current wUSDe balance
-  userAllowance?: bigint; // User's current allowance to PredictionMarket
+  // Collateral token address (required for state override simulation)
+  collateralTokenAddress: `0x${string}`;
+
+  // Execution context for smart account path (optional - defaults to EOA mode)
+  executionMode?: ExecutionMode;
+  sessionClient?: KernelAccountClient;
+  smartAccountAddress?: `0x${string}`;
+  // User's current wUSDe balance (for bundler simulation wrap check)
+  userWusdeBalance?: bigint;
+  // User's current allowance to PredictionMarket
+  userAllowance?: bigint;
+  // User's native USDe balance (for Ethereal wrap check)
+  userNativeBalance?: bigint;
 }
 
 export interface SimulateBidResult {
@@ -73,16 +109,23 @@ export interface BidData {
 const ZERO_BYTES32: `0x${string}` = `0x${'0'.repeat(64)}`;
 
 /**
- * Validates a bid by simulating the full transaction bundle via Multicall3.
+ * Validates a bid by simulating the mint transaction.
  *
- * This simulates exactly what would be sent to the bundler:
- * 1. wUSDe deposit (wrap native USDe) - if on Ethereal and user needs more wUSDe
- * 2. ERC20 approve - if user hasn't approved enough collateral
- * 3. PredictionMarket.mint - the actual trade
+ * For EOA mode (default):
+ * Uses viem's state override feature to simulate as if the user already has:
+ * 1. Sufficient collateral token balance (after wrap would complete)
+ * 2. Sufficient allowance to PredictionMarket (after approve would complete)
  *
- * By simulating the full bundle, we accurately validate both:
- * - The user's ability to fund their side (after wrap + approve)
- * - The bidder's ability to fulfill (signature, balance, allowance, deadline, nonce)
+ * For smart account modes (session/owner):
+ * Uses the bundler's gas estimation to validate the full transaction path,
+ * including wrap, approve, and mint calls with paymaster validation.
+ *
+ * The simulation validates:
+ * - The bidder's signature is valid
+ * - The bidder's deadline hasn't expired
+ * - The bidder's nonce is correct
+ * - The bidder has sufficient funds and allowance
+ * - The market parameters are valid according to the resolver
  *
  * @param bid - The bid data from the API
  * @param options - Auction context and contract addresses
@@ -101,11 +144,65 @@ export async function simulateBidMint(
     encodedPredictedOutcomes,
     resolver,
     collateralTokenAddress,
-    userWusdeBalance,
-    userAllowance,
+    executionMode = 'eoa',
+    sessionClient,
+    smartAccountAddress,
+    userWusdeBalance = 0n,
+    userAllowance = 0n,
   } = options;
 
   const makerCollateralWei = BigInt(takerWager);
+
+  // For smart account modes, try bundler simulation first
+  if (executionMode !== 'eoa' && sessionClient) {
+    logBidValidation(
+      `Trying bundler simulation for ${executionMode} mode (${takerAddress.slice(0, 10)}...)`
+    );
+
+    // Build MintPredictionRequestData from bid
+    const mintRequestData = {
+      encodedPredictedOutcomes,
+      resolver,
+      makerCollateral: takerWager,
+      takerCollateral: bid.makerWager,
+      maker: takerAddress,
+      taker: bid.maker as `0x${string}`,
+      makerNonce: String(takerNonce),
+      takerSignature: bid.makerSignature as `0x${string}`,
+      takerDeadline: String(bid.makerDeadline),
+      refCode: ZERO_BYTES32,
+      takerClaimedNonce: bid.makerNonce,
+    };
+
+    const bundlerResult = await simulateBundlerMint({
+      chainId,
+      predictionMarketAddress,
+      collateralTokenAddress,
+      userAddress: smartAccountAddress || takerAddress,
+      userWusdeBalance,
+      userAllowance,
+      makerCollateralWei,
+      mintRequestData,
+      sessionClient,
+      smartAccountAddress,
+    });
+
+    // If bundler simulation succeeded or returned a definitive error, use that result
+    // If bundler simulation is unavailable (paymaster issues, etc.), fall back to state-override
+    if (!bundlerResult.fallbackToStateOverride) {
+      return bundlerResult;
+    }
+
+    logBidValidation(
+      `Bundler simulation unavailable, falling back to state-override simulation (${takerAddress.slice(0, 10)}...)`
+    );
+  } else {
+    // EOA mode: use state-override simulation
+    logBidValidation(
+      `Using state-override simulation for EOA mode (${takerAddress.slice(0, 10)}...)`
+    );
+  }
+
   const takerCollateralWei = BigInt(bid.makerWager);
 
   // Build the MintPredictionRequestData struct
@@ -132,129 +229,96 @@ export async function simulateBidMint(
 
   const publicClient = getPublicClientForChainId(chainId);
 
-  // Fetch user's current state if not provided
-  let currentWusdeBalance = userWusdeBalance;
-  let currentAllowance = userAllowance;
+  // Pre-simulation nonce validation: check if the taker's nonce matches on-chain
+  // This catches stale nonces early with a clear error message
+  try {
+    const actualNonce = await publicClient.readContract({
+      address: predictionMarketAddress,
+      abi: predictionMarketAbi,
+      functionName: 'nonces',
+      args: [takerAddress],
+    });
 
-  // Only fetch if we have a collateral token and values weren't provided
-  if (collateralTokenAddress) {
-    const fetchPromises: Promise<void>[] = [];
-
-    // Fetch wUSDe balance on Ethereal chain if not provided
-    if (chainId === CHAIN_ID_ETHEREAL && currentWusdeBalance === undefined) {
-      fetchPromises.push(
-        publicClient
-          .readContract({
-            address: WUSDE_ADDRESS,
-            abi: erc20Abi,
-            functionName: 'balanceOf',
-            args: [takerAddress],
-          })
-          .then((balance: bigint) => {
-            currentWusdeBalance = balance;
-          })
-          .catch(() => {
-            currentWusdeBalance = 0n;
-          })
+    if (actualNonce !== BigInt(takerNonce)) {
+      logBidValidationWarn(
+        `Nonce mismatch for taker ${takerAddress.slice(0, 10)}: expected ${takerNonce}, actual ${actualNonce}`
       );
+      return {
+        isValid: false,
+        error: `Taker nonce stale (expected ${takerNonce}, actual ${actualNonce})`,
+      };
     }
-
-    // Fetch allowance if not provided
-    if (currentAllowance === undefined) {
-      fetchPromises.push(
-        publicClient
-          .readContract({
-            address: collateralTokenAddress,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [takerAddress, predictionMarketAddress],
-          })
-          .then((allowance: bigint) => {
-            currentAllowance = allowance;
-          })
-          .catch(() => {
-            currentAllowance = 0n;
-          })
-      );
-    }
-
-    // Wait for all fetches to complete
-    if (fetchPromises.length > 0) {
-      await Promise.all(fetchPromises);
-    }
+  } catch (nonceErr) {
+    // If we can't read the nonce, log but continue with simulation
+    // The simulation itself will catch any nonce errors
+    logBidValidationWarn(
+      `Failed to pre-check nonce for ${takerAddress.slice(0, 10)}:`,
+      nonceErr
+    );
   }
 
-  // Build the calls array - same logic as prepareCalls in useSubmitPosition.ts
-  const calls: {
-    target: `0x${string}`;
-    allowFailure: boolean;
-    callData: `0x${string}`;
-  }[] = [];
-  let totalValue = 0n;
+  // Compute storage slots for state overrides
+  // We override the user's balance and allowance to simulate post-wrap/approve state
+  const balanceSlot = getBalanceSlot(takerAddress);
+  const allowanceSlot = getAllowanceSlot(takerAddress, predictionMarketAddress);
 
-  // 1. Wrap USDe → wUSDe (if on Ethereal chain and user needs more wUSDe)
-  if (chainId === CHAIN_ID_ETHEREAL && collateralTokenAddress) {
-    const wusdeBalance = currentWusdeBalance ?? 0n;
-    const amountToWrap =
-      makerCollateralWei > wusdeBalance
-        ? makerCollateralWei - wusdeBalance
-        : 0n;
+  // Set balance and allowance to be sufficient for the transaction
+  // We use a large value to ensure the simulation passes the user's funding checks
+  const sufficientBalance = makerCollateralWei + 1n; // Slightly more than needed
 
-    if (amountToWrap > 0n) {
-      const wrapCalldata = encodeFunctionData({
-        abi: wusdeAbi,
-        functionName: 'deposit',
-      });
-      calls.push({
-        target: WUSDE_ADDRESS,
-        allowFailure: false,
-        callData: wrapCalldata,
-      });
-      totalValue = amountToWrap;
-    }
-  }
-
-  // 2. Approve collateral token (if user hasn't approved enough)
-  if (collateralTokenAddress) {
-    const allowance = currentAllowance ?? 0n;
-    const needsApproval = allowance < makerCollateralWei;
-
-    if (needsApproval) {
-      const approveCalldata = encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [predictionMarketAddress, makerCollateralWei],
-      });
-      calls.push({
-        target: collateralTokenAddress,
-        allowFailure: false,
-        callData: approveCalldata,
-      });
-    }
-  }
-
-  // 3. Mint prediction position
-  const mintCalldata = encodeFunctionData({
-    abi: predictionMarketAbi,
-    functionName: 'mint',
-    args: [mintPredictionRequestData],
-  });
-  calls.push({
-    target: predictionMarketAddress,
-    allowFailure: false,
-    callData: mintCalldata,
-  });
+  // Also compute slots for the bidder (contract taker = API maker)
+  // The bidder needs sufficient balance and allowance for takerCollateral
+  const bidderAddress = bid.maker as `0x${string}`;
+  const bidderBalanceSlot = getBalanceSlot(bidderAddress);
+  const bidderAllowanceSlot = getAllowanceSlot(
+    bidderAddress,
+    predictionMarketAddress
+  );
+  const bidderSufficientBalance = takerCollateralWei + 1n;
 
   try {
-    // Simulate the full bundle via Multicall3.aggregate3
-    // This executes all calls atomically, just like the bundler would
+    // Simulate the mint call with state overrides for BOTH parties
+    // - User (maker/auction requester): simulates post-wrap/approve state
+    // - Bidder (taker): ensures simulation focuses on signature/nonce validation, not balance checks
+    // Note: viem 2.x expects stateDiff as array of [slot, value] tuples
     await publicClient.simulateContract({
-      address: MULTICALL3_ADDRESS,
-      abi: multicall3Abi,
-      functionName: 'aggregate3',
-      args: [calls],
-      account: takerAddress,
-      value: totalValue,
+      address: predictionMarketAddress,
+      abi: predictionMarketAbi,
+      functionName: 'mint',
+      args: [mintPredictionRequestData],
+      account: takerAddress, // msg.sender = user (correct!)
+      stateOverride: [
+        {
+          // Override user's (smart account or EOA) ETH balance for gas estimation
+          address: takerAddress,
+          balance: 10n ** 18n, // 1 ETH for gas
+        },
+        {
+          address: collateralTokenAddress,
+          stateDiff: [
+            // Override user's balance to be sufficient
+            {
+              slot: balanceSlot,
+              value: toHex(sufficientBalance, { size: 32 }),
+            },
+            // Override user's allowance to PredictionMarket
+            {
+              slot: allowanceSlot,
+              value: toHex(sufficientBalance, { size: 32 }),
+            },
+            // Override bidder's balance to be sufficient
+            {
+              slot: bidderBalanceSlot,
+              value: toHex(bidderSufficientBalance, { size: 32 }),
+            },
+            // Override bidder's allowance to PredictionMarket
+            {
+              slot: bidderAllowanceSlot,
+              value: toHex(bidderSufficientBalance, { size: 32 }),
+            },
+          ],
+        },
+      ],
     });
 
     return { isValid: true };
@@ -262,8 +326,27 @@ export async function simulateBidMint(
     // Extract error message from the simulation failure
     let errorMessage = 'Simulation failed';
 
+    // Always log the full error for debugging
+    console.log('=== BID SIMULATION ERROR ===');
+    console.log('Bid maker:', bid.maker);
+    console.log('Error:', err);
+
     if (err instanceof Error) {
       const msg = err.message;
+
+      // Log key viem error properties
+      const viemErr = err as {
+        cause?: { data?: unknown; reason?: string; message?: string };
+        details?: string;
+        shortMessage?: string;
+        metaMessages?: string[];
+      };
+      console.log('Error message (first 500 chars):', msg.slice(0, 500));
+      console.log('Error cause:', viemErr.cause);
+      console.log('Error details:', viemErr.details);
+      console.log('Error shortMessage:', viemErr.shortMessage);
+      console.log('Error metaMessages:', viemErr.metaMessages);
+      console.log('=== END ERROR ===');
 
       // Parse common contract errors
       if (msg.includes('InvalidTakerSignature')) {
@@ -272,6 +355,9 @@ export async function simulateBidMint(
         errorMessage = 'Bid has expired';
       } else if (msg.includes('InvalidMakerNonce')) {
         errorMessage = 'Nonce already used';
+      } else if (msg.includes('InvalidTakerNonce')) {
+        // Bidder's nonce is stale (contract taker = API maker)
+        errorMessage = 'Bidder nonce is stale';
       } else if (msg.includes('SafeERC20FailedOperation')) {
         errorMessage = 'Bidder has insufficient funds or allowance';
       } else if (msg.includes('InsufficientAllowance')) {
@@ -288,6 +374,33 @@ export async function simulateBidMint(
         errorMessage = 'Invalid markets according to resolver';
       } else if (msg.includes('InvalidEncodedPredictedOutcomes')) {
         errorMessage = 'Invalid encoded predicted outcomes';
+      } else if (msg.includes('MakerIsNotCaller')) {
+        // This should not happen with state overrides - indicates a bug
+        errorMessage = 'Simulation error: msg.sender mismatch';
+      } else if (msg.includes('revert') || msg.includes('execution reverted')) {
+        // Generic revert - try to extract any hex selector for debugging
+        const selectorMatch = msg.match(/0x[a-fA-F0-9]{8}/);
+        errorMessage = selectorMatch
+          ? `Contract reverted with selector: ${selectorMatch[0]}`
+          : 'Contract execution reverted';
+      } else if (
+        msg.includes('unknown error') ||
+        msg.includes('Unknown error')
+      ) {
+        // viem couldn't decode the error - try to extract hex data
+        const viemErr = err as { cause?: { data?: string }; data?: string };
+        const errorData = viemErr.data || viemErr.cause?.data;
+        if (errorData && typeof errorData === 'string') {
+          // Extract first 10 chars of error data (4-byte selector + "0x")
+          const selector = errorData.slice(0, 10);
+          errorMessage = `Unknown contract error (selector: ${selector})`;
+        } else {
+          // Try to find any hex selector in the message
+          const selectorMatch = msg.match(/0x[a-fA-F0-9]{8,}/);
+          errorMessage = selectorMatch
+            ? `Unknown contract error (data: ${selectorMatch[0].slice(0, 18)}...)`
+            : 'Unknown contract error';
+        }
       } else {
         // Use a truncated version of the error message
         errorMessage = msg.slice(0, 200);

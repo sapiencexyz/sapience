@@ -49,7 +49,10 @@ import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBidsWithSimulation } from '~/lib/auction/simulateBidMint';
+import {
+  validateBidsWithSimulation,
+  type ExecutionMode,
+} from '~/lib/auction/simulateBidMint';
 import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
@@ -99,7 +102,13 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const {
+    effectiveAddress,
+    isUsingSmartAccount,
+    smartAccountAddress,
+    chainClients,
+    isSessionActive,
+  } = useSession();
   const { toast } = useToast();
   const chainId = CHAIN_ID_ETHEREAL;
 
@@ -184,6 +193,23 @@ const CreatePositionFormInner = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
+  // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
+  // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
+  // - 'session': Smart account with active session (has sessionClient)
+  // - 'owner': Smart account without active session
+  const validationExecutionMode: ExecutionMode = useMemo(() => {
+    if (!isUsingSmartAccount) return 'eoa';
+    // Check if session client exists for Ethereal chain
+    const sessionClient = chainClients.ethereal;
+    return sessionClient && isSessionActive ? 'session' : 'owner';
+  }, [isUsingSmartAccount, chainClients.ethereal, isSessionActive]);
+
+  // Get session client for validation (only used in session mode)
+  const validationSessionClient = useMemo(() => {
+    if (validationExecutionMode !== 'session') return undefined;
+    return chainClients.ethereal ?? undefined;
+  }, [validationExecutionMode, chainClients.ethereal]);
+
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
@@ -216,7 +242,8 @@ const CreatePositionFormInner = ({
       !wager ||
       takerNonce === undefined ||
       !predictedOutcomes?.[0] ||
-      !resolver
+      !resolver ||
+      !collateralToken
     ) {
       logPositionForm(
         `Received ${rawBids.length} raw bid(s), marking as pending (incomplete auction context)`
@@ -234,7 +261,7 @@ const CreatePositionFormInner = ({
 
     const runValidation = async () => {
       logPositionForm(
-        `Starting validation pipeline for ${rawBids.length} bid(s)...`
+        `Starting validation pipeline for ${rawBids.length} bid(s) (mode: ${validationExecutionMode})...`
       );
       const validated = await validateBidsWithSimulation(rawBids, {
         chainId,
@@ -245,6 +272,17 @@ const CreatePositionFormInner = ({
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,
         collateralTokenAddress: collateralToken,
+        // Execution context for smart account path
+        executionMode: validationExecutionMode,
+        sessionClient: validationSessionClient,
+        smartAccountAddress: isUsingSmartAccount
+          ? (smartAccountAddress ?? undefined)
+          : undefined,
+        // Note: For now, we pass 0n for balance/allowance in bundler mode
+        // The bundler simulation will check actual balances during gas estimation
+        // This is fine because the simulation happens close to execution time
+        userWusdeBalance: 0n,
+        userAllowance: 0n,
       });
 
       if (!cancelled) {
@@ -277,6 +315,11 @@ const CreatePositionFormInner = ({
     currentAuctionParams,
     PREDICTION_MARKET_ADDRESS,
     collateralToken,
+    // Execution context dependencies
+    validationExecutionMode,
+    validationSessionClient,
+    isUsingSmartAccount,
+    smartAccountAddress,
   ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
