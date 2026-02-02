@@ -2464,6 +2464,7 @@ type V2PositionBalanceType {
   holder: String!
   id: Int!
   isPredictorToken: Boolean!
+  pickConfig: V2PickConfigurationType
   pickConfigId: String!
   tokenAddress: String!
 }
