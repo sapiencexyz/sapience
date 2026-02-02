@@ -120,6 +120,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);
+  // Track the current pending request to handle race conditions
+  // When a new request is made, we generate a unique ID. Only the response
+  // matching the latest request ID will update the auction state.
+  const pendingRequestIdRef = useRef<string | null>(null);
   const [currentAuctionParams, setCurrentAuctionParams] =
     useState<AuctionParams | null>(null);
 
@@ -223,6 +227,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       debounceTimer.current = window.setTimeout(async () => {
         const client = getSharedAuctionWsClient(wsUrl);
 
+        // Generate a unique request ID to track this specific request
+        // This prevents race conditions where a newer request's response
+        // would be overwritten by an older request completing later
+        const thisRequestId = crypto.randomUUID();
+        pendingRequestIdRef.current = thisRequestId;
+
         // Generate SIWE signature for the auction request if required
         let takerSignature: string | undefined;
         let takerSignedAt: string | undefined;
@@ -259,8 +269,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           } catch (signError) {
             // If signature is required and fails, log and return early
             logWarn('Failed to sign auction request:', signError);
+            // Clear pending request since we're aborting
+            if (pendingRequestIdRef.current === thisRequestId) {
+              pendingRequestIdRef.current = null;
+            }
             return;
           }
+        }
+
+        // Check if a newer request was made while we were signing
+        // If so, abort this request to avoid race conditions
+        if (pendingRequestIdRef.current !== thisRequestId) {
+          log('Aborting stale request (newer request in progress)');
+          return;
         }
 
         // Build final payload with signature and session data
@@ -278,10 +299,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             : {}),
         };
 
-        // Clear previous auction state
+        // Update inflight tracking and clear bids for new request
+        // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
+        // Setting it to null would cause bids for the current auction to be
+        // rejected as "stale" while we wait for the server response.
+        // Instead, we only update latestAuctionIdRef when we receive the
+        // new auction ID from the server.
         inflightRef.current = key;
-        latestAuctionIdRef.current = null; // Clear so we don't process stale bids
-        setAuctionId(null);
         setBids([]);
         // Store params with effectiveTaker so buildMintRequestDataFromBid uses the correct address
         // (smart account address when session is active, otherwise EOA)
@@ -300,13 +324,27 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             payloadWithSignature,
             { timeoutMs: 10000 }
           );
+
+          // Only update state if this is still the latest request
+          // A newer request may have been made while we were awaiting
+          if (pendingRequestIdRef.current !== thisRequestId) {
+            log(
+              `Ignoring response for stale request (newer request completed)`
+            );
+            return;
+          }
+
           const newId = response?.auctionId || null;
           latestAuctionIdRef.current = newId;
           setAuctionId(newId);
           log(`Auction started: id=${newId}`);
         } catch (err) {
-          // On timeout or error, clear inflight but keep params for retry
-          inflightRef.current = '';
+          // Only update state if this is still the latest request
+          if (pendingRequestIdRef.current === thisRequestId) {
+            // On timeout or error, clear inflight but keep params for retry
+            inflightRef.current = '';
+            pendingRequestIdRef.current = null;
+          }
           log(`Auction request failed:`, err);
         }
       }, 400);
