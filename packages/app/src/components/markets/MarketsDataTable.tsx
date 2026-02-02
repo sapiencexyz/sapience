@@ -395,13 +395,13 @@ function getRowEndTime(row: TopLevelRow): number {
 
 // Class name maps for table headers and cells
 const HEADER_CLASS_MAP: Record<string, string> = {
-  question: 'pl-4 w-full min-w-[200px]',
+  question: 'pl-4 w-full min-w-[300px] sm:min-w-[200px]',
   endTime: 'pr-4',
   predict: 'text-center pr-4',
 };
 
 const CELL_CLASS_MAP: Record<string, string> = {
-  question: 'py-2 pl-4 w-full max-w-0 min-w-[200px]',
+  question: 'py-2 pl-4 w-full max-w-0 min-w-[300px] sm:min-w-[200px]',
   forecast: 'py-2 text-right',
   openInterest: 'py-2 text-right',
   endTime: 'py-2 text-right',

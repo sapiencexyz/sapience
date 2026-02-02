@@ -18,14 +18,7 @@ import {
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-
-type Period = '1W' | '1M' | '3M' | 'ALL';
-const PERIOD_DAYS: Record<Period, number> = {
-  '1W': 7,
-  '1M': 30,
-  '3M': 90,
-  ALL: Infinity,
-};
+import { type Period, PERIOD_DAYS } from '~/components/shared/PeriodFilter';
 
 function formatLargeNumber(value: number): string {
   if (value >= 1_000_000) {
@@ -138,7 +131,7 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 10, left: -15, bottom: 0 };
+const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
   /** Optional external protocol stats data. If not provided, will fetch internally. */
@@ -149,6 +142,10 @@ type VaultPnlChartProps = {
   height?: number;
   /** Additional class names for the container */
   className?: string;
+  /** External period control - use instead of internal state when provided */
+  externalPeriod?: Period;
+  /** Hide entire internal header (title, APY, tabs). Defaults to true. */
+  showHeader?: boolean;
 };
 
 export default function VaultPnlChart({
@@ -156,9 +153,13 @@ export default function VaultPnlChart({
   isLoading: externalLoading,
   height = 200,
   className,
+  externalPeriod,
+  showHeader = true,
 }: VaultPnlChartProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
-  const [period, setPeriod] = useState<Period>('3M');
+  const [internalPeriod, setInternalPeriod] = useState<Period>('3M');
+  const period = externalPeriod ?? internalPeriod;
+  const setPeriod = setInternalPeriod;
 
   // Use internal fetch if no external data provided
   const { data: internalStats, isLoading: internalLoading } =
@@ -263,28 +264,30 @@ export default function VaultPnlChart({
     <div
       className={`w-full ${useFlexHeight ? 'flex flex-col' : ''} ${className ?? ''}`.trim()}
     >
-      <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-        <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
-          Profit/Loss
-        </h4>
-        <div className="flex items-center gap-3">
-          <span
-            className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
-          >
-            {apy !== null
-              ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY'
-              : '\u00A0'}
-          </span>
-          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
-              <TabsTrigger value="1W">1W</TabsTrigger>
-              <TabsTrigger value="1M">1M</TabsTrigger>
-              <TabsTrigger value="3M">3M</TabsTrigger>
-              <TabsTrigger value="ALL">ALL</TabsTrigger>
-            </SegmentedTabsList>
-          </Tabs>
+      {showHeader && (
+        <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
+            Profit/Loss
+          </h4>
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
+            >
+              {apy !== null
+                ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY'
+                : '\u00A0'}
+            </span>
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+                <TabsTrigger value="1W">1W</TabsTrigger>
+                <TabsTrigger value="1M">1M</TabsTrigger>
+                <TabsTrigger value="3M">3M</TabsTrigger>
+                <TabsTrigger value="ALL">ALL</TabsTrigger>
+              </SegmentedTabsList>
+            </Tabs>
+          </div>
         </div>
-      </div>
+      )}
       <div
         className={useFlexHeight ? 'flex-1' : ''}
         style={{

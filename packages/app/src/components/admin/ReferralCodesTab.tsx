@@ -26,7 +26,15 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { Copy, BarChart3, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import {
+  Copy,
+  BarChart3,
+  Pencil,
+  Trash2,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { formatDistanceToNow, fromUnixTime, format } from 'date-fns';
 import { formatUnits } from 'viem';
@@ -95,7 +103,8 @@ const ReferralCodesTab = ({
       method: 'GET' | 'POST' | 'PUT' | 'DELETE',
       body?: Record<string, unknown>
     ): Promise<T> => {
-      const { signature, signatureTimestamp } = await adminApiRef.current.sign();
+      const { signature, signatureTimestamp } =
+        await adminApiRef.current.sign();
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
         'x-admin-signature': signature,
@@ -145,7 +154,10 @@ const ReferralCodesTab = ({
   // Analytics sorting state
   type SortKey = 'address' | 'volume' | 'positions';
   type SortDir = 'asc' | 'desc';
-  const [analyticsSort, setAnalyticsSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'volume', dir: 'desc' });
+  const [analyticsSort, setAnalyticsSort] = useState<{
+    key: SortKey;
+    dir: SortDir;
+  }>({ key: 'volume', dir: 'desc' });
 
   const fetchCodes = useCallback(async () => {
     setIsLoading(true);
@@ -371,8 +383,7 @@ const ReferralCodesTab = ({
         size: 120,
         cell: ({ getValue }) => {
           const v = getValue() as number | null;
-          if (!v)
-            return <span className="text-muted-foreground">Never</span>;
+          if (!v) return <span className="text-muted-foreground">Never</span>;
           const now = Math.floor(Date.now() / 1000);
           const isExpired = v <= now;
           let relative = '';
@@ -500,7 +511,8 @@ const ReferralCodesTab = ({
 
           {statusFilter !== 'all' && (
             <span className="text-sm text-muted-foreground">
-              ({filteredCodes.length} {filteredCodes.length === 1 ? 'code' : 'codes'})
+              ({filteredCodes.length}{' '}
+              {filteredCodes.length === 1 ? 'code' : 'codes'})
             </span>
           )}
         </div>
@@ -533,7 +545,9 @@ const ReferralCodesTab = ({
               </div>
             )}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{editingId ? 'Code Hash' : 'Code'}</label>
+              <label className="text-sm font-medium">
+                {editingId ? 'Code Hash' : 'Code'}
+              </label>
               <Input
                 value={code}
                 onChange={(e) => setCode(e.target.value.slice(0, 16))}
@@ -555,14 +569,14 @@ const ReferralCodesTab = ({
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Max Claims
-              </label>
+              <label className="text-sm font-medium">Max Claims</label>
               <Input
                 type="number"
                 min={1}
                 value={maxClaims}
-                onChange={(e) => setMaxClaims(parseInt(e.target.value, 10) ?? 1)}
+                onChange={(e) =>
+                  setMaxClaims(parseInt(e.target.value, 10) ?? 1)
+                }
               />
             </div>
 
@@ -599,17 +613,23 @@ const ReferralCodesTab = ({
       </Dialog>
 
       {/* Analytics Dialog */}
-      <Dialog open={analyticsOpen} onOpenChange={(open) => {
-        setAnalyticsOpen(open);
-        if (!open) {
-          // Reset sort when closing
-          setAnalyticsSort({ key: 'volume', dir: 'desc' });
-        }
-      }}>
+      <Dialog
+        open={analyticsOpen}
+        onOpenChange={(open) => {
+          setAnalyticsOpen(open);
+          if (!open) {
+            // Reset sort when closing
+            setAnalyticsSort({ key: 'volume', dir: 'desc' });
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Analytics: {analyticsData?.codeHash ? `${analyticsData.codeHash.slice(0, 10)}...` : 'Loading...'}
+              Analytics:{' '}
+              {analyticsData?.codeHash
+                ? `${analyticsData.codeHash.slice(0, 10)}...`
+                : 'Loading...'}
             </DialogTitle>
           </DialogHeader>
           {analyticsLoading ? (
@@ -658,14 +678,23 @@ const ReferralCodesTab = ({
                             <button
                               type="button"
                               className="flex items-center gap-1 hover:text-foreground text-muted-foreground"
-                              onClick={() => setAnalyticsSort(prev => ({
-                                key: 'address',
-                                dir: prev.key === 'address' && prev.dir === 'asc' ? 'desc' : 'asc'
-                              }))}
+                              onClick={() =>
+                                setAnalyticsSort((prev) => ({
+                                  key: 'address',
+                                  dir:
+                                    prev.key === 'address' && prev.dir === 'asc'
+                                      ? 'desc'
+                                      : 'asc',
+                                }))
+                              }
                             >
                               Address
                               {analyticsSort.key === 'address' ? (
-                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                                analyticsSort.dir === 'asc' ? (
+                                  <ArrowUp className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3" />
+                                )
                               ) : (
                                 <ArrowUpDown className="h-3 w-3 opacity-50" />
                               )}
@@ -675,14 +704,23 @@ const ReferralCodesTab = ({
                             <button
                               type="button"
                               className="flex items-center gap-1 hover:text-foreground text-muted-foreground ml-auto"
-                              onClick={() => setAnalyticsSort(prev => ({
-                                key: 'volume',
-                                dir: prev.key === 'volume' && prev.dir === 'desc' ? 'asc' : 'desc'
-                              }))}
+                              onClick={() =>
+                                setAnalyticsSort((prev) => ({
+                                  key: 'volume',
+                                  dir:
+                                    prev.key === 'volume' && prev.dir === 'desc'
+                                      ? 'asc'
+                                      : 'desc',
+                                }))
+                              }
                             >
                               Trading Volume
                               {analyticsSort.key === 'volume' ? (
-                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                                analyticsSort.dir === 'asc' ? (
+                                  <ArrowUp className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3" />
+                                )
                               ) : (
                                 <ArrowUpDown className="h-3 w-3 opacity-50" />
                               )}
@@ -692,14 +730,24 @@ const ReferralCodesTab = ({
                             <button
                               type="button"
                               className="flex items-center gap-1 hover:text-foreground text-muted-foreground ml-auto"
-                              onClick={() => setAnalyticsSort(prev => ({
-                                key: 'positions',
-                                dir: prev.key === 'positions' && prev.dir === 'desc' ? 'asc' : 'desc'
-                              }))}
+                              onClick={() =>
+                                setAnalyticsSort((prev) => ({
+                                  key: 'positions',
+                                  dir:
+                                    prev.key === 'positions' &&
+                                    prev.dir === 'desc'
+                                      ? 'asc'
+                                      : 'desc',
+                                }))
+                              }
                             >
                               Positions
                               {analyticsSort.key === 'positions' ? (
-                                analyticsSort.dir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                                analyticsSort.dir === 'asc' ? (
+                                  <ArrowUp className="h-3 w-3" />
+                                ) : (
+                                  <ArrowDown className="h-3 w-3" />
+                                )
                               ) : (
                                 <ArrowUpDown className="h-3 w-3 opacity-50" />
                               )}
@@ -715,47 +763,53 @@ const ReferralCodesTab = ({
                             if (key === 'address') {
                               cmp = a.address.localeCompare(b.address);
                             } else if (key === 'volume') {
-                              cmp = Number(BigInt(a.tradingVolume) - BigInt(b.tradingVolume));
+                              cmp = Number(
+                                BigInt(a.tradingVolume) -
+                                  BigInt(b.tradingVolume)
+                              );
                             } else if (key === 'positions') {
                               cmp = a.positionCount - b.positionCount;
                             }
                             return dir === 'asc' ? cmp : -cmp;
                           })
                           .map((claimant) => (
-                          <tr key={claimant.address} className="border-t">
-                            <td className="p-2 font-mono text-xs">
-                              <div className="flex items-center gap-2">
-                                <span>
-                                  {claimant.address.slice(0, 6)}...
-                                  {claimant.address.slice(-4)}
-                                </span>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5"
-                                  onClick={async () => {
-                                    await navigator.clipboard.writeText(
-                                      claimant.address
-                                    );
-                                    toastRef.current({
-                                      title: 'Copied',
-                                      description: 'Address copied',
-                                      duration: 1500,
-                                    });
-                                  }}
-                                >
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </td>
-                            <td className="p-2 text-right font-mono">
-                              {formatUnits(BigInt(claimant.tradingVolume), 18)}
-                            </td>
-                            <td className="p-2 text-right font-mono">
-                              {claimant.positionCount}
-                            </td>
-                          </tr>
-                        ))}
+                            <tr key={claimant.address} className="border-t">
+                              <td className="p-2 font-mono text-xs">
+                                <div className="flex items-center gap-2">
+                                  <span>
+                                    {claimant.address.slice(0, 6)}...
+                                    {claimant.address.slice(-4)}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={async () => {
+                                      await navigator.clipboard.writeText(
+                                        claimant.address
+                                      );
+                                      toastRef.current({
+                                        title: 'Copied',
+                                        description: 'Address copied',
+                                        duration: 1500,
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="p-2 text-right font-mono">
+                                {formatUnits(
+                                  BigInt(claimant.tradingVolume),
+                                  18
+                                )}
+                              </td>
+                              <td className="p-2 text-right font-mono">
+                                {claimant.positionCount}
+                              </td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
@@ -781,10 +835,7 @@ const ReferralCodesTab = ({
             to claim it. This action can be reversed by editing the code.
           </p>
           <div className="flex justify-end gap-2 pt-4">
-            <Button
-              variant="ghost"
-              onClick={() => setDeleteConfirmOpen(false)}
-            >
+            <Button variant="ghost" onClick={() => setDeleteConfirmOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>

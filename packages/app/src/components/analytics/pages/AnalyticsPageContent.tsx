@@ -8,7 +8,7 @@ import {
   HoverCardTrigger,
 } from '@sapience/ui/components/ui/hover-card';
 import { Info } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -25,6 +25,11 @@ import {
   useDailyVolumes,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import PeriodFilter, {
+  type Period,
+  PERIOD_DAYS,
+} from '~/components/shared/PeriodFilter';
+import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 function formatLargeNumber(
   value: number,
@@ -151,10 +156,26 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
+const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+
+function filterDataByPeriod<T extends { timestamp: string }>(
+  data: T[],
+  period: Period
+): T[] {
+  const days = PERIOD_DAYS[period];
+  if (days === Infinity) return data;
+  const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+  return data.filter((item) => parseInt(item.timestamp, 10) >= cutoff);
+}
 
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+
+  // Period states for each chart
+  const [volumePeriod, setVolumePeriod] = useState<Period>('3M');
+  const [oiPeriod, setOiPeriod] = useState<Period>('3M');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('3M');
+  const [pnlPeriod, setPnlPeriod] = useState<Period>('3M');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -194,6 +215,22 @@ function AnalyticsPageContent(): React.ReactElement {
       volume: parseFloat(point.volume) / 1e18,
     }));
   }, [dailyVolumes]);
+
+  // Filter chart data based on selected periods
+  const filteredVolumeData = useMemo(
+    () => filterDataByPeriod(volumeChartData, volumePeriod),
+    [volumeChartData, volumePeriod]
+  );
+
+  const filteredOiData = useMemo(
+    () => filterDataByPeriod(statsChartData, oiPeriod),
+    [statsChartData, oiPeriod]
+  );
+
+  const filteredTvlData = useMemo(
+    () => filterDataByPeriod(statsChartData, tvlPeriod),
+    [statsChartData, tvlPeriod]
+  );
 
   const isLoading = statsLoading || volumesLoading;
 
@@ -319,13 +356,16 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Volume Chart - Daily Bar */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Daily Volume</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Daily Volume</h3>
+                <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader className="w-8 h-8" />
                   </div>
-                ) : volumeChartData.length === 0 ? (
+                ) : filteredVolumeData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
@@ -333,7 +373,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart
-                        data={volumeChartData}
+                        data={filteredVolumeData}
                         margin={CHART_MARGIN}
                       >
                         <CartesianGrid
@@ -375,20 +415,23 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Open Interest Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Open Interest</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Open Interest</h3>
+                <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader className="w-8 h-8" />
                   </div>
-                ) : statsChartData.length === 0 ? (
+                ) : filteredOiData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
+                      <AreaChart data={filteredOiData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="openInterestGradient"
@@ -451,20 +494,23 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Protocol TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Protocol TVL</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Protocol TVL</h3>
+                <PeriodFilter value={tvlPeriod} onChange={setTvlPeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader className="w-8 h-8" />
                   </div>
-                ) : statsChartData.length === 0 ? (
+                ) : filteredTvlData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
+                      <AreaChart data={filteredTvlData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="protocolTVLGradient"
@@ -520,6 +566,27 @@ function AnalyticsPageContent(): React.ReactElement {
                     </ResponsiveContainer>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Vault PnL Chart */}
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">
+                  Vault Profit/Loss
+                </h3>
+                <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
+              </div>
+              <div className="h-[300px]">
+                <VaultPnlChart
+                  protocolStats={protocolStats}
+                  isLoading={statsLoading}
+                  externalPeriod={pnlPeriod}
+                  showHeader={false}
+                  height={300}
+                />
               </div>
             </CardContent>
           </Card>

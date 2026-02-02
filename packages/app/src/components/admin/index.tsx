@@ -340,10 +340,7 @@ const Admin = () => {
             createOpen={createReferralCodeOpen}
             setCreateOpen={setCreateReferralCodeOpen}
             actionButtons={
-              <Button
-                size="sm"
-                onClick={() => setCreateReferralCodeOpen(true)}
-              >
+              <Button size="sm" onClick={() => setCreateReferralCodeOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" />
                 New Referral Code
               </Button>
