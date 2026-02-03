@@ -37,6 +37,7 @@ import {
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import PicksSummary from '~/components/shared/PicksSummary';
 import CountdownCell from '~/components/shared/CountdownCell';
+import { formatDistanceToNow } from 'date-fns';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -148,7 +149,7 @@ export default function PositionsTable({
 
   // Sorting state
   const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'conditions', desc: true },
+    { id: 'created', desc: true },
   ]);
 
   // Filter state
@@ -159,11 +160,7 @@ export default function PositionsTable({
   // Convert sorting state to API params
   const sortId = sorting[0]?.id;
   const orderBy =
-    sortId === 'conditions'
-      ? 'created'
-      : sortId === 'status'
-        ? 'endsAt'
-        : sortId;
+    sortId === 'created' ? 'created' : sortId === 'status' ? 'endsAt' : sortId;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
   // Map filter state to server-side params
@@ -699,7 +696,7 @@ export default function PositionsTable({
   const columns = React.useMemo<ColumnDef<UIPosition>[]>(
     () => [
       {
-        id: 'conditions',
+        id: 'created',
         accessorFn: (row) => row.createdAt,
         header: ({ column }) => (
           <Button
@@ -716,7 +713,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            Predictions
+            Created
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -729,6 +726,28 @@ export default function PositionsTable({
             )}
           </Button>
         ),
+        cell: ({ row }) => {
+          const createdAt = row.original.createdAt;
+          const timeAgo = formatDistanceToNow(new Date(createdAt), {
+            addSuffix: true,
+          });
+          return (
+            <div className="text-sm">
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Created
+              </div>
+              <span className="text-brand-white whitespace-nowrap">
+                {timeAgo}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        id: 'predictions',
+        accessorFn: (row) => row.legs.length,
+        enableSorting: false,
+        header: () => <span className="text-sm font-medium">Predictions</span>,
         cell: ({ row }) => {
           const hasPythLeg = (row.original.legs || []).some(
             (leg) => leg.source === 'pyth'
@@ -1078,6 +1097,14 @@ export default function PositionsTable({
           </Button>
         ),
         cell: ({ row }) => {
+          // Helper to format "x days ago" for settled positions
+          const endedAgo =
+            row.original.endsAt && row.original.endsAt <= Date.now()
+              ? formatDistanceToNow(new Date(row.original.endsAt), {
+                  addSuffix: true,
+                })
+              : null;
+
           const content = (() => {
             if (
               row.original.status === 'active' &&
@@ -1102,8 +1129,15 @@ export default function PositionsTable({
 
               if (!allConditionsSettled) {
                 return (
-                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                    Pending
+                  <span className="inline-flex items-center gap-2">
+                    {endedAgo && (
+                      <span className="text-brand-white text-sm">
+                        {endedAgo}
+                      </span>
+                    )}
+                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                      Pending
+                    </span>
                   </span>
                 );
               }
@@ -1122,41 +1156,55 @@ export default function PositionsTable({
                 const isThisTokenClaiming =
                   isClaimPending && claimingTokenId === tokenIdToClaim;
 
-                return isOwnerConnected ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setClaimingTokenId(tokenIdToClaim);
-                      burn(tokenIdToClaim, ZERO_REF_CODE);
-                    }}
-                    disabled={isClaimPending}
-                    className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                  </button>
-                ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
-                          Claim
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="max-w-[220px]">
-                          {hasWallet
-                            ? 'You can only claim winnings from the account that owns this position.'
-                            : 'Connect your account to claim this position.'}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                return (
+                  <span className="inline-flex items-center gap-2">
+                    {endedAgo && (
+                      <span className="text-brand-white text-sm">
+                        {endedAgo}
+                      </span>
+                    )}
+                    {isOwnerConnected ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setClaimingTokenId(tokenIdToClaim);
+                          burn(tokenIdToClaim, ZERO_REF_CODE);
+                        }}
+                        disabled={isClaimPending}
+                        className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
+                      </button>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                              Claim
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-[220px]">
+                              {hasWallet
+                                ? 'You can only claim winnings from the account that owns this position.'
+                                : 'Connect your account to claim this position.'}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </span>
                 );
               }
 
               return (
-                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                  Lost
+                <span className="inline-flex items-center gap-2">
+                  {endedAgo && (
+                    <span className="text-brand-white text-sm">{endedAgo}</span>
+                  )}
+                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                    Lost
+                  </span>
                 </span>
               );
             }
@@ -1171,35 +1219,42 @@ export default function PositionsTable({
               const isThisTokenClaiming =
                 isClaimPending &&
                 claimingTokenId === row.original.tokenIdToClaim;
-              return isOwnerConnected ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setClaimingTokenId(row.original.tokenIdToClaim!);
-                    burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
-                  }}
-                  disabled={isClaimPending}
-                  className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
-                </button>
-              ) : (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
-                        Claim
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="max-w-[220px]">
-                        {hasWallet
-                          ? 'You can only claim winnings from the account that owns this position.'
-                          : 'Connect your account to claim this position.'}
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              return (
+                <span className="inline-flex items-center gap-2">
+                  {endedAgo && (
+                    <span className="text-brand-white text-sm">{endedAgo}</span>
+                  )}
+                  {isOwnerConnected ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setClaimingTokenId(row.original.tokenIdToClaim!);
+                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
+                      }}
+                      disabled={isClaimPending}
+                      className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isThisTokenClaiming ? 'Claiming...' : 'Claim'}
+                    </button>
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="font-mono font-semibold text-muted-foreground underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                            Claim
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-[220px]">
+                            {hasWallet
+                              ? 'You can only claim winnings from the account that owns this position.'
+                              : 'Connect your account to claim this position.'}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </span>
               );
             }
             if (
@@ -1208,15 +1263,25 @@ export default function PositionsTable({
                 !claimableTokenIds.has(String(row.original.tokenIdToClaim)))
             ) {
               return (
-                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                  Claimed
+                <span className="inline-flex items-center gap-2">
+                  {endedAgo && (
+                    <span className="text-brand-white text-sm">{endedAgo}</span>
+                  )}
+                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                    Claimed
+                  </span>
                 </span>
               );
             }
             if (row.original.status === 'lost') {
               return (
-                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                  Lost
+                <span className="inline-flex items-center gap-2">
+                  {endedAgo && (
+                    <span className="text-brand-white text-sm">{endedAgo}</span>
+                  )}
+                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                    Lost
+                  </span>
                 </span>
               );
             }
@@ -1338,7 +1403,7 @@ export default function PositionsTable({
                           key={header.id}
                           className={
                             [
-                              header.id === 'conditions'
+                              header.id === 'predictions'
                                 ? ''
                                 : 'whitespace-nowrap',
                             ]
@@ -1447,7 +1512,7 @@ export default function PositionsTable({
                               <TableCell
                                 key={cell.id}
                                 className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                                  cell.column.id !== 'conditions'
+                                  cell.column.id !== 'predictions'
                                     ? 'whitespace-nowrap'
                                     : ''
                                 }`}
