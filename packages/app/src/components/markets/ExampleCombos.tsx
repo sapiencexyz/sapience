@@ -390,7 +390,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
       <div className="rounded-md border border-brand-white/20 overflow-hidden bg-brand-black">
         <Table className="w-full table-fixed">
           <TableBody>
-            {Array.from({ length: NUM_TO_DISPLAY }).map((_, idx) => {
+            {Array.from({
+              length: isLocked ? topCombos.length : NUM_TO_DISPLAY,
+            }).map((_, idx) => {
               const item = topCombos[idx];
               const isReady = !!item;
               const combo = item?.combo;

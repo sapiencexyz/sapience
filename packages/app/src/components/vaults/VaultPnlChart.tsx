@@ -265,11 +265,11 @@ export default function VaultPnlChart({
       className={`w-full ${useFlexHeight ? 'flex flex-col' : ''} ${className ?? ''}`.trim()}
     >
       {showHeader && (
-        <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1 sm:gap-2">
           <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
             Profit/Loss
           </h4>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-3">
             <span
               className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
             >

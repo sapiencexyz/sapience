@@ -816,7 +816,7 @@ const VaultsPageContent = () => {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   {/* Vault Header */}
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <h3 className="text-2xl font-medium">Protocol Vault</h3>
                     <div className="flex items-center gap-2">
                       <EnsAvatar
@@ -847,7 +847,7 @@ const VaultsPageContent = () => {
 
                       {/* Utilization Block */}
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-3">
                           <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
                             Utilization Rate
                           </h4>
@@ -861,7 +861,7 @@ const VaultsPageContent = () => {
                             style={{ width: `${utilizationPercent}%` }}
                           />
                         </div>
-                        <div className="mt-2 flex items-baseline justify-between text-sm">
+                        <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">
                           <span className="font-mono text-muted-foreground uppercase">
                             {deployedDisplay} of {tvlDisplay}{' '}
                             <span className="normal-case">
