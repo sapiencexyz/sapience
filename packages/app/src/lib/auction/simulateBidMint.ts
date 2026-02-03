@@ -1,5 +1,5 @@
 import { predictionMarketAbi } from '@sapience/sdk';
-import { encodeAbiParameters, keccak256, toHex } from 'viem';
+import { concat, keccak256, toHex } from 'viem';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import {
   logBidValidation,
@@ -7,45 +7,40 @@ import {
 } from '~/lib/auction/bidLogger';
 
 /**
- * Compute storage slot for a mapping(address => uint256) at a given slot.
- * Standard Solidity storage layout: keccak256(abi.encode(key, slot))
+ * Solady ERC20 storage slot constants.
+ * See: https://github.com/Vectorized/solady/blob/main/src/tokens/ERC20.sol
+ *
+ * Solady uses a custom storage layout with inline assembly for gas efficiency:
+ * - Balance slot = keccak256(owner || BALANCE_SLOT_SEED)
+ * - Allowance slot = keccak256(owner || ALLOWANCE_SLOT_SEED || spender)
+ *
+ * The seeds are derived from Solady's internal constants:
+ * - _BALANCE_SLOT_SEED = 0x87a211a2 (encoded with 12-byte prefix of zeros)
+ * - _ALLOWANCE_SLOT_SEED = 0x7f5e9f20 (encoded with 12-byte prefix of zeros)
  */
-function getMappingSlot(
-  key: `0x${string}`,
-  mappingSlot: bigint
-): `0x${string}` {
-  return keccak256(
-    encodeAbiParameters(
-      [{ type: 'address' }, { type: 'uint256' }],
-      [key, mappingSlot]
-    )
-  );
-}
+const SOLADY_BALANCE_SLOT_SEED = '0x000000000000000087a211a2' as `0x${string}`; // 12 bytes
+const SOLADY_ALLOWANCE_SLOT_SEED =
+  '0x00000000000000007f5e9f20' as `0x${string}`; // 12 bytes
 
 /**
- * Get balance storage slot for standard ERC20 (_balances at slot 0).
- * Note: This assumes OpenZeppelin ERC20 storage layout used by WUSDe/wUSDe.
+ * Get balance storage slot for Solady ERC20.
+ * Formula: keccak256(owner || BALANCE_SLOT_SEED)
+ * Where owner is 20 bytes and BALANCE_SLOT_SEED is 12 bytes = 32 bytes total
  */
 function getBalanceSlot(owner: `0x${string}`): `0x${string}` {
-  return getMappingSlot(owner, 0n);
+  return keccak256(concat([owner, SOLADY_BALANCE_SLOT_SEED]));
 }
 
 /**
- * Get allowance storage slot for standard ERC20 (_allowances at slot 1).
- * allowance[owner][spender] is a nested mapping.
- * Note: This assumes OpenZeppelin ERC20 storage layout used by WUSDe/wUSDe.
+ * Get allowance storage slot for Solady ERC20.
+ * Formula: keccak256(owner || ALLOWANCE_SLOT_SEED || spender)
+ * Where owner is 20 bytes, ALLOWANCE_SLOT_SEED is 12 bytes, spender is 20 bytes = 52 bytes total
  */
 function getAllowanceSlot(
   owner: `0x${string}`,
   spender: `0x${string}`
 ): `0x${string}` {
-  const innerSlot = getMappingSlot(owner, 1n);
-  return keccak256(
-    encodeAbiParameters(
-      [{ type: 'address' }, { type: 'bytes32' }],
-      [spender, innerSlot]
-    )
-  );
+  return keccak256(concat([owner, SOLADY_ALLOWANCE_SLOT_SEED, spender]));
 }
 
 /**
