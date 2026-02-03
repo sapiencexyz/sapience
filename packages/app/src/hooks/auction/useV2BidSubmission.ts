@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import { type Address, type Hex, formatUnits, parseUnits } from 'viem';
+import { type Address, type Hex, formatUnits, parseUnits, createPublicClient, http } from 'viem';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type {
@@ -11,7 +11,8 @@ import type {
   V2AuctionDetails,
 } from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { DEFAULT_CHAIN_ID, etherealTestnetChain, etherealChain, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -115,13 +116,28 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
         return { success: false, error: 'Cannot bid on your own auction' };
       }
 
-      // Get nonce for the counterparty (this signer)
-      // Note: We fetch nonce inline since we need it for the specific chain
-      const client = getSharedAuctionWsClient(wsUrl);
+      // Get nonce for the counterparty (this signer) from the contract
+      const chain = chainId === CHAIN_ID_ETHEREAL_TESTNET ? etherealTestnetChain : etherealChain;
+      const publicClient = createPublicClient({
+        chain,
+        transport: http(chain.rpcUrls.default.http[0]),
+      });
 
-      // For now, use 0 as nonce placeholder - in production would read from contract
-      // The nonce is validated server-side
-      const counterpartyNonce = 0n;
+      let counterpartyNonce: bigint;
+      try {
+        counterpartyNonce = await publicClient.readContract({
+          address: verifyingContract,
+          abi: predictionMarketEscrowAbi,
+          functionName: 'getNonce',
+          args: [signerAddress],
+        });
+        console.log('[V2 Bid] Fetched counterparty nonce from contract:', counterpartyNonce.toString());
+      } catch (nonceError) {
+        console.error('[V2 Bid] Failed to fetch nonce, defaulting to 0:', nonceError);
+        counterpartyNonce = 0n;
+      }
+
+      const client = getSharedAuctionWsClient(wsUrl);
 
       // Calculate deadline
       const nowSec = Math.floor(Date.now() / 1000);

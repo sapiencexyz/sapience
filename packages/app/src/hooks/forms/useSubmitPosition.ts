@@ -639,8 +639,16 @@ export function useSubmitPosition({
               });
               // Encode the V2 SessionKeyData for contract validation
               predictorSessionKeyData = encodeV2SessionKeyData(v2SessionKeyApproval);
-              console.log('[V2 Submit] Session key data encoded, length:', predictorSessionKeyData.length);
-              console.log('[V2 Submit] Session key data hex:', predictorSessionKeyData.slice(0, 130) + '...');
+              console.log('[V2 Submit] Session key data encoded:', {
+                length: predictorSessionKeyData.length,
+                hexPrefix: predictorSessionKeyData.slice(0, 130) + '...',
+                // Decode what we encoded to verify
+                sessionKeyInApproval: v2SessionKeyApproval.sessionKey,
+                ownerInApproval: v2SessionKeyApproval.owner,
+                validUntilInApproval: v2SessionKeyApproval.validUntil,
+                chainIdInApproval: v2SessionKeyApproval.chainId,
+                ownerSignatureLengthInApproval: v2SessionKeyApproval.ownerSignature.length,
+              });
             } else {
               // Wallet mode: sign with wallet, contract uses EIP-1271 fallback
               console.log('[V2 Submit] Using wallet signing for predictor');
@@ -710,6 +718,59 @@ export function useSubmitPosition({
           });
           if (calls.length === 0) {
             throw new Error('No valid calls to execute');
+          }
+
+          // Debug: Check on-chain nonces before submitting
+          try {
+            const escrowAbi = [
+              { type: 'function', name: 'getNonce', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }
+            ] as const;
+            const [predictorOnChainNonce, counterpartyOnChainNonce] = await Promise.all([
+              publicClient.readContract({
+                address: v2EscrowAddress,
+                abi: escrowAbi,
+                functionName: 'getNonce',
+                args: [predictor],
+              }),
+              publicClient.readContract({
+                address: v2EscrowAddress,
+                abi: escrowAbi,
+                functionName: 'getNonce',
+                args: [counterparty],
+              }),
+            ]);
+            console.log('[V2 Submit] On-chain nonces:', {
+              predictor: {
+                address: predictor,
+                onChainNonce: predictorOnChainNonce.toString(),
+                requestNonce: predictorNonce.toString(),
+                matches: predictorOnChainNonce === predictorNonce,
+              },
+              counterparty: {
+                address: counterparty,
+                onChainNonce: counterpartyOnChainNonce.toString(),
+                requestNonce: counterpartyNonce.toString(),
+                matches: counterpartyOnChainNonce === counterpartyNonce,
+              },
+            });
+            if (predictorOnChainNonce !== predictorNonce) {
+              console.error('[V2 Submit] PREDICTOR NONCE MISMATCH! On-chain:', predictorOnChainNonce.toString(), 'Request:', predictorNonce.toString());
+              throw new Error(
+                `Your nonce has changed (was ${predictorNonce.toString()}, now ${predictorOnChainNonce.toString()}). Please request new bids.`
+              );
+            }
+            if (counterpartyOnChainNonce !== counterpartyNonce) {
+              console.error('[V2 Submit] COUNTERPARTY NONCE MISMATCH! On-chain:', counterpartyOnChainNonce.toString(), 'Request:', counterpartyNonce.toString());
+              throw new Error(
+                `The bidder's nonce has changed since they signed (was ${counterpartyNonce.toString()}, now ${counterpartyOnChainNonce.toString()}). This bid is stale. Please request new bids.`
+              );
+            }
+          } catch (nonceErr: any) {
+            // Only re-throw if it's our nonce mismatch error
+            if (nonceErr?.message?.includes('nonce has changed')) {
+              throw nonceErr;
+            }
+            console.warn('[V2 Submit] Failed to fetch on-chain nonces:', nonceErr);
           }
 
           // Debug: simulate the mint call directly to see the actual error

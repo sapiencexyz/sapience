@@ -258,7 +258,10 @@ export interface V2AuctionDetails {
 export interface V2ValidatedBid {
   auctionId: string;
   counterparty: string;
+  counterpartyNonce: number;
   counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartySessionKeyData?: string;
   receivedAt: string; // ISO timestamp
 }
 

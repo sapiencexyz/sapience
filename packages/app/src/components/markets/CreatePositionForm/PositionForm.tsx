@@ -418,6 +418,20 @@ export default function PositionForm({
               chainId
             );
 
+        // Check if this is a V2 chain (Ethereal)
+        const isV2Chain = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+
+        // Build V2 picks from selections for V2 chains
+        const v2Picks = isV2Chain && !hasPyth
+          ? selections
+              .filter((s) => s.resolverAddress && s.conditionId)
+              .map((s) => ({
+                conditionResolver: s.resolverAddress as `0x${string}`,
+                conditionId: s.conditionId as `0x${string}`,
+                predictedOutcome: s.prediction ? 0 : 1 as 0 | 1,
+              }))
+          : undefined;
+
         const params: AuctionParams = {
           wager: wagerWei,
           resolver: payload.resolver,
@@ -425,6 +439,9 @@ export default function PositionForm({
           taker: selectedTakerAddress,
           takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
+          // V2 fields - counterpartyWager defaults to same as predictor's wager (1:1 odds)
+          v2Picks: v2Picks && v2Picks.length > 0 ? v2Picks : undefined,
+          counterpartyWager: v2Picks && v2Picks.length > 0 ? wagerWei : undefined,
         };
 
         requestQuotes(params, {

@@ -1,12 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useAccount, useSignMessage, useSignTypedData } from 'wagmi';
+import { type Address, createPublicClient, http } from 'viem';
 import {
   createAuctionStartSiweMessage,
   extractSiweDomainAndUri,
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
+import type { Pick } from '@sapience/sdk/types/v2';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { etherealTestnetChain, etherealChain, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -19,6 +26,13 @@ export interface AuctionParams {
   taker: `0x${string}`; // taker EOA address
   takerNonce: number; // nonce for the taker
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
+  // V2 auction fields (optional)
+  counterpartyWager?: string; // wei string - counterparty's wager for V2 auctions
+  v2Picks?: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
 }
 
 export interface QuoteBid {
@@ -32,6 +46,8 @@ export interface QuoteBid {
   validationStatus?: 'pending' | 'valid' | 'invalid';
   /** Optional reason when validationStatus === 'invalid' */
   validationError?: string;
+  /** V2: Session key data for counterparty (base64 encoded) */
+  counterpartySessionKeyData?: string;
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -60,6 +76,8 @@ export interface MintPredictionRequestData {
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
+  // V2: Session key data for counterparty (base64 encoded)
+  counterpartySessionKeyData?: string;
 }
 
 function jsonStableStringify(value: unknown): string {
@@ -84,6 +102,7 @@ export function useAuctionStart() {
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
   const { signMessageAsync } = useSignMessage();
+  const { signTypedDataAsync } = useSignTypedData();
   const { address: walletAddress } = useAccount();
   const {
     etherealSessionApproval,
@@ -159,6 +178,51 @@ export function useAuctionStart() {
             .filter((b): b is QuoteBid => b !== null);
           setBids(normalized);
         }
+
+        // Handle V2 auction bids (map to V1 QuoteBid format)
+        if (data?.type === 'v2.auction.bids') {
+          const targetAuctionId = data.payload?.auctionId as string | undefined;
+          const rawBids = Array.isArray(data.payload?.bids)
+            ? (data.payload.bids as any[])
+            : [];
+
+          if (!targetAuctionId) return;
+          // Filter: only process if this is for our current auction
+          if (targetAuctionId !== latestAuctionIdRef.current) {
+            return;
+          }
+
+          const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+          // Get counterpartyWager from auction params (for V2, predictor sets both wagers)
+          const counterpartyWager = lastAuctionRef.current?.counterpartyWager || '0';
+
+          const normalized: QuoteBid[] = rawBids
+            .map((b): QuoteBid | null => {
+              try {
+                // Map V2 bid fields to V1 QuoteBid format:
+                // V2 counterparty = V1 maker (bidder)
+                // V2 counterpartyNonce = V1 makerNonce
+                // V2 counterpartyDeadline = V1 makerDeadline
+                // V2 counterpartySignature = V1 makerSignature
+                // V2 counterpartyWager comes from auction (set by predictor)
+                return {
+                  auctionId: targetAuctionId,
+                  maker: b.counterparty || ZERO_ADDRESS,
+                  makerWager: counterpartyWager,
+                  makerDeadline: b.counterpartyDeadline || 0,
+                  makerSignature: b.counterpartySignature || '0x',
+                  makerNonce: b.counterpartyNonce || 0,
+                  // Store V2-specific fields for later use in mint request
+                  counterpartySessionKeyData: b.counterpartySessionKeyData,
+                } as QuoteBid;
+              } catch {
+                return null;
+              }
+            })
+            .filter((b): b is QuoteBid => b !== null);
+          setBids(normalized);
+        }
+
         // auction.ack handled via sendWithAck
         // auction.started is handled elsewhere (noop here)
       } catch {
@@ -281,26 +345,149 @@ export function useAuctionStart() {
         lastAuctionRef.current = { ...params, taker: effectiveTaker };
         setCurrentAuctionParams({ ...params, taker: effectiveTaker });
 
-        // Use sendWithAck for proper request/response correlation
-        // Server echoes back the request ID, allowing parallel requests
-        try {
-          const response = await client.sendWithAck<{ auctionId?: string }>(
-            'auction.start',
-            payloadWithSignature,
-            { timeoutMs: 10000 }
-          );
-          const newId = response?.auctionId || null;
-          latestAuctionIdRef.current = newId;
-          setAuctionId(newId);
-        } catch {
-          // On timeout or error, clear inflight but keep params for retry
-          inflightRef.current = '';
+        // Check if this is a V2 auction (has v2Picks)
+        const isV2Auction = params.v2Picks && params.v2Picks.length > 0;
+
+        if (isV2Auction && params.counterpartyWager) {
+          // V2 Auction Start with EIP-712 MintApproval signature
+          try {
+            const chainId = params.chainId;
+            const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
+
+            if (!verifyingContract) {
+              console.warn('[AuctionStart] No V2 contract for chainId:', chainId);
+              inflightRef.current = '';
+              return;
+            }
+
+            // Fetch predictor's nonce from contract
+            const chain = chainId === CHAIN_ID_ETHEREAL_TESTNET ? etherealTestnetChain : etherealChain;
+            const publicClient = createPublicClient({
+              chain,
+              transport: http(chain.rpcUrls.default.http[0]),
+            });
+
+            let predictorNonce: bigint;
+            try {
+              const fetchedNonce = await publicClient.readContract({
+                address: verifyingContract,
+                abi: predictionMarketEscrowAbi,
+                functionName: 'getNonce',
+                args: [effectiveTaker],
+              });
+              predictorNonce = fetchedNonce;
+              console.log('[V2 Auction] Fetched predictor nonce from contract:', predictorNonce.toString());
+            } catch (nonceError) {
+              console.error('[V2 Auction] Failed to fetch nonce:', nonceError);
+              predictorNonce = BigInt(params.takerNonce);
+            }
+
+            // Convert v2Picks to Pick[] and canonicalize
+            const rawPicks: Pick[] = params.v2Picks!.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            }));
+            const picks = canonicalizePicks(rawPicks);
+
+            // Calculate deadline (5 minutes from now)
+            const nowSec = Math.floor(Date.now() / 1000);
+            const predictorDeadline = BigInt(nowSec + 300);
+
+            // Build typed data for predictor signature
+            // Use zero address as counterparty placeholder (actual counterparty is determined when bid is accepted)
+            const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as Address;
+            const typedData = buildPredictorMintTypedData({
+              picks,
+              predictorWager: BigInt(params.wager),
+              counterpartyWager: BigInt(params.counterpartyWager),
+              predictor: effectiveTaker,
+              counterparty: ZERO_ADDR,
+              predictorNonce,
+              predictorDeadline,
+              verifyingContract,
+              chainId,
+            });
+
+            // Sign the typed data
+            const predictorSignature = await signTypedDataAsync({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+            });
+
+            // Build V2 auction payload
+            const v2Payload = {
+              picks: picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+              predictorWager: params.wager,
+              counterpartyWager: params.counterpartyWager,
+              predictor: effectiveTaker,
+              predictorNonce: Number(predictorNonce),
+              predictorDeadline: Number(predictorDeadline),
+              predictorSignature,
+              chainId,
+            };
+
+            // Send V2 auction start
+            const v2Response = await client.sendWithAck<{ auctionId?: string; error?: string }>(
+              'v2.auction.start',
+              v2Payload,
+              { timeoutMs: 10000 }
+            );
+
+            if (v2Response?.error) {
+              console.error('[V2 Auction] Start failed:', v2Response.error);
+              inflightRef.current = '';
+              return;
+            }
+
+            const newId = v2Response?.auctionId || null;
+            latestAuctionIdRef.current = newId;
+            setAuctionId(newId);
+            console.log('[V2 Auction] Started with auctionId:', newId);
+          } catch (v2Error) {
+            console.error('[V2 Auction] Start error:', v2Error);
+            inflightRef.current = '';
+          }
+        } else {
+          // V1 Auction Start (original logic)
+          try {
+            const response = await client.sendWithAck<{ auctionId?: string }>(
+              'auction.start',
+              payloadWithSignature,
+              { timeoutMs: 10000 }
+            );
+            const newId = response?.auctionId || null;
+            latestAuctionIdRef.current = newId;
+            setAuctionId(newId);
+
+            // Also subscribe to V2 auction updates for this auctionId
+            // This enables receiving V2 bids on the same auction
+            if (newId) {
+              client.send({
+                type: 'v2.auction.subscribe',
+                payload: { auctionId: newId },
+              });
+            }
+          } catch {
+            // On timeout or error, clear inflight but keep params for retry
+            inflightRef.current = '';
+          }
         }
       }, 400);
     },
     [
       wsUrl,
       signMessageAsync,
+      signTypedDataAsync,
       isUsingSmartAccount,
       effectiveAddress,
       walletAddress,
@@ -377,6 +564,10 @@ export function useAuctionStart() {
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.takerNonce),
         takerClaimedNonce: args.selectedBid.makerNonce,
+        // V2 fields: include picks array if available
+        v2Picks: auction.v2Picks,
+        // V2 fields: include counterparty session key data from bid
+        counterpartySessionKeyData: args.selectedBid.counterpartySessionKeyData,
       };
     },
     [auctionId]

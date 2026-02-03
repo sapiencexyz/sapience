@@ -67,7 +67,10 @@ export function addV2Bid(
   const validated: V2ValidatedBid = {
     auctionId,
     counterparty: bid.counterparty,
+    counterpartyNonce: bid.counterpartyNonce,
     counterpartyDeadline: bid.counterpartyDeadline,
+    counterpartySignature: bid.counterpartySignature,
+    counterpartySessionKeyData: bid.counterpartySessionKeyData,
     receivedAt: new Date().toISOString(),
   };
 
