@@ -1941,58 +1941,6 @@ type Question {
   questionType: String!
 }
 
-type ReferralCode {
-  _count: ReferralCodeCount
-  claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
-  codeHash: String!
-  createdAt: DateTimeISO!
-  createdBy: String!
-  creatorType: String!
-  expiresAt: Int
-  id: Int!
-  isActive: Boolean!
-  maxClaims: Int!
-  updatedAt: DateTimeISO!
-}
-
-type ReferralCodeCount {
-  claimedBy(where: UserWhereInput): Int!
-}
-
-input ReferralCodeNullableRelationFilter {
-  is: ReferralCodeWhereInput
-  isNot: ReferralCodeWhereInput
-}
-
-input ReferralCodeOrderByWithRelationInput {
-  claimedBy: UserOrderByRelationAggregateInput
-  codeHash: SortOrder
-  createdAt: SortOrder
-  createdBy: SortOrder
-  creatorType: SortOrder
-  expiresAt: SortOrderInput
-  id: SortOrder
-  isActive: SortOrder
-  maxClaims: SortOrder
-  updatedAt: SortOrder
-}
-
-input ReferralCodeWhereInput {
-  AND: [ReferralCodeWhereInput!]
-  NOT: [ReferralCodeWhereInput!]
-  OR: [ReferralCodeWhereInput!]
-  claimedBy: UserListRelationFilter
-  codeHash: StringFilter
-  createdAt: DateTimeFilter
-  createdBy: StringFilter
-  creatorType: StringFilter
-  expiresAt: IntNullableFilter
-  id: IntFilter
-  isActive: BoolFilter
-  maxClaims: IntFilter
-  updatedAt: DateTimeFilter
-}
-
 enum SortOrder {
   asc
   desc
@@ -2099,8 +2047,6 @@ type User {
   refCodeHash: String
   referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
   referredBy(where: UserWhereInput): User
-  referredByCode(where: ReferralCodeWhereInput): ReferralCode
-  referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO!
 }
@@ -2108,14 +2054,12 @@ type User {
 type UserAvgAggregate {
   id: Float
   maxReferrals: Float
-  referredByCodeId: Float
   referredById: Float
 }
 
 input UserAvgOrderByAggregateInput {
   id: SortOrder
   maxReferrals: SortOrder
-  referredByCodeId: SortOrder
   referredById: SortOrder
 }
 
@@ -2130,7 +2074,6 @@ type UserCountAggregate {
   id: Int!
   maxReferrals: Int!
   refCodeHash: Int!
-  referredByCodeId: Int!
   referredById: Int!
   updatedAt: Int!
 }
@@ -2141,7 +2084,6 @@ input UserCountOrderByAggregateInput {
   id: SortOrder
   maxReferrals: SortOrder
   refCodeHash: SortOrder
-  referredByCodeId: SortOrder
   referredById: SortOrder
   updatedAt: SortOrder
 }
@@ -2157,7 +2099,6 @@ type UserGroupBy {
   id: Int!
   maxReferrals: Int!
   refCodeHash: String
-  referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO!
 }
@@ -2174,7 +2115,6 @@ type UserMaxAggregate {
   id: Int
   maxReferrals: Int
   refCodeHash: String
-  referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO
 }
@@ -2185,7 +2125,6 @@ input UserMaxOrderByAggregateInput {
   id: SortOrder
   maxReferrals: SortOrder
   refCodeHash: SortOrder
-  referredByCodeId: SortOrder
   referredById: SortOrder
   updatedAt: SortOrder
 }
@@ -2196,7 +2135,6 @@ type UserMinAggregate {
   id: Int
   maxReferrals: Int
   refCodeHash: String
-  referredByCodeId: Int
   referredById: Int
   updatedAt: DateTimeISO
 }
@@ -2207,7 +2145,6 @@ input UserMinOrderByAggregateInput {
   id: SortOrder
   maxReferrals: SortOrder
   refCodeHash: SortOrder
-  referredByCodeId: SortOrder
   referredById: SortOrder
   updatedAt: SortOrder
 }
@@ -2232,7 +2169,6 @@ input UserOrderByWithAggregationInput {
   id: SortOrder
   maxReferrals: SortOrder
   refCodeHash: SortOrderInput
-  referredByCodeId: SortOrderInput
   referredById: SortOrderInput
   updatedAt: SortOrder
 }
@@ -2245,8 +2181,6 @@ input UserOrderByWithRelationInput {
   refCodeHash: SortOrderInput
   referrals: UserOrderByRelationAggregateInput
   referredBy: UserOrderByWithRelationInput
-  referredByCode: ReferralCodeOrderByWithRelationInput
-  referredByCodeId: SortOrderInput
   referredById: SortOrderInput
   updatedAt: SortOrder
 }
@@ -2257,7 +2191,6 @@ enum UserScalarFieldEnum {
   id
   maxReferrals
   refCodeHash
-  referredByCodeId
   referredById
   updatedAt
 }
@@ -2271,7 +2204,6 @@ input UserScalarWhereWithAggregatesInput {
   id: IntWithAggregatesFilter
   maxReferrals: IntWithAggregatesFilter
   refCodeHash: StringNullableWithAggregatesFilter
-  referredByCodeId: IntNullableWithAggregatesFilter
   referredById: IntNullableWithAggregatesFilter
   updatedAt: DateTimeWithAggregatesFilter
 }
@@ -2279,14 +2211,12 @@ input UserScalarWhereWithAggregatesInput {
 type UserSumAggregate {
   id: Int
   maxReferrals: Int
-  referredByCodeId: Int
   referredById: Int
 }
 
 input UserSumOrderByAggregateInput {
   id: SortOrder
   maxReferrals: SortOrder
-  referredByCodeId: SortOrder
   referredById: SortOrder
 }
 
@@ -2301,8 +2231,6 @@ input UserWhereInput {
   refCodeHash: StringNullableFilter
   referrals: UserListRelationFilter
   referredBy: UserNullableRelationFilter
-  referredByCode: ReferralCodeNullableRelationFilter
-  referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
 }
@@ -2318,8 +2246,6 @@ input UserWhereUniqueInput {
   refCodeHash: String
   referrals: UserListRelationFilter
   referredBy: UserNullableRelationFilter
-  referredByCode: ReferralCodeNullableRelationFilter
-  referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
 }

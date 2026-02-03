@@ -44,10 +44,11 @@ export class PnLResolver {
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
+    console.log('cache for allTimeProfitLeaderboard');
     const cacheKey = 'allTimeProfitLeaderboard:v3';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
-
+  console.log('calculating position PnL for allTimeProfitLeaderboard');
     const positionPnL = await calculatePositionPnL();
 
     const aggregated = new Map<string, number>();

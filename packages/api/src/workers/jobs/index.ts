@@ -2,6 +2,9 @@ import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexPredictionMarket } from './reindexPredictionMarket';
+import { fixResolutions } from './fixResolutions';
+import { fetchHighCollateralPositions } from './fetchHighCollateralPositions';
+import { exportLeaderboardsCsv } from './exportLeaderboardsCsv';
 import {
   computeAndStoreProtocolStats,
   backfillProtocolStats,
@@ -111,6 +114,24 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
       await backfillProtocolStats(chainId, days);
       console.log('Done backfilling protocol stats');
+      process.exit(0);
+      return true;
+    }
+    case 'fixResolutions': {
+      await fixResolutions();
+      console.log('Done fixing resolutions');
+      process.exit(0);
+      return true;
+    }
+    case 'fetchHighCollateralPositions': {
+      await fetchHighCollateralPositions();
+      console.log('Done fetching high collateral positions');
+      process.exit(0);
+      return true;
+    }
+    case 'exportLeaderboardsCsv': {
+      await exportLeaderboardsCsv();
+      console.log('Done exporting leaderboards to CSV');
       process.exit(0);
       return true;
     }
