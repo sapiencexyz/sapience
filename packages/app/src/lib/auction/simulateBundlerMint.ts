@@ -53,8 +53,6 @@ export interface SimulateBundlerMintResult {
   estimatedGas?: bigint;
   needsWrap?: boolean;
   needsApprove?: boolean;
-  /** When true, bundler simulation is unavailable - caller should fall back to state-override simulation */
-  fallbackToStateOverride?: boolean;
 }
 
 /**
@@ -220,87 +218,43 @@ export async function simulateBundlerMint(
       needsApprove,
     };
   } catch (err: unknown) {
-    // Log the raw error immediately for debugging
+    // Log the raw error for debugging
     console.log('=== BUNDLER SIMULATION ERROR ===');
+    console.log('User:', userAddress);
     console.log('Error:', err);
 
-    // Check if this is a bundler/paymaster infrastructure error vs a contract error
-    // Infrastructure errors should fall back to valid (can't validate, let execution handle it)
-    // Contract errors should mark the bid as invalid
+    let errorMessage = 'Bundler simulation failed';
 
     if (err instanceof Error) {
       const msg = err.message;
       console.log('Error message:', msg.slice(0, 500));
 
-      // Bundler infrastructure errors - signal fallback needed
-      // These indicate we can't use bundler simulation, not that the bid is invalid
+      // Parse error messages to provide meaningful feedback
       if (
         msg.includes('does not exist') ||
         msg.includes('not available') ||
-        msg.includes('bundler') ||
-        msg.includes('RPC') ||
-        msg.includes('eth_estimateUserOperationGas')
+        msg.includes('Unrecognized key')
       ) {
-        logBidValidationWarn(
-          'Bundler simulation unavailable (RPC error), requesting fallback to state-override:',
-          msg.slice(0, 200)
-        );
-        return { isValid: true, fallbackToStateOverride: true };
-      }
-
-      // AA23 = signature validation failed - this shouldn't happen with estimateUserOperationGas
-      // but if it does, fall back to state-override
-      if (msg.includes('AA23')) {
-        logBidValidationWarn(
-          'Bundler simulation AA23 error, requesting fallback to state-override:',
-          msg.slice(0, 200)
-        );
-        return { isValid: true, fallbackToStateOverride: true };
-      }
-
-      // Network/RPC errors - signal fallback needed
-      if (
+        // RPC method not supported - likely ZeroDev API compatibility issue
+        errorMessage = 'Bundler RPC error: ' + msg.slice(0, 150);
+      } else if (
         msg.includes('network') ||
         msg.includes('timeout') ||
         msg.includes('ECONNREFUSED') ||
         msg.includes('fetch failed')
       ) {
-        logBidValidationWarn(
-          'Bundler simulation unavailable (network error), requesting fallback to state-override:',
-          msg.slice(0, 200)
-        );
-        return { isValid: true, fallbackToStateOverride: true };
-      }
-    }
-
-    // Extract error message from the bundler/simulation failure
-    let errorMessage = 'Bundler simulation failed';
-
-    // Log for debugging
-    console.log('=== BUNDLER SIMULATION ERROR ===');
-    console.log('User:', userAddress);
-    console.log('Error:', err);
-
-    if (err instanceof Error) {
-      const msg = err.message;
-      console.log('Error message:', msg.slice(0, 500));
-
-      // Parse contract-level errors (these are actual bid validation failures)
-      if (msg.includes('AA21') || msg.includes('insufficient funds')) {
-        // Account has insufficient native balance for wrapping
+        errorMessage = 'Bundler network error: ' + msg.slice(0, 100);
+      } else if (msg.includes('AA21') || msg.includes('insufficient funds')) {
         errorMessage = 'Insufficient native USDe for wrapping';
       } else if (msg.includes('AA23') || msg.includes('AA24')) {
-        // Signature validation failed - likely session key issue
         errorMessage = 'Session key signature validation failed';
       } else if (msg.includes('AA25')) {
-        // Nonce validation failed
         errorMessage = 'Account nonce mismatch';
       } else if (
         msg.includes('validateUserOp') ||
         msg.includes('session') ||
         msg.includes('policy')
       ) {
-        // Session key validation failed
         errorMessage = 'Session key validation failed';
       } else if (msg.includes('InvalidTakerSignature')) {
         errorMessage = 'Invalid bid signature';
@@ -320,22 +274,15 @@ export async function simulateBundlerMint(
         msg.includes('AllowanceExpired') ||
         msg.includes('0x13be252b')
       ) {
-        // Permit2-style allowance has expired or was never set with proper expiration
         errorMessage = "Bidder's allowance has expired";
       } else if (msg.includes('execution reverted')) {
-        // Try to extract selector
         const selectorMatch = msg.match(/0x[a-fA-F0-9]{8}/);
         errorMessage = selectorMatch
           ? `Contract reverted with selector: ${selectorMatch[0]}`
           : 'Contract execution reverted';
       } else {
-        // Unknown error - signal fallback to state-override simulation
-        logBidValidationWarn(
-          'Unknown bundler error, requesting fallback to state-override:',
-          msg.slice(0, 200)
-        );
-        console.log('=== END ERROR ===');
-        return { isValid: true, fallbackToStateOverride: true };
+        // Unknown error - include truncated message for debugging
+        errorMessage = 'Bundler error: ' + msg.slice(0, 150);
       }
 
       console.log('Parsed error:', errorMessage);

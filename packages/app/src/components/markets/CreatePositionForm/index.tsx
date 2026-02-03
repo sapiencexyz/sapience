@@ -106,7 +106,6 @@ const CreatePositionFormInner = ({
     effectiveAddress,
     isUsingSmartAccount,
     smartAccountAddress,
-    chainClients,
     isSessionActive,
   } = useSession();
   const { toast } = useToast();
@@ -195,20 +194,13 @@ const CreatePositionFormInner = ({
 
   // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
   // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
-  // - 'session': Smart account with active session (has sessionClient)
+  // - 'session': Smart account with active session
   // - 'owner': Smart account without active session
+  // Note: This affects which address is used as msg.sender in state-override simulation
   const validationExecutionMode: ExecutionMode = useMemo(() => {
     if (!isUsingSmartAccount) return 'eoa';
-    // Check if session client exists for Ethereal chain
-    const sessionClient = chainClients.ethereal;
-    return sessionClient && isSessionActive ? 'session' : 'owner';
-  }, [isUsingSmartAccount, chainClients.ethereal, isSessionActive]);
-
-  // Get session client for validation (only used in session mode)
-  const validationSessionClient = useMemo(() => {
-    if (validationExecutionMode !== 'session') return undefined;
-    return chainClients.ethereal ?? undefined;
-  }, [validationExecutionMode, chainClients.ethereal]);
+    return isSessionActive ? 'session' : 'owner';
+  }, [isUsingSmartAccount, isSessionActive]);
 
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
@@ -274,15 +266,9 @@ const CreatePositionFormInner = ({
         collateralTokenAddress: collateralToken,
         // Execution context for smart account path
         executionMode: validationExecutionMode,
-        sessionClient: validationSessionClient,
         smartAccountAddress: isUsingSmartAccount
           ? (smartAccountAddress ?? undefined)
           : undefined,
-        // Note: For now, we pass 0n for balance/allowance in bundler mode
-        // The bundler simulation will check actual balances during gas estimation
-        // This is fine because the simulation happens close to execution time
-        userWusdeBalance: 0n,
-        userAllowance: 0n,
       });
 
       if (!cancelled) {
@@ -317,7 +303,6 @@ const CreatePositionFormInner = ({
     collateralToken,
     // Execution context dependencies
     validationExecutionMode,
-    validationSessionClient,
     isUsingSmartAccount,
     smartAccountAddress,
   ]);

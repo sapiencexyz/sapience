@@ -183,9 +183,8 @@ export default function PositionForm({
   useEffect(() => {
     if (prevWagerAmountRef.current !== (wagerAmount || '')) {
       logPositionForm(
-        `Wager amount changed: ${prevWagerAmountRef.current || '(empty)'} -> ${wagerAmount || '(empty)'}`
+        `Wager changed to ${wagerAmount || '(empty)'}, clearing bids`
       );
-      logPositionForm('Clearing bids due to configuration change (wager)');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when wager changes
@@ -200,9 +199,8 @@ export default function PositionForm({
   useEffect(() => {
     if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
       logPositionForm(
-        `Wallet connection changed: ${prevHasConnectedWalletRef.current ? 'connected' : 'disconnected'} -> ${hasConnectedWallet ? 'connected' : 'disconnected'}`
+        `Wallet ${hasConnectedWallet ? 'connected' : 'disconnected'}, clearing bids`
       );
-      logPositionForm('Clearing bids due to configuration change (wallet)');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null);
@@ -214,12 +212,7 @@ export default function PositionForm({
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
     if (prevPredictionsKeyRef.current !== predictionsKey) {
-      logPositionForm('Predictions changed');
-      logPositionForm(`  Previous: "${prevPredictionsKeyRef.current}"`);
-      logPositionForm(`  Current: "${predictionsKey}"`);
-      logPositionForm(
-        'Clearing bids due to configuration change (predictions)'
-      );
+      logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
@@ -235,56 +228,38 @@ export default function PositionForm({
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/wager changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
-      // Configuration changed, ignore incoming bids
-      if (bids.length > 0) {
-        logPositionForm(
-          `Ignoring ${bids.length} bid(s): requestKey is null (configuration changed)`
-        );
-      }
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
-      logPositionForm(
-        `Processing ${bids.length} validated bid(s) (requestKey matches)`
-      );
+      if (bids.length > 0) {
+        logPositionForm(`Received ${bids.length} bid(s)`);
+      }
       setValidBids(bids);
-    } else if (bids.length > 0) {
-      logPositionForm(`Ignoring ${bids.length} bid(s): requestKey mismatch`);
-      logPositionForm(`  Current: "${currentRequestKey}"`);
-      logPositionForm(`  Expected: "${currentRequestKeyRef.current}"`);
     }
   }, [bids, predictionsKey, wagerAmount]);
+
+  // Track previous filter result to avoid logging on every tick
+  const prevFilterResultRef = useRef<string | null>(null);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
     if (!validBids || validBids.length === 0) {
+      prevFilterResultRef.current = null;
       return { bestBid: null, estimateBid: null };
     }
-
-    const nowSec = Math.floor(nowMs / 1000);
 
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
       (bid) => bid.makerDeadline * 1000 > nowMs
     );
-    const expiredBids = validBids.filter(
-      (bid) => bid.makerDeadline * 1000 <= nowMs
-    );
-
-    if (expiredBids.length > 0) {
-      logPositionForm(
-        `Filtering: ${validBids.length} total -> ${nonExpiredBids.length} non-expired (${expiredBids.length} expired)`
-      );
-      expiredBids.forEach((b) => {
-        logPositionForm(
-          `  Expired: ${b.maker.slice(0, 8)}... deadline=${b.makerDeadline} < now=${nowSec}`
-        );
-      });
-    }
 
     if (nonExpiredBids.length === 0) {
-      logPositionForm('No bids to display (all expired)');
+      const resultKey = 'all-expired';
+      if (prevFilterResultRef.current !== resultKey) {
+        logPositionForm('All bids expired');
+        prevFilterResultRef.current = resultKey;
+      }
       return { bestBid: null, estimateBid: null };
     }
 
@@ -299,26 +274,22 @@ export default function PositionForm({
       (bid) => bid.validationStatus === 'invalid'
     );
 
-    logPositionForm(
-      `Filtering: ${nonExpiredBids.length} non-expired -> ${validFilteredBids.length} valid, ${failedBids.length} invalid`
-    );
-
     const estimateFromFailed =
       validFilteredBids.length === 0 && failedBids.length === 1
         ? failedBids[0]
         : null;
 
     if (validFilteredBids.length === 0) {
-      if (estimateFromFailed) {
-        logPositionForm(
-          `No valid bids. Using estimate from failed bid: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
-        );
-      } else if (failedBids.length > 1) {
-        logPositionForm(
-          `No valid bids and ${failedBids.length} failed bids (too many for estimate)`
-        );
-      } else {
-        logPositionForm('No valid bids and no estimate available');
+      const resultKey = estimateFromFailed
+        ? `estimate:${estimateFromFailed.maker}`
+        : `no-valid:${failedBids.length}`;
+      if (prevFilterResultRef.current !== resultKey) {
+        if (estimateFromFailed) {
+          logPositionForm(
+            `Using estimate: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+          );
+        }
+        prevFilterResultRef.current = resultKey;
       }
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
@@ -334,9 +305,11 @@ export default function PositionForm({
       }
     });
 
-    logPositionForm(
-      `Best bid selected: ${formatBidForLog(best, collateralDecimals)}`
-    );
+    const resultKey = `best:${best.maker}:${best.makerWager}`;
+    if (prevFilterResultRef.current !== resultKey) {
+      logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
+      prevFilterResultRef.current = resultKey;
+    }
 
     return { bestBid: best, estimateBid: null };
   }, [validBids, nowMs, collateralDecimals]);
@@ -492,7 +465,7 @@ export default function PositionForm({
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
   const handleRequestBids = useCallback(() => {
-    logPositionForm('Manual "Request Bids" clicked');
+    logPositionForm('Requesting bids (manual)');
     triggerAuctionRequest({
       forceRefresh: true,
       requireSignature: hasConnectedWallet,
@@ -538,9 +511,7 @@ export default function PositionForm({
 
     // Debounce for 300ms to let user finish typing/selecting
     autoAuctionDebounceRef.current = window.setTimeout(() => {
-      logPositionForm(
-        `Auto-auction triggered (${hasConnectedWallet ? 'session user' : 'logged-out user'})`
-      );
+      logPositionForm('Requesting bids (auto)');
       triggerAuctionRequest({
         forceRefresh: true,
         requireSignature: hasConnectedWallet,
@@ -590,10 +561,6 @@ export default function PositionForm({
 
     if (showNoBidsWarning) {
       if (!hintMounted) {
-        logPositionForm('No bids received within cooldown period');
-        logPositionForm(
-          'Showing "Some combinations may not receive bids" hint'
-        );
         // Hide disclaimer, then show hint
         timeout1 = window.setTimeout(() => {
           setDisclaimerMounted(false);

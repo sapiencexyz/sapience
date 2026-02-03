@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuctionBids, type AuctionBid } from '~/lib/auction/useAuctionBids';
-import type { KernelAccountClient } from '@zerodev/sdk';
 import {
   validateBidsWithSimulation,
   type SimulateBidMintOptions,
@@ -32,16 +31,8 @@ export interface UseValidatedAuctionBidsOptions {
   // Execution context for smart account path (optional - defaults to EOA mode)
   /** Execution mode: 'eoa' (default), 'session', or 'owner' */
   executionMode?: ExecutionMode;
-  /** Session client for bundler simulation (session mode) */
-  sessionClient?: KernelAccountClient;
-  /** Smart account address (for owner mode) */
+  /** Smart account address (used as msg.sender for session/owner modes) */
   smartAccountAddress?: `0x${string}`;
-  /** User's current wUSDe balance (for bundler simulation wrap check) */
-  userWusdeBalance?: bigint;
-  /** User's current allowance to PredictionMarket */
-  userAllowance?: bigint;
-  /** User's native USDe balance (for Ethereal wrap check) */
-  userNativeBalance?: bigint;
 }
 
 export interface UseValidatedAuctionBidsResult {
@@ -89,11 +80,7 @@ export function useValidatedAuctionBids(
     enabled = true,
     // Execution context for smart account path
     executionMode,
-    sessionClient,
     smartAccountAddress,
-    userWusdeBalance,
-    userAllowance,
-    userNativeBalance,
   } = options;
 
   // Track validation results by bid signature
@@ -162,11 +149,7 @@ export function useValidatedAuctionBids(
       collateralTokenAddress: collateralTokenAddress!,
       // Pass execution context for smart account path
       executionMode,
-      sessionClient,
       smartAccountAddress,
-      userWusdeBalance,
-      userAllowance,
-      userNativeBalance,
     };
 
     // Track cancellation for cleanup
@@ -215,13 +198,10 @@ export function useValidatedAuctionBids(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
+    collateralTokenAddress,
     // Execution context dependencies
     executionMode,
-    sessionClient,
     smartAccountAddress,
-    userWusdeBalance,
-    userAllowance,
-    userNativeBalance,
   ]);
 
   // Clean up validation results for bids that are no longer in rawBids

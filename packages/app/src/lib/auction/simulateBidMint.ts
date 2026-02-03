@@ -1,12 +1,10 @@
 import { predictionMarketAbi } from '@sapience/sdk';
 import { encodeAbiParameters, keccak256, toHex } from 'viem';
-import type { KernelAccountClient } from '@zerodev/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import {
   logBidValidation,
   logBidValidationWarn,
 } from '~/lib/auction/bidLogger';
-import { simulateBundlerMint } from './simulateBundlerMint';
 
 /**
  * Compute storage slot for a mapping(address => uint256) at a given slot.
@@ -50,9 +48,11 @@ function getAllowanceSlot(
 
 /**
  * Execution mode for bid simulation.
- * - 'eoa': EOA mode - use state override simulation (preserves msg.sender)
- * - 'session': Smart account with active session - use bundler simulation via sessionClient
- * - 'owner': Smart account without session - use bundler simulation via owner kernel client
+ * - 'eoa': EOA mode - simulate with EOA address as msg.sender
+ * - 'session': Smart account with active session - simulate with smart account as msg.sender
+ * - 'owner': Smart account without session - simulate with smart account as msg.sender
+ *
+ * All modes use state-override simulation which validates contract logic directly.
  */
 export type ExecutionMode = 'eoa' | 'session' | 'owner';
 
@@ -67,7 +67,7 @@ export interface SimulateBidMintOptions {
   chainId: number;
   predictionMarketAddress: `0x${string}`;
   // Auction (API taker = contract maker)
-  takerAddress: `0x${string}`; // auction requester - will be msg.sender
+  takerAddress: `0x${string}`; // auction requester - EOA or owner address
   takerWager: string; // auction requester's wager (wei)
   takerNonce: number; // auction requester's nonce
   // Market data
@@ -78,14 +78,8 @@ export interface SimulateBidMintOptions {
 
   // Execution context for smart account path (optional - defaults to EOA mode)
   executionMode?: ExecutionMode;
-  sessionClient?: KernelAccountClient;
+  // Smart account address (used as msg.sender for session/owner modes)
   smartAccountAddress?: `0x${string}`;
-  // User's current wUSDe balance (for bundler simulation wrap check)
-  userWusdeBalance?: bigint;
-  // User's current allowance to PredictionMarket
-  userAllowance?: bigint;
-  // User's native USDe balance (for Ethereal wrap check)
-  userNativeBalance?: bigint;
 }
 
 export interface SimulateBidResult {
@@ -111,21 +105,22 @@ const ZERO_BYTES32: `0x${string}` = `0x${'0'.repeat(64)}`;
 /**
  * Validates a bid by simulating the mint transaction.
  *
- * For EOA mode (default):
  * Uses viem's state override feature to simulate as if the user already has:
  * 1. Sufficient collateral token balance (after wrap would complete)
  * 2. Sufficient allowance to PredictionMarket (after approve would complete)
  *
- * For smart account modes (session/owner):
- * Uses the bundler's gas estimation to validate the full transaction path,
- * including wrap, approve, and mint calls with paymaster validation.
+ * For smart account modes (session/owner), the smart account address is used
+ * as msg.sender to correctly validate the contract's maker check.
  *
  * The simulation validates:
  * - The bidder's signature is valid
  * - The bidder's deadline hasn't expired
  * - The bidder's nonce is correct
- * - The bidder has sufficient funds and allowance
+ * - The bidder has sufficient funds and allowance (via state override)
  * - The market parameters are valid according to the resolver
+ *
+ * Note: Session key permissions are NOT validated here - they will be
+ * validated at actual transaction submission time.
  *
  * @param bid - The bid data from the API
  * @param options - Auction context and contract addresses
@@ -145,69 +140,30 @@ export async function simulateBidMint(
     resolver,
     collateralTokenAddress,
     executionMode = 'eoa',
-    sessionClient,
     smartAccountAddress,
-    userWusdeBalance = 0n,
-    userAllowance = 0n,
   } = options;
 
   const makerCollateralWei = BigInt(takerWager);
 
-  // For smart account modes, try bundler simulation first
-  if (executionMode !== 'eoa' && sessionClient) {
-    logBidValidation(
-      `Trying bundler simulation for ${executionMode} mode (${takerAddress.slice(0, 10)}...)`
-    );
+  // Determine the address to use as msg.sender in simulation
+  // For smart account modes, use the smart account address
+  const simulationAddress =
+    executionMode !== 'eoa' && smartAccountAddress
+      ? smartAccountAddress
+      : takerAddress;
 
-    // Build MintPredictionRequestData from bid
-    const mintRequestData = {
-      encodedPredictedOutcomes,
-      resolver,
-      makerCollateral: takerWager,
-      takerCollateral: bid.makerWager,
-      maker: takerAddress,
-      taker: bid.maker as `0x${string}`,
-      makerNonce: String(takerNonce),
-      takerSignature: bid.makerSignature as `0x${string}`,
-      takerDeadline: String(bid.makerDeadline),
-      refCode: ZERO_BYTES32,
-      takerClaimedNonce: bid.makerNonce,
-    };
-
-    const bundlerResult = await simulateBundlerMint({
-      chainId,
-      predictionMarketAddress,
-      collateralTokenAddress,
-      userAddress: smartAccountAddress || takerAddress,
-      userWusdeBalance,
-      userAllowance,
-      makerCollateralWei,
-      mintRequestData,
-      sessionClient,
-      smartAccountAddress,
-    });
-
-    // If bundler simulation succeeded or returned a definitive error, use that result
-    // If bundler simulation is unavailable (paymaster issues, etc.), fall back to state-override
-    if (!bundlerResult.fallbackToStateOverride) {
-      return bundlerResult;
-    }
-
-    logBidValidation(
-      `Bundler simulation unavailable, falling back to state-override simulation (${takerAddress.slice(0, 10)}...)`
-    );
-  } else {
-    // EOA mode: use state-override simulation
-    logBidValidation(
-      `Using state-override simulation for EOA mode (${takerAddress.slice(0, 10)}...)`
-    );
-  }
+  // Use state-override simulation for all modes
+  // This validates bid signatures, nonces, expiry, and contract logic
+  // Session key permissions will be validated at actual transaction submission time
+  logBidValidation(
+    `Using state-override simulation for ${executionMode} mode (${simulationAddress.slice(0, 10)}...)`
+  );
 
   const takerCollateralWei = BigInt(bid.makerWager);
 
   // Build the MintPredictionRequestData struct
   // Contract field names:
-  // - maker = auction requester (API taker)
+  // - maker = auction requester (API taker) - this is the smart account for session mode
   // - taker = bidder (API maker)
   // - makerCollateral = auction requester's wager
   // - takerCollateral = bidder's wager
@@ -219,7 +175,7 @@ export async function simulateBidMint(
     resolver,
     makerCollateral: makerCollateralWei,
     takerCollateral: takerCollateralWei,
-    maker: takerAddress,
+    maker: simulationAddress, // Smart account address for session mode, EOA for EOA mode
     taker: bid.maker as `0x${string}`,
     makerNonce: BigInt(takerNonce),
     takerSignature: bid.makerSignature as `0x${string}`,
@@ -231,17 +187,18 @@ export async function simulateBidMint(
 
   // Pre-simulation nonce validation: check if the taker's nonce matches on-chain
   // This catches stale nonces early with a clear error message
+  // Note: nonces are tracked per smart account address, not EOA
   try {
     const actualNonce = await publicClient.readContract({
       address: predictionMarketAddress,
       abi: predictionMarketAbi,
       functionName: 'nonces',
-      args: [takerAddress],
+      args: [simulationAddress],
     });
 
     if (actualNonce !== BigInt(takerNonce)) {
       logBidValidationWarn(
-        `Nonce mismatch for taker ${takerAddress.slice(0, 10)}: expected ${takerNonce}, actual ${actualNonce}`
+        `Nonce mismatch for taker ${simulationAddress.slice(0, 10)}: expected ${takerNonce}, actual ${actualNonce}`
       );
       return {
         isValid: false,
@@ -252,45 +209,39 @@ export async function simulateBidMint(
     // If we can't read the nonce, log but continue with simulation
     // The simulation itself will catch any nonce errors
     logBidValidationWarn(
-      `Failed to pre-check nonce for ${takerAddress.slice(0, 10)}:`,
+      `Failed to pre-check nonce for ${simulationAddress.slice(0, 10)}:`,
       nonceErr
     );
   }
 
   // Compute storage slots for state overrides
-  // We override the user's balance and allowance to simulate post-wrap/approve state
-  const balanceSlot = getBalanceSlot(takerAddress);
-  const allowanceSlot = getAllowanceSlot(takerAddress, predictionMarketAddress);
+  // We override the USER's balance and allowance to simulate post-wrap/approve state
+  // But we DO NOT override the BIDDER's balance/allowance - those must be valid on-chain
+  const balanceSlot = getBalanceSlot(simulationAddress);
+  const allowanceSlot = getAllowanceSlot(
+    simulationAddress,
+    predictionMarketAddress
+  );
 
   // Set balance and allowance to be sufficient for the transaction
   // We use a large value to ensure the simulation passes the user's funding checks
   const sufficientBalance = makerCollateralWei + 1n; // Slightly more than needed
 
-  // Also compute slots for the bidder (contract taker = API maker)
-  // The bidder needs sufficient balance and allowance for takerCollateral
-  const bidderAddress = bid.maker as `0x${string}`;
-  const bidderBalanceSlot = getBalanceSlot(bidderAddress);
-  const bidderAllowanceSlot = getAllowanceSlot(
-    bidderAddress,
-    predictionMarketAddress
-  );
-  const bidderSufficientBalance = takerCollateralWei + 1n;
-
   try {
-    // Simulate the mint call with state overrides for BOTH parties
+    // Simulate the mint call with state overrides for the USER only
     // - User (maker/auction requester): simulates post-wrap/approve state
-    // - Bidder (taker): ensures simulation focuses on signature/nonce validation, not balance checks
+    // - Bidder (taker): uses actual on-chain balance/allowance (validates they can pay)
     // Note: viem 2.x expects stateDiff as array of [slot, value] tuples
     await publicClient.simulateContract({
       address: predictionMarketAddress,
       abi: predictionMarketAbi,
       functionName: 'mint',
       args: [mintPredictionRequestData],
-      account: takerAddress, // msg.sender = user (correct!)
+      account: simulationAddress, // msg.sender = user's smart account or EOA
       stateOverride: [
         {
           // Override user's (smart account or EOA) ETH balance for gas estimation
-          address: takerAddress,
+          address: simulationAddress,
           balance: 10n ** 18n, // 1 ETH for gas
         },
         {
@@ -306,16 +257,8 @@ export async function simulateBidMint(
               slot: allowanceSlot,
               value: toHex(sufficientBalance, { size: 32 }),
             },
-            // Override bidder's balance to be sufficient
-            {
-              slot: bidderBalanceSlot,
-              value: toHex(bidderSufficientBalance, { size: 32 }),
-            },
-            // Override bidder's allowance to PredictionMarket
-            {
-              slot: bidderAllowanceSlot,
-              value: toHex(bidderSufficientBalance, { size: 32 }),
-            },
+            // NOTE: Bidder's balance and allowance are NOT overridden
+            // If bidder has insufficient funds/allowance, simulation will fail
           ],
         },
       ],
