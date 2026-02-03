@@ -460,7 +460,8 @@ export default function QuestionPageContent({
     return { xDomain: domain, xTicks: ticks, xTickLabels: labels };
   }, [scatterData, forecastScatterData, data?.endTime]);
 
-  const { bids, requestQuotes } = useAuctionStart();
+  // Disable logging - only CreatePositionForm should log auction activity
+  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true });
   const predictionMarketAddress =
     predictionMarket[chainId]?.address ??
     predictionMarket[DEFAULT_CHAIN_ID]?.address;

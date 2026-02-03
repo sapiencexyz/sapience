@@ -6,6 +6,7 @@ import {
   validateBidsWithSimulation,
   type SimulateBidMintOptions,
   type SimulateBidResult,
+  type ExecutionMode,
 } from '~/lib/auction/simulateBidMint';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
@@ -23,8 +24,15 @@ export interface UseValidatedAuctionBidsOptions {
   takerNonce?: number;
   encodedPredictedOutcomes?: `0x${string}`;
   resolver?: `0x${string}`;
+  collateralTokenAddress?: `0x${string}`;
   /** Whether to run validation simulations. When false, bids are returned as 'pending'. */
   enabled?: boolean;
+
+  // Execution context for smart account path (optional - defaults to EOA mode)
+  /** Execution mode: 'eoa' (default), 'session', or 'owner' */
+  executionMode?: ExecutionMode;
+  /** Smart account address (used as msg.sender for session/owner modes) */
+  smartAccountAddress?: `0x${string}`;
 }
 
 export interface UseValidatedAuctionBidsResult {
@@ -68,7 +76,11 @@ export function useValidatedAuctionBids(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
+    collateralTokenAddress,
     enabled = true,
+    // Execution context for smart account path
+    executionMode,
+    smartAccountAddress,
   } = options;
 
   // Track validation results by bid signature
@@ -91,7 +103,8 @@ export function useValidatedAuctionBids(
       !!takerWager &&
       takerNonce !== undefined &&
       !!encodedPredictedOutcomes &&
-      !!resolver
+      !!resolver &&
+      !!collateralTokenAddress
     );
   }, [
     enabled,
@@ -101,6 +114,7 @@ export function useValidatedAuctionBids(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
+    collateralTokenAddress,
   ]);
 
   // Validate new bids when they arrive
@@ -132,6 +146,10 @@ export function useValidatedAuctionBids(
       takerNonce: takerNonce!,
       encodedPredictedOutcomes: encodedPredictedOutcomes!,
       resolver: resolver!,
+      collateralTokenAddress: collateralTokenAddress!,
+      // Pass execution context for smart account path
+      executionMode,
+      smartAccountAddress,
     };
 
     // Track cancellation for cleanup
@@ -180,6 +198,10 @@ export function useValidatedAuctionBids(
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
+    collateralTokenAddress,
+    // Execution context dependencies
+    executionMode,
+    smartAccountAddress,
   ]);
 
   // Clean up validation results for bids that are no longer in rawBids

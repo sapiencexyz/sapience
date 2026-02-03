@@ -49,7 +49,10 @@ import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import { validateBidsWithSimulation } from '~/lib/auction/simulateBidMint';
+import {
+  validateBidsWithSimulation,
+  type ExecutionMode,
+} from '~/lib/auction/simulateBidMint';
 import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
@@ -99,7 +102,12 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const {
+    effectiveAddress,
+    isUsingSmartAccount,
+    smartAccountAddress,
+    isSessionActive,
+  } = useSession();
   const { toast } = useToast();
   const chainId = CHAIN_ID_ETHEREAL;
 
@@ -184,6 +192,16 @@ const CreatePositionFormInner = ({
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
+  // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
+  // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
+  // - 'session': Smart account with active session
+  // - 'owner': Smart account without active session
+  // Note: This affects which address is used as msg.sender in state-override simulation
+  const validationExecutionMode: ExecutionMode = useMemo(() => {
+    if (!isUsingSmartAccount) return 'eoa';
+    return isSessionActive ? 'session' : 'owner';
+  }, [isUsingSmartAccount, isSessionActive]);
+
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
@@ -216,7 +234,8 @@ const CreatePositionFormInner = ({
       !wager ||
       takerNonce === undefined ||
       !predictedOutcomes?.[0] ||
-      !resolver
+      !resolver ||
+      !collateralToken
     ) {
       logPositionForm(
         `Received ${rawBids.length} raw bid(s), marking as pending (incomplete auction context)`
@@ -234,7 +253,7 @@ const CreatePositionFormInner = ({
 
     const runValidation = async () => {
       logPositionForm(
-        `Starting validation pipeline for ${rawBids.length} bid(s)...`
+        `Starting validation pipeline for ${rawBids.length} bid(s) (mode: ${validationExecutionMode})...`
       );
       const validated = await validateBidsWithSimulation(rawBids, {
         chainId,
@@ -244,6 +263,12 @@ const CreatePositionFormInner = ({
         takerNonce,
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,
+        collateralTokenAddress: collateralToken,
+        // Execution context for smart account path
+        executionMode: validationExecutionMode,
+        smartAccountAddress: isUsingSmartAccount
+          ? (smartAccountAddress ?? undefined)
+          : undefined,
       });
 
       if (!cancelled) {
@@ -271,7 +296,16 @@ const CreatePositionFormInner = ({
     return () => {
       cancelled = true;
     };
-  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
+  }, [
+    rawBids,
+    currentAuctionParams,
+    PREDICTION_MARKET_ADDRESS,
+    collateralToken,
+    // Execution context dependencies
+    validationExecutionMode,
+    isUsingSmartAccount,
+    smartAccountAddress,
+  ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
