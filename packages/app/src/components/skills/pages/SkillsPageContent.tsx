@@ -6,7 +6,6 @@ import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 
-const SKILL_VERSION = '1.0.0';
 const SKILL_RAW_URL =
   'https://raw.githubusercontent.com/sapiencexyz/openclaw-sapience/main/SKILL.md';
 const SKILL_REPO_URL = 'https://github.com/sapiencexyz/openclaw-sapience';
@@ -149,9 +148,6 @@ const SkillsPageContent = () => {
               <div className="flex items-center gap-3">
                 <span className="font-mono text-sm text-foreground">
                   SKILL.md
-                </span>
-                <span className="text-xs text-muted-foreground font-mono">
-                  v{SKILL_VERSION}
                 </span>
               </div>
               <Button
