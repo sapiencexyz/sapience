@@ -266,10 +266,10 @@ export async function simulateBidMint(
     // Extract error message from the simulation failure
     let errorMessage = 'Simulation failed';
 
-    // Always log the full error for debugging
-    console.log('=== BID SIMULATION ERROR ===');
-    console.log('Bid maker:', bid.maker);
-    console.log('Error:', err);
+    // Log the full error for debugging (use debug level to reduce noise in production)
+    console.debug('=== BID SIMULATION ERROR ===');
+    console.debug('Bid maker:', bid.maker);
+    console.debug('Error:', err);
 
     if (err instanceof Error) {
       const msg = err.message;
@@ -281,12 +281,12 @@ export async function simulateBidMint(
         shortMessage?: string;
         metaMessages?: string[];
       };
-      console.log('Error message (first 500 chars):', msg.slice(0, 500));
-      console.log('Error cause:', viemErr.cause);
-      console.log('Error details:', viemErr.details);
-      console.log('Error shortMessage:', viemErr.shortMessage);
-      console.log('Error metaMessages:', viemErr.metaMessages);
-      console.log('=== END ERROR ===');
+      console.debug('Error message (first 500 chars):', msg.slice(0, 500));
+      console.debug('Error cause:', viemErr.cause);
+      console.debug('Error details:', viemErr.details);
+      console.debug('Error shortMessage:', viemErr.shortMessage);
+      console.debug('Error metaMessages:', viemErr.metaMessages);
+      console.debug('=== END ERROR ===');
 
       // Parse common contract errors
       if (msg.includes('InvalidTakerSignature')) {
