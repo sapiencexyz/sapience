@@ -682,9 +682,57 @@ export function useSubmitPosition({
             counterpartySessionKeyData: '0x' as `0x${string}`,
           };
 
+          console.log('[V2 Submit] Full MintRequest:', {
+            picksCount: mintRequest.picks.length,
+            predictorWager: mintRequest.predictorWager.toString(),
+            counterpartyWager: mintRequest.counterpartyWager.toString(),
+            predictor: mintRequest.predictor,
+            counterparty: mintRequest.counterparty,
+            predictorNonce: mintRequest.predictorNonce.toString(),
+            counterpartyNonce: mintRequest.counterpartyNonce.toString(),
+            predictorDeadline: mintRequest.predictorDeadline.toString(),
+            counterpartyDeadline: mintRequest.counterpartyDeadline.toString(),
+            predictorSignatureLength: mintRequest.predictorSignature.length,
+            counterpartySignatureLength: mintRequest.counterpartySignature.length,
+            refCode: mintRequest.refCode,
+            predictorSessionKeyDataLength: mintRequest.predictorSessionKeyData.length,
+          });
+
           const calls = prepareV2Calls({ mintRequest, freshAllowance });
+          console.log('[V2 Submit] Prepared calls:', {
+            count: calls.length,
+            calls: calls.map((c, i) => ({
+              index: i,
+              to: c.to,
+              dataLength: c.data?.length ?? 0,
+              value: c.value?.toString() ?? '0',
+            })),
+          });
           if (calls.length === 0) {
             throw new Error('No valid calls to execute');
+          }
+
+          // Debug: simulate the mint call directly to see the actual error
+          const mintCall = calls.find(c => c.to.toLowerCase() === v2EscrowAddress.toLowerCase());
+          if (mintCall) {
+            try {
+              console.log('[V2 Submit] Simulating mint call directly...');
+              await publicClient.call({
+                to: mintCall.to,
+                data: mintCall.data,
+                account: predictor,
+              });
+              console.log('[V2 Submit] Direct simulation succeeded');
+            } catch (simErr: any) {
+              console.error('[V2 Submit] Direct simulation failed:', {
+                message: simErr?.message,
+                cause: simErr?.cause,
+                shortMessage: simErr?.shortMessage,
+                details: simErr?.details,
+                data: simErr?.data,
+              });
+              // Continue anyway to see if bundler gives different error
+            }
           }
 
           await sendCalls({
