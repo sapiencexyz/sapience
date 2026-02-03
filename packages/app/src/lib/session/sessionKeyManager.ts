@@ -912,6 +912,25 @@ export async function restoreSession(
     signer: sessionKeyAccount,
   });
 
+  // Validate V2 session key approval matches the session key (if present)
+  if (serialized.v2SessionKeyApproval) {
+    const derivedAddress = sessionKeyAccount.address.toLowerCase();
+    const storedAddress = serialized.v2SessionKeyApproval.sessionKey.toLowerCase();
+    if (derivedAddress !== storedAddress) {
+      console.error('[SessionKeyManager] V2 session key mismatch detected!', {
+        derivedFromPrivateKey: sessionKeyAccount.address,
+        storedInV2Approval: serialized.v2SessionKeyApproval.sessionKey,
+      });
+      // Clear the corrupted session and throw - user must create a new session
+      clearSession();
+      throw new Error(
+        'Session key mismatch detected. The stored V2 approval has a different session key. ' +
+        'Please create a new session.'
+      );
+    }
+    console.debug('[SessionKeyManager] V2 session key validation passed');
+  }
+
   // Restore Ethereal session (required)
   getZeroDevUrls(etherealChainId); // Will throw if not configured
   const etherealAccount = await deserializePermissionAccount(
@@ -1017,6 +1036,25 @@ export const SESSION_STORAGE_KEY = 'sapience:session';
  */
 export function saveSession(serialized: SerializedSession): void {
   if (typeof window === 'undefined') return;
+
+  // Validate session key consistency before saving
+  const derivedAddress = privateKeyToAccount(serialized.sessionPrivateKey).address;
+  if (serialized.v2SessionKeyApproval) {
+    if (derivedAddress.toLowerCase() !== serialized.v2SessionKeyApproval.sessionKey.toLowerCase()) {
+      console.error('[SessionKeyManager] CRITICAL: Attempted to save session with mismatched keys!', {
+        derivedFromPrivateKey: derivedAddress,
+        inV2Approval: serialized.v2SessionKeyApproval.sessionKey,
+      });
+      throw new Error('Cannot save session: session key mismatch between private key and V2 approval');
+    }
+  }
+
+  console.debug('[SessionKeyManager] Saving session', {
+    sessionKeyAddress: derivedAddress,
+    smartAccount: serialized.config.smartAccountAddress,
+    hasV2Approval: !!serialized.v2SessionKeyApproval,
+  });
+
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(serialized));
 }
 
@@ -1046,6 +1084,19 @@ export function loadSession(): SerializedSession | null {
       );
       clearSession();
       return null;
+    }
+
+    // Validate session key consistency
+    if (parsed.v2SessionKeyApproval && parsed.sessionPrivateKey) {
+      const derivedAddress = privateKeyToAccount(parsed.sessionPrivateKey).address;
+      if (derivedAddress.toLowerCase() !== parsed.v2SessionKeyApproval.sessionKey.toLowerCase()) {
+        console.error('[SessionKeyManager] Session key mismatch detected on load!', {
+          derivedFromPrivateKey: derivedAddress,
+          inV2Approval: parsed.v2SessionKeyApproval.sessionKey,
+        });
+        clearSession();
+        return null;
+      }
     }
 
     return parsed;
