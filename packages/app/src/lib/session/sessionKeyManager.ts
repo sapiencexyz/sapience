@@ -297,6 +297,15 @@ async function signV2SessionKeyApproval(
   };
 
   console.debug('[SessionKeyManager] Requesting V2 session key approval signature...');
+  console.debug('[SessionKeyManager] V2 approval details:', {
+    sessionKey: sessionKeyAddress,
+    owner: ownerSigner.address,
+    smartAccount: smartAccountAddress,
+    validUntil: validUntilSeconds,
+    chainId,
+    verifyingContract,
+    permissionsHash,
+  });
 
   // Sign using the owner's wallet (via EIP-1193 provider)
   const signature = await ownerSigner.provider.request({
@@ -305,6 +314,7 @@ async function signV2SessionKeyApproval(
   });
 
   console.debug('[SessionKeyManager] V2 session key approval signed');
+  console.debug('[SessionKeyManager] V2 approval signature length:', signature.length);
 
   return {
     sessionKey: sessionKeyAddress,
@@ -340,6 +350,65 @@ export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
       approval.ownerSignature,
     ]
   );
+}
+
+// ABI for accountFactory verification
+const ACCOUNT_FACTORY_ABI = parseAbi([
+  'function getAccountAddress(address owner, uint256 index) view returns (address)',
+]);
+
+// ABI for escrow accountFactory getter
+const ESCROW_ACCOUNT_FACTORY_ABI = parseAbi([
+  'function accountFactory() view returns (address)',
+]);
+
+/**
+ * Verify that the accountFactory returns the expected smart account address.
+ * This is useful for debugging session key validation issues.
+ */
+export async function verifyAccountFactoryMapping(
+  chainId: number,
+  escrowAddress: Address,
+  ownerAddress: Address,
+  expectedSmartAccount: Address
+): Promise<{
+  accountFactoryAddress: Address;
+  derivedAccountIndex0: Address;
+  derivedAccountIndex1: Address;
+  matchesIndex0: boolean;
+  matchesIndex1: boolean;
+}> {
+  const publicClient = getEtherealPublicClient(chainId);
+
+  // Get the accountFactory address from the escrow contract
+  const accountFactoryAddress = await publicClient.readContract({
+    address: escrowAddress,
+    abi: ESCROW_ACCOUNT_FACTORY_ABI,
+    functionName: 'accountFactory',
+  });
+
+  // Get derived addresses for index 0 and 1
+  const derivedAccountIndex0 = await publicClient.readContract({
+    address: accountFactoryAddress,
+    abi: ACCOUNT_FACTORY_ABI,
+    functionName: 'getAccountAddress',
+    args: [ownerAddress, 0n],
+  });
+
+  const derivedAccountIndex1 = await publicClient.readContract({
+    address: accountFactoryAddress,
+    abi: ACCOUNT_FACTORY_ABI,
+    functionName: 'getAccountAddress',
+    args: [ownerAddress, 1n],
+  });
+
+  return {
+    accountFactoryAddress,
+    derivedAccountIndex0,
+    derivedAccountIndex1,
+    matchesIndex0: derivedAccountIndex0.toLowerCase() === expectedSmartAccount.toLowerCase(),
+    matchesIndex1: derivedAccountIndex1.toLowerCase() === expectedSmartAccount.toLowerCase(),
+  };
 }
 
 /**
@@ -424,6 +493,15 @@ export async function createSession(
 
   console.debug(
     `[SessionKeyManager] Using Ethereal chain: ${selectedEtherealChain.name} (${etherealChainId})`
+  );
+  console.debug(
+    `[SessionKeyManager] Contract addresses:`,
+    {
+      wusde: etherealContracts.wusde,
+      predictionMarket: etherealContracts.predictionMarket,
+      predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
+      vault: etherealContracts.vault,
+    }
   );
 
   // Note: CallPolicy computes permissionHash from (callType, target, selector) only,

@@ -18,7 +18,7 @@ import type { Pick } from '@sapience/sdk/types/v2';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
+import { encodeV2SessionKeyData, verifyAccountFactoryMapping } from '~/lib/session/sessionKeyManager';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
@@ -591,6 +591,43 @@ export function useSubmitPosition({
             if (canUseV2SessionKey) {
               // Session key mode: sign with session key and include SessionKeyData
               console.log('[V2 Submit] Using session key signing for predictor');
+              console.log('[V2 Submit] Session key approval details:', {
+                sessionKey: v2SessionKeyApproval.sessionKey,
+                owner: v2SessionKeyApproval.owner,
+                smartAccount: v2SessionKeyApproval.smartAccount,
+                validUntil: v2SessionKeyApproval.validUntil,
+                permissionsHash: v2SessionKeyApproval.permissionsHash,
+                chainId: v2SessionKeyApproval.chainId,
+                ownerSignatureLength: v2SessionKeyApproval.ownerSignature.length,
+              });
+              console.log('[V2 Submit] Predictor (signer) address:', predictor);
+              console.log('[V2 Submit] SmartAccount matches predictor:', v2SessionKeyApproval.smartAccount === predictor);
+
+              // Verify accountFactory mapping before attempting mint
+              try {
+                const factoryVerification = await verifyAccountFactoryMapping(
+                  chainId,
+                  v2EscrowAddress,
+                  v2SessionKeyApproval.owner,
+                  predictor
+                );
+                console.log('[V2 Submit] AccountFactory verification:', {
+                  accountFactory: factoryVerification.accountFactoryAddress,
+                  owner: v2SessionKeyApproval.owner,
+                  expectedSmartAccount: predictor,
+                  derivedIndex0: factoryVerification.derivedAccountIndex0,
+                  derivedIndex1: factoryVerification.derivedAccountIndex1,
+                  matchesIndex0: factoryVerification.matchesIndex0,
+                  matchesIndex1: factoryVerification.matchesIndex1,
+                });
+                if (!factoryVerification.matchesIndex0 && !factoryVerification.matchesIndex1) {
+                  console.error('[V2 Submit] WARNING: AccountFactory does not return the expected smart account!');
+                  console.error('[V2 Submit] The contract will reject the session key signature.');
+                }
+              } catch (verifyErr) {
+                console.warn('[V2 Submit] AccountFactory verification failed:', verifyErr);
+              }
+
               predictorSignature = await sessionSignTypedData({
                 domain: {
                   ...typedData.domain,
@@ -603,6 +640,7 @@ export function useSubmitPosition({
               // Encode the V2 SessionKeyData for contract validation
               predictorSessionKeyData = encodeV2SessionKeyData(v2SessionKeyApproval);
               console.log('[V2 Submit] Session key data encoded, length:', predictorSessionKeyData.length);
+              console.log('[V2 Submit] Session key data hex:', predictorSessionKeyData.slice(0, 130) + '...');
             } else {
               // Wallet mode: sign with wallet, contract uses EIP-1271 fallback
               console.log('[V2 Submit] Using wallet signing for predictor');
