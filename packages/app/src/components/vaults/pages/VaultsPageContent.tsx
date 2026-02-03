@@ -308,7 +308,7 @@ const VaultsPageContent = () => {
         </TabsTrigger>
       </TabsList>
 
-      <TabsContent value="deposit" className="space-y-2 mt-1">
+      <TabsContent value="deposit" className="space-y-1 sm:space-y-2 mt-1">
         {/* Amount Input */}
         <div className="space-y-0.5">
           <div className="border border-input bg-background rounded-md px-3 py-3">
@@ -364,9 +364,9 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Deposit Button Group */}
-        <div className="space-y-2 pt-2 pb-3">
+        <div className="space-y-2 sm:pt-2 pb-3">
           {isInteractionDelayActive && (
-            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300 mb-2">
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
               {cooldownDisplay} before submitting another request.
             </div>
@@ -374,7 +374,6 @@ const VaultsPageContent = () => {
 
           <RestrictedJurisdictionBanner
             show={!isPermitLoading && isRestricted}
-            className="mb-1"
             iconClassName="h-4 w-4"
           />
 
@@ -418,7 +417,7 @@ const VaultsPageContent = () => {
                 : vaultData?.paused
                   ? 'Vault Paused'
                   : isConnected && !isWhitelisted
-                    ? 'Not Whitelisted'
+                    ? 'Request Early Access'
                     : isInteractionDelayActive
                       ? 'Cooldown in progress'
                       : !!depositAmount && exceedsVaultCapacity
@@ -525,7 +524,7 @@ const VaultsPageContent = () => {
         {/* Cooldown + Withdraw Button Group */}
         <div className="space-y-2 pt-2">
           {isInteractionDelayActive && (
-            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300 mb-2">
+            <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
               {cooldownDisplay} before submitting another request.
             </div>
@@ -533,7 +532,6 @@ const VaultsPageContent = () => {
 
           <RestrictedJurisdictionBanner
             show={!isPermitLoading && isRestricted}
-            className="mb-1"
             iconClassName="h-4 w-4"
           />
 

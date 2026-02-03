@@ -623,7 +623,9 @@ function createColumns(
     {
       id: 'predict',
       header: () => (
-        <span className="block text-center">Select Predictions</span>
+        <span className="block text-center whitespace-nowrap">
+          Select Predictions
+        </span>
       ),
       cell: ({ row }) => {
         const data = row.original;
