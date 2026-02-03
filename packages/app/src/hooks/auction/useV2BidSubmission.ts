@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex, formatUnits, parseUnits } from 'viem';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type {
   Pick,
   V2BidPayload,
@@ -128,12 +129,13 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
         nowSec + Math.max(60, deadlineSeconds)
       );
 
-      // Convert picks from JSON to SDK format
-      const picks: Pick[] = auction.picks.map((p) => ({
+      // Convert picks from JSON to SDK format and canonicalize
+      const rawPicks: Pick[] = auction.picks.map((p) => ({
         conditionResolver: p.conditionResolver as Address,
         conditionId: p.conditionId as Hex,
         predictedOutcome: p.predictedOutcome,
       }));
+      const picks = canonicalizePicks(rawPicks);
 
       // Build typed data for counterparty signature
       const typedData = buildCounterpartyMintTypedData({

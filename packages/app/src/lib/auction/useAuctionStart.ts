@@ -53,6 +53,13 @@ export interface MintPredictionRequestData {
   // For validation: the nonce the bidder (contract taker) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
   takerClaimedNonce?: number;
+  // V2 picks array (used directly instead of decoding from encodedPredictedOutcomes)
+  // This ensures the predictor signs the exact same picks the counterparty signed
+  v2Picks?: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
 }
 
 function jsonStableStringify(value: unknown): string {

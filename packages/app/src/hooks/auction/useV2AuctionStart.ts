@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
-import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
+import { computePickConfigId, canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type { Pick, V2AuctionRequestPayload } from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -70,7 +70,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
   const startAuction = useCallback(
     async (params: V2AuctionStartParams): Promise<V2AuctionStartResult> => {
       const {
-        picks,
+        picks: rawPicks,
         predictorWager,
         counterpartyWager,
         deadlineSeconds = 300, // 5 minutes default
@@ -85,9 +85,12 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         return { success: false, error: 'Wallet not connected' };
       }
 
-      if (!picks || picks.length === 0) {
+      if (!rawPicks || rawPicks.length === 0) {
         return { success: false, error: 'At least one pick is required' };
       }
+
+      // Canonicalize picks for consistent pickConfigId and signatures
+      const picks = canonicalizePicks(rawPicks);
 
       if (predictorWager <= 0n) {
         return { success: false, error: 'Invalid predictor wager amount' };

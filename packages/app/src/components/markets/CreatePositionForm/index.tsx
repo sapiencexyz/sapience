@@ -98,6 +98,7 @@ const CreatePositionFormInner = ({
     selections,
     clearSelections,
     positionsWithMarketData,
+    getV2Picks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -728,6 +729,34 @@ const CreatePositionFormInner = ({
 
           // Close the popover/drawer
           setIsPopoverOpen(false);
+
+          // For V2, add picks directly from selections (ensures exact match with counterparty signature)
+          if (isV2Chain) {
+            const v2Picks = getV2Picks();
+            console.log('[V2 Form] Building v2Picks from selections:', {
+              selectionsCount: selections.length,
+              v2PicksCount: v2Picks.length,
+              selections: selections.map((s) => ({
+                conditionId: s.conditionId.slice(0, 10) + '...',
+                prediction: s.prediction,
+                resolverAddress: s.resolverAddress || 'MISSING',
+              })),
+              v2Picks: v2Picks.map((p) => ({
+                resolver: p.conditionResolver,
+                conditionId: p.conditionId.slice(0, 10) + '...',
+                outcome: p.predictedOutcome,
+              })),
+            });
+            if (v2Picks.length > 0) {
+              mintReq.v2Picks = v2Picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              }));
+            } else {
+              console.warn('[V2 Form] No v2Picks available - selections may be missing resolverAddress');
+            }
+          }
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);

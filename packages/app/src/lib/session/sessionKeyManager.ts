@@ -5,6 +5,7 @@ import {
   keccak256,
   parseAbi,
   slice,
+  encodeAbiParameters,
   type Address,
   type Hex,
   type Chain,
@@ -34,11 +35,13 @@ import {
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketAbi,
+  predictionMarketEscrowAbi,
   collateralTokenAbi,
   liquidityVaultAbi,
 } from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
+  predictionMarketEscrow as predictionMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
   passiveLiquidityVault as vaultAddresses,
@@ -60,9 +63,13 @@ function getEtherealContractAddresses(chainId: number) {
     chainId === CHAIN_ID_ETHEREAL_TESTNET
       ? CHAIN_ID_ETHEREAL_TESTNET
       : CHAIN_ID_ETHEREAL;
+  // Get escrow address, but only use it if it's not the zero address (not deployed)
+  const escrowAddress = predictionMarketEscrowAddresses[effectiveChainId]?.address;
+  const isEscrowDeployed = escrowAddress && escrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
     predictionMarket: predictionMarketAddresses[effectiveChainId].address,
+    predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
     vault: vaultAddresses[effectiveChainId].address,
   };
 }
@@ -155,6 +162,34 @@ export interface EnableTypedData {
   };
 }
 
+// V2 Session Key Approval data for PredictionMarketEscrow
+// This is a separate approval from ZeroDev's enable signature
+export interface V2SessionKeyApproval {
+  sessionKey: Address;
+  owner: Address;
+  smartAccount: Address;
+  validUntil: number; // Unix timestamp in seconds
+  permissionsHash: Hex; // bytes32
+  chainId: number;
+  ownerSignature: Hex;
+}
+
+// V2 Session Key Approval domain and types (matches SignatureValidator.sol)
+const V2_SESSION_KEY_APPROVAL_DOMAIN = {
+  name: 'PredictionMarketEscrow',
+  version: '1',
+} as const;
+
+const V2_SESSION_KEY_APPROVAL_TYPES = {
+  SessionKeyApproval: [
+    { name: 'sessionKey', type: 'address' },
+    { name: 'smartAccount', type: 'address' },
+    { name: 'validUntil', type: 'uint256' },
+    { name: 'permissionsHash', type: 'bytes32' },
+    { name: 'chainId', type: 'uint256' },
+  ],
+} as const;
+
 // Serialized session for localStorage
 // We store ZeroDev approval strings which embed owner's EIP-712 signature
 export interface SerializedSession {
@@ -173,6 +208,9 @@ export interface SerializedSession {
   arbitrumEnableTypedData?: EnableTypedData;
   // Which Ethereal chain was used (mainnet or testnet)
   etherealChainId?: number;
+  // V2 Session Key Approval for PredictionMarketEscrow
+  // This is a separate EIP-712 signature from the owner authorizing session key for V2 mints
+  v2SessionKeyApproval?: V2SessionKeyApproval;
 }
 
 // Session result with chain clients
@@ -222,6 +260,86 @@ export async function getSmartAccountAddress(
   });
 
   return account.address;
+}
+
+/**
+ * Sign V2 Session Key Approval for PredictionMarketEscrow.
+ * This allows the session key to sign MintApproval messages on behalf of the smart account.
+ */
+async function signV2SessionKeyApproval(
+  ownerSigner: OwnerSigner,
+  sessionKeyAddress: Address,
+  smartAccountAddress: Address,
+  validUntilSeconds: number,
+  chainId: number,
+  verifyingContract: Address
+): Promise<V2SessionKeyApproval> {
+  // Compute a permissions hash (we use a simple hash of "V2_MINT" permission)
+  // In practice, this could be more specific to the exact permissions granted
+  const permissionsHash = keccak256('0x56325f4d494e54' as Hex); // keccak256("V2_MINT")
+
+  // For eth_signTypedData_v4, uint256 values should be hex strings when JSON serialized
+  const typedData = {
+    domain: {
+      ...V2_SESSION_KEY_APPROVAL_DOMAIN,
+      chainId,
+      verifyingContract,
+    },
+    types: V2_SESSION_KEY_APPROVAL_TYPES,
+    primaryType: 'SessionKeyApproval' as const,
+    message: {
+      sessionKey: sessionKeyAddress,
+      smartAccount: smartAccountAddress,
+      validUntil: String(validUntilSeconds), // uint256 as string for JSON serialization
+      permissionsHash,
+      chainId: String(chainId), // uint256 as string for JSON serialization
+    },
+  };
+
+  console.debug('[SessionKeyManager] Requesting V2 session key approval signature...');
+
+  // Sign using the owner's wallet (via EIP-1193 provider)
+  const signature = await ownerSigner.provider.request({
+    method: 'eth_signTypedData_v4',
+    params: [ownerSigner.address, JSON.stringify(typedData)],
+  });
+
+  console.debug('[SessionKeyManager] V2 session key approval signed');
+
+  return {
+    sessionKey: sessionKeyAddress,
+    owner: ownerSigner.address,
+    smartAccount: smartAccountAddress,
+    validUntil: validUntilSeconds,
+    permissionsHash,
+    chainId,
+    ownerSignature: signature,
+  };
+}
+
+/**
+ * Encode V2SessionKeyApproval to ABI-encoded bytes for contract consumption.
+ * Matches the IV2Types.SessionKeyData struct layout.
+ */
+export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
+  return encodeAbiParameters(
+    [
+      { name: 'sessionKey', type: 'address' },
+      { name: 'owner', type: 'address' },
+      { name: 'validUntil', type: 'uint256' },
+      { name: 'permissionsHash', type: 'bytes32' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'ownerSignature', type: 'bytes' },
+    ],
+    [
+      approval.sessionKey,
+      approval.owner,
+      BigInt(approval.validUntil),
+      approval.permissionsHash,
+      BigInt(approval.chainId),
+      approval.ownerSignature,
+    ]
+  );
 }
 
 /**
@@ -318,16 +436,22 @@ export async function createSession(
         target: etherealContracts.wusde,
         abi: WUSDE_ABI,
         functionName: 'deposit',
+        // Allow sending native USDe value for wrapping (up to 1M USDe)
+        valueLimit: BigInt(1e24), // 1,000,000 * 1e18
       },
       {
-        // Single approve permission using ONE_OF to allow both PredictionMarket and Vault
+        // Single approve permission using ONE_OF to allow PredictionMarket, Vault, and Escrow (V2)
         target: etherealContracts.wusde,
         abi: collateralTokenAbi,
         functionName: 'approve',
         args: [
           {
             condition: ParamCondition.ONE_OF,
-            value: [etherealContracts.predictionMarket, etherealContracts.vault],
+            value: [
+              etherealContracts.predictionMarket,
+              etherealContracts.vault,
+              etherealContracts.predictionMarketEscrow,
+            ].filter(Boolean) as Address[],
           },
           null,
         ],
@@ -368,6 +492,16 @@ export async function createSession(
         abi: liquidityVaultAbi,
         functionName: 'cancelWithdrawal',
       },
+      // V2 escrow mint permission (only if escrow is deployed on this chain)
+      ...(etherealContracts.predictionMarketEscrow
+        ? [
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'mint',
+            },
+          ]
+        : []),
     ],
   });
 
@@ -484,6 +618,25 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
+  // Sign V2 Session Key Approval for PredictionMarketEscrow (if deployed)
+  let v2SessionKeyApproval: V2SessionKeyApproval | undefined;
+  if (etherealContracts.predictionMarketEscrow) {
+    try {
+      v2SessionKeyApproval = await signV2SessionKeyApproval(
+        ownerSigner,
+        sessionKeyAccount.address,
+        smartAccountAddress,
+        validUntilInSeconds,
+        etherealChainId,
+        etherealContracts.predictionMarketEscrow
+      );
+      console.debug('[SessionKeyManager] V2 session key approval obtained');
+    } catch (e) {
+      console.warn('[SessionKeyManager] Failed to sign V2 session key approval:', e);
+      // Continue without V2 support - V1 will still work
+    }
+  }
+
   const config: SessionConfig = {
     durationHours,
     expiresAt,
@@ -500,6 +653,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
+    v2SessionKeyApproval,
   };
 
   return {

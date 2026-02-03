@@ -49,16 +49,18 @@ import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSession } from '~/lib/context/SessionContext';
 import {
-  ethereal,
   executeSudoTransaction,
   type OwnerSigner,
 } from '~/lib/session/sessionKeyManager';
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
+import { collateralToken as collateralTokenAddresses } from '@sapience/sdk/contracts';
 
 // Ethereal chain configuration
-const CHAIN_ID_ETHEREAL = 5064014;
-const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 const WUSDE_ABI = parseAbi(['function deposit() payable']);
 
 // Success toast messages
@@ -145,6 +147,7 @@ export function useSapienceWriteContract({
     sessionConfig,
     hasArbitrumSession,
     createArbitrumSessionIfNeeded,
+    etherealChainId: sessionEtherealChainId,
   } = useSession();
 
   // Check if session can handle a specific chain
@@ -156,12 +159,13 @@ export function useSapienceWriteContract({
       if (!isUsingSession) return false;
       if (!sessionConfig) return false;
       if (Date.now() > sessionConfig.expiresAt) return false;
-      if (chainId === ethereal.id && chainClients.ethereal) return true;
+      // Check if chainId matches the Ethereal chain the session was created for (mainnet or testnet)
+      if (sessionEtherealChainId && chainId === sessionEtherealChainId && chainClients.ethereal) return true;
       // For Arbitrum, we can use session even if it doesn't exist yet (lazy creation)
       if (chainId === arbitrum.id) return true;
       return false;
     },
-    [isUsingSession, sessionConfig, chainClients]
+    [isUsingSession, sessionConfig, chainClients, sessionEtherealChainId]
   );
 
   // Check if Arbitrum session needs to be created
@@ -177,11 +181,12 @@ export function useSapienceWriteContract({
   // Get the session client for a chain
   const getSessionClient = useCallback(
     (chainId: number) => {
-      if (chainId === ethereal.id) return chainClients.ethereal;
+      // Check if chainId matches the Ethereal chain the session was created for
+      if (sessionEtherealChainId && chainId === sessionEtherealChainId) return chainClients.ethereal;
       if (chainId === arbitrum.id) return chainClients.arbitrum;
       return null;
     },
-    [chainClients]
+    [chainClients, sessionEtherealChainId]
   );
 
   // Determine execution path: 'session' | 'owner' | 'eoa'
@@ -265,20 +270,30 @@ export function useSapienceWriteContract({
   // Get position form context - may be undefined if not within provider
   const createPositionContext = useContext(CreatePositionContext);
 
-  // Helper to check if we're on Ethereal chain
+  // Helper to check if we're on any Ethereal chain (mainnet or testnet)
   const isEtherealChain = (chainId: number): boolean =>
-    chainId === CHAIN_ID_ETHEREAL;
+    chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+
+  // Helper to get the WUSDE address for an Ethereal chain
+  const getWusdeAddress = (chainId: number): `0x${string}` | null => {
+    const entry = collateralTokenAddresses[chainId];
+    return entry?.address ?? null;
+  };
 
   // Helper to create WUSDe wrap transaction for Ethereal chain
   const createWrapTransaction = useCallback(
-    (amount: bigint): TransactionCall => ({
-      to: WUSDE_ADDRESS as `0x${string}`,
-      data: encodeFunctionData({
-        abi: WUSDE_ABI,
-        functionName: 'deposit',
-      }),
-      value: amount,
-    }),
+    (amount: bigint, chainId: number): TransactionCall | null => {
+      const wusdeAddress = getWusdeAddress(chainId);
+      if (!wusdeAddress) return null;
+      return {
+        to: wusdeAddress,
+        data: encodeFunctionData({
+          abi: WUSDE_ABI,
+          functionName: 'deposit',
+        }),
+        value: amount,
+      };
+    },
     []
   );
 
@@ -287,6 +302,21 @@ export function useSapienceWriteContract({
   const prepareCallsWithWrapping = useCallback(
     (calls: TransactionCall[], chainId: number): TransactionCall[] => {
       if (!isEtherealChain(chainId)) return calls;
+
+      // Check if first call is already a wrap (deposit) to WUSDE
+      // If so, the caller already handled wrapping - don't add a duplicate
+      const wusdeAddress = getWusdeAddress(chainId);
+      if (wusdeAddress && calls.length > 0) {
+        const firstCall = calls[0];
+        // deposit() selector is 0xd0e30db0
+        const isWrapCall =
+          firstCall.to.toLowerCase() === wusdeAddress.toLowerCase() &&
+          firstCall.data.startsWith('0xd0e30db0');
+        if (isWrapCall) {
+          // Wrapping is already handled by the caller, return as-is
+          return calls;
+        }
+      }
 
       // Calculate total value that needs wrapping
       const totalValue = calls.reduce(
@@ -297,7 +327,8 @@ export function useSapienceWriteContract({
       if (totalValue === 0n) return calls;
 
       // Prepend wrap transaction, then all calls with value zeroed
-      const wrapTx = createWrapTransaction(totalValue);
+      const wrapTx = createWrapTransaction(totalValue, chainId);
+      if (!wrapTx) return calls; // If no WUSDE address found, skip wrapping
       return [
         wrapTx,
         ...calls.map((call) => ({
@@ -689,13 +720,20 @@ export function useSapienceWriteContract({
 
           if (value && BigInt(value) > 0n) {
             // Wrap USDe first, then execute main transaction in atomic batch
-            const wrapTx = createWrapTransaction(BigInt(value));
+            const wrapTx = createWrapTransaction(BigInt(value), _chainId);
 
             const mainCalldata = encodeFunctionData({
               abi,
               functionName,
               args: fnArgs,
             });
+
+            // If no wrap transaction (missing WUSDE address), fall through to normal execution
+            if (!wrapTx) {
+              const hash = await writeContractAsync(...args);
+              handleTransactionSuccess(hash);
+              return;
+            }
 
             const calls = [
               wrapTx,

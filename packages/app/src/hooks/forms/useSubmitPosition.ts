@@ -13,9 +13,12 @@ import {
 } from '@sapience/sdk/constants';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
+import type { Pick } from '@sapience/sdk/types/v2';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
+import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
@@ -113,7 +116,7 @@ export function useSubmitPosition({
   onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
-  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession } = useSession();
+  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval } = useSession();
   const { signTypedDataAsync } = useSignTypedData();
 
   // V2 chain detection
@@ -502,12 +505,45 @@ export function useSubmitPosition({
           const freshV2Nonce = refetchResult.data as bigint | undefined;
           const predictorNonce = freshV2Nonce ?? v2Nonce ?? 0n;
 
-          // Decode predictedOutcomes to V2 picks
-          const decoded = decodeAuctionPredictedOutcomes({
-            resolver: mintData.resolver,
-            predictedOutcomes: [mintData.encodedPredictedOutcomes],
-          });
-          const picks = decodedOutcomesToV2Picks(decoded, mintData.resolver);
+          // Get V2 picks - prefer direct v2Picks if available (exact match to counterparty signature),
+          // otherwise decode from encodedPredictedOutcomes (V1 format)
+          let picks: Pick[];
+          if (mintData.v2Picks && mintData.v2Picks.length > 0) {
+            // Use v2Picks directly (already the exact picks the counterparty signed)
+            const rawPicks: Pick[] = mintData.v2Picks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome as 0 | 1,
+            }));
+            picks = canonicalizePicks(rawPicks);
+            console.log('[V2 Submit] Using v2Picks from mintData:', {
+              rawPicksCount: rawPicks.length,
+              canonicalPicksCount: picks.length,
+              picks: picks.map((p) => ({
+                resolver: p.conditionResolver,
+                conditionId: p.conditionId.slice(0, 10) + '...',
+                outcome: p.predictedOutcome,
+              })),
+            });
+          } else {
+            // Fallback: decode from encodedPredictedOutcomes (V1 format)
+            console.log('[V2 Submit] Falling back to decoding from encodedPredictedOutcomes');
+            const decoded = decodeAuctionPredictedOutcomes({
+              resolver: mintData.resolver,
+              predictedOutcomes: [mintData.encodedPredictedOutcomes],
+            });
+            const rawPicks = decodedOutcomesToV2Picks(decoded, mintData.resolver);
+            picks = canonicalizePicks(rawPicks);
+            console.log('[V2 Submit] Decoded picks:', {
+              rawPicksCount: rawPicks.length,
+              canonicalPicksCount: picks.length,
+              picks: picks.map((p) => ({
+                resolver: p.conditionResolver,
+                conditionId: p.conditionId.slice(0, 10) + '...',
+                outcome: p.predictedOutcome,
+              })),
+            });
+          }
 
           if (picks.length === 0) {
             throw new Error('Could not decode picks for V2 mint');
@@ -544,10 +580,17 @@ export function useSubmitPosition({
             chainId,
           });
 
+          // Determine if we can use session key signing for V2
+          // Requires: active session + session signing function + V2 session key approval
+          const canUseV2SessionKey = isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
+
           let predictorSignature: `0x${string}`;
+          let predictorSessionKeyData: `0x${string}` = '0x';
+
           try {
-            // Use session key signing if session is active, otherwise use wallet
-            if (isUsingSession && sessionSignTypedData) {
+            if (canUseV2SessionKey) {
+              // Session key mode: sign with session key and include SessionKeyData
+              console.log('[V2 Submit] Using session key signing for predictor');
               predictorSignature = await sessionSignTypedData({
                 domain: {
                   ...typedData.domain,
@@ -557,7 +600,12 @@ export function useSubmitPosition({
                 primaryType: typedData.primaryType,
                 message: typedData.message as Record<string, unknown>,
               });
+              // Encode the V2 SessionKeyData for contract validation
+              predictorSessionKeyData = encodeV2SessionKeyData(v2SessionKeyApproval);
+              console.log('[V2 Submit] Session key data encoded, length:', predictorSessionKeyData.length);
             } else {
+              // Wallet mode: sign with wallet, contract uses EIP-1271 fallback
+              console.log('[V2 Submit] Using wallet signing for predictor');
               predictorSignature = await signTypedDataAsync({
                 domain: {
                   ...typedData.domain,
@@ -592,7 +640,7 @@ export function useSubmitPosition({
             predictorSignature,
             counterpartySignature,
             refCode: mintData.refCode,
-            predictorSessionKeyData: '0x' as `0x${string}`,
+            predictorSessionKeyData,
             counterpartySessionKeyData: '0x' as `0x${string}`,
           };
 
@@ -679,6 +727,7 @@ export function useSubmitPosition({
       signTypedDataAsync,
       isUsingSession,
       sessionSignTypedData,
+      v2SessionKeyApproval,
     ]
   );
 
