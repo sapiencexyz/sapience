@@ -309,12 +309,12 @@ export async function simulateBidMint(
         errorMessage = 'Bidder has insufficient allowance';
       } else if (msg.includes('InsufficientBalance')) {
         errorMessage = 'Bidder has insufficient balance';
-      } else if (
-        msg.includes('AllowanceExpired') ||
-        msg.includes('0x13be252b')
-      ) {
-        // Permit2-style allowance has expired or was never set with proper expiration
+      } else if (msg.includes('AllowanceExpired')) {
+        // Permit2-style allowance has expired
         errorMessage = "Bidder's allowance has expired";
+      } else if (msg.includes('0x13be252b')) {
+        // InsufficientAllowance() from wUSDe token
+        errorMessage = 'Bidder has insufficient allowance';
       } else if (msg.includes('CollateralBelowMinimum')) {
         errorMessage = 'Collateral below minimum';
       } else if (msg.includes('MakerCollateralMustBeGreaterThanZero')) {
