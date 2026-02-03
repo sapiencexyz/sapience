@@ -23,15 +23,17 @@ function getMappingSlot(
 }
 
 /**
- * Get balance storage slot for standard ERC20 (_balances at slot 0)
+ * Get balance storage slot for standard ERC20 (_balances at slot 0).
+ * Note: This assumes OpenZeppelin ERC20 storage layout used by WUSDe/wUSDe.
  */
 function getBalanceSlot(owner: `0x${string}`): `0x${string}` {
   return getMappingSlot(owner, 0n);
 }
 
 /**
- * Get allowance storage slot for standard ERC20 (_allowances at slot 1)
- * allowance[owner][spender] is a nested mapping
+ * Get allowance storage slot for standard ERC20 (_allowances at slot 1).
+ * allowance[owner][spender] is a nested mapping.
+ * Note: This assumes OpenZeppelin ERC20 storage layout used by WUSDe/wUSDe.
  */
 function getAllowanceSlot(
   owner: `0x${string}`,
@@ -395,7 +397,9 @@ export async function validateBidsWithSimulation<T extends BidData>(
           validationError: result.error,
         };
       } catch (err) {
-        // On RPC or unexpected errors, treat as valid to avoid blocking
+        // On RPC or unexpected errors, treat as invalid to be safe
+        const errorMsg =
+          err instanceof Error ? err.message.slice(0, 100) : 'Unknown error';
         logBidValidationWarn(
           'Unexpected error for bid:',
           bid.makerSignature?.slice(0, 10),
@@ -403,8 +407,8 @@ export async function validateBidsWithSimulation<T extends BidData>(
         );
         return {
           bid,
-          validationStatus: 'valid',
-          validationError: undefined,
+          validationStatus: 'invalid',
+          validationError: `Validation failed: ${errorMsg}`,
         };
       }
     })
