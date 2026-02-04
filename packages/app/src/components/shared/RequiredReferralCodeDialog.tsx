@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import {
   Dialog,
   DialogContent,
@@ -205,29 +204,18 @@ const RequiredReferralCodeDialog = ({
           </div>
         </form>
 
-        <div className="space-y-4">
-          <p className="text-base text-foreground">
-            An invite code isn&apos;t necessary to participate in the{' '}
-            <Link href="/hackathon" className="gold-link">
-              hackathon
-            </Link>
-            .
+        <div className="mt-4">
+          <p className="text-base text-foreground mb-2">
+            You can log out until you receive one.
           </p>
-
-          <hr className="gold-hr" />
-          <div>
-            <p className="text-base text-foreground mb-2">
-              You can log out until you receive one.
-            </p>
-            <Button
-              type="button"
-              className="w-full font-semibold"
-              disabled={submitting || loggingOut}
-              onClick={handleLogout}
-            >
-              {loggingOut ? 'Logging out...' : 'Log out'}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            className="w-full font-semibold"
+            disabled={submitting || loggingOut}
+            onClick={handleLogout}
+          >
+            {loggingOut ? 'Logging out...' : 'Log out'}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
