@@ -177,6 +177,23 @@ export const initializeApolloServer = async () => {
         async requestDidStart() {
           return {
             async didResolveOperation({ request, document }) {
+              // Skip complexity checking for introspection queries
+              // Introspection is already gated by the introspection: true setting
+              // and doesn't touch the database
+              const isIntrospectionQuery = document.definitions.some(
+                (def) =>
+                  def.kind === 'OperationDefinition' &&
+                  def.selectionSet.selections.some(
+                    (sel) =>
+                      sel.kind === 'Field' &&
+                      (sel.name.value === '__schema' ||
+                        sel.name.value === '__type')
+                  )
+              );
+              if (isIntrospectionQuery) {
+                return;
+              }
+
               const complexity = getComplexity({
                 schema,
                 query: document,
@@ -193,11 +210,6 @@ export const initializeApolloServer = async () => {
                     if (fieldName.startsWith('_avg')) return 5000;
                     if (fieldName.startsWith('_min')) return 5000;
                     if (fieldName.startsWith('_max')) return 5000;
-                    // Introspection fields can be expensive in production
-                    if (config.isProd) {
-                      if (fieldName === '__schema') return 100;
-                      if (fieldName === '__type') return 50;
-                    }
                     return undefined;
                   }),
                   // Multiply complexity by list size (take/first/limit args) to capture N+1 cost
