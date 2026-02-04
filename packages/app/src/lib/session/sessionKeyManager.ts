@@ -532,18 +532,18 @@ export async function createSession(
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
 
   // Time bounds for session validity
-  // Subtract 2 minutes from validAfter to account for clock skew between client and blockchain
+  // Set validAfter to 0 to avoid clock skew issues between client and blockchain
+  // (Ethereal testnet can be 30+ minutes behind real-world time)
+  // Security is maintained by validUntil which sets the upper bound
   const nowInSeconds = Math.floor(Date.now() / 1000);
-  const clockSkewBuffer = 120; // 2 minutes
-  const validAfterInSeconds = nowInSeconds - clockSkewBuffer;
   const validUntilInSeconds = nowInSeconds + durationHours * 60 * 60;
 
   console.debug(
-    `[SessionKeyManager] Timestamp policy: validAfter=${validAfterInSeconds} (now=${nowInSeconds}, buffer=${clockSkewBuffer}s), validUntil=${validUntilInSeconds}`
+    `[SessionKeyManager] Timestamp policy: validAfter=0, validUntil=${validUntilInSeconds}`
   );
 
   const timestampPolicy = toTimestampPolicy({
-    validAfter: validAfterInSeconds,
+    validAfter: 0,
     validUntil: validUntilInSeconds,
   });
 
