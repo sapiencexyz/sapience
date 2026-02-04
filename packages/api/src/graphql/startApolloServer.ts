@@ -7,6 +7,7 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
+import { GraphQLError } from 'graphql';
 import {
   getComplexity,
   simpleEstimator,
@@ -192,6 +193,11 @@ export const initializeApolloServer = async () => {
                     if (fieldName.startsWith('_avg')) return 5000;
                     if (fieldName.startsWith('_min')) return 5000;
                     if (fieldName.startsWith('_max')) return 5000;
+                    // Introspection fields can be expensive in production
+                    if (config.isProd) {
+                      if (fieldName === '__schema') return 100;
+                      if (fieldName === '__type') return 50;
+                    }
                     return undefined;
                   }),
                   // Multiply complexity by list size (take/first/limit args) to capture N+1 cost
@@ -236,7 +242,9 @@ export const initializeApolloServer = async () => {
                   });
                 }
 
-                throw new Error(errorMessage);
+                throw new GraphQLError(errorMessage, {
+                  extensions: { code: 'QUERY_COMPLEXITY_EXCEEDED' },
+                });
               }
             },
           };

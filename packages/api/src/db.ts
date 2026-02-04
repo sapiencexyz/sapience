@@ -10,6 +10,23 @@ const prisma = new PrismaClient({
   },
 });
 
+// Query timeout middleware - bounds individual query execution time
+prisma.$use(async (params, next) => {
+  const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => {
+      reject(
+        new Error(
+          `Query timeout: ${params.model}.${params.action} exceeded ${timeout}ms`
+        )
+      );
+    }, timeout);
+  });
+
+  return Promise.race([next(params), timeoutPromise]);
+});
+
 // Initialize database connection
 export const initializeDataSource = async () => {
   try {

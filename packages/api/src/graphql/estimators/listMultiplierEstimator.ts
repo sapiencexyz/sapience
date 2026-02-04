@@ -3,6 +3,7 @@
  * Multiplies child complexity by list size arguments (take, first, limit)
  * This captures the N+1 query nature of nested lists
  */
+import { isListType, getNullableType } from 'graphql';
 import type { ComplexityEstimator } from '../queryComplexity.js';
 
 export interface ListMultiplierEstimatorOptions {
@@ -19,8 +20,8 @@ export function listMultiplierEstimator(
   return (args) => {
     const { field, args: fieldArgs, childComplexity } = args;
 
-    // Check if this is a list field
-    const isListField = field.type.toString().startsWith('[');
+    // Check if this is a list field (unwrap NonNull wrapper if present)
+    const isListField = isListType(getNullableType(field.type));
 
     if (!isListField) {
       // Not a list, use default complexity (let other estimators handle)
