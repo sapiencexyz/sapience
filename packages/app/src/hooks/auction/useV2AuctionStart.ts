@@ -73,7 +73,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         picks: rawPicks,
         predictorWager,
         counterpartyWager,
-        deadlineSeconds = 300, // 5 minutes default
+        deadlineSeconds = 1800, // 30 minutes default
         refCode,
       } = params;
 
@@ -207,6 +207,20 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
               resolve(data.payload ?? {});
             }
           });
+
+          // Debug logging for V2 auction signature debugging
+          console.log('[V2 Auction Create] picks:', picks.map(p => ({
+            resolver: p.conditionResolver,
+            conditionId: p.conditionId.slice(0, 10) + '...',
+            outcome: p.predictedOutcome,
+          })));
+          console.log('[V2 Auction Create] pickConfigId:', pickConfigId);
+          console.log('[V2 Auction Create] predictorWager:', predictorWager.toString());
+          console.log('[V2 Auction Create] counterpartyWager:', counterpartyWager.toString());
+          console.log('[V2 Auction Create] predictor:', signerAddress);
+          console.log('[V2 Auction Create] predictorNonce:', nonce.toString());
+          console.log('[V2 Auction Create] predictorDeadline:', predictorDeadline.toString());
+          console.log('[V2 Auction Create] chainId:', chainId);
 
           client.send({ type: 'v2.auction.start', payload });
         });

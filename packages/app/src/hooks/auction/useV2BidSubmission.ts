@@ -80,7 +80,7 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
 
   const submitBid = useCallback(
     async (params: V2BidSubmissionParams): Promise<V2BidSubmissionResult> => {
-      const { auction, deadlineSeconds = 300 } = params;
+      const { auction, deadlineSeconds = 1800 } = params; // 30 minutes default
 
       const chainId = auction.chainId ?? overrideChainId ?? DEFAULT_CHAIN_ID;
 

@@ -182,7 +182,17 @@ const V2_SESSION_KEY_APPROVAL_DOMAIN = {
   version: '1',
 } as const;
 
+// EIP712Domain type - explicitly included for wallet compatibility
+// Some wallets (like Rabby on custom chains) need this to properly recognize EIP-712 format
+const EIP712_DOMAIN_TYPE = [
+  { name: 'name', type: 'string' },
+  { name: 'version', type: 'string' },
+  { name: 'chainId', type: 'uint256' },
+  { name: 'verifyingContract', type: 'address' },
+] as const;
+
 const V2_SESSION_KEY_APPROVAL_TYPES = {
+  EIP712Domain: EIP712_DOMAIN_TYPE,
   SessionKeyApproval: [
     { name: 'sessionKey', type: 'address' },
     { name: 'smartAccount', type: 'address' },
@@ -376,7 +386,8 @@ async function signV2SessionKeyApproval(
  * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
  */
 export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
-  return encodeAbiParameters(
+  // Encode the struct fields as a tuple
+  const innerEncoding = encodeAbiParameters(
     [
       { name: 'sessionKey', type: 'address' },
       { name: 'owner', type: 'address' },
@@ -394,6 +405,11 @@ export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
       approval.ownerSignature,
     ]
   );
+
+  // Solidity's abi.decode(data, (StructWithDynamicTypes)) expects a leading offset pointer
+  // The offset is 0x20 (32 bytes) pointing to where the actual struct data begins
+  const offsetPointer = '0000000000000000000000000000000000000000000000000000000000000020';
+  return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
 
 // ABI for accountFactory verification
@@ -516,15 +532,18 @@ export async function createSession(
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
 
   // Time bounds for session validity
+  // Subtract 2 minutes from validAfter to account for clock skew between client and blockchain
   const nowInSeconds = Math.floor(Date.now() / 1000);
+  const clockSkewBuffer = 120; // 2 minutes
+  const validAfterInSeconds = nowInSeconds - clockSkewBuffer;
   const validUntilInSeconds = nowInSeconds + durationHours * 60 * 60;
 
   console.debug(
-    `[SessionKeyManager] Timestamp policy: validAfter=${nowInSeconds}, validUntil=${validUntilInSeconds}`
+    `[SessionKeyManager] Timestamp policy: validAfter=${validAfterInSeconds} (now=${nowInSeconds}, buffer=${clockSkewBuffer}s), validUntil=${validUntilInSeconds}`
   );
 
   const timestampPolicy = toTimestampPolicy({
-    validAfter: nowInSeconds,
+    validAfter: validAfterInSeconds,
     validUntil: validUntilInSeconds,
   });
 
