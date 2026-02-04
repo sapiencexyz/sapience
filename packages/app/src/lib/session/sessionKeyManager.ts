@@ -329,13 +329,15 @@ async function signV2SessionKeyApproval(
 
 /**
  * Encode V2SessionKeyApproval to ABI-encoded bytes for contract consumption.
- * Matches the IV2Types.SessionKeyData struct layout.
+ * Matches the SignatureValidator.SessionKeyApproval struct layout:
+ *   (sessionKey, owner, smartAccount, validUntil, permissionsHash, chainId, ownerSignature)
  */
 export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
   return encodeAbiParameters(
     [
       { name: 'sessionKey', type: 'address' },
       { name: 'owner', type: 'address' },
+      { name: 'smartAccount', type: 'address' },
       { name: 'validUntil', type: 'uint256' },
       { name: 'permissionsHash', type: 'bytes32' },
       { name: 'chainId', type: 'uint256' },
@@ -344,6 +346,7 @@ export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
     [
       approval.sessionKey,
       approval.owner,
+      approval.smartAccount,
       BigInt(approval.validUntil),
       approval.permissionsHash,
       BigInt(approval.chainId),
