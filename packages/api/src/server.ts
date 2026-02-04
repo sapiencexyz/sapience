@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { initializeDataSource } from './db';
-import { expressMiddleware } from '@apollo/server/express4';
+import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
@@ -10,7 +10,7 @@ import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
-import { NextFunction, Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
 import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
@@ -38,9 +38,22 @@ const startServer = async () => {
 
   const apolloServer = await initializeApolloServer();
 
-  // Add GraphQL endpoint
+  // Add GraphQL endpoint with payload size limit and request timeout
   app.use(
     '/graphql',
+    express.json({ limit: '100kb' }),
+    // Request timeout middleware
+    (req: Request, res: Response, next: NextFunction) => {
+      const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
+      res.setTimeout(timeout, () => {
+        if (!res.headersSent) {
+          res.status(408).json({
+            errors: [{ message: `Request timeout after ${timeout}ms` }],
+          });
+        }
+      });
+      next();
+    },
     expressMiddleware(apolloServer, {
       context: async () => ({
         loaders: createLoaders(),

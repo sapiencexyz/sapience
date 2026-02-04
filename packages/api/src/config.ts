@@ -18,7 +18,19 @@ export const config = cleanEnv(process.env, {
     desc: 'Rate limit window in milliseconds',
   }),
   RATE_LIMIT_MAX_REQUESTS: num({
-    default: 600,
+    default: 200,
     desc: 'Maximum requests per window per IP',
+  }),
+  GRAPHQL_MAX_COMPLEXITY: num({
+    default: 10000,
+    desc: 'Maximum allowed query complexity score',
+  }),
+  GRAPHQL_REQUEST_TIMEOUT_MS: num({
+    default: 10000,
+    desc: 'Maximum time for a GraphQL request to complete',
+  }),
+  PRISMA_QUERY_TIMEOUT_MS: num({
+    default: 8000,
+    desc: 'Maximum time for a Prisma query to complete',
   }),
 });
