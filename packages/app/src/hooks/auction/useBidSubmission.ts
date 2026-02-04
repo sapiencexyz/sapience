@@ -21,7 +21,9 @@ import {
   predictionMarketEscrow,
 } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
-import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { buildCounterpartyMintTypedData, computePredictionHash, hashMintApproval } from '@sapience/sdk/auction/v2Signing';
+import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
+import { recoverTypedDataAddress } from 'viem';
 import { type Pick as V2Pick, OutcomeSide } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -266,6 +268,32 @@ export function useBidSubmission(
           chainId,
         });
 
+        // DEBUG: Log the exact values being signed for V2 bid
+        const debugPickConfigId = computePickConfigId(picks);
+        const debugPredictionHash = computePredictionHash(
+          debugPickConfigId,
+          takerWager,
+          makerWager,
+          taker,
+          signerAddress
+        );
+        console.log('[V2 Bid Signing] Values being signed:');
+        console.log('  picks:', picks.map(p => ({
+          resolver: p.conditionResolver,
+          conditionId: p.conditionId.slice(0, 10) + '...',
+          outcome: p.predictedOutcome,
+        })));
+        console.log('  pickConfigId:', debugPickConfigId);
+        console.log('  predictorWager:', takerWager.toString());
+        console.log('  counterpartyWager:', makerWager.toString());
+        console.log('  predictor:', taker);
+        console.log('  counterparty:', signerAddress);
+        console.log('  predictionHash:', debugPredictionHash);
+        console.log('  counterpartyNonce:', counterpartyNonce.toString());
+        console.log('  counterpartyDeadline:', makerDeadline);
+        console.log('  chainId:', chainId);
+        console.log('  verifyingContract:', verifyingContract);
+
         try {
           // Use session key signing if session is active, otherwise use wallet
           if (isUsingSession && sessionSignTypedData) {
@@ -288,6 +316,41 @@ export function useBidSubmission(
               primaryType: typedData.primaryType,
               message: typedData.message,
             });
+          }
+
+          // DEBUG: Compute the EIP-712 hash and verify signature locally
+          const eip712Hash = hashMintApproval({
+            predictionHash: debugPredictionHash,
+            signer: signerAddress as `0x${string}`,
+            wager: makerWager,
+            nonce: counterpartyNonce,
+            deadline: BigInt(makerDeadline),
+            verifyingContract: verifyingContract,
+            chainId,
+          });
+          console.log('[V2 Bid Signing] EIP-712 hash (SDK):', eip712Hash);
+          console.log('[V2 Bid Signing] Signature:', makerSignature);
+
+          // Verify signature locally using viem
+          try {
+            const recoveredAddress = await recoverTypedDataAddress({
+              domain: {
+                name: 'PredictionMarketEscrow',
+                version: '1',
+                chainId: BigInt(chainId),
+                verifyingContract: verifyingContract,
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+              signature: makerSignature,
+            });
+            console.log('[V2 Bid Signing] Local signature verification:');
+            console.log('  Recovered address:', recoveredAddress);
+            console.log('  Expected signer:', signerAddress);
+            console.log('  Match:', recoveredAddress.toLowerCase() === signerAddress.toLowerCase() ? 'YES' : 'NO');
+          } catch (verifyError) {
+            console.error('[V2 Bid Signing] Local verification failed:', verifyError);
           }
         } catch (e: any) {
           const error =

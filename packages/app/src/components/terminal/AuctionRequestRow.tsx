@@ -512,6 +512,13 @@ const AuctionRequestRow: React.FC<Props> = ({
 
         // Use shared bid submission hook for signing and WebSocket
         // If auction is V1 (not V2), force V1 protocol even on V2-capable chains
+        console.log('[V2 Bid - Auction Data]', {
+          isV2Auction,
+          v2Picks: isV2Auction ? v2Picks : undefined,
+          takerWager: takerWagerWei.toString(),
+          taker,
+          resolver: resolverAddr,
+        });
         const result = await submitBidToWs({
           auctionId,
           makerWager: makerWagerWei,

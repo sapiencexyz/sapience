@@ -4,7 +4,7 @@
  * V2: Uses MintApproval EIP-712, predictor signs at accept time
  */
 import { useCallback, useState, useMemo } from 'react';
-import { encodeFunctionData, erc20Abi, parseAbi, type Address } from 'viem';
+import { encodeFunctionData, erc20Abi, parseAbi, recoverTypedDataAddress, type Address } from 'viem';
 
 import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
 import {
@@ -12,8 +12,8 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
-import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
+import { buildPredictorMintTypedData, hashMintApproval, computePredictionHash, MINT_APPROVAL_TYPES } from '@sapience/sdk/auction/v2Signing';
+import { canonicalizePicks, computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
 import type { Pick } from '@sapience/sdk/types/v2';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -147,6 +147,7 @@ export function useSubmitPosition({
         !!wusdeAddress,
     },
   });
+
 
   // V2: Get predictor nonce from PredictionMarketEscrow
   const { nonce: v2Nonce, refetch: refetchV2Nonce } = useV2Nonce({
@@ -500,6 +501,55 @@ export function useSubmitPosition({
             throw new Error('V2 escrow address not configured');
           }
 
+          // V2 SmartAccount funding check: when using session keys, the SmartAccount
+          // needs to have sufficient native balance for wrapping (if wUSDe balance is insufficient)
+          const predictorWagerWei = BigInt(mintData.makerCollateral);
+          const canUseV2SessionKeyPreflight = isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
+
+          if (canUseV2SessionKeyPreflight && effectiveAddress) {
+            try {
+              // Check SmartAccount's wUSDe balance
+              const wusdeBalance = await publicClient.readContract({
+                address: collateralTokenAddress,
+                abi: erc20Abi,
+                functionName: 'balanceOf',
+                args: [effectiveAddress as `0x${string}`],
+              });
+
+              // If wUSDe balance is insufficient, check native balance for wrapping
+              if (wusdeBalance < predictorWagerWei) {
+                const amountToWrap = predictorWagerWei - wusdeBalance;
+                const nativeBalance = await publicClient.getBalance({
+                  address: effectiveAddress as `0x${string}`,
+                });
+
+                console.log('[V2 Submit] SmartAccount balance check:', {
+                  smartAccount: effectiveAddress,
+                  wusdeBalance: wusdeBalance.toString(),
+                  nativeBalance: nativeBalance.toString(),
+                  predictorWager: predictorWagerWei.toString(),
+                  amountToWrap: amountToWrap.toString(),
+                  hasEnoughNative: nativeBalance >= amountToWrap,
+                });
+
+                if (nativeBalance < amountToWrap) {
+                  const shortfall = amountToWrap - nativeBalance;
+                  const shortfallFormatted = (Number(shortfall) / 1e18).toFixed(6);
+                  throw new Error(
+                    `Your Smart Account needs ${shortfallFormatted} more USDe to complete this transaction. ` +
+                    `Please transfer native USDe to your Smart Account address: ${effectiveAddress}`
+                  );
+                }
+              }
+            } catch (balanceErr: any) {
+              // Re-throw our custom error, but ignore RPC failures
+              if (balanceErr?.message?.includes('Smart Account needs')) {
+                throw balanceErr;
+              }
+              console.warn('[V2 Submit] Balance preflight check failed:', balanceErr);
+            }
+          }
+
           // Get fresh predictor nonce
           const refetchResult = await refetchV2Nonce();
           const freshV2Nonce = refetchResult.data as bigint | undefined;
@@ -563,6 +613,15 @@ export function useSubmitPosition({
           // The bidder's nonce is embedded in their signature
           const counterpartyNonce = BigInt(mintData.takerClaimedNonce ?? 0);
 
+          // DEBUG: Log counterparty values from bid (compare with [V2 Bid Signing] logs from counterparty browser)
+          console.log('[V2 Submit] Counterparty values from bid:', {
+            counterpartySignature: counterpartySignature.slice(0, 20) + '...',
+            counterpartyNonce: counterpartyNonce.toString(),
+            counterpartyDeadline: counterpartyDeadline.toString(),
+            raw_takerClaimedNonce: mintData.takerClaimedNonce,
+            raw_takerDeadline: mintData.takerDeadline,
+          });
+
           // Calculate predictor deadline (same as counterparty or extend slightly)
           const nowSec = Math.floor(Date.now() / 1000);
           const predictorDeadline = BigInt(nowSec + 300); // 5 minutes from now
@@ -578,6 +637,33 @@ export function useSubmitPosition({
             predictorDeadline,
             verifyingContract: v2EscrowAddress,
             chainId,
+          });
+
+          // Log the predictionHash for debugging
+          const { computePredictionHash } = await import('@sapience/sdk/auction/v2Signing');
+          const { computePickConfigId: computePickConfigIdFn } = await import('@sapience/sdk/auction/v2Encoding');
+          const pickConfigId = computePickConfigIdFn(picks);
+          const predictionHash = computePredictionHash(
+            pickConfigId,
+            predictorWager,
+            counterpartyWager,
+            predictor,
+            counterparty
+          );
+          console.log('[V2 Submit] Hash computation:', {
+            pickConfigId,
+            predictionHash,
+            predictorWager: predictorWager.toString(),
+            counterpartyWager: counterpartyWager.toString(),
+            predictor,
+            counterparty,
+          });
+          console.log('[V2 Submit] Typed data message:', {
+            predictionHash: typedData.message.predictionHash,
+            signer: typedData.message.signer,
+            wager: typedData.message.wager.toString(),
+            nonce: typedData.message.nonce.toString(),
+            deadline: typedData.message.deadline.toString(),
           });
 
           // Determine if we can use session key signing for V2
@@ -637,17 +723,130 @@ export function useSubmitPosition({
                 primaryType: typedData.primaryType,
                 message: typedData.message as Record<string, unknown>,
               });
+
+              // Verify the session key signature recovers to the session key address
+              const { recoverTypedDataAddress, hashTypedData: hashTypedDataViem } = await import('viem');
+              try {
+                const recoveredSigner = await recoverTypedDataAddress({
+                  domain: {
+                    ...typedData.domain,
+                    chainId: Number(typedData.domain.chainId),
+                  },
+                  types: typedData.types,
+                  primaryType: typedData.primaryType,
+                  message: typedData.message as Record<string, unknown>,
+                  signature: predictorSignature,
+                });
+                console.log('[V2 Submit] Session key signature verification:', {
+                  recoveredSigner,
+                  expectedSessionKey: v2SessionKeyApproval.sessionKey,
+                  match: recoveredSigner.toLowerCase() === v2SessionKeyApproval.sessionKey.toLowerCase(),
+                });
+                if (recoveredSigner.toLowerCase() !== v2SessionKeyApproval.sessionKey.toLowerCase()) {
+                  console.error('[V2 Submit] ⚠️ SESSION KEY SIGNATURE MISMATCH!');
+                  console.error('[V2 Submit] The session key signature does not recover to the expected session key.');
+                  console.error('[V2 Submit] This will cause the contract to reject the signature.');
+                }
+
+                // Also log the typed data hash for comparison with contract
+                const typedDataHash = hashTypedDataViem({
+                  domain: {
+                    ...typedData.domain,
+                    chainId: Number(typedData.domain.chainId),
+                  },
+                  types: typedData.types,
+                  primaryType: typedData.primaryType,
+                  message: typedData.message as Record<string, unknown>,
+                });
+                console.log('[V2 Submit] MintApproval typed data hash:', typedDataHash);
+              } catch (verifyErr) {
+                console.warn('[V2 Submit] Could not verify session key signature:', verifyErr);
+              }
+
               // Encode the V2 SessionKeyData for contract validation
               predictorSessionKeyData = encodeV2SessionKeyData(v2SessionKeyApproval);
+
+              // Verify the encoding by decoding it
+              const { decodeAbiParameters } = await import('viem');
+              try {
+                const decoded = decodeAbiParameters(
+                  [
+                    { name: 'sessionKey', type: 'address' },
+                    { name: 'owner', type: 'address' },
+                    { name: 'validUntil', type: 'uint256' },
+                    { name: 'permissionsHash', type: 'bytes32' },
+                    { name: 'chainId', type: 'uint256' },
+                    { name: 'ownerSignature', type: 'bytes' },
+                  ],
+                  predictorSessionKeyData
+                );
+                console.log('[V2 Submit] Session key data decode verification:', {
+                  sessionKey: decoded[0],
+                  owner: decoded[1],
+                  validUntil: decoded[2].toString(),
+                  permissionsHash: decoded[3],
+                  chainId: decoded[4].toString(),
+                  ownerSignatureLength: (decoded[5] as string).length,
+                  matchesOriginal: {
+                    sessionKey: decoded[0] === v2SessionKeyApproval.sessionKey,
+                    owner: decoded[1] === v2SessionKeyApproval.owner,
+                    validUntil: decoded[2] === BigInt(v2SessionKeyApproval.validUntil),
+                    permissionsHash: decoded[3] === v2SessionKeyApproval.permissionsHash,
+                    chainId: decoded[4] === BigInt(v2SessionKeyApproval.chainId),
+                  },
+                });
+              } catch (decodeErr) {
+                console.error('[V2 Submit] Failed to decode session key data:', decodeErr);
+              }
+
+              // Verify SessionKeyApproval hash matches contract
+              try {
+                const getSessionKeyApprovalHashAbi = [
+                  {
+                    type: 'function',
+                    name: 'getSessionKeyApprovalHash',
+                    inputs: [
+                      { name: 'sessionKey', type: 'address' },
+                      { name: 'smartAccount', type: 'address' },
+                      { name: 'validUntil', type: 'uint256' },
+                      { name: 'permissionsHash', type: 'bytes32' },
+                      { name: 'chainId', type: 'uint256' },
+                    ],
+                    outputs: [{ name: 'hash', type: 'bytes32' }],
+                  },
+                ] as const;
+                const contractSessionHash = await publicClient.readContract({
+                  address: v2EscrowAddress,
+                  abi: getSessionKeyApprovalHashAbi,
+                  functionName: 'getSessionKeyApprovalHash',
+                  args: [
+                    v2SessionKeyApproval.sessionKey as `0x${string}`,
+                    predictor, // smartAccount
+                    BigInt(v2SessionKeyApproval.validUntil),
+                    v2SessionKeyApproval.permissionsHash as `0x${string}`,
+                    BigInt(v2SessionKeyApproval.chainId),
+                  ],
+                });
+                console.log('[V2 Submit] SessionKeyApproval hash from contract:', contractSessionHash);
+
+                // Recover owner from ownerSignature using this hash
+                const { recoverAddress } = await import('viem');
+                const recoveredOwner = await recoverAddress({
+                  hash: contractSessionHash,
+                  signature: v2SessionKeyApproval.ownerSignature as `0x${string}`,
+                });
+                console.log('[V2 Submit] Owner signature verification on SessionKeyApproval:', {
+                  recoveredOwner,
+                  expectedOwner: v2SessionKeyApproval.owner,
+                  match: recoveredOwner.toLowerCase() === v2SessionKeyApproval.owner.toLowerCase(),
+                });
+              } catch (sessionHashErr) {
+                console.error('[V2 Submit] SessionKeyApproval hash verification failed:', sessionHashErr);
+              }
+
               console.log('[V2 Submit] Session key data encoded:', {
                 length: predictorSessionKeyData.length,
                 hexPrefix: predictorSessionKeyData.slice(0, 130) + '...',
-                // Decode what we encoded to verify
-                sessionKeyInApproval: v2SessionKeyApproval.sessionKey,
-                ownerInApproval: v2SessionKeyApproval.owner,
-                validUntilInApproval: v2SessionKeyApproval.validUntil,
-                chainIdInApproval: v2SessionKeyApproval.chainId,
-                ownerSignatureLengthInApproval: v2SessionKeyApproval.ownerSignature.length,
               });
             } else {
               // Wallet mode: sign with wallet, contract uses EIP-1271 fallback
@@ -705,6 +904,87 @@ export function useSubmitPosition({
             refCode: mintRequest.refCode,
             predictorSessionKeyDataLength: mintRequest.predictorSessionKeyData.length,
           });
+
+          // DEBUG: Verify counterparty signature locally before submitting
+          try {
+            const counterpartyPredictionHash = computePredictionHash(
+              pickConfigId,
+              predictorWager,
+              counterpartyWager,
+              predictor,
+              counterparty
+            );
+            console.log('[V2 Submit] Verifying counterparty signature locally:');
+            console.log('  predictionHash:', counterpartyPredictionHash);
+            console.log('  signer:', counterparty);
+            console.log('  wager:', counterpartyWager.toString());
+            console.log('  nonce:', counterpartyNonce.toString());
+            console.log('  deadline:', counterpartyDeadline.toString());
+            console.log('  chainId:', chainId);
+            console.log('  verifyingContract:', v2EscrowAddress);
+
+            // Compute SDK hash for comparison
+            const sdkHash = hashMintApproval({
+              predictionHash: counterpartyPredictionHash,
+              signer: counterparty,
+              wager: counterpartyWager,
+              nonce: counterpartyNonce,
+              deadline: counterpartyDeadline,
+              verifyingContract: v2EscrowAddress,
+              chainId,
+            });
+            console.log('  SDK EIP-712 hash:', sdkHash);
+
+            // Call contract's getMintApprovalHash to compare
+            const getMintApprovalHashAbi = [
+              {
+                type: 'function',
+                name: 'getMintApprovalHash',
+                inputs: [
+                  { name: 'predictionHash', type: 'bytes32' },
+                  { name: 'signer', type: 'address' },
+                  { name: 'wager', type: 'uint256' },
+                  { name: 'nonce', type: 'uint256' },
+                  { name: 'deadline', type: 'uint256' },
+                ],
+                outputs: [{ name: 'hash', type: 'bytes32' }],
+              },
+            ] as const;
+            const contractHash = await publicClient.readContract({
+              address: v2EscrowAddress,
+              abi: getMintApprovalHashAbi,
+              functionName: 'getMintApprovalHash',
+              args: [counterpartyPredictionHash, counterparty, counterpartyWager, counterpartyNonce, counterpartyDeadline],
+            });
+            console.log('  Contract EIP-712 hash:', contractHash);
+            console.log('  Hash match:', sdkHash === contractHash ? 'YES' : 'NO - MISMATCH!');
+
+            // Recover signer from counterparty signature
+            const recoveredCounterparty = await recoverTypedDataAddress({
+              domain: {
+                name: 'PredictionMarketEscrow',
+                version: '1',
+                chainId: BigInt(chainId),
+                verifyingContract: v2EscrowAddress,
+              },
+              types: MINT_APPROVAL_TYPES,
+              primaryType: 'MintApproval',
+              message: {
+                predictionHash: counterpartyPredictionHash,
+                signer: counterparty,
+                wager: counterpartyWager,
+                nonce: counterpartyNonce,
+                deadline: counterpartyDeadline,
+              },
+              signature: counterpartySignature,
+            });
+            console.log('[V2 Submit] Counterparty signature verification:');
+            console.log('  Recovered:', recoveredCounterparty);
+            console.log('  Expected:', counterparty);
+            console.log('  Match:', recoveredCounterparty.toLowerCase() === counterparty.toLowerCase() ? 'YES - SIGNATURE VALID' : 'NO - SIGNATURE INVALID');
+          } catch (verifyError) {
+            console.error('[V2 Submit] Counterparty signature verification failed:', verifyError);
+          }
 
           const calls = prepareV2Calls({ mintRequest, freshAllowance });
           console.log('[V2 Submit] Prepared calls:', {

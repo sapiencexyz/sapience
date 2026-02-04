@@ -665,6 +665,16 @@ export function useSapienceWriteContract({
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
+              // Log more details about the error
+              const errDetails = sessionError as any;
+              console.error('[Session] Error details:', {
+                message: errDetails?.message,
+                shortMessage: errDetails?.shortMessage,
+                cause: errDetails?.cause?.message || errDetails?.cause,
+                details: errDetails?.details,
+                data: errDetails?.data,
+                code: errDetails?.code,
+              });
               throw new Error(
                 `Session key transaction failed: ${formatSessionError(sessionError)}`
               );
@@ -886,6 +896,16 @@ export function useSapienceWriteContract({
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
+              // Log more details about the error
+              const errDetails = sessionError as any;
+              console.error('[Session] Error details:', {
+                message: errDetails?.message,
+                shortMessage: errDetails?.shortMessage,
+                cause: errDetails?.cause?.message || errDetails?.cause,
+                details: errDetails?.details,
+                data: errDetails?.data,
+                code: errDetails?.code,
+              });
               throw new Error(
                 `Session key transaction failed: ${formatSessionError(sessionError)}`
               );
