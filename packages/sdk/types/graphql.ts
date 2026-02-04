@@ -838,6 +838,7 @@ export type ConditionGroup = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
+  similarMarkets: Array<Scalars['String']['output']>;
 };
 
 
@@ -912,6 +913,7 @@ export type ConditionGroupCountAggregate = {
   createdAt: Scalars['Int']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['Int']['output'];
+  similarMarkets: Scalars['Int']['output'];
 };
 
 export type ConditionGroupCountOrderByAggregateInput = {
@@ -919,6 +921,7 @@ export type ConditionGroupCountOrderByAggregateInput = {
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   name?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupGroupBy = {
@@ -932,6 +935,7 @@ export type ConditionGroupGroupBy = {
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   name: Scalars['String']['output'];
+  similarMarkets?: Maybe<Array<Scalars['String']['output']>>;
 };
 
 export type ConditionGroupListRelationFilter = {
@@ -989,6 +993,7 @@ export type ConditionGroupOrderByWithAggregationInput = {
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   name?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupOrderByWithRelationInput = {
@@ -998,13 +1003,15 @@ export type ConditionGroupOrderByWithRelationInput = {
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   name?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupScalarFieldEnum =
   | 'categoryId'
   | 'createdAt'
   | 'id'
-  | 'name';
+  | 'name'
+  | 'similarMarkets';
 
 export type ConditionGroupScalarWhereWithAggregatesInput = {
   AND?: InputMaybe<Array<ConditionGroupScalarWhereWithAggregatesInput>>;
@@ -1014,6 +1021,7 @@ export type ConditionGroupScalarWhereWithAggregatesInput = {
   createdAt?: InputMaybe<DateTimeWithAggregatesFilter>;
   id?: InputMaybe<IntWithAggregatesFilter>;
   name?: InputMaybe<StringWithAggregatesFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
 };
 
 export type ConditionGroupSumAggregate = {
@@ -1037,6 +1045,7 @@ export type ConditionGroupWhereInput = {
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<IntFilter>;
   name?: InputMaybe<StringFilter>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
 };
 
 export type ConditionGroupWhereUniqueInput = {
@@ -1049,6 +1058,7 @@ export type ConditionGroupWhereUniqueInput = {
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
+  similarMarkets?: InputMaybe<StringNullableListFilter>;
 };
 
 export type ConditionListRelationFilter = {
@@ -2508,7 +2518,6 @@ export type ReferralCode = {
   createdAt: Scalars['DateTimeISO']['output'];
   createdBy: Scalars['String']['output'];
   creatorType: Scalars['String']['output'];
-  description?: Maybe<Scalars['String']['output']>;
   expiresAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['Int']['output'];
   isActive: Scalars['Boolean']['output'];
@@ -2547,7 +2556,6 @@ export type ReferralCodeOrderByWithRelationInput = {
   createdAt?: InputMaybe<SortOrder>;
   createdBy?: InputMaybe<SortOrder>;
   creatorType?: InputMaybe<SortOrder>;
-  description?: InputMaybe<SortOrderInput>;
   expiresAt?: InputMaybe<SortOrderInput>;
   id?: InputMaybe<SortOrder>;
   isActive?: InputMaybe<SortOrder>;
@@ -2564,7 +2572,6 @@ export type ReferralCodeWhereInput = {
   createdAt?: InputMaybe<DateTimeFilter>;
   createdBy?: InputMaybe<StringFilter>;
   creatorType?: InputMaybe<StringFilter>;
-  description?: InputMaybe<StringNullableFilter>;
   expiresAt?: InputMaybe<IntNullableFilter>;
   id?: InputMaybe<IntFilter>;
   isActive?: InputMaybe<BoolFilter>;
