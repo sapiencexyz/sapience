@@ -50,19 +50,6 @@ export function validateV2AuctionRequest(
     return { valid: false, error: 'Invalid predictorWager format' };
   }
 
-  // Validate counterparty wager
-  if (!payload.counterpartyWager) {
-    return { valid: false, error: 'Missing counterpartyWager' };
-  }
-  try {
-    const wager = BigInt(payload.counterpartyWager);
-    if (wager <= 0n) {
-      return { valid: false, error: 'counterpartyWager must be positive' };
-    }
-  } catch {
-    return { valid: false, error: 'Invalid counterpartyWager format' };
-  }
-
   // Validate predictor address
   if (!payload.predictor || !/^0x[a-fA-F0-9]{40}$/.test(payload.predictor)) {
     return { valid: false, error: 'Invalid predictor address' };
@@ -95,14 +82,15 @@ export function validateV2AuctionRequest(
     return { valid: false, error: 'Invalid chainId' };
   }
 
-  // Validate signature format (required for V2)
-  if (
-    !payload.predictorSignature ||
-    typeof payload.predictorSignature !== 'string' ||
-    !payload.predictorSignature.startsWith('0x') ||
-    payload.predictorSignature.length < 10
-  ) {
-    return { valid: false, error: 'Invalid predictorSignature format' };
+  // Validate signature format (optional at auction start - predictor signs when accepting a bid)
+  if (payload.predictorSignature) {
+    if (
+      typeof payload.predictorSignature !== 'string' ||
+      !payload.predictorSignature.startsWith('0x') ||
+      payload.predictorSignature.length < 10
+    ) {
+      return { valid: false, error: 'Invalid predictorSignature format' };
+    }
   }
 
   return { valid: true };
@@ -125,9 +113,17 @@ export function validateV2Bid(
     return { valid: false, error: 'Invalid counterparty address' };
   }
 
-  // Counterparty cannot be same as predictor
-  if (bid.counterparty.toLowerCase() === auction.predictor.toLowerCase()) {
-    return { valid: false, error: 'Counterparty cannot be same as predictor' };
+  // Validate counterpartyWager (wei string)
+  if (!bid.counterpartyWager || typeof bid.counterpartyWager !== 'string') {
+    return { valid: false, error: 'Missing counterpartyWager' };
+  }
+  try {
+    const wager = BigInt(bid.counterpartyWager);
+    if (wager <= 0n) {
+      return { valid: false, error: 'counterpartyWager must be positive' };
+    }
+  } catch {
+    return { valid: false, error: 'Invalid counterpartyWager format' };
   }
 
   // Validate nonce

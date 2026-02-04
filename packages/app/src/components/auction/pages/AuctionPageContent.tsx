@@ -84,7 +84,7 @@ const AuctionPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of messages) {
-        if (m.type !== 'auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started') continue;
         const arr = Array.isArray((m.data as any)?.predictedOutcomes)
           ? ((m.data as any).predictedOutcomes as string[])
           : [];
@@ -158,9 +158,10 @@ const AuctionPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    if (m.type === 'auction.started') {
-      const maker = m.data?.maker || '';
-      const wager = m.data?.wager || '0';
+    // Handle both V1 and V2 auction started messages
+    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+      const maker = m.data?.maker || m.data?.predictor || '';
+      const wager = m.data?.wager || m.data?.predictorWager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -169,19 +170,21 @@ const AuctionPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    if (m.type === 'auction.bids') {
+    // Handle both V1 and V2 auction bids messages
+    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
       const bids = Array.isArray(m.data?.bids) ? (m.data.bids as any[]) : [];
       const top = bids.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? '0'));
+          // V1 uses makerWager, V2 uses counterpartyWager
+          const cur = BigInt(String(b?.makerWager ?? b?.counterpartyWager ?? '0'));
+          const bestVal = BigInt(String(best?.makerWager ?? best?.counterpartyWager ?? '0'));
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || '';
-      const makerWager = top?.makerWager || '0';
+      const taker = top?.taker || top?.counterparty || '';
+      const makerWager = top?.makerWager || top?.counterpartyWager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -239,7 +242,7 @@ const AuctionPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: any }) {
     try {
-      if (m.type !== 'auction.started')
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         return <span className="text-muted-foreground">—</span>;
       const arr = Array.isArray(m.data?.predictedOutcomes)
         ? (m.data.predictedOutcomes as string[])
@@ -312,7 +315,7 @@ const AuctionPageContent: React.FC = () => {
           </div>
 
           <TabsContent value="auctions">
-            {displayMessages.filter((m) => m.type === 'auction.started')
+            {displayMessages.filter((m) => m.type === 'auction.started' || m.type === 'v2.auction.started')
               .length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="inline-flex items-center gap-1 text-foreground">
@@ -346,7 +349,7 @@ const AuctionPageContent: React.FC = () => {
                     </thead>
                     <tbody>
                       {displayMessages
-                        .filter((m) => m.type === 'auction.started')
+                        .filter((m) => m.type === 'auction.started' || m.type === 'v2.auction.started')
                         .map((m, idx) => (
                           <tr
                             key={`started-${idx}`}

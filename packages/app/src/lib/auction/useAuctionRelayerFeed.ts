@@ -43,9 +43,10 @@ export function useAuctionRelayerFeed(options?: {
     if (observeVaultQuotes) client.send({ type: 'vault_quote.observe' });
 
     const offOpen = client.addOpenListener(() => {
-      // Resubscribe to all auctions on reconnect
+      // Resubscribe to all auctions on reconnect (both V1 and V2 channels)
       for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
         client.send({ type: 'auction.subscribe', payload: { auctionId: id } });
+        client.send({ type: 'v2.auction.subscribe', payload: { auctionId: id } });
       }
       Sentry.addBreadcrumb({
         category: 'ws.app',
@@ -81,7 +82,9 @@ export function useAuctionRelayerFeed(options?: {
         });
 
         // Persist auction.started messages in a separate ref that survives state resets
-        if (type === 'auction.started' && channel) {
+        // Handle both V1 (auction.started) and V2 (v2.auction.started)
+        const isAuctionStarted = type === 'auction.started' || type === 'v2.auction.started';
+        if (isAuctionStarted && channel) {
           const existing = persistedStartedRef.current.get(channel);
           // Only store if newer or first time
           if (!existing || existing.time < entry.time) {
@@ -91,22 +94,29 @@ export function useAuctionRelayerFeed(options?: {
         }
 
         // Auto-subscribe to auction channel when an auction starts
-        if (type === 'auction.started') {
+        // Handle both V1 and V2 auctions
+        if (isAuctionStarted) {
           const subscribeAuctionId =
             (msg?.payload?.auctionId as string) ||
             (msg?.auctionId as string) ||
             null;
           if (subscribeAuctionId) {
             subscribedAuctionsRef.current.set(subscribeAuctionId, now);
+            // Subscribe to both V1 and V2 channels
             client.send({
               type: 'auction.subscribe',
+              payload: { auctionId: subscribeAuctionId },
+            });
+            client.send({
+              type: 'v2.auction.subscribe',
               payload: { auctionId: subscribeAuctionId },
             });
           }
         }
 
         // Update last activity for existing subscriptions on bid activity
-        if (type === 'auction.bids' && channel) {
+        // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
+        if ((type === 'auction.bids' || type === 'v2.auction.bids') && channel) {
           if (subscribedAuctionsRef.current.has(channel)) {
             subscribedAuctionsRef.current.set(channel, now);
           }
@@ -124,8 +134,13 @@ export function useAuctionRelayerFeed(options?: {
       )) {
         if (subscribedAt < cutoff) {
           subscribedAuctionsRef.current.delete(id);
+          // Unsubscribe from both V1 and V2 channels
           client.send({
             type: 'auction.unsubscribe',
+            payload: { auctionId: id },
+          });
+          client.send({
+            type: 'v2.auction.unsubscribe',
             payload: { auctionId: id },
           });
         }
@@ -172,9 +187,10 @@ export function useAuctionRelayerFeed(options?: {
     void persistedStartedTick;
 
     // Build a set of auction IDs that already have auction.started in streaming messages
+    // Handle both V1 (auction.started) and V2 (v2.auction.started)
     const streamingStartedIds = new Set<string>();
     for (const m of messages) {
-      if (m.type === 'auction.started' && m.channel) {
+      if ((m.type === 'auction.started' || m.type === 'v2.auction.started') && m.channel) {
         streamingStartedIds.add(m.channel);
       }
     }

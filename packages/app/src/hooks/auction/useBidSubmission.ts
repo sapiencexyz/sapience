@@ -22,6 +22,7 @@ import {
 } from '@sapience/sdk/contracts';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { type Pick as V2Pick, OutcomeSide } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -38,18 +39,26 @@ export type BidSubmissionParams = {
   makerWager: bigint;
   /** Auction creator's wager in wei */
   takerWager: bigint;
-  /** Encoded predicted outcomes */
+  /** Encoded predicted outcomes (V1) */
   predictedOutcomes: `0x${string}`[];
   /** Resolver contract address */
   resolver: `0x${string}`;
   /** Auction creator (taker) address */
   taker: `0x${string}`;
-  /** Taker nonce for the auction */
-  takerNonce: number;
+  /** Taker nonce for the auction (required for V1, not needed for V2) */
+  takerNonce?: number;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
+  /** Force V1 protocol even on V2-capable chains (for V1 auctions) */
+  forceV1?: boolean;
+  /** V2 picks array (for V2 auctions - used instead of decoding predictedOutcomes) */
+  v2Picks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 export type BidSubmissionResult = {
@@ -152,7 +161,13 @@ export function useBidSubmission(
         takerNonce,
         expirySeconds,
         maxEndTimeSec,
+        forceV1 = false,
+        v2Picks: providedV2Picks,
       } = params;
+
+      // Determine if we should use V2 protocol
+      // Use V2 only if on V2 chain AND auction is not forced to V1
+      const useV2Protocol = isV2Chain && !forceV1;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
       const signerAddress = effectiveAddress;
@@ -171,7 +186,9 @@ export function useBidSubmission(
       }
 
       const encodedPredicted = predictedOutcomes[0];
-      if (!encodedPredicted) {
+      // V2 auctions use v2Picks, V1 auctions use predictedOutcomes
+      const hasV2Picks = providedV2Picks && providedV2Picks.length > 0;
+      if (!hasV2Picks && !encodedPredicted) {
         return { success: false, error: 'Missing predicted outcomes' };
       }
 
@@ -204,14 +221,26 @@ export function useBidSubmission(
 
       let makerSignature: `0x${string}`;
 
-      if (isV2Chain) {
+      if (useV2Protocol) {
         // V2 signing: Use MintApproval typed data
-        // Decode predictedOutcomes to V2 picks
-        const decoded = decodeAuctionPredictedOutcomes({
-          resolver,
-          predictedOutcomes,
-        });
-        const picks = decodedOutcomesToV2Picks(decoded, resolver);
+        // Use provided v2Picks directly if available, otherwise decode from predictedOutcomes
+        let picks: V2Pick[];
+
+        if (providedV2Picks && providedV2Picks.length > 0) {
+          // Use provided V2 picks directly (already in correct format from auction data)
+          picks = providedV2Picks.map((p) => ({
+            conditionResolver: p.conditionResolver as `0x${string}`,
+            conditionId: p.conditionId as `0x${string}`,
+            predictedOutcome: p.predictedOutcome as OutcomeSide,
+          }));
+        } else {
+          // Fall back to decoding from predictedOutcomes (V1-style auctions on V2 chain)
+          const decoded = decodeAuctionPredictedOutcomes({
+            resolver,
+            predictedOutcomes,
+          });
+          picks = decodedOutcomesToV2Picks(decoded, resolver);
+        }
 
         if (picks.length === 0) {
           return {
@@ -271,6 +300,11 @@ export function useBidSubmission(
         }
       } else {
         // V1 signing: Use SignatureProcessor.Approve typed data
+        // V1 requires takerNonce
+        if (takerNonce === undefined) {
+          return { success: false, error: 'Missing taker nonce for V1 signing' };
+        }
+
         const innerMessageHash = keccak256(
           encodeAbiParameters(
             parseAbiParameters(
@@ -339,19 +373,32 @@ export function useBidSubmission(
         return { success: false, error: 'No signature returned' };
       }
 
-      // Build bid payload
-      const payload: Record<string, unknown> = {
-        auctionId,
-        maker: signerAddress,
-        makerDeadline,
-        makerNonce: takerNonce,
-        makerSignature,
-        makerWager: makerWager.toString(),
-      };
-
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
-      client.send({ type: 'bid.submit', payload });
+
+      if (useV2Protocol) {
+        // V2 bid payload - uses V2 terminology (counterparty = bidder)
+        const v2Payload = {
+          auctionId,
+          counterparty: signerAddress,
+          counterpartyWager: makerWager.toString(),
+          counterpartyNonce: Number(v2Nonce ?? 0n),
+          counterpartyDeadline: makerDeadline,
+          counterpartySignature: makerSignature,
+        };
+        client.send({ type: 'v2.bid.submit', payload: v2Payload });
+      } else {
+        // V1 bid payload
+        const payload: Record<string, unknown> = {
+          auctionId,
+          maker: signerAddress,
+          makerDeadline,
+          makerNonce: takerNonce,
+          makerSignature,
+          makerWager: makerWager.toString(),
+        };
+        client.send({ type: 'bid.submit', payload });
+      }
 
       // Dispatch event for UI updates
       try {

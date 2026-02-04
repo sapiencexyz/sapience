@@ -587,20 +587,28 @@ export function useAuctionMatching({
         return;
       }
 
-      // Extract auction context from auction.started message
+      // Extract auction context from auction.started or v2.auction.started message
+      // V2 uses different field names: predictor, predictorWager, predictorNonce
       const auctionId = entry.channel || null;
       const resolverAddr =
         (entry?.data as any)?.resolver ??
         (entry?.data as any)?.payload?.resolver;
       const takerAddr =
-        (entry?.data as any)?.taker ?? (entry?.data as any)?.payload?.taker;
+        (entry?.data as any)?.taker ??
+        (entry?.data as any)?.payload?.taker ??
+        (entry?.data as any)?.predictor ??
+        (entry?.data as any)?.payload?.predictor;
       const takerWagerStr =
         (entry?.data as any)?.wager ??
         (entry?.data as any)?.payload?.wager ??
+        (entry?.data as any)?.predictorWager ??
+        (entry?.data as any)?.payload?.predictorWager ??
         '0';
       const takerNonceNum =
         (entry?.data as any)?.takerNonce ??
         (entry?.data as any)?.payload?.takerNonce ??
+        (entry?.data as any)?.predictorNonce ??
+        (entry?.data as any)?.payload?.predictorNonce ??
         0;
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
@@ -710,9 +718,11 @@ export function useAuctionMatching({
   const handleAuctionMessage = useCallback(
     (entry: AuctionFeedMessage) => {
       if (!entry || typeof entry !== 'object') return;
-      if (entry.type === 'auction.bids') {
+      // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
+      if (entry.type === 'auction.bids' || entry.type === 'v2.auction.bids') {
         handleCopyTradeMatches(entry);
-      } else if (entry.type === 'auction.started') {
+      // Handle both V1 (auction.started) and V2 (v2.auction.started)
+      } else if (entry.type === 'auction.started' || entry.type === 'v2.auction.started') {
         handleConditionMatches(entry);
       }
     },

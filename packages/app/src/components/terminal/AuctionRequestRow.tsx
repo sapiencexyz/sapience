@@ -44,6 +44,14 @@ type Props = {
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
+  /** Whether this auction uses V2 protocol (from v2.auction.started message) */
+  isV2Auction?: boolean;
+  /** V2 picks array (for V2 auctions) */
+  v2Picks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 const AuctionRequestRow: React.FC<Props> = ({
@@ -60,6 +68,8 @@ const AuctionRequestRow: React.FC<Props> = ({
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
+  isV2Auction = false,
+  v2Picks,
 }) => {
   const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
@@ -441,6 +451,8 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
+        // V2 auctions have v2Picks instead of predictedOutcomes
+        const hasV2Picks = isV2Auction && Array.isArray(v2Picks) && v2Picks.length > 0;
         const encodedPredicted =
           Array.isArray(predictedOutcomes) && predictedOutcomes[0]
             ? (predictedOutcomes[0] as `0x${string}`)
@@ -467,17 +479,24 @@ const AuctionRequestRow: React.FC<Props> = ({
             /* noop */
           }
         }
+
+        // Validation: V2 needs v2Picks, V1 needs predictedOutcomes
+        const hasPredictionData = isV2Auction ? hasV2Picks : !!encodedPredicted;
+        // V2 auctions: counterparty uses their own nonce (from useV2Nonce), not predictor's nonce
+        // V1 auctions: require taker nonce for signing
+        const needsTakerNonce = !isV2Auction;
+
         if (
-          !encodedPredicted ||
+          !hasPredictionData ||
           !resolverAddr ||
-          takerNonceVal === undefined ||
+          (needsTakerNonce && takerNonceVal === undefined) ||
           takerWagerWei <= 0n ||
           !taker
         ) {
           const missing: string[] = [];
-          if (!encodedPredicted) missing.push('predicted outcomes');
+          if (!hasPredictionData) missing.push(isV2Auction ? 'v2 picks' : 'predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
-          if (takerNonceVal === undefined) missing.push('maker nonce');
+          if (needsTakerNonce && takerNonceVal === undefined) missing.push('maker nonce');
           if (takerWagerWei <= 0n) missing.push('taker wager');
           if (!taker) missing.push('taker');
           toast({
@@ -492,16 +511,19 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Use shared bid submission hook for signing and WebSocket
+        // If auction is V1 (not V2), force V1 protocol even on V2-capable chains
         const result = await submitBidToWs({
           auctionId,
           makerWager: makerWagerWei,
           takerWager: takerWagerWei,
-          predictedOutcomes: [encodedPredicted],
+          predictedOutcomes: encodedPredicted ? [encodedPredicted] : [],
           resolver: resolverAddr as `0x${string}`,
           taker: taker as `0x${string}`,
           takerNonce: takerNonceVal,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
+          forceV1: !isV2Auction,
+          v2Picks: isV2Auction ? v2Picks : undefined,
         });
 
         if (result.success) {
@@ -577,6 +599,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       maxEndTimeSec,
       refetchTakerNonce,
       takerNonceOnChain,
+      isV2Auction,
+      v2Picks,
     ]
   );
 

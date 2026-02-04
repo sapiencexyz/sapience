@@ -50,6 +50,17 @@ export interface QuoteBid {
   counterpartySessionKeyData?: string;
 }
 
+// V2 bid fields (counterparty = bidder in V2 terminology)
+export interface V2QuoteBid {
+  auctionId: string;
+  counterparty: string;
+  counterpartyWager: string; // wei
+  counterpartyDeadline: number; // unix seconds
+  counterpartySignature: string; // Counterparty's bid signature
+  counterpartyNonce: number; // nonce for the counterparty
+  counterpartySessionKeyData?: string;
+}
+
 // Struct shape expected by PredictionMarket.mint()
 // @dev notice that this interface follows contract field names, not API field names
 // Contract "maker" = API "taker" (auction creator)
@@ -193,8 +204,6 @@ export function useAuctionStart() {
           }
 
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-          // Get counterpartyWager from auction params (for V2, predictor sets both wagers)
-          const counterpartyWager = lastAuctionRef.current?.counterpartyWager || '0';
 
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
@@ -204,11 +213,11 @@ export function useAuctionStart() {
                 // V2 counterpartyNonce = V1 makerNonce
                 // V2 counterpartyDeadline = V1 makerDeadline
                 // V2 counterpartySignature = V1 makerSignature
-                // V2 counterpartyWager comes from auction (set by predictor)
+                // V2 counterpartyWager comes from the BID (counterparty decides their wager)
                 return {
                   auctionId: targetAuctionId,
                   maker: b.counterparty || ZERO_ADDRESS,
-                  makerWager: counterpartyWager,
+                  makerWager: b.counterpartyWager || '0',
                   makerDeadline: b.counterpartyDeadline || 0,
                   makerSignature: b.counterpartySignature || '0x',
                   makerNonce: b.counterpartyNonce || 0,
@@ -348,39 +357,11 @@ export function useAuctionStart() {
         // Check if this is a V2 auction (has v2Picks)
         const isV2Auction = params.v2Picks && params.v2Picks.length > 0;
 
-        if (isV2Auction && params.counterpartyWager) {
-          // V2 Auction Start with EIP-712 MintApproval signature
+        if (isV2Auction) {
+          // V2 Auction Start - no signature needed at start time
+          // Predictor signs when accepting a specific bid (which includes counterpartyWager)
           try {
             const chainId = params.chainId;
-            const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
-
-            if (!verifyingContract) {
-              console.warn('[AuctionStart] No V2 contract for chainId:', chainId);
-              inflightRef.current = '';
-              return;
-            }
-
-            // Fetch predictor's nonce from contract
-            const chain = chainId === CHAIN_ID_ETHEREAL_TESTNET ? etherealTestnetChain : etherealChain;
-            const publicClient = createPublicClient({
-              chain,
-              transport: http(chain.rpcUrls.default.http[0]),
-            });
-
-            let predictorNonce: bigint;
-            try {
-              const fetchedNonce = await publicClient.readContract({
-                address: verifyingContract,
-                abi: predictionMarketEscrowAbi,
-                functionName: 'getNonce',
-                args: [effectiveTaker],
-              });
-              predictorNonce = fetchedNonce;
-              console.log('[V2 Auction] Fetched predictor nonce from contract:', predictorNonce.toString());
-            } catch (nonceError) {
-              console.error('[V2 Auction] Failed to fetch nonce:', nonceError);
-              predictorNonce = BigInt(params.takerNonce);
-            }
 
             // Convert v2Picks to Pick[] and canonicalize
             const rawPicks: Pick[] = params.v2Picks!.map((p) => ({
@@ -392,35 +373,10 @@ export function useAuctionStart() {
 
             // Calculate deadline (5 minutes from now)
             const nowSec = Math.floor(Date.now() / 1000);
-            const predictorDeadline = BigInt(nowSec + 300);
+            const predictorDeadline = nowSec + 300;
 
-            // Build typed data for predictor signature
-            // Use zero address as counterparty placeholder (actual counterparty is determined when bid is accepted)
-            const ZERO_ADDR = '0x0000000000000000000000000000000000000000' as Address;
-            const typedData = buildPredictorMintTypedData({
-              picks,
-              predictorWager: BigInt(params.wager),
-              counterpartyWager: BigInt(params.counterpartyWager),
-              predictor: effectiveTaker,
-              counterparty: ZERO_ADDR,
-              predictorNonce,
-              predictorDeadline,
-              verifyingContract,
-              chainId,
-            });
-
-            // Sign the typed data
-            const predictorSignature = await signTypedDataAsync({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message,
-            });
-
-            // Build V2 auction payload
+            // Build V2 auction payload - no signature at start time
+            // Counterparty will specify their wager in their bid
             const v2Payload = {
               picks: picks.map((p) => ({
                 conditionResolver: p.conditionResolver,
@@ -428,13 +384,19 @@ export function useAuctionStart() {
                 predictedOutcome: p.predictedOutcome,
               })),
               predictorWager: params.wager,
-              counterpartyWager: params.counterpartyWager,
               predictor: effectiveTaker,
-              predictorNonce: Number(predictorNonce),
-              predictorDeadline: Number(predictorDeadline),
-              predictorSignature,
+              predictorNonce: params.takerNonce,
+              predictorDeadline,
               chainId,
+              // Note: no predictorSignature or counterpartyWager at auction start
+              // Predictor signs when accepting a bid with specific counterpartyWager
             };
+
+            console.log('[V2 Auction] Starting auction without signature:', {
+              predictor: effectiveTaker,
+              predictorWager: params.wager,
+              picksCount: picks.length,
+            });
 
             // Send V2 auction start
             const v2Response = await client.sendWithAck<{ auctionId?: string; error?: string }>(
@@ -453,9 +415,21 @@ export function useAuctionStart() {
             latestAuctionIdRef.current = newId;
             setAuctionId(newId);
             console.log('[V2 Auction] Started with auctionId:', newId);
+
+            // Subscribe to V2 auction updates
+            if (newId) {
+              client.send({
+                type: 'v2.auction.subscribe',
+                payload: { auctionId: newId },
+              });
+            }
+
+            inflightRef.current = '';
+            return;
           } catch (v2Error) {
             console.error('[V2 Auction] Start error:', v2Error);
             inflightRef.current = '';
+            return;
           }
         } else {
           // V1 Auction Start (original logic)
@@ -552,22 +526,31 @@ export function useAuctionStart() {
       // Contract field names map BID (API) roles to contract roles:
       // Contract "maker" = API "taker" (auction creator)
       // Contract "taker" = API "maker" (bidder)
+      // V2 uses counterparty* fields instead of maker* fields for bidder
+      const bid = args.selectedBid;
+      // Cast to access V2 fields if present
+      const v2Bid = bid as unknown as Partial<V2QuoteBid>;
       return {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
-        takerCollateral: args.selectedBid.makerWager,
+        // V2 bids have counterpartyWager, V1 bids have makerWager
+        takerCollateral: v2Bid.counterpartyWager ?? bid.makerWager,
         maker: auction.taker,
-        taker: args.selectedBid.maker as `0x${string}`,
-        takerSignature: args.selectedBid.makerSignature as `0x${string}`,
-        takerDeadline: String(args.selectedBid.makerDeadline),
+        // V2 bids have counterparty, V1 bids have maker
+        taker: (v2Bid.counterparty ?? bid.maker) as `0x${string}`,
+        // V2 bids have counterpartySignature, V1 bids have makerSignature
+        takerSignature: (v2Bid.counterpartySignature ?? bid.makerSignature) as `0x${string}`,
+        // V2 bids have counterpartyDeadline, V1 bids have makerDeadline
+        takerDeadline: String(v2Bid.counterpartyDeadline ?? bid.makerDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.takerNonce),
-        takerClaimedNonce: args.selectedBid.makerNonce,
+        // V2 bids have counterpartyNonce, V1 bids have makerNonce
+        takerClaimedNonce: v2Bid.counterpartyNonce ?? bid.makerNonce,
         // V2 fields: include picks array if available
         v2Picks: auction.v2Picks,
         // V2 fields: include counterparty session key data from bid
-        counterpartySessionKeyData: args.selectedBid.counterpartySessionKeyData,
+        counterpartySessionKeyData: bid.counterpartySessionKeyData,
       };
     },
     [auctionId]

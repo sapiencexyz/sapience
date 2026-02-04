@@ -894,6 +894,10 @@ export function createAuctionWebSocketServer() {
       // V2 Message Handlers
       // ============================================================================
       if (isV2ClientMessage(msg)) {
+        // Extract request ID for ack correlation (client sends id at root and/or in payload)
+        const msgWithPayload = msg as { id?: string; payload?: { id?: string } };
+        const requestId = msgWithPayload.id || msgWithPayload.payload?.id;
+
         // V2 Auction Start
         if (msg.type === 'v2.auction.start') {
           const v2Payload = msg.payload as V2AuctionRequestPayload;
@@ -914,7 +918,7 @@ export function createAuctionWebSocketServer() {
             );
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { error: validation.error },
+              payload: { error: validation.error, id: requestId },
             });
             trackDuration(msgType, startTime);
             return;
@@ -929,44 +933,51 @@ export function createAuctionWebSocketServer() {
             );
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { error: 'unsupported_chain' },
+              payload: { error: 'unsupported_chain', id: requestId },
             });
             trackDuration(msgType, startTime);
             return;
           }
 
-          // Verify predictor signature (EIP-712)
-          try {
-            const isValidSig = await verifyV2PredictorSignature(
-              v2Payload,
-              v2ContractAddress as Address
-            );
-
-            if (!isValidSig) {
-              errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
-              console.warn(
-                `[Relayer] Invalid V2 predictor signature for predictor=${v2Payload.predictor}`
+          // Verify predictor signature (EIP-712) - only if signature is provided
+          // In the auction model, predictor signs when accepting a bid (not at auction start)
+          if (v2Payload.predictorSignature) {
+            try {
+              const isValidSig = await verifyV2PredictorSignature(
+                v2Payload,
+                v2ContractAddress as Address
               );
+
+              if (!isValidSig) {
+                errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
+                console.warn(
+                  `[Relayer] Invalid V2 predictor signature for predictor=${v2Payload.predictor}`
+                );
+                sendV2(ws, {
+                  type: 'v2.auction.ack',
+                  payload: { error: 'invalid_predictor_signature', id: requestId },
+                });
+                trackDuration(msgType, startTime);
+                return;
+              }
+              logTiming(pendingV2AuctionId, 'v2_sig_verified', v2StartTime);
+              console.log(
+                `[Relayer] Valid V2 predictor signature for predictor=${v2Payload.predictor}`
+              );
+            } catch (err) {
+              errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
+              console.error('[Relayer] V2 signature verification error:', err);
               sendV2(ws, {
                 type: 'v2.auction.ack',
-                payload: { error: 'invalid_predictor_signature' },
+                payload: { error: 'signature_verification_failed', id: requestId },
               });
               trackDuration(msgType, startTime);
               return;
             }
-            logTiming(pendingV2AuctionId, 'v2_sig_verified', v2StartTime);
+          } else {
             console.log(
-              `[Relayer] Valid V2 predictor signature for predictor=${v2Payload.predictor}`
+              `[Relayer] V2 auction started without signature (predictor=${v2Payload.predictor}) - signature required when accepting bid`
             );
-          } catch (err) {
-            errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
-            console.error('[Relayer] V2 signature verification error:', err);
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { error: 'signature_verification_failed' },
-            });
-            trackDuration(msgType, startTime);
-            return;
           }
 
           // Create V2 auction
@@ -979,10 +990,10 @@ export function createAuctionWebSocketServer() {
           subscribeToAuction(v2AuctionId, ws, auctionSubscriptions);
           subscriptionsActive.inc({ subscription_type: 'v2_auction' });
 
-          // Send ack
+          // Send ack with request ID for client correlation
           sendV2(ws, {
             type: 'v2.auction.ack',
-            payload: { auctionId: v2AuctionId },
+            payload: { auctionId: v2AuctionId, id: requestId },
           });
           logTiming(v2AuctionId, 'v2_ack_sent', v2StartTime);
 
@@ -1031,12 +1042,12 @@ export function createAuctionWebSocketServer() {
             }
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { auctionId, subscribed: true },
+              payload: { auctionId, subscribed: true, id: requestId },
             });
           } else {
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { error: 'missing_auction_id' },
+              payload: { error: 'missing_auction_id', id: requestId },
             });
           }
           trackDuration(msgType, startTime);
@@ -1051,12 +1062,12 @@ export function createAuctionWebSocketServer() {
             subscriptionsActive.dec({ subscription_type: 'v2_auction' });
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { auctionId, unsubscribed: true },
+              payload: { auctionId, unsubscribed: true, id: requestId },
             });
           } else {
             sendV2(ws, {
               type: 'v2.auction.ack',
-              payload: { error: 'missing_auction_id' },
+              payload: { error: 'missing_auction_id', id: requestId },
             });
           }
           trackDuration(msgType, startTime);

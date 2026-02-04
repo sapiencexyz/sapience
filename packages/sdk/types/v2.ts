@@ -201,6 +201,7 @@ export interface V2AuctionRequestPayload {
 export interface V2BidPayload {
   auctionId: string;
   counterparty: string; // EOA or smart account address
+  counterpartyWager: string; // wei string - counterparty decides their wager
   counterpartyNonce: number;
   counterpartyDeadline: number; // unix timestamp
   counterpartySignature: string; // EIP-712 MintApproval signature
@@ -258,6 +259,7 @@ export interface V2AuctionDetails {
 export interface V2ValidatedBid {
   auctionId: string;
   counterparty: string;
+  counterpartyWager: string; // wei string - counterparty's wager
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;
@@ -273,6 +275,7 @@ export type V2ServerToClientMessage =
         error?: string;
         subscribed?: boolean;
         unsubscribed?: boolean;
+        id?: string; // Request ID for correlation with sendWithAck
       };
     }
   | { type: 'v2.bid.ack'; payload: { bidId?: string; error?: string } }

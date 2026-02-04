@@ -125,12 +125,13 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
 
       let counterpartyNonce: bigint;
       try {
-        counterpartyNonce = await publicClient.readContract({
+        const nonceResult = await publicClient.readContract({
           address: verifyingContract,
           abi: predictionMarketEscrowAbi,
           functionName: 'getNonce',
           args: [signerAddress],
         });
+        counterpartyNonce = BigInt(nonceResult as string | number | bigint);
         console.log('[V2 Bid] Fetched counterparty nonce from contract:', counterpartyNonce.toString());
       } catch (nonceError) {
         console.error('[V2 Bid] Failed to fetch nonce, defaulting to 0:', nonceError);
@@ -199,6 +200,7 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
       const bidPayload: V2BidPayload = {
         auctionId: auction.auctionId,
         counterparty: signerAddress,
+        counterpartyWager: auction.counterpartyWager,
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline: Number(counterpartyDeadline),
         counterpartySignature,

@@ -306,6 +306,7 @@ export function buildV2AuctionRequest(params: {
 export function buildV2BidPayload(params: {
   auctionId: string;
   counterparty: string;
+  counterpartyWager: string;
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;
@@ -314,6 +315,7 @@ export function buildV2BidPayload(params: {
   return {
     auctionId: params.auctionId,
     counterparty: params.counterparty,
+    counterpartyWager: params.counterpartyWager,
     counterpartyNonce: params.counterpartyNonce,
     counterpartyDeadline: params.counterpartyDeadline,
     counterpartySignature: params.counterpartySignature,

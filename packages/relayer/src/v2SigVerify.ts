@@ -197,10 +197,11 @@ export async function verifyV2CounterpartySignature(
     const picks = convertPicks(auction.picks);
 
     // Build the typed data that should have been signed
+    // counterpartyWager comes from the bid (counterparty decides their wager)
     const rawTypedData = buildCounterpartyMintTypedData({
       picks,
       predictorWager: BigInt(auction.predictorWager),
-      counterpartyWager: BigInt(auction.counterpartyWager),
+      counterpartyWager: BigInt(bid.counterpartyWager),
       predictor: auction.predictor as Address,
       counterparty: bid.counterparty as Address,
       counterpartyNonce: BigInt(bid.counterpartyNonce),
