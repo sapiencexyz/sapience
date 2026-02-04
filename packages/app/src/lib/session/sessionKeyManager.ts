@@ -6,6 +6,8 @@ import {
   parseAbi,
   slice,
   encodeAbiParameters,
+  recoverTypedDataAddress,
+  hashTypedData,
   type Address,
   type Hex,
   type Chain,
@@ -297,15 +299,13 @@ async function signV2SessionKeyApproval(
   };
 
   console.debug('[SessionKeyManager] Requesting V2 session key approval signature...');
-  console.debug('[SessionKeyManager] V2 approval details:', {
-    sessionKey: sessionKeyAddress,
-    owner: ownerSigner.address,
-    smartAccount: smartAccountAddress,
-    validUntil: validUntilSeconds,
-    chainId,
-    verifyingContract,
-    permissionsHash,
+  console.debug('[SessionKeyManager] V2 approval typed data:', {
+    domain: typedData.domain,
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
   });
+  console.debug('[SessionKeyManager] V2 approval JSON:', JSON.stringify(typedData, null, 2));
 
   // Sign using the owner's wallet (via EIP-1193 provider)
   const signature = await ownerSigner.provider.request({
@@ -314,7 +314,49 @@ async function signV2SessionKeyApproval(
   });
 
   console.debug('[SessionKeyManager] V2 session key approval signed');
-  console.debug('[SessionKeyManager] V2 approval signature length:', signature.length);
+  console.debug('[SessionKeyManager] V2 approval signature:', signature);
+  console.debug('[SessionKeyManager] Signature r:', signature.slice(0, 66));
+  console.debug('[SessionKeyManager] Signature s:', '0x' + signature.slice(66, 130));
+  console.debug('[SessionKeyManager] Signature v:', '0x' + signature.slice(130, 132));
+
+  // Verify the signature recovers to the owner address
+  try {
+    const recoveredAddress = await recoverTypedDataAddress({
+      domain: typedData.domain as {
+        name: string;
+        version: string;
+        chainId: number;
+        verifyingContract: Address;
+      },
+      types: typedData.types,
+      primaryType: typedData.primaryType,
+      message: typedData.message as Record<string, unknown>,
+      signature: signature as Hex,
+    });
+    console.debug('[SessionKeyManager] Recovered signer from signature:', recoveredAddress);
+    console.debug('[SessionKeyManager] Expected owner:', ownerSigner.address);
+    console.debug('[SessionKeyManager] Signature valid:', recoveredAddress.toLowerCase() === ownerSigner.address.toLowerCase());
+
+    if (recoveredAddress.toLowerCase() !== ownerSigner.address.toLowerCase()) {
+      console.error('[SessionKeyManager] ⚠️ SIGNATURE MISMATCH! The recovered signer does not match the owner!');
+      console.error('[SessionKeyManager] This will cause V2 session key validation to fail on-chain.');
+      // Also compute and log the hash for debugging
+      const typedDataHash = hashTypedData({
+        domain: typedData.domain as {
+          name: string;
+          version: string;
+          chainId: number;
+          verifyingContract: Address;
+        },
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        message: typedData.message as Record<string, unknown>,
+      });
+      console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
+    }
+  } catch (verifyError) {
+    console.warn('[SessionKeyManager] Could not verify signature:', verifyError);
+  }
 
   return {
     sessionKey: sessionKeyAddress,
@@ -329,15 +371,15 @@ async function signV2SessionKeyApproval(
 
 /**
  * Encode V2SessionKeyApproval to ABI-encoded bytes for contract consumption.
- * Matches the SignatureValidator.SessionKeyApproval struct layout:
- *   (sessionKey, owner, smartAccount, validUntil, permissionsHash, chainId, ownerSignature)
+ * Matches the IV2Types.SessionKeyData struct layout (NOT SignatureValidator.SessionKeyApproval):
+ *   (sessionKey, owner, validUntil, permissionsHash, chainId, ownerSignature)
+ * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
  */
 export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
   return encodeAbiParameters(
     [
       { name: 'sessionKey', type: 'address' },
       { name: 'owner', type: 'address' },
-      { name: 'smartAccount', type: 'address' },
       { name: 'validUntil', type: 'uint256' },
       { name: 'permissionsHash', type: 'bytes32' },
       { name: 'chainId', type: 'uint256' },
@@ -346,7 +388,6 @@ export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
     [
       approval.sessionKey,
       approval.owner,
-      approval.smartAccount,
       BigInt(approval.validUntil),
       approval.permissionsHash,
       BigInt(approval.chainId),
