@@ -720,6 +720,7 @@ type ConditionGroup {
   createdAt: DateTimeISO!
   id: Int!
   name: String!
+  similarMarkets: [String!]!
 }
 
 type ConditionGroupAvgAggregate {
@@ -770,6 +771,7 @@ type ConditionGroupCountAggregate {
   createdAt: Int!
   id: Int!
   name: Int!
+  similarMarkets: Int!
 }
 
 input ConditionGroupCountOrderByAggregateInput {
@@ -777,6 +779,7 @@ input ConditionGroupCountOrderByAggregateInput {
   createdAt: SortOrder
   id: SortOrder
   name: SortOrder
+  similarMarkets: SortOrder
 }
 
 type ConditionGroupGroupBy {
@@ -789,6 +792,7 @@ type ConditionGroupGroupBy {
   createdAt: DateTimeISO!
   id: Int!
   name: String!
+  similarMarkets: [String!]
 }
 
 input ConditionGroupListRelationFilter {
@@ -844,6 +848,7 @@ input ConditionGroupOrderByWithAggregationInput {
   createdAt: SortOrder
   id: SortOrder
   name: SortOrder
+  similarMarkets: SortOrder
 }
 
 input ConditionGroupOrderByWithRelationInput {
@@ -853,6 +858,7 @@ input ConditionGroupOrderByWithRelationInput {
   createdAt: SortOrder
   id: SortOrder
   name: SortOrder
+  similarMarkets: SortOrder
 }
 
 enum ConditionGroupScalarFieldEnum {
@@ -860,6 +866,7 @@ enum ConditionGroupScalarFieldEnum {
   createdAt
   id
   name
+  similarMarkets
 }
 
 input ConditionGroupScalarWhereWithAggregatesInput {
@@ -870,6 +877,7 @@ input ConditionGroupScalarWhereWithAggregatesInput {
   createdAt: DateTimeWithAggregatesFilter
   id: IntWithAggregatesFilter
   name: StringWithAggregatesFilter
+  similarMarkets: StringNullableListFilter
 }
 
 type ConditionGroupSumAggregate {
@@ -892,6 +900,7 @@ input ConditionGroupWhereInput {
   createdAt: DateTimeFilter
   id: IntFilter
   name: StringFilter
+  similarMarkets: StringNullableListFilter
 }
 
 input ConditionGroupWhereUniqueInput {
@@ -904,6 +913,7 @@ input ConditionGroupWhereUniqueInput {
   createdAt: DateTimeFilter
   id: Int
   name: String
+  similarMarkets: StringNullableListFilter
 }
 
 input ConditionListRelationFilter {

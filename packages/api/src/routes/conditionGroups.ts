@@ -25,10 +25,11 @@ router.get('/', async (_req: Request, res: Response) => {
 // POST /admin/conditionGroups - create a group
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { name, categoryId, categorySlug } = req.body as {
+    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
       name?: string;
       categoryId?: number;
       categorySlug?: string;
+      similarMarkets?: string[];
     };
 
     if (!name || !name.trim()) {
@@ -61,6 +62,7 @@ router.post('/', async (req: Request, res: Response) => {
         data: {
           name: name.trim(),
           categoryId: resolvedCategoryId,
+          ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
         },
         include: { category: true, condition: true },
       });
@@ -94,10 +96,11 @@ router.put('/:id', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'Invalid id format' });
     }
 
-    const { name, categoryId, categorySlug } = req.body as {
+    const { name, categoryId, categorySlug, similarMarkets } = req.body as {
       name?: string;
       categoryId?: number | null;
       categorySlug?: string | null;
+      similarMarkets?: string[];
     };
 
     const existing = await prisma.conditionGroup.findUnique({
@@ -135,6 +138,7 @@ router.put('/:id', async (req: Request, res: Response) => {
           ...(resolvedCategoryId !== undefined
             ? { categoryId: resolvedCategoryId }
             : {}),
+          ...(Array.isArray(similarMarkets) ? { similarMarkets } : {}),
         },
         include: {
           category: true,

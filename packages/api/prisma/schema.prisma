@@ -206,13 +206,14 @@ model Condition {
 }
 
 model ConditionGroup {
-  id         Int         @id @default(autoincrement())
-  createdAt  DateTime    @default(now()) @db.Timestamp(6)
-  name       String      @unique @db.VarChar
-  categoryId Int?
-  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             Int         @id @default(autoincrement())
+  createdAt      DateTime    @default(now()) @db.Timestamp(6)
+  name           String      @unique @db.VarChar
+  categoryId     Int?
+  category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  similarMarkets String[]    @default([])
   /// @TypeGraphQL.field(name: "conditions")
-  condition  Condition[]
+  condition      Condition[]
 
   @@index([categoryId])
   @@map("condition_group")
