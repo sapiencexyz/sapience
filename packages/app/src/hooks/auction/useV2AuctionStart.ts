@@ -4,7 +4,10 @@ import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
-import { computePickConfigId, canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
+import {
+  computePickConfigId,
+  canonicalizePicks,
+} from '@sapience/sdk/auction/v2Encoding';
 import type { Pick, V2AuctionRequestPayload } from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -209,17 +212,29 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
           });
 
           // Debug logging for V2 auction signature debugging
-          console.log('[V2 Auction Create] picks:', picks.map(p => ({
-            resolver: p.conditionResolver,
-            conditionId: p.conditionId.slice(0, 10) + '...',
-            outcome: p.predictedOutcome,
-          })));
+          console.log(
+            '[V2 Auction Create] picks:',
+            picks.map((p) => ({
+              resolver: p.conditionResolver,
+              conditionId: p.conditionId.slice(0, 10) + '...',
+              outcome: p.predictedOutcome,
+            }))
+          );
           console.log('[V2 Auction Create] pickConfigId:', pickConfigId);
-          console.log('[V2 Auction Create] predictorWager:', predictorWager.toString());
-          console.log('[V2 Auction Create] counterpartyWager:', counterpartyWager.toString());
+          console.log(
+            '[V2 Auction Create] predictorWager:',
+            predictorWager.toString()
+          );
+          console.log(
+            '[V2 Auction Create] counterpartyWager:',
+            counterpartyWager.toString()
+          );
           console.log('[V2 Auction Create] predictor:', signerAddress);
           console.log('[V2 Auction Create] predictorNonce:', nonce.toString());
-          console.log('[V2 Auction Create] predictorDeadline:', predictorDeadline.toString());
+          console.log(
+            '[V2 Auction Create] predictorDeadline:',
+            predictorDeadline.toString()
+          );
           console.log('[V2 Auction Create] chainId:', chainId);
 
           client.send({ type: 'v2.auction.start', payload });

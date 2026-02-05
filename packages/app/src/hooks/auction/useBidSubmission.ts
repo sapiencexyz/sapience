@@ -113,10 +113,18 @@ export function useBidSubmission(
   // TODO: Get chainId from context/props when supporting multiple chains
   const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval, chainClients } = useSession();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+    v2SessionKeyApproval,
+    chainClients,
+  } = useSession();
 
   // Get wUSDe contract address for the chain
-  const wusdeAddress = collateralTokenAddresses[chainId]?.address as Address | undefined;
+  const wusdeAddress = collateralTokenAddresses[chainId]?.address as
+    | Address
+    | undefined;
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -267,7 +275,9 @@ export function useBidSubmission(
 
               // Also check if there's depositable USDe token (not native ETH-like)
               // wUSDe.deposit() wraps native USDe sent as msg.value
-              const wrapAmount = needsMoreWusde ? makerWager - wusdeBalance : 0n;
+              const wrapAmount = needsMoreWusde
+                ? makerWager - wusdeBalance
+                : 0n;
 
               if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
                 return {
@@ -277,7 +287,11 @@ export function useBidSubmission(
               }
 
               // Build calls for wrap and/or approve
-              const calls: Array<{ to: Address; data: `0x${string}`; value: bigint }> = [];
+              const calls: Array<{
+                to: Address;
+                data: `0x${string}`;
+                value: bigint;
+              }> = [];
 
               if (wrapAmount > 0n) {
                 // Wrap native USDe to wUSDe via deposit()
@@ -307,19 +321,22 @@ export function useBidSubmission(
               if (calls.length > 0) {
                 try {
                   // Execute wrap + approve via session key
-                  const userOpHash = await chainClients.ethereal.sendUserOperation({
-                    calls,
-                  });
+                  const userOpHash =
+                    await chainClients.ethereal.sendUserOperation({
+                      calls,
+                    });
 
                   // Wait for the UserOp to be included
-                  const receipt = await chainClients.ethereal.waitForUserOperationReceipt({
-                    hash: userOpHash,
-                  });
+                  const receipt =
+                    await chainClients.ethereal.waitForUserOperationReceipt({
+                      hash: userOpHash,
+                    });
 
                   if (!receipt.success) {
                     return {
                       success: false,
-                      error: 'Failed to prepare funds for bid. Please try again.',
+                      error:
+                        'Failed to prepare funds for bid. Please try again.',
                     };
                   }
                 } catch (prepError) {
@@ -332,7 +349,10 @@ export function useBidSubmission(
               }
             }
           } catch (checkError) {
-            console.warn('[V2 Bid] Failed to check counterparty funds:', checkError);
+            console.warn(
+              '[V2 Bid] Failed to check counterparty funds:',
+              checkError
+            );
             // Continue with bid - validation will catch issues later
           }
         }
@@ -417,7 +437,10 @@ export function useBidSubmission(
         // V1 signing: Use SignatureProcessor.Approve typed data
         // V1 requires takerNonce
         if (takerNonce === undefined) {
-          return { success: false, error: 'Missing taker nonce for V1 signing' };
+          return {
+            success: false,
+            error: 'Missing taker nonce for V1 signing',
+          };
         }
 
         const innerMessageHash = keccak256(
@@ -494,9 +517,10 @@ export function useBidSubmission(
       if (useV2Protocol) {
         // V2 bid payload - uses V2 terminology (counterparty = bidder)
         // Include session key data if bidder is using session key signing
-        const counterpartySessionKeyData = (isUsingSession && v2SessionKeyApproval)
-          ? encodeV2SessionKeyData(v2SessionKeyApproval)
-          : undefined;
+        const counterpartySessionKeyData =
+          isUsingSession && v2SessionKeyApproval
+            ? encodeV2SessionKeyData(v2SessionKeyApproval)
+            : undefined;
 
         const v2Payload = {
           auctionId,

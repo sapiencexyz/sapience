@@ -452,7 +452,8 @@ const AuctionRequestRow: React.FC<Props> = ({
 
         // Ensure essential auction context (after preflight checks)
         // V2 auctions have v2Picks instead of predictedOutcomes
-        const hasV2Picks = isV2Auction && Array.isArray(v2Picks) && v2Picks.length > 0;
+        const hasV2Picks =
+          isV2Auction && Array.isArray(v2Picks) && v2Picks.length > 0;
         const encodedPredicted =
           Array.isArray(predictedOutcomes) && predictedOutcomes[0]
             ? (predictedOutcomes[0] as `0x${string}`)
@@ -494,9 +495,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           !taker
         ) {
           const missing: string[] = [];
-          if (!hasPredictionData) missing.push(isV2Auction ? 'v2 picks' : 'predicted outcomes');
+          if (!hasPredictionData)
+            missing.push(isV2Auction ? 'v2 picks' : 'predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
-          if (needsTakerNonce && takerNonceVal === undefined) missing.push('maker nonce');
+          if (needsTakerNonce && takerNonceVal === undefined)
+            missing.push('maker nonce');
           if (takerWagerWei <= 0n) missing.push('taker wager');
           if (!taker) missing.push('taker');
           toast({

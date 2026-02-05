@@ -93,7 +93,8 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getV2Picks } = useCreatePositionContext();
+  const { selections, removeSelection, getV2Picks } =
+    useCreatePositionContext();
   const { address: takerAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();

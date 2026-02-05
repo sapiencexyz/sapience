@@ -66,8 +66,11 @@ function getEtherealContractAddresses(chainId: number) {
       ? CHAIN_ID_ETHEREAL_TESTNET
       : CHAIN_ID_ETHEREAL;
   // Get escrow address, but only use it if it's not the zero address (not deployed)
-  const escrowAddress = predictionMarketEscrowAddresses[effectiveChainId]?.address;
-  const isEscrowDeployed = escrowAddress && escrowAddress !== '0x0000000000000000000000000000000000000000';
+  const escrowAddress =
+    predictionMarketEscrowAddresses[effectiveChainId]?.address;
+  const isEscrowDeployed =
+    escrowAddress &&
+    escrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
     predictionMarket: predictionMarketAddresses[effectiveChainId].address,
@@ -308,14 +311,19 @@ async function signV2SessionKeyApproval(
     },
   };
 
-  console.debug('[SessionKeyManager] Requesting V2 session key approval signature...');
+  console.debug(
+    '[SessionKeyManager] Requesting V2 session key approval signature...'
+  );
   console.debug('[SessionKeyManager] V2 approval typed data:', {
     domain: typedData.domain,
     types: typedData.types,
     primaryType: typedData.primaryType,
     message: typedData.message,
   });
-  console.debug('[SessionKeyManager] V2 approval JSON:', JSON.stringify(typedData, null, 2));
+  console.debug(
+    '[SessionKeyManager] V2 approval JSON:',
+    JSON.stringify(typedData, null, 2)
+  );
 
   // Sign using the owner's wallet (via EIP-1193 provider)
   const signature = await ownerSigner.provider.request({
@@ -326,46 +334,63 @@ async function signV2SessionKeyApproval(
   console.debug('[SessionKeyManager] V2 session key approval signed');
   console.debug('[SessionKeyManager] V2 approval signature:', signature);
   console.debug('[SessionKeyManager] Signature r:', signature.slice(0, 66));
-  console.debug('[SessionKeyManager] Signature s:', '0x' + signature.slice(66, 130));
-  console.debug('[SessionKeyManager] Signature v:', '0x' + signature.slice(130, 132));
+  console.debug(
+    '[SessionKeyManager] Signature s:',
+    '0x' + signature.slice(66, 130)
+  );
+  console.debug(
+    '[SessionKeyManager] Signature v:',
+    '0x' + signature.slice(130, 132)
+  );
 
   // Verify the signature recovers to the owner address
   try {
     const recoveredAddress = await recoverTypedDataAddress({
-      domain: typedData.domain as {
-        name: string;
-        version: string;
-        chainId: number;
-        verifyingContract: Address;
+      domain: {
+        ...typedData.domain,
+        chainId: BigInt(typedData.domain.chainId),
       },
       types: typedData.types,
       primaryType: typedData.primaryType,
-      message: typedData.message as Record<string, unknown>,
-      signature: signature as Hex,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      message: typedData.message as any,
+      signature: signature,
     });
-    console.debug('[SessionKeyManager] Recovered signer from signature:', recoveredAddress);
+    console.debug(
+      '[SessionKeyManager] Recovered signer from signature:',
+      recoveredAddress
+    );
     console.debug('[SessionKeyManager] Expected owner:', ownerSigner.address);
-    console.debug('[SessionKeyManager] Signature valid:', recoveredAddress.toLowerCase() === ownerSigner.address.toLowerCase());
+    console.debug(
+      '[SessionKeyManager] Signature valid:',
+      recoveredAddress.toLowerCase() === ownerSigner.address.toLowerCase()
+    );
 
     if (recoveredAddress.toLowerCase() !== ownerSigner.address.toLowerCase()) {
-      console.error('[SessionKeyManager] ⚠️ SIGNATURE MISMATCH! The recovered signer does not match the owner!');
-      console.error('[SessionKeyManager] This will cause V2 session key validation to fail on-chain.');
+      console.error(
+        '[SessionKeyManager] ⚠️ SIGNATURE MISMATCH! The recovered signer does not match the owner!'
+      );
+      console.error(
+        '[SessionKeyManager] This will cause V2 session key validation to fail on-chain.'
+      );
       // Also compute and log the hash for debugging
       const typedDataHash = hashTypedData({
-        domain: typedData.domain as {
-          name: string;
-          version: string;
-          chainId: number;
-          verifyingContract: Address;
+        domain: {
+          ...typedData.domain,
+          chainId: BigInt(typedData.domain.chainId),
         },
         types: typedData.types,
         primaryType: typedData.primaryType,
-        message: typedData.message as Record<string, unknown>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        message: typedData.message as any,
       });
       console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
     }
   } catch (verifyError) {
-    console.warn('[SessionKeyManager] Could not verify signature:', verifyError);
+    console.warn(
+      '[SessionKeyManager] Could not verify signature:',
+      verifyError
+    );
   }
 
   return {
@@ -408,7 +433,8 @@ export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
 
   // Solidity's abi.decode(data, (StructWithDynamicTypes)) expects a leading offset pointer
   // The offset is 0x20 (32 bytes) pointing to where the actual struct data begins
-  const offsetPointer = '0000000000000000000000000000000000000000000000000000000000000020';
+  const offsetPointer =
+    '0000000000000000000000000000000000000000000000000000000000000020';
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
 
@@ -466,8 +492,10 @@ export async function verifyAccountFactoryMapping(
     accountFactoryAddress,
     derivedAccountIndex0,
     derivedAccountIndex1,
-    matchesIndex0: derivedAccountIndex0.toLowerCase() === expectedSmartAccount.toLowerCase(),
-    matchesIndex1: derivedAccountIndex1.toLowerCase() === expectedSmartAccount.toLowerCase(),
+    matchesIndex0:
+      derivedAccountIndex0.toLowerCase() === expectedSmartAccount.toLowerCase(),
+    matchesIndex1:
+      derivedAccountIndex1.toLowerCase() === expectedSmartAccount.toLowerCase(),
   };
 }
 
@@ -557,15 +585,12 @@ export async function createSession(
   console.debug(
     `[SessionKeyManager] Using Ethereal chain: ${selectedEtherealChain.name} (${etherealChainId})`
   );
-  console.debug(
-    `[SessionKeyManager] Contract addresses:`,
-    {
-      wusde: etherealContracts.wusde,
-      predictionMarket: etherealContracts.predictionMarket,
-      predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
-      vault: etherealContracts.vault,
-    }
-  );
+  console.debug(`[SessionKeyManager] Contract addresses:`, {
+    wusde: etherealContracts.wusde,
+    predictionMarket: etherealContracts.predictionMarket,
+    predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
+    vault: etherealContracts.vault,
+  });
 
   // Note: CallPolicy computes permissionHash from (callType, target, selector) only,
   // NOT including args. So we CANNOT have two permissions for the same target+function.
@@ -752,7 +777,10 @@ export async function createSession(
   );
 
   // Create Ethereal client
-  const etherealClient = createChainClient(selectedEtherealChain, etherealAccount);
+  const etherealClient = createChainClient(
+    selectedEtherealChain,
+    etherealAccount
+  );
 
   console.debug('[SessionKeyManager] Owner approval obtained, session created');
   console.debug(
@@ -773,7 +801,10 @@ export async function createSession(
       );
       console.debug('[SessionKeyManager] V2 session key approval obtained');
     } catch (e) {
-      console.warn('[SessionKeyManager] Failed to sign V2 session key approval:', e);
+      console.warn(
+        '[SessionKeyManager] Failed to sign V2 session key approval:',
+        e
+      );
       // Continue without V2 support - V1 will still work
     }
   }
@@ -978,7 +1009,8 @@ export async function restoreSession(
   // Validate V2 session key approval matches the session key (if present)
   if (serialized.v2SessionKeyApproval) {
     const derivedAddress = sessionKeyAccount.address.toLowerCase();
-    const storedAddress = serialized.v2SessionKeyApproval.sessionKey.toLowerCase();
+    const storedAddress =
+      serialized.v2SessionKeyApproval.sessionKey.toLowerCase();
     if (derivedAddress !== storedAddress) {
       console.error('[SessionKeyManager] V2 session key mismatch detected!', {
         derivedFromPrivateKey: sessionKeyAccount.address,
@@ -988,7 +1020,7 @@ export async function restoreSession(
       clearSession();
       throw new Error(
         'Session key mismatch detected. The stored V2 approval has a different session key. ' +
-        'Please create a new session.'
+          'Please create a new session.'
       );
     }
     console.debug('[SessionKeyManager] V2 session key validation passed');
@@ -1003,7 +1035,10 @@ export async function restoreSession(
     serialized.etherealApproval,
     sessionKeySigner
   );
-  const etherealClient = createChainClient(selectedEtherealChain, etherealAccount);
+  const etherealClient = createChainClient(
+    selectedEtherealChain,
+    etherealAccount
+  );
   console.debug('[SessionKeyManager] Ethereal session restored');
 
   // Restore Arbitrum session (optional - may not exist yet)
@@ -1101,14 +1136,24 @@ export function saveSession(serialized: SerializedSession): void {
   if (typeof window === 'undefined') return;
 
   // Validate session key consistency before saving
-  const derivedAddress = privateKeyToAccount(serialized.sessionPrivateKey).address;
+  const derivedAddress = privateKeyToAccount(
+    serialized.sessionPrivateKey
+  ).address;
   if (serialized.v2SessionKeyApproval) {
-    if (derivedAddress.toLowerCase() !== serialized.v2SessionKeyApproval.sessionKey.toLowerCase()) {
-      console.error('[SessionKeyManager] CRITICAL: Attempted to save session with mismatched keys!', {
-        derivedFromPrivateKey: derivedAddress,
-        inV2Approval: serialized.v2SessionKeyApproval.sessionKey,
-      });
-      throw new Error('Cannot save session: session key mismatch between private key and V2 approval');
+    if (
+      derivedAddress.toLowerCase() !==
+      serialized.v2SessionKeyApproval.sessionKey.toLowerCase()
+    ) {
+      console.error(
+        '[SessionKeyManager] CRITICAL: Attempted to save session with mismatched keys!',
+        {
+          derivedFromPrivateKey: derivedAddress,
+          inV2Approval: serialized.v2SessionKeyApproval.sessionKey,
+        }
+      );
+      throw new Error(
+        'Cannot save session: session key mismatch between private key and V2 approval'
+      );
     }
   }
 
@@ -1151,12 +1196,20 @@ export function loadSession(): SerializedSession | null {
 
     // Validate session key consistency
     if (parsed.v2SessionKeyApproval && parsed.sessionPrivateKey) {
-      const derivedAddress = privateKeyToAccount(parsed.sessionPrivateKey).address;
-      if (derivedAddress.toLowerCase() !== parsed.v2SessionKeyApproval.sessionKey.toLowerCase()) {
-        console.error('[SessionKeyManager] Session key mismatch detected on load!', {
-          derivedFromPrivateKey: derivedAddress,
-          inV2Approval: parsed.v2SessionKeyApproval.sessionKey,
-        });
+      const derivedAddress = privateKeyToAccount(
+        parsed.sessionPrivateKey
+      ).address;
+      if (
+        derivedAddress.toLowerCase() !==
+        parsed.v2SessionKeyApproval.sessionKey.toLowerCase()
+      ) {
+        console.error(
+          '[SessionKeyManager] Session key mismatch detected on load!',
+          {
+            derivedFromPrivateKey: derivedAddress,
+            inV2Approval: parsed.v2SessionKeyApproval.sessionKey,
+          }
+        );
         clearSession();
         return null;
       }

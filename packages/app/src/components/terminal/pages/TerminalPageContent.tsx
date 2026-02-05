@@ -115,8 +115,11 @@ const TerminalPageContent: React.FC = () => {
 
   const auctionAndBidMessages = useMemo(() => {
     return displayMessages.filter(
-      (m) => m.type === 'auction.started' || m.type === 'auction.bids' ||
-             m.type === 'v2.auction.started' || m.type === 'v2.auction.bids'
+      (m) =>
+        m.type === 'auction.started' ||
+        m.type === 'auction.bids' ||
+        m.type === 'v2.auction.started' ||
+        m.type === 'v2.auction.bids'
     );
   }, [displayMessages]);
 
@@ -179,7 +182,8 @@ const TerminalPageContent: React.FC = () => {
         }
       | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started') return { kind: 'unknown', data: [] };
+        if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started')
+          return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
           m?.data?.makerNonce ?? 'n'
         )}`;
@@ -272,7 +276,8 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+          continue;
         const decoded = decodeAuctionPredictedOutcomes({
           resolver:
             (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
@@ -294,7 +299,8 @@ const TerminalPageContent: React.FC = () => {
   const uniqueAddresses = useMemo(() => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started') continue;
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+        continue;
       const auctionData = m.data as AuctionStartedData | undefined;
       const taker = auctionData?.taker;
       if (taker && typeof taker === 'string') {
@@ -775,8 +781,10 @@ const TerminalPageContent: React.FC = () => {
     const createdAt = new Date(m.time).toISOString();
     // Handle both V1 and V2 auction started messages
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
-      const maker = (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
-      const wager = (m as any)?.data?.wager || (m as any)?.data?.predictorWager || '0';
+      const maker =
+        (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
+      const wager =
+        (m as any)?.data?.wager || (m as any)?.data?.predictorWager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -793,8 +801,12 @@ const TerminalPageContent: React.FC = () => {
       const top = bids.reduce((best, b) => {
         try {
           // V1 uses makerWager, V2 uses counterpartyWager (but we may not have it in bid)
-          const cur = BigInt(String(b?.makerWager ?? b?.counterpartyWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? best?.counterpartyWager ?? '0'));
+          const cur = BigInt(
+            String(b?.makerWager ?? b?.counterpartyWager ?? '0')
+          );
+          const bestVal = BigInt(
+            String(best?.makerWager ?? best?.counterpartyWager ?? '0')
+          );
           return cur > bestVal ? b : best;
         } catch {
           return best;
@@ -976,12 +988,19 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerWager={String(m?.data?.wager ?? m?.data?.predictorWager ?? '0')}
-                                  taker={m?.data?.taker || m?.data?.predictor || null}
+                                  takerWager={String(
+                                    m?.data?.wager ??
+                                      m?.data?.predictorWager ??
+                                      '0'
+                                  )}
+                                  taker={
+                                    m?.data?.taker || m?.data?.predictor || null
+                                  }
                                   resolver={
                                     m?.data?.resolver ||
                                     // V2: extract resolver from first pick
-                                    (Array.isArray(m?.data?.picks) && m?.data?.picks[0]?.conditionResolver) ||
+                                    (Array.isArray(m?.data?.picks) &&
+                                      m?.data?.picks[0]?.conditionResolver) ||
                                     null
                                   }
                                   predictedOutcomes={
@@ -990,7 +1009,9 @@ const TerminalPageContent: React.FC = () => {
                                       : []
                                   }
                                   takerNonce={(() => {
-                                    const raw = m?.data?.takerNonce ?? m?.data?.predictorNonce;
+                                    const raw =
+                                      m?.data?.takerNonce ??
+                                      m?.data?.predictorNonce;
                                     const n = Number(raw);
                                     return Number.isFinite(n) ? n : null;
                                   })()}
@@ -1000,7 +1021,11 @@ const TerminalPageContent: React.FC = () => {
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
                                   isV2Auction={m?.type === 'v2.auction.started'}
-                                  v2Picks={Array.isArray(m?.data?.picks) ? m?.data?.picks : undefined}
+                                  v2Picks={
+                                    Array.isArray(m?.data?.picks)
+                                      ? m?.data?.picks
+                                      : undefined
+                                  }
                                 />
                               </div>
                             );
@@ -1037,12 +1062,22 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerWager={String(m?.data?.wager ?? m?.data?.predictorWager ?? '0')}
-                                      taker={m?.data?.taker || m?.data?.predictor || null}
+                                      takerWager={String(
+                                        m?.data?.wager ??
+                                          m?.data?.predictorWager ??
+                                          '0'
+                                      )}
+                                      taker={
+                                        m?.data?.taker ||
+                                        m?.data?.predictor ||
+                                        null
+                                      }
                                       resolver={
                                         m?.data?.resolver ||
                                         // V2: extract resolver from first pick
-                                        (Array.isArray(m?.data?.picks) && m?.data?.picks[0]?.conditionResolver) ||
+                                        (Array.isArray(m?.data?.picks) &&
+                                          m?.data?.picks[0]
+                                            ?.conditionResolver) ||
                                         null
                                       }
                                       predictedOutcomes={
@@ -1054,7 +1089,9 @@ const TerminalPageContent: React.FC = () => {
                                           : []
                                       }
                                       takerNonce={(() => {
-                                        const raw = m?.data?.takerNonce ?? m?.data?.predictorNonce;
+                                        const raw =
+                                          m?.data?.takerNonce ??
+                                          m?.data?.predictorNonce;
                                         const n = Number(raw);
                                         return Number.isFinite(n) ? n : null;
                                       })()}
@@ -1067,8 +1104,14 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isV2Auction={m?.type === 'v2.auction.started'}
-                                      v2Picks={Array.isArray(m?.data?.picks) ? m?.data?.picks : undefined}
+                                      isV2Auction={
+                                        m?.type === 'v2.auction.started'
+                                      }
+                                      v2Picks={
+                                        Array.isArray(m?.data?.picks)
+                                          ? m?.data?.picks
+                                          : undefined
+                                      }
                                     />
                                   )}
                                 </div>

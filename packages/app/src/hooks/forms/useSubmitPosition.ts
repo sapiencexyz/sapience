@@ -4,7 +4,7 @@
  * V2: Uses MintApproval EIP-712, predictor signs at accept time
  */
 import { useCallback, useState, useMemo } from 'react';
-import { encodeFunctionData, erc20Abi, parseAbi, recoverTypedDataAddress, type Address } from 'viem';
+import { encodeFunctionData, erc20Abi, parseAbi, type Address } from 'viem';
 
 import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
 import {
@@ -12,13 +12,13 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { buildPredictorMintTypedData, hashMintApproval, computePredictionHash, MINT_APPROVAL_TYPES } from '@sapience/sdk/auction/v2Signing';
-import { canonicalizePicks, computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type { Pick } from '@sapience/sdk/types/v2';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeV2SessionKeyData, verifyAccountFactoryMapping } from '~/lib/session/sessionKeyManager';
+import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
@@ -116,7 +116,12 @@ export function useSubmitPosition({
   onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
-  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval } = useSession();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+    v2SessionKeyApproval,
+  } = useSession();
   const { signTypedDataAsync } = useSignTypedData();
 
   // V2 chain detection
@@ -147,7 +152,6 @@ export function useSubmitPosition({
         !!wusdeAddress,
     },
   });
-
 
   // V2: Get predictor nonce from PredictionMarketEscrow
   const { nonce: v2Nonce, refetch: refetchV2Nonce } = useV2Nonce({
@@ -504,7 +508,8 @@ export function useSubmitPosition({
           // V2 SmartAccount funding check: when using session keys, the SmartAccount
           // needs to have sufficient native balance for wrapping (if wUSDe balance is insufficient)
           const predictorWagerWei = BigInt(mintData.makerCollateral);
-          const canUseV2SessionKeyPreflight = isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
+          const canUseV2SessionKeyPreflight =
+            isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
 
           if (canUseV2SessionKeyPreflight && effectiveAddress) {
             try {
@@ -513,31 +518,24 @@ export function useSubmitPosition({
                 address: collateralTokenAddress,
                 abi: erc20Abi,
                 functionName: 'balanceOf',
-                args: [effectiveAddress as `0x${string}`],
+                args: [effectiveAddress],
               });
 
               // If wUSDe balance is insufficient, check native balance for wrapping
               if (wusdeBalance < predictorWagerWei) {
                 const amountToWrap = predictorWagerWei - wusdeBalance;
                 const nativeBalance = await publicClient.getBalance({
-                  address: effectiveAddress as `0x${string}`,
-                });
-
-                console.log('[V2 Submit] SmartAccount balance check:', {
-                  smartAccount: effectiveAddress,
-                  wusdeBalance: wusdeBalance.toString(),
-                  nativeBalance: nativeBalance.toString(),
-                  predictorWager: predictorWagerWei.toString(),
-                  amountToWrap: amountToWrap.toString(),
-                  hasEnoughNative: nativeBalance >= amountToWrap,
+                  address: effectiveAddress,
                 });
 
                 if (nativeBalance < amountToWrap) {
                   const shortfall = amountToWrap - nativeBalance;
-                  const shortfallFormatted = (Number(shortfall) / 1e18).toFixed(6);
+                  const shortfallFormatted = (Number(shortfall) / 1e18).toFixed(
+                    6
+                  );
                   throw new Error(
                     `Your Smart Account needs ${shortfallFormatted} more USDe to complete this transaction. ` +
-                    `Please transfer native USDe to your Smart Account address: ${effectiveAddress}`
+                      `Please transfer native USDe to your Smart Account address: ${effectiveAddress}`
                   );
                 }
               }
@@ -546,7 +544,7 @@ export function useSubmitPosition({
               if (balanceErr?.message?.includes('Smart Account needs')) {
                 throw balanceErr;
               }
-              console.warn('[V2 Submit] Balance preflight check failed:', balanceErr);
+              // Silently continue on RPC failures
             }
           }
 
@@ -566,33 +564,17 @@ export function useSubmitPosition({
               predictedOutcome: p.predictedOutcome as 0 | 1,
             }));
             picks = canonicalizePicks(rawPicks);
-            console.log('[V2 Submit] Using v2Picks from mintData:', {
-              rawPicksCount: rawPicks.length,
-              canonicalPicksCount: picks.length,
-              picks: picks.map((p) => ({
-                resolver: p.conditionResolver,
-                conditionId: p.conditionId.slice(0, 10) + '...',
-                outcome: p.predictedOutcome,
-              })),
-            });
           } else {
             // Fallback: decode from encodedPredictedOutcomes (V1 format)
-            console.log('[V2 Submit] Falling back to decoding from encodedPredictedOutcomes');
             const decoded = decodeAuctionPredictedOutcomes({
               resolver: mintData.resolver,
               predictedOutcomes: [mintData.encodedPredictedOutcomes],
             });
-            const rawPicks = decodedOutcomesToV2Picks(decoded, mintData.resolver);
+            const rawPicks = decodedOutcomesToV2Picks(
+              decoded,
+              mintData.resolver
+            );
             picks = canonicalizePicks(rawPicks);
-            console.log('[V2 Submit] Decoded picks:', {
-              rawPicksCount: rawPicks.length,
-              canonicalPicksCount: picks.length,
-              picks: picks.map((p) => ({
-                resolver: p.conditionResolver,
-                conditionId: p.conditionId.slice(0, 10) + '...',
-                outcome: p.predictedOutcome,
-              })),
-            });
           }
 
           if (picks.length === 0) {
@@ -613,15 +595,6 @@ export function useSubmitPosition({
           // The bidder's nonce is embedded in their signature
           const counterpartyNonce = BigInt(mintData.takerClaimedNonce ?? 0);
 
-          // DEBUG: Log counterparty values from bid (compare with [V2 Bid Signing] logs from counterparty browser)
-          console.log('[V2 Submit] Counterparty values from bid:', {
-            counterpartySignature: counterpartySignature.slice(0, 20) + '...',
-            counterpartyNonce: counterpartyNonce.toString(),
-            counterpartyDeadline: counterpartyDeadline.toString(),
-            raw_takerClaimedNonce: mintData.takerClaimedNonce,
-            raw_takerDeadline: mintData.takerDeadline,
-          });
-
           // Calculate predictor deadline (same as counterparty or extend slightly)
           const nowSec = Math.floor(Date.now() / 1000);
           const predictorDeadline = BigInt(nowSec + 300); // 5 minutes from now
@@ -639,36 +612,10 @@ export function useSubmitPosition({
             chainId,
           });
 
-          // Log the predictionHash for debugging
-          const { computePredictionHash } = await import('@sapience/sdk/auction/v2Signing');
-          const { computePickConfigId: computePickConfigIdFn } = await import('@sapience/sdk/auction/v2Encoding');
-          const pickConfigId = computePickConfigIdFn(picks);
-          const predictionHash = computePredictionHash(
-            pickConfigId,
-            predictorWager,
-            counterpartyWager,
-            predictor,
-            counterparty
-          );
-          console.log('[V2 Submit] Hash computation:', {
-            pickConfigId,
-            predictionHash,
-            predictorWager: predictorWager.toString(),
-            counterpartyWager: counterpartyWager.toString(),
-            predictor,
-            counterparty,
-          });
-          console.log('[V2 Submit] Typed data message:', {
-            predictionHash: typedData.message.predictionHash,
-            signer: typedData.message.signer,
-            wager: typedData.message.wager.toString(),
-            nonce: typedData.message.nonce.toString(),
-            deadline: typedData.message.deadline.toString(),
-          });
-
           // Determine if we can use session key signing for V2
           // Requires: active session + session signing function + V2 session key approval
-          const canUseV2SessionKey = isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
+          const canUseV2SessionKey =
+            isUsingSession && sessionSignTypedData && v2SessionKeyApproval;
 
           let predictorSignature: `0x${string}`;
           let predictorSessionKeyData: `0x${string}` = '0x';
@@ -676,44 +623,6 @@ export function useSubmitPosition({
           try {
             if (canUseV2SessionKey) {
               // Session key mode: sign with session key and include SessionKeyData
-              console.log('[V2 Submit] Using session key signing for predictor');
-              console.log('[V2 Submit] Session key approval details:', {
-                sessionKey: v2SessionKeyApproval.sessionKey,
-                owner: v2SessionKeyApproval.owner,
-                smartAccount: v2SessionKeyApproval.smartAccount,
-                validUntil: v2SessionKeyApproval.validUntil,
-                permissionsHash: v2SessionKeyApproval.permissionsHash,
-                chainId: v2SessionKeyApproval.chainId,
-                ownerSignatureLength: v2SessionKeyApproval.ownerSignature.length,
-              });
-              console.log('[V2 Submit] Predictor (signer) address:', predictor);
-              console.log('[V2 Submit] SmartAccount matches predictor:', v2SessionKeyApproval.smartAccount === predictor);
-
-              // Verify accountFactory mapping before attempting mint
-              try {
-                const factoryVerification = await verifyAccountFactoryMapping(
-                  chainId,
-                  v2EscrowAddress,
-                  v2SessionKeyApproval.owner,
-                  predictor
-                );
-                console.log('[V2 Submit] AccountFactory verification:', {
-                  accountFactory: factoryVerification.accountFactoryAddress,
-                  owner: v2SessionKeyApproval.owner,
-                  expectedSmartAccount: predictor,
-                  derivedIndex0: factoryVerification.derivedAccountIndex0,
-                  derivedIndex1: factoryVerification.derivedAccountIndex1,
-                  matchesIndex0: factoryVerification.matchesIndex0,
-                  matchesIndex1: factoryVerification.matchesIndex1,
-                });
-                if (!factoryVerification.matchesIndex0 && !factoryVerification.matchesIndex1) {
-                  console.error('[V2 Submit] WARNING: AccountFactory does not return the expected smart account!');
-                  console.error('[V2 Submit] The contract will reject the session key signature.');
-                }
-              } catch (verifyErr) {
-                console.warn('[V2 Submit] AccountFactory verification failed:', verifyErr);
-              }
-
               predictorSignature = await sessionSignTypedData({
                 domain: {
                   ...typedData.domain,
@@ -724,133 +633,11 @@ export function useSubmitPosition({
                 message: typedData.message as Record<string, unknown>,
               });
 
-              // Verify the session key signature recovers to the session key address
-              const { recoverTypedDataAddress, hashTypedData: hashTypedDataViem } = await import('viem');
-              try {
-                const recoveredSigner = await recoverTypedDataAddress({
-                  domain: {
-                    ...typedData.domain,
-                    chainId: Number(typedData.domain.chainId),
-                  },
-                  types: typedData.types,
-                  primaryType: typedData.primaryType,
-                  message: typedData.message as Record<string, unknown>,
-                  signature: predictorSignature,
-                });
-                console.log('[V2 Submit] Session key signature verification:', {
-                  recoveredSigner,
-                  expectedSessionKey: v2SessionKeyApproval.sessionKey,
-                  match: recoveredSigner.toLowerCase() === v2SessionKeyApproval.sessionKey.toLowerCase(),
-                });
-                if (recoveredSigner.toLowerCase() !== v2SessionKeyApproval.sessionKey.toLowerCase()) {
-                  console.error('[V2 Submit] ⚠️ SESSION KEY SIGNATURE MISMATCH!');
-                  console.error('[V2 Submit] The session key signature does not recover to the expected session key.');
-                  console.error('[V2 Submit] This will cause the contract to reject the signature.');
-                }
-
-                // Also log the typed data hash for comparison with contract
-                const typedDataHash = hashTypedDataViem({
-                  domain: {
-                    ...typedData.domain,
-                    chainId: Number(typedData.domain.chainId),
-                  },
-                  types: typedData.types,
-                  primaryType: typedData.primaryType,
-                  message: typedData.message as Record<string, unknown>,
-                });
-                console.log('[V2 Submit] MintApproval typed data hash:', typedDataHash);
-              } catch (verifyErr) {
-                console.warn('[V2 Submit] Could not verify session key signature:', verifyErr);
-              }
-
               // Encode the V2 SessionKeyData for contract validation
-              predictorSessionKeyData = encodeV2SessionKeyData(v2SessionKeyApproval);
-
-              // Verify the encoding by decoding it
-              const { decodeAbiParameters } = await import('viem');
-              try {
-                const decoded = decodeAbiParameters(
-                  [
-                    { name: 'sessionKey', type: 'address' },
-                    { name: 'owner', type: 'address' },
-                    { name: 'validUntil', type: 'uint256' },
-                    { name: 'permissionsHash', type: 'bytes32' },
-                    { name: 'chainId', type: 'uint256' },
-                    { name: 'ownerSignature', type: 'bytes' },
-                  ],
-                  predictorSessionKeyData
-                );
-                console.log('[V2 Submit] Session key data decode verification:', {
-                  sessionKey: decoded[0],
-                  owner: decoded[1],
-                  validUntil: decoded[2].toString(),
-                  permissionsHash: decoded[3],
-                  chainId: decoded[4].toString(),
-                  ownerSignatureLength: (decoded[5] as string).length,
-                  matchesOriginal: {
-                    sessionKey: decoded[0] === v2SessionKeyApproval.sessionKey,
-                    owner: decoded[1] === v2SessionKeyApproval.owner,
-                    validUntil: decoded[2] === BigInt(v2SessionKeyApproval.validUntil),
-                    permissionsHash: decoded[3] === v2SessionKeyApproval.permissionsHash,
-                    chainId: decoded[4] === BigInt(v2SessionKeyApproval.chainId),
-                  },
-                });
-              } catch (decodeErr) {
-                console.error('[V2 Submit] Failed to decode session key data:', decodeErr);
-              }
-
-              // Verify SessionKeyApproval hash matches contract
-              try {
-                const getSessionKeyApprovalHashAbi = [
-                  {
-                    type: 'function',
-                    name: 'getSessionKeyApprovalHash',
-                    inputs: [
-                      { name: 'sessionKey', type: 'address' },
-                      { name: 'smartAccount', type: 'address' },
-                      { name: 'validUntil', type: 'uint256' },
-                      { name: 'permissionsHash', type: 'bytes32' },
-                      { name: 'chainId', type: 'uint256' },
-                    ],
-                    outputs: [{ name: 'hash', type: 'bytes32' }],
-                  },
-                ] as const;
-                const contractSessionHash = await publicClient.readContract({
-                  address: v2EscrowAddress,
-                  abi: getSessionKeyApprovalHashAbi,
-                  functionName: 'getSessionKeyApprovalHash',
-                  args: [
-                    v2SessionKeyApproval.sessionKey as `0x${string}`,
-                    predictor, // smartAccount
-                    BigInt(v2SessionKeyApproval.validUntil),
-                    v2SessionKeyApproval.permissionsHash as `0x${string}`,
-                    BigInt(v2SessionKeyApproval.chainId),
-                  ],
-                });
-                console.log('[V2 Submit] SessionKeyApproval hash from contract:', contractSessionHash);
-
-                // Recover owner from ownerSignature using this hash
-                const { recoverAddress } = await import('viem');
-                const recoveredOwner = await recoverAddress({
-                  hash: contractSessionHash,
-                  signature: v2SessionKeyApproval.ownerSignature as `0x${string}`,
-                });
-                console.log('[V2 Submit] Owner signature verification on SessionKeyApproval:', {
-                  recoveredOwner,
-                  expectedOwner: v2SessionKeyApproval.owner,
-                  match: recoveredOwner.toLowerCase() === v2SessionKeyApproval.owner.toLowerCase(),
-                });
-              } catch (sessionHashErr) {
-                console.error('[V2 Submit] SessionKeyApproval hash verification failed:', sessionHashErr);
-              }
-
-              console.log('[V2 Submit] Session key data encoded:', {
-                length: predictorSessionKeyData.length,
-                hexPrefix: predictorSessionKeyData.slice(0, 130) + '...',
-              });
+              predictorSessionKeyData =
+                encodeV2SessionKeyData(v2SessionKeyApproval);
             } else {
               // Wallet mode: sign with wallet, contract uses EIP-1271 fallback
-              console.log('[V2 Submit] Using wallet signing for predictor');
               predictorSignature = await signTypedDataAsync({
                 domain: {
                   ...typedData.domain,
@@ -886,163 +673,46 @@ export function useSubmitPosition({
             counterpartySignature,
             refCode: mintData.refCode,
             predictorSessionKeyData,
-            counterpartySessionKeyData: (mintData.counterpartySessionKeyData || '0x') as `0x${string}`,
+            counterpartySessionKeyData: (mintData.counterpartySessionKeyData ||
+              '0x') as `0x${string}`,
           };
 
-          console.log('[V2 Submit] Full MintRequest:', {
-            picksCount: mintRequest.picks.length,
-            predictorWager: mintRequest.predictorWager.toString(),
-            counterpartyWager: mintRequest.counterpartyWager.toString(),
-            predictor: mintRequest.predictor,
-            counterparty: mintRequest.counterparty,
-            predictorNonce: mintRequest.predictorNonce.toString(),
-            counterpartyNonce: mintRequest.counterpartyNonce.toString(),
-            predictorDeadline: mintRequest.predictorDeadline.toString(),
-            counterpartyDeadline: mintRequest.counterpartyDeadline.toString(),
-            predictorSignatureLength: mintRequest.predictorSignature.length,
-            counterpartySignatureLength: mintRequest.counterpartySignature.length,
-            refCode: mintRequest.refCode,
-            predictorSessionKeyDataLength: mintRequest.predictorSessionKeyData.length,
-            counterpartySessionKeyDataLength: mintRequest.counterpartySessionKeyData.length,
-            counterpartyIsSmartAccount: mintRequest.counterpartySessionKeyData.length > 2,
-          });
-
-          // DEBUG: Verify counterparty signature locally before submitting
-          try {
-            const counterpartyPredictionHash = computePredictionHash(
-              pickConfigId,
-              predictorWager,
-              counterpartyWager,
-              predictor,
-              counterparty
-            );
-            console.log('[V2 Submit] Verifying counterparty signature locally:');
-            console.log('  predictionHash:', counterpartyPredictionHash);
-            console.log('  signer:', counterparty);
-            console.log('  wager:', counterpartyWager.toString());
-            console.log('  nonce:', counterpartyNonce.toString());
-            console.log('  deadline:', counterpartyDeadline.toString());
-            console.log('  chainId:', chainId);
-            console.log('  verifyingContract:', v2EscrowAddress);
-
-            // Compute SDK hash for comparison
-            const sdkHash = hashMintApproval({
-              predictionHash: counterpartyPredictionHash,
-              signer: counterparty,
-              wager: counterpartyWager,
-              nonce: counterpartyNonce,
-              deadline: counterpartyDeadline,
-              verifyingContract: v2EscrowAddress,
-              chainId,
-            });
-            console.log('  SDK EIP-712 hash:', sdkHash);
-
-            // Call contract's getMintApprovalHash to compare
-            const getMintApprovalHashAbi = [
-              {
-                type: 'function',
-                name: 'getMintApprovalHash',
-                inputs: [
-                  { name: 'predictionHash', type: 'bytes32' },
-                  { name: 'signer', type: 'address' },
-                  { name: 'wager', type: 'uint256' },
-                  { name: 'nonce', type: 'uint256' },
-                  { name: 'deadline', type: 'uint256' },
-                ],
-                outputs: [{ name: 'hash', type: 'bytes32' }],
-              },
-            ] as const;
-            const contractHash = await publicClient.readContract({
-              address: v2EscrowAddress,
-              abi: getMintApprovalHashAbi,
-              functionName: 'getMintApprovalHash',
-              args: [counterpartyPredictionHash, counterparty, counterpartyWager, counterpartyNonce, counterpartyDeadline],
-            });
-            console.log('  Contract EIP-712 hash:', contractHash);
-            console.log('  Hash match:', sdkHash === contractHash ? 'YES' : 'NO - MISMATCH!');
-
-            // Recover signer from counterparty signature
-            const recoveredCounterparty = await recoverTypedDataAddress({
-              domain: {
-                name: 'PredictionMarketEscrow',
-                version: '1',
-                chainId: BigInt(chainId),
-                verifyingContract: v2EscrowAddress,
-              },
-              types: MINT_APPROVAL_TYPES,
-              primaryType: 'MintApproval',
-              message: {
-                predictionHash: counterpartyPredictionHash,
-                signer: counterparty,
-                wager: counterpartyWager,
-                nonce: counterpartyNonce,
-                deadline: counterpartyDeadline,
-              },
-              signature: counterpartySignature,
-            });
-            console.log('[V2 Submit] Counterparty signature verification:');
-            console.log('  Recovered:', recoveredCounterparty);
-            console.log('  Expected:', counterparty);
-            console.log('  Match:', recoveredCounterparty.toLowerCase() === counterparty.toLowerCase() ? 'YES - SIGNATURE VALID' : 'NO - SIGNATURE INVALID');
-          } catch (verifyError) {
-            console.error('[V2 Submit] Counterparty signature verification failed:', verifyError);
-          }
-
           const calls = prepareV2Calls({ mintRequest, freshAllowance });
-          console.log('[V2 Submit] Prepared calls:', {
-            count: calls.length,
-            calls: calls.map((c, i) => ({
-              index: i,
-              to: c.to,
-              dataLength: c.data?.length ?? 0,
-              value: c.value?.toString() ?? '0',
-            })),
-          });
           if (calls.length === 0) {
             throw new Error('No valid calls to execute');
           }
 
-          // Debug: Check on-chain nonces before submitting
+          // Check on-chain nonces before submitting
           try {
             const escrowAbi = [
-              { type: 'function', name: 'getNonce', inputs: [{ name: 'account', type: 'address' }], outputs: [{ name: '', type: 'uint256' }] }
+              {
+                type: 'function',
+                name: 'getNonce',
+                inputs: [{ name: 'account', type: 'address' }],
+                outputs: [{ name: '', type: 'uint256' }],
+              },
             ] as const;
-            const [predictorOnChainNonce, counterpartyOnChainNonce] = await Promise.all([
-              publicClient.readContract({
-                address: v2EscrowAddress,
-                abi: escrowAbi,
-                functionName: 'getNonce',
-                args: [predictor],
-              }),
-              publicClient.readContract({
-                address: v2EscrowAddress,
-                abi: escrowAbi,
-                functionName: 'getNonce',
-                args: [counterparty],
-              }),
-            ]);
-            console.log('[V2 Submit] On-chain nonces:', {
-              predictor: {
-                address: predictor,
-                onChainNonce: predictorOnChainNonce.toString(),
-                requestNonce: predictorNonce.toString(),
-                matches: predictorOnChainNonce === predictorNonce,
-              },
-              counterparty: {
-                address: counterparty,
-                onChainNonce: counterpartyOnChainNonce.toString(),
-                requestNonce: counterpartyNonce.toString(),
-                matches: counterpartyOnChainNonce === counterpartyNonce,
-              },
-            });
+            const [predictorOnChainNonce, counterpartyOnChainNonce] =
+              await Promise.all([
+                publicClient.readContract({
+                  address: v2EscrowAddress,
+                  abi: escrowAbi,
+                  functionName: 'getNonce',
+                  args: [predictor],
+                }),
+                publicClient.readContract({
+                  address: v2EscrowAddress,
+                  abi: escrowAbi,
+                  functionName: 'getNonce',
+                  args: [counterparty],
+                }),
+              ]);
             if (predictorOnChainNonce !== predictorNonce) {
-              console.error('[V2 Submit] PREDICTOR NONCE MISMATCH! On-chain:', predictorOnChainNonce.toString(), 'Request:', predictorNonce.toString());
               throw new Error(
                 `Your nonce has changed (was ${predictorNonce.toString()}, now ${predictorOnChainNonce.toString()}). Please request new bids.`
               );
             }
             if (counterpartyOnChainNonce !== counterpartyNonce) {
-              console.error('[V2 Submit] COUNTERPARTY NONCE MISMATCH! On-chain:', counterpartyOnChainNonce.toString(), 'Request:', counterpartyNonce.toString());
               throw new Error(
                 `The bidder's nonce has changed since they signed (was ${counterpartyNonce.toString()}, now ${counterpartyOnChainNonce.toString()}). This bid is stale. Please request new bids.`
               );
@@ -1052,30 +722,7 @@ export function useSubmitPosition({
             if (nonceErr?.message?.includes('nonce has changed')) {
               throw nonceErr;
             }
-            console.warn('[V2 Submit] Failed to fetch on-chain nonces:', nonceErr);
-          }
-
-          // Debug: simulate the mint call directly to see the actual error
-          const mintCall = calls.find(c => c.to.toLowerCase() === v2EscrowAddress.toLowerCase());
-          if (mintCall) {
-            try {
-              console.log('[V2 Submit] Simulating mint call directly...');
-              await publicClient.call({
-                to: mintCall.to,
-                data: mintCall.data,
-                account: predictor,
-              });
-              console.log('[V2 Submit] Direct simulation succeeded');
-            } catch (simErr: any) {
-              console.error('[V2 Submit] Direct simulation failed:', {
-                message: simErr?.message,
-                cause: simErr?.cause,
-                shortMessage: simErr?.shortMessage,
-                details: simErr?.details,
-                data: simErr?.data,
-              });
-              // Continue anyway to see if bundler gives different error
-            }
+            // Silently continue on RPC failures
           }
 
           await sendCalls({

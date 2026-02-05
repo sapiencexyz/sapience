@@ -721,8 +721,11 @@ export function useAuctionMatching({
       // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
       if (entry.type === 'auction.bids' || entry.type === 'v2.auction.bids') {
         handleCopyTradeMatches(entry);
-      // Handle both V1 (auction.started) and V2 (v2.auction.started)
-      } else if (entry.type === 'auction.started' || entry.type === 'v2.auction.started') {
+        // Handle both V1 (auction.started) and V2 (v2.auction.started)
+      } else if (
+        entry.type === 'auction.started' ||
+        entry.type === 'v2.auction.started'
+      ) {
         handleConditionMatches(entry);
       }
     },

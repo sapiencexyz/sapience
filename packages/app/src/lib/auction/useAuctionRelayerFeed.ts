@@ -46,7 +46,10 @@ export function useAuctionRelayerFeed(options?: {
       // Resubscribe to all auctions on reconnect (both V1 and V2 channels)
       for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
         client.send({ type: 'auction.subscribe', payload: { auctionId: id } });
-        client.send({ type: 'v2.auction.subscribe', payload: { auctionId: id } });
+        client.send({
+          type: 'v2.auction.subscribe',
+          payload: { auctionId: id },
+        });
       }
       Sentry.addBreadcrumb({
         category: 'ws.app',
@@ -83,7 +86,8 @@ export function useAuctionRelayerFeed(options?: {
 
         // Persist auction.started messages in a separate ref that survives state resets
         // Handle both V1 (auction.started) and V2 (v2.auction.started)
-        const isAuctionStarted = type === 'auction.started' || type === 'v2.auction.started';
+        const isAuctionStarted =
+          type === 'auction.started' || type === 'v2.auction.started';
         if (isAuctionStarted && channel) {
           const existing = persistedStartedRef.current.get(channel);
           // Only store if newer or first time
@@ -116,7 +120,10 @@ export function useAuctionRelayerFeed(options?: {
 
         // Update last activity for existing subscriptions on bid activity
         // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
-        if ((type === 'auction.bids' || type === 'v2.auction.bids') && channel) {
+        if (
+          (type === 'auction.bids' || type === 'v2.auction.bids') &&
+          channel
+        ) {
           if (subscribedAuctionsRef.current.has(channel)) {
             subscribedAuctionsRef.current.set(channel, now);
           }
@@ -190,7 +197,10 @@ export function useAuctionRelayerFeed(options?: {
     // Handle both V1 (auction.started) and V2 (v2.auction.started)
     const streamingStartedIds = new Set<string>();
     for (const m of messages) {
-      if ((m.type === 'auction.started' || m.type === 'v2.auction.started') && m.channel) {
+      if (
+        (m.type === 'auction.started' || m.type === 'v2.auction.started') &&
+        m.channel
+      ) {
         streamingStartedIds.add(m.channel);
       }
     }

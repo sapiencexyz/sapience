@@ -2,7 +2,14 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import { type Address, type Hex, formatUnits, parseUnits, createPublicClient, http } from 'viem';
+import {
+  type Address,
+  type Hex,
+  formatUnits,
+  parseUnits,
+  createPublicClient,
+  http,
+} from 'viem';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type {
@@ -12,7 +19,12 @@ import type {
 } from '@sapience/sdk/types/v2';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
-import { DEFAULT_CHAIN_ID, etherealTestnetChain, etherealChain, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  etherealTestnetChain,
+  etherealChain,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -117,7 +129,10 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
       }
 
       // Get nonce for the counterparty (this signer) from the contract
-      const chain = chainId === CHAIN_ID_ETHEREAL_TESTNET ? etherealTestnetChain : etherealChain;
+      const chain =
+        chainId === CHAIN_ID_ETHEREAL_TESTNET
+          ? etherealTestnetChain
+          : etherealChain;
       const publicClient = createPublicClient({
         chain,
         transport: http(chain.rpcUrls.default.http[0]),
@@ -132,9 +147,15 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
           args: [signerAddress],
         });
         counterpartyNonce = BigInt(nonceResult as string | number | bigint);
-        console.log('[V2 Bid] Fetched counterparty nonce from contract:', counterpartyNonce.toString());
+        console.log(
+          '[V2 Bid] Fetched counterparty nonce from contract:',
+          counterpartyNonce.toString()
+        );
       } catch (nonceError) {
-        console.error('[V2 Bid] Failed to fetch nonce, defaulting to 0:', nonceError);
+        console.error(
+          '[V2 Bid] Failed to fetch nonce, defaulting to 0:',
+          nonceError
+        );
         counterpartyNonce = 0n;
       }
 

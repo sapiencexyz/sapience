@@ -84,7 +84,8 @@ const AuctionPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of messages) {
-        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+          continue;
         const arr = Array.isArray((m.data as any)?.predictedOutcomes)
           ? ((m.data as any).predictedOutcomes as string[])
           : [];
@@ -176,8 +177,12 @@ const AuctionPageContent: React.FC = () => {
       const top = bids.reduce((best, b) => {
         try {
           // V1 uses makerWager, V2 uses counterpartyWager
-          const cur = BigInt(String(b?.makerWager ?? b?.counterpartyWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? best?.counterpartyWager ?? '0'));
+          const cur = BigInt(
+            String(b?.makerWager ?? b?.counterpartyWager ?? '0')
+          );
+          const bestVal = BigInt(
+            String(best?.makerWager ?? best?.counterpartyWager ?? '0')
+          );
           return cur > bestVal ? b : best;
         } catch {
           return best;
@@ -315,8 +320,10 @@ const AuctionPageContent: React.FC = () => {
           </div>
 
           <TabsContent value="auctions">
-            {displayMessages.filter((m) => m.type === 'auction.started' || m.type === 'v2.auction.started')
-              .length === 0 ? (
+            {displayMessages.filter(
+              (m) =>
+                m.type === 'auction.started' || m.type === 'v2.auction.started'
+            ).length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="inline-flex items-center gap-1 text-foreground">
                   <span className="inline-block h-[6px] w-[6px] rounded-full bg-foreground opacity-80 animate-ping mr-1.5" />
@@ -349,7 +356,11 @@ const AuctionPageContent: React.FC = () => {
                     </thead>
                     <tbody>
                       {displayMessages
-                        .filter((m) => m.type === 'auction.started' || m.type === 'v2.auction.started')
+                        .filter(
+                          (m) =>
+                            m.type === 'auction.started' ||
+                            m.type === 'v2.auction.started'
+                        )
                         .map((m, idx) => (
                           <tr
                             key={`started-${idx}`}

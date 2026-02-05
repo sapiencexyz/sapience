@@ -543,7 +543,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionError(null);
 
       // Default to Ethereal Testnet for V2 testing
-      const etherealChainId = params.etherealChainId ?? CHAIN_ID_ETHEREAL_TESTNET;
+      const etherealChainId =
+        params.etherealChainId ?? CHAIN_ID_ETHEREAL_TESTNET;
 
       try {
         const provider = (await connector.getProvider()) as EIP1193Provider;

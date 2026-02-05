@@ -754,7 +754,9 @@ const CreatePositionFormInner = ({
                 predictedOutcome: p.predictedOutcome,
               }));
             } else {
-              console.warn('[V2 Form] No v2Picks available - selections may be missing resolverAddress');
+              console.warn(
+                '[V2 Form] No v2Picks available - selections may be missing resolverAddress'
+              );
             }
           }
 

@@ -2,18 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useSignMessage, useSignTypedData } from 'wagmi';
-import { type Address, createPublicClient, http } from 'viem';
 import {
   createAuctionStartSiweMessage,
   extractSiweDomainAndUri,
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
 import type { Pick } from '@sapience/sdk/types/v2';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
-import { etherealTestnetChain, etherealChain, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -393,11 +388,10 @@ export function useAuctionStart() {
             };
 
             // Send V2 auction start
-            const v2Response = await client.sendWithAck<{ auctionId?: string; error?: string }>(
-              'v2.auction.start',
-              v2Payload,
-              { timeoutMs: 10000 }
-            );
+            const v2Response = await client.sendWithAck<{
+              auctionId?: string;
+              error?: string;
+            }>('v2.auction.start', v2Payload, { timeoutMs: 10000 });
 
             if (v2Response?.error) {
               console.error('[V2 Auction] Start failed:', v2Response.error);
@@ -533,7 +527,8 @@ export function useAuctionStart() {
         // V2 bids have counterparty, V1 bids have maker
         taker: (v2Bid.counterparty ?? bid.maker) as `0x${string}`,
         // V2 bids have counterpartySignature, V1 bids have makerSignature
-        takerSignature: (v2Bid.counterpartySignature ?? bid.makerSignature) as `0x${string}`,
+        takerSignature: (v2Bid.counterpartySignature ??
+          bid.makerSignature) as `0x${string}`,
         // V2 bids have counterpartyDeadline, V1 bids have makerDeadline
         takerDeadline: String(v2Bid.counterpartyDeadline ?? bid.makerDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
