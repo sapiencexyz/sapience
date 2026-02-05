@@ -162,6 +162,7 @@ export async function GET(req: Request) {
     // Note: next/og ImageResponse custom headers can cause non-image responses for next/image fetch.
     // Skip attaching headers directly to ImageResponse to ensure proper content-type.
 
+    const compact = legs.length > 3;
     const potentialReturn = computePotentialReturn(wager, payout);
 
     return new ImageResponse(
@@ -197,38 +198,10 @@ export async function GET(req: Request) {
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 12 * scale,
+                        gap: (compact ? 8 : 12) * scale,
                       }}
                     >
-                      {legs
-                        .slice(0, Math.min(legs.length, 5))
-                        .map((leg, idx) => {
-                          const showAndMore = legs.length > 5 && idx === 4;
-                          if (showAndMore) {
-                            return (
-                              <div
-                                key="and-more"
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 16 * scale,
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    display: 'flex',
-                                    fontSize: 20 * scale,
-                                    lineHeight: `${24 * scale}px`,
-                                    fontWeight: 600,
-                                    color: og.colors.mutedWhite64,
-                                    fontFamily: FONT_FAMILY.mono,
-                                  }}
-                                >
-                                  and more...
-                                </div>
-                              </div>
-                            );
-                          }
+                      {legs.map((leg, idx) => {
                           // Split text into words so badge flows inline
                           const words = leg.text.split(' ');
                           return (
@@ -245,14 +218,14 @@ export async function GET(req: Request) {
                                   key={wordIdx}
                                   style={{
                                     display: 'flex',
-                                    fontSize: 32 * scale,
-                                    lineHeight: `${40 * scale}px`,
+                                    fontSize: (compact ? 24 : 32) * scale,
+                                    lineHeight: `${(compact ? 30 : 40) * scale}px`,
                                     fontWeight: 600,
                                     letterSpacing: -0.16 * scale,
                                     color: og.colors.brandWhite,
                                     fontFamily: FONT_FAMILY.mono,
-                                    marginRight: 12 * scale,
-                                    marginBottom: 6 * scale,
+                                    marginRight: (compact ? 8 : 12) * scale,
+                                    marginBottom: (compact ? 4 : 6) * scale,
                                   }}
                                 >
                                   {word}
@@ -262,6 +235,7 @@ export async function GET(req: Request) {
                                 text={leg.choice}
                                 tone={leg.tone}
                                 scale={scale}
+                                compact={compact}
                               />
                             </div>
                           );
