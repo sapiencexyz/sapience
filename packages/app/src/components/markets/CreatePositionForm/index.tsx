@@ -34,10 +34,14 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  COLLATERAL_SYMBOLS,
+  ANON_QUOTER_BOT_ADDRESS,
+} from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits, parseUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { createWagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
@@ -68,12 +72,6 @@ import {
   useCollateralBalanceContext,
 } from '~/lib/context/CollateralBalanceContext';
 import type { PythPrediction } from '@sapience/ui';
-
-// Trusted bot address for anonymous user quotes
-// Anonymous users (no wallet) only see quotes from this bot for security/UX
-const TRUSTED_QUOTER_BOT_ADDRESS =
-  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
@@ -237,11 +235,11 @@ const CreatePositionFormInner = ({
 
     // For anonymous users (zero address taker), skip validation entirely
     // Only show quotes from our trusted bot - they're just viewing odds, not executing
-    const isAnonymousUser = taker?.toLowerCase() === ZERO_ADDRESS;
+    const isAnonymousUser = taker?.toLowerCase() === zeroAddress;
     if (isAnonymousUser) {
       // Filter to only trusted bot quotes and mark as valid (no simulation needed)
       const trustedBotBids = rawBids.filter(
-        (b) => b.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+        (b) => b.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
       );
       logPositionForm(
         `Anonymous user: showing ${trustedBotBids.length} quote(s) from trusted bot (skipping validation)`

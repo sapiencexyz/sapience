@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import type { IncomingMessage } from 'http';
 import { verifyMessage, type Abi } from 'viem';
 import { getProviderForChain } from './utils/getProviderForChain';
-import { addBid, getBids, upsertAuction, getAuction } from './registry';
+import { addBidWithVerification, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
 import {
   activeConnections,
@@ -816,16 +816,16 @@ export function createAuctionWebSocketServer() {
           trackDuration(msgType, startTime);
           return;
         }
-        const validated = await addBid(bid.auctionId, bid);
+        const validated = await addBidWithVerification(bid.auctionId, bid);
         if (!validated) {
           bidsSubmitted.inc({ status: 'error' });
           errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
           send(ws, {
             type: 'bid.ack',
-            payload: { error: 'auction_not_found_or_invalid_signature' },
+            payload: { error: 'auction_not_found_or_expired' },
           });
           console.warn(
-            `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_invalid_signature`
+            `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
           );
           return;
         }

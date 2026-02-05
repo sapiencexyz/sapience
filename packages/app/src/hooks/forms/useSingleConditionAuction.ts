@@ -1,17 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { predictionMarketAbi, ANON_QUOTER_BOT_ADDRESS } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
-
-// Trusted bot address for anonymous user quotes
-// Anonymous users (no wallet) only see quotes from this bot for security/UX
-const TRUSTED_QUOTER_BOT_ADDRESS =
-  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
 
 interface UseSingleConditionAuctionProps {
   /** The condition ID to bet on */
@@ -74,13 +69,9 @@ export function useSingleConditionAuction({
     null
   );
 
-  // Use zero address as guest taker when not connected
-  const guestTakerAddress: `0x${string}` =
-    '0x0000000000000000000000000000000000000000';
-
-  // Use effectiveAddress from session context, falling back to guest address
+  // Use effectiveAddress from session context, falling back to zero address for guests
   const selectedTakerAddress =
-    effectiveAddress ?? takerAddress ?? guestTakerAddress;
+    effectiveAddress ?? takerAddress ?? zeroAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
@@ -105,12 +96,13 @@ export function useSingleConditionAuction({
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const isAnonymousUser = selectedTakerAddress === guestTakerAddress;
+    const isAnonymousUser = selectedTakerAddress === zeroAddress;
 
     // For anonymous users, filter to only trusted bot bids
     const filteredBids = isAnonymousUser
       ? bids.filter(
-          (bid) => bid.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+          (bid) =>
+            bid.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
         )
       : bids;
 
@@ -162,10 +154,7 @@ export function useSingleConditionAuction({
       if (!selectedTakerAddress) return;
       if (!conditionId || prediction === null) return;
       // Wait for nonce if using a real address (not guest)
-      if (
-        selectedTakerAddress !== guestTakerAddress &&
-        takerNonce === undefined
-      )
+      if (selectedTakerAddress !== zeroAddress && takerNonce === undefined)
         return;
 
       const wagerStr = wagerAmount || '0';

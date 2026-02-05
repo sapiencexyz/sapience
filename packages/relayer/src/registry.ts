@@ -1,3 +1,4 @@
+import { zeroAddress } from 'viem';
 import { BidPayload, ValidatedBid, AuctionRequestPayload } from './types';
 import { verifyMakerBid } from './helpers';
 import {
@@ -33,14 +34,14 @@ export function getAuction(auctionId: string): AuctionRecord | undefined {
   return rec;
 }
 
-export async function addBid(
+export function addBid(
   auctionId: string,
   bid: BidPayload
-): Promise<ValidatedBid | undefined> {
+): ValidatedBid | undefined {
   const rec = getAuction(auctionId);
   if (!rec) return undefined;
 
-  // Validate passed-in fields and signature format
+  // Validate passed-in fields and signature
   const verification = verifyMakerBid({
     auctionId,
     maker: bid.maker,
@@ -50,8 +51,44 @@ export async function addBid(
   });
   if (!verification.ok) return undefined;
 
-  // Cryptographic signature verification: ensure signature matches claimed maker
+  const validated: ValidatedBid = { ...bid };
+  rec.bids.push(validated);
+  rec.deadlineMs = Math.max(rec.deadlineMs, bid.makerDeadline * 1000);
+  // Keep all bids - UI will select the best one
+  auctions.set(auctionId, rec);
+  return validated;
+}
+
+/**
+ * Add a bid with cryptographic signature verification for anonymous (zero-address) auctions.
+ * This prevents spoofing of maker addresses when displaying quotes to anonymous users.
+ * For non-anonymous auctions, falls back to regular addBid (no signature verification).
+ */
+export async function addBidWithVerification(
+  auctionId: string,
+  bid: BidPayload
+): Promise<ValidatedBid | undefined> {
+  const rec = getAuction(auctionId);
+  if (!rec) return undefined;
+
   const auction = rec.auction;
+  const isAnonymousAuction = auction.taker.toLowerCase() === zeroAddress;
+
+  // For non-anonymous auctions, use the original addBid (no signature verification needed)
+  if (!isAnonymousAuction) {
+    return addBid(auctionId, bid);
+  }
+
+  // For anonymous auctions, verify signature 
+  const verification = verifyMakerBid({
+    auctionId,
+    maker: bid.maker,
+    makerWager: bid.makerWager,
+    makerDeadline: bid.makerDeadline,
+    makerSignature: bid.makerSignature,
+  });
+  if (!verification.ok) return undefined;
+
   const auctionForSig: AuctionStartLike = {
     wager: auction.wager,
     predictedOutcomes: auction.predictedOutcomes as `0x${string}`[],
@@ -59,7 +96,6 @@ export async function addBid(
     taker: auction.taker as `0x${string}`,
   };
 
-  // Note: The signature uses takerNonce (from auction) to bind the bid to a specific request
   const sigVerification = await verifyMakerBidSignature({
     auction: auctionForSig,
     bid: {
@@ -74,7 +110,7 @@ export async function addBid(
 
   if (!sigVerification.valid) {
     console.warn(
-      `[Registry] Bid signature verification failed for auction=${auctionId} maker=${bid.maker}: ${sigVerification.error}`
+      `[Registry] Bid signature verification failed for anonymous auction=${auctionId} maker=${bid.maker}: ${sigVerification.error}`
     );
     return undefined;
   }
@@ -82,7 +118,6 @@ export async function addBid(
   const validated: ValidatedBid = { ...bid };
   rec.bids.push(validated);
   rec.deadlineMs = Math.max(rec.deadlineMs, bid.makerDeadline * 1000);
-  // Keep all bids - UI will select the best one
   auctions.set(auctionId, rec);
   return validated;
 }

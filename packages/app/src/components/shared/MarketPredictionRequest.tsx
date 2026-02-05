@@ -2,22 +2,21 @@
 
 import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
+  ANON_QUOTER_BOT_ADDRESS,
+} from '@sapience/sdk/constants';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
 import {
   buildAuctionStartPayload,
   type PredictedOutcomeInputStub,
 } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
-
-// Trusted bot address for anonymous user quotes
-// Anonymous users (no wallet) only see quotes from this bot for security/UX
-const TRUSTED_QUOTER_BOT_ADDRESS =
-  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
 
 const FADE_VARIANTS = {
   hidden: { opacity: 0 },
@@ -104,8 +103,6 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
-  const ZERO_ADDRESS =
-    '0x0000000000000000000000000000000000000000' as `0x${string}`;
 
   const eagerlyRequestedRef = React.useRef<boolean>(false);
   const eagerJitterMsRef = React.useRef<number>(
@@ -147,7 +144,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   }, [eager, skipViewportCheck]);
 
   // Prefer connected wallet address; fall back to zero address
-  const selectedTakerAddress = takerAddress || ZERO_ADDRESS;
+  const selectedTakerAddress = takerAddress || zeroAddress;
 
   // If we have a prefetched probability (e.g., fetched offscreen), set it and
   // skip further requests.
@@ -174,12 +171,13 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!bids || bids.length === 0) return;
     try {
       const nowMs = Date.now();
-      const isAnonymousUser = selectedTakerAddress === ZERO_ADDRESS;
+      const isAnonymousUser = selectedTakerAddress === zeroAddress;
 
       // For anonymous users, only consider bids from our trusted bot
       const filteredBids = isAnonymousUser
         ? bids.filter(
-            (b) => b.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+            (b) =>
+              b.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
           )
         : bids;
 
