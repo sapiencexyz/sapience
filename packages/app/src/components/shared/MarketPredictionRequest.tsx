@@ -11,7 +11,8 @@ import {
   CHAIN_ID_ETHEREAL,
   ANON_QUOTER_BOT_ADDRESS,
 } from '@sapience/sdk/constants';
-import { useAuctionStart } from '~/lib/auction/useAuctionStart';
+import { verifyMakerBidSignature } from '@sapience/sdk';
+import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
   buildAuctionStartPayload,
   type PredictedOutcomeInputStub,
@@ -95,6 +96,15 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     string | null
   >(null);
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
+  // Store auction params for signature verification
+  const [lastAuctionParams, setLastAuctionParams] = React.useState<{
+    wager: string;
+    predictedOutcomes: string[];
+    resolver: string;
+    taker: string;
+    takerNonce: number;
+    chainId: number;
+  } | null>(null);
 
   const { address: takerAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
@@ -169,51 +179,94 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   React.useEffect(() => {
     if (!isRequesting) return;
     if (!bids || bids.length === 0) return;
-    try {
-      const nowMs = Date.now();
-      const isAnonymousUser = selectedTakerAddress === zeroAddress;
 
-      // For anonymous users, only consider bids from our trusted bot
-      const filteredBids = isAnonymousUser
-        ? bids.filter(
+    const processBids = async () => {
+      try {
+        const nowMs = Date.now();
+        const isAnonymousUser = selectedTakerAddress === zeroAddress;
+
+        let filteredBids: QuoteBid[];
+
+        if (isAnonymousUser) {
+          // For anonymous users, verify signatures from trusted bot
+          if (!lastAuctionParams) return;
+
+          const trustedBotBids = bids.filter(
             (b) =>
               b.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
-          )
-        : bids;
+          );
 
-      if (filteredBids.length === 0) return;
-
-      const valid = filteredBids.filter((b) => {
-        try {
-          const dl = Number(b?.makerDeadline || 0);
-          return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
-        } catch {
-          return true;
+          // Verify each bid's signature
+          const verifiedBids: QuoteBid[] = [];
+          for (const bid of trustedBotBids) {
+            try {
+              const result = await verifyMakerBidSignature({
+                auction: {
+                  wager: lastAuctionParams.wager,
+                  predictedOutcomes:
+                    lastAuctionParams.predictedOutcomes as `0x${string}`[],
+                  resolver: lastAuctionParams.resolver as `0x${string}`,
+                  taker: lastAuctionParams.taker as `0x${string}`,
+                },
+                bid: {
+                  maker: bid.maker as `0x${string}`,
+                  makerWager: bid.makerWager,
+                  makerDeadline: bid.makerDeadline,
+                  makerSignature: bid.makerSignature as `0x${string}`,
+                  makerNonce: lastAuctionParams.takerNonce,
+                },
+                chainId: lastAuctionParams.chainId,
+              });
+              if (result.valid) {
+                verifiedBids.push(bid);
+              }
+            } catch {
+              // Skip bids that fail verification
+            }
+          }
+          filteredBids = verifiedBids;
+        } else {
+          filteredBids = bids;
         }
-      });
-      const list = valid.length > 0 ? valid : filteredBids;
-      const best = list.reduce((best, cur) => {
-        try {
-          return BigInt(cur.makerWager) > BigInt(best.makerWager) ? cur : best;
-        } catch {
-          return best;
-        }
-      }, list[0]);
 
-      const taker = BigInt(String(lastTakerWagerWei || '0'));
-      const maker = BigInt(String(best?.makerWager || '0'));
-      const denom = maker + taker;
-      const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
-      const clamped = Math.max(0, Math.min(0.99, prob));
-      setRequestedPrediction(clamped);
-      onPredictionRef.current?.(clamped);
-    } catch {
-      setRequestedPrediction(0.5);
-      onPredictionRef.current?.(0.5);
-    } finally {
-      setIsRequesting(false);
-    }
-  }, [bids, isRequesting, lastTakerWagerWei, selectedTakerAddress]);
+        if (filteredBids.length === 0) return;
+
+        const valid = filteredBids.filter((b) => {
+          try {
+            const dl = Number(b?.makerDeadline || 0);
+            return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
+          } catch {
+            return true;
+          }
+        });
+        const list = valid.length > 0 ? valid : filteredBids;
+        const best = list.reduce((bestBid, cur) => {
+          try {
+            return BigInt(cur.makerWager) > BigInt(bestBid.makerWager)
+              ? cur
+              : bestBid;
+          } catch {
+            return bestBid;
+          }
+        }, list[0]);
+
+        const taker = BigInt(String(lastTakerWagerWei || '0'));
+        const maker = BigInt(String(best?.makerWager || '0'));
+        const denom = maker + taker;
+        const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
+        const clamped = Math.max(0, Math.min(0.99, prob));
+        setRequestedPrediction(clamped);
+        onPredictionRef.current?.(clamped);
+      } catch {
+        setRequestedPrediction(0.5);
+        onPredictionRef.current?.(0.5);
+      } finally {
+        setIsRequesting(false);
+      }
+    };
+
+    processBids();
+  }, [bids, isRequesting, lastTakerWagerWei, selectedTakerAddress, lastAuctionParams]);
 
   // Fallback: if no bids arrive within a reasonable time window, stop requesting
   React.useEffect(() => {
@@ -242,18 +295,17 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       const wagerWei = parseUnits('1', 18).toString();
       setLastTakerWagerWei(wagerWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+      const auctionParams = {
+        wager: wagerWei,
+        resolver: payload.resolver,
+        predictedOutcomes: payload.predictedOutcomes,
+        taker: selectedTakerAddress,
+        takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+        chainId: chainId,
+      };
+      setLastAuctionParams(auctionParams);
       const send = () => {
-        requestQuotes(
-          {
-            wager: wagerWei,
-            resolver: payload.resolver,
-            predictedOutcomes: payload.predictedOutcomes,
-            taker: selectedTakerAddress,
-            takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
-            chainId: chainId,
-          },
-          { requireSignature: false }
-        );
+        requestQuotes(auctionParams, { requireSignature: false });
         setQueuedRequest(false);
       };
       // Add a small jitter to reduce simultaneous opens across instances
@@ -286,18 +338,17 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const wagerWei = parseUnits('1', 18).toString();
         setLastTakerWagerWei(wagerWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+        const auctionParams = {
+          wager: wagerWei,
+          resolver: payload.resolver,
+          predictedOutcomes: payload.predictedOutcomes,
+          taker: selectedTakerAddress,
+          takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+          chainId: chainId,
+        };
+        setLastAuctionParams(auctionParams);
         const send = () => {
-          requestQuotes(
-            {
-              wager: wagerWei,
-              resolver: payload.resolver,
-              predictedOutcomes: payload.predictedOutcomes,
-              taker: selectedTakerAddress,
-              takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
-              chainId: chainId,
-            },
-            { requireSignature: false }
-          );
+          requestQuotes(auctionParams, { requireSignature: false });
         };
         // Jitter send to avoid concurrency clobbering
         const jitter = eager ? eagerJitterMsRef.current : 0;

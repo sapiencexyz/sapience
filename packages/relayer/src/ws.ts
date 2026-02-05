@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import type { IncomingMessage } from 'http';
 import { verifyMessage, type Abi } from 'viem';
 import { getProviderForChain } from './utils/getProviderForChain';
-import { addBidWithVerification, getBids, upsertAuction, getAuction } from './registry';
+import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
 import {
   activeConnections,
@@ -816,7 +816,7 @@ export function createAuctionWebSocketServer() {
           trackDuration(msgType, startTime);
           return;
         }
-        const validated = await addBidWithVerification(bid.auctionId, bid);
+        const validated = addBid(bid.auctionId, bid);
         if (!validated) {
           bidsSubmitted.inc({ status: 'error' });
           errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
