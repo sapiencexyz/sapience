@@ -109,6 +109,19 @@ export async function validateBidsAsync(
       const makerAddress = bid.maker as `0x${string}`;
       const makerWagerWei = BigInt(bid.makerWager);
 
+      // For SmartAccount counterparties (with session key data), skip balance/allowance validation.
+      // They will wrap native USDe and approve in the batched UserOp at mint time.
+      if (bid.counterpartySessionKeyData) {
+        console.log(
+          `[Bid] SmartAccount counterparty ${makerAddress.slice(0, 8)}... - skipping balance/allowance check (will wrap at mint)`
+        );
+        return {
+          ...bid,
+          validationStatus: 'valid' as const,
+          validationError: undefined,
+        };
+      }
+
       try {
         const [makerAllowance, makerBalance] = await Promise.all([
           publicClient.readContract({
@@ -129,7 +142,7 @@ export async function validateBidsAsync(
         const hasBalance = makerBalance >= makerWagerWei;
 
         console.log(
-          `[Bid] Validating ${makerAddress.slice(0, 8)}... - balance: ${hasBalance ? 'ok' : 'fail'}, allowance: ${hasAllowance ? 'ok' : 'fail'}`
+          `[Bid] Validating ${makerAddress.slice(0, 8)}... - balance: ${hasBalance ? 'ok' : 'fail'} (${makerBalance}/${makerWagerWei}), allowance: ${hasAllowance ? 'ok' : 'fail'} (${makerAllowance}/${makerWagerWei})`
         );
 
         if (!hasBalance) {
