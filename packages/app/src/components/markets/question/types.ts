@@ -23,6 +23,8 @@ export type PredictionData = {
   comment?: string; // Optional comment text from forecast
   attester?: string; // Forecaster's address
   predictionPercent?: number; // Prediction as percentage (0-100)
+  marketAddress?: string; // Market contract address for position link
+  nftTokenId?: string; // NFT token ID for position link
 };
 
 // Type for forecast data used in scatter plot
