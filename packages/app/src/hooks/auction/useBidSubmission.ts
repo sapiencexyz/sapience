@@ -26,9 +26,7 @@ import { erc20Abi, encodeFunctionData, parseAbi } from 'viem';
 
 // wUSDe ABI for deposit function (wraps native USDe to wUSDe)
 const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
-import { buildCounterpartyMintTypedData, computePredictionHash, hashMintApproval } from '@sapience/sdk/auction/v2Signing';
-import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
-import { recoverTypedDataAddress } from 'viem';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
 import type { OutcomeSide } from '@sapience/sdk';
 import { type Pick as V2Pick } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -261,14 +259,6 @@ export function useBidSubmission(
             const needsMoreWusde = wusdeBalance < makerWager;
             const needsMoreAllowance = wusdeAllowance < makerWager;
 
-            console.log('[V2 Bid] Counterparty fund check:', {
-              wusdeBalance: wusdeBalance.toString(),
-              wusdeAllowance: wusdeAllowance.toString(),
-              required: makerWager.toString(),
-              needsMoreWusde,
-              needsMoreAllowance,
-            });
-
             if (needsMoreWusde || needsMoreAllowance) {
               // Check native USDe balance for potential wrapping
               const nativeUsdeBalance = await publicClient.getBalance({
@@ -278,12 +268,6 @@ export function useBidSubmission(
               // Also check if there's depositable USDe token (not native ETH-like)
               // wUSDe.deposit() wraps native USDe sent as msg.value
               const wrapAmount = needsMoreWusde ? makerWager - wusdeBalance : 0n;
-
-              console.log('[V2 Bid] Need to prepare funds:', {
-                nativeUsdeBalance: nativeUsdeBalance.toString(),
-                wrapAmount: wrapAmount.toString(),
-                needsMoreAllowance,
-              });
 
               if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
                 return {
@@ -321,20 +305,16 @@ export function useBidSubmission(
               }
 
               if (calls.length > 0) {
-                console.log('[V2 Bid] Executing fund preparation via session:', calls.length, 'calls');
-
                 try {
                   // Execute wrap + approve via session key
                   const userOpHash = await chainClients.ethereal.sendUserOperation({
                     calls,
                   });
-                  console.log('[V2 Bid] Fund preparation UserOp submitted:', userOpHash);
 
                   // Wait for the UserOp to be included
                   const receipt = await chainClients.ethereal.waitForUserOperationReceipt({
                     hash: userOpHash,
                   });
-                  console.log('[V2 Bid] Fund preparation confirmed:', receipt.success ? 'success' : 'failed');
 
                   if (!receipt.success) {
                     return {
@@ -401,32 +381,6 @@ export function useBidSubmission(
           chainId,
         });
 
-        // DEBUG: Log the exact values being signed for V2 bid
-        const debugPickConfigId = computePickConfigId(picks);
-        const debugPredictionHash = computePredictionHash(
-          debugPickConfigId,
-          takerWager,
-          makerWager,
-          taker,
-          signerAddress
-        );
-        console.log('[V2 Bid Signing] Values being signed:');
-        console.log('  picks:', picks.map(p => ({
-          resolver: p.conditionResolver,
-          conditionId: p.conditionId.slice(0, 10) + '...',
-          outcome: p.predictedOutcome,
-        })));
-        console.log('  pickConfigId:', debugPickConfigId);
-        console.log('  predictorWager:', takerWager.toString());
-        console.log('  counterpartyWager:', makerWager.toString());
-        console.log('  predictor:', taker);
-        console.log('  counterparty:', signerAddress);
-        console.log('  predictionHash:', debugPredictionHash);
-        console.log('  counterpartyNonce:', counterpartyNonce.toString());
-        console.log('  counterpartyDeadline:', makerDeadline);
-        console.log('  chainId:', chainId);
-        console.log('  verifyingContract:', verifyingContract);
-
         try {
           // Use session key signing if session is active, otherwise use wallet
           if (isUsingSession && sessionSignTypedData) {
@@ -449,46 +403,6 @@ export function useBidSubmission(
               primaryType: typedData.primaryType,
               message: typedData.message,
             });
-          }
-
-          // DEBUG: Compute the EIP-712 hash and verify signature locally
-          const eip712Hash = hashMintApproval({
-            predictionHash: debugPredictionHash,
-            signer: signerAddress,
-            wager: makerWager,
-            nonce: counterpartyNonce,
-            deadline: BigInt(makerDeadline),
-            verifyingContract: verifyingContract,
-            chainId,
-          });
-          console.log('[V2 Bid Signing] EIP-712 hash (SDK):', eip712Hash);
-          console.log('[V2 Bid Signing] Signature:', makerSignature);
-
-          // Verify signature locally using viem
-          try {
-            const recoveredAddress = await recoverTypedDataAddress({
-              domain: {
-                name: 'PredictionMarketEscrow',
-                version: '1',
-                chainId: BigInt(chainId),
-                verifyingContract: verifyingContract,
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message,
-              signature: makerSignature,
-            });
-            // When using session key, the signer is the session key, not the SmartAccount
-            const expectedSigner = isUsingSession && v2SessionKeyApproval
-              ? v2SessionKeyApproval.sessionKey
-              : signerAddress;
-            console.log('[V2 Bid Signing] Local signature verification:');
-            console.log('  Recovered address:', recoveredAddress);
-            console.log('  Expected signer:', expectedSigner, isUsingSession ? '(session key)' : '(EOA/SmartAccount)');
-            console.log('  SmartAccount:', signerAddress);
-            console.log('  Match:', recoveredAddress.toLowerCase() === expectedSigner.toLowerCase() ? 'YES' : 'NO');
-          } catch (verifyError) {
-            console.error('[V2 Bid Signing] Local verification failed:', verifyError);
           }
         } catch (e: any) {
           const error =
@@ -593,7 +507,6 @@ export function useBidSubmission(
           counterpartySignature: makerSignature,
           ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
         };
-        console.log('[V2 Bid] Submitting with counterpartySessionKeyData:', counterpartySessionKeyData ? 'included' : 'not included (EOA)');
         client.send({ type: 'v2.bid.submit', payload: v2Payload });
       } else {
         // V1 bid payload

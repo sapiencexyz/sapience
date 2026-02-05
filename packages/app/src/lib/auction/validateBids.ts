@@ -132,10 +132,6 @@ export async function validateBidsAsync(
         const hasAllowance = makerAllowance >= makerWagerWei;
         const hasBalance = makerBalance >= makerWagerWei;
 
-        console.log(
-          `[Bid] Validating ${makerAddress.slice(0, 8)}... - balance: ${hasBalance ? 'ok' : 'fail'} (${makerBalance}/${makerWagerWei}), allowance: ${hasAllowance ? 'ok' : 'fail'} (${makerAllowance}/${makerWagerWei})`
-        );
-
         if (!hasBalance) {
           return {
             ...bid,
