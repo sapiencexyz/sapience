@@ -197,9 +197,24 @@ export function useAuctionStart() {
             ? (data.payload.bids as any[])
             : [];
 
+          console.log('[useAuctionStart] Received v2.auction.bids:', {
+            targetAuctionId,
+            latestAuctionId: latestAuctionIdRef.current,
+            bidCount: rawBids.length,
+            rawBids: rawBids.map((b: any) => ({
+              counterparty: b.counterparty?.slice(0, 10),
+              counterpartyWager: b.counterpartyWager,
+              hasSessionKeyData: !!b.counterpartySessionKeyData,
+            })),
+          });
+
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
+            console.log('[useAuctionStart] Ignoring bids for different auction:', {
+              targetAuctionId,
+              latestAuctionId: latestAuctionIdRef.current,
+            });
             return;
           }
 
@@ -229,6 +244,14 @@ export function useAuctionStart() {
               }
             })
             .filter((b): b is QuoteBid => b !== null);
+          console.log('[useAuctionStart] Setting V2 bids:', {
+            count: normalized.length,
+            bids: normalized.map(b => ({
+              maker: b.maker?.slice(0, 10),
+              makerWager: b.makerWager,
+              hasSessionKeyData: !!b.counterpartySessionKeyData,
+            })),
+          });
           setBids(normalized);
         }
 
