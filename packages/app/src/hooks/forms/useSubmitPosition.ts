@@ -886,7 +886,7 @@ export function useSubmitPosition({
             counterpartySignature,
             refCode: mintData.refCode,
             predictorSessionKeyData,
-            counterpartySessionKeyData: '0x' as `0x${string}`,
+            counterpartySessionKeyData: (mintData.counterpartySessionKeyData || '0x') as `0x${string}`,
           };
 
           console.log('[V2 Submit] Full MintRequest:', {
@@ -903,6 +903,8 @@ export function useSubmitPosition({
             counterpartySignatureLength: mintRequest.counterpartySignature.length,
             refCode: mintRequest.refCode,
             predictorSessionKeyDataLength: mintRequest.predictorSessionKeyData.length,
+            counterpartySessionKeyDataLength: mintRequest.counterpartySessionKeyData.length,
+            counterpartyIsSmartAccount: mintRequest.counterpartySessionKeyData.length > 2,
           });
 
           // DEBUG: Verify counterparty signature locally before submitting

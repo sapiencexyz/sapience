@@ -27,6 +27,7 @@ import { recoverTypedDataAddress } from 'viem';
 import { type Pick as V2Pick, OutcomeSide } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
@@ -107,7 +108,7 @@ export function useBidSubmission(
   // TODO: Get chainId from context/props when supporting multiple chains
   const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession } = useSession();
+  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval } = useSession();
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -441,6 +442,11 @@ export function useBidSubmission(
 
       if (useV2Protocol) {
         // V2 bid payload - uses V2 terminology (counterparty = bidder)
+        // Include session key data if bidder is using session key signing
+        const counterpartySessionKeyData = (isUsingSession && v2SessionKeyApproval)
+          ? encodeV2SessionKeyData(v2SessionKeyApproval)
+          : undefined;
+
         const v2Payload = {
           auctionId,
           counterparty: signerAddress,
@@ -448,7 +454,9 @@ export function useBidSubmission(
           counterpartyNonce: Number(v2Nonce ?? 0n),
           counterpartyDeadline: makerDeadline,
           counterpartySignature: makerSignature,
+          ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
         };
+        console.log('[V2 Bid] Submitting with counterpartySessionKeyData:', counterpartySessionKeyData ? 'included' : 'not included (EOA)');
         client.send({ type: 'v2.bid.submit', payload: v2Payload });
       } else {
         // V1 bid payload
