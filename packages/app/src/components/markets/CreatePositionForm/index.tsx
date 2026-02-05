@@ -204,7 +204,6 @@ const CreatePositionFormInner = ({
 
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
-  // For anonymous users (zero address taker), skip validation and only show trusted bot quotes
   useEffect(() => {
     if (rawBids.length === 0) {
       setBids([]);
