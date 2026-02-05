@@ -19,12 +19,17 @@ import {
 import {
   predictionMarket,
   predictionMarketEscrow,
+  collateralToken as collateralTokenAddresses,
 } from '@sapience/sdk/contracts';
+import { collateralTokenAbi } from '@sapience/sdk/abis';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { erc20Abi, encodeFunctionData } from 'viem';
 import { buildCounterpartyMintTypedData, computePredictionHash, hashMintApproval } from '@sapience/sdk/auction/v2Signing';
 import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
 import { recoverTypedDataAddress } from 'viem';
-import { type Pick as V2Pick, OutcomeSide } from '@sapience/sdk';
+import type { OutcomeSide } from '@sapience/sdk';
+import { type Pick as V2Pick } from '@sapience/sdk';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
@@ -108,7 +113,10 @@ export function useBidSubmission(
   // TODO: Get chainId from context/props when supporting multiple chains
   const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval } = useSession();
+  const { effectiveAddress, signTypedData: sessionSignTypedData, isUsingSession, v2SessionKeyApproval, chainClients } = useSession();
+
+  // Get wUSDe contract address for the chain
+  const wusdeAddress = collateralTokenAddresses[chainId]?.address as Address | undefined;
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -225,6 +233,129 @@ export function useBidSubmission(
       let makerSignature: `0x${string}`;
 
       if (useV2Protocol) {
+        // V2: SmartAccount counterparties need wUSDe pre-funded before mint
+        // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
+        if (isUsingSession && wusdeAddress && chainClients) {
+          const escrowAddress = verifyingContract;
+          const publicClient = getPublicClientForChainId(chainId);
+
+          try {
+            // Check counterparty's current wUSDe state
+            const [wusdeBalance, wusdeAllowance] = await Promise.all([
+              publicClient.readContract({
+                address: wusdeAddress,
+                abi: erc20Abi,
+                functionName: 'balanceOf',
+                args: [signerAddress],
+              }),
+              publicClient.readContract({
+                address: wusdeAddress,
+                abi: erc20Abi,
+                functionName: 'allowance',
+                args: [signerAddress, escrowAddress],
+              }),
+            ]);
+
+            const needsMoreWusde = wusdeBalance < makerWager;
+            const needsMoreAllowance = wusdeAllowance < makerWager;
+
+            console.log('[V2 Bid] Counterparty fund check:', {
+              wusdeBalance: wusdeBalance.toString(),
+              wusdeAllowance: wusdeAllowance.toString(),
+              required: makerWager.toString(),
+              needsMoreWusde,
+              needsMoreAllowance,
+            });
+
+            if (needsMoreWusde || needsMoreAllowance) {
+              // Check native USDe balance for potential wrapping
+              const nativeUsdeBalance = await publicClient.getBalance({
+                address: signerAddress,
+              });
+
+              // Also check if there's depositable USDe token (not native ETH-like)
+              // wUSDe.deposit() wraps native USDe sent as msg.value
+              const wrapAmount = needsMoreWusde ? makerWager - wusdeBalance : 0n;
+
+              console.log('[V2 Bid] Need to prepare funds:', {
+                nativeUsdeBalance: nativeUsdeBalance.toString(),
+                wrapAmount: wrapAmount.toString(),
+                needsMoreAllowance,
+              });
+
+              if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
+                return {
+                  success: false,
+                  error: `Insufficient USDe in SmartAccount. Need ${formatAmount(wrapAmount)} more USDe. Please transfer from your wallet.`,
+                };
+              }
+
+              // Build calls for wrap and/or approve
+              const calls: Array<{ to: Address; data: `0x${string}`; value: bigint }> = [];
+
+              if (wrapAmount > 0n) {
+                // Wrap native USDe to wUSDe via deposit()
+                calls.push({
+                  to: wusdeAddress,
+                  data: encodeFunctionData({
+                    abi: collateralTokenAbi,
+                    functionName: 'deposit',
+                    args: [],
+                  }),
+                  value: wrapAmount,
+                });
+              }
+
+              if (needsMoreAllowance) {
+                // Approve escrow to spend wUSDe
+                calls.push({
+                  to: wusdeAddress,
+                  data: encodeFunctionData({
+                    abi: erc20Abi,
+                    functionName: 'approve',
+                    args: [escrowAddress, makerWager],
+                  }),
+                  value: 0n,
+                });
+              }
+
+              if (calls.length > 0) {
+                console.log('[V2 Bid] Executing fund preparation via session:', calls.length, 'calls');
+
+                try {
+                  // Execute wrap + approve via session key
+                  const userOpHash = await chainClients.ethereal.sendUserOperation({
+                    calls,
+                  });
+                  console.log('[V2 Bid] Fund preparation UserOp submitted:', userOpHash);
+
+                  // Wait for the UserOp to be included
+                  const receipt = await chainClients.ethereal.waitForUserOperationReceipt({
+                    hash: userOpHash,
+                  });
+                  console.log('[V2 Bid] Fund preparation confirmed:', receipt.success ? 'success' : 'failed');
+
+                  if (!receipt.success) {
+                    return {
+                      success: false,
+                      error: 'Failed to prepare funds for bid. Please try again.',
+                    };
+                  }
+                } catch (prepError) {
+                  console.error('[V2 Bid] Fund preparation failed:', prepError);
+                  return {
+                    success: false,
+                    error: `Failed to prepare funds: ${prepError instanceof Error ? prepError.message : String(prepError)}`,
+                  };
+                }
+              }
+            }
+          } catch (checkError) {
+            console.warn('[V2 Bid] Failed to check counterparty funds:', checkError);
+            // Continue with bid - validation will catch issues later
+          }
+        }
+
         // V2 signing: Use MintApproval typed data
         // Use provided v2Picks directly if available, otherwise decode from predictedOutcomes
         let picks: V2Pick[];
@@ -322,7 +453,7 @@ export function useBidSubmission(
           // DEBUG: Compute the EIP-712 hash and verify signature locally
           const eip712Hash = hashMintApproval({
             predictionHash: debugPredictionHash,
-            signer: signerAddress as `0x${string}`,
+            signer: signerAddress,
             wager: makerWager,
             nonce: counterpartyNonce,
             deadline: BigInt(makerDeadline),
@@ -497,6 +628,10 @@ export function useBidSubmission(
       v2Nonce,
       isUsingSession,
       sessionSignTypedData,
+      v2SessionKeyApproval,
+      chainClients,
+      wusdeAddress,
+      formatAmount,
     ]
   );
 

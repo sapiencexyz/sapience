@@ -109,18 +109,9 @@ export async function validateBidsAsync(
       const makerAddress = bid.maker as `0x${string}`;
       const makerWagerWei = BigInt(bid.makerWager);
 
-      // For SmartAccount counterparties (with session key data), skip balance/allowance validation.
-      // They will wrap native USDe and approve in the batched UserOp at mint time.
-      if (bid.counterpartySessionKeyData) {
-        console.log(
-          `[Bid] SmartAccount counterparty ${makerAddress.slice(0, 8)}... - skipping balance/allowance check (will wrap at mint)`
-        );
-        return {
-          ...bid,
-          validationStatus: 'valid' as const,
-          validationError: undefined,
-        };
-      }
+      // NOTE: SmartAccount counterparties also need wUSDe pre-funded.
+      // The predictor's mint call does transferFrom(counterparty), so counterparty
+      // must have wUSDe balance + allowance ready BEFORE the mint happens.
 
       try {
         const [makerAllowance, makerBalance] = await Promise.all([
