@@ -8,7 +8,7 @@ These scripts deploy a passive liquidity vault that can act as counterparty in P
 
 ### Roles
 
-- **Owner**: DEPLOYER - owns the vault, can change settings
+- **Owner**: PM_NETWORK_DEPLOYER - owns the vault, can change settings
 - **Manager**: COUNTERPARTY wallet - signs approvals, processes deposits/withdrawals
 - **Depositor**: PREDICTOR wallet - deposits/withdraws from vault (for testing)
 
@@ -20,7 +20,7 @@ Required variables in `.env`:
 
 ```bash
 # Deployer (becomes vault owner)
-DEPLOYER_PRIVATE_KEY=0x...
+PM_NETWORK_DEPLOYER_PRIVATE_KEY=0x...
 
 # Manager (signs vault approvals, processes requests)
 COUNTERPARTY_PRIVATE_KEY=0x...
@@ -29,7 +29,7 @@ COUNTERPARTY_PRIVATE_KEY=0x...
 PREDICTOR_PRIVATE_KEY=0x...
 
 # Network (Ethereal testnet)
-RPC_URL=https://rpc.testnet.ethereal.trade
+PM_NETWORK_RPC_URL=https://rpc.testnet.ethereal.trade
 
 # Existing contracts
 COLLATERAL_TOKEN_ADDRESS=0x...  # WUSDe on testnet
@@ -46,9 +46,9 @@ Ensure accounts have WUSDe tokens. Test amounts should be small (< 0.01 WUSDe):
 
 ```bash
 # Mint WUSDe to deployer first, then distribute
-cast send $COLLATERAL_TOKEN_ADDRESS "mint(address,uint256)" $DEPLOYER_ADDRESS 1ether \
-  --private-key $DEPLOYER_PRIVATE_KEY \
-  --rpc-url $RPC_URL
+cast send $COLLATERAL_TOKEN_ADDRESS "mint(address,uint256)" $PM_NETWORK_DEPLOYER_ADDRESS 1ether \
+  --private-key $PM_NETWORK_DEPLOYER_PRIVATE_KEY \
+  --rpc-url $PM_NETWORK_RPC_URL
 ```
 
 ## Scripts
@@ -59,7 +59,7 @@ Deploys PredictionMarketVault with COUNTERPARTY as manager.
 
 ```bash
 forge script src/scripts/v2/testnet/vault/01_DeployVault.s.sol \
-  --rpc-url $RPC_URL \
+  --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
   --verify --verifier blockscout --verifier-url https://explorer.testnet.ethereal.trade/api/ \
   -vvvv
@@ -82,7 +82,7 @@ Tests the deposit and withdrawal flow:
 
 ```bash
 forge script src/scripts/v2/testnet/vault/02_TestDepositWithdrawal.s.sol \
-  --rpc-url $RPC_URL \
+  --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
   -vvvv
 ```
@@ -102,7 +102,7 @@ Tests the vault acting as counterparty in a PredictionMarketEscrow prediction:
 
 ```bash
 forge script src/scripts/v2/testnet/vault/03_TestVaultAsCounterparty.s.sol \
-  --rpc-url $RPC_URL \
+  --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
   -vvvv
 ```

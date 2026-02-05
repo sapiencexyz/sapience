@@ -11,7 +11,7 @@ import {
 /// @dev Deployer becomes owner, COUNTERPARTY wallet becomes manager
 contract DeployVault is Script {
     function run() external {
-        uint256 deployerPk = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        uint256 deployerPk = vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY");
         address deployer = vm.addr(deployerPk);
 
         // Manager is the COUNTERPARTY wallet (signs approvals, processes deposits/withdrawals)

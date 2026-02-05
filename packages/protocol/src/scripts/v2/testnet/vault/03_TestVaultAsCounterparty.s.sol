@@ -232,7 +232,7 @@ contract TestVaultAsCounterparty is Script {
     }
 
     function _loadActors() internal view returns (Actors memory actors) {
-        actors.deployerPk = vm.envUint("DEPLOYER_PRIVATE_KEY");
+        actors.deployerPk = vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY");
         actors.deployer = vm.addr(actors.deployerPk);
         actors.predictorPk = vm.envUint("PREDICTOR_PRIVATE_KEY");
         actors.predictor = vm.addr(actors.predictorPk);
