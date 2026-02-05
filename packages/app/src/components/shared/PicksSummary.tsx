@@ -205,20 +205,20 @@ export default function PicksSummary({
           <button
             type="button"
             onClick={onClick}
-            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
           >
             {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
           </button>
         ) : (
           <Link
             href={href}
-            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+            className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
           >
             {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
           </Link>
         )
       ) : (
-        <span className="text-lg font-mono font-semibold text-brand-white">
+        <span className="text-lg font-mono font-semibold text-brand-white whitespace-nowrap">
           {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
         </span>
       )}
