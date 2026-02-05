@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi, ANON_QUOTER_BOT_ADDRESS } from '@sapience/sdk';
+import { predictionMarketAbi } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
@@ -92,23 +92,10 @@ export function useSingleConditionAuction({
   }, []);
 
   // Find the best valid bid (not expired, highest payout)
-  // For anonymous users (zero address), only consider bids from our trusted bot
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const isAnonymousUser = selectedTakerAddress === zeroAddress;
-
-    // For anonymous users, filter to only trusted bot bids
-    const filteredBids = isAnonymousUser
-      ? bids.filter(
-          (bid) =>
-            bid.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
-        )
-      : bids;
-
-    const validBids = filteredBids.filter(
-      (bid) => bid.makerDeadline * 1000 > nowMs
-    );
+    const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
     // Parse user's wager to wei for payout calculation
@@ -138,7 +125,7 @@ export function useSingleConditionAuction({
 
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, wagerAmount, collateralDecimals, nowMs, selectedTakerAddress]);
+  }, [bids, wagerAmount, collateralDecimals, nowMs]);
 
   // Check if all bids have expired
   const allBidsExpired = bids.length > 0 && !bestBid;

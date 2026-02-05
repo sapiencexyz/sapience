@@ -34,14 +34,10 @@ import { z } from 'zod';
 
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  COLLATERAL_SYMBOLS,
-  ANON_QUOTER_BOT_ADDRESS,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits, parseUnits, zeroAddress } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { createWagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
@@ -232,26 +228,6 @@ const CreatePositionFormInner = ({
 
     const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
       currentAuctionParams;
-
-    // For anonymous users (zero address taker), skip validation entirely
-    // Only show quotes from our trusted bot - they're just viewing odds, not executing
-    const isAnonymousUser = taker?.toLowerCase() === zeroAddress;
-    if (isAnonymousUser) {
-      // Filter to only trusted bot quotes and mark as valid (no simulation needed)
-      const trustedBotBids = rawBids.filter(
-        (b) => b.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
-      );
-      logPositionForm(
-        `Anonymous user: showing ${trustedBotBids.length} quote(s) from trusted bot (skipping validation)`
-      );
-      setBids(
-        trustedBotBids.map((b) => ({
-          ...b,
-          validationStatus: 'valid' as const,
-        }))
-      );
-      return;
-    }
 
     // Need all auction context to simulate
     if (
