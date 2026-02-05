@@ -816,16 +816,16 @@ export function createAuctionWebSocketServer() {
           trackDuration(msgType, startTime);
           return;
         }
-        const validated = addBid(bid.auctionId, bid);
+        const validated = await addBid(bid.auctionId, bid);
         if (!validated) {
           bidsSubmitted.inc({ status: 'error' });
           errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
           send(ws, {
             type: 'bid.ack',
-            payload: { error: 'auction_not_found_or_expired' },
+            payload: { error: 'auction_not_found_or_invalid_signature' },
           });
           console.warn(
-            `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
+            `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_invalid_signature`
           );
           return;
         }

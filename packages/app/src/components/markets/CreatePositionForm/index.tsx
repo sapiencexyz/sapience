@@ -69,6 +69,12 @@ import {
 } from '~/lib/context/CollateralBalanceContext';
 import type { PythPrediction } from '@sapience/ui';
 
+// Trusted bot address for anonymous user quotes
+// Anonymous users (no wallet) only see quotes from this bot for security/UX
+const TRUSTED_QUOTER_BOT_ADDRESS =
+  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
   pythPredictions?: PythPrediction[];
@@ -204,6 +210,7 @@ const CreatePositionFormInner = ({
 
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
+  // For anonymous users (zero address taker), skip validation and only show trusted bot quotes
   useEffect(() => {
     if (rawBids.length === 0) {
       setBids([]);
@@ -227,6 +234,26 @@ const CreatePositionFormInner = ({
 
     const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
       currentAuctionParams;
+
+    // For anonymous users (zero address taker), skip validation entirely
+    // Only show quotes from our trusted bot - they're just viewing odds, not executing
+    const isAnonymousUser = taker?.toLowerCase() === ZERO_ADDRESS;
+    if (isAnonymousUser) {
+      // Filter to only trusted bot quotes and mark as valid (no simulation needed)
+      const trustedBotBids = rawBids.filter(
+        (b) => b.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+      );
+      logPositionForm(
+        `Anonymous user: showing ${trustedBotBids.length} quote(s) from trusted bot (skipping validation)`
+      );
+      setBids(
+        trustedBotBids.map((b) => ({
+          ...b,
+          validationStatus: 'valid' as const,
+        }))
+      );
+      return;
+    }
 
     // Need all auction context to simulate
     if (

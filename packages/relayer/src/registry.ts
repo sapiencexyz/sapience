@@ -1,5 +1,9 @@
 import { BidPayload, ValidatedBid, AuctionRequestPayload } from './types';
 import { verifyMakerBid } from './helpers';
+import {
+  verifyMakerBidSignature,
+  type AuctionStartLike,
+} from '@sapience/sdk';
 
 interface AuctionRecord {
   auction: AuctionRequestPayload;
@@ -29,14 +33,14 @@ export function getAuction(auctionId: string): AuctionRecord | undefined {
   return rec;
 }
 
-export function addBid(
+export async function addBid(
   auctionId: string,
   bid: BidPayload
-): ValidatedBid | undefined {
+): Promise<ValidatedBid | undefined> {
   const rec = getAuction(auctionId);
   if (!rec) return undefined;
 
-  // Validate passed-in fields and signature
+  // Validate passed-in fields and signature format
   const verification = verifyMakerBid({
     auctionId,
     maker: bid.maker,
@@ -45,6 +49,35 @@ export function addBid(
     makerSignature: bid.makerSignature,
   });
   if (!verification.ok) return undefined;
+
+  // Cryptographic signature verification: ensure signature matches claimed maker
+  const auction = rec.auction;
+  const auctionForSig: AuctionStartLike = {
+    wager: auction.wager,
+    predictedOutcomes: auction.predictedOutcomes as `0x${string}`[],
+    resolver: auction.resolver as `0x${string}`,
+    taker: auction.taker as `0x${string}`,
+  };
+
+  // Note: The signature uses takerNonce (from auction) to bind the bid to a specific request
+  const sigVerification = await verifyMakerBidSignature({
+    auction: auctionForSig,
+    bid: {
+      maker: bid.maker as `0x${string}`,
+      makerWager: bid.makerWager,
+      makerDeadline: bid.makerDeadline,
+      makerSignature: bid.makerSignature as `0x${string}`,
+      makerNonce: auction.takerNonce,
+    },
+    chainId: auction.chainId,
+  });
+
+  if (!sigVerification.valid) {
+    console.warn(
+      `[Registry] Bid signature verification failed for auction=${auctionId} maker=${bid.maker}: ${sigVerification.error}`
+    );
+    return undefined;
+  }
 
   const validated: ValidatedBid = { ...bid };
   rec.bids.push(validated);

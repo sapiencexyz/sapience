@@ -13,7 +13,11 @@ import {
   type PredictedOutcomeInputStub,
 } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
-// Use one as the default wager for prediction requests
+
+// Trusted bot address for anonymous user quotes
+// Anonymous users (no wallet) only see quotes from this bot for security/UX
+const TRUSTED_QUOTER_BOT_ADDRESS =
+  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
 
 const FADE_VARIANTS = {
   hidden: { opacity: 0 },
@@ -170,7 +174,18 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!bids || bids.length === 0) return;
     try {
       const nowMs = Date.now();
-      const valid = bids.filter((b) => {
+      const isAnonymousUser = selectedTakerAddress === ZERO_ADDRESS;
+
+      // For anonymous users, only consider bids from our trusted bot
+      const filteredBids = isAnonymousUser
+        ? bids.filter(
+            (b) => b.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+          )
+        : bids;
+
+      if (filteredBids.length === 0) return;
+
+      const valid = filteredBids.filter((b) => {
         try {
           const dl = Number(b?.makerDeadline || 0);
           return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
@@ -178,7 +193,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           return true;
         }
       });
-      const list = valid.length > 0 ? valid : bids;
+      const list = valid.length > 0 ? valid : filteredBids;
       const best = list.reduce((best, cur) => {
         try {
           return BigInt(cur.makerWager) > BigInt(best.makerWager) ? cur : best;
@@ -200,7 +215,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     } finally {
       setIsRequesting(false);
     }
-  }, [bids, isRequesting, lastTakerWagerWei]);
+  }, [bids, isRequesting, lastTakerWagerWei, selectedTakerAddress]);
 
   // Fallback: if no bids arrive within a reasonable time window, stop requesting
   React.useEffect(() => {

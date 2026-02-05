@@ -8,6 +8,11 @@ import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
+// Trusted bot address for anonymous user quotes
+// Anonymous users (no wallet) only see quotes from this bot for security/UX
+const TRUSTED_QUOTER_BOT_ADDRESS =
+  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d'.toLowerCase();
+
 interface UseSingleConditionAuctionProps {
   /** The condition ID to bet on */
   conditionId: string | null;
@@ -96,9 +101,22 @@ export function useSingleConditionAuction({
   }, []);
 
   // Find the best valid bid (not expired, highest payout)
+  // For anonymous users (zero address), only consider bids from our trusted bot
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
-    const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
+
+    const isAnonymousUser = selectedTakerAddress === guestTakerAddress;
+
+    // For anonymous users, filter to only trusted bot bids
+    const filteredBids = isAnonymousUser
+      ? bids.filter(
+          (bid) => bid.maker?.toLowerCase() === TRUSTED_QUOTER_BOT_ADDRESS
+        )
+      : bids;
+
+    const validBids = filteredBids.filter(
+      (bid) => bid.makerDeadline * 1000 > nowMs
+    );
     if (validBids.length === 0) return null;
 
     // Parse user's wager to wei for payout calculation
@@ -128,7 +146,7 @@ export function useSingleConditionAuction({
 
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, wagerAmount, collateralDecimals, nowMs]);
+  }, [bids, wagerAmount, collateralDecimals, nowMs, selectedTakerAddress]);
 
   // Check if all bids have expired
   const allBidsExpired = bids.length > 0 && !bestBid;
