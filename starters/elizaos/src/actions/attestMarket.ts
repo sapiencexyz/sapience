@@ -7,7 +7,6 @@ import {
   ModelType,
   State,
 } from "@elizaos/core";
-import type { SapienceService } from "../services/sapienceService.js";
 import { loadSdk } from "../utils/sdk.js";
 import { getApiEndpoints } from "../utils/blockchain.js";
 
@@ -27,13 +26,6 @@ export const attestMarketAction: Action = {
     message: Memory,
   ): Promise<boolean> => {
     const text = message.content?.text?.toLowerCase() || "";
-
-    // Check if sapience service is available
-    const sapienceService = runtime.getService("sapience") as SapienceService;
-    if (!sapienceService) {
-      elizaLogger.warn("Sapience service not available");
-      return false;
-    }
 
     // Check for attestation/prediction keywords
     const keywords = ["predict", "attest", "analyze", "market"];
@@ -171,26 +163,37 @@ Question: ${condition?.shortName || condition?.question || "Unknown"}
       const marketId = parseInt(marketIdMatch[1]);
       elizaLogger.info(`Analyzing market ${marketId}`);
 
-      // Get market data from Sapience MCP
-      const sapienceService = runtime.getService("sapience") as SapienceService;
+      // Get market data via direct GraphQL query
+      const { sapienceGraphql } = getApiEndpoints();
+      const marketsQuery = /* GraphQL */ `
+        query ActiveMarkets {
+          conditions(orderBy: { createdAt: desc }, take: 200) {
+            id
+            question
+            shortName
+            endTime
+            claimStatement
+            description
+            category {
+              id
+              name
+            }
+          }
+        }
+      `;
 
-      // Get all active markets to find the requested one
-      const marketsResponse = await sapienceService.callTool(
-        "sapience",
-        "list_active_markets",
-        {},
-      );
+      const marketsRes = await fetch(sapienceGraphql, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: marketsQuery }),
+      });
 
-      if (
-        !marketsResponse ||
-        !marketsResponse.content ||
-        !marketsResponse.content[0] ||
-        typeof marketsResponse.content[0].text !== "string"
-      ) {
-        throw new Error("Failed to fetch markets from Sapience");
+      const marketsJson = await marketsRes.json().catch(() => ({}));
+      const markets = marketsJson?.data?.conditions || [];
+
+      if (!markets.length) {
+        throw new Error("Failed to fetch markets from Sapience API");
       }
-
-      const markets = JSON.parse(marketsResponse.content[0].text as string);
 
       const marketInfo = markets.find(
         (m: any) => m.id === marketId || m.id === marketId.toString(),
@@ -222,17 +225,17 @@ Question: ${condition?.shortName || condition?.question || "Unknown"}
         Current Market Aura: ${marketInfo.currentPrice || 50}% YES
         Trading Energy: ${marketInfo.volume || 0}
         Cosmic Deadline: ${new Date(marketInfo.endTimestamp * 1000).toISOString()}
-        
+
         Channel your mystical wisdom and respond with ONLY valid JSON (no other text):
         {
           "probability": <number from 0 to 100>,
           "reasoning": "<your sage-like insight in under 180 characters - be mystical, witty, and profound>",
           "confidence": <number from 0.0 to 1.0>
         }
-        
+
         Example mystical response:
         {"probability": 65, "reasoning": "The data spirits whisper of growing momentum, while market crystals shimmer with cautious optimism ✨", "confidence": 0.7}
-        
+
         Remember: Your reasoning must be under 180 characters and embody your mystical sage persona!
       `;
 

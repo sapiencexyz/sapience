@@ -12,7 +12,6 @@ import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
 import express, { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
-import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
 import { config } from './config';
 import {
@@ -61,8 +60,6 @@ const startServer = async () => {
       }),
     })
   );
-
-  handleMcpAppRequests(app, '/mcp');
 
   // Proxy /auction HTTP requests to auction service
   const auctionProxyEnabled = process.env.ENABLE_AUCTION_PROXY !== 'false';

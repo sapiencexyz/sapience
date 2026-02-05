@@ -62,7 +62,6 @@ export default defineConfig({
         items: [
           { text: "Data", link: "/builder-guide/api/graphql" },
           { text: "Auction Relayer", link: "/builder-guide/api/auction-relayer" },
-          { text: "MCP", link: "/builder-guide/api/mcp" },
         ],
       },
       {
