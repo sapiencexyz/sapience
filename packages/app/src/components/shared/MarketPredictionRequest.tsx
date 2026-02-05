@@ -9,7 +9,7 @@ import { predictionMarket } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL,
-  ANON_QUOTER_BOT_ADDRESS,
+  PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { verifyMakerBidSignature } from '@sapience/sdk';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
@@ -193,7 +193,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
           const trustedBotBids = bids.filter(
             (b) =>
-              b.maker?.toLowerCase() === ANON_QUOTER_BOT_ADDRESS.toLowerCase()
+              b.maker?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
 
           // Verify each bid's signature
