@@ -21,9 +21,11 @@ import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
 } from '@sapience/sdk/contracts';
-import { collateralTokenAbi } from '@sapience/sdk/abis';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
-import { erc20Abi, encodeFunctionData } from 'viem';
+import { erc20Abi, encodeFunctionData, parseAbi } from 'viem';
+
+// wUSDe ABI for deposit function (wraps native USDe to wUSDe)
+const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
 import { buildCounterpartyMintTypedData, computePredictionHash, hashMintApproval } from '@sapience/sdk/auction/v2Signing';
 import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
 import { recoverTypedDataAddress } from 'viem';
@@ -298,9 +300,8 @@ export function useBidSubmission(
                 calls.push({
                   to: wusdeAddress,
                   data: encodeFunctionData({
-                    abi: collateralTokenAbi,
+                    abi: WUSDE_DEPOSIT_ABI,
                     functionName: 'deposit',
-                    args: [],
                   }),
                   value: wrapAmount,
                 });
