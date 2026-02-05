@@ -32,6 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
+import Link from 'next/link';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import MarketBadge from '~/components/markets/MarketBadge';
@@ -57,7 +58,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
               onClick={() => column.toggleSorting(sorted === 'asc')}
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
-              Time
+              Created
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
@@ -84,13 +85,26 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
             second: '2-digit',
             timeZoneName: 'short',
           });
+          const { marketAddress, nftTokenId } = row.original;
+          const positionHref = marketAddress && nftTokenId
+            ? `/positions/${marketAddress}/${nftTokenId}`
+            : undefined;
+          const timeContent = (
+            <span className="text-muted-foreground text-sm whitespace-nowrap">
+              {relativeTime}
+            </span>
+          );
           return (
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  <span className="text-muted-foreground text-sm whitespace-nowrap cursor-help">
-                    {relativeTime}
-                  </span>
+                  {positionHref ? (
+                    <Link href={positionHref} className="hover:text-brand-white transition-colors underline decoration-dotted underline-offset-2 cursor-pointer">
+                      {timeContent}
+                    </Link>
+                  ) : (
+                    <span className="cursor-help">{timeContent}</span>
+                  )}
                 </TooltipTrigger>
                 <TooltipContent>
                   <span>{exactTime}</span>
@@ -236,7 +250,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
         id: 'combinedPrediction',
         header: () => (
           <span className="text-sm font-medium whitespace-nowrap">
-            Combined
+            Combined with
           </span>
         ),
         cell: ({ row }) => {

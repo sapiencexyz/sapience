@@ -204,8 +204,8 @@ export const useForecasts = ({
     enabled: options?.enabled ?? Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
-    refetchInterval: 10000, // Refetch every 10 seconds
-    staleTime: options?.staleTime ?? 10000,
+    refetchInterval: 60000, // Refetch every 60 seconds
+    staleTime: options?.staleTime ?? 60000,
     refetchOnMount: options?.refetchOnMount ?? false,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
