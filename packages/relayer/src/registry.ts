@@ -74,7 +74,7 @@ export async function addBidWithVerification(
   const auction = rec.auction;
   const isAnonymousAuction = auction.taker.toLowerCase() === zeroAddress;
 
-  // For non-anonymous auctions, use the original addBid (no signature verification needed)
+  // for non-anon use addBid 
   if (!isAnonymousAuction) {
     return addBid(auctionId, bid);
   }
