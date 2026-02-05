@@ -543,7 +543,10 @@ function createColumns(
       cell: ({ row }) => {
         const openInterestWei = getRowOpenInterest(row.original);
         const etherValue = parseFloat(formatEther(openInterestWei));
-        const formattedValue = etherValue.toFixed(2);
+        const formattedValue = etherValue.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
 
         // Check if market has ended
         const endTime = getRowEndTime(row.original);
@@ -672,7 +675,10 @@ function ChildConditionRow({
   const color = getCategoryColor(categorySlug);
   const openInterestWei = BigInt(condition.openInterest || '0');
   const etherValue = parseFloat(formatEther(openInterestWei));
-  const formattedValue = etherValue.toFixed(2);
+  const formattedValue = etherValue.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
   return (
     <TableRow

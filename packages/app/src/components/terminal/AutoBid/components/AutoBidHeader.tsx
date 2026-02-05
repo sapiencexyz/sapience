@@ -15,6 +15,8 @@ const AutoBidHeader: React.FC<AutoBidHeaderProps> = ({
   collateralSymbol,
   onOpenApproval,
 }) => {
+  const isUnlimitedAllowance = !Number.isFinite(allowanceValue);
+
   return (
     <div>
       <div className="grid grid-cols-2 gap-2">
@@ -24,11 +26,15 @@ const AutoBidHeader: React.FC<AutoBidHeaderProps> = ({
             Approved Spend
           </div>
           <div className="font-mono text-[13px] text-brand-white inline-flex items-center gap-1">
-            <NumberDisplay
-              value={allowanceValue}
-              appendedText={collateralSymbol}
-              decimals={2}
-            />
+            {isUnlimitedAllowance ? (
+              <span>&gt;1,000,000,000 {collateralSymbol}</span>
+            ) : (
+              <NumberDisplay
+                value={allowanceValue}
+                appendedText={collateralSymbol}
+                decimals={2}
+              />
+            )}
             <button
               type="button"
               className="inline-flex items-center justify-center"
