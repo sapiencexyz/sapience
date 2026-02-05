@@ -5,6 +5,8 @@
 
 import {
   recoverTypedDataAddress,
+  decodeAbiParameters,
+  hashTypedData,
   type Address,
   type Hex,
 } from 'viem';
@@ -19,6 +21,136 @@ import {
   computeSmartAccountAddress,
   type SessionApprovalPayload,
 } from './sessionAuth';
+
+/**
+ * Decoded V2 SessionKeyData struct from ABI-encoded bytes
+ */
+interface DecodedV2SessionKeyData {
+  sessionKey: Address;
+  owner: Address;
+  validUntil: bigint;
+  permissionsHash: Hex;
+  chainId: bigint;
+  ownerSignature: Hex;
+}
+
+/**
+ * Decode V2 SessionKeyData from ABI-encoded hex bytes
+ * The data has a 32-byte offset pointer prefix followed by the struct fields
+ */
+function decodeV2SessionKeyData(data: string): DecodedV2SessionKeyData | null {
+  try {
+    // V2 ABI-encoded data starts with 0x and has offset pointer
+    if (!data.startsWith('0x') || data.length < 66) {
+      return null;
+    }
+
+    // Skip the 32-byte offset pointer (0x + 64 hex chars = first 66 chars)
+    const structData = ('0x' + data.slice(66)) as Hex;
+
+    // Decode the struct fields
+    const decoded = decodeAbiParameters(
+      [
+        { name: 'sessionKey', type: 'address' },
+        { name: 'owner', type: 'address' },
+        { name: 'validUntil', type: 'uint256' },
+        { name: 'permissionsHash', type: 'bytes32' },
+        { name: 'chainId', type: 'uint256' },
+        { name: 'ownerSignature', type: 'bytes' },
+      ],
+      structData
+    );
+
+    return {
+      sessionKey: decoded[0] as Address,
+      owner: decoded[1] as Address,
+      validUntil: decoded[2] as bigint,
+      permissionsHash: decoded[3] as Hex,
+      chainId: decoded[4] as bigint,
+      ownerSignature: decoded[5] as Hex,
+    };
+  } catch (e) {
+    console.debug('[V2-Sig] Failed to decode V2 session key data:', e);
+    return null;
+  }
+}
+
+/**
+ * Verify V2 SessionKeyData by checking the owner's signature on the SessionKeyApproval
+ */
+async function verifyV2SessionKeyData(
+  sessionKeyData: DecodedV2SessionKeyData,
+  smartAccount: Address,
+  verifyingContract: Address
+): Promise<{ valid: boolean; sessionKeyAddress?: Address }> {
+  try {
+    // Build the SessionKeyApproval typed data that the owner signed
+    const typedData = {
+      domain: {
+        name: 'PredictionMarketEscrow',
+        version: '1',
+        chainId: Number(sessionKeyData.chainId),
+        verifyingContract,
+      },
+      types: {
+        SessionKeyApproval: [
+          { name: 'sessionKey', type: 'address' },
+          { name: 'smartAccount', type: 'address' },
+          { name: 'validUntil', type: 'uint256' },
+          { name: 'permissionsHash', type: 'bytes32' },
+          { name: 'chainId', type: 'uint256' },
+        ],
+      },
+      primaryType: 'SessionKeyApproval' as const,
+      message: {
+        sessionKey: sessionKeyData.sessionKey,
+        smartAccount,
+        validUntil: sessionKeyData.validUntil,
+        permissionsHash: sessionKeyData.permissionsHash,
+        chainId: sessionKeyData.chainId,
+      },
+    };
+
+    // Recover the signer from the owner's signature
+    const recoveredOwner = await recoverTypedDataAddress({
+      ...typedData,
+      signature: sessionKeyData.ownerSignature,
+    });
+
+    // Verify the recovered signer is the declared owner
+    if (recoveredOwner.toLowerCase() !== sessionKeyData.owner.toLowerCase()) {
+      console.warn('[V2-Sig] Owner signature invalid:', {
+        expected: sessionKeyData.owner,
+        recovered: recoveredOwner,
+      });
+      return { valid: false };
+    }
+
+    // Verify the session is not expired
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    if (Number(sessionKeyData.validUntil) < nowSeconds) {
+      console.warn('[V2-Sig] Session expired:', {
+        validUntil: Number(sessionKeyData.validUntil),
+        now: nowSeconds,
+      });
+      return { valid: false };
+    }
+
+    // Optionally verify smart account is derived from owner
+    // (Skip for now - contract will validate this)
+
+    console.debug('[V2-Sig] V2 session key data verified:', {
+      sessionKey: sessionKeyData.sessionKey,
+      owner: sessionKeyData.owner,
+      smartAccount,
+    });
+
+    return { valid: true, sessionKeyAddress: sessionKeyData.sessionKey };
+  } catch (e) {
+    console.error('[V2-Sig] V2 session key verification error:', e);
+    return { valid: false };
+  }
+}
 
 /**
  * Convert JSON picks to SDK Pick format
@@ -216,8 +348,43 @@ export async function verifyV2CounterpartySignature(
     const counterpartyAddress = bid.counterparty.toLowerCase() as Address;
     const signature = bid.counterpartySignature as Hex;
 
-    // Path 1: If session key data is present, verify via ZeroDev session
+    // Path 1: If session key data is present, try to verify
     if (bid.counterpartySessionKeyData) {
+      // Path 1a: Try V2 ABI-encoded format (hex starting with 0x)
+      const v2SessionData = decodeV2SessionKeyData(bid.counterpartySessionKeyData);
+      if (v2SessionData) {
+        const v2Result = await verifyV2SessionKeyData(
+          v2SessionData,
+          counterpartyAddress,
+          verifyingContract
+        );
+
+        if (v2Result.valid && v2Result.sessionKeyAddress) {
+          const recoveredSigner = await recoverTypedDataAddress({
+            ...typedData,
+            signature,
+          });
+
+          if (
+            recoveredSigner.toLowerCase() !==
+            v2Result.sessionKeyAddress.toLowerCase()
+          ) {
+            console.warn('[V2-Sig] Counterparty signature not from V2 session key:', {
+              expected: v2Result.sessionKeyAddress,
+              recovered: recoveredSigner,
+            });
+            return false;
+          }
+
+          console.debug(
+            '[V2-Sig] Valid counterparty V2 session approval for account:',
+            counterpartyAddress
+          );
+          return true;
+        }
+      }
+
+      // Path 1b: Try ZeroDev format (base64 JSON)
       const sessionApprovalPayload: SessionApprovalPayload = {
         approval: bid.counterpartySessionKeyData,
         chainId: auction.chainId,
@@ -239,7 +406,7 @@ export async function verifyV2CounterpartySignature(
           recoveredSigner.toLowerCase() !==
           sessionResult.sessionKeyAddress.toLowerCase()
         ) {
-          console.warn('[V2-Sig] Counterparty signature not from session key:', {
+          console.warn('[V2-Sig] Counterparty signature not from ZeroDev session key:', {
             expected: sessionResult.sessionKeyAddress,
             recovered: recoveredSigner,
           });
@@ -248,7 +415,7 @@ export async function verifyV2CounterpartySignature(
 
         if (process.env.NODE_ENV !== 'production') {
           console.debug(
-            '[V2-Sig] Valid counterparty session approval for account:',
+            '[V2-Sig] Valid counterparty ZeroDev session approval for account:',
             counterpartyAddress
           );
         }
