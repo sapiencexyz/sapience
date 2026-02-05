@@ -235,7 +235,7 @@ export function useBidSubmission(
       if (useV2Protocol) {
         // V2: SmartAccount counterparties need wUSDe pre-funded before mint
         // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
-        if (isUsingSession && wusdeAddress && chainClients) {
+        if (isUsingSession && wusdeAddress && chainClients?.ethereal) {
           const escrowAddress = verifyingContract;
           const publicClient = getPublicClientForChainId(chainId);
 
@@ -477,10 +477,15 @@ export function useBidSubmission(
               message: typedData.message,
               signature: makerSignature,
             });
+            // When using session key, the signer is the session key, not the SmartAccount
+            const expectedSigner = isUsingSession && v2SessionKeyApproval
+              ? v2SessionKeyApproval.sessionKey
+              : signerAddress;
             console.log('[V2 Bid Signing] Local signature verification:');
             console.log('  Recovered address:', recoveredAddress);
-            console.log('  Expected signer:', signerAddress);
-            console.log('  Match:', recoveredAddress.toLowerCase() === signerAddress.toLowerCase() ? 'YES' : 'NO');
+            console.log('  Expected signer:', expectedSigner, isUsingSession ? '(session key)' : '(EOA/SmartAccount)');
+            console.log('  SmartAccount:', signerAddress);
+            console.log('  Match:', recoveredAddress.toLowerCase() === expectedSigner.toLowerCase() ? 'YES' : 'NO');
           } catch (verifyError) {
             console.error('[V2 Bid Signing] Local verification failed:', verifyError);
           }
