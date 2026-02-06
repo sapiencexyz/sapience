@@ -79,7 +79,7 @@ export class QuestionsResolver {
 
     // Bounds checking for defense-in-depth
     const boundedTake = Math.max(1, Math.min(take, 100));
-    const boundedSkip = Math.max(0, Math.min(skip, 10000));
+    const boundedSkip = Math.max(0, skip);
     const boundedSearch = search?.slice(0, 200) ?? null;
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
