@@ -216,10 +216,22 @@ function getMonthAbbreviation(dateStr: string): string {
       // Try to extract day number
       const dayMatch = dateStr.match(/(\d{1,2})(?:st|nd|rd|th)?/);
       const day = dayMatch ? dayMatch[1] : '';
-      return `${abbrev}${day}`;
+      return day ? `${abbrev} ${day}` : abbrev;
     }
   }
   return dateStr;
+}
+
+/**
+ * Format a date expression that may contain a "from X to Y" range
+ */
+function formatDateExpression(dateStr: string): string {
+  const rangeMatch = dateStr.match(/^(.+?)\s+to\s+(.+)$/i);
+  if (rangeMatch) {
+    const [, start, end] = rangeMatch;
+    return `${getMonthAbbreviation(start)} - ${getMonthAbbreviation(end)}`;
+  }
+  return getMonthAbbreviation(dateStr);
 }
 
 /**
@@ -312,7 +324,7 @@ export function inferShortName(market: PolymarketMarket): string | null {
   if (priceMatch) {
     const [, asset, dateStr] = priceMatch;
     const abbrev = getAssetAbbreviation(asset);
-    const dateAbbrev = getMonthAbbreviation(dateStr);
+    const dateAbbrev = formatDateExpression(dateStr);
     return `${abbrev} up ${dateAbbrev}`;
   }
 
@@ -331,7 +343,7 @@ export function inferShortName(market: PolymarketMarket): string | null {
   );
   if (elonCountMatch) {
     const [, count, period] = elonCountMatch;
-    const dateAbbrev = getMonthAbbreviation(period);
+    const dateAbbrev = formatDateExpression(period);
     return `Elon ${count}+ ${dateAbbrev}`;
   }
 
@@ -342,51 +354,55 @@ export function inferShortName(market: PolymarketMarket): string | null {
   if (fedMatch) {
     const [, , action, period] = fedMatch;
     const actionAbbrev = action.toLowerCase() === 'raise' ? 'hike' : action.toLowerCase();
-    const dateAbbrev = getMonthAbbreviation(period);
+    const dateAbbrev = formatDateExpression(period);
     return `Fed ${actionAbbrev} ${dateAbbrev}`;
   }
 
-  // Rule 11: Crypto thresholds - "Bitcoin above/below $X?"
+  // Rule 11: Crypto thresholds - "Bitcoin above/below $X?" or "Bitcoin above $X from Feb 8 to Feb 14?"
   const cryptoThresholdMatch = question.match(
-    /\b(bitcoin|btc|ethereum|eth|solana|sol)\b.+?(above|below|over|under)\s*\$?([\d,]+k?)/i
+    /\b(bitcoin|btc|ethereum|eth|solana|sol)\b.+?(above|below|over|under)\s*\$?([\d,]+k?)(?:\s+(?:on|by|in|before|from)\s+(.+?))?(?:\s*\?)?$/i
   );
   if (cryptoThresholdMatch) {
-    const [, asset, comparison, value] = cryptoThresholdMatch;
+    const [, asset, comparison, value, dateStr] = cryptoThresholdMatch;
     const abbrev = getAssetAbbreviation(asset.charAt(0).toUpperCase() + asset.slice(1));
     const symbol = comparison === 'above' || comparison === 'over' ? '>' : '<';
-    return `${abbrev} ${symbol}$${value}`;
+    const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
+    return `${abbrev} ${symbol}$${value}${dateSuffix}`;
   }
 
-  // Rule 12: Price between range - "Will the price of X be between $Y and $Z on Date?"
+  // Rule 12: Price between range - "Will the price of X be between $Y and $Z from Feb 8 to Feb 14?"
   const priceBetweenMatch = question.match(
-    /price\s+of\s+(\w+)\s+be\s+between\s+\$?([\d,]+)\s+and\s+\$?([\d,]+)/i
+    /price\s+of\s+(\w+)\s+be\s+between\s+\$?([\d,]+)\s+and\s+\$?([\d,]+)(?:\s+(?:on|by|in|before|from)\s+(.+?))?(?:\s*\?)?$/i
   );
   if (priceBetweenMatch) {
-    const [, asset, low, high] = priceBetweenMatch;
+    const [, asset, low, high, dateStr] = priceBetweenMatch;
     const abbrev = getAssetAbbreviation(asset);
-    return `${abbrev} $${low}-${high}`;
+    const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
+    return `${abbrev} $${low}-${high}${dateSuffix}`;
   }
 
-  // Rule 13: Price above/below on date - "Will the price of X be above/below $Y on Date?"
+  // Rule 13: Price above/below on date - "Will the price of X be above/below $Y from Feb 8 to Feb 14?"
   const priceAboveBelowMatch = question.match(
-    /price\s+of\s+(\w+)\s+be\s+(above|below|greater\s+than|less\s+than)\s+\$?([\d,]+)/i
+    /price\s+of\s+(\w+)\s+be\s+(above|below|greater\s+than|less\s+than)\s+\$?([\d,]+)(?:\s+(?:on|by|in|before|from)\s+(.+?))?(?:\s*\?)?$/i
   );
   if (priceAboveBelowMatch) {
-    const [, asset, comparison, value] = priceAboveBelowMatch;
+    const [, asset, comparison, value, dateStr] = priceAboveBelowMatch;
     const abbrev = getAssetAbbreviation(asset);
     const symbol = comparison.includes('above') || comparison.includes('greater') ? '>' : '<';
-    return `${abbrev} ${symbol}$${value}`;
+    const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
+    return `${abbrev} ${symbol}$${value}${dateSuffix}`;
   }
 
-  // Rule 14: Crypto reach/dip - "Will Bitcoin reach/dip to $X Date?"
+  // Rule 14: Crypto reach/dip - "Will Bitcoin reach/dip to $X from Feb 8 to Feb 14?"
   const cryptoReachDipMatch = question.match(
-    /(\w+)\s+(reach|dip\s+to)\s+\$?([\d,]+)/i
+    /(\w+)\s+(reach|dip\s+to)\s+\$?([\d,]+)(?:\s+(?:on|by|in|before|from)\s+(.+?))?(?:\s*\?)?$/i
   );
   if (cryptoReachDipMatch) {
-    const [, asset, action, value] = cryptoReachDipMatch;
+    const [, asset, action, value, dateStr] = cryptoReachDipMatch;
     const abbrev = getAssetAbbreviation(asset);
     const actionAbbrev = action.toLowerCase().includes('dip') ? 'dip' : 'reach';
-    return `${abbrev} ${actionAbbrev} $${value}`;
+    const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
+    return `${abbrev} ${actionAbbrev} $${value}${dateSuffix}`;
   }
 
   // Rule 15: Temperature increase - "Will global temperature increase by X in Month?"
