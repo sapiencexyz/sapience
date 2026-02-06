@@ -289,6 +289,8 @@ export default function QuestionPageContent({
             time: date.toLocaleString(),
             combinedPredictions,
             combinedWithYes: predictorPrediction,
+            marketAddress: position.marketAddress,
+            nftTokenId: position.predictorNftTokenId,
           };
         } catch (error) {
           console.error('Error processing position:', error);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
@@ -69,13 +69,9 @@ export function useSingleConditionAuction({
     null
   );
 
-  // Use zero address as guest taker when not connected
-  const guestTakerAddress: `0x${string}` =
-    '0x0000000000000000000000000000000000000000';
-
-  // Use effectiveAddress from session context, falling back to guest address
+  // Use effectiveAddress from session context, falling back to zero address for guests
   const selectedTakerAddress =
-    effectiveAddress ?? takerAddress ?? guestTakerAddress;
+    effectiveAddress ?? takerAddress ?? zeroAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
@@ -98,6 +94,7 @@ export function useSingleConditionAuction({
   // Find the best valid bid (not expired, highest payout)
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
+
     const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
@@ -144,10 +141,7 @@ export function useSingleConditionAuction({
       if (!selectedTakerAddress) return;
       if (!conditionId || prediction === null) return;
       // Wait for nonce if using a real address (not guest)
-      if (
-        selectedTakerAddress !== guestTakerAddress &&
-        takerNonce === undefined
-      )
+      if (selectedTakerAddress !== zeroAddress && takerNonce === undefined)
         return;
 
       const wagerStr = wagerAmount || '0';

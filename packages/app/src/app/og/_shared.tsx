@@ -846,21 +846,21 @@ function getPillColors(tone: PillTone): {
   return { border: t.border, fg: t.fg, bg: t.bg };
 }
 
-function computePillStyle(scale: number, tone: PillTone): React.CSSProperties {
+function computePillStyle(scale: number, tone: PillTone, compact = false): React.CSSProperties {
   const isHighlighted = tone === 'success' || tone === 'danger';
   const colors = getPillColors(tone);
 
   const borderWidth = Math.max(1, Math.round((isHighlighted ? 2 : 1) * scale));
-  const paddingY = Math.max(0, Math.round(3 * scale));
-  const paddingX = Math.max(0, Math.round(10 * scale));
-  const fontSize = Math.round(20 * scale);
-  const lineHeight = Math.round(24 * scale);
+  const paddingY = Math.max(0, Math.round((compact ? 2 : 3) * scale));
+  const paddingX = Math.max(0, Math.round((compact ? 7 : 10) * scale));
+  const fontSize = Math.round((compact ? 14 : 20) * scale);
+  const lineHeight = Math.round((compact ? 18 : 24) * scale);
 
   return {
     display: 'flex',
     alignItems: 'center',
     padding: `${paddingY}px ${paddingX}px`,
-    borderRadius: Math.round(6 * scale),
+    borderRadius: Math.round((compact ? 4 : 6) * scale),
     background: colors.bg,
     color: colors.fg,
     fontWeight: 600,
@@ -879,12 +879,14 @@ export function Pill({
   text,
   tone = 'neutral',
   scale = 1,
+  compact = false,
 }: {
   text: string;
   tone?: PillTone;
   scale?: number;
+  compact?: boolean;
 }) {
-  return <div style={computePillStyle(scale, tone)}>{text}</div>;
+  return <div style={computePillStyle(scale, tone, compact)}>{text}</div>;
 }
 
 export function computePotentialReturn(
