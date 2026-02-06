@@ -12,7 +12,7 @@
     "settle:dry-run": "tsx scripts/settle.ts --dry-run",
     "settle:execute": "tsx scripts/settle.ts --execute",
     "settle:execute:wait": "tsx scripts/settle.ts --execute --wait",
-    "start": "pnpm build && node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
+    "start": "node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts"
