@@ -62,7 +62,7 @@ Deploys PredictionMarketVault with COUNTERPARTY as manager.
 forge script src/scripts/v2/testnet/vault/01_DeployVault.s.sol \
   --rpc-url $PM_NETWORK_RPC_URL \
   --broadcast \
-  --verify --verifier blockscout --verifier-url https://explorer.testnet.ethereal.trade/api/ \
+  --verify --verifier blockscout --verifier-url https://explorer.etherealtest.net/api/ \
   -vvvv
 ```
 
