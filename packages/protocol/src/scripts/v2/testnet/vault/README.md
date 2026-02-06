@@ -42,11 +42,12 @@ VAULT_ADDRESS=0x...
 
 ### Fund Accounts
 
-Ensure accounts have WUSDe tokens. Test amounts should be small (< 0.01 WUSDe):
+Ensure accounts have WUSDe tokens. WUSDe on testnet uses WETH-style wrapping (deposit native USDe to get WUSDe):
 
 ```bash
-# Mint WUSDe to deployer first, then distribute
-cast send $COLLATERAL_TOKEN_ADDRESS "mint(address,uint256)" $PM_NETWORK_DEPLOYER_ADDRESS 1ether \
+# Wrap USDe to WUSDe (WETH-style deposit)
+cast send $COLLATERAL_TOKEN_ADDRESS "deposit()" \
+  --value 0.1ether \
   --private-key $PM_NETWORK_DEPLOYER_PRIVATE_KEY \
   --rpc-url $PM_NETWORK_RPC_URL
 ```
