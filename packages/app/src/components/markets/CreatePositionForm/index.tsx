@@ -19,7 +19,13 @@ import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
-import { DollarSign } from 'lucide-react';
+import { DollarSign, Share2, Link2, ImageIcon, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@sapience/ui/components/ui/dropdown-menu';
 import Image from 'next/image';
 import {
   useCallback,
@@ -37,7 +43,7 @@ import { predictionMarket } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits, parseUnits } from 'viem';
+import { erc20Abi, formatUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { createWagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
@@ -59,6 +65,8 @@ import {
   DEFAULT_WAGER_AMOUNT,
   getDefaultFormPredictionValue,
   getMaxWagerAmount,
+  getBestDisplayBid,
+  calculatePayout,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -74,6 +82,63 @@ interface CreatePositionFormProps {
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
   onClearPythPredictions?: () => void;
+}
+
+function ShareClearBar({
+  visible,
+  onViewCard,
+  onCopyLink,
+  onClear,
+}: {
+  visible: boolean;
+  onViewCard: () => void;
+  onCopyLink: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-1 transition-opacity ${visible ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="xs"
+            className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 flex items-center gap-1"
+          >
+            <Share2 className="h-3 w-3" />
+            SHARE
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            className="group cursor-pointer flex items-center gap-2"
+            onClick={onViewCard}
+          >
+            <ImageIcon className="h-4 w-4 opacity-75 group-hover:opacity-100" />
+            <span>View Card</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="group cursor-pointer flex items-center gap-2"
+            onClick={onCopyLink}
+          >
+            <Link2 className="h-4 w-4 opacity-75 group-hover:opacity-100" />
+            <span>Copy Link</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <Button
+        variant="ghost"
+        size="xs"
+        className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 flex items-center gap-1"
+        onClick={onClear}
+        title="Reset"
+      >
+        <X className="h-3.5 w-3.5" />
+        CLEAR
+      </Button>
+    </div>
+  );
 }
 
 const CreatePositionFormInner = ({
@@ -110,6 +175,31 @@ const CreatePositionFormInner = ({
   } = useSession();
   const { toast } = useToast();
   const chainId = CHAIN_ID_ETHEREAL;
+
+  // Preview card dialog state (for "View Card" in SHARE dropdown)
+  const [showPreviewCard, setShowPreviewCard] = useState(false);
+
+  const positionShareUrl = useMemo(() => {
+    if (typeof window === 'undefined' || selections.length === 0) return '';
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(selections))));
+    const url = new URL('/markets', window.location.origin);
+    url.searchParams.set('position', encoded);
+    return url.toString();
+  }, [selections]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      if (!positionShareUrl) return;
+      await navigator.clipboard.writeText(positionShareUrl);
+      toast({
+        title: 'Link copied to clipboard',
+        description:
+          'The link will open this page with your predictions selected.',
+      });
+    } catch {
+      toast({ title: 'Failed to copy link', variant: 'destructive' });
+    }
+  }, [positionShareUrl, toast]);
 
   // Track whether wager has been initialized and for which address
   const [isWagerInitialized, setIsWagerInitialized] = useState(false);
@@ -734,19 +824,9 @@ const CreatePositionFormInner = ({
           // Calculate payout from submitted bid
           let payout: string | undefined = undefined;
           if (collateralDecimals) {
-            try {
-              const userWagerWei = parseUnits(wagerAmount, collateralDecimals);
-              const bidMakerWagerWei = BigInt(bid.makerWager);
-              const totalPayoutWei = userWagerWei + bidMakerWagerWei;
-              const totalPayoutHuman = formatUnits(
-                totalPayoutWei,
-                collateralDecimals
-              );
-              payout = parseFloat(totalPayoutHuman).toFixed(2);
-            } catch {
-              payout =
-                limitAmount !== undefined ? String(limitAmount) : undefined;
-            }
+            payout =
+              calculatePayout(bid, wagerAmount, collateralDecimals) ??
+              (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
           // Get lastNftId from current positions (sync)
@@ -842,6 +922,38 @@ const CreatePositionFormInner = ({
     return `/og/position?${qp.toString()}`;
   }, [shareDialogData, effectiveAddress]);
 
+  // Build OG image URL for the preview card (drafted position, not yet submitted)
+  const previewCardImageSrc = useMemo(() => {
+    if (selections.length === 0) return null;
+    const qp = new URLSearchParams();
+    if (effectiveAddress)
+      qp.set('addr', String(effectiveAddress).toLowerCase());
+    selections.forEach((s) => {
+      qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
+    });
+    if (watchedWagerAmount) qp.set('wager', watchedWagerAmount);
+    if (collateralSymbol) qp.set('symbol', collateralSymbol);
+
+    const displayBid = getBestDisplayBid(bids);
+    if (displayBid && collateralDecimals != null && watchedWagerAmount) {
+      const payout = calculatePayout(
+        displayBid,
+        watchedWagerAmount,
+        collateralDecimals
+      );
+      if (payout) qp.set('payout', payout);
+    }
+
+    return `/og/position?${qp.toString()}`;
+  }, [
+    selections,
+    effectiveAddress,
+    watchedWagerAmount,
+    collateralSymbol,
+    bids,
+    collateralDecimals,
+  ]);
+
   // Handle share dialog close - clear form and stay on page
   const handleShareDialogClose = useCallback(
     (open: boolean) => {
@@ -903,10 +1015,23 @@ const CreatePositionFormInner = ({
     />
   );
 
+  // Preview card dialog - shows OG image for drafted (not yet submitted) position
+  const previewCardDialog = previewCardImageSrc && (
+    <OgShareDialogBase
+      imageSrc={previewCardImageSrc}
+      open={showPreviewCard}
+      onOpenChange={setShowPreviewCard}
+      title="Share Card Preview"
+      trackPosition={false}
+      shareUrl={positionShareUrl}
+    />
+  );
+
   if (isCompact) {
     return (
       <>
         {shareDialog}
+        {previewCardDialog}
         {/* Mobile Bet Slip Button (floating bottom-center, circular, icon-only) */}
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
@@ -927,8 +1052,18 @@ const CreatePositionFormInner = ({
               } as CSSProperties
             }
           >
-            <DrawerHeader className="pb-0">
+            <DrawerHeader className="pb-0 flex items-center justify-between">
               <DrawerTitle className="text-left"></DrawerTitle>
+              <ShareClearBar
+                visible={selections.length > 0 || pythPredictions.length > 0}
+                onViewCard={() => setShowPreviewCard(true)}
+                onCopyLink={handleCopyLink}
+                onClear={() => {
+                  clearSelections();
+                  clearPositionForm();
+                  onClearPythPredictions?.();
+                }}
+              />
             </DrawerHeader>
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}
@@ -952,18 +1087,16 @@ const CreatePositionFormInner = ({
     return (
       <>
         {shareDialog}
+        {previewCardDialog}
         <div className="w-full h-full flex flex-col position-form">
           <div className="hidden lg:flex items-center justify-between mb-1 px-1 pt-1">
             <h2 className="sc-heading text-foreground">Your Position</h2>
-            <Button
-              variant="ghost"
-              size="xs"
-              className={`uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 transition-opacity ${hasItems ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              onClick={handleClearPanel}
-              title="Reset"
-            >
-              CLEAR
-            </Button>
+            <ShareClearBar
+              visible={hasItems}
+              onViewCard={() => setShowPreviewCard(true)}
+              onCopyLink={handleCopyLink}
+              onClear={handleClearPanel}
+            />
           </div>
           <div
             className={`${createPositionEntries.length === 0 ? 'pt-0 pb-10' : 'p-0'} h-full`}
@@ -999,6 +1132,7 @@ const CreatePositionFormInner = ({
   return (
     <>
       {shareDialog}
+      {previewCardDialog}
       <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -1017,17 +1151,12 @@ const CreatePositionFormInner = ({
           <div className="flex-1 min-h-0">
             <div className="flex items-center justify-between mb-1 px-1">
               <h2 className="sc-heading text-foreground">Your Position</h2>
-              {hasTriggeredItems && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0"
-                  onClick={handleClearTriggered}
-                  title="Reset"
-                >
-                  CLEAR
-                </Button>
-              )}
+              <ShareClearBar
+                visible={hasTriggeredItems}
+                onViewCard={() => setShowPreviewCard(true)}
+                onCopyLink={handleCopyLink}
+                onClear={handleClearTriggered}
+              />
             </div>
             <div
               className="relative bg-brand-black border border-brand-white/20 rounded-b-md shadow-sm h-full flex flex-col min-h-0 overflow-hidden position-form"

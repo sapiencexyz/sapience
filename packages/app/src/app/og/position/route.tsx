@@ -11,6 +11,7 @@ import {
   commonAssets,
   Background,
   Footer,
+  TopLeftAvatar,
   baseContainerStyle,
   contentContainerStyle,
   addThousandsSeparators,
@@ -128,6 +129,22 @@ export async function GET(req: Request) {
 
     const wager = addThousandsSeparators(wagerRawRounded);
     const payout = addThousandsSeparators(payoutRawRounded);
+
+    // Compute implied probability (matches formatPercentChance from lib/format)
+    let implied: string | null = null;
+    const wagerNum = Number(wagerRawRounded.replace(/,/g, ''));
+    const payoutNum = Number(payoutRawRounded.replace(/,/g, ''));
+    if (wagerNum > 0 && payoutNum > 0) {
+      const raw = wagerNum / payoutNum;
+      const isAnti = ['1', 'true', 'yes', 'anti', 'against'].includes(
+        antiParam
+      );
+      const pct = Math.max(0, Math.min(100, (isAnti ? 1 - raw : raw) * 100));
+      if (pct < 1) implied = '<1%';
+      else if (pct > 99) implied = '>99%';
+      else implied = `${Math.round(pct)}%`;
+    }
+
     // Counterparty flag (anti param) to change label to "Prediction Against"
     const isCounterparty = ['1', 'true', 'yes', 'anti', 'against'].includes(
       antiParam
@@ -169,6 +186,7 @@ export async function GET(req: Request) {
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
+          <TopLeftAvatar addr={addr} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
@@ -184,7 +202,7 @@ export async function GET(req: Request) {
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 16 * scale,
+                    gap: 6 * scale,
                     flex: 1,
                   }}
                 >
@@ -202,44 +220,44 @@ export async function GET(req: Request) {
                       }}
                     >
                       {legs.map((leg, idx) => {
-                          // Split text into words so badge flows inline
-                          const words = leg.text.split(' ');
-                          return (
-                            <div
-                              key={idx}
-                              style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                alignItems: 'center',
-                              }}
-                            >
-                              {words.map((word, wordIdx) => (
-                                <div
-                                  key={wordIdx}
-                                  style={{
-                                    display: 'flex',
-                                    fontSize: (compact ? 24 : 32) * scale,
-                                    lineHeight: `${(compact ? 30 : 40) * scale}px`,
-                                    fontWeight: 600,
-                                    letterSpacing: -0.16 * scale,
-                                    color: og.colors.brandWhite,
-                                    fontFamily: FONT_FAMILY.mono,
-                                    marginRight: (compact ? 8 : 12) * scale,
-                                    marginBottom: (compact ? 4 : 6) * scale,
-                                  }}
-                                >
-                                  {word}
-                                </div>
-                              ))}
-                              <Pill
-                                text={leg.choice}
-                                tone={leg.tone}
-                                scale={scale}
-                                compact={compact}
-                              />
-                            </div>
-                          );
-                        })}
+                        // Split text into words so badge flows inline
+                        const words = leg.text.split(' ');
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                            }}
+                          >
+                            {words.map((word, wordIdx) => (
+                              <div
+                                key={wordIdx}
+                                style={{
+                                  display: 'flex',
+                                  fontSize: (compact ? 24 : 32) * scale,
+                                  lineHeight: `${(compact ? 30 : 40) * scale}px`,
+                                  fontWeight: 550,
+                                  letterSpacing: -0.16 * scale,
+                                  color: og.colors.brandWhite,
+                                  fontFamily: FONT_FAMILY.mono,
+                                  marginRight: (compact ? 8 : 12) * scale,
+                                  marginBottom: (compact ? 4 : 6) * scale,
+                                }}
+                              >
+                                {word}
+                              </div>
+                            ))}
+                            <Pill
+                              text={leg.choice}
+                              tone={leg.tone}
+                              scale={scale}
+                              compact={compact}
+                            />
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -247,11 +265,11 @@ export async function GET(req: Request) {
             </div>
 
             <Footer
-              addr={addr}
               wager={wager}
               payout={payout}
               symbol={symbol}
               potentialReturn={potentialReturn}
+              implied={implied}
               scale={scale}
               showReturn={false}
               forceToWinGreen={true}

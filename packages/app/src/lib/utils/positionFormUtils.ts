@@ -1,3 +1,5 @@
+import { formatUnits, parseUnits } from 'viem';
+import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { MarketGroupClassification } from '~/lib/types';
 
 // Constants for prediction values - centralized here for consistency
@@ -119,4 +121,41 @@ export function createPositionDefaults(
   }
 
   return defaults;
+}
+
+/**
+ * Find the best display bid from a list of QuoteBids.
+ * Returns the valid bid with the highest makerWager, or a single non-expired bid as fallback.
+ */
+export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
+  const nowMs = Date.now();
+  const nonExpired = bids.filter((b) => b.makerDeadline * 1000 > nowMs);
+  const valid = nonExpired.filter((b) => b.validationStatus === 'valid');
+  if (valid.length > 0) {
+    return valid.reduce((best, cur) => {
+      try {
+        return BigInt(cur.makerWager) > BigInt(best.makerWager) ? cur : best;
+      } catch {
+        return best;
+      }
+    });
+  }
+  return nonExpired.length === 1 ? nonExpired[0] : null;
+}
+
+/**
+ * Calculate payout (human-readable string) from a bid and wager amount.
+ */
+export function calculatePayout(
+  bid: QuoteBid,
+  wagerAmount: string,
+  collateralDecimals: number
+): string | null {
+  try {
+    const userWagerWei = parseUnits(wagerAmount || '0', collateralDecimals);
+    const totalWei = userWagerWei + BigInt(bid.makerWager);
+    return parseFloat(formatUnits(totalWei, collateralDecimals)).toFixed(2);
+  } catch {
+    return null;
+  }
 }

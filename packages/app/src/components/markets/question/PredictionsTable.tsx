@@ -86,9 +86,10 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
             timeZoneName: 'short',
           });
           const { marketAddress, nftTokenId } = row.original;
-          const positionHref = marketAddress && nftTokenId
-            ? `/positions/${marketAddress}/${nftTokenId}`
-            : undefined;
+          const positionHref =
+            marketAddress && nftTokenId
+              ? `/positions/${marketAddress}/${nftTokenId}`
+              : undefined;
           const timeContent = (
             <span className="text-muted-foreground text-sm whitespace-nowrap">
               {relativeTime}
@@ -99,7 +100,10 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
               <UITooltip>
                 <TooltipTrigger asChild>
                   {positionHref ? (
-                    <Link href={positionHref} className="hover:text-brand-white transition-colors underline decoration-dotted underline-offset-2 cursor-pointer">
+                    <Link
+                      href={positionHref}
+                      className="hover:text-brand-white transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
+                    >
                       {timeContent}
                     </Link>
                   ) : (

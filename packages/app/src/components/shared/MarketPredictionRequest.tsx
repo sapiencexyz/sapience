@@ -266,7 +266,13 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     };
 
     processBids();
-  }, [bids, isRequesting, lastTakerWagerWei, selectedTakerAddress, lastAuctionParams]);
+  }, [
+    bids,
+    isRequesting,
+    lastTakerWagerWei,
+    selectedTakerAddress,
+    lastAuctionParams,
+  ]);
 
   // Fallback: if no bids arrive within a reasonable time window, stop requesting
   React.useEffect(() => {

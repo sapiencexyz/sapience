@@ -70,8 +70,7 @@ export function useSingleConditionAuction({
   );
 
   // Use effectiveAddress from session context, falling back to zero address for guests
-  const selectedTakerAddress =
-    effectiveAddress ?? takerAddress ?? zeroAddress;
+  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
