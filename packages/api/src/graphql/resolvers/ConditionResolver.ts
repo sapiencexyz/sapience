@@ -85,11 +85,13 @@ export class ConditionResolver {
             public: { equals: true },
           };
 
+    const effectiveTake = take != null ? Math.min(take, 1000) : undefined;
+
     return getPrismaFromContext(ctx).condition.findMany({
       where: effectiveWhere,
       orderBy,
       cursor,
-      take,
+      take: effectiveTake,
       skip,
       distinct,
       ...(_count && transformCountFieldIntoSelectRelationsCount(_count)),

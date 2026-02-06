@@ -134,6 +134,29 @@ export const initializeApolloServer = async () => {
                 return;
               }
 
+              // Block query aliasing abuse: reject queries with too many root fields.
+              // Max legitimate usage is 2 (useAnalytics queries protocolStats + dailyVolumes).
+              // Limit set to 5 for generous buffer.
+              const MAX_ROOT_FIELDS = 5;
+              const rootFieldCount = document.definitions
+                .filter(
+                  (def): def is import('graphql').OperationDefinitionNode =>
+                    def.kind === 'OperationDefinition'
+                )
+                .reduce(
+                  (sum, def) => sum + def.selectionSet.selections.length,
+                  0
+                );
+
+              if (rootFieldCount > MAX_ROOT_FIELDS) {
+                throw new GraphQLError(
+                  `Too many root fields. Maximum: ${MAX_ROOT_FIELDS}, Actual: ${rootFieldCount}`,
+                  {
+                    extensions: { code: 'QUERY_TOO_MANY_ROOT_FIELDS' },
+                  }
+                );
+              }
+
               const complexity = getComplexity({
                 schema,
                 query: document,
