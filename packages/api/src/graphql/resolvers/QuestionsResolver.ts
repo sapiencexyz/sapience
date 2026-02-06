@@ -61,7 +61,7 @@ export class QuestionsResolver {
     const prisma = getPrismaFromContext(ctx);
 
     // Validate sort field - throw if invalid, default to 'endTime' if not provided
-    const validSortFields = ['openInterest', 'endTime'] as const;
+    const validSortFields = ['openInterest', 'endTime', 'createdAt'] as const;
     type ValidSortField = (typeof validSortFields)[number];
     let sanitizedSortField: ValidSortField;
     if (sortField === null || sortField === undefined) {
@@ -104,14 +104,16 @@ export class QuestionsResolver {
           ${
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`
-              : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
+              : sanitizedSortField === 'createdAt'
+                ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM MAX(c."createdAt")))::bigint, 0)::text`
+                : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
           } as sort_value
         FROM condition_group cg
         LEFT JOIN condition c ON c."conditionGroupId" = cg.id
           AND c.public = true
-          ${chainId !== null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
-          ${minEndTime !== null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
         WHERE 1=1
           ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
           ${
@@ -132,14 +134,16 @@ export class QuestionsResolver {
           ${
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
-              : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
+              : sanitizedSortField === 'createdAt'
+                ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
+                : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value
         FROM condition c
         WHERE c."conditionGroupId" IS NULL
           AND c.public = true
-          ${chainId !== null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
-          ${minEndTime !== null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
             boundedSearch
               ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
