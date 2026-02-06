@@ -3,26 +3,26 @@
   "version": "1.0.0",
   "private": true,
   "license": "MIT",
-  "type": "module",
   "description": "Scripts for managing Sapience conditions from Polymarket markets",
   "scripts": {
+    "build": "tsc",
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "LLM_ENABLED=false tsx scripts/generate.ts --dry-run",
     "settle": "tsx scripts/settle.ts",
     "settle:dry-run": "tsx scripts/settle.ts --dry-run",
     "settle:execute": "tsx scripts/settle.ts --execute",
     "settle:execute:wait": "tsx scripts/settle.ts --execute --wait",
-    "start": "pnpm generate && pnpm settle:execute:wait",
+    "start": "pnpm build && node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts"
   },
   "dependencies": {
     "dotenv": "16.4.5",
-    "viem": "2.21.49",
-    "tsx": "4.19.2"
+    "viem": "2.21.49"
   },
   "devDependencies": {
+    "tsx": "4.19.2",
     "@eslint/js": "9.18.0",
     "@types/node": "20.17.10",
     "eslint": "9.15.0",

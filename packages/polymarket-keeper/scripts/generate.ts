@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /// <reference types="node" />
 /**
  * Generate Sapience condition groups and conditions from Polymarket markets
