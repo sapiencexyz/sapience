@@ -18,51 +18,26 @@ import {
 import { config } from '../config';
 import Sentry from '../instrument';
 
-// Import only the query (read-only) resolvers from generated TypeGraphQL
+// Import only the actively-used query resolvers from generated TypeGraphQL
+// See graphql-audit._ljm_.md for the full audit of which resolvers are used by consumers
 import {
-  // Category queries
-  AggregateCategoryResolver,
-  FindFirstCategoryResolver,
-  FindFirstCategoryOrThrowResolver,
-  FindManyCategoryResolver,
-  FindUniqueCategoryResolver,
-  FindUniqueCategoryOrThrowResolver,
-  GroupByCategoryResolver,
-
-  // Attestation queries
-  AggregateAttestationResolver,
-  FindFirstAttestationResolver,
-  FindFirstAttestationOrThrowResolver,
+  // Attestation: only FindMany (used by app)
   FindManyAttestationResolver,
-  FindUniqueAttestationResolver,
-  FindUniqueAttestationOrThrowResolver,
-  GroupByAttestationResolver,
 
-  // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
-  // are replaced by custom ConditionResolver which defaults public: true)
-  AggregateConditionResolver,
-  FindFirstConditionOrThrowResolver,
+  // Category: only FindMany (used by app)
+  FindManyCategoryResolver,
+
+  // Condition: only FindUnique (used by sdk, parlay-bot)
+  // FindMany and FindFirst are replaced by custom ConditionResolver
   FindUniqueConditionResolver,
-  FindUniqueConditionOrThrowResolver,
-  GroupByConditionResolver,
 
-  // ConditionGroup queries
-  AggregateConditionGroupResolver,
-  FindFirstConditionGroupResolver,
-  FindFirstConditionGroupOrThrowResolver,
+  // ConditionGroup: FindUnique (used by parlay-bot) + FindMany (used by app)
   FindManyConditionGroupResolver,
   FindUniqueConditionGroupResolver,
-  FindUniqueConditionGroupOrThrowResolver,
-  GroupByConditionGroupResolver,
 
-  // User queries
-  AggregateUserResolver,
-  FindFirstUserResolver,
-  FindFirstUserOrThrowResolver,
+  // User: FindUnique (used by app) + FindMany (deprecated, kept for admin use)
   FindManyUserResolver,
   FindUniqueUserResolver,
-  FindUniqueUserOrThrowResolver,
-  GroupByUserResolver,
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
@@ -81,52 +56,16 @@ export interface ApolloContext {
 }
 
 export const initializeApolloServer = async () => {
-  // Define the query-only resolvers
+  // Generated query resolvers — only those with verified consumer usage
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   const queryResolvers: Function[] = [
-    // Category queries
-    AggregateCategoryResolver,
-    FindFirstCategoryResolver,
-    FindFirstCategoryOrThrowResolver,
-    FindManyCategoryResolver,
-    FindUniqueCategoryResolver,
-    FindUniqueCategoryOrThrowResolver,
-    GroupByCategoryResolver,
-
-    // Attestation queries
-    AggregateAttestationResolver,
-    FindFirstAttestationResolver,
-    FindFirstAttestationOrThrowResolver,
     FindManyAttestationResolver,
-    FindUniqueAttestationResolver,
-    FindUniqueAttestationOrThrowResolver,
-    GroupByAttestationResolver,
-
-    // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
-    // replaced by custom ConditionResolver which defaults public: true)
-    AggregateConditionResolver,
-    FindFirstConditionOrThrowResolver,
+    FindManyCategoryResolver,
     FindUniqueConditionResolver,
-    FindUniqueConditionOrThrowResolver,
-    GroupByConditionResolver,
-
-    // ConditionGroup queries
-    AggregateConditionGroupResolver,
-    FindFirstConditionGroupResolver,
-    FindFirstConditionGroupOrThrowResolver,
     FindManyConditionGroupResolver,
     FindUniqueConditionGroupResolver,
-    FindUniqueConditionGroupOrThrowResolver,
-    GroupByConditionGroupResolver,
-
-    // User queries
-    AggregateUserResolver,
-    FindFirstUserResolver,
-    FindFirstUserOrThrowResolver,
     FindManyUserResolver,
     FindUniqueUserResolver,
-    FindUniqueUserOrThrowResolver,
-    GroupByUserResolver,
   ];
 
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
