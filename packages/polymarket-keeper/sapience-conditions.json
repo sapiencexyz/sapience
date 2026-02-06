@@ -1,0 +1,610 @@
+{
+  "metadata": {
+    "generatedAt": "2026-02-06T18:57:11.365Z",
+    "source": "Polymarket Gamma API",
+    "totalConditions": 26,
+    "totalGroups": 26,
+    "binaryConditions": 26
+  },
+  "groups": [
+    {
+      "title": "Bitcoin Up or Down - February 6, 1PM ET",
+      "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the BTC/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#bitcoin-up-or-down-february-6-1pm-et"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x1aea3de95fee4e3d2532f18d6799241015a181a93e3bbe28103bed764dd34af8",
+          "question": "Will Bitcoin go up on February 6, 1PM ET?",
+          "shortName": "BTC up Feb6",
+          "endDate": "2026-02-06T19:00:00Z",
+          "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the BTC/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".\n\nThe resolution source for this market is information from Binance, specifically the BTC/USDT pair (https://www.binance.com/en/trade/BTC_USDT). The close « C » and open « O » displayed at the top of the graph for the relevant \"1H\" candle will be used once the data for that candle is finalized.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other sources or spot markets.",
+          "similarMarkets": [
+            "https://polymarket.com#bitcoin-up-or-down-february-6-1pm-et"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Bitcoin Up or Down - February 6, 1PM ET"
+        }
+      ]
+    },
+    {
+      "title": "Solana Up or Down - February 6, 1PM ET",
+      "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the SOL/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#solana-up-or-down-february-6-1pm-et"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xe8095adbe2de01a8e1b62384ca4b58443e464a590924f1bf8228c335b9fc5538",
+          "question": "Will Solana go up on February 6, 1PM ET?",
+          "shortName": "SOL up Feb6",
+          "endDate": "2026-02-06T19:00:00Z",
+          "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the SOL/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".\n\nThe resolution source for this market is information from Binance, specifically the SOL/USDT pair (https://www.binance.com/en/trade/SOL_USDT). The close « C » and open « O » displayed at the top of the graph for the relevant \"1H\" candle will be used once the data for that candle is finalized.\n\nPlease note that this market is about the price according to Binance SOL/USDT, not according to other sources or spot markets.",
+          "similarMarkets": [
+            "https://polymarket.com#solana-up-or-down-february-6-1pm-et"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Solana Up or Down - February 6, 1PM ET"
+        }
+      ]
+    },
+    {
+      "title": "Bitcoin Up or Down - February 6, 1:45PM-2:00PM ET",
+      "description": "This market will resolve to \"Up\" if the Bitcoin price at the end of the time range specified in the title is greater than or equal to the price at the beginning of that range. Otherwise, it will resolve to \"Down\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#btc-updown-15m-1770403500"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x9a0b2da4cc7e6bd4e98ec744ff6648f545a88fd35a2b7d5eecc7eab6f4de2b48",
+          "question": "Will Bitcoin go up on February 6, 1:45PM-2:00PM ET?",
+          "shortName": "BTC up Feb6",
+          "endDate": "2026-02-06T19:00:00Z",
+          "description": "This market will resolve to \"Up\" if the Bitcoin price at the end of the time range specified in the title is greater than or equal to the price at the beginning of that range. Otherwise, it will resolve to \"Down\".\nThe resolution source for this market is information from Chainlink, specifically the BTC/USD data stream available at https://data.chain.link/streams/btc-usd.\nPlease note that this market is about the price according to Chainlink data stream BTC/USD, not according to other sources or spot markets.",
+          "similarMarkets": [
+            "https://polymarket.com#btc-updown-15m-1770403500"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Bitcoin Up or Down - February 6, 1:45PM-2:00PM ET"
+        }
+      ]
+    },
+    {
+      "title": "Ethereum Up or Down - February 6, 1PM ET",
+      "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the ETH/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#ethereum-up-or-down-february-6-1pm-et"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x239f26e919e95d36fe8d252e424917e8fa893fcd45c87084957ad9629783ad12",
+          "question": "Will Ethereum go up on February 6, 1PM ET?",
+          "shortName": "ETH up Feb6",
+          "endDate": "2026-02-06T19:00:00Z",
+          "description": "This market will resolve to \"Up\" if the close price is greater than or equal to the open price for the ETH/USDT 1 hour candle that begins on the time and date specified in the title. Otherwise, this market will resolve to \"Down\".\n\nThe resolution source for this market is information from Binance, specifically the ETH/USDT pair (https://www.binance.com/en/trade/ETH_USDT). The close « C » and open « O » displayed at the top of the graph for the relevant \"1H\" candle will be used once the data for that candle is finalized.\n\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other sources or spot markets.",
+          "similarMarkets": [
+            "https://polymarket.com#ethereum-up-or-down-february-6-1pm-et"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Ethereum Up or Down - February 6, 1PM ET"
+        }
+      ]
+    },
+    {
+      "title": "1. FC Union Berlin vs. Eintracht Frankfurt - More Markets",
+      "description": "More markets for the Bundesliga game, scheduled for February 6 at 2:30 PM ET.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#bun-uni-ein-2026-02-06-more-markets"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x718d76cdbf21e845a9dec774bff39f50fde0c36364c5d3aba34874ab1bfb8c0d",
+          "question": "Will 1. FC Union Berlin vs Eintracht Frankfurt total be over 2.5?",
+          "shortName": "FCN/EIN O2.5",
+          "endDate": "2026-02-06T19:30:00Z",
+          "description": "In the upcoming Bundesliga game between 1. FC Union Berlin and Eintracht Frankfurt, scheduled for February 6 at 2:30 PM ET:\n\nThis market will resolve to \"Over\" if 1. FC Union Berlin and Eintracht Frankfurt combine to score 3 or more goals in this game.\n\nIf the combined total is less than 3, this market will resolve to \"Under\".\n\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50–50.\n\nIf the game is started but not completed, this market will resolve according to the official final score published on bundesliga.com. This market refers only to the outcome within the first 90 minutes of regular play plus stoppage time.",
+          "similarMarkets": [
+            "https://polymarket.com#bun-uni-ein-2026-02-06-total-2pt5"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "1. FC Union Berlin vs. Eintracht Frankfurt - More Markets"
+        }
+      ]
+    },
+    {
+      "title": "RC Celta de Vigo vs. CA Osasuna",
+      "description": "This event is for the upcoming La Liga game, scheduled for Friday, February 6, 2026 between RC Celta de Vigo and CA Osasuna.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#lal-cel-osa-2026-02-06"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x749d7531c1fb48920fc49044affc33761010877ab9753b5de6edcd5125514f49",
+          "question": "Will CA Osasuna win on 2026-02-06?",
+          "shortName": "Will CA Osasuna win on 2026-02-06?",
+          "endDate": "2026-02-06T20:00:00Z",
+          "description": "In the upcoming game, scheduled for February 6, 2026\nIf CA Osasuna wins, this market will resolve to \"Yes\".\nOtherwise, this market will resolve to \"No\".\nIf the game is postponed, this market will remain open until the game has been completed.\nIf the game is canceled entirely, with no make-up game, this market will resolve \"No\".\nThis market refers only to the outcome within the first 90 minutes of regular play plus stoppage time.",
+          "similarMarkets": [
+            "https://polymarket.com#lal-cel-osa-2026-02-06-osa"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "RC Celta de Vigo vs. CA Osasuna"
+        }
+      ]
+    },
+    {
+      "title": "LoL: Galions vs Joblife (BO1) - LFL Invitational Souper Group",
+      "description": "This market refers to the LoL match between Galions and Joblife in the LFL Invitational Souper Group, scheduled for February 6 at 2:00PM ET.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#lol-gal-jl-2026-02-06"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xb1c838071487fa066cebceaebf791e42a6aa251455d1b6db0adc695ff39e1f69",
+          "question": "Galions beats Joblife? (LoL, LFL Invitational Souper Group)",
+          "shortName": "GLN win vs JBL",
+          "endDate": "2026-02-07T01:00:00Z",
+          "description": "This market refers to the LoL match between Galions and Joblife in the LFL Invitational Souper Group, scheduled for February 6 at 2:00PM ET.\n\nThis market will resolve to \"Galions\" if Galions win the match against Joblife.\n\nThis market will resolve to \"Joblife\" if Joblife win the match against Galions.\n\nIf the match is canceled (not played at all), ends in a tie, or is delayed beyond 7 days from the scheduled date without a winner determined, this market will resolve to 50-50. \n\nIf the match begins but is not completed, and one team wins due to the opponent's forfeiture, disqualification, or walkover, this market will resolve to the team who wins. \n\nIf the match ends in a forfeit, disqualification, or walkover (team withdraws before the start and the other wins automatically), this market will resolve to 50-50. \n\nThe resolution source for this market will be official information from https://liquipedia.net/leagueoflegends/Main_Page.",
+          "similarMarkets": [
+            "https://polymarket.com#lol-gal-jl-2026-02-06"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "LoL: Galions vs Joblife (BO1) - LFL Invitational Souper Group"
+        }
+      ]
+    },
+    {
+      "title": "Rayo Vallecano de Madrid vs. Real Oviedo - More Markets",
+      "description": "More markets for the La Liga game, scheduled for February 7 at 8:00 AM ET.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#lal-ray-ovi-2026-02-07-more-markets"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x49833df265d5e8e68edc7e6bd7d20ab438ecc44e824b9b0aee4322f391d53906",
+          "question": "Will Rayo Vallecano de Madrid vs Real Oviedo total be over 2.5?",
+          "shortName": "RYV/RLV O2.5",
+          "endDate": "2026-02-07T13:00:00Z",
+          "description": "In the upcoming La Liga game between Rayo Vallecano de Madrid and Real Oviedo, scheduled for February 7 at 8:00 AM ET:\n\nThis market will resolve to \"Over\" if Rayo Vallecano de Madrid and Real Oviedo combine to score 3 or more goals in this game.\n\nIf the combined total is less than 3, this market will resolve to \"Under\".\n\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50–50.\n\nIf the game is started but not completed, this market will resolve according to the official final score published on laliga.com. This market refers only to the outcome within the first 90 minutes of regular play plus stoppage time.",
+          "similarMarkets": [
+            "https://polymarket.com#lal-ray-ovi-2026-02-07-total-2pt5"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "Rayo Vallecano de Madrid vs. Real Oviedo - More Markets"
+        }
+      ]
+    },
+    {
+      "title": "Arsenal FC vs. Sunderland AFC - More Markets",
+      "description": "More markets for the Premier League game, scheduled for February 7 at 10:00 AM ET.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#epl-ars-sun-2026-02-07-more-markets"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x12ca0bd9753cee3fd9b7e0130bfad8f83ba8459359223725df051ca163d17deb",
+          "question": "Will Arsenal FC vs Sunderland AFC total be over 2.5?",
+          "shortName": "ARS/SND O2.5",
+          "endDate": "2026-02-07T15:00:00Z",
+          "description": "In the upcoming Premier League game between Arsenal FC and Sunderland AFC, scheduled for February 7 at 10:00 AM ET:\n\nThis market will resolve to \"Over\" if Arsenal FC and Sunderland AFC combine to score 3 or more goals in this game.\n\nIf the combined total is less than 3, this market will resolve to \"Under\".\n\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50–50.\n\nIf the game is started but not completed, this market will resolve according to the official final score published on premierleague.com. This market refers only to the outcome within the first 90 minutes of regular play plus stoppage time.",
+          "similarMarkets": [
+            "https://polymarket.com#epl-ars-sun-2026-02-07-total-2pt5"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "Arsenal FC vs. Sunderland AFC - More Markets"
+        }
+      ]
+    },
+    {
+      "title": "XRP above ___ on February 7?",
+      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for XRP/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#xrp-above-on-february-7"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x81c520df587aaf48f41eaa96e1ce9460edbd61384e0ea920d90c0e80c64924c8",
+          "question": "Will the price of XRP be above $1.30 on February 7?",
+          "shortName": "XRP >$1",
+          "endDate": "2026-02-07T17:00:00Z",
+          "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for XRP/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the XRP/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/XRP_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance XRP/USDT, not according to other sources or spot markets.\n\nPrice precision is determined by the number of decimal places in the source.",
+          "similarMarkets": [
+            "https://polymarket.com#xrp-above-1pt3-on-february-7"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "XRP above ___ on February 7?"
+        }
+      ]
+    },
+    {
+      "title": "Bitcoin Up or Down on February 7?",
+      "description": "This market will resolve to \"Up\" if the \"Close\" price for the Binance 1 minute candle for BTC/USDT Feb 6 '26 12:00 in the ET timezone (noon) is lower than the final \"Close\" price for the Feb 7 '26 12:00 ET candle.",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#bitcoin-up-or-down-on-february-7"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xa163b6502795cdbe8e48710be603eca9de59bef477fa3ea551b99adb17d7aca1",
+          "question": "Will Bitcoin go up on February 7?",
+          "shortName": "BTC up Feb7",
+          "endDate": "2026-02-07T17:00:00Z",
+          "description": "This market will resolve to \"Up\" if the \"Close\" price for the Binance 1 minute candle for BTC/USDT Feb 6 '26 12:00 in the ET timezone (noon) is lower than the final \"Close\" price for the Feb 7 '26 12:00 ET candle.\n\nThis market will resolve to \"Down\" if the \"Close\" price for the Binance 1 minute candle for BTC/USDT Feb 6 '26 12:00 in the ET timezone (noon) is higher than the final \"Close\" price for the Feb 7 '26 12:00 ET candle.\n\nIf the final \"Close\" price for both of these candles is exactly equal on Binance, this market will resolve 50-50.\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other sources or spot markets.",
+          "similarMarkets": [
+            "https://polymarket.com#bitcoin-up-or-down-on-february-7"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Bitcoin Up or Down on February 7?"
+        }
+      ]
+    },
+    {
+      "title": "Solana above ___ on February 8?",
+      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#solana-above-on-february-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xe84bc55ec7710ef1cac12dc5048f40ec0fbebf2ba3a9ab8366b898a7437875ce",
+          "question": "Will the price of Solana be above $80 on February 8?",
+          "shortName": "SOL >$80",
+          "endDate": "2026-02-08T17:00:00Z",
+          "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for SOL/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the SOL/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/SOL_USDT with \"1m\" and \"Candles\" selected on the top bar.\n\nPlease note that this market is about the price according to Binance SOL/USDT, not according to other sources or spot markets.\n\nPrice precision is determined by the number of decimal places in the source.",
+          "similarMarkets": [
+            "https://polymarket.com#solana-above-80-on-february-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "Solana above ___ on February 8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x89410abafd9b467e0597a3ebc9ace8df440066a48f2a67b35a96df6ec5af6d16",
+          "question": "Will Bitcoin reach $88,000 February 2-8?",
+          "shortName": "BTC reach $88,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-88k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x5aac617026fe958a47a2203d3ce46dd581593404e79f878f1ca6752d7dab4b6a",
+          "question": "Will Bitcoin reach $82,000 February 2-8?",
+          "shortName": "BTC reach $82,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-82k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x5da1e8e8d8e3be7b95268e2917f0b9a640b3ea7c9972dd8351fcfba81bd9eae2",
+          "question": "Will Bitcoin reach $90,000 February 2-8?",
+          "shortName": "BTC reach $90,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-90k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xda1812c9011587df2d11de63658c1d18b1b5deff19f2e075a1301e3d3b1f0780",
+          "question": "Will Bitcoin reach $84,000 February 2-8?",
+          "shortName": "BTC reach $84,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-84k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xa85bea7fa9c349d46929470f505b91016926a76ed81aa44332705b8b939710f0",
+          "question": "Will Bitcoin reach $80,000 February 2-8?",
+          "shortName": "BTC reach $80,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-80k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x0cce9fd4ac28ab5b19336745c7c20062cc5da7e4354e27f3f8ecc6c646f55bf1",
+          "question": "Will Ethereum dip to $1,700 February 2-8?",
+          "shortName": "ETH dip $1,700",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Ethereum (ETH/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Low\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-dip-to-1700-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x8991509175e91bb173ebc7b59b3614d16e821a6150e52933ab7821b1c8cb5e74",
+          "question": "Will Ethereum reach $2,500 February 2-8?",
+          "shortName": "ETH reach $2,500",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for ETH/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"High\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-reach-2500-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Bitcoin hit February 2-8?",
+      "description": "What price will Bitcoin hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-bitcoin-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x330f8c052bdabcb15ef608bdea555b1225c2bb1d9786295b7b2aff8833ad170f",
+          "question": "Will Bitcoin reach $86,000 February 2-8?",
+          "shortName": "BTC reach $86,000",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for BTC/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the BTC/USDT \"High\" prices available at https://www.binance.com/en/trade/BTC_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance BTC/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-bitcoin-reach-86k-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Bitcoin hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x152dd747f8bb0daa817a6e489d8e1155bc10306501c62309056c7221e3f9c958",
+          "question": "Will Ethereum dip to $1,500 February 2-8?",
+          "shortName": "ETH dip $1,500",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Ethereum (ETH/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Low\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-dip-to-1500-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x6e7a7055232491cbf94e2bd116e77258a589402e2487c4213b4dcc3155812300",
+          "question": "Will Ethereum dip to $1,600 February 2-8?",
+          "shortName": "ETH dip $1,600",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Ethereum (ETH/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Low\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-dip-to-1600-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Solana hit February 2-8?",
+      "description": "What price will Solana hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-solana-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x4874a899b96ced25e2b3d71a5504966ae4dcfc5e06beb3be12e84a0400a01a4b",
+          "question": "Will Solana dip to $60 February 2-8?",
+          "shortName": "SOL dip $60",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1 minute candle for Solana (SOL/USDT) during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"Low\" price equal to or lower than the price specified in the title. Otherwise, this market will resolve to \"No.\"\n\nThe resolution source for this market is Binance, specifically the SOL/USDT \"Low\" prices available at https://www.binance.com/en/trade/SOL_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance SOL/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-solana-dip-to-60-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Solana hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0xff5c6799479f1551472192c09a784c5291ca718df39fe76d167294b261338c9f",
+          "question": "Will Ethereum reach $2,600 February 2-8?",
+          "shortName": "ETH reach $2,600",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for ETH/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"High\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-reach-2600-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "What price will Ethereum hit February 2-8?",
+      "description": "What price will Ethereum hit February 2-8?",
+      "categorySlug": "crypto",
+      "similarMarkets": [
+        "https://polymarket.com#what-price-will-ethereum-hit-february-2-8"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x47ebdba06b504e71b159d8ac531c51f68839cb8972315a6ddbbe1ec9bbe088ee",
+          "question": "Will Ethereum reach $2,400 February 2-8?",
+          "shortName": "ETH reach $2,400",
+          "endDate": "2026-02-09T05:00:00Z",
+          "description": "This market will immediately resolve to \"Yes\" if any Binance 1-minute candle for ETH/USDT during the date range specified in the title (from 12:00 AM ET on the first date to 11:59 PM ET on the last) has a final \"High\" price equal to or greater than the price specified in the title. Otherwise, this market will resolve to \"No\".\n\nThe resolution source for this market is Binance, specifically the ETH/USDT \"High\" prices available at https://www.binance.com/en/trade/ETH_USDT, with the chart settings on \"1m\" candles selected on the top bar.\n\nPlease note that the outcome of this market depends solely on the price data from the Binance ETH/USDT trading pair. Prices from other exchanges, different trading pairs, or spot markets will not be considered for the resolution of this market.",
+          "similarMarkets": [
+            "https://polymarket.com#will-ethereum-reach-2400-february-2-8"
+          ],
+          "categorySlug": "crypto",
+          "chainId": 5064014,
+          "groupTitle": "What price will Ethereum hit February 2-8?"
+        }
+      ]
+    },
+    {
+      "title": "Transylvania Open: Sorana Cirstea vs Daria Snigur",
+      "description": "This market refers on the tennis match between Sorana Cirstea and Daria Snigur in the Transylvania Open, scheduled for February 6 at 11:30AM ET.",
+      "categorySlug": "sports",
+      "similarMarkets": [
+        "https://polymarket.com#wta-cirstea-snigur-2026-02-06"
+      ],
+      "conditions": [
+        {
+          "conditionHash": "0x43420419a828bf44f14437b38134af1955776f5d5fa266d43f2f776bc5bbc453",
+          "question": "Cirstea beats Snigur? (Transylvania Open)",
+          "shortName": "CRS win vs SNG",
+          "endDate": "2026-02-13T16:30:00Z",
+          "description": "This market refers on the tennis match between Sorana Cirstea and Daria Snigur in the Transylvania Open, scheduled for February 6 at 11:30AM ET.\n\nThis market will resolve to 'Cirstea' if Sorana Cirstea advances against Daria Snigur.\n\nThis market will resolve to 'Snigur' if Daria Snigur advances against Sorana Cirstea.\n\nIf the match is canceled (not played at all), ends in a tie, or is delayed beyond 7 days from the scheduled date without a winner determined, this market will resolve to 50-50.\n\nIf the match begins but is not completed, and one player advances due to the opponent's retirement, default, or disqualification, this market will resolve to the player who advances.\n\nIf the match ends in a walkover (player withdraws before the start and the other advances automatically), this market will resolve to 50-50.\n\nThe primary resolution source will be official information from the WTA Tour. A consensus of credible reporting may also be used.",
+          "similarMarkets": [
+            "https://polymarket.com#wta-cirstea-snigur-2026-02-06"
+          ],
+          "categorySlug": "sports",
+          "chainId": 5064014,
+          "groupTitle": "Transylvania Open: Sorana Cirstea vs Daria Snigur"
+        }
+      ]
+    }
+  ],
+  "ungroupedConditions": []
+}
