@@ -70,17 +70,25 @@ RULES for "name" (shortName):
 - Team abbreviations when well-known: LAL, BOS, NYK, CHI, MIA, GSW, etc.
 - NEVER wrap the short name in quotes - output plain text only
 - Censor explicit/profane words with *** (e.g., "f***", "s***"), don't change for something that isn't profane
+- When a market has a specific date or deadline, ALWAYS include it in the short name (e.g., "BTC >$100k Feb 14" not "BTC >$100k")
+- For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
+- Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
+- If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
 - BAD: "SDP vs LDP" for "Will SDP win most seats in Japan?" -> GOOD: SDP wins Japan
 - BAD: "Chelsea vs Wav" for "Will Chelsea win?" -> GOOD: Chelsea wins
 - BAD: "NE vs SEA" for coin toss question -> GOOD: Coin toss NE
+- BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
+- BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
+- BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
 
 MARKET TYPE FORMATS:
 
 1. Team matchups (ONLY use "vs" when it's actually a head-to-head game):
    q: "Lakers vs Celtics", outcomes: ["Lakers","Celtics"] -> LAL wins
+   If about a specific segment: G2 win vs MOUZ (Map 2), Chelsea > ATL (2H)
 
 2. Single team/party win questions (NOT a matchup - use "wins"):
    - "Will Chelsea FC win?" -> Chelsea wins
@@ -90,6 +98,7 @@ MARKET TYPE FORMATS:
 3. Over/Under totals ("X vs Y: O/U 244.5"):
    -> LAL/BOS O244.5
    -> AUR/FUR O244.5
+   For maps O/U: G2 vs MOUZ O2.5 maps
 
 4. Player props ("Player: Points Over 25.5"):
    -> LeBron O25.5pts
@@ -98,11 +107,12 @@ MARKET TYPE FORMATS:
    -> Lakers -3.5
 
 6. Price movement ("Asset Up or Down on Date"):
-   -> SOL up Jan14
+   -> SOL up Jan 14
 
 7. Other markets:
    - "Fed rate cut January?" -> Fed cut Jan
    - "Trump wins 2024?" -> Trump 2024
+   - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
 IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
 
@@ -146,17 +156,25 @@ RULES for "name" (shortName):
 - Team abbreviations when well-known: LAL, BOS, NYK, CHI, MIA, GSW, etc.
 - NEVER wrap the short name in quotes - output plain text only
 - Censor explicit/profane words with *** (e.g., "f***", "s***")
+- When a market has a specific date or deadline, ALWAYS include it in the short name (e.g., "BTC >$100k Feb 14" not "BTC >$100k")
+- For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
+- Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
+- If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
 - BAD: "SDP vs LDP" for "Will SDP win most seats in Japan?" -> GOOD: SDP wins Japan
 - BAD: "Chelsea vs Wav" for "Will Chelsea win?" -> GOOD: Chelsea wins
 - BAD: "NE vs SEA" for coin toss question -> GOOD: Coin toss NE
+- BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
+- BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
+- BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
 
 MARKET TYPE FORMATS:
 
 1. Team matchups (ONLY use "vs" when it's actually a head-to-head game):
    q: "Lakers vs Celtics", outcomes: ["Lakers","Celtics"] -> LAL wins
+   If about a specific segment: G2 win vs MOUZ (Map 2), Chelsea > ATL (2H)
 
 2. Single team/party win questions (NOT a matchup - use "wins"):
    - "Will Chelsea FC win?" -> Chelsea wins
@@ -166,6 +184,7 @@ MARKET TYPE FORMATS:
 
 3. Over/Under totals ("X vs Y: O/U 244.5" or "X vs Y: 1H O/U 120"):
    -> LAL/BOS O244.5 or LAL/BOS 1H O120
+   For maps O/U: G2 vs MOUZ O2.5 maps
 
 4. Player props ("Player: Points Over 25.5"):
    -> LeBron O25.5pts
@@ -185,14 +204,15 @@ MARKET TYPE FORMATS:
    -> BTTS LAL/BOS
 
 9. Price movement ("Asset Up or Down on Date"):
-   -> SOL up Jan14 or SPX up Feb5
+   -> SOL up Jan 14 or SPX up Feb 5
 
 10. Most X ("Series: Most kills?"):
     outcomes: ["TeamA","TeamB"] -> TeamA most kills
 
 11. Elon Musk tweets:
     - "Will Elon tweet about Doge?" -> Elon tweets Doge
-    - "Elon tweets 50+ times Jan 20?" -> Elon 50+ Jan20
+    - "Elon tweets 50+ times Jan 20?" -> Elon 50+ Jan 20
+    - "Elon tweets 50+ times from Feb 8 to Feb 14?" -> Elon 50+ Feb 8 - Feb 14
     - "Will Elon Musk post on X about Bitcoin?" -> Elon tweets BTC
     - "Elon tweets 100+ times this week?" -> Elon 100+ tweets
     - "Will Elon Musk post 200-219 tweets?" -> Elon 200-219 tweets
@@ -205,6 +225,7 @@ MARKET TYPE FORMATS:
     - "Fed rate cut January?" -> Fed cut Jan
     - "Trump wins 2024?" -> Trump 2024
     - "Bitcoin above $100k?" -> BTC >$100k
+    - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
 IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
 

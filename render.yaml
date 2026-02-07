@@ -78,7 +78,7 @@ services:
     type: cron
     env: node
     schedule: "*/30 * * * *"
-    buildCommand: npm install -g pnpm@9 && bash render-build-sdk.sh
+    buildCommand: npm install -g pnpm@9 && bash render-build-sdk.sh && pnpm --filter @sapience/polymarket-keeper build
     startCommand: NODE_ENV=production pnpm --filter @sapience/polymarket-keeper start
     branch: main
     buildFilter:

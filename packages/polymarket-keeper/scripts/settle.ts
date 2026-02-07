@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 /// <reference types="node" />
 /**
  * Settle Sapience conditions by bridging resolution data from Polymarket via LayerZero
