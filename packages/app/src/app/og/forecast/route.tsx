@@ -14,6 +14,7 @@ import {
   baseContainerStyle,
   contentContainerStyle,
   ForecastFooter,
+  TopLeftAvatar,
   SectionLabel,
   FONT_FAMILY,
   createErrorImageResponse,
@@ -98,6 +99,7 @@ export async function GET(req: Request) {
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
+          <TopLeftAvatar addr={addr} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
@@ -134,7 +136,6 @@ export async function GET(req: Request) {
             </div>
 
             <ForecastFooter
-              addr={addr}
               resolution={resolution}
               horizon={horizon}
               odds={odds}
