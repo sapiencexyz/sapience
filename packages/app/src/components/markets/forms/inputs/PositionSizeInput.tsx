@@ -7,7 +7,7 @@ import { z } from 'zod';
 import CollateralBalance from './CollateralBalance';
 import { getChainShortName } from '~/lib/utils/util';
 
-interface WagerInputProps {
+interface PositionSizeInputProps {
   name?: string;
   collateralSymbol?: string;
   collateralAddress?: `0x${string}`;
@@ -22,10 +22,10 @@ interface WagerInputProps {
   inputClassName?: string;
 }
 
-// Define the wager schema that will be used across all forms
-export const wagerAmountSchema = z
+// Define the position size schema that will be used across all forms
+export const positionSizeSchema = z
   .string()
-  .min(1, 'Wager amount is required')
+  .min(1, 'Position size is required')
   .refine(
     (val) => {
       const trimmed = val.trim();
@@ -48,16 +48,16 @@ export const wagerAmountSchema = z
   );
 
 /**
- * Creates a wager amount schema with optional min and max constraints
+ * Creates a position size schema with optional min and max constraints
  * @param minAmount - Optional minimum amount (human units)
  * @param maxAmount - Optional maximum amount (human units)
  * @returns A Zod schema with min/max validation applied
  */
-export const createWagerAmountSchema = (
+export const createPositionSizeSchema = (
   minAmount?: string | number,
   maxAmount?: string | number
 ): z.ZodTypeAny => {
-  let schema: z.ZodTypeAny = wagerAmountSchema;
+  let schema: z.ZodTypeAny = positionSizeSchema;
   if (minAmount !== undefined) {
     schema = schema.refine(
       (val: string) => {
@@ -84,8 +84,8 @@ export const createWagerAmountSchema = (
   return schema;
 };
 
-export function WagerInput({
-  name = 'wagerAmount',
+export function PositionSizeInput({
+  name = 'positionSize',
   collateralSymbol,
   collateralAddress = '0x0000000000000000000000000000000000000000',
   chainId = 432,
@@ -93,7 +93,7 @@ export function WagerInput({
   maxAmount,
   hideHeader = false,
   inputClassName,
-}: WagerInputProps) {
+}: PositionSizeInputProps) {
   const {
     register,
     formState: { errors },
@@ -104,24 +104,27 @@ export function WagerInput({
   // Create schema with min/max constraints if provided
   // Used by the validate function in register (form-level zodResolver is source of truth)
   const validationSchemaRef = useRef<z.ZodTypeAny>(
-    createWagerAmountSchema(minAmount, maxAmount)
+    createPositionSizeSchema(minAmount, maxAmount)
   );
 
   // Keep ref updated when constraints change
   useEffect(() => {
-    validationSchemaRef.current = createWagerAmountSchema(minAmount, maxAmount);
+    validationSchemaRef.current = createPositionSizeSchema(
+      minAmount,
+      maxAmount
+    );
   }, [minAmount, maxAmount]);
   return (
     <div className="space-y-2">
       {!hideHeader && (
         <div className="flex justify-between items-center">
-          <Label htmlFor={`${name}-input`}>Wager Amount</Label>
+          <Label htmlFor={`${name}-input`}>Position Size</Label>
           <CollateralBalance
             collateralSymbol={collateralSymbol}
             collateralAddress={collateralAddress}
             chainId={chainId}
             chainShortName={chainShortName}
-            onSetWagerAmount={(amount) =>
+            onSetPositionSize={(amount) =>
               setValue(name, amount, {
                 shouldValidate: true,
                 shouldDirty: true,
@@ -166,9 +169,9 @@ export function WagerInput({
                 return true;
               } catch (error) {
                 if (error instanceof z.ZodError) {
-                  return error.errors[0]?.message ?? 'Invalid wager amount';
+                  return error.errors[0]?.message ?? 'Invalid amount';
                 }
-                return 'Invalid wager amount';
+                return 'Invalid amount';
               }
             },
             onChange: (e) => {

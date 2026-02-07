@@ -2,15 +2,15 @@
 
 import { AlertTriangle } from 'lucide-react';
 
-interface WagerDisclaimerProps {
+interface RiskDisclaimerProps {
   className?: string;
   message?: string;
 }
 
-export default function WagerDisclaimer({
+export default function RiskDisclaimer({
   className,
-  message = 'Do not wager more than you can afford to lose',
-}: WagerDisclaimerProps) {
+  message = 'Do not risk more than you can afford to lose',
+}: RiskDisclaimerProps) {
   return (
     <div className={`text-xs text-foreground text-center ${className || ''}`}>
       <span className="inline-flex items-center gap-1">

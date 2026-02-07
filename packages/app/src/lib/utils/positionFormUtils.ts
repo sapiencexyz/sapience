@@ -6,29 +6,29 @@ import { MarketGroupClassification } from '~/lib/types';
 export const YES_SQRT_PRICE_X96 = '79228162514264337593543950336'; // 2^96
 const NO_SQRT_PRICE_X96 = '0';
 
-// Default wager amount for new positions
-export const DEFAULT_WAGER_AMOUNT = '1';
+// Default position size for new positions
+export const DEFAULT_POSITION_SIZE = '1';
 
-// Maximum wager amount for Ethereal chain (1M USDe)
-export const ETHEREAL_MAX_WAGER = 1000000;
+// Maximum position size for Ethereal chain (1M USDe)
+export const ETHEREAL_MAX_POSITION_SIZE = 1000000;
 
 /**
- * Calculate the maximum wager amount based on user balance and chain.
- * On Ethereal chain, cap at ETHEREAL_MAX_WAGER. Otherwise, use user's full balance.
+ * Calculate the maximum position size based on user balance and chain.
+ * On Ethereal chain, cap at ETHEREAL_MAX_POSITION_SIZE. Otherwise, use user's full balance.
  */
-export function getMaxWagerAmount(
+export function getMaxPositionSize(
   userBalance: number,
   isEtherealChain: boolean
 ): string | undefined {
   if (userBalance > 0) {
     if (isEtherealChain) {
-      return Math.min(ETHEREAL_MAX_WAGER, userBalance).toString();
+      return Math.min(ETHEREAL_MAX_POSITION_SIZE, userBalance).toString();
     }
     return userBalance.toString();
   }
 
   if (isEtherealChain) {
-    return ETHEREAL_MAX_WAGER.toString();
+    return ETHEREAL_MAX_POSITION_SIZE.toString();
   }
 
   return undefined;
@@ -97,7 +97,7 @@ export function getDefaultFormPredictionValue(
  * Creates enhanced position defaults for the position form
  */
 interface CreatePositionEntryDefaults {
-  wagerAmount: string;
+  positionSize: string;
   prediction?: boolean;
   formPredictionValue?: string;
 }
@@ -106,7 +106,7 @@ export function createPositionDefaults(
   marketClassification?: MarketGroupClassification
 ): CreatePositionEntryDefaults {
   const defaults: CreatePositionEntryDefaults = {
-    wagerAmount: DEFAULT_WAGER_AMOUNT,
+    positionSize: DEFAULT_POSITION_SIZE,
   };
 
   if (marketClassification) {
@@ -144,16 +144,19 @@ export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
 }
 
 /**
- * Calculate payout (human-readable string) from a bid and wager amount.
+ * Calculate payout (human-readable string) from a bid and position size.
  */
 export function calculatePayout(
   bid: QuoteBid,
-  wagerAmount: string,
+  positionSize: string,
   collateralDecimals: number
 ): string | null {
   try {
-    const userWagerWei = parseUnits(wagerAmount || '0', collateralDecimals);
-    const totalWei = userWagerWei + BigInt(bid.makerWager);
+    const userPositionSizeWei = parseUnits(
+      positionSize || '0',
+      collateralDecimals
+    );
+    const totalWei = userPositionSizeWei + BigInt(bid.makerWager);
     return parseFloat(formatUnits(totalWei, collateralDecimals)).toFixed(2);
   } catch {
     return null;

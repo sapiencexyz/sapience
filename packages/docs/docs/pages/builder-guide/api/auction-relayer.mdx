@@ -7,7 +7,7 @@ description: "WebSocket API for prediction market auctions between requesters an
 
 The Auction Relayer is a WebSocket service that facilitates real-time matching between **requesters** and **responders** for prediction market positions.
 
-- **Requester**: Creates an auction by specifying a wager and predictions (including one or many picks). Referred to as `taker` in payloads.
+- **Requester**: Creates an auction by specifying a position size and predictions (including one or many picks). Referred to as `taker` in payloads.
 - **Responder**: Submits bids offering to take the opposite side. Referred to as `maker` in payloads.
 
 The relayer validates messages, broadcasts auctions to all connected clients, and streams bids to subscribed requesters.
@@ -35,9 +35,9 @@ Requester                    Relayer                     Responder
     │                           │                            │
 ```
 
-1. Requester sends `auction.start` with wager and picks
+1. Requester sends `auction.start` with position size and picks
 2. Relayer responds with `auction.ack` (includes `auctionId` and optional `id` if provided) and broadcasts `auction.started` to all clients
-3. Responders send `bid.submit` with their wager offer and signature
+3. Responders send `bid.submit` with their position size offer and signature
 4. Relayer replies `bid.ack` and streams `auction.bids` to the requester
 
 Requesters are auto-subscribed to their auction's bid stream.
@@ -169,7 +169,7 @@ ws.onmessage = (ev) => {
   id?: string,                   // Optional request ID for correlation
   payload: {
     taker: string,              // Requester's address (0x...) - EOA or smart account
-    wager: string,              // Wager amount in wei
+    wager: string,              // Position size in wei
     resolver: string,           // Resolver contract address
     predictedOutcomes: string[], // Encoded picks (bytes strings)
     takerNonce: number,
@@ -207,7 +207,7 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
   payload: {
     auctionId: string,
     maker: string,              // Responder's address - EOA or smart account
-    makerWager: string,         // Responder's wager in wei
+    makerWager: string,         // Responder's position size in wei
     makerDeadline: number,      // Unix timestamp (must be future)
     makerSignature: string,     // EIP-712 signature
     makerNonce: number
@@ -367,7 +367,7 @@ Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 - `invalid_payload` – Malformed message structure
 - `auction_not_found_or_expired` – Unknown or expired auction
 - `quote_expired` – `makerDeadline` has passed
-- `invalid_maker_wager` – Wager is zero or invalid
+- `invalid_maker_wager` – Position size is zero or invalid
 - `invalid_maker` – Maker address is invalid
 - `invalid_maker_bid_signature_format` – Signature format invalid
 

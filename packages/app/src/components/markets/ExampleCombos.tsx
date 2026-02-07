@@ -42,7 +42,7 @@ type ComboWithQuote = {
 
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
-const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
+const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
@@ -212,7 +212,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           }));
           const payload = buildAuctionStartPayload(outcomes, chainId);
           const requestPayload = {
-            wager: TAKER_WAGER_WEI,
+            wager: TAKER_POSITION_SIZE_WEI,
             resolver: payload.resolver,
             predictedOutcomes: payload.predictedOutcomes,
             taker: selectedTakerAddress,
@@ -291,7 +291,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           return BigInt(cur.makerWager) > BigInt(acc.makerWager) ? cur : acc;
         }, list[0]);
 
-        const taker = BigInt(TAKER_WAGER_WEI);
+        const taker = BigInt(TAKER_POSITION_SIZE_WEI);
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
@@ -480,7 +480,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                   </span>
                                   <br />
                                   <span className="text-muted-foreground">
-                                    to win{' '}
+                                    payout{' '}
                                   </span>
                                   <span className="text-brand-white font-medium font-mono">
                                     {(1 / (1 - probability)).toFixed(2)} USDe
@@ -570,7 +570,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 className="font-mono text-ethena"
                               />
                               <span className="text-muted-foreground ml-1">
-                                implied by 1 USDe to win{' '}
+                                implied by 1 USDe for payout{' '}
                               </span>
                               <span className="text-brand-white font-medium font-mono">
                                 {(1 / (1 - probability)).toFixed(2)} USDe

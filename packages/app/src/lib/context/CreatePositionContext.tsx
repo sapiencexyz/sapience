@@ -34,7 +34,7 @@ interface CreatePositionEntry {
   marketId: number;
   question: string;
   chainId: number; // Add chainId to identify which chain the market is on
-  wagerAmount?: string; // Store default wager amount
+  positionSize?: string; // Store default position size
   marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
@@ -207,7 +207,7 @@ export const CreatePositionProvider = ({
                     marketId: position.marketId,
                     question: position.question,
                     marketClassification: position.marketClassification,
-                    wagerAmount: p.wagerAmount || defaults.wagerAmount,
+                    positionSize: p.positionSize || defaults.positionSize,
                   }
                 : p
             )
@@ -233,7 +233,7 @@ export const CreatePositionProvider = ({
                   prediction: position.prediction,
                   question: position.question,
                   marketClassification: position.marketClassification,
-                  wagerAmount: p.wagerAmount || defaults.wagerAmount,
+                  positionSize: p.positionSize || defaults.positionSize,
                 }
               : p
           )
@@ -243,7 +243,7 @@ export const CreatePositionProvider = ({
         const enhancedPosition: CreatePositionEntry = {
           ...position,
           id,
-          wagerAmount: position.wagerAmount || defaults.wagerAmount,
+          positionSize: position.positionSize || defaults.positionSize,
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
         setSinglePositions((prev) => [...prev, enhancedPosition]);

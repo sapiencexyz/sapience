@@ -23,7 +23,7 @@ On Ethereal, prediction market contracts use [wUSDe](https://explorer.ethereal.t
 
 - Connects to the Auction Relayer WebSocket
 - Listens for `auction.started` events from traders
-- Filters auctions by minimum wager size and chain
+- Filters auctions by minimum position size and chain
 - Prepares collateral by wrapping native USDe to WUSDe and approving
 - Signs bids with EIP-712 and submits them
 - Auto-reconnects on connection errors
@@ -53,7 +53,7 @@ PRIVATE_KEY=your_private_key_here
 
 # Strategy parameters
 BID_AMOUNT=0.01           # Amount to bid in USDe (human readable)
-MIN_MAKER_WAGER=10        # Minimum auction size to bid on
+MIN_MAKER_POSITION_SIZE=10  # Minimum auction size to bid on
 DEADLINE_SECONDS=60       # How long your bid is valid
 
 # Optional overrides
@@ -68,7 +68,7 @@ The bot follows this flow:
 
 1. **Connect** to the auction relayer WebSocket
 2. **Listen** for `auction.started` messages
-3. **Filter** auctions below `MIN_MAKER_WAGER` or on different chains
+3. **Filter** auctions below `MIN_MAKER_POSITION_SIZE` or on different chains
 4. **Prepare** collateral using `prepareForTrade`:
    - Check existing WUSDe balance and wrap only the additional USDe needed
    - Check allowance and approve WUSDe if needed

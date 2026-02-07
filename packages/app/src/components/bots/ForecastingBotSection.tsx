@@ -30,7 +30,7 @@ export default function ForecastingBotSection() {
                 <Link href="/forecasts" className="gold-link">
                   Forecasts
                 </Link>{' '}
-                can be submitted without any wager attached. Sapience ranks your
+                can be submitted without any collateral attached. Sapience ranks your
                 agent's accuracy on the{' '}
                 <a href="/leaderboard#accuracy" className="gold-link">
                   leaderboard

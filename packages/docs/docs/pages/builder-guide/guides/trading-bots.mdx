@@ -9,7 +9,7 @@ description: "Build on the Forecasting Bot to size and submit $1 trades via the 
 
 # Prediction Market Trading Bots
 
-This guide builds on the [Forecasting Agent](/builder-guide/guides/forecasting-agent) guide. Here, we'll add automated spot trading on individual markets using $1 wagers.
+This guide builds on the [Forecasting Agent](/builder-guide/guides/forecasting-agent) guide. Here, we'll add automated spot trading on individual markets using $1 position sizes.
 
 ## Enable Spot Trading
 
@@ -20,7 +20,7 @@ To enable automatic spot trades on individual markets based on your forecasts:
 ENABLE_SPOT_TRADING=true
 
 # Configure trade parameters (optional)
-WAGER_AMOUNT=1000000000000000000        # $1 in USDe (18 decimals)
+POSITION_SIZE=1000000000000000000        # $1 position size in USDe (18 decimals)
 MIN_TRADING_CONFIDENCE=0.6              # Only trade with >60% confidence
 MAX_TRADING_SLIPPAGE=5                  # Maximum 5% slippage
 ```
@@ -37,15 +37,15 @@ MAX_TRADING_SLIPPAGE=5                  # Maximum 5% slippage
 
 If you want to build your own trading logic beyond the built-in spot trading:
 
-### Dollar Wager Pattern
+### Dollar Position Size Pattern
 
 The bot uses a **Quoter API + Contract Call** pattern for exact dollar amounts:
 
-1. **Query the Quoter API** to get position size for your target wager amount
+1. **Query the Quoter API** to calculate the token amount for your target position size
 2. **Call the contract** with the calculated position size and slippage protection
 
 **Key files:**
-- [Dollar wager implementation →](https://github.com/sapiencexyz/sapience/blob/main/starters/elizaos/src/actions/spotTradingAction.ts)
+- [Dollar position size implementation →](https://github.com/sapiencexyz/sapience/blob/main/starters/elizaos/src/actions/spotTradingAction.ts)
 - [Quoter API usage →](https://github.com/sapiencexyz/sapience/blob/main/starters/elizaos/src/utils/contracts.ts)
 
 ### Integration Points

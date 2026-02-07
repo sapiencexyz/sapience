@@ -12,7 +12,7 @@ import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 interface PredictionFormProps {
-  /** The condition ID to bet on */
+  /** The condition ID to predict on */
   conditionId: string;
   /** The full question text (used for tooltips and display when shortName not available) */
   question: string;
@@ -62,7 +62,7 @@ export default function PredictionForm({
   endTime,
 }: PredictionFormProps) {
   const [selectedPrediction] = React.useState<boolean | null>(true);
-  const wagerAmount = '1'; // Fixed wager for forecast calculation
+  const positionSize = '1'; // Fixed position size for forecast calculation
   const router = useRouter();
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
@@ -76,7 +76,7 @@ export default function PredictionForm({
   } = useSingleConditionAuction({
     conditionId: selectedPrediction !== null ? conditionId : null,
     prediction: selectedPrediction,
-    wagerAmount,
+    positionSize,
     chainId,
     collateralDecimals,
     predictionMarketAddress,
@@ -108,15 +108,15 @@ export default function PredictionForm({
 
     try {
       const makerWagerWei = BigInt(bestBid.makerWager);
-      const userWagerNum = parseFloat(wagerAmount || '0');
+      const userPositionSizeNum = parseFloat(positionSize || '0');
       const makerWagerNum = Number(
         formatUnits(makerWagerWei, collateralDecimals)
       );
-      const totalPayout = userWagerNum + makerWagerNum;
+      const totalPayout = userPositionSizeNum + makerWagerNum;
 
       if (totalPayout <= 0) return null;
 
-      const impliedProb = userWagerNum / totalPayout;
+      const impliedProb = userPositionSizeNum / totalPayout;
 
       if (selectedPrediction === true) {
         return Math.round(impliedProb * 100);
@@ -128,7 +128,7 @@ export default function PredictionForm({
     } catch {
       return null;
     }
-  }, [bestBid, wagerAmount, collateralDecimals, selectedPrediction]);
+  }, [bestBid, positionSize, collateralDecimals, selectedPrediction]);
 
   // Get current selection state for this condition
   const selectionState = React.useMemo(() => {

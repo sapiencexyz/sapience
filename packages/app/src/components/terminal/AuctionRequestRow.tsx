@@ -197,7 +197,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       const total = makerBid + requester;
 
       let bidDisplay = '—';
-      let toWinDisplay = '—';
+      let payoutDisplay = '—';
       try {
         const bidNum = Number(formatEther(makerBid));
         if (Number.isFinite(bidNum)) {
@@ -210,9 +210,9 @@ const AuctionRequestRow: React.FC<Props> = ({
         /* noop */
       }
       try {
-        const toWinNum = Number(formatEther(total));
-        if (Number.isFinite(toWinNum)) {
-          toWinDisplay = toWinNum.toLocaleString(undefined, {
+        const payoutNum = Number(formatEther(total));
+        if (Number.isFinite(payoutNum)) {
+          payoutDisplay = payoutNum.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           });
@@ -232,7 +232,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       }
       return {
         bidDisplay,
-        toWinDisplay,
+        payoutDisplay,
         pct,
       };
     } catch {
@@ -266,9 +266,9 @@ const AuctionRequestRow: React.FC<Props> = ({
       ? `${takerWagerDisplay} ${collateralAssetTicker}`
       : '—';
   const secondaryAmountText = bestBidSummary
-    ? bestBidSummary.toWinDisplay === '—'
+    ? bestBidSummary.payoutDisplay === '—'
       ? '—'
-      : `${bestBidSummary.toWinDisplay} ${collateralAssetTicker}`
+      : `${bestBidSummary.payoutDisplay} ${collateralAssetTicker}`
     : null;
   const hasBestBid = Boolean(bestBidSummary);
 
@@ -466,7 +466,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           if (!encodedPredicted) missing.push('predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
           if (takerNonceVal === undefined) missing.push('maker nonce');
-          if (takerWagerWei <= 0n) missing.push('taker wager');
+          if (takerWagerWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
           toast({
             title: 'Request not ready',
@@ -493,12 +493,12 @@ const AuctionRequestRow: React.FC<Props> = ({
         });
 
         if (result.success) {
-          // Calculate total to win (makerWager + takerWager)
+          // Calculate total payout (makerWager + takerWager)
           const totalWei = makerWagerWei + takerWagerWei;
           const decimalsForFormat = Number.isFinite(tokenDecimals)
             ? tokenDecimals
             : 18;
-          const toWinFormatted = Number(
+          const payoutFormatted = Number(
             formatUnits(totalWei, decimalsForFormat)
           ).toLocaleString(undefined, {
             minimumFractionDigits: 2,
@@ -510,7 +510,7 @@ const AuctionRequestRow: React.FC<Props> = ({
             source: 'manual',
             action: 'submitted',
             amount: data.amount,
-            toWinAmount: toWinFormatted,
+            payoutAmount: payoutFormatted,
             collateralSymbol: collateralAssetTicker,
             meta: {
               auctionId,
@@ -585,7 +585,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           </span>
           {hasBestBid ? (
             <>
-              <span className="text-muted-foreground">to win</span>
+              <span className="text-muted-foreground">for payout</span>
               <span className="font-mono text-brand-white tabular-nums">
                 {secondaryAmountText ?? '—'}
               </span>

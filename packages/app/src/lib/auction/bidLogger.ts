@@ -2,7 +2,7 @@ import { formatUnits } from 'viem';
 
 /**
  * Format a bid for logging output.
- * Returns a string like: "maker=0x5678..., wager=15.5, expires in 45s, nonce=12"
+ * Returns a string like: "maker=0x5678..., positionSize=15.5, expires in 45s, nonce=12"
  */
 export function formatBidForLog(
   bid: {
@@ -14,17 +14,17 @@ export function formatBidForLog(
   decimals = 18
 ): string {
   const makerShort = `${bid.maker.slice(0, 8)}...`;
-  let wagerFormatted: string;
+  let positionSizeFormatted: string;
   try {
-    wagerFormatted = formatUnits(BigInt(bid.makerWager), decimals);
+    positionSizeFormatted = formatUnits(BigInt(bid.makerWager), decimals);
   } catch {
-    wagerFormatted = bid.makerWager;
+    positionSizeFormatted = bid.makerWager;
   }
   const nowSec = Math.floor(Date.now() / 1000);
   const expiresIn = Math.max(0, bid.makerDeadline - nowSec);
   const nonceStr =
     bid.makerNonce !== undefined ? `, nonce=${bid.makerNonce}` : '';
-  return `maker=${makerShort}, wager=${wagerFormatted}, expires in ${expiresIn}s${nonceStr}`;
+  return `maker=${makerShort}, positionSize=${positionSizeFormatted}, expires in ${expiresIn}s${nonceStr}`;
 }
 
 /**

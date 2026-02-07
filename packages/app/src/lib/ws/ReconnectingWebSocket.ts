@@ -278,6 +278,23 @@ export class ReconnectingWebSocketClient {
     }
   }
 
+  /** Resolves when the socket is open, or rejects after timeoutMs. */
+  private waitForOpen(timeoutMs: number): Promise<void> {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN)
+      return Promise.resolve();
+    return new Promise<void>((resolve, reject) => {
+      const timer = window.setTimeout(() => {
+        cleanup();
+        reject(new Error('ws_not_connected'));
+      }, timeoutMs);
+      const cleanup = this.addOpenListener(() => {
+        window.clearTimeout(timer);
+        cleanup();
+        resolve();
+      });
+    });
+  }
+
   send(msg: OutgoingMessage) {
     const payload = JSON.stringify(msg);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -296,11 +313,14 @@ export class ReconnectingWebSocketClient {
     payload: Record<string, unknown>,
     opts?: { timeoutMs?: number }
   ): Promise<T> {
+    const timeoutMs = opts?.timeoutMs ?? 5_000;
+    // Wait for connection before sending — the ack timer only starts once
+    // the message is actually on the wire, so callers get a meaningful timeout.
+    await this.waitForOpen(timeoutMs);
     const id =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : String(Math.random()).slice(2) + String(Date.now());
-    const timeoutMs = opts?.timeoutMs ?? 5_000;
     return await new Promise<T>((resolve, reject) => {
       const timeout = window.setTimeout(() => {
         if (this.acks.has(id)) this.acks.delete(id);

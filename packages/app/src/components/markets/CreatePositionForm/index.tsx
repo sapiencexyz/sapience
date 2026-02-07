@@ -46,7 +46,7 @@ import type { Address } from 'viem';
 import { erc20Abi, formatUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
-import { createWagerAmountSchema } from '~/components/markets/forms/inputs/WagerInput';
+import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
@@ -62,9 +62,9 @@ import {
 import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
-  DEFAULT_WAGER_AMOUNT,
+  DEFAULT_POSITION_SIZE,
   getDefaultFormPredictionValue,
-  getMaxWagerAmount,
+  getMaxPositionSize,
   getBestDisplayBid,
   calculatePayout,
   YES_SQRT_PRICE_X96,
@@ -106,7 +106,7 @@ function ShareClearBar({
             size="xs"
             className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 flex items-center gap-1"
           >
-            <Share2 className="h-3 w-3" />
+            <Share2 className="h-2 w-2" />
             SHARE
           </Button>
         </DropdownMenuTrigger>
@@ -181,7 +181,9 @@ const CreatePositionFormInner = ({
 
   const positionShareUrl = useMemo(() => {
     if (typeof window === 'undefined' || selections.length === 0) return '';
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(selections))));
+    const encoded = btoa(
+      unescape(encodeURIComponent(JSON.stringify(selections)))
+    );
     const url = new URL('/markets', window.location.origin);
     url.searchParams.set('position', encoded);
     return url.toString();
@@ -201,8 +203,9 @@ const CreatePositionFormInner = ({
     }
   }, [positionShareUrl, toast]);
 
-  // Track whether wager has been initialized and for which address
-  const [isWagerInitialized, setIsWagerInitialized] = useState(false);
+  // Track whether position size has been initialized and for which address
+  const [isPositionSizeInitialized, setIsPositionSizeInitialized] =
+    useState(false);
   const [initializedForAddress, setInitializedForAddress] = useState<
     string | null
   >(null);
@@ -211,7 +214,7 @@ const CreatePositionFormInner = ({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareDialogData, setShareDialogData] = useState<{
     picks: Array<{ question: string; choice: 'Yes' | 'No' }>;
-    wager: string;
+    positionSize: string;
     payout?: string;
     symbol: string;
     lastNftId?: string;
@@ -455,7 +458,7 @@ const CreatePositionFormInner = ({
     return undefined;
   }, [erc20MetaRead.data, isEtherealChain]);
 
-  const minWager = useMemo(() => {
+  const minPositionSize = useMemo(() => {
     if (!minCollateralRaw) return undefined;
     const decimals = collateralDecimals ?? 18;
     try {
@@ -500,23 +503,26 @@ const CreatePositionFormInner = ({
 
   // Create form schema for position mode
   const formSchema: z.ZodType<any> = useMemo(() => {
-    const maxAmount = getMaxWagerAmount(userBalance, isEtherealFromContext);
-    const wagerSchema = createWagerAmountSchema(minWager, maxAmount);
+    const maxAmount = getMaxPositionSize(userBalance, isEtherealFromContext);
+    const positionSizeSchema = createPositionSizeSchema(
+      minPositionSize,
+      maxAmount
+    );
     return z
       .object({
-        wagerAmount: wagerSchema,
+        positionSize: positionSizeSchema,
         limitAmount: z.number().min(0),
         positions: z.object({}).optional(),
       })
-      .refine((data) => data.wagerAmount && data.wagerAmount.trim() !== '', {
-        message: 'Wager amount is required',
-        path: ['wagerAmount'],
+      .refine((data) => data.positionSize && data.positionSize.trim() !== '', {
+        message: 'Position size is required',
+        path: ['positionSize'],
       })
       .refine(
         (data) => data.limitAmount !== undefined && data.limitAmount >= 0,
         { message: 'Limit amount is required', path: ['limitAmount'] }
       );
-  }, [minWager, userBalance, isEtherealFromContext]);
+  }, [minPositionSize, userBalance, isEtherealFromContext]);
 
   // Keep schema in a ref so the resolver always uses the latest version
   // This is needed because zodResolver captures the schema at creation time
@@ -559,7 +565,8 @@ const CreatePositionFormInner = ({
             }
           }
 
-          const wagerAmount = position.wagerAmount || DEFAULT_WAGER_AMOUNT;
+          const positionSizeVal =
+            position.positionSize || DEFAULT_POSITION_SIZE;
 
           const isFlipped =
             classification === MarketGroupClassification.MULTIPLE_CHOICE
@@ -570,7 +577,7 @@ const CreatePositionFormInner = ({
             position.id,
             {
               predictionValue,
-              wagerAmount,
+              positionSize: positionSizeVal,
               isFlipped,
             },
           ];
@@ -583,15 +590,15 @@ const CreatePositionFormInner = ({
   const formMethods = useForm<{
     positions: Record<
       string,
-      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
     >;
-    wagerAmount?: string;
+    positionSize?: string;
     limitAmount?: string | number;
   }>({
     resolver: dynamicResolver,
     defaultValues: {
       ...generateFormValues,
-      wagerAmount: '',
+      positionSize: '',
       limitAmount:
         positionsWithMarketData.filter(
           (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
@@ -609,41 +616,41 @@ const CreatePositionFormInner = ({
     mode: 'onChange',
   });
 
-  // Watch wager amount for bid validation
-  const watchedWagerAmount = useWatch({
+  // Watch position size for bid validation
+  const watchedPositionSize = useWatch({
     control: formMethods.control,
-    name: 'wagerAmount',
+    name: 'positionSize',
   });
 
-  // Re-validate wager amount when user balance loads/changes
+  // Re-validate position size when user balance loads/changes
   // This ensures the form schema with updated maxAmount is applied
   useEffect(() => {
-    if (userBalance > 0 && watchedWagerAmount) {
+    if (userBalance > 0 && watchedPositionSize) {
       // Trigger validation to apply the new maxAmount constraint
-      formMethods.trigger('wagerAmount');
+      formMethods.trigger('positionSize');
     }
-  }, [userBalance, watchedWagerAmount, formMethods]);
+  }, [userBalance, watchedPositionSize, formMethods]);
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {
     const currentAddress = effectiveAddress?.toLowerCase() || null;
     if (initializedForAddress && initializedForAddress !== currentAddress) {
-      setIsWagerInitialized(false);
+      setIsPositionSizeInitialized(false);
       setInitializedForAddress(null);
-      // Clear the wager so it re-initializes with new address's balance
-      formMethods.setValue('wagerAmount', '', { shouldValidate: false });
+      // Clear the position size so it re-initializes with new address's balance
+      formMethods.setValue('positionSize', '', { shouldValidate: false });
     }
   }, [effectiveAddress, initializedForAddress, formMethods]);
 
-  // Single initialization effect - sets wager when balance becomes ready
+  // Single initialization effect - sets position size when balance becomes ready
   // For logged-out users, default to "1" so they can see estimates immediately
   useEffect(() => {
-    if (isWagerInitialized) return;
+    if (isPositionSizeInitialized) return;
 
-    // For logged-out users, set default wager to "1" immediately
+    // For logged-out users, set default position size to "1" immediately
     if (!hasConnectedWallet) {
-      formMethods.setValue('wagerAmount', '1', { shouldValidate: false });
-      setIsWagerInitialized(true);
+      formMethods.setValue('positionSize', '1', { shouldValidate: false });
+      setIsPositionSizeInitialized(true);
       setInitializedForAddress(null);
       return;
     }
@@ -652,21 +659,21 @@ const CreatePositionFormInner = ({
     if (isBalanceLoading) return;
     if (userBalance <= 0) return;
 
-    // Compute initial wager directly from userBalance to avoid stale data
-    const initialWager = Math.min(userBalance, 10);
-    const formattedWager = Number.isInteger(initialWager)
-      ? initialWager.toString()
-      : initialWager.toFixed(2);
+    // Compute initial position size directly from userBalance to avoid stale data
+    const initialSize = Math.min(userBalance, 10);
+    const formattedSize = Number.isInteger(initialSize)
+      ? initialSize.toString()
+      : initialSize.toFixed(2);
 
-    formMethods.setValue('wagerAmount', formattedWager, {
+    formMethods.setValue('positionSize', formattedSize, {
       shouldValidate: true,
     });
-    setIsWagerInitialized(true);
+    setIsPositionSizeInitialized(true);
     setInitializedForAddress(effectiveAddress?.toLowerCase() || null);
   }, [
     isBalanceLoading,
     userBalance,
-    isWagerInitialized,
+    isPositionSizeInitialized,
     effectiveAddress,
     formMethods,
     hasConnectedWallet,
@@ -680,15 +687,15 @@ const CreatePositionFormInner = ({
     // Merge defaults then existing inputs
     const mergedPositions: Record<
       string,
-      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
     > = {
       ...(defaults as Record<
         string,
-        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+        { predictionValue: string; positionSize: string; isFlipped?: boolean }
       >),
       ...((current?.positions as Record<
         string,
-        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+        { predictionValue: string; positionSize: string; isFlipped?: boolean }
       >) || {}),
     };
 
@@ -699,16 +706,16 @@ const CreatePositionFormInner = ({
         if (defaults?.[id]?.predictionValue) {
           mergedPositions[id] = {
             predictionValue: defaults[id].predictionValue,
-            wagerAmount:
-              current?.positions?.[id]?.wagerAmount ||
-              defaults?.[id]?.wagerAmount ||
-              DEFAULT_WAGER_AMOUNT,
+            positionSize:
+              current?.positions?.[id]?.positionSize ||
+              defaults?.[id]?.positionSize ||
+              DEFAULT_POSITION_SIZE,
             // Preserve isFlipped if it exists (not used for YES/NO but safe to keep)
             isFlipped: (current?.positions?.[id] as { isFlipped?: boolean })
               ?.isFlipped,
           } as {
             predictionValue: string;
-            wagerAmount: string;
+            positionSize: string;
             isFlipped?: boolean;
           };
         }
@@ -734,7 +741,7 @@ const CreatePositionFormInner = ({
     formMethods.reset(
       {
         positions: mergedPositions,
-        wagerAmount: current?.wagerAmount || '', // Don't clobber with default - let initialization effect handle it
+        positionSize: current?.positionSize || '', // Don't clobber with default - let initialization effect handle it
         limitAmount: current?.limitAmount || 2,
       },
       {
@@ -744,19 +751,20 @@ const CreatePositionFormInner = ({
     );
   }, [formMethods, generateFormValues, positionsWithMarketData]);
 
-  // Note: Minimum wager validation is now handled in PositionForm
+  // Note: Minimum position size validation is now handled in PositionForm
 
   // Calculate and set minimum payout when list length changes (for individual mode)
-  // Minimum payout = wagerAmount × 2^(number of positions), formatted to 2 decimals
+  // Minimum payout = positionSize × 2^(number of positions), formatted to 2 decimals
   useEffect(() => {
-    const wagerAmount =
-      formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+    const currentPositionSize =
+      formMethods.getValues('positionSize') || DEFAULT_POSITION_SIZE;
     const listLength = positionsWithMarketData.filter(
       (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
     ).length;
 
     if (listLength > 0) {
-      const minimumPayout = parseFloat(wagerAmount) * Math.pow(2, listLength);
+      const minimumPayout =
+        parseFloat(currentPositionSize) * Math.pow(2, listLength);
       formMethods.setValue(
         'limitAmount',
         Number.isFinite(minimumPayout) ? Number(minimumPayout.toFixed(2)) : 0,
@@ -817,15 +825,15 @@ const CreatePositionFormInner = ({
 
         if (mintReq) {
           // Build share dialog data using the submitted bid
-          const wagerAmount =
-            formMethods.getValues('wagerAmount') || DEFAULT_WAGER_AMOUNT;
+          const submittedPositionSize =
+            formMethods.getValues('positionSize') || DEFAULT_POSITION_SIZE;
           const limitAmount = formMethods.getValues('limitAmount');
 
           // Calculate payout from submitted bid
           let payout: string | undefined = undefined;
           if (collateralDecimals) {
             payout =
-              calculatePayout(bid, wagerAmount, collateralDecimals) ??
+              calculatePayout(bid, submittedPositionSize, collateralDecimals) ??
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
@@ -852,7 +860,7 @@ const CreatePositionFormInner = ({
               question: s.shortName || s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
-            wager: wagerAmount,
+            positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
             lastNftId,
@@ -904,9 +912,9 @@ const CreatePositionFormInner = ({
       });
     }
 
-    // Add wager
-    if (shareDialogData.wager) {
-      qp.set('wager', shareDialogData.wager);
+    // Add position size
+    if (shareDialogData.positionSize) {
+      qp.set('wager', shareDialogData.positionSize);
     }
 
     // Add payout
@@ -931,14 +939,14 @@ const CreatePositionFormInner = ({
     selections.forEach((s) => {
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
     });
-    if (watchedWagerAmount) qp.set('wager', watchedWagerAmount);
+    if (watchedPositionSize) qp.set('wager', watchedPositionSize);
     if (collateralSymbol) qp.set('symbol', collateralSymbol);
 
     const displayBid = getBestDisplayBid(bids);
-    if (displayBid && collateralDecimals != null && watchedWagerAmount) {
+    if (displayBid && collateralDecimals != null && watchedPositionSize) {
       const payout = calculatePayout(
         displayBid,
-        watchedWagerAmount,
+        watchedPositionSize,
         collateralDecimals
       );
       if (payout) qp.set('payout', payout);
@@ -948,7 +956,7 @@ const CreatePositionFormInner = ({
   }, [
     selections,
     effectiveAddress,
-    watchedWagerAmount,
+    watchedPositionSize,
     collateralSymbol,
     bids,
     collateralDecimals,
@@ -977,11 +985,11 @@ const CreatePositionFormInner = ({
 
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
-      wagerAmount: string;
+      positionSize: string;
       limitAmount: string | number;
       positions: Record<
         string,
-        { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+        { predictionValue: string; positionSize: string; isFlipped?: boolean }
       >;
     }>,
     handlePositionSubmit,
@@ -993,7 +1001,7 @@ const CreatePositionFormInner = ({
     collateralToken,
     collateralSymbol,
     collateralDecimals,
-    minWager,
+    minPositionSize,
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     pythPredictions,
     onRemovePythPrediction,
@@ -1032,7 +1040,7 @@ const CreatePositionFormInner = ({
       <>
         {shareDialog}
         {previewCardDialog}
-        {/* Mobile Bet Slip Button (floating bottom-center, circular, icon-only) */}
+        {/* Mobile Create Position Button (floating bottom-center, circular, icon-only) */}
         <Drawer open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
           <DrawerTrigger asChild>
             <Button

@@ -103,7 +103,7 @@ const AuctionRequestChart: React.FC<Props> = ({
               : '0.00'}{' '}
             {collateralAssetTicker}
           </span>
-          <span className="text-muted-foreground">wager request</span>
+          <span className="text-muted-foreground">position request</span>
           {showRequester ? (
             <div className="w-full sm:w-auto inline-flex items-center gap-1 min-w-0">
               <span className="text-muted-foreground">from</span>

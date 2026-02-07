@@ -3,7 +3,7 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@sapience/ui/components/ui/input';
-import ToWinLine from '~/components/terminal/ToWinLine';
+import PayoutLine from '~/components/terminal/PayoutLine';
 import PercentChance from '~/components/shared/PercentChance';
 // removed ChevronsDown icon per design update
 import {
@@ -28,13 +28,13 @@ type Props = {
   }) => void;
   className?: string;
   variant?: 'card' | 'compact';
-  // Maker amount in display units (same units as amount input), used to compute to-win and forecast
+  // Maker amount in display units (same units as amount input), used to compute payout and forecast
   makerAmountDisplay?: number;
   // Optional initial amount in display units to prefill (e.g., highest bid + 1)
   initialAmountDisplay?: number;
   // Optional maximum expiry seconds allowed (e.g., remaining time until latest condition end)
   maxExpirySeconds?: number;
-  // Current best taker wager in display units; used to anchor quick-increment buttons
+  // Current best taker position size in display units; used to anchor quick-increment buttons
   bestBidDisplay?: number;
 };
 
@@ -245,7 +245,7 @@ const PlaceBidForm: React.FC<Props> = ({
         className={(className ? className + ' ' : '') + 'flex flex-col gap-2'}
       >
         <div className="space-y-1 border border-border rounded-md bg-background p-2">
-          {/* Row 1: Amount input + inline to-win on left; chance on right */}
+          {/* Row 1: Amount input + inline payout on left; chance on right */}
           <div className="flex items-baseline justify-between">
             <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-1 gap-y-0.5 min-w-0">
               <div className="inline-flex items-center gap-0.5 text-xs">
@@ -256,11 +256,11 @@ const PlaceBidForm: React.FC<Props> = ({
                   {collateralAssetTicker}
                 </span>
               </div>
-              <ToWinLine
+              <PayoutLine
                 value={Number.isFinite(totalDisplay) ? totalDisplay : NaN}
                 ticker={collateralAssetTicker}
                 asInline
-                label="to win "
+                label="for payout"
                 textSize="text-xs"
                 className="block basis-full sm:basis-auto sm:inline"
               />
@@ -313,7 +313,7 @@ const PlaceBidForm: React.FC<Props> = ({
                   <button
                     type="button"
                     className="inline-flex items-center text-xs"
-                    aria-label="Edit wager amount"
+                    aria-label="Edit bid amount"
                   >
                     <Pencil className="h-3 w-3 text-muted-foreground" />
                   </button>
@@ -424,7 +424,7 @@ const PlaceBidForm: React.FC<Props> = ({
             <span className="font-semibold">
               {amountDisplay} {collateralAssetTicker}
             </span>{' '}
-            <span>to win</span>{' '}
+            <span>for payout</span>{' '}
             <span className="font-semibold">
               {Number.isFinite(totalDisplay)
                 ? formatAmount(totalDisplay, decimals)
@@ -620,7 +620,7 @@ const PlaceBidForm: React.FC<Props> = ({
                 ? Math.round((takerDisplay / totalDisplay) * 100)
                 : null;
             return (
-              <ToWinLine
+              <PayoutLine
                 value={Number.isFinite(totalDisplay) ? totalDisplay : NaN}
                 ticker={collateralAssetTicker}
                 pct={forecastPct}
@@ -664,7 +664,7 @@ const PlaceBidForm: React.FC<Props> = ({
                 : '—')()}{' '}
             {collateralAssetTicker}
           </span>{' '}
-          <span>to win</span>{' '}
+          <span>for payout</span>{' '}
           <span className="font-semibold">
             {(() => {
               const makerDisplay = Number.isFinite(makerAmountDisplay as number)
