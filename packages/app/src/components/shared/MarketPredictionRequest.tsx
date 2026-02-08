@@ -92,9 +92,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     number | null
   >(() => (prefetchedProbability != null ? prefetchedProbability : null));
   const [isRequesting, setIsRequesting] = React.useState<boolean>(false);
-  const [lastTakerPositionSizeWei, setLastTakerPositionSizeWei] = React.useState<
-    string | null
-  >(null);
+  const [lastTakerPositionSizeWei, setLastTakerPositionSizeWei] =
+    React.useState<string | null>(null);
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
   // Store auction params for signature verification
   const [lastAuctionParams, setLastAuctionParams] = React.useState<{

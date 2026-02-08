@@ -213,7 +213,11 @@ const CreatePositionFormInner = ({
   // Share dialog state - shown immediately when trade is submitted
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [shareDialogData, setShareDialogData] = useState<{
-    picks: Array<{ question: string; choice: 'Yes' | 'No' }>;
+    picks: Array<{
+      conditionId: string;
+      question: string;
+      choice: 'Yes' | 'No';
+    }>;
     positionSize: string;
     payout?: string;
     symbol: string;
@@ -857,6 +861,7 @@ const CreatePositionFormInner = ({
           const dialogData = {
             // OG images use shortName when available for more compact display
             picks: selections.map((s) => ({
+              conditionId: s.conditionId,
               question: s.shortName || s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),

@@ -490,7 +490,11 @@ const AuctionRequestInfo: React.FC<Props> = ({
       return { ...b, __positionSize: positionSize };
     });
     withSortKey.sort((a, b) =>
-      a.__positionSize < b.__positionSize ? 1 : a.__positionSize > b.__positionSize ? -1 : 0
+      a.__positionSize < b.__positionSize
+        ? 1
+        : a.__positionSize > b.__positionSize
+          ? -1
+          : 0
     );
     // Ensure current winning (active highest) is first if present
     if (winningBid) {

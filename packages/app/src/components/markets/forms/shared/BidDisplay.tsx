@@ -99,7 +99,10 @@ export default function BidDisplay({
     (bid: QuoteBid, positionSize: string): string => {
       let userPositionSizeWei: bigint = 0n;
       try {
-        userPositionSizeWei = parseUnits(positionSize || '0', collateralDecimals);
+        userPositionSizeWei = parseUnits(
+          positionSize || '0',
+          collateralDecimals
+        );
       } catch {
         userPositionSizeWei = 0n;
       }
