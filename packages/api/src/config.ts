@@ -25,6 +25,14 @@ export const config = cleanEnv(process.env, {
     default: 10000,
     desc: 'Maximum allowed query complexity score',
   }),
+  GRAPHQL_MAX_LIST_SIZE: num({
+    default: 100,
+    desc: 'Maximum allowed take/first/limit argument value',
+  }),
+  GRAPHQL_MAX_FIELD_ALIASES: num({
+    default: 3,
+    desc: 'Maximum times a single field can be aliased in one query',
+  }),
   GRAPHQL_REQUEST_TIMEOUT_MS: num({
     default: 10000,
     desc: 'Maximum time for a GraphQL request to complete',
