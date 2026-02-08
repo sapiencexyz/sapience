@@ -31,8 +31,7 @@ import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
 import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { getCategoryIcon } from '~/lib/theme/categoryIcons';
+import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import { usePositionsByConditionId } from '~/hooks/graphql/usePositionsByConditionId';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
@@ -509,27 +508,7 @@ export default function QuestionPageContent({
 
   const displayTitle = data.question || data.shortName || '';
 
-  // Get focus area styling
   const categorySlug = data.category?.slug;
-  const categoryStyle = getCategoryStyle(categorySlug);
-  const CategoryIcon = getCategoryIcon(categorySlug);
-
-  // Helper to add alpha to colors
-  const withAlpha = (c: string, alpha: number) => {
-    const hexMatch = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
-    if (hexMatch.test(c)) {
-      const a = Math.max(0, Math.min(1, alpha));
-      const aHex = Math.round(a * 255)
-        .toString(16)
-        .padStart(2, '0');
-      return `${c}${aHex}`;
-    }
-    const toSlashAlpha = (fn: 'hsl' | 'rgb', inside: string) =>
-      `${fn}(${inside} / ${alpha})`;
-    if (c.startsWith('hsl(')) return toSlashAlpha('hsl', c.slice(4, -1));
-    if (c.startsWith('rgb(')) return toSlashAlpha('rgb', c.slice(4, -1));
-    return c;
-  };
 
   const renderPredictionFormCard = () => (
     <PredictionForm
@@ -828,21 +807,7 @@ export default function QuestionPageContent({
           {/* Badges Row: Category, Open Interest, End Time */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Focus Area Badge */}
-            {categoryStyle.name && (
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium"
-                style={{
-                  backgroundColor: withAlpha(categoryStyle.color, 0.2),
-                  boxShadow: `inset 0 0 0 1px ${withAlpha(categoryStyle.color, 0.4)}`,
-                }}
-              >
-                <CategoryIcon
-                  className="w-4 h-4"
-                  style={{ color: categoryStyle.color }}
-                />
-                <span className="text-brand-white">{categoryStyle.name}</span>
-              </div>
-            )}
+            {categorySlug && <FocusAreaBadge categorySlug={categorySlug} />}
 
             {/* Open Interest Badge */}
             {(() => {
