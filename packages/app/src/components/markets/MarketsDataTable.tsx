@@ -221,54 +221,21 @@ function ForecastCell({
   onPrediction?: (p: number) => void;
   skipViewportCheck?: boolean;
 }) {
-  const { endTime, settled, resolvedToYes, openInterest } = condition;
+  const { settled } = condition;
 
-  // Check if past end time synchronously (no state needed)
-  const nowSec = Math.floor(Date.now() / 1000);
-  const isPastEnd = !!endTime && endTime <= nowSec;
-
-  // If not past end time, show the regular prediction request
-  if (!isPastEnd) {
-    return (
-      <MarketPredictionRequest
-        conditionId={condition.id}
-        prefetchedProbability={prefetchedProbability}
-        onPrediction={onPrediction}
-        skipViewportCheck={skipViewportCheck}
-      />
-    );
+  // If settled, show dash — resolution status is in the Ends column
+  if (settled) {
+    return <span className="text-muted-foreground">—</span>;
   }
 
-  // Past end time - show resolution status from GraphQL API
-  // Use settled and resolvedToYes fields that are already fetched from the API
-  // Don't show "Resolution Pending" if there's no open interest (no positions to resolve)
-  if (!settled) {
-    const hasOpenInterest = openInterest && openInterest !== '0';
-    if (!hasOpenInterest) {
-      return <span className="text-muted-foreground">—</span>;
-    }
-    return (
-      <Badge
-        variant="outline"
-        className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-      >
-        RESOLUTION PENDING
-      </Badge>
-    );
-  }
-
-  // Resolved - show badge with Yes or No based on resolvedToYes from GraphQL
+  // Always show prediction request for unsettled markets
   return (
-    <Badge
-      variant="outline"
-      className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-        resolvedToYes
-          ? 'border-yes/40 bg-yes/10 text-yes'
-          : 'border-no/40 bg-no/10 text-no'
-      }`}
-    >
-      RESOLVED {resolvedToYes ? 'YES' : 'NO'}
-    </Badge>
+    <MarketPredictionRequest
+      conditionId={condition.id}
+      prefetchedProbability={prefetchedProbability}
+      onPrediction={onPrediction}
+      skipViewportCheck={skipViewportCheck}
+    />
   );
 }
 
@@ -289,8 +256,6 @@ function GroupForecastCell({
 function PredictCell({ condition }: { condition: ConditionType }) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
-
-  const isPastEnd = useIsPastEndTime(condition.endTime);
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -353,7 +318,7 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     addSelection,
   ]);
 
-  if (isPastEnd) {
+  if (condition.settled) {
     return (
       <div className="w-full max-w-[320px] ml-auto text-sm text-center text-muted-foreground opacity-50">
         <Minus className="h-3 w-3 mx-auto" />
@@ -614,23 +579,40 @@ function createColumns(
       },
       cell: ({ row }) => {
         const data = row.original;
-        // For settled markets, show resolution status instead of end time
-        if (data.kind === 'condition' && data.condition.settled) {
-          return (
-            <div className="flex justify-end">
-              <Badge
-                variant="outline"
-                className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-                  data.condition.resolvedToYes
-                    ? 'border-yes/40 bg-yes/10 text-yes'
-                    : 'border-no/40 bg-no/10 text-no'
-                }`}
-              >
-                {data.condition.resolvedToYes ? 'YES' : 'NO'}
-              </Badge>
-            </div>
-          );
+        const endTime = getRowEndTime(data);
+        const isPastEnd = !!endTime && endTime * 1000 <= Date.now();
+
+        if (data.kind === 'condition') {
+          if (data.condition.settled) {
+            return (
+              <div className="flex justify-end">
+                <Badge
+                  variant="outline"
+                  className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+                    data.condition.resolvedToYes
+                      ? 'border-yes/40 bg-yes/10 text-yes'
+                      : 'border-no/40 bg-no/10 text-no'
+                  }`}
+                >
+                  RESOLVED {data.condition.resolvedToYes ? 'YES' : 'NO'}
+                </Badge>
+              </div>
+            );
+          }
+          if (isPastEnd) {
+            return (
+              <div className="flex justify-end">
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+                >
+                  PENDING RESOLUTION
+                </Badge>
+              </div>
+            );
+          }
         }
+
         if (data.kind === 'group') {
           const allSettled = data.conditions.every((c) => c.settled);
           if (allSettled) {
@@ -645,8 +627,20 @@ function createColumns(
               </div>
             );
           }
+          if (isPastEnd) {
+            return (
+              <div className="flex justify-end">
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+                >
+                  PENDING RESOLUTION
+                </Badge>
+              </div>
+            );
+          }
         }
-        const endTime = getRowEndTime(data);
+
         if (!endTime) return <span className="text-muted-foreground">—</span>;
         return <CountdownCell endTime={endTime} />;
       },
@@ -666,6 +660,10 @@ function createColumns(
       cell: ({ row }) => {
         const data = row.original;
         if (data.kind === 'group') {
+          const allSettled = data.conditions.every((c) => c.settled);
+          if (allSettled) {
+            return <span className="text-muted-foreground block text-center">—</span>;
+          }
           const isExpanded = expandedGroupIdsRef.current.has(data.groupId);
           return (
             <div className="w-full max-w-[320px] ml-auto font-mono">
@@ -775,7 +773,16 @@ function ChildConditionRow({
                   : 'border-no/40 bg-no/10 text-no'
               }`}
             >
-              {condition.resolvedToYes ? 'YES' : 'NO'}
+              RESOLVED {condition.resolvedToYes ? 'YES' : 'NO'}
+            </Badge>
+          </div>
+        ) : condition.endTime && condition.endTime * 1000 <= Date.now() ? (
+          <div className="flex justify-end">
+            <Badge
+              variant="outline"
+              className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+            >
+              PENDING RESOLUTION
             </Badge>
           </div>
         ) : condition.endTime ? (
