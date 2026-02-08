@@ -96,10 +96,28 @@ const MarketsPage = () => {
 
   // Filter state managed here, passed down to MarketsDataTable
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    openInterestRange: [0, Infinity],
-    timeToResolutionRange: [0, Infinity], // Default to future markets only
-    selectedCategories: [],
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const defaults: FilterState = {
+      openInterestRange: [0, Infinity],
+      timeToResolutionRange: [0, Infinity], // Default to future markets only
+      selectedCategories: [],
+    };
+
+    if (typeof window === 'undefined') return defaults;
+
+    try {
+      const url = new URL(window.location.href);
+      const category = url.searchParams.get('category');
+      if (category) {
+        defaults.selectedCategories = [category];
+        url.searchParams.delete('category');
+        window.history.replaceState({}, '', url.toString());
+      }
+    } catch {
+      // Ignore URL parse errors
+    }
+
+    return defaults;
   });
 
   // Sorting state - lifted here so backend can respect it during pagination
