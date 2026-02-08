@@ -202,6 +202,7 @@ model Condition {
   @@index([endTime])
   @@index([conditionGroupId])
   @@index([resolver], map: "IDX_condition_resolver")
+  @@index([public, chainId, settled, conditionGroupId], map: "IDX_condition_market_filter")
   @@map("condition")
 }
 
