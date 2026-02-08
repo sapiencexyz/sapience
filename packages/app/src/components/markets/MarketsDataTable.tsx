@@ -613,7 +613,40 @@ function createColumns(
         );
       },
       cell: ({ row }) => {
-        const endTime = getRowEndTime(row.original);
+        const data = row.original;
+        // For settled markets, show resolution status instead of end time
+        if (data.kind === 'condition' && data.condition.settled) {
+          return (
+            <div className="flex justify-end">
+              <Badge
+                variant="outline"
+                className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+                  data.condition.resolvedToYes
+                    ? 'border-yes/40 bg-yes/10 text-yes'
+                    : 'border-no/40 bg-no/10 text-no'
+                }`}
+              >
+                {data.condition.resolvedToYes ? 'YES' : 'NO'}
+              </Badge>
+            </div>
+          );
+        }
+        if (data.kind === 'group') {
+          const allSettled = data.conditions.every((c) => c.settled);
+          if (allSettled) {
+            return (
+              <div className="flex justify-end">
+                <Badge
+                  variant="outline"
+                  className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-foreground/30 bg-muted/20 text-muted-foreground"
+                >
+                  RESOLVED
+                </Badge>
+              </div>
+            );
+          }
+        }
+        const endTime = getRowEndTime(data);
         if (!endTime) return <span className="text-muted-foreground">—</span>;
         return <CountdownCell endTime={endTime} />;
       },
@@ -732,7 +765,20 @@ function ChildConditionRow({
         </div>
       </TableCell>
       <TableCell className="py-2 text-right">
-        {condition.endTime ? (
+        {condition.settled ? (
+          <div className="flex justify-end">
+            <Badge
+              variant="outline"
+              className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+                condition.resolvedToYes
+                  ? 'border-yes/40 bg-yes/10 text-yes'
+                  : 'border-no/40 bg-no/10 text-no'
+              }`}
+            >
+              {condition.resolvedToYes ? 'YES' : 'NO'}
+            </Badge>
+          </div>
+        ) : condition.endTime ? (
           <CountdownCell endTime={condition.endTime} />
         ) : (
           <span className="text-muted-foreground">—</span>
