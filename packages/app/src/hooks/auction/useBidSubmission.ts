@@ -22,9 +22,9 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 export type BidSubmissionParams = {
   auctionId: string;
-  /** Bidder's wager in wei */
+  /** Bidder's position size in wei */
   makerWager: bigint;
-  /** Auction creator's wager in wei */
+  /** Auction creator's position size in wei */
   takerWager: bigint;
   /** Encoded predicted outcomes */
   predictedOutcomes: `0x${string}`[];

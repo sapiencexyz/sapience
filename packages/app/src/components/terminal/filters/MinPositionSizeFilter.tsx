@@ -11,7 +11,7 @@ type Props = {
 
 const SLIDER_MAX = 1000;
 
-const MinWagerFilter: React.FC<Props> = ({
+const MinPositionSizeFilter: React.FC<Props> = ({
   value,
   onChange,
   unit = 'USDC',
@@ -28,7 +28,7 @@ const MinWagerFilter: React.FC<Props> = ({
 
   return (
     <RangeFilter
-      placeholder="Any Wager"
+      placeholder="Any size"
       value={sliderValue}
       onChange={handleChange}
       min={0}
@@ -40,9 +40,9 @@ const MinWagerFilter: React.FC<Props> = ({
         return Number(v.replace(/,/g, ''));
       }}
       unit={unit}
-      customLabels={[{ range: [1, SLIDER_MAX], label: `≥1 ${unit} Wager` }]}
+      customLabels={[{ range: [1, SLIDER_MAX], label: `≥1 ${unit} size` }]}
     />
   );
 };
 
-export default MinWagerFilter;
+export default MinPositionSizeFilter;

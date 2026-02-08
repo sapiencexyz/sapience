@@ -330,23 +330,23 @@ export function TopLeftAvatar({
 }
 
 function StatsRow({
-  wager,
+  positionSize,
   payout,
   potentialReturn,
   implied,
   symbol: _symbol,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   potentialReturn?: string | null;
   implied?: string | null;
   symbol?: string;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   const parseNumber = (val?: string | null): number => {
     if (!val) return 0;
@@ -354,11 +354,11 @@ function StatsRow({
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
   };
-  const wagerNum = parseNumber(wager);
+  const positionSizeNum = parseNumber(positionSize);
   const returnNum = parseNumber(potentialReturn);
   const returnPercent =
-    wagerNum > 0 && returnNum > 0
-      ? Math.round((returnNum / wagerNum) * 100)
+    positionSizeNum > 0 && returnNum > 0
+      ? Math.round((returnNum / positionSizeNum) * 100)
       : null;
   const returnColor =
     returnPercent !== null && returnPercent < 100
@@ -383,22 +383,22 @@ function StatsRow({
           }
         >
           <div style={styles.labelWrapperStyle}>
-            <FooterLabel scale={scale}>Wagered</FooterLabel>
+            <FooterLabel scale={scale}>Position Size</FooterLabel>
           </div>
           <div style={styles.valueStyle}>
-            {wager}
+            {positionSize}
             {symbolText ? ` ${symbolText}` : ''}
           </div>
         </div>
         {hasPayout ? (
           <div style={styles.colStyle}>
             <div style={styles.labelWrapperStyle}>
-              <FooterLabel scale={scale}>To Win</FooterLabel>
+              <FooterLabel scale={scale}>Payout</FooterLabel>
             </div>
             <div
               style={{
                 ...styles.valueStyle,
-                color: forceToWinGreen
+                color: forcePayoutGreen
                   ? og.colors.success
                   : styles.valueStyle.color,
               }}
@@ -467,34 +467,34 @@ function StatsRow({
 }
 
 export function Footer({
-  wager,
+  positionSize,
   payout,
   symbol,
   potentialReturn,
   implied,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   symbol?: string;
   potentialReturn?: string | null;
   implied?: string | null;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   return (
     <StatsRow
-      wager={wager}
+      positionSize={positionSize}
       payout={payout}
       symbol={symbol}
       potentialReturn={potentialReturn}
       implied={implied}
       scale={scale}
       showReturn={showReturn}
-      forceToWinGreen={forceToWinGreen}
+      forcePayoutGreen={forcePayoutGreen}
     />
   );
 }
@@ -813,14 +813,14 @@ export function Pill({
 }
 
 export function computePotentialReturn(
-  wager: string,
+  positionSize: string,
   payout: string
 ): string | null {
-  const w = Number(String(wager || '0').replace(/,/g, ''));
+  const w = Number(String(positionSize || '0').replace(/,/g, ''));
   const p = Number(String(payout || '0').replace(/,/g, ''));
   if (!Number.isFinite(w) || !Number.isFinite(p)) return null;
-  // For ROI we want profit ("to win") over wager, not stake+profit.
-  // Return the "to win" amount so downstream percent is p / w.
+  // For ROI we want profit (payout) over position size, not stake+profit.
+  // Return the payout amount so downstream percent is p / w.
   const profit = p;
   if (profit <= 0) return null;
   return addThousandsSeparators(profit.toFixed(profit < 1 ? 4 : 2));

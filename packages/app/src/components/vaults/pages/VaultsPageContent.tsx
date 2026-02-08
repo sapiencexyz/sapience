@@ -31,7 +31,7 @@ import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
-import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
+import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
@@ -437,9 +437,9 @@ const VaultsPageContent = () => {
               depositAmount ? 'opacity-0' : 'opacity-100'
             }`}
           >
-            <WagerDisclaimer
+            <RiskDisclaimer
               className="!text-xs"
-              message="Do not deposit more than you can afford to lose"
+              message="Do not risk more than you can afford to lose"
             />
           </div>
           {interactionDelay > 0n && (

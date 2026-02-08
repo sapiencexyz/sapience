@@ -4,7 +4,7 @@ A minimal auction maker bot that:
 - Connects to the auction relayer WebSocket
 - Prepares collateral for trading (wraps native USDe to WUSDe and approves)
 - Verifies auctions use the expected resolver (`predictionMarketLZConditionalTokensResolver` from SDK)
-- Bids a fixed amount on auctions whose maker wager meets a minimum
+- Bids a fixed amount on auctions whose maker position size meets a minimum
 - Signs bids with EIP-712 using a private key
 
 ## Setup
@@ -30,7 +30,7 @@ PRIVATE_KEY=__YOUR_PRIVATE_KEY__
 
 # Strategy
 BID_AMOUNT=0.01
-MIN_MAKER_WAGER=10
+MIN_MAKER_POSITION_SIZE=10
 DEADLINE_SECONDS=60
 ```
 

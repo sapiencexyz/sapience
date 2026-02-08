@@ -40,7 +40,7 @@ export async function GET(req: Request) {
     // Check if nftId and marketAddress are provided - if so, query API for position data
     const nftIdParam = searchParams.get('nftId');
     const marketAddressParam = searchParams.get('marketAddress');
-    let wagerRaw = normalizeText(searchParams.get('wager'), 32);
+    let positionSizeRaw = normalizeText(searchParams.get('wager'), 32);
     let payoutRaw = normalizeText(searchParams.get('payout'), 32);
     let symbol = normalizeText(searchParams.get('symbol'), 16);
     let rawAddr = (searchParams.get('addr') || '').toString();
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
             // Extract data from position
             rawAddr = position.predictor?.toLowerCase() || rawAddr;
 
-            // Determine if queried NFT is counterparty's NFT (for anti flag and wager display)
+            // Determine if queried NFT is counterparty's NFT (for anti flag and position size display)
             const isCounterpartyNft =
               position.counterpartyNftTokenId === nftIdParam;
             if (isCounterpartyNft) {
@@ -83,15 +83,15 @@ export async function GET(req: Request) {
               rawAddr = position.counterparty?.toLowerCase() || rawAddr;
             }
 
-            // Get wager and payout
-            // If the queried NFT is the counterparty's, show counterparty's wager
+            // Get position size and payout
+            // If the queried NFT is the counterparty's, show counterparty's position size
             const collateral = isCounterpartyNft
               ? position.counterpartyCollateral
               : position.predictorCollateral;
             const totalCollateral = position.totalCollateral;
 
             if (collateral) {
-              wagerRaw = formatUnits(collateral);
+              positionSizeRaw = formatUnits(collateral);
             }
             if (totalCollateral) {
               payoutRaw = formatUnits(totalCollateral);
@@ -123,19 +123,19 @@ export async function GET(req: Request) {
       }
     }
 
-    // Round wager and payout to 2 decimals
-    const wagerRawRounded = roundToTwoDecimals(wagerRaw);
+    // Round position size and payout to 2 decimals
+    const positionSizeRawRounded = roundToTwoDecimals(positionSizeRaw);
     const payoutRawRounded = roundToTwoDecimals(payoutRaw);
 
-    const wager = addThousandsSeparators(wagerRawRounded);
+    const positionSize = addThousandsSeparators(positionSizeRawRounded);
     const payout = addThousandsSeparators(payoutRawRounded);
 
     // Compute implied probability (matches formatPercentChance from lib/format)
     let implied: string | null = null;
-    const wagerNum = Number(wagerRawRounded.replace(/,/g, ''));
+    const positionSizeNum = Number(positionSizeRawRounded.replace(/,/g, ''));
     const payoutNum = Number(payoutRawRounded.replace(/,/g, ''));
-    if (wagerNum > 0 && payoutNum > 0) {
-      const raw = wagerNum / payoutNum;
+    if (positionSizeNum > 0 && payoutNum > 0) {
+      const raw = positionSizeNum / payoutNum;
       const isAnti = ['1', 'true', 'yes', 'anti', 'against'].includes(
         antiParam
       );
@@ -180,7 +180,7 @@ export async function GET(req: Request) {
     // Skip attaching headers directly to ImageResponse to ensure proper content-type.
 
     const compact = legs.length > 3;
-    const potentialReturn = computePotentialReturn(wager, payout);
+    const potentialReturn = computePotentialReturn(positionSize, payout);
 
     return new ImageResponse(
       (
@@ -265,14 +265,14 @@ export async function GET(req: Request) {
             </div>
 
             <Footer
-              wager={wager}
+              positionSize={positionSize}
               payout={payout}
               symbol={symbol}
               potentialReturn={potentialReturn}
               implied={implied}
               scale={scale}
               showReturn={false}
-              forceToWinGreen={true}
+              forcePayoutGreen={true}
             />
           </div>
         </div>

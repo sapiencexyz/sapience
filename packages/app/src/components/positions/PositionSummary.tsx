@@ -22,8 +22,8 @@ export interface PositionSummaryProps {
   isCounterpartyPosition?: boolean;
   createdAt: Date | null;
   endsAtMs: number | null;
-  wager: number;
-  toWin: number;
+  positionSize: number;
+  payout: number;
   pnl: number | null;
   roi: number | null;
   isSettled: boolean;
@@ -44,8 +44,8 @@ export default function PositionSummary({
   isCounterpartyPosition,
   createdAt,
   endsAtMs,
-  wager,
-  toWin,
+  positionSize,
+  payout,
   pnl,
   roi,
   isSettled,
@@ -234,26 +234,26 @@ export default function PositionSummary({
           </span>
         </div>
 
-        {/* Wager */}
+        {/* Position Size */}
         <div className="space-y-1">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            Wager
+            Position Size
           </div>
           <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-            <NumberDisplay value={wager} className="tabular-nums" />
+            <NumberDisplay value={positionSize} className="tabular-nums" />
             <span className="ml-1 text-xs font-normal text-muted-foreground">
               {collateralSymbol}
             </span>
           </span>
         </div>
 
-        {/* To Win */}
+        {/* Payout */}
         <div className="space-y-1">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            To Win
+            Payout
           </div>
           <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-            <NumberDisplay value={toWin} className="tabular-nums" />
+            <NumberDisplay value={payout} className="tabular-nums" />
             <span className="ml-1 text-xs font-normal text-muted-foreground">
               {collateralSymbol}
             </span>
@@ -275,7 +275,7 @@ export default function PositionSummary({
               >
                 {collateralSymbol}
               </span>
-              {roi !== null && wager > 0 && (
+              {roi !== null && positionSize > 0 && (
                 <span
                   className={`ml-1 text-[10px] tabular-nums font-mono ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >

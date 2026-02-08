@@ -120,7 +120,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
         sortingFn: (rowA, rowB) => rowA.original.x - rowB.original.x,
       },
       {
-        accessorKey: 'wager',
+        accessorKey: 'positionSize',
         header: ({ column }) => {
           const sorted = column.getIsSorted();
           return (
@@ -129,7 +129,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
               onClick={() => column.toggleSorting(sorted === 'asc')}
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
-              Wagered
+              Position Size
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
@@ -145,10 +145,11 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
         },
         cell: ({ row }) => (
           <span className="text-foreground whitespace-nowrap">
-            {row.original.wager.toFixed(2)} USDe
+            {row.original.positionSize.toFixed(2)} USDe
           </span>
         ),
-        sortingFn: (rowA, rowB) => rowA.original.wager - rowB.original.wager,
+        sortingFn: (rowA, rowB) =>
+          rowA.original.positionSize - rowB.original.positionSize,
       },
       {
         id: 'impliedForecast',
@@ -158,10 +159,10 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
           </span>
         ),
         cell: ({ row }) => {
-          // Calculate implied probability from wager amounts
-          // Always compute based on predictor vs counterparty wager:
-          // - If predictor bets YES: probability of YES = predictorCollateral / totalWager
-          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalWager
+          // Calculate implied probability from position sizes
+          // Always compute based on predictor vs counterparty position size:
+          // - If predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
+          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
           const {
             predictorCollateral,
             counterpartyCollateral,
@@ -169,16 +170,18 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
             combinedPredictions,
             combinedWithYes,
           } = row.original;
-          const totalWager = predictorCollateral + counterpartyCollateral;
+          const totalPositionSize =
+            predictorCollateral + counterpartyCollateral;
           let impliedPercent = 50; // Default fallback
 
-          if (totalWager > 0) {
+          if (totalPositionSize > 0) {
             if (predictorPrediction) {
               // Predictor bets YES
-              impliedPercent = (predictorCollateral / totalWager) * 100;
+              impliedPercent = (predictorCollateral / totalPositionSize) * 100;
             } else {
               // Predictor bets NO: counterparty is on YES
-              impliedPercent = (counterpartyCollateral / totalWager) * 100;
+              impliedPercent =
+                (counterpartyCollateral / totalPositionSize) * 100;
             }
             impliedPercent = Math.max(0, Math.min(100, impliedPercent));
           }

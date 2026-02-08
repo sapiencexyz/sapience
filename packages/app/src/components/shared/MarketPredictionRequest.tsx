@@ -92,7 +92,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     number | null
   >(() => (prefetchedProbability != null ? prefetchedProbability : null));
   const [isRequesting, setIsRequesting] = React.useState<boolean>(false);
-  const [lastTakerWagerWei, setLastTakerWagerWei] = React.useState<
+  const [lastTakerPositionSizeWei, setLastTakerPositionSizeWei] = React.useState<
     string | null
   >(null);
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
@@ -250,7 +250,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           }
         }, list[0]);
 
-        const taker = BigInt(String(lastTakerWagerWei || '0'));
+        const taker = BigInt(String(lastTakerPositionSizeWei || '0'));
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
@@ -269,7 +269,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   }, [
     bids,
     isRequesting,
-    lastTakerWagerWei,
+    lastTakerPositionSizeWei,
     selectedTakerAddress,
     lastAuctionParams,
   ]);
@@ -298,11 +298,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!isRequesting) return;
     if (effectiveOutcomes.length === 0 || !selectedTakerAddress) return;
     try {
-      const wagerWei = parseUnits('1', 18).toString();
-      setLastTakerWagerWei(wagerWei);
+      const positionSizeWei = parseUnits('1', 18).toString();
+      setLastTakerPositionSizeWei(positionSizeWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
       const auctionParams = {
-        wager: wagerWei,
+        wager: positionSizeWei,
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
         taker: selectedTakerAddress,
@@ -341,11 +341,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       if (effectiveOutcomes.length === 0 || !selectedTakerAddress) {
         setQueuedRequest(true);
       } else {
-        const wagerWei = parseUnits('1', 18).toString();
-        setLastTakerWagerWei(wagerWei);
+        const positionSizeWei = parseUnits('1', 18).toString();
+        setLastTakerPositionSizeWei(positionSizeWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
         const auctionParams = {
-          wager: wagerWei,
+          wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,

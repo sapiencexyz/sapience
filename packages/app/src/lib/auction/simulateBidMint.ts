@@ -65,7 +65,7 @@ export interface SimulateBidMintOptions {
   predictionMarketAddress: `0x${string}`;
   // Auction (API taker = contract maker)
   takerAddress: `0x${string}`; // auction requester - EOA or owner address
-  takerWager: string; // auction requester's wager (wei)
+  takerWager: string; // auction requester's position size (wei)
   takerNonce: number; // auction requester's nonce
   // Market data
   encodedPredictedOutcomes: `0x${string}`;
@@ -91,7 +91,7 @@ export interface SimulateBidResult {
  */
 export interface BidData {
   maker: string; // bidder address (API maker = contract taker)
-  makerWager: string; // bidder's wager (wei)
+  makerWager: string; // bidder's position size (wei)
   makerDeadline: number; // bid expiry (unix seconds)
   makerSignature: string; // bidder's signature
   makerNonce: number; // bidder's nonce
@@ -162,8 +162,8 @@ export async function simulateBidMint(
   // Contract field names:
   // - maker = auction requester (API taker) - this is the smart account for session mode
   // - taker = bidder (API maker)
-  // - makerCollateral = auction requester's wager
-  // - takerCollateral = bidder's wager
+  // - makerCollateral = auction requester's position size
+  // - takerCollateral = bidder's position size
   // - makerNonce = auction requester's nonce
   // - takerSignature = bidder's signature
   // - takerDeadline = bid expiry

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
 import { formatUnits, parseUnits } from 'viem';
 import { ChevronDown, Info } from 'lucide-react';
-import WagerDisclaimer from './WagerDisclaimer';
+import RiskDisclaimer from './RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import { formatNumber } from '~/lib/utils/util';
 import { quoteBidsToAuctionBids } from '~/lib/auction/bidAdapter';
@@ -16,8 +16,8 @@ interface BidDisplayProps {
   bestBid: QuoteBid | null;
   /** Estimate bid (failed simulation but only bid available) - shown with muted styling */
   estimateBid?: QuoteBid | null;
-  /** User's wager amount (human-readable string) */
-  wagerAmount: string;
+  /** User's position size (human-readable string) */
+  positionSize: string;
   /** Collateral token symbol (e.g., "USDe") */
   collateralSymbol: string;
   /** Collateral decimals (default 18) */
@@ -34,7 +34,7 @@ interface BidDisplayProps {
   onSubmit: (bid: QuoteBid) => void;
   /** Whether submit is disabled (beyond bid expiration) */
   isSubmitDisabled?: boolean;
-  /** Optional rainbow hover effect for high wagers */
+  /** Optional rainbow hover effect for high position sizes */
   enableRainbowHover?: boolean;
   /** Whether disclaimer is mounted */
   disclaimerMounted?: boolean;
@@ -44,12 +44,12 @@ interface BidDisplayProps {
   className?: string;
   /** All bids for auction chart display */
   allBids?: QuoteBid[];
-  /** Taker wager in wei for auction chart */
-  takerWagerWei?: string;
+  /** Taker position size in wei for auction chart */
+  takerPositionSizeWei?: string;
   /** Taker address for auction chart */
   takerAddress?: string;
-  /** Whether the "to win" section takes up space in the layout (default: true) */
-  toWinTakesSpace?: boolean;
+  /** Whether the payout section takes up space in the layout (default: true) */
+  payoutTakesSpace?: boolean;
   /** Show "add more predictions to see bids" hint when only 1 prediction is selected */
   showAddPredictionsHint?: boolean;
   /** Whether we're currently requesting higher bids (shows loading state) */
@@ -69,7 +69,7 @@ interface BidDisplayProps {
 export default function BidDisplay({
   bestBid,
   estimateBid,
-  wagerAmount,
+  positionSize,
   collateralSymbol,
   collateralDecimals = 18,
   nowMs,
@@ -83,9 +83,9 @@ export default function BidDisplay({
   hintMounted = false,
   className,
   allBids = [],
-  takerWagerWei,
+  takerPositionSizeWei,
   takerAddress,
-  toWinTakesSpace = true,
+  payoutTakesSpace = true,
   showAddPredictionsHint = false,
   isAuctionPending = false,
   hasFormErrors = false,
@@ -94,19 +94,19 @@ export default function BidDisplay({
 }: BidDisplayProps): React.ReactElement {
   const [isAuctionExpanded, setIsAuctionExpanded] = useState(false);
 
-  // Helper function to calculate "To Win" amount
-  const calculateToWinAmount = useCallback(
-    (bid: QuoteBid, wager: string): string => {
-      let userWagerWei: bigint = 0n;
+  // Helper function to calculate payout amount
+  const calculatePayoutAmount = useCallback(
+    (bid: QuoteBid, positionSize: string): string => {
+      let userPositionSizeWei: bigint = 0n;
       try {
-        userWagerWei = parseUnits(wager || '0', collateralDecimals);
+        userPositionSizeWei = parseUnits(positionSize || '0', collateralDecimals);
       } catch {
-        userWagerWei = 0n;
+        userPositionSizeWei = 0n;
       }
 
       const totalWei = (() => {
         try {
-          return userWagerWei + BigInt(bid.makerWager);
+          return userPositionSizeWei + BigInt(bid.makerWager);
         } catch {
           return 0n;
         }
@@ -147,13 +147,13 @@ export default function BidDisplay({
     return 'idle';
   }, [isSubmitting, bestBid, isBidExpired, isAuctionPending, isLoggedOut]);
 
-  // Calculate remaining seconds and the "to win" amount.
+  // Calculate remaining seconds and the payout amount.
   const { humanTotal, remainingSecs } = (() => {
     if (!bestBid) {
       return { humanTotal: '0.00', remainingSecs: 0 };
     }
 
-    const humanTotalVal = calculateToWinAmount(bestBid, wagerAmount);
+    const humanTotalVal = calculatePayoutAmount(bestBid, positionSize);
 
     const remainingMs = bestBid.makerDeadline * 1000 - nowMs;
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
@@ -164,8 +164,8 @@ export default function BidDisplay({
   // Calculate estimate payout from estimate bid (failed simulation, only bid available)
   const estimateTotal = useMemo(() => {
     if (!estimateBid) return null;
-    return calculateToWinAmount(estimateBid, wagerAmount);
-  }, [estimateBid, wagerAmount, calculateToWinAmount]);
+    return calculatePayoutAmount(estimateBid, positionSize);
+  }, [estimateBid, positionSize, calculatePayoutAmount]);
 
   // Determine button state and text based on unified uiState
   const getButtonState = () => {
@@ -235,26 +235,26 @@ export default function BidDisplay({
 
   return (
     <div
-      className={`text-center ${toWinTakesSpace ? '' : 'relative'} ${className ?? ''}`}
+      className={`text-center ${payoutTakesSpace ? '' : 'relative'} ${className ?? ''}`}
     >
-      {/* To Win Display - takes up space when toWinTakesSpace is true, otherwise positioned absolutely */}
+      {/* Payout Display - takes up space when payoutTakesSpace is true, otherwise positioned absolutely */}
       {uiState === 'active' && bestBid && (
         <div
-          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+          className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
           <div className="rounded-md border-[1.5px] border-ethena/80 bg-ethena/20 px-4 py-2.5 w-full shadow-[0_0_10px_rgba(136,180,245,0.25)]">
             <div className="flex items-center gap-1.5 min-h-[40px]">
-              {/* Left column: To Win + View Auction */}
+              {/* Left column: Payout + View Auction */}
               <div className="flex flex-col gap-0 shrink-0">
                 <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
                   <span className="font-light text-brand-white uppercase tracking-wider">
-                    To Win
+                    Payout
                   </span>
                   <span className="text-brand-white font-semibold inline-flex items-center whitespace-nowrap">
                     {`${humanTotal} ${collateralSymbol}`}
                   </span>
                 </span>
-                {/* View Auction Toggle - directly under To Win */}
+                {/* View Auction Toggle - directly under Payout */}
                 {allBids.length > 0 && (
                   <button
                     type="button"
@@ -291,7 +291,7 @@ export default function BidDisplay({
                     bids={chartBids}
                     continuous
                     refreshMs={90}
-                    takerWager={takerWagerWei}
+                    takerWager={takerPositionSizeWei}
                     taker={takerAddress}
                     collateralAssetTicker={collateralSymbol}
                     showTooltips={true}
@@ -333,13 +333,13 @@ export default function BidDisplay({
       {/* Logged-out user with valid bid - show as estimate with connect prompt */}
       {uiState === 'logged-out-with-bid' && bestBid && (
         <div
-          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+          className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
           <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
             <div className="flex items-center min-h-[40px]">
               <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
                 <span className="font-light text-muted-foreground uppercase tracking-wider">
-                  ESTIMATED TO WIN
+                  ESTIMATED PAYOUT
                 </span>
                 <span className="text-muted-foreground font-semibold whitespace-nowrap">
                   {`${humanTotal} ${collateralSymbol}`}
@@ -376,7 +376,7 @@ export default function BidDisplay({
         </div>
       )}
 
-      {/* Show "Add more predictions" hint for single-pick betslips */}
+      {/* Show "Add more predictions" hint for single-pick positions */}
       {((uiState === 'idle' && !estimateBid) || uiState === 'pending') &&
         showAddPredictionsHint && (
           <div className="mt-4 mb-4">
@@ -388,7 +388,7 @@ export default function BidDisplay({
                 </span>
               </div>
             </div>
-            {/* Listening for bids row - inside hint container to match TO WIN spacing */}
+            {/* Listening for bids row - inside hint container to match payout spacing */}
             {uiState === 'pending' && (
               <div className="flex items-center justify-between mt-2 px-1 text-xs">
                 <span
@@ -451,13 +451,13 @@ export default function BidDisplay({
       )}
       {uiState === 'idle' && estimateBid && estimateTotal && (
         <div
-          className={`mt-4 mb-4 ${toWinTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+          className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
           <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
             <div className="flex items-center min-h-[40px]">
               <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
                 <span className="font-light text-muted-foreground uppercase tracking-wider">
-                  ESTIMATED TO WIN
+                  ESTIMATED PAYOUT
                 </span>
                 <span className="text-muted-foreground font-semibold whitespace-nowrap">
                   {`${estimateTotal} ${collateralSymbol}`}
@@ -529,7 +529,7 @@ export default function BidDisplay({
       )}
 
       {/* Disclaimer with optional crossfade */}
-      {disclaimerMounted && <WagerDisclaimer className="mt-3" />}
+      {disclaimerMounted && <RiskDisclaimer className="mt-3" />}
     </div>
   );
 }

@@ -51,8 +51,8 @@ type TerminalLogsContextValue = {
       | 'ready'
       | 'error';
     amount?: string | null;
-    /** Total amount to win (bid + taker wager) for "to win" display */
-    toWinAmount?: string | null;
+    /** Total payout amount (bid + taker position size) for payout display */
+    payoutAmount?: string | null;
     collateralSymbol?: string;
     meta?: AutoBidLogMeta | null;
     dedupeKey?: string | null;
@@ -140,7 +140,7 @@ export function TerminalLogsProvider({
         | 'ready'
         | 'error';
       amount?: string | null;
-      toWinAmount?: string | null;
+      payoutAmount?: string | null;
       collateralSymbol?: string;
       meta?: AutoBidLogMeta | null;
       dedupeKey?: string | null;
@@ -150,7 +150,7 @@ export function TerminalLogsProvider({
         source,
         action,
         amount,
-        toWinAmount,
+        payoutAmount,
         collateralSymbol,
         meta,
         dedupeKey,
@@ -183,10 +183,10 @@ export function TerminalLogsProvider({
 
       switch (action) {
         case 'submitted': {
-          // Format: "You bid X USDe to win Y USDe"
+          // Format: "You bid X USDe for payout Y USDe"
           let amountDisplay: string;
-          if (amount && toWinAmount && collateralSymbol) {
-            amountDisplay = `${amount} ${collateralSymbol} to win ${toWinAmount} ${collateralSymbol}`;
+          if (amount && payoutAmount && collateralSymbol) {
+            amountDisplay = `${amount} ${collateralSymbol} for payout ${payoutAmount} ${collateralSymbol}`;
           } else if (amount && collateralSymbol) {
             amountDisplay = `${amount} ${collateralSymbol}`;
           } else {

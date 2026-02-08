@@ -160,12 +160,12 @@ const AuctionPageContent: React.FC = () => {
     const createdAt = new Date(m.time).toISOString();
     if (m.type === 'auction.started') {
       const maker = m.data?.maker || '';
-      const wager = m.data?.wager || '0';
+      const positionSize = m.data?.wager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(wager || '0'),
+        collateral: String(positionSize || '0'),
         position: { owner: maker },
       } as UiTransaction;
     }

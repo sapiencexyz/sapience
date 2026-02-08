@@ -63,7 +63,7 @@ const RPC_URL = 'https://rpc.ethereal.trade';
 const WS_URL = 'wss://relayer.sapience.xyz/auction';
 const RESOLVER = contracts.lzPMResolver[CHAIN_ID_ETHEREAL].address;
 const PREDICTION_MARKET = contracts.predictionMarket[CHAIN_ID_ETHEREAL].address;
-const WAGER = '1000000000000000000'; // 1 WUSDe (18 decimals)
+const POSITION_SIZE = '1000000000000000000'; // 1 WUSDe (18 decimals)
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
 
@@ -150,7 +150,7 @@ async function executeTrade(bid: any, encodedOutcomes: Hex, auctionTakerNonce: n
   const mintRequest = {
     encodedPredictedOutcomes: encodedOutcomes,
     resolver: RESOLVER,
-    makerCollateral: BigInt(WAGER),
+    makerCollateral: BigInt(POSITION_SIZE),
     takerCollateral: BigInt(bid.makerWager),
     maker: account.address,
     taker: bid.maker as Address,
@@ -221,7 +221,7 @@ async function main() {
       // Prepare auction payload
       const payload = {
         taker: account.address,
-        wager: WAGER,
+        wager: POSITION_SIZE,
         resolver: RESOLVER,
         predictedOutcomes: [encodedOutcomes],
         takerNonce,

@@ -91,8 +91,8 @@ export type UIPosition = {
   tokenIdToClaim?: bigint;
   createdAt: number; // ms
   totalPayoutWei: bigint; // total payout if won
-  /** Wager for this position (predictor's collateral if predictor position, counterparty's if counterparty position) */
-  wagerWei: bigint;
+  /** Position size for this position (predictor's collateral if predictor position, counterparty's if counterparty position) */
+  positionSizeWei: bigint;
   pnlWei: string; // pnl for settled positions
   /** Whether this is a counterparty position (as opposed to predictor position) - intrinsic to the NFT */
   isCounterpartyPosition: boolean;
@@ -448,8 +448,8 @@ export default function PositionsTable({
           }
         })();
 
-        // Wager is the collateral for this position type
-        const wagerWei = isCounterpartyPosition
+        // Position size is the collateral for this position type
+        const positionSizeWei = isCounterpartyPosition
           ? (viewerCounterpartyCollateralWei ?? 0n)
           : (viewerPredictorCollateralWei ?? 0n);
 
@@ -545,7 +545,7 @@ export default function PositionsTable({
           tokenIdToClaim,
           createdAt: p.mintedAt ? Number(p.mintedAt) * 1000 : Date.now(),
           totalPayoutWei: totalPayoutWei,
-          wagerWei,
+          positionSizeWei,
           pnlWei,
           isCounterpartyPosition,
           opponentAddress,
@@ -573,11 +573,17 @@ export default function PositionsTable({
       result = result.filter((row) => filters.status.includes(row.status));
     }
 
-    // Filter by wager range (server doesn't support this)
-    if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
+    // Filter by position size range (server doesn't support this)
+    if (
+      filters.positionSizeRange[0] > 0 ||
+      filters.positionSizeRange[1] < Infinity
+    ) {
       result = result.filter((row) => {
-        const wager = Number(formatEther(row.wagerWei));
-        return wager >= filters.wagerRange[0] && wager <= filters.wagerRange[1];
+        const positionSize = Number(formatEther(row.positionSizeWei));
+        return (
+          positionSize >= filters.positionSizeRange[0] &&
+          positionSize <= filters.positionSizeRange[1]
+        );
       });
     }
 
@@ -826,8 +832,8 @@ export default function PositionsTable({
       },
 
       {
-        id: 'wager',
-        accessorFn: (row) => Number(formatEther(row.wagerWei)),
+        id: 'positionSize',
+        accessorFn: (row) => Number(formatEther(row.positionSizeWei)),
         header: ({ column }) => (
           <Button
             type="button"
@@ -843,7 +849,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            Wager
+            Position Size
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -858,16 +864,18 @@ export default function PositionsTable({
         ),
         cell: ({ row }) => {
           const symbol = collateralSymbol;
-          const wager = Number(formatEther(row.original.wagerWei));
+          const positionSize = Number(
+            formatEther(row.original.positionSizeWei)
+          );
 
           return (
             <div>
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                Wager
+                Position Size
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
                 <NumberDisplay
-                  value={wager}
+                  value={positionSize}
                   className="tabular-nums text-brand-white font-mono"
                 />{' '}
                 <span className="tabular-nums text-brand-white font-mono">
@@ -879,7 +887,7 @@ export default function PositionsTable({
         },
       },
       {
-        id: 'toWin',
+        id: 'payout',
         accessorFn: (row) => {
           const totalPayout = Number(formatEther(row.totalPayoutWei || 0n));
           // For sorting, treat lost as 0
@@ -901,7 +909,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            To Win
+            Payout
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -929,7 +937,7 @@ export default function PositionsTable({
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                  To Win
+                  Payout
                 </div>
                 <div className="whitespace-nowrap tabular-nums text-muted-foreground font-mono line-through">
                   <NumberDisplay
@@ -946,7 +954,7 @@ export default function PositionsTable({
           return (
             <div>
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                To Win
+                Payout
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
                 <NumberDisplay
@@ -1019,13 +1027,15 @@ export default function PositionsTable({
             );
           }
 
-          const wager = Number(formatEther(row.original.wagerWei));
+          const positionSize = Number(
+            formatEther(row.original.positionSizeWei)
+          );
 
           const pnlValue = lostPositionUnclaimed
-            ? -wager
+            ? -positionSize
             : Number(formatEther(BigInt(row.original.pnlWei || '0')));
 
-          const roi = wager > 0 ? (pnlValue / wager) * 100 : 0;
+          const roi = positionSize > 0 ? (pnlValue / positionSize) * 100 : 0;
 
           return (
             <div className="relative">
@@ -1044,7 +1054,7 @@ export default function PositionsTable({
                 >
                   {symbol}
                 </span>
-                {wager > 0 && (
+                {positionSize > 0 && (
                   <span
                     className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                   >
@@ -1445,8 +1455,8 @@ export default function PositionsTable({
                       {(() => {
                         const cells = row.getVisibleCells();
                         const pairedIds = new Set([
-                          'wager',
-                          'toWin',
+                          'positionSize',
+                          'payout',
                           'pnl',
                           'status',
                         ]);
@@ -1454,7 +1464,7 @@ export default function PositionsTable({
                         let i = 0;
                         while (i < cells.length) {
                           const cell = cells[i];
-                          // Pair wager+toWin and pnl+ends in a 2-col grid on mobile
+                          // Pair positionSize+payout and pnl+ends in a 2-col grid on mobile
                           if (
                             pairedIds.has(cell.column.id) &&
                             i + 1 < cells.length &&
@@ -1570,7 +1580,7 @@ export default function PositionsTable({
             question: l.question,
             choice: l.choice,
           }))}
-          wager={Number(formatEther(selectedPosition.wagerWei))}
+          positionSize={Number(formatEther(selectedPosition.positionSizeWei))}
           payout={Number(formatEther(selectedPosition.totalPayoutWei || 0n))}
           symbol="USDe"
           owner={String(account)}

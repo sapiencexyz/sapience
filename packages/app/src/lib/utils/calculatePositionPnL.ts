@@ -28,15 +28,15 @@ export function calculatePositionPnL({
 
   try {
     const viewerWon = isCounterparty ? !predictorWon : predictorWon;
-    const wagerWei = BigInt(
+    const positionSizeWei = BigInt(
       isCounterparty ? counterpartyCollateral : predictorCollateral
     );
     const totalWei = BigInt(totalCollateral);
-    const wager = Number(formatEther(wagerWei));
+    const positionSize = Number(formatEther(positionSizeWei));
     const total = Number(formatEther(totalWei));
 
-    const pnl = viewerWon ? total - wager : -wager;
-    const roi = wager > 0 ? (pnl / wager) * 100 : 0;
+    const pnl = viewerWon ? total - positionSize : -positionSize;
+    const roi = positionSize > 0 ? (pnl / positionSize) * 100 : 0;
 
     return { pnl, roi };
   } catch {
@@ -62,13 +62,13 @@ export function calculatePositionPnLWei({
 }): string {
   try {
     const viewerWon = isCounterparty ? !predictorWon : predictorWon;
-    const wagerWei = BigInt(
+    const positionSizeWei = BigInt(
       isCounterparty ? counterpartyCollateral : predictorCollateral
     );
     const totalWei = BigInt(totalCollateral);
 
-    if (viewerWon) return (totalWei - wagerWei).toString();
-    return (-wagerWei).toString();
+    if (viewerWon) return (totalWei - positionSizeWei).toString();
+    return (-positionSizeWei).toString();
   } catch {
     return '0';
   }

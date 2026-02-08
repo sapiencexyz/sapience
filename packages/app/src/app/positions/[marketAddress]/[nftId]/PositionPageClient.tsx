@@ -63,7 +63,7 @@ export default function PositionPageClient({
     serverPosition.counterpartyNftTokenId === nftId;
   const legs = positionToLegs(serverPosition);
 
-  // Flip choices for counterparty position (they bet the opposite)
+  // Flip choices for counterparty position (they predict the opposite)
   if (isCounterpartyPosition) {
     for (const leg of legs) {
       const upper = String(leg.choice || '').toUpperCase();
@@ -72,13 +72,13 @@ export default function PositionPageClient({
     }
   }
 
-  // Wager is based on which position this NFT represents
-  const wager = formatCollateral(
+  // Position size is based on which position this NFT represents
+  const positionSize = formatCollateral(
     isCounterpartyPosition
       ? serverPosition.counterpartyCollateral
       : serverPosition.predictorCollateral
   );
-  const toWin = formatCollateral(serverPosition.totalCollateral);
+  const payout = formatCollateral(serverPosition.totalCollateral);
   const createdAt = serverPosition.mintedAt
     ? new Date(serverPosition.mintedAt * 1000)
     : null;
@@ -116,8 +116,8 @@ export default function PositionPageClient({
           isCounterpartyPosition={isCounterpartyPosition}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
-          wager={wager}
-          toWin={toWin}
+          positionSize={positionSize}
+          payout={payout}
           pnl={pnl}
           roi={roi}
           isSettled={isSettled}

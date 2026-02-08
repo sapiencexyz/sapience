@@ -115,13 +115,13 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
           const collateralDecimals = 18;
           const collateralSymbol = 'testUSDe';
           if (position?.predictorCollateral) {
-            const wager = parseFloat(
+            const positionSize = parseFloat(
               formatUnits(
                 BigInt(position.predictorCollateral),
                 collateralDecimals
               )
             ).toFixed(2);
-            qp.set('wager', wager);
+            qp.set('wager', positionSize);
           }
 
           if (position?.totalCollateral) {
