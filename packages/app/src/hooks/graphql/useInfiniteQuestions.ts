@@ -24,6 +24,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
     $categorySlugs: [String!]
     $excludeSettled: Boolean
     $minEndTime: Int
+    $resolutionStatus: String
   ) {
     questionsSorted(
       take: $take
@@ -35,6 +36,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
       categorySlugs: $categorySlugs
       excludeSettled: $excludeSettled
       minEndTime: $minEndTime
+      resolutionStatus: $resolutionStatus
     ) {
       questionType
       group {
@@ -111,6 +113,8 @@ export interface UseInfiniteQuestionsOptions {
   excludeSettled?: boolean;
   /** Only include markets with endTime >= this value (unix timestamp) */
   minEndTime?: number;
+  /** Filter by resolution status: 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo' */
+  resolutionStatus?: string;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -133,6 +137,7 @@ export function useInfiniteQuestions(
     sortDirection = 'desc',
     excludeSettled,
     minEndTime,
+    resolutionStatus,
   } = opts;
 
   const [skip, setSkip] = useState(0);
@@ -158,6 +163,7 @@ export function useInfiniteQuestions(
     sortDirection,
     excludeSettled,
     minEndTime,
+    resolutionStatus,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
 
@@ -196,6 +202,7 @@ export function useInfiniteQuestions(
       sortDirection,
       excludeSettled,
       minEndTime,
+      resolutionStatus,
     ],
     queryFn: async (): Promise<QuestionType[]> => {
       type QuestionsQueryResult = {
@@ -211,6 +218,7 @@ export function useInfiniteQuestions(
         categorySlugs: categorySlugs?.length ? categorySlugs : null,
         excludeSettled: excludeSettled ?? null,
         minEndTime: minEndTime ?? null,
+        resolutionStatus: resolutionStatus ?? null,
       };
 
       const data = await graphqlRequest<QuestionsQueryResult>(

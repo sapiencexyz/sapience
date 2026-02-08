@@ -56,7 +56,9 @@ export class QuestionsResolver {
     @Arg('excludeSettled', () => Boolean, { nullable: true })
     excludeSettled: boolean | null,
     @Arg('minEndTime', () => Int, { nullable: true })
-    minEndTime: number | null
+    minEndTime: number | null,
+    @Arg('resolutionStatus', () => String, { nullable: true })
+    resolutionStatus: string | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -82,6 +84,27 @@ export class QuestionsResolver {
     const boundedSkip = Math.max(0, skip);
     const boundedSearch = search?.slice(0, 200) ?? null;
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
+
+    // Build resolution status SQL filter
+    // resolutionStatus takes precedence over legacy excludeSettled
+    const resolvedFilter = (() => {
+      if (resolutionStatus && resolutionStatus !== 'all') {
+        switch (resolutionStatus) {
+          case 'unresolved':
+            return Prisma.sql`AND c.settled = false`;
+          case 'resolvedYes':
+            return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
+          case 'resolvedNo':
+            return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = false`;
+          default:
+            return Prisma.empty;
+        }
+      }
+      if (excludeSettled) {
+        return Prisma.sql`AND c.settled = false`;
+      }
+      return Prisma.empty;
+    })();
 
     // Step 1: UNION query to get both groups and ungrouped conditions sorted together
     // For groups: aggregate openInterest (SUM) or max endTime
@@ -112,7 +135,7 @@ export class QuestionsResolver {
         LEFT JOIN condition c ON c."conditionGroupId" = cg.id
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-          ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
+          ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
         WHERE 1=1
           ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
@@ -142,7 +165,7 @@ export class QuestionsResolver {
         WHERE c."conditionGroupId" IS NULL
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-          ${excludeSettled ? Prisma.sql`AND c.settled = false` : Prisma.empty}
+          ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
             boundedSearch
@@ -187,10 +210,30 @@ export class QuestionsResolver {
     // Step 3: Fetch full records via Prisma ORM (type-safe, includes relations)
     // Define the include type for groups to help TypeScript
     // Apply the same filters to nested conditions that we used in the SQL query
+    // Build Prisma where clause for nested conditions (mirrors SQL filter)
+    const resolvedPrismaFilter = (() => {
+      if (resolutionStatus && resolutionStatus !== 'all') {
+        switch (resolutionStatus) {
+          case 'unresolved':
+            return { settled: false };
+          case 'resolvedYes':
+            return { settled: true, resolvedToYes: true };
+          case 'resolvedNo':
+            return { settled: true, resolvedToYes: false };
+          default:
+            return {};
+        }
+      }
+      if (excludeSettled) {
+        return { settled: false };
+      }
+      return {};
+    })();
+
     const conditionWhere = {
       public: true,
       ...(chainId !== null ? { chainId } : {}),
-      ...(excludeSettled ? { settled: false } : {}),
+      ...resolvedPrismaFilter,
       ...(minEndTime !== null ? { endTime: { gte: minEndTime } } : {}),
     };
 

@@ -921,81 +921,15 @@ export default function MarketsDataTable({
     return { openInterestBounds, timeToResolutionBounds };
   }, []);
 
-  // Helper to check if a condition matches the resolution status filter
-  const matchesResolutionStatus = React.useCallback(
-    (
-      settled: boolean | undefined,
-      resolvedToYes: boolean | null | undefined
-    ): boolean => {
-      if (filters.resolutionStatus === 'all') return true;
-      switch (filters.resolutionStatus) {
-        case 'resolvedYes':
-          return settled === true && resolvedToYes === true;
-        case 'resolvedNo':
-          return settled === true && resolvedToYes === false;
-        case 'unresolved':
-          return settled !== true;
-        default:
-          return true;
-      }
-    },
-    [filters.resolutionStatus]
-  );
-
   // Build the top-level row model from unified questions
-  // Backend handles sorting and interleaving - just map to our row format
-  // Resolution status filter is applied here with group flattening for partial matches
+  // Backend handles sorting, filtering, and interleaving - just map to our row format
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    const rows: TopLevelRow[] = [];
+    return questions
+      .map((item): TopLevelRow | null => {
+        if (item.questionType === 'group' && item.group) {
+          const group = item.group;
+          if (group.conditions.length === 0) return null;
 
-    for (const item of questions) {
-      if (item.questionType === 'group' && item.group) {
-        const group = item.group;
-        if (group.conditions.length === 0) continue;
-
-        // Check if resolution filter is active
-        if (filters.resolutionStatus !== 'all') {
-          // Filter conditions within the group
-          const matchingConditions = group.conditions.filter((c) =>
-            matchesResolutionStatus(c.settled, c.resolvedToYes)
-          );
-
-          // If all conditions match, show group as normal
-          if (matchingConditions.length === group.conditions.length) {
-            // Compute aggregates for display
-            let openInterestWei = 0n;
-            let maxEndTime = 0;
-            for (const c of group.conditions) {
-              openInterestWei += BigInt(c.openInterest || '0');
-              if (c.endTime > maxEndTime) {
-                maxEndTime = c.endTime;
-              }
-            }
-
-            rows.push({
-              kind: 'group' as const,
-              id: `group-${group.id}`,
-              groupId: group.id,
-              name: group.name,
-              category: group.category,
-              conditions: group.conditions,
-              openInterestWei,
-              maxEndTime,
-            });
-          }
-          // If some match, show them as individual conditions (flatten)
-          else if (matchingConditions.length > 0) {
-            for (const c of matchingConditions) {
-              rows.push({
-                kind: 'condition' as const,
-                id: `condition-${c.id}`,
-                condition: groupConditionToConditionType(c),
-              });
-            }
-          }
-          // If none match, skip entirely
-        } else {
-          // No resolution filter - show group normally
           // Compute aggregates for display
           let openInterestWei = 0n;
           let maxEndTime = 0;
@@ -1006,7 +940,7 @@ export default function MarketsDataTable({
             }
           }
 
-          rows.push({
+          return {
             kind: 'group' as const,
             id: `group-${group.id}`,
             groupId: group.id,
@@ -1015,44 +949,18 @@ export default function MarketsDataTable({
             conditions: group.conditions,
             openInterestWei,
             maxEndTime,
-          });
-        }
-      } else if (item.questionType === 'condition' && item.condition) {
-        // Filter standalone conditions by resolution status
-        if (
-          matchesResolutionStatus(
-            item.condition.settled,
-            item.condition.resolvedToYes
-          )
-        ) {
-          rows.push({
+          };
+        } else if (item.questionType === 'condition' && item.condition) {
+          return {
             kind: 'condition' as const,
             id: `condition-${item.condition.id}`,
             condition: item.condition,
-          });
+          };
         }
-      }
-    }
-
-    // When resolution filter causes group flattening, the backend sort order
-    // is broken (individual conditions inherit the group's position but have
-    // different OI/endTime values). Re-sort client-side to fix this.
-    if (filters.resolutionStatus !== 'all') {
-      rows.sort((a, b) => {
-        let cmp: number;
-        if (sortField === 'endTime') {
-          cmp = getRowEndTime(a) - getRowEndTime(b);
-        } else {
-          const oiA = getRowOpenInterest(a);
-          const oiB = getRowOpenInterest(b);
-          cmp = oiA < oiB ? -1 : oiA > oiB ? 1 : 0;
-        }
-        return sortDirection === 'desc' ? -cmp : cmp;
-      });
-    }
-
-    return rows;
-  }, [questions, filters.resolutionStatus, matchesResolutionStatus, sortField, sortDirection]);
+        return null;
+      })
+      .filter((row): row is TopLevelRow => row !== null);
+  }, [questions]);
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(() => {
@@ -1061,15 +969,21 @@ export default function MarketsDataTable({
     const nowSec = Math.floor(Date.now() / 1000);
 
     const result = topLevelRows.filter((row) => {
-      // Open interest filter (in USDe, so convert from wei)
       const oiWei = getRowOpenInterest(row);
       const oiUsde = parseFloat(formatEther(oiWei));
+      const endTime = getRowEndTime(row);
+
+      // Hide dead markets (0 OI + past end time) unless user is searching
+      if (!searchTerm && oiWei === 0n && endTime && endTime <= nowSec) {
+        return false;
+      }
+
+      // Open interest filter (in USDe, so convert from wei)
       if (oiUsde < minOI || oiUsde > maxOI) {
         return false;
       }
 
       // Time to resolution filter (in days)
-      const endTime = getRowEndTime(row);
       if (endTime) {
         const daysFromNow = (endTime - nowSec) / 86400;
         // Only apply if not at extreme bounds (Infinity/-Infinity)
@@ -1085,7 +999,7 @@ export default function MarketsDataTable({
     });
 
     return result;
-  }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange]);
+  }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange, searchTerm]);
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = React.useRef<HTMLDivElement>(null);

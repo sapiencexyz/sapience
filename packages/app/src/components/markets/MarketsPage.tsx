@@ -147,6 +147,8 @@ const MarketsPage = () => {
     sortDirection,
     // Backend filtering for markets after this time
     minEndTime,
+    // Backend filtering by resolution status
+    resolutionStatus: filters.resolutionStatus,
   });
 
   const handlePythPick = useCallback(

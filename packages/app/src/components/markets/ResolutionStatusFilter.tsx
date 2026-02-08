@@ -25,7 +25,7 @@ const OPTIONS: { value: ResolutionStatusFilterValue; label: string }[] = [
   { value: 'all', label: 'All Markets' },
   { value: 'resolvedYes', label: 'Resolved Yes' },
   { value: 'resolvedNo', label: 'Resolved No' },
-  { value: 'unresolved', label: 'Unresolved' },
+  { value: 'unresolved', label: 'Pending Resolution' },
 ];
 
 interface ResolutionStatusFilterProps {
