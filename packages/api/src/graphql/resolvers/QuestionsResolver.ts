@@ -85,6 +85,13 @@ export class QuestionsResolver {
     const boundedSearch = search?.slice(0, 200) ?? null;
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
+    // Exclude dead markets: 0 open interest + past end time (no positions, can't trade)
+    // Only apply when not searching, so users can find dead markets if needed
+    const nowSec = Math.floor(Date.now() / 1000);
+    const deadMarketFilter = boundedSearch
+      ? Prisma.empty
+      : Prisma.sql`AND NOT (c."openInterest" = '0' AND c."endTime" < ${nowSec})`;
+
     // Build resolution status SQL filter
     // resolutionStatus takes precedence over legacy excludeSettled
     const resolvedFilter = (() => {
@@ -137,6 +144,7 @@ export class QuestionsResolver {
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${deadMarketFilter}
         WHERE 1=1
           ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
           ${
@@ -167,6 +175,7 @@ export class QuestionsResolver {
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${deadMarketFilter}
           ${
             boundedSearch
               ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
@@ -246,21 +255,20 @@ export class QuestionsResolver {
       },
     } as const;
 
-    const groups =
+    const [groups, conditions] = await Promise.all([
       groupIds.length > 0
-        ? await prisma.conditionGroup.findMany({
+        ? prisma.conditionGroup.findMany({
             where: { id: { in: groupIds } },
             include: groupInclude,
           })
-        : [];
-
-    const conditions =
+        : [],
       conditionIds.length > 0
-        ? await prisma.condition.findMany({
+        ? prisma.condition.findMany({
             where: { id: { in: conditionIds } },
             include: { category: true },
           })
-        : [];
+        : [],
+    ]);
 
     // Step 4: Build lookup maps for fast access
     type GroupWithRelations = (typeof groups)[number];

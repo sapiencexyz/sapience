@@ -25,7 +25,7 @@ const OPTIONS: { value: ResolutionStatusFilterValue; label: string }[] = [
   { value: 'all', label: 'All Markets' },
   { value: 'resolvedYes', label: 'Resolved Yes' },
   { value: 'resolvedNo', label: 'Resolved No' },
-  { value: 'unresolved', label: 'Pending Resolution' },
+  { value: 'unresolved', label: 'Unresolved' },
 ];
 
 interface ResolutionStatusFilterProps {
@@ -39,7 +39,8 @@ export default function ResolutionStatusFilter({
 }: ResolutionStatusFilterProps) {
   const [open, setOpen] = React.useState(false);
 
-  const selectedOption = OPTIONS.find((opt) => opt.value === value) ?? OPTIONS[0];
+  const selectedOption =
+    OPTIONS.find((opt) => opt.value === value) ?? OPTIONS[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

@@ -212,7 +212,9 @@ export default function TableFilters({
     onFiltersChange({ ...filters, selectedCategories: slugs });
   };
 
-  const handleResolutionStatusChange = (status: ResolutionStatusFilterValue) => {
+  const handleResolutionStatusChange = (
+    status: ResolutionStatusFilterValue
+  ) => {
     onFiltersChange({ ...filters, resolutionStatus: status });
   };
 

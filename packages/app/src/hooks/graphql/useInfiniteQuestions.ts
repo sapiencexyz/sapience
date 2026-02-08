@@ -22,7 +22,6 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
     $sortDirection: String!
     $search: String
     $categorySlugs: [String!]
-    $excludeSettled: Boolean
     $minEndTime: Int
     $resolutionStatus: String
   ) {
@@ -34,7 +33,6 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
       sortDirection: $sortDirection
       search: $search
       categorySlugs: $categorySlugs
-      excludeSettled: $excludeSettled
       minEndTime: $minEndTime
       resolutionStatus: $resolutionStatus
     ) {
@@ -109,8 +107,6 @@ export interface UseInfiniteQuestionsOptions {
   pageSize?: number;
   sortField?: SortField;
   sortDirection?: SortDirection;
-  /** Exclude settled/resolved markets from results */
-  excludeSettled?: boolean;
   /** Only include markets with endTime >= this value (unix timestamp) */
   minEndTime?: number;
   /** Filter by resolution status: 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo' */
@@ -135,7 +131,6 @@ export function useInfiniteQuestions(
     pageSize = 20,
     sortField = 'openInterest',
     sortDirection = 'desc',
-    excludeSettled,
     minEndTime,
     resolutionStatus,
   } = opts;
@@ -161,7 +156,6 @@ export function useInfiniteQuestions(
     categorySlugs,
     sortField,
     sortDirection,
-    excludeSettled,
     minEndTime,
     resolutionStatus,
   });
@@ -200,7 +194,6 @@ export function useInfiniteQuestions(
       categorySlugs,
       sortField,
       sortDirection,
-      excludeSettled,
       minEndTime,
       resolutionStatus,
     ],
@@ -216,7 +209,6 @@ export function useInfiniteQuestions(
         sortDirection,
         search: search?.trim() || null,
         categorySlugs: categorySlugs?.length ? categorySlugs : null,
-        excludeSettled: excludeSettled ?? null,
         minEndTime: minEndTime ?? null,
         resolutionStatus: resolutionStatus ?? null,
       };
