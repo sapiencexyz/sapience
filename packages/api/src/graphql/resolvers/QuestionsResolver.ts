@@ -113,9 +113,12 @@ export class QuestionsResolver {
       return Prisma.empty;
     })();
 
-    // Step 1: UNION query to get both groups and ungrouped conditions sorted together
-    // For groups: aggregate openInterest (SUM) or max endTime
-    // For conditions: individual openInterest or endTime
+    // Step 1: UNION query to get groups, ungrouped conditions, and expired group
+    // conditions sorted together.
+    // - Part A: Active groups (not all-expired) with aggregate sort values
+    // - Part B: Ungrouped conditions with individual sort values
+    // - Part C: Individual conditions from expired groups (OI > 0), sorted by their own values
+    // This fixes OI sort order for expired groups by returning their conditions individually.
     // Note: condition_group.id is integer, condition.id is string (text)
     // We store them separately and use item_type to determine which ID to use
     const sortedItems = await prisma.$queryRaw<
@@ -125,8 +128,19 @@ export class QuestionsResolver {
         condition_id: string | null;
       }[]
     >`
-      WITH combined AS (
-        -- Groups: aggregate by SUM(openInterest) or MAX(endTime)
+      WITH expired_groups AS (
+        -- Groups where ALL matching conditions have ended
+        SELECT cg.id
+        FROM condition_group cg
+        INNER JOIN condition c ON c."conditionGroupId" = cg.id
+          AND c.public = true
+          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+          ${resolvedFilter}
+        GROUP BY cg.id
+        HAVING MAX(c."endTime") <= ${nowSec}
+      ),
+      combined AS (
+        -- Part A: Active groups only (exclude expired)
         SELECT
           'group' as item_type,
           cg.id as group_id,
@@ -137,7 +151,8 @@ export class QuestionsResolver {
               : sanitizedSortField === 'createdAt'
                 ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM MAX(c."createdAt")))::bigint, 0)::text`
                 : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
-          } as sort_value
+          } as sort_value,
+          COALESCE(MAX(c."endTime"), 0) as end_time
         FROM condition_group cg
         LEFT JOIN condition c ON c."conditionGroupId" = cg.id
           AND c.public = true
@@ -145,7 +160,7 @@ export class QuestionsResolver {
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${deadMarketFilter}
-        WHERE 1=1
+        WHERE NOT EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = cg.id)
           ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
           ${
             boundedCategorySlugs?.length
@@ -157,7 +172,7 @@ export class QuestionsResolver {
 
         UNION ALL
 
-        -- Ungrouped conditions: individual values
+        -- Part B: Ungrouped conditions (individual values)
         SELECT
           'condition' as item_type,
           NULL::integer as group_id,
@@ -168,7 +183,8 @@ export class QuestionsResolver {
               : sanitizedSortField === 'createdAt'
                 ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
                 : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
-          } as sort_value
+          } as sort_value,
+          COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
         WHERE c."conditionGroupId" IS NULL
           AND c.public = true
@@ -186,10 +202,45 @@ export class QuestionsResolver {
               ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${categorySlugs}::text[]))`
               : Prisma.empty
           }
+
+        UNION ALL
+
+        -- Part C: Individual conditions from expired groups (OI > 0)
+        SELECT
+          'condition' as item_type,
+          NULL::integer as group_id,
+          c.id as condition_id,
+          ${
+            sanitizedSortField === 'openInterest'
+              ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
+              : sanitizedSortField === 'createdAt'
+                ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
+                : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
+          } as sort_value,
+          COALESCE(c."endTime", 2147483647) as end_time
+        FROM condition c
+        WHERE EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = c."conditionGroupId")
+          AND c."openInterest" != '0'
+          AND c.public = true
+          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+          ${resolvedFilter}
+          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${deadMarketFilter}
+          ${
+            boundedSearch
+              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
+              : Prisma.empty
+          }
+          ${
+            categorySlugs?.length
+              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${categorySlugs}::text[]))`
+              : Prisma.empty
+          }
       )
-      SELECT item_type, group_id, condition_id, sort_value
+      SELECT item_type, group_id, condition_id
       FROM combined
       ORDER BY sort_value::numeric ${Prisma.raw(dir)},
+               end_time ASC,
                item_type ASC,
                COALESCE(group_id, 0) ASC,
                COALESCE(condition_id, '') ASC
@@ -204,7 +255,6 @@ export class QuestionsResolver {
       item_type: string;
       group_id: number | null;
       condition_id: string | null;
-      sort_value: string;
     };
     const groupIds = sortedItems
       .filter((r: SortedItem) => r.item_type === 'group' && r.group_id !== null)

@@ -543,7 +543,7 @@ function createColumns(
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
-              className="-mr-4 px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+              className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Open Interest
               {sorted === 'asc' ? (
@@ -604,7 +604,7 @@ function createColumns(
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
-              className="-mr-4 px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+              className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Ends
               {sorted === 'asc' ? (
@@ -908,7 +908,6 @@ export default function MarketsDataTable({
   // For "ENDS SOON" groups (past end time), flatten to individual conditions with >0 OI
   // so users see the relevant markets directly instead of a group full of 0 OI options
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    const nowSec = Math.floor(Date.now() / 1000);
     return questions.flatMap((item): TopLevelRow[] => {
       if (item.questionType === 'group' && item.group) {
         const group = item.group;
@@ -922,19 +921,6 @@ export default function MarketsDataTable({
           if (c.endTime > maxEndTime) {
             maxEndTime = c.endTime;
           }
-        }
-
-        // If group has ended, show only conditions with >0 OI as top-level rows
-        if (maxEndTime <= nowSec) {
-          return group.conditions
-            .filter((c) => c.openInterest && c.openInterest !== '0')
-            .map(
-              (c): TopLevelRow => ({
-                kind: 'condition' as const,
-                id: `condition-${c.id}`,
-                condition: groupConditionToConditionType(c),
-              })
-            );
         }
 
         return [
@@ -973,11 +959,6 @@ export default function MarketsDataTable({
       const oiUsde = parseFloat(formatEther(oiWei));
       const endTime = getRowEndTime(row);
 
-      // Hide dead markets (0 OI + past end time) unless user is searching
-      if (!searchTerm && oiWei === 0n && endTime && endTime <= nowSec) {
-        return false;
-      }
-
       // Open interest filter (in USDe, so convert from wei)
       if (oiUsde < minOI || oiUsde > maxOI) {
         return false;
@@ -999,12 +980,7 @@ export default function MarketsDataTable({
     });
 
     return result;
-  }, [
-    topLevelRows,
-    filters.openInterestRange,
-    filters.timeToResolutionRange,
-    searchTerm,
-  ]);
+  }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange]);
 
   // Ref for infinite scroll sentinel
   const loadMoreRef = React.useRef<HTMLDivElement>(null);

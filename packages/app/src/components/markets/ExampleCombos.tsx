@@ -50,7 +50,7 @@ const DISPLAY_TIMEOUT_MS = 4000;
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
   const { data: allConditions = [], isLoading } = useConditions({
-    take: 200,
+    take: 100,
     chainId,
   });
   const { addSelection, clearSelections } = useCreatePositionContext();
