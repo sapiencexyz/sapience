@@ -98,9 +98,9 @@ const MarketsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterState>({
     openInterestRange: [0, Infinity],
-    timeToResolutionRange: [0, Infinity], // Default to future markets only
+    timeToResolutionRange: [-Infinity, Infinity],
     selectedCategories: [],
-    resolutionStatus: 'all',
+    resolutionStatus: 'unresolved',
   });
 
   // Sorting state - lifted here so backend can respect it during pagination

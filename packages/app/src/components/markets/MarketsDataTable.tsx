@@ -985,8 +985,25 @@ export default function MarketsDataTable({
       }
     }
 
+    // When resolution filter causes group flattening, the backend sort order
+    // is broken (individual conditions inherit the group's position but have
+    // different OI/endTime values). Re-sort client-side to fix this.
+    if (filters.resolutionStatus !== 'all') {
+      rows.sort((a, b) => {
+        let cmp: number;
+        if (sortField === 'endTime') {
+          cmp = getRowEndTime(a) - getRowEndTime(b);
+        } else {
+          const oiA = getRowOpenInterest(a);
+          const oiB = getRowOpenInterest(b);
+          cmp = oiA < oiB ? -1 : oiA > oiB ? 1 : 0;
+        }
+        return sortDirection === 'desc' ? -cmp : cmp;
+      });
+    }
+
     return rows;
-  }, [questions, filters.resolutionStatus, matchesResolutionStatus]);
+  }, [questions, filters.resolutionStatus, matchesResolutionStatus, sortField, sortDirection]);
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(() => {
