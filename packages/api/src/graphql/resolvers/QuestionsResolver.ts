@@ -53,8 +53,6 @@ export class QuestionsResolver {
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
     categorySlugs: string[] | null,
-    @Arg('excludeSettled', () => Boolean, { nullable: true })
-    excludeSettled: boolean | null,
     @Arg('minEndTime', () => Int, { nullable: true })
     minEndTime: number | null,
     @Arg('resolutionStatus', () => String, { nullable: true })
@@ -93,7 +91,6 @@ export class QuestionsResolver {
       : Prisma.sql`AND NOT (c."openInterest" = '0' AND c."endTime" < ${nowSec})`;
 
     // Build resolution status SQL filter
-    // resolutionStatus takes precedence over legacy excludeSettled
     const resolvedFilter = (() => {
       if (resolutionStatus && resolutionStatus !== 'all') {
         switch (resolutionStatus) {
@@ -106,9 +103,6 @@ export class QuestionsResolver {
           default:
             return Prisma.empty;
         }
-      }
-      if (excludeSettled) {
-        return Prisma.sql`AND c.settled = false`;
       }
       return Prisma.empty;
     })();
@@ -136,6 +130,8 @@ export class QuestionsResolver {
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
+          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+          ${deadMarketFilter}
         GROUP BY cg.id
         HAVING MAX(c."endTime") <= ${nowSec}
       ),
@@ -198,8 +194,8 @@ export class QuestionsResolver {
               : Prisma.empty
           }
           ${
-            categorySlugs?.length
-              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${categorySlugs}::text[]))`
+            boundedCategorySlugs?.length
+              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
               : Prisma.empty
           }
 
@@ -232,8 +228,8 @@ export class QuestionsResolver {
               : Prisma.empty
           }
           ${
-            categorySlugs?.length
-              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${categorySlugs}::text[]))`
+            boundedCategorySlugs?.length
+              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
               : Prisma.empty
           }
       )
@@ -282,9 +278,6 @@ export class QuestionsResolver {
           default:
             return {};
         }
-      }
-      if (excludeSettled) {
-        return { settled: false };
       }
       return {};
     })();

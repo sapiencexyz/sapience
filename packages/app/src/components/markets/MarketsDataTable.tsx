@@ -222,7 +222,11 @@ function EndTimeCell({
   if (settled || isPastEnd) {
     const isResolved = allSettled !== undefined ? allSettled : settled;
     return (
-      <ResolutionBadge settled={isResolved} resolvedToYes={resolvedToYes} />
+      <ResolutionBadge
+        settled={isResolved}
+        resolvedToYes={resolvedToYes}
+        groupSettled={allSettled}
+      />
     );
   }
 
@@ -233,10 +237,25 @@ function EndTimeCell({
 function ResolutionBadge({
   settled,
   resolvedToYes,
+  groupSettled,
 }: {
   settled: boolean;
   resolvedToYes?: boolean | null;
+  /** When true, shows a neutral "SETTLED" badge (for groups with mixed resolutions) */
+  groupSettled?: boolean;
 }) {
+  if (groupSettled) {
+    return (
+      <div className="flex justify-end">
+        <Badge
+          variant="outline"
+          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+        >
+          SETTLED
+        </Badge>
+      </div>
+    );
+  }
   if (settled) {
     return (
       <div className="flex justify-end">
@@ -253,6 +272,8 @@ function ResolutionBadge({
       </div>
     );
   }
+  // End time is an estimate — show "ENDS SOON" once past the estimated end
+  // until the market is actually settled on-chain
   return (
     <span className="whitespace-nowrap font-mono text-accent-gold">
       ENDS SOON
@@ -283,7 +304,7 @@ function ForecastCell({
     );
   }
 
-  // Always show prediction request for unsettled markets
+  // End time is an estimate, so keep showing predictions until settled on-chain
   return (
     <MarketPredictionRequest
       conditionId={condition.id}
@@ -373,6 +394,7 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     addSelection,
   ]);
 
+  // End time is an estimate — only disable trading once settled on-chain
   if (condition.settled) {
     return (
       <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
