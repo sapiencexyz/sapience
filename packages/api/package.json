@@ -52,7 +52,6 @@
     "@apollo/server-plugin-response-cache": "5.0.0",
     "@as-integrations/express4": "^1.1.2",
     "@ethereum-attestation-service/eas-sdk": "2.7.0",
-    "@modelcontextprotocol/sdk": "1.25.3",
     "@prisma/client": "6.10.1",
     "@sapience/sdk": "workspace:*",
     "@sentry/cli": "2.42.2",

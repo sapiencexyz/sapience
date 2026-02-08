@@ -1,26 +1,5 @@
 declare module "@sapience/sdk" {
-  export type McpClient = {
-    callTool<T = unknown>(name: string, args?: Record<string, any>): Promise<T>;
-    readResource<T = unknown>(uri: string): Promise<T>;
-    close(): Promise<void>;
-  };
-  export function createMcpClient(opts: {
-    baseUrl: string;
-    fetchImpl?: (input: any, init?: any) => Promise<Response>;
-    headers?: Record<string, string>;
-  }): McpClient;
-
-  export function listActiveMarkets(client: McpClient): Promise<any[]>;
-  export function getRecentAttestations(
-    client: McpClient,
-    limit: number,
-  ): Promise<any[]>;
-  export function getAttestationsByAddress(
-    client: McpClient,
-    address: string,
-  ): Promise<any[]>;
-
-  // New simplified API - always targets Arbitrum
+  // Simplified API - always targets Arbitrum
   export type ForecastCalldata = {
     to: `0x${string}`;
     data: `0x${string}`;
