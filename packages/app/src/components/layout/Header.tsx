@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Telescope,
   Bot,
+  Sparkles,
   Trophy,
   Users,
   Wallet,
@@ -137,6 +138,13 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
           onClick={handleLinkClick}
         >
           Forecasting
+        </Link>
+        <Link
+          href="/skills"
+          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/skills', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          onClick={handleLinkClick}
+        >
+          Agent Skills
         </Link>
         <Link
           href="/bots"
@@ -522,6 +530,15 @@ const Header = () => {
                     >
                       <Telescope className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
                       <span>Forecasting</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/skills"
+                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
+                    >
+                      <Sparkles className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
+                      <span>Agent Skills</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
