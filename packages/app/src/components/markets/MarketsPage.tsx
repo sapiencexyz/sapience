@@ -7,7 +7,8 @@ import {
 } from '@sapience/ui';
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
@@ -95,30 +96,28 @@ const MarketsPage = () => {
   }, []);
 
   // Filter state managed here, passed down to MarketsDataTable
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<FilterState>(() => {
-    const defaults: FilterState = {
-      openInterestRange: [0, Infinity],
-      timeToResolutionRange: [0, Infinity], // Default to future markets only
-      selectedCategories: [],
-    };
-
-    if (typeof window === 'undefined') return defaults;
-
-    try {
-      const url = new URL(window.location.href);
-      const category = url.searchParams.get('category');
-      if (category) {
-        defaults.selectedCategories = [category];
-        url.searchParams.delete('category');
-        window.history.replaceState({}, '', url.toString());
-      }
-    } catch {
-      // Ignore URL parse errors
-    }
-
-    return defaults;
+  const [filters, setFilters] = useState<FilterState>({
+    openInterestRange: [0, Infinity],
+    timeToResolutionRange: [0, Infinity], // Default to future markets only
+    selectedCategories: [],
   });
+
+  // Pick up ?category= from URL on initial load and client-side navigation
+  const appliedCategoryRef = useRef<string | null>(null);
+  useEffect(() => {
+    const category = searchParams.get('category');
+    if (category && category !== appliedCategoryRef.current) {
+      appliedCategoryRef.current = category;
+      setFilters((prev) => ({
+        ...prev,
+        selectedCategories: [category],
+      }));
+      router.replace('/markets', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // Sorting state - lifted here so backend can respect it during pagination
   const [sortField, setSortField] = useState<SortField>('openInterest');
