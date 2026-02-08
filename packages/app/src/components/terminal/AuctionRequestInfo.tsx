@@ -52,7 +52,7 @@ type BestBidProps = {
   collateralAssetTicker: string;
   lastTrade: {
     takerStr: string;
-    toWinStr: string;
+    payoutStr: string;
     takerNum: number;
     totalNum: number;
     pct?: number;
@@ -149,7 +149,7 @@ const BestBid: React.FC<BestBidProps> = ({
                   const diff = Math.max(0, Math.round((ms - now) / 1000));
                   return diff;
                 })();
-                const toWinStr = (() => {
+                const payoutStr = (() => {
                   try {
                     const maker = BigInt(String(takerWager ?? '0'));
                     const taker = BigInt(String(b?.makerWager ?? '0'));
@@ -158,12 +158,12 @@ const BestBid: React.FC<BestBidProps> = ({
                     return String(b?.makerWager || '0');
                   }
                 })();
-                let toWinNumber = 0;
+                let payoutNumber = 0;
                 let takerNumber = 0;
                 try {
-                  toWinNumber = Number(formatEther(BigInt(toWinStr)));
+                  payoutNumber = Number(formatEther(BigInt(payoutStr)));
                 } catch {
-                  toWinNumber = Number(toWinStr) || 0;
+                  payoutNumber = Number(payoutStr) || 0;
                 }
                 try {
                   takerNumber = Number(
@@ -190,8 +190,8 @@ const BestBid: React.FC<BestBidProps> = ({
                       maximumFractionDigits: 2,
                     })
                   : '—';
-                const toWinDisplay = Number.isFinite(toWinNumber)
-                  ? toWinNumber.toLocaleString(undefined, {
+                const payoutDisplay = Number.isFinite(payoutNumber)
+                  ? payoutNumber.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })
@@ -207,10 +207,10 @@ const BestBid: React.FC<BestBidProps> = ({
                             </span>{' '}
                             <br className="sm:hidden" />
                             <span className="text-muted-foreground">
-                              to win
+                              for payout
                             </span>{' '}
                             <span className="font-mono text-brand-white">
-                              {toWinDisplay} {collateralAssetTicker}
+                              {payoutDisplay} {collateralAssetTicker}
                             </span>
                           </span>
                           {typeof pct === 'number' ? (
@@ -403,7 +403,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }),
-        toWinStr: totalEth.toLocaleString(undefined, {
+        payoutStr: totalEth.toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }),
@@ -481,16 +481,20 @@ const AuctionRequestInfo: React.FC<Props> = ({
   const sortedBids: any[] = useMemo(() => {
     const list = Array.isArray(bids) ? [...bids] : [];
     const withSortKey = list.map((b) => {
-      let wager = 0n;
+      let positionSize = 0n;
       try {
-        wager = BigInt(String(b?.makerWager ?? '0'));
+        positionSize = BigInt(String(b?.makerWager ?? '0'));
       } catch {
-        wager = 0n;
+        positionSize = 0n;
       }
-      return { ...b, __wager: wager };
+      return { ...b, __positionSize: positionSize };
     });
     withSortKey.sort((a, b) =>
-      a.__wager < b.__wager ? 1 : a.__wager > b.__wager ? -1 : 0
+      a.__positionSize < b.__positionSize
+        ? 1
+        : a.__positionSize > b.__positionSize
+          ? -1
+          : 0
     );
     // Ensure current winning (active highest) is first if present
     if (winningBid) {

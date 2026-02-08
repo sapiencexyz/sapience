@@ -60,7 +60,7 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
  * still being counted in totalBidCount.
  *
  * @param auctionId - The auction ID to subscribe to
- * @param options - Auction context for validation (addresses, wagers, etc.)
+ * @param options - Auction context for validation (addresses, position sizes, etc.)
  */
 export function useValidatedAuctionBids(
   auctionId: string | null | undefined,

@@ -32,7 +32,7 @@ const TradePopoverContent: React.FC<TradePopoverContentProps> = ({
         maximumFractionDigits: 2,
       })
     : '—';
-  const toWinStr = Number.isFinite(totalAmountEth)
+  const payoutStr = Number.isFinite(totalAmountEth)
     ? totalAmountEth.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -41,14 +41,14 @@ const TradePopoverContent: React.FC<TradePopoverContentProps> = ({
 
   return (
     <div className="text-xs space-y-1">
-      {/* Line 1: x to win y */}
+      {/* Line 1: x for payout y */}
       <div className="text-sm">
         <span className="font-mono font-normal text-brand-white">
           {takerStr} {ticker}
         </span>{' '}
-        <span className="text-muted-foreground">to win</span>{' '}
+        <span className="text-muted-foreground">for payout</span>{' '}
         <span className="font-mono font-normal text-brand-white">
-          {toWinStr} {ticker}
+          {payoutStr} {ticker}
         </span>
       </div>
 

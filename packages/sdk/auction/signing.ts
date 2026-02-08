@@ -2,6 +2,7 @@ import {
   encodeAbiParameters,
   keccak256,
   getAddress,
+  recoverTypedDataAddress,
   type Address,
   type Hex,
   type TypedDataDomain,
@@ -117,6 +118,66 @@ export async function signMakerBid(args: {
     message: args.message,
   })) as Hex;
   return signature;
+}
+
+/**
+ * Verifies a maker bid signature by recovering the signer address
+ * and comparing it to the claimed maker address.
+ *
+ * @param args.auction - The auction parameters (wager, predictedOutcomes, resolver, taker)
+ * @param args.bid - The bid parameters (maker, makerWager, makerDeadline, makerSignature, makerNonce)
+ * @param args.chainId - Chain ID for the auction
+ * @returns Object with `valid` boolean and optional `recoveredAddress` or `error`
+ */
+export async function verifyMakerBidSignature(args: {
+  auction: AuctionStartLike;
+  bid: {
+    maker: Address;
+    makerWager: bigint | string;
+    makerDeadline: bigint | number;
+    makerSignature: Hex;
+    makerNonce: bigint | number;
+  };
+  chainId: number;
+}): Promise<{ valid: boolean; recoveredAddress?: Address; error?: string }> {
+  try {
+    const { auction, bid, chainId } = args;
+
+    // Build the typed data that should have been signed
+    const typedData = buildMakerBidTypedData({
+      auction,
+      makerWager: typeof bid.makerWager === 'bigint' ? bid.makerWager : BigInt(bid.makerWager),
+      makerDeadline: bid.makerDeadline,
+      chainId,
+      verifyingContract: getAddress(bid.maker), // Domain uses maker as verifyingContract
+      maker: getAddress(bid.maker),
+      makerNonce: typeof bid.makerNonce === 'bigint' ? bid.makerNonce : BigInt(bid.makerNonce),
+    });
+
+    // Recover the signer address from the signature
+    const recoveredAddress = await recoverTypedDataAddress({
+      domain: typedData.domain,
+      types: typedData.types,
+      primaryType: typedData.primaryType,
+      message: typedData.message,
+      signature: bid.makerSignature,
+    });
+
+    // Check if recovered address matches claimed maker
+    const claimedMaker = getAddress(bid.maker);
+    const valid = recoveredAddress.toLowerCase() === claimedMaker.toLowerCase();
+
+    return {
+      valid,
+      recoveredAddress,
+      error: valid ? undefined : `Signature from ${recoveredAddress}, expected ${claimedMaker}`,
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      error: error instanceof Error ? error.message : 'Unknown verification error',
+    };
+  }
 }
 
 // ============================================================================

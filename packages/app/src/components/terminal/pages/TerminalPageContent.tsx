@@ -29,7 +29,7 @@ import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
 import MinBidsFilter from '~/components/terminal/filters/MinBidsFilter';
-import MinWagerFilter from '~/components/terminal/filters/MinWagerFilter';
+import MinPositionSizeFilter from '~/components/terminal/filters/MinPositionSizeFilter';
 import AddressFilter from '~/components/terminal/filters/AddressFilter';
 import SignedFilter, {
   type SignedFilterValue,
@@ -84,7 +84,10 @@ const TerminalPageContent: React.FC = () => {
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
     new Set()
   );
-  const [wagerRange, setWagerRange] = useState<[number, number]>([0, Infinity]);
+  const [positionSizeRange, setPositionSizeRange] = useState<[number, number]>([
+    0,
+    Infinity,
+  ]);
   const [bidsRange, setBidsRange] = useState<[number, number]>([0, Infinity]);
   const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>(
     []
@@ -496,15 +499,18 @@ const TerminalPageContent: React.FC = () => {
     return 18;
   }, [erc20MetaRead.data]);
 
-  const wagerRangeWei = useMemo((): [bigint, bigint] => {
+  const positionSizeRangeWei = useMemo((): [bigint, bigint] => {
     try {
-      const minWei = parseUnits(String(wagerRange[0] || 0), tokenDecimals);
+      const minWei = parseUnits(
+        String(positionSizeRange[0] || 0),
+        tokenDecimals
+      );
       const maxWei =
-        wagerRange[1] === Infinity
+        positionSizeRange[1] === Infinity
           ? BigInt(
               '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
             )
-          : parseUnits(String(wagerRange[1]), tokenDecimals);
+          : parseUnits(String(positionSizeRange[1]), tokenDecimals);
       return [minWei, maxWei];
     } catch {
       return [
@@ -514,7 +520,7 @@ const TerminalPageContent: React.FC = () => {
         ),
       ];
     }
-  }, [wagerRange, tokenDecimals]);
+  }, [positionSizeRange, tokenDecimals]);
 
   const bidsRangeNum = useMemo((): [number, number] => {
     const minBids =
@@ -612,15 +618,15 @@ const TerminalPageContent: React.FC = () => {
       if (signedFilter === 'unsigned' && isSigned) return false;
 
       try {
-        const makerWagerWei = BigInt(String(auctionData?.wager ?? '0'));
+        const positionSizeWei = BigInt(String(auctionData?.wager ?? '0'));
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
         if (bidsRangeNum[1] !== Infinity && bidsCount > bidsRangeNum[1])
           return false;
-        // Check wager range
-        if (makerWagerWei < wagerRangeWei[0]) return false;
-        if (makerWagerWei > wagerRangeWei[1]) return false;
+        // Check position size range
+        if (positionSizeWei < positionSizeRangeWei[0]) return false;
+        if (positionSizeWei > positionSizeRangeWei[1]) return false;
         return true;
       } catch {
         // On parse failure, do not include the row
@@ -644,7 +650,7 @@ const TerminalPageContent: React.FC = () => {
     latestStartedByAuction,
     lastActivityByAuction,
     pinnedAuctions,
-    wagerRangeWei,
+    positionSizeRangeWei,
     bidsRangeNum,
     bidsCountByAuction,
     selectedCategorySlugs,
@@ -685,7 +691,7 @@ const TerminalPageContent: React.FC = () => {
       /* noop */
     }
   }, [
-    wagerRangeWei,
+    positionSizeRangeWei,
     bidsRangeNum,
     selectedCategorySlugs,
     selectedConditionIds,
@@ -929,11 +935,11 @@ const TerminalPageContent: React.FC = () => {
                           />
                         </div>
 
-                        {/* Wager Range */}
+                        {/* Position Size Range */}
                         <div className="flex flex-col md:col-span-1">
-                          <MinWagerFilter
-                            value={wagerRange}
-                            onChange={setWagerRange}
+                          <MinPositionSizeFilter
+                            value={positionSizeRange}
+                            onChange={setPositionSizeRange}
                             unit={collateralAssetTicker}
                           />
                         </div>

@@ -200,8 +200,8 @@ export function PredictionsLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -224,18 +224,19 @@ function Tagline({ scale = 1 }: { scale?: number }) {
     <div
       style={{
         display: 'flex',
-        marginTop: 20 * scale,
+        marginTop: 16 * scale,
         justifyContent: 'flex-start',
-        fontSize: 27 * scale,
+        fontSize: 22 * scale,
         lineHeight: `${36 * scale}px`,
-        fontWeight: 600,
-        color: og.colors.foregroundLight,
+        fontWeight: 400,
+        fontFamily: FONT_FAMILY.mono,
+        color: og.colors.accentGold,
       }}
     >
-      <span>Forecast the future on</span>
-      <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
-        www.sapience.xyz
+      <span style={{ color: og.colors.mutedWhite64 }}>
+        powered by open source prediction markets on
       </span>
+      <span style={{ marginLeft: 12 * scale }}>sapience.xyz</span>
     </div>
   );
 }
@@ -249,8 +250,8 @@ function createStatsRowStyles(scale: number) {
     } as React.CSSProperties,
     valueStyle: {
       display: 'flex',
-      fontSize: 43 * scale,
-      lineHeight: `${43 * scale}px`,
+      fontSize: 32 * scale,
+      lineHeight: `${40 * scale}px`,
       fontWeight: 600,
       color: og.colors.brandWhite,
       fontFamily: FONT_FAMILY.mono,
@@ -260,19 +261,9 @@ function createStatsRowStyles(scale: number) {
       flexDirection: 'column',
       flex: 1,
     } as React.CSSProperties,
-    symbolStyle: {
-      display: 'flex',
-      fontSize: 32 * scale,
-      marginTop: 2 * scale,
-      lineHeight: `${32 * scale}px`,
-      fontWeight: 600,
-      color: og.colors.white,
-      fontFamily: FONT_FAMILY.mono,
-    } as React.CSSProperties,
     containerStyle: {
       display: 'flex',
       flexDirection: 'column',
-      flex: 1,
     } as React.CSSProperties,
     rowStyle: {
       display: 'flex',
@@ -283,142 +274,79 @@ function createStatsRowStyles(scale: number) {
 }
 
 // Base footer wrapper component
-function BaseFooter({
+// Small blockie avatar positioned in the top-left of the card
+export function TopLeftAvatar({
   addr,
-  avatarUrl,
   scale = 1,
-  children,
 }: {
   addr: string;
-  avatarUrl?: string | null;
   scale?: number;
-  children: React.ReactNode;
 }) {
+  if (!addr) return null;
+  const size = 26 * scale;
+  const radius = 4 * scale;
+  const pad = 40 * scale;
   return (
     <div
       style={{
         display: 'flex',
+        position: 'absolute',
+        top: pad,
+        left: pad,
         alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16 * scale,
-        marginLeft: -(180 + 34) * scale,
-        marginRight: -40 * scale,
+        gap: 10 * scale,
+        zIndex: 10,
       }}
     >
-      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
-        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      </div>
-      <div
+      <img
+        src={getBlockieSrc(addr)}
+        alt=""
+        width={size}
+        height={size}
         style={{
           display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          marginTop: -32 * scale,
+          width: size,
+          height: size,
+          borderRadius: radius,
+          objectFit: 'cover',
+          background: 'rgba(255,255,255,0.06)',
+          border: `1px solid rgba(255,255,255,0.15)`,
         }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function BottomIdentity({
-  addr,
-  avatarUrl,
-  scale = 1,
-}: {
-  addr: string;
-  avatarUrl?: string | null;
-  scale?: number;
-}) {
-  const avatarSize = 144 * scale;
-  const radius = 6 * scale; // tighter rounding per request
-  return (
-    <div
-      style={{
-        display: 'flex',
-        width: 180 * scale,
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
-    >
-      <div
-        style={{
-          position: 'relative',
-          width: avatarSize,
-          height: avatarSize,
-          display: 'flex',
-        }}
-      >
-        <img
-          src={getBlockieSrc(addr)}
-          alt=""
-          width={avatarSize}
-          height={avatarSize}
-          style={{
-            display: 'flex',
-            width: avatarSize,
-            height: avatarSize,
-            borderRadius: radius,
-            objectFit: 'cover',
-            background: 'rgba(255,255,255,0.06)',
-            border: `1px solid rgba(255,255,255,0.1)`,
-          }}
-        />
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt=""
-            width={avatarSize}
-            height={avatarSize}
-            style={{
-              position: 'absolute',
-              top: Math.max(2, Math.round(6 * scale)),
-              left: Math.max(2, Math.round(6 * scale)),
-              display: 'flex',
-              width: avatarSize - Math.max(4, Math.round(12 * scale)),
-              height: avatarSize - Math.max(4, Math.round(12 * scale)),
-              borderRadius: Math.max(2, Math.round(radius - 2 * scale)),
-              objectFit: 'contain',
-              background: 'rgba(0,0,0,0.08)',
-              border: `1px solid rgba(255,255,255,0.12)`,
-            }}
-          />
-        ) : null}
-      </div>
+      />
       <div
         style={{
           display: 'flex',
-          marginTop: 12 * scale,
-          fontSize: 20 * scale,
-          lineHeight: `${24 * scale}px`,
-          fontWeight: 600,
+          fontSize: 22 * scale,
+          lineHeight: `${36 * scale}px`,
+          fontWeight: 400,
           color: og.colors.mutedWhite64,
           fontFamily: FONT_FAMILY.mono,
         }}
       >
-        {truncateAddress(addr)}
+        {truncateAddress(addr)} submitted...
       </div>
     </div>
   );
 }
 
 function StatsRow({
-  wager,
+  positionSize,
   payout,
   potentialReturn,
+  implied,
   symbol: _symbol,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   potentialReturn?: string | null;
+  implied?: string | null;
   symbol?: string;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   const parseNumber = (val?: string | null): number => {
     if (!val) return 0;
@@ -426,16 +354,17 @@ function StatsRow({
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
   };
-  const wagerNum = parseNumber(wager);
+  const positionSizeNum = parseNumber(positionSize);
   const returnNum = parseNumber(potentialReturn);
   const returnPercent =
-    wagerNum > 0 && returnNum > 0
-      ? Math.round((returnNum / wagerNum) * 100)
+    positionSizeNum > 0 && returnNum > 0
+      ? Math.round((returnNum / positionSizeNum) * 100)
       : null;
   const returnColor =
     returnPercent !== null && returnPercent < 100
       ? og.colors.danger
       : og.colors.success;
+  const hasPayout = Boolean(payout);
   const hasReturn = Boolean(potentialReturn && showReturn);
   const styles = createStatsRowStyles(scale);
   const symbolText = normalizeSymbol(_symbol);
@@ -444,7 +373,7 @@ function StatsRow({
       <div style={styles.rowStyle}>
         <div
           style={
-            hasReturn
+            hasReturn || hasPayout
               ? styles.colStyle
               : {
                   ...styles.colStyle,
@@ -454,56 +383,55 @@ function StatsRow({
           }
         >
           <div style={styles.labelWrapperStyle}>
-            <FooterLabel scale={scale}>Wagered</FooterLabel>
+            <FooterLabel scale={scale}>Position Size</FooterLabel>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <div style={styles.valueStyle}>{wager}</div>
-            {symbolText ? (
-              <div style={styles.symbolStyle}>{symbolText}</div>
-            ) : null}
+          <div style={styles.valueStyle}>
+            {positionSize}
+            {symbolText ? ` ${symbolText}` : ''}
           </div>
         </div>
-        <div style={styles.colStyle}>
-          <div style={styles.labelWrapperStyle}>
-            <FooterLabel scale={scale}>To Win</FooterLabel>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
+        {hasPayout ? (
+          <div style={styles.colStyle}>
+            <div style={styles.labelWrapperStyle}>
+              <FooterLabel scale={scale}>Payout</FooterLabel>
+            </div>
             <div
               style={{
                 ...styles.valueStyle,
-                color: forceToWinGreen
+                color: forcePayoutGreen
                   ? og.colors.success
                   : styles.valueStyle.color,
               }}
             >
               {payout}
+              {symbolText ? ` ${symbolText}` : ''}
             </div>
-            {symbolText ? (
+          </div>
+        ) : null}
+        {hasPayout && implied ? (
+          <div style={styles.colStyle}>
+            <div style={styles.labelWrapperStyle}>
+              <FooterLabel scale={scale}>Implied</FooterLabel>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 8 * scale,
+                whiteSpace: 'nowrap',
+              }}
+            >
               <div
                 style={{
-                  ...styles.symbolStyle,
-                  color: forceToWinGreen ? og.colors.success : og.colors.white,
+                  ...styles.valueStyle,
+                  color: og.colors.ethenaBlue,
                 }}
               >
-                {symbolText}
+                {implied} Chance
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
         {hasReturn ? (
           <div style={styles.colStyle}>
             <div style={styles.labelWrapperStyle}>
@@ -539,38 +467,35 @@ function StatsRow({
 }
 
 export function Footer({
-  addr,
-  avatarUrl,
-  wager,
+  positionSize,
   payout,
   symbol,
   potentialReturn,
+  implied,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  addr: string;
-  avatarUrl?: string | null;
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   symbol?: string;
   potentialReturn?: string | null;
+  implied?: string | null;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   return (
-    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
-      <StatsRow
-        wager={wager}
-        payout={payout}
-        symbol={symbol}
-        potentialReturn={potentialReturn}
-        scale={scale}
-        showReturn={showReturn}
-        forceToWinGreen={forceToWinGreen}
-      />
-    </BaseFooter>
+    <StatsRow
+      positionSize={positionSize}
+      payout={payout}
+      symbol={symbol}
+      potentialReturn={potentialReturn}
+      implied={implied}
+      scale={scale}
+      showReturn={showReturn}
+      forcePayoutGreen={forcePayoutGreen}
+    />
   );
 }
 
@@ -629,29 +554,23 @@ function ForecastStatsRow({
 }
 
 export function ForecastFooter({
-  addr,
-  avatarUrl,
   resolution,
   horizon,
   odds,
   scale = 1,
 }: {
-  addr: string;
-  avatarUrl?: string | null;
   resolution?: string | null;
   horizon?: string | null;
   odds?: string | null;
   scale?: number;
 }) {
   return (
-    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
-      <ForecastStatsRow
-        resolution={resolution || ''}
-        horizon={horizon || ''}
-        odds={odds || ''}
-        scale={scale}
-      />
-    </BaseFooter>
+    <ForecastStatsRow
+      resolution={resolution || ''}
+      horizon={horizon || ''}
+      odds={odds || ''}
+      scale={scale}
+    />
   );
 }
 
@@ -675,10 +594,10 @@ export function contentContainerStyle(scale = 1): React.CSSProperties {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    paddingTop: (80 - 40) * scale,
-    paddingRight: 80 * scale,
-    paddingBottom: (80 - 40) * scale,
-    paddingLeft: 80 * scale,
+    paddingTop: 80 * scale,
+    paddingRight: 40 * scale,
+    paddingBottom: 40 * scale,
+    paddingLeft: 40 * scale,
     width: '100%',
     height: '100%',
   } as const;
@@ -696,8 +615,8 @@ export function SectionLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -720,8 +639,8 @@ function FooterLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -846,21 +765,25 @@ function getPillColors(tone: PillTone): {
   return { border: t.border, fg: t.fg, bg: t.bg };
 }
 
-function computePillStyle(scale: number, tone: PillTone): React.CSSProperties {
+function computePillStyle(
+  scale: number,
+  tone: PillTone,
+  compact = false
+): React.CSSProperties {
   const isHighlighted = tone === 'success' || tone === 'danger';
   const colors = getPillColors(tone);
 
   const borderWidth = Math.max(1, Math.round((isHighlighted ? 2 : 1) * scale));
-  const paddingY = Math.max(0, Math.round(3 * scale));
-  const paddingX = Math.max(0, Math.round(10 * scale));
-  const fontSize = Math.round(20 * scale);
-  const lineHeight = Math.round(24 * scale);
+  const paddingY = Math.max(0, Math.round((compact ? 2 : 3) * scale));
+  const paddingX = Math.max(0, Math.round((compact ? 7 : 10) * scale));
+  const fontSize = Math.round((compact ? 14 : 20) * scale);
+  const lineHeight = Math.round((compact ? 18 : 24) * scale);
 
   return {
     display: 'flex',
     alignItems: 'center',
     padding: `${paddingY}px ${paddingX}px`,
-    borderRadius: Math.round(6 * scale),
+    borderRadius: Math.round((compact ? 4 : 6) * scale),
     background: colors.bg,
     color: colors.fg,
     fontWeight: 600,
@@ -879,23 +802,25 @@ export function Pill({
   text,
   tone = 'neutral',
   scale = 1,
+  compact = false,
 }: {
   text: string;
   tone?: PillTone;
   scale?: number;
+  compact?: boolean;
 }) {
-  return <div style={computePillStyle(scale, tone)}>{text}</div>;
+  return <div style={computePillStyle(scale, tone, compact)}>{text}</div>;
 }
 
 export function computePotentialReturn(
-  wager: string,
+  positionSize: string,
   payout: string
 ): string | null {
-  const w = Number(String(wager || '0').replace(/,/g, ''));
+  const w = Number(String(positionSize || '0').replace(/,/g, ''));
   const p = Number(String(payout || '0').replace(/,/g, ''));
   if (!Number.isFinite(w) || !Number.isFinite(p)) return null;
-  // For ROI we want profit ("to win") over wager, not stake+profit.
-  // Return the "to win" amount so downstream percent is p / w.
+  // For ROI we want profit (payout) over position size, not stake+profit.
+  // Return the payout amount so downstream percent is p / w.
   const profit = p;
   if (profit <= 0) return null;
   return addThousandsSeparators(profit.toFixed(profit < 1 ? 4 : 2));

@@ -170,7 +170,7 @@ const MarketsPage = () => {
         },
       ]);
 
-      // Mobile UX: open the bet slip drawer so users can see their selection
+      // Mobile UX: open the create position form drawer so users can see their selection
       if (isCompact) {
         openPopover();
       }

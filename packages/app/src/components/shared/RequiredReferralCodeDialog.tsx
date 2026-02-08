@@ -10,8 +10,8 @@ import {
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { createWalletClient, custom, http, keccak256, stringToHex } from 'viem';
-import { mainnet } from 'viem/chains';
+import { useSignMessage } from 'wagmi';
+import { keccak256, stringToHex } from 'viem';
 
 interface RequiredReferralCodeDialogProps {
   open: boolean;
@@ -33,6 +33,7 @@ const RequiredReferralCodeDialog = ({
   const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const { toast } = useToast();
+  const { signMessageAsync } = useSignMessage();
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -70,17 +71,6 @@ const RequiredReferralCodeDialog = ({
       setSubmitting(true);
       setError(null);
 
-      if (typeof window === 'undefined' || !(window as any).ethereum) {
-        throw new Error('Wallet not available for signing');
-      }
-
-      const walletClient = createWalletClient({
-        chain: mainnet,
-        transport: (window as any).ethereum
-          ? custom((window as any).ethereum)
-          : http(),
-      });
-
       const normalizedAddress = walletAddress.toLowerCase();
       const normalizedCode = code.trim().toLowerCase();
       const codeHash = keccak256(stringToHex(normalizedCode));
@@ -95,10 +85,7 @@ const RequiredReferralCodeDialog = ({
       };
 
       const message = JSON.stringify(payload);
-      const signature = await walletClient.signMessage({
-        account: normalizedAddress as `0x${string}`,
-        message,
-      });
+      const signature = await signMessageAsync({ message });
 
       const resp = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/claim`,
@@ -164,6 +151,13 @@ const RequiredReferralCodeDialog = ({
 
       onCodeSet?.(code.trim());
       onOpenChange(false);
+    } catch (err) {
+      console.error('Failed to claim referral code', err);
+      toast({
+        title: 'Unable to claim referral code',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -180,6 +174,19 @@ const RequiredReferralCodeDialog = ({
         <DialogHeader>
           <DialogTitle>Enter an Invite Code</DialogTitle>
         </DialogHeader>
+
+        <p className="text-base text-foreground -mb-2">
+          Request an invite code in{' '}
+          <a
+            href="https://discord.gg/sapience"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="gold-link"
+          >
+            Discord
+          </a>
+          .
+        </p>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
@@ -204,7 +211,9 @@ const RequiredReferralCodeDialog = ({
           </div>
         </form>
 
-        <div className="mt-4">
+        <hr className="gold-hr mt-3 mb-1" />
+
+        <div>
           <p className="text-base text-foreground mb-2">
             You can log out until you receive one.
           </p>

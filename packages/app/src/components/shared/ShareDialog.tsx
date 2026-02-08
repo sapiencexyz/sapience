@@ -11,7 +11,7 @@ function formatAmount(val: number): string {
 interface ShareDialogProps {
   question: string;
   side?: string;
-  wager?: number | string;
+  positionSize?: number | string;
   payout?: number | string;
   symbol?: string;
   groupAddress?: string;
@@ -32,7 +32,7 @@ interface ShareDialogProps {
 export default function ShareDialog({
   question,
   side,
-  wager,
+  positionSize,
   payout,
   symbol,
   groupAddress,
@@ -67,8 +67,8 @@ export default function ShareDialog({
     }
     sp.set('q', question);
     if (side) sp.set('dir', side);
-    if (typeof wager !== 'undefined')
-      sp.set('wager', formatAmount(Number(wager)));
+    if (typeof positionSize !== 'undefined')
+      sp.set('wager', formatAmount(Number(positionSize)));
     if (typeof payout !== 'undefined')
       sp.set('payout', formatAmount(Number(payout)));
     if (symbol) sp.set('symbol', symbol);
@@ -93,7 +93,7 @@ export default function ShareDialog({
   }, [
     question,
     side,
-    wager,
+    positionSize,
     payout,
     symbol,
     groupAddress,

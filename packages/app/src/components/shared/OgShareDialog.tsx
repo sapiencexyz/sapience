@@ -26,20 +26,36 @@ import type { PositionProgressState } from '~/types/positionProgress';
 let dialogOpenCounter = 0;
 
 function picksMatch(
-  positionPicks: Array<{ question: string; choice: string }>,
-  expectedPicks: Array<{ question: string; choice: string }>
+  positionPicks: Array<{
+    conditionId?: string;
+    question: string;
+    choice: string;
+  }>,
+  expectedPicks: Array<{
+    conditionId?: string;
+    question: string;
+    choice: string;
+  }>
 ): boolean {
   if (positionPicks.length !== expectedPicks.length) {
     return false;
   }
 
-  const toKey = (leg: { question: string; choice: string }): string =>
-    `${leg.question}|${leg.choice}`;
+  // Prefer matching on conditionId when available (deterministic).
+  // Fall back to question text for backward compatibility.
+  const hasConditionIds =
+    expectedPicks.every((p) => p.conditionId) &&
+    positionPicks.every((p) => p.conditionId);
+
+  const toKey = hasConditionIds
+    ? (leg: { conditionId?: string; choice: string }): string =>
+        `${leg.conditionId}|${leg.choice}`
+    : (leg: { question: string; choice: string }): string =>
+        `${leg.question}|${leg.choice}`;
 
   const expectedSet = new Set(expectedPicks.map(toKey));
   const positionSet = new Set(positionPicks.map(toKey));
 
-  // Check both sets have identical keys
   if (expectedSet.size !== positionSet.size) {
     return false;
   }
@@ -62,11 +78,20 @@ interface OgShareDialogBaseProps {
   onOpenChange?: (open: boolean) => void;
   trackPosition?: boolean; // Enable position tracking
   positionTimestamp?: number; // Timestamp when position was placed (ms)
-  expectedPicks?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
-  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Alias for expectedPicks (backward compatibility)
+  expectedPicks?: Array<{
+    conditionId?: string;
+    question: string;
+    choice: 'Yes' | 'No';
+  }>; // Expected conditions from position form for validation
+  expectedLegs?: Array<{
+    conditionId?: string;
+    question: string;
+    choice: 'Yes' | 'No';
+  }>; // Alias for expectedPicks (backward compatibility)
   lastNftId?: string; // Last NFT ID before this position was submitted (for validation)
   progressState?: PositionProgressState; // Progress state for showing submission stages
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
+  shareUrl?: string; // Override share URL (e.g. for slip preview cards)
 }
 
 export default function OgShareDialogBase({
@@ -82,6 +107,7 @@ export default function OgShareDialogBase({
   lastNftId,
   progressState,
   onPositionIndexed,
+  shareUrl: shareUrlProp,
 }: OgShareDialogBaseProps) {
   // Support both expectedPicks and expectedLegs for backward compatibility
   const picks = expectedPicks || expectedLegs;
@@ -213,6 +239,7 @@ export default function OgShareDialogBase({
       if (picks && picks.length > 0) {
         const foundPosition = filteredByNftId.find((p: Position) => {
           const positionPicks = (p.predictions || []).map((pred) => ({
+            conditionId: pred.conditionId,
             question: pred.condition?.question || '',
             choice: pred.outcomeYes ? 'Yes' : 'No',
           }));
@@ -320,6 +347,8 @@ export default function OgShareDialogBase({
   }, [imageSrc]);
 
   const buildShareUrl = useCallback((): string => {
+    if (shareUrlProp) return shareUrlProp;
+
     const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
     const marketAddress =
       resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
@@ -333,7 +362,7 @@ export default function OgShareDialogBase({
       return relativeUrl;
     }
     return `${window.location.origin}${relativeUrl}`;
-  }, [resolvedPositionData, positionShareParams]);
+  }, [shareUrlProp, resolvedPositionData, positionShareParams]);
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {

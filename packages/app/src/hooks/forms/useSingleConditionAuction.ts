@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
@@ -9,12 +9,12 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
 interface UseSingleConditionAuctionProps {
-  /** The condition ID to bet on */
+  /** The condition ID to predict on */
   conditionId: string | null;
   /** User's prediction: true = Yes, false = No, null = unselected */
   prediction: boolean | null;
-  /** Wager amount as a string (human-readable, e.g., "10") */
-  wagerAmount: string;
+  /** Position size as a string (human-readable, e.g., "10") */
+  positionSize: string;
   /** Chain ID for the prediction market */
   chainId: number;
   /** Collateral decimals (default 18) */
@@ -55,7 +55,7 @@ interface UseSingleConditionAuctionReturn {
 export function useSingleConditionAuction({
   conditionId,
   prediction,
-  wagerAmount,
+  positionSize,
   chainId,
   collateralDecimals = 18,
   predictionMarketAddress,
@@ -69,13 +69,8 @@ export function useSingleConditionAuction({
     null
   );
 
-  // Use zero address as guest taker when not connected
-  const guestTakerAddress: `0x${string}` =
-    '0x0000000000000000000000000000000000000000';
-
-  // Use effectiveAddress from session context, falling back to guest address
-  const selectedTakerAddress =
-    effectiveAddress ?? takerAddress ?? guestTakerAddress;
+  // Use effectiveAddress from session context, falling back to zero address for guests
+  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
 
   // Fetch taker nonce from PredictionMarket contract
   const { data: takerNonce } = useReadContract({
@@ -98,29 +93,30 @@ export function useSingleConditionAuction({
   // Find the best valid bid (not expired, highest payout)
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
+
     const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
-    // Parse user's wager to wei for payout calculation
-    let userWagerWei: bigint;
+    // Parse user's position size to wei for payout calculation
+    let userPositionSizeWei: bigint;
     try {
-      userWagerWei = parseUnits(wagerAmount || '0', collateralDecimals);
+      userPositionSizeWei = parseUnits(positionSize || '0', collateralDecimals);
     } catch {
-      userWagerWei = 0n;
+      userPositionSizeWei = 0n;
     }
 
-    // Find bid with highest total payout (userWager + makerWager)
+    // Find bid with highest total payout (userPositionSize + makerWager)
     return validBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
-          return userWagerWei + BigInt(best.makerWager);
+          return userPositionSizeWei + BigInt(best.makerWager);
         } catch {
           return 0n;
         }
       })();
       const currentPayout = (() => {
         try {
-          return userWagerWei + BigInt(current.makerWager);
+          return userPositionSizeWei + BigInt(current.makerWager);
         } catch {
           return 0n;
         }
@@ -128,7 +124,7 @@ export function useSingleConditionAuction({
 
       return currentPayout > bestPayout ? current : best;
     });
-  }, [bids, wagerAmount, collateralDecimals, nowMs]);
+  }, [bids, positionSize, collateralDecimals, nowMs]);
 
   // Check if all bids have expired
   const allBidsExpired = bids.length > 0 && !bestBid;
@@ -144,16 +140,16 @@ export function useSingleConditionAuction({
       if (!selectedTakerAddress) return;
       if (!conditionId || prediction === null) return;
       // Wait for nonce if using a real address (not guest)
-      if (
-        selectedTakerAddress !== guestTakerAddress &&
-        takerNonce === undefined
-      )
+      if (selectedTakerAddress !== zeroAddress && takerNonce === undefined)
         return;
 
-      const wagerStr = wagerAmount || '0';
+      const positionSizeStr = positionSize || '0';
 
       try {
-        const wagerWei = parseUnits(wagerStr, collateralDecimals).toString();
+        const positionSizeWei = parseUnits(
+          positionSizeStr,
+          collateralDecimals
+        ).toString();
         const outcomes = [
           {
             marketId: conditionId,
@@ -162,7 +158,7 @@ export function useSingleConditionAuction({
         ];
         const payload = buildAuctionStartPayload(outcomes, chainId);
         const params: AuctionParams = {
-          wager: wagerWei,
+          wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,
@@ -184,7 +180,7 @@ export function useSingleConditionAuction({
       conditionId,
       prediction,
       takerNonce,
-      wagerAmount,
+      positionSize,
       collateralDecimals,
       chainId,
     ]
@@ -192,10 +188,10 @@ export function useSingleConditionAuction({
 
   // Auto-trigger quote request when inputs change
   useEffect(() => {
-    if (conditionId && prediction !== null && wagerAmount) {
+    if (conditionId && prediction !== null && positionSize) {
       triggerQuoteRequest();
     }
-  }, [conditionId, prediction, wagerAmount, triggerQuoteRequest]);
+  }, [conditionId, prediction, positionSize, triggerQuoteRequest]);
 
   // Show "Request Bids" button when:
   // 1. No valid bids exist (never received or all expired)

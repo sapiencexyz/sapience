@@ -109,7 +109,7 @@ export function getTradingContractAddresses() {
 export function getTradingConfig() {
   return {
     chainId: CHAIN_ID_ETHEREAL,
-    wagerAmount: process.env.TRADING_WAGER_AMOUNT || "1000000000000000000",
+    positionSize: process.env.TRADING_POSITION_SIZE || "1000000000000000000",
     minConfidence: parseFloat(process.env.MIN_TRADING_CONFIDENCE || "0.6"),
     auctionTimeoutMs: parseInt(process.env.TRADING_AUCTION_TIMEOUT_MS || "300000"),
     keepAliveMs: parseInt(process.env.TRADING_KEEPALIVE_INTERVAL_MS || "20000"),

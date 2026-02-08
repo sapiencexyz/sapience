@@ -1,1 +1,1 @@
-export { WagerInput } from './inputs/WagerInput';
+export { PositionSizeInput } from './inputs/PositionSizeInput';

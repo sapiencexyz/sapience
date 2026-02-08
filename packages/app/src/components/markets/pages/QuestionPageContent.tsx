@@ -179,7 +179,7 @@ export default function QuestionPageContent({
   });
 
   // Transform position data for scatter plot
-  // x = time (unix timestamp), y = prediction probability (0-100), wager = amount wagered
+  // x = time (unix timestamp), y = prediction probability (0-100), positionSize = amount committed
   const scatterData = useMemo((): PredictionData[] => {
     // If no real positions, return empty array
     if (!positions || positions.length === 0) {
@@ -233,8 +233,8 @@ export default function QuestionPageContent({
             }
           }
 
-          // Calculate total wager (for sizing)
-          const wager = predictorCollateral + counterpartyCollateral;
+          // Calculate total position size (for sizing)
+          const positionSize = predictorCollateral + counterpartyCollateral;
 
           // predictions represents the predictor's predictions
           // Counterparty takes the opposite side on each market
@@ -259,19 +259,22 @@ export default function QuestionPageContent({
           const timestamp = position.mintedAt * 1000;
           const date = new Date(timestamp);
 
-          // Calculate implied probability of YES from wager amounts
-          // Always compute based on predictor vs counterparty wager:
-          // - If predictor bets YES: probability of YES = predictorCollateral / totalWager
-          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalWager
+          // Calculate implied probability of YES from position sizes
+          // Always compute based on predictor vs counterparty position size:
+          // - If predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
+          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
           let predictionPercent = 50; // Default fallback
-          const totalWager = predictorCollateral + counterpartyCollateral;
-          if (totalWager > 0) {
+          const totalPositionSize =
+            predictorCollateral + counterpartyCollateral;
+          if (totalPositionSize > 0) {
             if (predictorPrediction) {
-              // Predictor bets YES: probability of YES = predictorCollateral / totalWager
-              predictionPercent = (predictorCollateral / totalWager) * 100;
+              // Predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
+              predictionPercent =
+                (predictorCollateral / totalPositionSize) * 100;
             } else {
-              // Predictor bets NO: probability of YES = counterpartyCollateral / totalWager
-              predictionPercent = (counterpartyCollateral / totalWager) * 100;
+              // Predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
+              predictionPercent =
+                (counterpartyCollateral / totalPositionSize) * 100;
             }
             // Clamp to 0-100 range
             predictionPercent = Math.max(0, Math.min(100, predictionPercent));
@@ -280,7 +283,7 @@ export default function QuestionPageContent({
           return {
             x: timestamp,
             y: predictionPercent,
-            wager,
+            positionSize,
             predictor: position.predictor,
             counterparty: position.counterparty,
             predictorPrediction,
@@ -289,6 +292,8 @@ export default function QuestionPageContent({
             time: date.toLocaleString(),
             combinedPredictions,
             combinedWithYes: predictorPrediction,
+            marketAddress: position.marketAddress,
+            nftTokenId: position.predictorNftTokenId,
           };
         } catch (error) {
           console.error('Error processing position:', error);
@@ -300,22 +305,25 @@ export default function QuestionPageContent({
     return realData;
   }, [positions, conditionId]);
 
-  // Calculate wager range from actual data for dynamic sizing
-  const wagerRange = useMemo(() => {
+  // Calculate position size range from actual data for dynamic sizing
+  const positionSizeRange = useMemo(() => {
     if (scatterData.length === 0) {
-      return { wagerMin: 0, wagerMax: 100 };
+      return { positionSizeMin: 0, positionSizeMax: 100 };
     }
-    const wagers = scatterData.map((d) => d.wager).filter((w) => w > 0);
-    if (wagers.length === 0) {
-      return { wagerMin: 0, wagerMax: 100 };
+    const sizes = scatterData.map((d) => d.positionSize).filter((s) => s > 0);
+    if (sizes.length === 0) {
+      return { positionSizeMin: 0, positionSizeMax: 100 };
     }
-    const wagerMin = Math.min(...wagers);
-    const wagerMax = Math.max(...wagers);
-    // If all wagers are the same, add a small range to avoid division by zero
-    if (wagerMin === wagerMax) {
-      return { wagerMin: Math.max(0, wagerMin - 1), wagerMax: wagerMax + 1 };
+    const positionSizeMin = Math.min(...sizes);
+    const positionSizeMax = Math.max(...sizes);
+    // If all position sizes are the same, add a small range to avoid division by zero
+    if (positionSizeMin === positionSizeMax) {
+      return {
+        positionSizeMin: Math.max(0, positionSizeMin - 1),
+        positionSizeMax: positionSizeMax + 1,
+      };
     }
-    return { wagerMin, wagerMax };
+    return { positionSizeMin, positionSizeMax };
   }, [scatterData]);
 
   // Transform forecasts data for scatter plot
@@ -569,7 +577,7 @@ export default function QuestionPageContent({
         scatterData={scatterData}
         forecastScatterData={forecastScatterData}
         isLoading={isLoadingPositions}
-        wagerRange={wagerRange}
+        positionSizeRange={positionSizeRange}
         xDomain={xDomain}
         xTicks={xTicks}
         xTickLabels={xTickLabels}
