@@ -369,7 +369,7 @@ const CELL_CLASS_MAP: Record<string, string> = {
   question: 'py-2 pl-4 w-full max-w-0 min-w-[300px] sm:min-w-[200px]',
   forecast: 'py-2 text-right',
   openInterest: 'py-2 text-right',
-  endTime: 'py-2 text-right',
+  endTime: 'py-2 text-right whitespace-nowrap min-w-[170px]',
   predict: 'py-2 pr-4',
 };
 
@@ -660,10 +660,6 @@ function createColumns(
       cell: ({ row }) => {
         const data = row.original;
         if (data.kind === 'group') {
-          const allSettled = data.conditions.every((c) => c.settled);
-          if (allSettled) {
-            return <span className="text-muted-foreground block text-center">—</span>;
-          }
           const isExpanded = expandedGroupIdsRef.current.has(data.groupId);
           return (
             <div className="w-full max-w-[320px] ml-auto font-mono">
