@@ -225,7 +225,7 @@ function ForecastCell({
 
   // If settled, show dash — resolution status is in the Ends column
   if (settled) {
-    return <span className="text-muted-foreground">—</span>;
+    return <span className="text-muted-foreground h-8 flex items-center justify-end">—</span>;
   }
 
   // Always show prediction request for unsettled markets
@@ -320,8 +320,8 @@ function PredictCell({ condition }: { condition: ConditionType }) {
 
   if (condition.settled) {
     return (
-      <div className="w-full max-w-[320px] ml-auto text-sm text-center text-muted-foreground opacity-50">
-        <Minus className="h-3 w-3 mx-auto" />
+      <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
+        <Minus className="h-3 w-3" />
       </div>
     );
   }
