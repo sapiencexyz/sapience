@@ -7,6 +7,7 @@ import { Label } from '@sapience/ui/components/ui/label';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { formatUnits } from 'viem';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
+import PercentChance from '~/components/shared/PercentChance';
 import { useSingleConditionAuction } from '~/hooks/forms/useSingleConditionAuction';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -119,9 +120,9 @@ export default function PredictionForm({
       const impliedProb = userPositionSizeNum / totalPayout;
 
       if (selectedPrediction === true) {
-        return Math.round(impliedProb * 100);
+        return impliedProb;
       } else if (selectedPrediction === false) {
-        return Math.round((1 - impliedProb) * 100);
+        return 1 - impliedProb;
       }
 
       return null;
@@ -233,9 +234,15 @@ export default function PredictionForm({
             <Label className="text-foreground font-normal text-lg -mt-0.5">
               Current Forecast
             </Label>
-            <span className="font-mono text-ethena text-3xl">
+            <span className="font-mono text-3xl">
               {currentForecast !== null ? (
-                `${currentForecast}% chance`
+                <PercentChance
+                  probability={currentForecast}
+                  showLabel
+                  label="chance"
+                  className="font-mono"
+                  colorByProbability
+                />
               ) : isWaitingForBids ? (
                 <span className="text-muted-foreground/60 animate-pulse">
                   Requesting...

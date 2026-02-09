@@ -186,7 +186,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
           }
 
           return (
-            <span className="font-mono whitespace-nowrap">
+            <span className="font-mono whitespace-nowrap text-ethena">
               {combinedPredictions &&
                 combinedPredictions.length > 0 &&
                 `${combinedWithYes === false ? '<' : '>'}`}
@@ -195,7 +195,6 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
                 showLabel
                 label="chance"
                 className="font-mono"
-                colorByProbability
               />
             </span>
           );
