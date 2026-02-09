@@ -374,8 +374,8 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]) {
-          conditions(where: { id: { in: $ids } }) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             question
             shortName
@@ -396,7 +396,9 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       type Result = {
         conditions: RawCondition[];
       };
-      const res = await graphqlRequest<Result>(query, { ids: conditionIds });
+      const res = await graphqlRequest<Result>(query, {
+        where: { id: { in: conditionIds } },
+      });
       const map: Record<string, ConditionData> = {};
       for (const c of res.conditions || []) {
         map[c.id.toLowerCase()] = {

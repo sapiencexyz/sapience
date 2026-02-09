@@ -129,8 +129,8 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
   const missing = uniqueIds.filter((id) => !conditionCache.has(id));
   if (missing.length > 0) {
     const QUERY = /* GraphQL */ `
-      query ConditionsByIds($ids: [String!]!) {
-        conditions(where: { id: { in: $ids } }, take: 1000) {
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
           id
           shortName
           question
@@ -140,7 +140,7 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
     try {
       const resp = await graphqlRequest<{ conditions: { id: string; shortName?: string | null; question?: string | null }[] }>(
         QUERY,
-        { ids: missing }
+        { where: { id: { in: missing } } }
       );
       for (const row of resp?.conditions ?? []) {
         conditionCache.set(row.id, { shortName: row.shortName ?? null, question: row.question ?? null });

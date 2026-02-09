@@ -52,8 +52,8 @@ export async function generateMetadata(
 }
 
 const CONDITIONS_QUERY = `
-  query ConditionCategories($ids: [String!]!) {
-    conditions(where: { id: { in: $ids } }, take: 1000) {
+  query ConditionCategories($where: ConditionWhereInput!) {
+    conditions(where: $where, take: 100) {
       id
       category { slug }
     }
@@ -88,7 +88,7 @@ async function fetchPosition(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: CONDITIONS_QUERY,
-          variables: { ids: conditionIds },
+          variables: { where: { id: { in: conditionIds } } },
         }),
         next: { revalidate: 30 },
       });
