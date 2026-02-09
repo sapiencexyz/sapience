@@ -473,13 +473,6 @@ export default function QuestionPageContent({
     predictionMarket[chainId]?.address ??
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
-  // Check if market is past end time
-  const isPastEndTime = useMemo(() => {
-    if (!data?.endTime) return false;
-    const nowSec = Math.floor(Date.now() / 1000);
-    return data.endTime <= nowSec;
-  }, [data?.endTime]);
-
   if (isLoading) {
     return (
       <div
@@ -547,10 +540,10 @@ export default function QuestionPageContent({
   const renderScatterPlotCard = () => (
     <div
       className={`relative w-full min-w-0 bg-brand-black border border-border rounded-lg pt-6 pr-8 pb-2 pl-2 min-h-[320px] h-[320px] sm:h-[360px] ${
-        isPastEndTime ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
+        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
       }`}
       // Explicit height on small screens so Recharts can compute dimensions
-      // When past end time, use fixed height on desktop to match shorter sidebar
+      // When settled, use fixed height on desktop; otherwise let grid stretch fill the height
     >
       <PredictionScatterChart
         scatterData={scatterData}
@@ -626,7 +619,7 @@ export default function QuestionPageContent({
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
@@ -736,7 +729,7 @@ export default function QuestionPageContent({
           <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
@@ -813,17 +806,13 @@ export default function QuestionPageContent({
 
             {/* Open Interest Badge */}
             {(() => {
-              const isPastEndTime =
-                typeof data.endTime === 'number' &&
-                data.endTime > 0 &&
-                Date.now() / 1000 >= data.endTime;
               return (
                 <Badge
                   variant="outline"
                   className="h-9 items-center px-3.5 text-sm leading-none inline-flex bg-card border-brand-white/20 text-brand-white font-medium"
                 >
                   <DollarSign className="h-4 w-4 mr-1.5 -mt-[1px] opacity-70" />
-                  {isPastEndTime ? 'Peak Open Interest' : 'Open Interest'}
+                  Open Interest
                   <span
                     aria-hidden="true"
                     className="hidden md:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"

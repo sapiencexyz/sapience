@@ -22,8 +22,8 @@ export async function checkExistingConditions(
     const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
     const query = `
-      query CheckConditions($ids: [String!]!) {
-        conditions(where: { id: { in: $ids } }) {
+      query CheckConditions($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
           id
         }
       }
@@ -34,7 +34,7 @@ export async function checkExistingConditions(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query,
-        variables: { ids: conditionIds },
+        variables: { where: { id: { in: conditionIds } } },
       }),
     });
 

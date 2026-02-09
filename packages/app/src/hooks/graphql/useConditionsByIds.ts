@@ -28,8 +28,8 @@ export function useConditionsByIds(ids: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1000) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             shortName
             question
@@ -43,7 +43,7 @@ export function useConditionsByIds(ids: string[]) {
       `;
       const resp = await graphqlRequest<{ conditions: ConditionById[] }>(
         QUERY,
-        { ids: sorted }
+        { where: { id: { in: sorted } } }
       );
       return { conditions: resp?.conditions || [] };
     },

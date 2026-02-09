@@ -131,8 +131,8 @@ const AuctionPageContent: React.FC = () => {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const CONDITIONS_BY_IDS = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1000) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             shortName
             question
@@ -145,7 +145,7 @@ const AuctionPageContent: React.FC = () => {
           shortName?: string | null;
           question?: string | null;
         }>;
-      }>(CONDITIONS_BY_IDS, { ids: conditionIds });
+      }>(CONDITIONS_BY_IDS, { where: { id: { in: conditionIds } } });
       return resp?.conditions || [];
     },
   });
