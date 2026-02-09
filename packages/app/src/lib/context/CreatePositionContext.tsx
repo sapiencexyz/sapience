@@ -136,10 +136,7 @@ export const CreatePositionProvider = ({
       // ignore malformed position param, fall through to localStorage
     }
 
-    return loadFromStorage<PositionSelection[]>(
-      STORAGE_KEY_SELECTIONS,
-      []
-    );
+    return loadFromStorage<PositionSelection[]>(STORAGE_KEY_SELECTIONS, []);
   });
   const [isPopoverOpen, setIsPopoverOpen] = useState(() => {
     // Auto-open popover if loaded from a slip URL
@@ -186,21 +183,21 @@ export const CreatePositionProvider = ({
 
     graphqlRequest<{ conditions: { id: string; settled: boolean }[] }>(QUERY, {
       ids: conditionIds,
-    }).then((resp) => {
-      const settledIds = new Set(
-        (resp?.conditions ?? [])
-          .filter((c) => c.settled)
-          .map((c) => c.id)
-      );
-      if (settledIds.size > 0) {
-        setSelections((prev) =>
-          prev.filter((s) => !settledIds.has(s.conditionId))
+    })
+      .then((resp) => {
+        const settledIds = new Set(
+          (resp?.conditions ?? []).filter((c) => c.settled).map((c) => c.id)
         );
-      }
-    }).catch(() => {
-      // Silently ignore — selections will remain until next load
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+        if (settledIds.size > 0) {
+          setSelections((prev) =>
+            prev.filter((s) => !settledIds.has(s.conditionId))
+          );
+        }
+      })
+      .catch(() => {
+        // Silently ignore — selections will remain until next load
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Spot market functionality removed - positionsWithMarketData is empty
