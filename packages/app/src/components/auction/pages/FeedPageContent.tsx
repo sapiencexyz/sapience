@@ -171,7 +171,11 @@ const FeedPageContent: React.FC = () => {
     return new Map(conditions.map((c) => [c.id, c]));
   }, [conditions]);
 
-  function toUiTx(m: { time: number; type: string; data: unknown }): UiTransaction {
+  function toUiTx(m: {
+    time: number;
+    type: string;
+    data: unknown;
+  }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
     const d = m.data as Record<string, any> | null;
     if (m.type === 'auction.started') {
@@ -186,7 +190,7 @@ const FeedPageContent: React.FC = () => {
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
-      const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
+      const bids = Array.isArray(d?.bids) ? d.bids : [];
       const top = bids.reduce((best, b) => {
         try {
           const cur = BigInt(String(b?.makerWager ?? '0'));
@@ -640,9 +644,7 @@ const FeedPageContent: React.FC = () => {
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
-                                    makerWager={String(
-                                      d?.wager ?? '0'
-                                    )}
+                                    makerWager={String(d?.wager ?? '0')}
                                     collateralAssetTicker={
                                       collateralAssetTicker
                                     }
