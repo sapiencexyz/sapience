@@ -76,7 +76,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     sortField: 'openInterest',
     sortDirection: 'desc',
     resolutionStatus: 'unresolved',
-    pageSize: 30,
+    pageSize: 20,
   });
 
   const allConditions = React.useMemo(

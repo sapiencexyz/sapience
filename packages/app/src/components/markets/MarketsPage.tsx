@@ -159,7 +159,7 @@ const MarketsPage = () => {
       filters.selectedCategories.length > 0
         ? filters.selectedCategories
         : undefined,
-    pageSize: 30,
+    pageSize: 20,
     sortField,
     sortDirection,
     // Backend filtering for markets after this time
