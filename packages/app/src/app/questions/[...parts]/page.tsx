@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import QuestionPageClient from './QuestionPageClient';
 
+const APP_URL = 'https://sapience.xyz';
+
 type Props = {
   params: Promise<{ parts: string[] }>;
 };
@@ -78,11 +80,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const questionTitle = await fetchQuestionTitle(conditionId, resolverAddress);
 
+  const ogParams = new URLSearchParams({ conditionId });
+  if (resolverAddress) ogParams.set('resolver', resolverAddress);
+  const ogImageUrl = `${APP_URL}/og/question?${ogParams.toString()}`;
+
   return {
     title: questionTitle || 'Question',
     description: questionTitle
       ? `Trade on: ${questionTitle}`
       : 'View and trade on prediction market outcomes',
+    openGraph: {
+      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [ogImageUrl],
+    },
   };
 }
 

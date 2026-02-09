@@ -219,7 +219,7 @@ function truncateAddress(addr: string): string {
 }
 
 // Shared tagline component for footer
-function Tagline({ scale = 1 }: { scale?: number }) {
+export function Tagline({ scale = 1 }: { scale?: number }) {
   return (
     <div
       style={{
