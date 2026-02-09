@@ -9,6 +9,7 @@ import {
   useEffect,
 } from 'react';
 import { z } from 'zod';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 // localStorage key for position selections persistence
 const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
@@ -135,13 +136,10 @@ export const CreatePositionProvider = ({
       // ignore malformed position param, fall through to localStorage
     }
 
-    const stored = loadFromStorage<PositionSelection[]>(
+    return loadFromStorage<PositionSelection[]>(
       STORAGE_KEY_SELECTIONS,
       []
     );
-    // Filter out selections whose endTime has passed
-    const nowSec = Math.floor(Date.now() / 1000);
-    return stored.filter((s) => !s.endTime || s.endTime > nowSec);
   });
   const [isPopoverOpen, setIsPopoverOpen] = useState(() => {
     // Auto-open popover if loaded from a slip URL
@@ -171,6 +169,39 @@ export const CreatePositionProvider = ({
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_SELECTIONS, JSON.stringify(selections));
   }, [selections]);
+
+  // Remove settled conditions from the bet slip on mount
+  useEffect(() => {
+    const conditionIds = selections.map((s) => s.conditionId);
+    if (conditionIds.length === 0) return;
+
+    const QUERY = /* GraphQL */ `
+      query ConditionsByIds($ids: [String!]!) {
+        conditions(where: { id: { in: $ids } }, take: 1000) {
+          id
+          settled
+        }
+      }
+    `;
+
+    graphqlRequest<{ conditions: { id: string; settled: boolean }[] }>(QUERY, {
+      ids: conditionIds,
+    }).then((resp) => {
+      const settledIds = new Set(
+        (resp?.conditions ?? [])
+          .filter((c) => c.settled)
+          .map((c) => c.id)
+      );
+      if (settledIds.size > 0) {
+        setSelections((prev) =>
+          prev.filter((s) => !settledIds.has(s.conditionId))
+        );
+      }
+    }).catch(() => {
+      // Silently ignore — selections will remain until next load
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Spot market functionality removed - positionsWithMarketData is empty
   const positionsWithMarketData: PositionWithMarketData[] = singlePositions.map(
