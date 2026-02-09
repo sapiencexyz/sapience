@@ -42,37 +42,14 @@ const RECENT_POSITIONS_QUERY = /* GraphQL */ `
           resolver
           settled
           resolvedToYes
+          category {
+            slug
+          }
         }
       }
     }
   }
 `;
-
-const CONDITIONS_BY_IDS = /* GraphQL */ `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      shortName
-      description
-      settled
-      resolvedToYes
-      resolver
-      category {
-        slug
-      }
-    }
-  }
-`;
-
-type CondRow = {
-  id: string;
-  shortName?: string | null;
-  description?: string | null;
-  settled?: boolean;
-  resolvedToYes?: boolean;
-  resolver?: string | null;
-  category?: { slug: string } | null;
-};
 
 export function useRecentPositions(params: {
   take?: number;
@@ -99,45 +76,7 @@ export function useRecentPositions(params: {
           status: status ?? null,
         }
       );
-      const base = resp?.recentPositions ?? [];
-
-      // Enrich with category data via secondary query
-      const conditionIds = Array.from(
-        new Set(
-          base.flatMap((p) => (p.predictions || []).map((o) => o.conditionId))
-        )
-      );
-      if (conditionIds.length === 0) return base;
-
-      const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
-        CONDITIONS_BY_IDS,
-        { where: { id: { in: conditionIds } } }
-      );
-      const conditionDataMap = new Map(
-        (condResp?.conditions || []).map((c) => [c.id, c])
-      );
-
-      return base.map((p) => ({
-        ...p,
-        predictions: (p.predictions || []).map((o) => {
-          const condData = conditionDataMap.get(o.conditionId);
-          if (!condData) return o;
-          return {
-            ...o,
-            condition: o.condition
-              ? {
-                  ...o.condition,
-                  shortName: condData.shortName ?? o.condition.shortName,
-                  description: condData.description ?? o.condition.description,
-                  category: condData.category ?? o.condition.category,
-                  settled: condData.settled,
-                  resolvedToYes: condData.resolvedToYes,
-                  resolver: condData.resolver ?? o.condition.resolver,
-                }
-              : undefined,
-          };
-        }),
-      }));
+      return resp?.recentPositions ?? [];
     },
   });
 

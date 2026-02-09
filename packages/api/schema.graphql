@@ -586,6 +586,10 @@ input CategorySumOrderByAggregateInput {
   id: SortOrder
 }
 
+type CategorySummary {
+  slug: String!
+}
+
 input CategoryWhereInput {
   AND: [CategoryWhereInput!]
   NOT: [CategoryWhereInput!]
@@ -1149,6 +1153,7 @@ input ConditionSumOrderByAggregateInput {
 }
 
 type ConditionSummary {
+  category: CategorySummary
   endTime: Int
   id: String!
   question: String

@@ -3,6 +3,12 @@ import { Position, Prisma } from '../../../generated/prisma';
 import prisma from '../../db';
 
 @ObjectType()
+class CategorySummary {
+  @Field(() => String)
+  slug!: string;
+}
+
+@ObjectType()
 class ConditionSummary {
   @Field(() => String)
   id!: string;
@@ -24,6 +30,9 @@ class ConditionSummary {
 
   @Field(() => Boolean)
   resolvedToYes!: boolean;
+
+  @Field(() => CategorySummary, { nullable: true })
+  category?: { slug: string } | null;
 }
 
 @ObjectType()
@@ -123,6 +132,7 @@ async function buildPredictionMap(
           resolver: true,
           settled: true,
           resolvedToYes: true,
+          category: { select: { slug: true } },
         },
       },
     },
@@ -139,6 +149,7 @@ async function buildPredictionMap(
       resolver: p.condition.resolver ?? null,
       settled: p.condition.settled,
       resolvedToYes: p.condition.resolvedToYes,
+      category: p.condition.category ?? null,
     };
     const entry: PredictionType = {
       conditionId: p.conditionId,

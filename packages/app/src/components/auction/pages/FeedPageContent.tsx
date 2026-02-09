@@ -74,13 +74,14 @@ const FeedPageContent: React.FC = () => {
         { vaultAddress: string; time: number; quote?: string }
       >();
       for (const m of relevant) {
-        const vaultAddress = String((m as any)?.data?.vaultAddress ?? '');
+        const d = m.data as Record<string, unknown> | null;
+        const vaultAddress = String(d?.vaultAddress ?? '');
         if (!vaultAddress) continue;
         const existing = map.get(vaultAddress);
         const time = Number(m.time);
         let quote = existing?.quote;
         if (m.type === 'vault_quote.update') {
-          const v = (m as any)?.data?.vaultCollateralPerShare;
+          const v = d?.vaultCollateralPerShare;
           if (v != null) quote = String(v);
         }
         const latestTime = existing ? Math.max(existing.time, time) : time;
@@ -102,12 +103,13 @@ const FeedPageContent: React.FC = () => {
     try {
       for (const m of messages) {
         if (m.type !== 'auction.started') continue;
-        const arr = Array.isArray((m.data as any)?.predictedOutcomes)
-          ? ((m.data as any).predictedOutcomes as string[])
+        const d = m.data as Record<string, unknown> | null;
+        const arr = Array.isArray(d?.predictedOutcomes)
+          ? (d.predictedOutcomes as string[])
           : [];
         if (arr.length === 0) continue;
         try {
-          const decodedUnknown = decodeAbiParameters(
+          const decoded = decodeAbiParameters(
             [
               {
                 type: 'tuple[]',
@@ -118,10 +120,8 @@ const FeedPageContent: React.FC = () => {
               },
             ] as const,
             arr[0] as `0x${string}`
-          ) as unknown;
-          const decodedArr = Array.isArray(decodedUnknown)
-            ? (decodedUnknown as any)[0]
-            : [];
+          );
+          const decodedArr = decoded[0] ?? [];
           for (const o of decodedArr || []) {
             const id = o?.marketId as string | undefined;
             if (id && typeof id === 'string') set.add(id);
@@ -141,7 +141,7 @@ const FeedPageContent: React.FC = () => {
     { id: string; shortName?: string | null; question?: string | null }[],
     Error
   >({
-    queryKey: ['auctionConditionsByIds', conditionIds.sort().join(',')],
+    queryKey: ['auctionConditionsByIds', [...conditionIds].sort().join(',')],
     enabled: conditionIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
@@ -171,11 +171,12 @@ const FeedPageContent: React.FC = () => {
     return new Map(conditions.map((c) => [c.id, c]));
   }, [conditions]);
 
-  function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
+  function toUiTx(m: { time: number; type: string; data: unknown }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
+    const d = m.data as Record<string, any> | null;
     if (m.type === 'auction.started') {
-      const maker = m.data?.maker || '';
-      const positionSize = m.data?.wager || '0';
+      const maker = d?.maker || '';
+      const positionSize = d?.wager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -185,7 +186,7 @@ const FeedPageContent: React.FC = () => {
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
-      const bids = Array.isArray(m.data?.bids) ? (m.data.bids as any[]) : [];
+      const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
       const top = bids.reduce((best, b) => {
         try {
           const cur = BigInt(String(b?.makerWager ?? '0'));
@@ -252,17 +253,18 @@ const FeedPageContent: React.FC = () => {
     }
   };
 
-  function renderPredictionsCell(m: { type: string; data: any }) {
+  function renderPredictionsCell(m: { type: string; data: unknown }) {
     try {
       if (m.type !== 'auction.started')
         return <span className="text-muted-foreground">—</span>;
-      const arr = Array.isArray(m.data?.predictedOutcomes)
-        ? (m.data.predictedOutcomes as string[])
+      const d = m.data as Record<string, unknown> | null;
+      const arr = Array.isArray(d?.predictedOutcomes)
+        ? (d.predictedOutcomes as string[])
         : [];
       if (arr.length === 0)
         return <span className="text-muted-foreground">—</span>;
       // Decode first encoded blob: tuple(bytes32 marketId, bool prediction)[]
-      const decodedUnknown = decodeAbiParameters(
+      const decoded = decodeAbiParameters(
         [
           {
             type: 'tuple[]',
@@ -273,10 +275,8 @@ const FeedPageContent: React.FC = () => {
           },
         ] as const,
         arr[0] as `0x${string}`
-      ) as unknown;
-      const decodedArr = Array.isArray(decodedUnknown)
-        ? (decodedUnknown as any)[0]
-        : [];
+      );
+      const decodedArr = decoded[0] ?? [];
       const legs = (decodedArr || []).map(
         (o: { marketId: `0x${string}`; prediction: boolean }) => {
           const cond = conditionMap.get(o.marketId);
@@ -380,7 +380,7 @@ const FeedPageContent: React.FC = () => {
                               conditionId: pred.conditionId,
                               resolverAddress: pred.condition?.resolver ?? null,
                               categorySlug:
-                                (pred.condition as any)?.category?.slug ?? null,
+                                pred.condition?.category?.slug ?? null,
                               endTime: pred.condition?.endTime ?? null,
                               settled: pred.condition?.settled,
                               resolvedToYes: pred.condition?.resolvedToYes,
@@ -631,18 +631,17 @@ const FeedPageContent: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               {(() => {
+                                const d = m.data as Record<string, any> | null;
                                 const auctionId =
-                                  (m as any)?.channel ||
-                                  ((m as any)?.data?.auctionId as string) ||
-                                  ((m as any)?.data?.payload
-                                    ?.auctionId as string) ||
-                                  ((m as any)?.auctionId as string) ||
+                                  m.channel ||
+                                  (d?.auctionId as string) ||
+                                  (d?.payload?.auctionId as string) ||
                                   null;
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
                                     makerWager={String(
-                                      (m as any)?.data?.wager ?? '0'
+                                      d?.wager ?? '0'
                                     )}
                                     collateralAssetTicker={
                                       collateralAssetTicker
