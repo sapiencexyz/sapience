@@ -154,9 +154,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
       {
         id: 'impliedForecast',
         header: () => (
-          <span className="text-sm font-medium whitespace-nowrap">
-            Implies
-          </span>
+          <span className="text-sm font-medium whitespace-nowrap">Implies</span>
         ),
         cell: ({ row }) => {
           // Calculate implied probability from position sizes
