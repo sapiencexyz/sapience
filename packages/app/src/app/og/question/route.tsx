@@ -374,7 +374,7 @@ export async function GET(req: Request) {
                 <div
                   style={{
                     display: 'flex',
-                    marginBottom: 12 * scale,
+                    marginBottom: 16 * scale,
                   }}
                 >
                   <div

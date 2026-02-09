@@ -97,7 +97,7 @@ export function useTradeSettledNotifications() {
 
       // Format predictor address for display
       const truncatedPredictor = `${pos.predictor.slice(0, 6)}...${pos.predictor.slice(-4)}`;
-      const shareUrl = `/share?nftId=${pos.counterpartyNftTokenId}&marketAddress=${pos.marketAddress}`;
+      const shareUrl = `/positions/${pos.marketAddress}/${pos.counterpartyNftTokenId}`;
 
       // Push log entry
       pushLogEntry({

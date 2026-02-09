@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { formatDistanceStrict } from 'date-fns';
+import { fetchAttestationByUid, d18ToPercentage } from '../_forecast-helpers';
 import {
   og,
   WIDTH,
@@ -32,19 +33,6 @@ export async function GET(req: Request) {
         headers: { 'content-type': 'text/plain' },
       });
     }
-
-    const question =
-      normalizeText(searchParams.get('q'), 160) || 'Forecast on Sapience';
-
-    // Optional raw timestamps (unix seconds) for consistent, server-side formatting
-    const endTs = Number(searchParams.get('end') || '');
-    const createdTs = Number(searchParams.get('created') || '');
-
-    // Fallback string params (already formatted by client) remain supported
-    const resolutionParam = normalizeText(searchParams.get('res'), 48);
-    const horizonParam = normalizeText(searchParams.get('hor'), 48);
-    const oddsRaw = normalizeText(searchParams.get('odds'), 8);
-    const odds = oddsRaw ? `${oddsRaw.replace(/%/g, '')}%` : '';
 
     // Local helpers to format dates without external deps
     const formatShortDate = (tsSec: number): string => {
@@ -81,12 +69,47 @@ export async function GET(req: Request) {
       return `${days} ${days === 1 ? 'day' : 'days'}`;
     };
 
+    // If uid is provided, fetch attestation data from GraphQL API
+    const uidParam = searchParams.get('uid');
+    let question =
+      normalizeText(searchParams.get('q'), 160) || 'Forecast on Sapience';
+    let endTs = Number(searchParams.get('end') || '');
+    let createdTs = Number(searchParams.get('created') || '');
+    const resolutionParam = normalizeText(searchParams.get('res'), 48);
+    const horizonParam = normalizeText(searchParams.get('hor'), 48);
+    let oddsRaw = normalizeText(searchParams.get('odds'), 8);
+    let rawAddr = (searchParams.get('addr') || '').toString();
+
+    if (uidParam) {
+      const attestation = await fetchAttestationByUid(uidParam);
+      if (attestation) {
+        question =
+          normalizeText(attestation.condition?.question ?? null, 160) ||
+          question;
+        rawAddr = attestation.attester || rawAddr;
+        createdTs = attestation.time || createdTs;
+        if (attestation.condition?.endTime) {
+          endTs = attestation.condition.endTime;
+        }
+        if (attestation.prediction) {
+          try {
+            const pct = Math.round(d18ToPercentage(attestation.prediction));
+            oddsRaw = `${pct}`;
+          } catch {
+            // keep existing oddsRaw
+          }
+        }
+      }
+    }
+
+    const odds = oddsRaw ? `${oddsRaw.replace(/%/g, '')}%` : '';
+
     // Prefer server-side computed values when timestamps are provided
     const resolution = endTs ? formatShortDate(endTs) : resolutionParam;
     const horizon =
       endTs && createdTs ? formatHorizonDays(createdTs, endTs) : horizonParam;
 
-    const addr = parseEthereumAddress(searchParams.get('addr'));
+    const addr = parseEthereumAddress(rawAddr || searchParams.get('addr'));
 
     const { bgUrl } = commonAssets(req);
     const fonts = await loadFontData(req);
