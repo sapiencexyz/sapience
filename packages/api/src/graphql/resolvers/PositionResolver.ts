@@ -95,8 +95,120 @@ class PositionType {
   predictions!: PredictionType[];
 }
 
+const MAX_TAKE = 50;
+
+function clampTake(take: number): number {
+  return Math.max(1, Math.min(take, MAX_TAKE));
+}
+
+function clampSkip(skip: number): number {
+  return Math.max(0, skip);
+}
+
+async function buildPredictionMap(
+  rows: Position[]
+): Promise<Map<number, PredictionType[]>> {
+  const positionIds = rows.map((r) => r.id);
+  if (positionIds.length === 0) return new Map();
+
+  const predictions = await prisma.prediction.findMany({
+    where: { positionId: { in: positionIds } },
+    include: {
+      condition: {
+        select: {
+          id: true,
+          question: true,
+          shortName: true,
+          endTime: true,
+          resolver: true,
+          settled: true,
+          resolvedToYes: true,
+        },
+      },
+    },
+  });
+
+  const map = new Map<number, PredictionType[]>();
+  for (const p of predictions) {
+    if (!p.positionId) continue;
+    const condition = p.condition && {
+      id: p.condition.id,
+      question: p.condition.question ?? null,
+      shortName: p.condition.shortName ?? null,
+      endTime: p.condition.endTime ?? null,
+      resolver: p.condition.resolver ?? null,
+      settled: p.condition.settled,
+      resolvedToYes: p.condition.resolvedToYes,
+    };
+    const entry: PredictionType = {
+      conditionId: p.conditionId,
+      outcomeYes: p.outcomeYes,
+      chainId: p.chainId ?? null,
+      condition: condition ?? null,
+    };
+    if (!map.has(p.positionId)) {
+      map.set(p.positionId, []);
+    }
+    map.get(p.positionId)!.push(entry);
+  }
+  return map;
+}
+
+async function processRows(rows: Position[]): Promise<PositionType[]> {
+  const predictionMap = await buildPredictionMap(rows);
+
+  return rows.map((r) => ({
+    id: r.id,
+    chainId: r.chainId,
+    marketAddress: r.marketAddress,
+    predictor: r.predictor,
+    counterparty: r.counterparty,
+    predictorNftTokenId: r.predictorNftTokenId,
+    counterpartyNftTokenId: r.counterpartyNftTokenId,
+    totalCollateral: r.totalCollateral,
+    predictorCollateral: r.predictorCollateral ?? null,
+    counterpartyCollateral: r.counterpartyCollateral ?? null,
+    refCode: r.refCode,
+    status: r.status as unknown as PositionType['status'],
+    predictorWon: r.predictorWon,
+    mintedAt: r.mintedAt,
+    settledAt: r.settledAt ?? null,
+    endsAt: r.endsAt ?? null,
+    predictions: predictionMap.get(r.id) ?? [],
+  }));
+}
+
 @Resolver()
 export class PositionResolver {
+  @Query(() => [PositionType], {
+    description:
+      'Returns the most recently created positions globally, ordered by mintedAt descending.',
+  })
+  async recentPositions(
+    @Arg('take', () => Int, { defaultValue: 20 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('status', () => String, { nullable: true })
+    status?: 'active' | 'settled' | 'consolidated'
+  ): Promise<PositionType[]> {
+    const where: Prisma.PositionWhereInput = {};
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+    if (status) {
+      where.status = status;
+    }
+
+    const rows = await prisma.position.findMany({
+      where,
+      orderBy: { mintedAt: 'desc' },
+      take: clampTake(take),
+      skip: clampSkip(skip),
+    });
+
+    return processRows(rows);
+  }
+
   @Query(() => Int)
   async positionsCount(
     @Arg('address', () => String) address: string,
@@ -129,79 +241,6 @@ export class PositionResolver {
     marketAddress?: string
   ): Promise<PositionType[]> {
     const addr = address?.toLowerCase();
-
-    const buildPredictionMap = async (
-      rows: Position[]
-    ): Promise<Map<number, PredictionType[]>> => {
-      const positionIds = rows.map((r) => r.id);
-      if (positionIds.length === 0) return new Map();
-
-      const predictions = await prisma.prediction.findMany({
-        where: { positionId: { in: positionIds } },
-        include: {
-          condition: {
-            select: {
-              id: true,
-              question: true,
-              shortName: true,
-              endTime: true,
-              resolver: true,
-              settled: true,
-              resolvedToYes: true,
-            },
-          },
-        },
-      });
-
-      const map = new Map<number, PredictionType[]>();
-      for (const p of predictions) {
-        if (!p.positionId) continue;
-        const condition = p.condition && {
-          id: p.condition.id,
-          question: p.condition.question ?? null,
-          shortName: p.condition.shortName ?? null,
-          endTime: p.condition.endTime ?? null,
-          resolver: p.condition.resolver ?? null,
-          settled: p.condition.settled,
-          resolvedToYes: p.condition.resolvedToYes,
-        };
-        const entry: PredictionType = {
-          conditionId: p.conditionId,
-          outcomeYes: p.outcomeYes,
-          chainId: p.chainId ?? null,
-          condition: condition ?? null,
-        };
-        if (!map.has(p.positionId)) {
-          map.set(p.positionId, []);
-        }
-        map.get(p.positionId)!.push(entry);
-      }
-      return map;
-    };
-
-    const processRows = async (rows: Position[]): Promise<PositionType[]> => {
-      const predictionMap = await buildPredictionMap(rows);
-
-      return rows.map((r) => ({
-        id: r.id,
-        chainId: r.chainId,
-        marketAddress: r.marketAddress,
-        predictor: r.predictor,
-        counterparty: r.counterparty,
-        predictorNftTokenId: r.predictorNftTokenId,
-        counterpartyNftTokenId: r.counterpartyNftTokenId,
-        totalCollateral: r.totalCollateral,
-        predictorCollateral: r.predictorCollateral ?? null,
-        counterpartyCollateral: r.counterpartyCollateral ?? null,
-        refCode: r.refCode,
-        status: r.status as unknown as PositionType['status'],
-        predictorWon: r.predictorWon,
-        mintedAt: r.mintedAt,
-        settledAt: r.settledAt ?? null,
-        endsAt: r.endsAt ?? null,
-        predictions: predictionMap.get(r.id) ?? [],
-      }));
-    };
 
     // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
     // and not using NFT filtering
@@ -454,65 +493,6 @@ export class PositionResolver {
       skip,
     });
 
-    const predictionMap = await prisma.prediction.findMany({
-      where: { positionId: { in: rows.map((r) => r.id) } },
-      include: {
-        condition: {
-          select: {
-            id: true,
-            question: true,
-            shortName: true,
-            endTime: true,
-            resolver: true,
-            settled: true,
-            resolvedToYes: true,
-          },
-        },
-      },
-    });
-
-    const map = new Map<number, PredictionType[]>();
-    for (const p of predictionMap) {
-      if (!p.positionId) continue;
-      const condition = p.condition && {
-        id: p.condition.id,
-        question: p.condition.question ?? null,
-        shortName: p.condition.shortName ?? null,
-        endTime: p.condition.endTime ?? null,
-        resolver: p.condition.resolver ?? null,
-        settled: p.condition.settled,
-        resolvedToYes: p.condition.resolvedToYes,
-      };
-      const entry: PredictionType = {
-        conditionId: p.conditionId,
-        outcomeYes: p.outcomeYes,
-        chainId: p.chainId ?? null,
-        condition: condition ?? null,
-      };
-      if (!map.has(p.positionId)) {
-        map.set(p.positionId, []);
-      }
-      map.get(p.positionId)!.push(entry);
-    }
-
-    return rows.map((r) => ({
-      id: r.id,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      predictor: r.predictor,
-      counterparty: r.counterparty,
-      predictorNftTokenId: r.predictorNftTokenId,
-      counterpartyNftTokenId: r.counterpartyNftTokenId,
-      totalCollateral: r.totalCollateral,
-      predictorCollateral: r.predictorCollateral ?? null,
-      counterpartyCollateral: r.counterpartyCollateral ?? null,
-      refCode: r.refCode,
-      status: r.status as unknown as PositionType['status'],
-      predictorWon: r.predictorWon,
-      mintedAt: r.mintedAt,
-      settledAt: r.settledAt ?? null,
-      endsAt: r.endsAt ?? null,
-      predictions: map.get(r.id) ?? [],
-    }));
+    return processRows(rows);
   }
 }
