@@ -822,7 +822,10 @@ export function PredictionScatterChart({
                           : 'border-muted-foreground/40 bg-muted/10 text-muted-foreground'
                     }`}
                   >
-                    {hoveredComment.data.predictionPercent}% chance
+                    {formatPercentChance(
+                      hoveredComment.data.predictionPercent / 100
+                    )}{' '}
+                    chance
                   </Badge>
                 )}
 

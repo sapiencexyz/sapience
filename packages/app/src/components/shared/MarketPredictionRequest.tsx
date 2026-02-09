@@ -253,7 +253,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
-        const clamped = Math.max(0, Math.min(0.99, prob));
+        const clamped = Math.max(0, Math.min(1, prob));
         setRequestedPrediction(clamped);
         onPredictionRef.current?.(clamped);
       } catch {

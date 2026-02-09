@@ -274,7 +274,7 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
             return;
           }
           const prob = Number(takerWager) / Number(denom);
-          const clamped = Math.max(0.01, Math.min(0.99, prob));
+          const clamped = Math.max(0, Math.min(1, prob));
           resolve(clamped);
         },
         onError: () => {

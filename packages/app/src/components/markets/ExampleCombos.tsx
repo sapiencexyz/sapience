@@ -298,9 +298,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
-        // Allow probability to range from 0.1% to 99.9% to avoid division by zero
-        // while enabling chance display from <1% to >99%
-        const safeProbability = Math.max(0.001, Math.min(0.999, prob));
+        const safeProbability = Math.max(0, Math.min(1, prob));
 
         return {
           ...q,
