@@ -155,7 +155,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
         id: 'impliedForecast',
         header: () => (
           <span className="text-sm font-medium whitespace-nowrap">
-            Forecast
+            Implies
           </span>
         ),
         cell: ({ row }) => {

@@ -173,8 +173,8 @@ export const CreatePositionProvider = ({
     if (conditionIds.length === 0) return;
 
     const QUERY = /* GraphQL */ `
-      query ConditionsByIds($ids: [String!]!) {
-        conditions(where: { id: { in: $ids } }, take: 1000) {
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
           id
           settled
         }
@@ -182,7 +182,7 @@ export const CreatePositionProvider = ({
     `;
 
     graphqlRequest<{ conditions: { id: string; settled: boolean }[] }>(QUERY, {
-      ids: conditionIds,
+      where: { id: { in: conditionIds } },
     })
       .then((resp) => {
         const settledIds = new Set(
