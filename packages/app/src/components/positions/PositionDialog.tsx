@@ -37,8 +37,8 @@ export default function PositionDialog({
 
   const isCounterpartyPosition = position.isCounterpartyPosition;
 
-  const wager = Number(formatEther(position.wagerWei));
-  const toWin = Number(formatEther(position.totalPayoutWei || 0n));
+  const positionSize = Number(formatEther(position.positionSizeWei));
+  const payout = Number(formatEther(position.totalPayoutWei || 0n));
 
   const isSettled = position.status !== 'active';
 
@@ -56,9 +56,9 @@ export default function PositionDialog({
 
   const showPnl = isSettled || positionLostFromDb;
   const pnlValue = positionLostFromDb
-    ? -wager
+    ? -positionSize
     : Number(formatEther(BigInt(position.pnlWei || '0')));
-  const roi = wager > 0 ? (pnlValue / wager) * 100 : 0;
+  const roi = positionSize > 0 ? (pnlValue / positionSize) * 100 : 0;
 
   const positionUrl = `/positions/${position.marketAddress}/${position.positionId}`;
   const createdAt = position.createdAt ? new Date(position.createdAt) : null;
@@ -85,8 +85,8 @@ export default function PositionDialog({
           isCounterpartyPosition={isCounterpartyPosition}
           createdAt={createdAt}
           endsAtMs={position.endsAt}
-          wager={wager}
-          toWin={toWin}
+          positionSize={positionSize}
+          payout={payout}
           pnl={showPnl ? pnlValue : null}
           roi={showPnl ? roi : null}
           isSettled={isSettled}

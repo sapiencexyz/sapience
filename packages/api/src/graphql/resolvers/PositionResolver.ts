@@ -210,7 +210,7 @@ export class PositionResolver {
 
     if (
       useRawSql &&
-      (orderBy === 'wager' || orderBy === 'toWin' || orderBy === 'pnl')
+      (orderBy === 'positionSize' || orderBy === 'payout' || orderBy === 'pnl')
     ) {
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
@@ -233,7 +233,7 @@ export class PositionResolver {
 
       const extraConditions = `${statusCondition} ${endsAtCondition}`;
 
-      if (orderBy === 'wager') {
+      if (orderBy === 'positionSize') {
         if (chainId !== undefined && chainId !== null) {
           const rows = await prisma.$queryRaw<Position[]>`
             SELECT * FROM position
@@ -319,7 +319,7 @@ export class PositionResolver {
         }
       }
 
-      // For toWin, sort by totalCollateral but treat lost positions as 0
+      // For payout, sort by totalCollateral but treat lost positions as 0
       if (chainId !== undefined && chainId !== null) {
         const rows = await prisma.$queryRaw<Position[]>`
           SELECT * FROM position

@@ -9,7 +9,7 @@ Sapience uses an RFQ (Request-for-Quote) auction system. You broadcast a predict
 
 ## Building a Prediction
 
-A **prediction** is one or more picks combined with a wager amount. Each **pick** is a question paired with your expected resolution (*Yes* or *No*).
+A **prediction** is one or more picks combined with a position size. Each **pick** is a question paired with your expected resolution (*Yes* or *No*).
 
 - **Single-pick example:** "Will BTC exceed $100k by July 1?" → Yes
 - **Multi-pick example:** "Team A wins AND turnout ≥ 60%"
@@ -30,12 +30,12 @@ Lower combined probability means higher potential payout—this is why multi-leg
 
 ## How the Auction Works
 
-1. **Request** — You submit your prediction (picks + wager) to the relayer. This is a simple, [open-source](https://github.com/sapiencexyz/sapience/tree/main/packages/api/src/auction) HTTP service that broadcasts your request to market makers.
+1. **Request** — You submit your prediction (picks + position size) to the relayer. This is a simple, [open-source](https://github.com/sapiencexyz/sapience/tree/main/packages/api/src/auction) HTTP service that broadcasts your request to market makers.
 
-2. **Response** — Responders analyze your prediction and submit **cryptographically signed bids**. Each bid includes the responder's wager amount and an expiration timestamp. Signatures ensure bids can't be forged or tampered with.
+2. **Response** — Responders analyze your prediction and submit **cryptographically signed bids**. Each bid includes the responder's position size and an expiration timestamp. Signatures ensure bids can't be forged or tampered with.
 
-3. **Selection** — You choose the best offer (typically the highest wager, meaning better odds for you). Bids expire quickly, so the auction resolves in seconds.
+3. **Selection** — You choose the best offer (typically the highest position size, meaning better odds for you). Bids expire quickly, so the auction resolves in seconds.
 
-4. **Settlement** — The smart contract verifies the responder's signature, transfers collateral from both parties, and mints NFTs representing each position: your prediction and the responder's counterparty position (betting that at least one of your picks is wrong).
+4. **Settlement** — The smart contract verifies the responder's signature, transfers collateral from both parties, and mints NFTs representing each position: your prediction and the responder's counterparty position (predicting that at least one of your picks is wrong).
 
 5. **Resolution** — When questions resolve, the winner burns their NFT to claim the pooled collateral.

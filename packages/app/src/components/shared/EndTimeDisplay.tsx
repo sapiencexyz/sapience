@@ -17,12 +17,14 @@ import { Timer } from 'lucide-react';
 
 interface EndTimeDisplayProps {
   endTime?: number | null;
+  settled?: boolean | null;
   size?: 'normal' | 'large';
   appearance?: 'default' | 'brandWhite';
 }
 
 const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
   endTime,
+  settled,
   size = 'normal',
   appearance = 'default',
 }) => {
@@ -48,26 +50,29 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
     let badgeText: string;
     let showExpandedDate: boolean;
 
+    // Use "Ended" if settled, "Ends" if past end time but not yet settled
+    const pastVerb = settled ? 'Ended' : 'Ends';
+
     if (!isPast) {
       // Future: show relative time
       badgeText = `Ends ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
     } else if (hoursDiff < 24) {
-      // Ended recently (within 24 hours): show relative time only
-      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Past recently (within 24 hours): show relative time only
+      badgeText = `${pastVerb} ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else if (daysDiff < 7) {
-      // Ended within a week: show relative time only
-      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Past within a week: show relative time only
+      badgeText = `${pastVerb} ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else {
-      // Ended more than a week ago: show short date format
+      // Past more than a week ago: show short date format
       const shortDate = new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       }).format(date);
-      badgeText = `Ended ${shortDate}`;
+      badgeText = `${pastVerb} ${shortDate}`;
       showExpandedDate = false;
     }
 

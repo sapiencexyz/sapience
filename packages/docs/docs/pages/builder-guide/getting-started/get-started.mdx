@@ -32,27 +32,6 @@ Allow your assistant to read these docs too.
 4. Name it "Sapience" and save to index
 5. Use in prompts: `@Docs Sapience`
 
-### Add Tools
-
-Attaching the MCP server gives your editor tools that allow it to interact with Sapience's API directly. Learn more about the MCP server at [/builder-guide/api/mcp](/builder-guide/api/mcp).
-
-1. Open Cursor → Settings → Cursor Settings → Tools & MCP → Add new MCP server
-2. Paste the following configuration and save:
-
-```json
-{
-  "mcpServers": {
-    "sapience": {
-      "command": "npx",
-      "args": ["mcp-remote", "https://api.sapience.xyz/mcp"]
-    }
-  }
-}
-```
-
-- Note this requires Node.js on your PATH so `npx` is available. (Ask an AI to help if you don't know what this means.)
-- After saving, restart Cursor if tools do not appear.
-
 ## Ethereum Account Setup
 
 You'll need an Ethereum wallet to interact with Sapience markets.

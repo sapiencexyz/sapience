@@ -16,6 +16,9 @@ import {
 } from '@sapience/ui/components/ui/command';
 import { ChevronsUpDown, Check, Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
+import ResolutionStatusFilter, {
+  type ResolutionStatusFilterValue,
+} from './ResolutionStatusFilter';
 import { RangeFilter } from '~/components/shared/RangeFilter';
 
 export interface CategoryOption {
@@ -28,6 +31,7 @@ export interface FilterState {
   openInterestRange: [number, number];
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
+  resolutionStatus: ResolutionStatusFilterValue;
 }
 
 interface TableFiltersProps {
@@ -208,6 +212,12 @@ export default function TableFilters({
     onFiltersChange({ ...filters, selectedCategories: slugs });
   };
 
+  const handleResolutionStatusChange = (
+    status: ResolutionStatusFilterValue
+  ) => {
+    onFiltersChange({ ...filters, resolutionStatus: status });
+  };
+
   const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange(e.target.value);
   };
@@ -215,7 +225,7 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4',
+        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-5',
         className
       )}
     >
@@ -249,7 +259,7 @@ export default function TableFilters({
           if (v === '∞') return OPEN_INTEREST_SLIDER_MAX;
           return Number(v.replace(/,/g, ''));
         }}
-        unit="USDe"
+        unit="OI"
       />
       <RangeFilter
         placeholder="Time to resolution"
@@ -274,6 +284,10 @@ export default function TableFilters({
           { range: [0, TIME_SLIDER_MAX], label: 'Ends in the future' },
           { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
+      />
+      <ResolutionStatusFilter
+        value={filters.resolutionStatus}
+        onChange={handleResolutionStatusChange}
       />
     </div>
   );

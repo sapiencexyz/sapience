@@ -42,15 +42,16 @@ type ComboWithQuote = {
 
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
-const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
+const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
+
   const { data: allConditions = [], isLoading } = useConditions({
-    take: 200,
+    take: 100,
     chainId,
   });
   const { addSelection, clearSelections } = useCreatePositionContext();
@@ -124,8 +125,6 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         if (!c.public) return false;
         const end = typeof c.endTime === 'number' ? c.endTime : 0;
         if (end <= nowSec) return false;
-        // Only include conditions that have similarMarkets
-        if (!c.similarMarkets || c.similarMarkets.length === 0) return false;
         return true;
       });
       if (publicConditions.length === 0) return [];
@@ -212,7 +211,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           }));
           const payload = buildAuctionStartPayload(outcomes, chainId);
           const requestPayload = {
-            wager: TAKER_WAGER_WEI,
+            wager: TAKER_POSITION_SIZE_WEI,
             resolver: payload.resolver,
             predictedOutcomes: payload.predictedOutcomes,
             taker: selectedTakerAddress,
@@ -266,12 +265,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     takerNonce,
   ]);
 
-  // Trigger quote requests when conditions load
+  // Trigger quote requests when conditions first load.
+  // Deliberately omit requestAllQuotes from deps: we only want this to fire
+  // once when data arrives, not re-fire when takerNonce/wsUrl change (which
+  // would reset comboQuotes and the timeout timer, causing permanent skeletons).
   React.useEffect(() => {
     if (!isLoading && allConditions.length > 0) {
       requestAllQuotes();
     }
-  }, [isLoading, allConditions.length, requestAllQuotes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, allConditions.length]);
 
   // Update probabilities from hub bids
   React.useEffect(() => {
@@ -291,7 +294,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           return BigInt(cur.makerWager) > BigInt(acc.makerWager) ? cur : acc;
         }, list[0]);
 
-        const taker = BigInt(TAKER_WAGER_WEI);
+        const taker = BigInt(TAKER_POSITION_SIZE_WEI);
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
@@ -480,9 +483,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                   </span>
                                   <br />
                                   <span className="text-muted-foreground">
-                                    to win{' '}
+                                    payout
                                   </span>
-                                  <span className="text-brand-white font-medium font-mono">
+                                  <span className="text-brand-white font-medium font-mono ml-1">
                                     {(1 / (1 - probability)).toFixed(2)} USDe
                                   </span>
                                 </>
@@ -570,9 +573,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 className="font-mono text-ethena"
                               />
                               <span className="text-muted-foreground ml-1">
-                                implied by 1 USDe to win{' '}
+                                implied by 1 USDe for payout
                               </span>
-                              <span className="text-brand-white font-medium font-mono">
+                              <span className="text-brand-white font-medium font-mono ml-1">
                                 {(1 / (1 - probability)).toFixed(2)} USDe
                               </span>
                             </div>

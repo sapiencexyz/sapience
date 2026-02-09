@@ -20,6 +20,9 @@ pnpm --filter @sapience/api install --prod=false
 # Ensure @sapience/relayer dependencies (including dev) are installed
 pnpm --filter @sapience/relayer install --prod=false
 
+# Ensure @sapience/polymarket-keeper dependencies (including dev) are installed
+pnpm --filter @sapience/polymarket-keeper install --prod=false
+
 # Build the SDK library
 pnpm --filter @sapience/sdk run build:lib
 

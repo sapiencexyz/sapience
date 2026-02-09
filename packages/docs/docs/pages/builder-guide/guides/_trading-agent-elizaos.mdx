@@ -24,7 +24,7 @@ AUTONOMOUS_MODE=trade
 ENABLE_TRADING=true
 
 # Configure trading parameters (optional)
-TRADING_WAGER_AMOUNT=1000000000000000000  # $1 default (18 decimals)
+TRADING_POSITION_SIZE=1000000000000000000  # $1 default (18 decimals)
 MIN_TRADING_CONFIDENCE=0.6                # Minimum confidence for predictions
 TRADING_AUCTION_TIMEOUT_MS=300000         # 5 minutes auction timeout
 ```
@@ -55,7 +55,7 @@ socket.onopen = async () => {
   
   const payload = {
     taker: walletAddress,
-    wager: wagerAmount,
+    wager: positionSizeAmount,
     resolver: RESOLVER,
     predictedOutcomes,
     takerNonce: contractNonce,
@@ -96,7 +96,7 @@ socket.onopen = async () => {
 | --- | --- | --- |
 | `AUTONOMOUS_MODE` | - | Set to `trade` or `forecast,trade` for autonomous trading |
 | `ENABLE_TRADING` | `false` | Alternative way to enable trading |
-| `TRADING_WAGER_AMOUNT` | `1e18` | Wager amount in USDe (18 decimals) |
+| `TRADING_POSITION_SIZE` | `1e18` | Position size in USDe (18 decimals) |
 | `MIN_TRADING_CONFIDENCE` | `0.6` | Minimum confidence threshold |
 | `TRADING_AUCTION_TIMEOUT_MS` | `300000` | Auction timeout in milliseconds |
 | `TRADING_MARKETS_FETCH_LIMIT` | `100` | Markets to fetch from API |

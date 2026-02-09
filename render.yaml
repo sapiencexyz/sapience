@@ -73,3 +73,28 @@ services:
         fromDatabase:
           name: database
           property: connectionString
+
+  - name: polymarket-keeper-cron
+    type: cron
+    env: node
+    schedule: "*/30 * * * *"
+    buildCommand: npm install -g pnpm@9 && bash render-build-sdk.sh && pnpm --filter @sapience/polymarket-keeper build
+    startCommand: NODE_ENV=production pnpm --filter @sapience/polymarket-keeper start
+    branch: main
+    buildFilter:
+      paths:
+        - packages/polymarket-keeper/**
+        - packages/sdk/**
+    envVars:
+      - key: POLYGON_RPC_URL
+        sync: false
+      - key: ADMIN_PRIVATE_KEY
+        sync: false
+      - key: SAPIENCE_API_URL
+        value: "https://api.sapience.xyz"
+      - key: LLM_ENABLED
+        value: "true"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        value: "openai/gpt-4o-mini"

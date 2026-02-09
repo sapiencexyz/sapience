@@ -31,8 +31,7 @@ import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
 import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { getCategoryIcon } from '~/lib/theme/categoryIcons';
+import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import { usePositionsByConditionId } from '~/hooks/graphql/usePositionsByConditionId';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
@@ -179,7 +178,7 @@ export default function QuestionPageContent({
   });
 
   // Transform position data for scatter plot
-  // x = time (unix timestamp), y = prediction probability (0-100), wager = amount wagered
+  // x = time (unix timestamp), y = prediction probability (0-100), positionSize = amount committed
   const scatterData = useMemo((): PredictionData[] => {
     // If no real positions, return empty array
     if (!positions || positions.length === 0) {
@@ -233,8 +232,8 @@ export default function QuestionPageContent({
             }
           }
 
-          // Calculate total wager (for sizing)
-          const wager = predictorCollateral + counterpartyCollateral;
+          // Calculate total position size (for sizing)
+          const positionSize = predictorCollateral + counterpartyCollateral;
 
           // predictions represents the predictor's predictions
           // Counterparty takes the opposite side on each market
@@ -259,19 +258,22 @@ export default function QuestionPageContent({
           const timestamp = position.mintedAt * 1000;
           const date = new Date(timestamp);
 
-          // Calculate implied probability of YES from wager amounts
-          // Always compute based on predictor vs counterparty wager:
-          // - If predictor bets YES: probability of YES = predictorCollateral / totalWager
-          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalWager
+          // Calculate implied probability of YES from position sizes
+          // Always compute based on predictor vs counterparty position size:
+          // - If predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
+          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
           let predictionPercent = 50; // Default fallback
-          const totalWager = predictorCollateral + counterpartyCollateral;
-          if (totalWager > 0) {
+          const totalPositionSize =
+            predictorCollateral + counterpartyCollateral;
+          if (totalPositionSize > 0) {
             if (predictorPrediction) {
-              // Predictor bets YES: probability of YES = predictorCollateral / totalWager
-              predictionPercent = (predictorCollateral / totalWager) * 100;
+              // Predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
+              predictionPercent =
+                (predictorCollateral / totalPositionSize) * 100;
             } else {
-              // Predictor bets NO: probability of YES = counterpartyCollateral / totalWager
-              predictionPercent = (counterpartyCollateral / totalWager) * 100;
+              // Predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
+              predictionPercent =
+                (counterpartyCollateral / totalPositionSize) * 100;
             }
             // Clamp to 0-100 range
             predictionPercent = Math.max(0, Math.min(100, predictionPercent));
@@ -280,7 +282,7 @@ export default function QuestionPageContent({
           return {
             x: timestamp,
             y: predictionPercent,
-            wager,
+            positionSize,
             predictor: position.predictor,
             counterparty: position.counterparty,
             predictorPrediction,
@@ -302,22 +304,25 @@ export default function QuestionPageContent({
     return realData;
   }, [positions, conditionId]);
 
-  // Calculate wager range from actual data for dynamic sizing
-  const wagerRange = useMemo(() => {
+  // Calculate position size range from actual data for dynamic sizing
+  const positionSizeRange = useMemo(() => {
     if (scatterData.length === 0) {
-      return { wagerMin: 0, wagerMax: 100 };
+      return { positionSizeMin: 0, positionSizeMax: 100 };
     }
-    const wagers = scatterData.map((d) => d.wager).filter((w) => w > 0);
-    if (wagers.length === 0) {
-      return { wagerMin: 0, wagerMax: 100 };
+    const sizes = scatterData.map((d) => d.positionSize).filter((s) => s > 0);
+    if (sizes.length === 0) {
+      return { positionSizeMin: 0, positionSizeMax: 100 };
     }
-    const wagerMin = Math.min(...wagers);
-    const wagerMax = Math.max(...wagers);
-    // If all wagers are the same, add a small range to avoid division by zero
-    if (wagerMin === wagerMax) {
-      return { wagerMin: Math.max(0, wagerMin - 1), wagerMax: wagerMax + 1 };
+    const positionSizeMin = Math.min(...sizes);
+    const positionSizeMax = Math.max(...sizes);
+    // If all position sizes are the same, add a small range to avoid division by zero
+    if (positionSizeMin === positionSizeMax) {
+      return {
+        positionSizeMin: Math.max(0, positionSizeMin - 1),
+        positionSizeMax: positionSizeMax + 1,
+      };
     }
-    return { wagerMin, wagerMax };
+    return { positionSizeMin, positionSizeMax };
   }, [scatterData]);
 
   // Transform forecasts data for scatter plot
@@ -468,13 +473,6 @@ export default function QuestionPageContent({
     predictionMarket[chainId]?.address ??
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
-  // Check if market is past end time
-  const isPastEndTime = useMemo(() => {
-    if (!data?.endTime) return false;
-    const nowSec = Math.floor(Date.now() / 1000);
-    return data.endTime <= nowSec;
-  }, [data?.endTime]);
-
   if (isLoading) {
     return (
       <div
@@ -503,27 +501,7 @@ export default function QuestionPageContent({
 
   const displayTitle = data.question || data.shortName || '';
 
-  // Get focus area styling
   const categorySlug = data.category?.slug;
-  const categoryStyle = getCategoryStyle(categorySlug);
-  const CategoryIcon = getCategoryIcon(categorySlug);
-
-  // Helper to add alpha to colors
-  const withAlpha = (c: string, alpha: number) => {
-    const hexMatch = /^#(?:[0-9a-fA-F]{3}){1,2}$/;
-    if (hexMatch.test(c)) {
-      const a = Math.max(0, Math.min(1, alpha));
-      const aHex = Math.round(a * 255)
-        .toString(16)
-        .padStart(2, '0');
-      return `${c}${aHex}`;
-    }
-    const toSlashAlpha = (fn: 'hsl' | 'rgb', inside: string) =>
-      `${fn}(${inside} / ${alpha})`;
-    if (c.startsWith('hsl(')) return toSlashAlpha('hsl', c.slice(4, -1));
-    if (c.startsWith('rgb(')) return toSlashAlpha('rgb', c.slice(4, -1));
-    return c;
-  };
 
   const renderPredictionFormCard = () => (
     <PredictionForm
@@ -562,16 +540,16 @@ export default function QuestionPageContent({
   const renderScatterPlotCard = () => (
     <div
       className={`relative w-full min-w-0 bg-brand-black border border-border rounded-lg pt-6 pr-8 pb-2 pl-2 min-h-[320px] h-[320px] sm:h-[360px] ${
-        isPastEndTime ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
+        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
       }`}
       // Explicit height on small screens so Recharts can compute dimensions
-      // When past end time, use fixed height on desktop to match shorter sidebar
+      // When settled, use fixed height on desktop; otherwise let grid stretch fill the height
     >
       <PredictionScatterChart
         scatterData={scatterData}
         forecastScatterData={forecastScatterData}
         isLoading={isLoadingPositions}
-        wagerRange={wagerRange}
+        positionSizeRange={positionSizeRange}
         xDomain={xDomain}
         xTicks={xTicks}
         xTickLabels={xTickLabels}
@@ -641,7 +619,7 @@ export default function QuestionPageContent({
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
@@ -670,6 +648,7 @@ export default function QuestionPageContent({
             />
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="normal"
               appearance="brandWhite"
             />
@@ -750,7 +729,7 @@ export default function QuestionPageContent({
           <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
@@ -778,6 +757,7 @@ export default function QuestionPageContent({
             />
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="normal"
               appearance="brandWhite"
             />
@@ -822,35 +802,17 @@ export default function QuestionPageContent({
           {/* Badges Row: Category, Open Interest, End Time */}
           <div className="flex flex-wrap items-center gap-3 mb-6">
             {/* Focus Area Badge */}
-            {categoryStyle.name && (
-              <div
-                className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium"
-                style={{
-                  backgroundColor: withAlpha(categoryStyle.color, 0.2),
-                  boxShadow: `inset 0 0 0 1px ${withAlpha(categoryStyle.color, 0.4)}`,
-                }}
-              >
-                <CategoryIcon
-                  className="w-4 h-4"
-                  style={{ color: categoryStyle.color }}
-                />
-                <span className="text-brand-white">{categoryStyle.name}</span>
-              </div>
-            )}
+            {categorySlug && <FocusAreaBadge categorySlug={categorySlug} />}
 
             {/* Open Interest Badge */}
             {(() => {
-              const isPastEndTime =
-                typeof data.endTime === 'number' &&
-                data.endTime > 0 &&
-                Date.now() / 1000 >= data.endTime;
               return (
                 <Badge
                   variant="outline"
                   className="h-9 items-center px-3.5 text-sm leading-none inline-flex bg-card border-brand-white/20 text-brand-white font-medium"
                 >
                   <DollarSign className="h-4 w-4 mr-1.5 -mt-[1px] opacity-70" />
-                  {isPastEndTime ? 'Peak Open Interest' : 'Open Interest'}
+                  Open Interest
                   <span
                     aria-hidden="true"
                     className="hidden md:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"
@@ -877,6 +839,7 @@ export default function QuestionPageContent({
             {/* End Time Badge */}
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="large"
               appearance="brandWhite"
             />

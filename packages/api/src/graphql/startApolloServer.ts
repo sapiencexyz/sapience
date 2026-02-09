@@ -8,6 +8,7 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
+import { validateQuery } from './queryValidation.js';
 import {
   getComplexity,
   simpleEstimator,
@@ -116,7 +117,7 @@ export const initializeApolloServer = async () => {
         async requestDidStart() {
           return {
             async didResolveOperation({ request, document }) {
-              // Skip complexity checking for pure introspection queries
+              // Skip validation for pure introspection queries
               // (queries that ONLY contain __schema or __type fields)
               // Introspection is already gated by the introspection: true setting
               // and doesn't touch the database
@@ -134,28 +135,12 @@ export const initializeApolloServer = async () => {
                 return;
               }
 
-              // Block query aliasing abuse: reject queries with too many root fields.
-              // Max legitimate usage is 2 (useAnalytics queries protocolStats + dailyVolumes).
-              // Limit set to 5 for generous buffer.
-              const MAX_ROOT_FIELDS = 5;
-              const rootFieldCount = document.definitions
-                .filter(
-                  (def): def is import('graphql').OperationDefinitionNode =>
-                    def.kind === 'OperationDefinition'
-                )
-                .reduce(
-                  (sum, def) => sum + def.selectionSet.selections.length,
-                  0
-                );
-
-              if (rootFieldCount > MAX_ROOT_FIELDS) {
-                throw new GraphQLError(
-                  `Too many root fields. Maximum: ${MAX_ROOT_FIELDS}, Actual: ${rootFieldCount}`,
-                  {
-                    extensions: { code: 'QUERY_TOO_MANY_ROOT_FIELDS' },
-                  }
-                );
-              }
+              // Validate pagination arguments and field alias limits
+              validateQuery(document, {
+                maxListSize: config.GRAPHQL_MAX_LIST_SIZE,
+                maxFieldAliases: config.GRAPHQL_MAX_FIELD_ALIASES,
+                variables: request.variables ?? {},
+              });
 
               const complexity = getComplexity({
                 schema,
@@ -180,10 +165,10 @@ export const initializeApolloServer = async () => {
                     return undefined;
                   }),
                   // Multiply complexity by list size (take/first/limit args) to capture N+1 cost
-                  // maxListSize capped at 100 to prevent abuse via large pagination values
+                  // maxListSize synced with GRAPHQL_MAX_LIST_SIZE config
                   listMultiplierEstimator({
                     defaultListSize: 10,
-                    maxListSize: 100,
+                    maxListSize: config.GRAPHQL_MAX_LIST_SIZE,
                   }),
                   simpleEstimator({ defaultComplexity: 1 }),
                 ],

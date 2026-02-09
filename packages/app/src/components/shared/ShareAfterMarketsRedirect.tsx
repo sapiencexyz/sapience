@@ -24,7 +24,7 @@ type ShareIntentStored = {
   };
   positionForm?: {
     legs: Array<{ question: string; choice: 'Yes' | 'No' }>;
-    wager: string;
+    positionSize: string;
     payout?: string;
     symbol: string;
     lastNftId?: string; // Last NFT ID before this position was submitted
@@ -113,16 +113,16 @@ export default function ShareAfterMarketsRedirect() {
           qp.set('addr', position.predictor.toLowerCase());
         }
 
-        // Add wager (predictorCollateral)
+        // Add position size (predictorCollateral)
         const collateralDecimals = 18;
         if (position.predictorCollateral) {
-          const wager = parseFloat(
+          const positionSize = parseFloat(
             formatUnits(
               BigInt(position.predictorCollateral),
               collateralDecimals
             )
           ).toFixed(2);
-          qp.set('wager', wager);
+          qp.set('wager', positionSize);
         }
 
         // Add payout (totalCollateral)
@@ -347,9 +347,9 @@ export default function ShareAfterMarketsRedirect() {
             });
           }
 
-          // Add wager
-          if (intent.positionForm.wager) {
-            qp.set('wager', intent.positionForm.wager);
+          // Add position size
+          if (intent.positionForm.positionSize) {
+            qp.set('wager', intent.positionForm.positionSize);
           }
 
           // Add payout
@@ -420,7 +420,7 @@ export default function ShareAfterMarketsRedirect() {
       lastNftId: storedLastNftId,
       positionForm: {
         legs: storedExpectedLegs,
-        wager: '',
+        positionSize: '',
         symbol: 'testUSDe',
       },
     };

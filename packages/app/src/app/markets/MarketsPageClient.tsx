@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import { Suspense } from 'react';
 
 const MarketsPageSkeleton = () => <div className="space-y-4" />;
 
@@ -10,5 +11,9 @@ const MarketsPage = dynamic(() => import('~/components/markets/MarketsPage'), {
 });
 
 export default function MarketsPageClient() {
-  return <MarketsPage />;
+  return (
+    <Suspense fallback={<MarketsPageSkeleton />}>
+      <MarketsPage />
+    </Suspense>
+  );
 }

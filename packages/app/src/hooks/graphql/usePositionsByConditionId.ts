@@ -93,8 +93,8 @@ export function usePositionsByConditionId(params: {
 
       // Fetch shortName, description, category, resolver values for these condition IDs and join client-side
       const CONDITIONS_BY_IDS = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1000) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             shortName
             description
@@ -115,7 +115,7 @@ export function usePositionsByConditionId(params: {
       };
       const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
         CONDITIONS_BY_IDS,
-        { ids: conditionIds }
+        { where: { id: { in: conditionIds } } }
       );
       const conditionDataMap = new Map(
         (condResp?.conditions || []).map((c) => [c.id, c])

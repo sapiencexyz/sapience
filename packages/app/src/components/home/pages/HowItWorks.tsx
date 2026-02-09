@@ -7,7 +7,7 @@ import PulsingGradient from '../../shared/PulsingGradient';
 export default function HowItWorks() {
   const steps: string[] = [
     'Users and AI agents forecast the probability of future events.',
-    'Prediction market traders request positions they’d like to wager on.',
+    'Prediction market traders request positions they\u2019d like to take.',
     'Agents compete to provide the highest odds, offering traders the best price.',
   ];
   const images: string[] = ['/hiw_a.png', '/hiw_b.png', '/hiw_c.png'];

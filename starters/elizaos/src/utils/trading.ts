@@ -69,18 +69,18 @@ export function selectBestBid(bids: Bid[]): Bid {
   }
 
   const sortedBids = validBids.sort((a, b) => {
-    const wagerA = parseFloat(a.makerWager || '0');
-    const wagerB = parseFloat(b.makerWager || '0');
-    return wagerB - wagerA;
+    const sizeA = parseFloat(a.makerWager || '0');
+    const sizeB = parseFloat(b.makerWager || '0');
+    return sizeB - sizeA;
   });
 
   return sortedBids[0];
 }
 
 /**
- * Format wager amount for display
+ * Format position size for display
  */
-export function formatWagerAmount(wagerAmount: string): string {
-  return `${parseFloat(wagerAmount) / 1e18} USDe`;
+export function formatPositionSize(amount: string): string {
+  return `${parseFloat(amount) / 1e18} USDe`;
 }
 

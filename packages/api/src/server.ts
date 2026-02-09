@@ -12,7 +12,6 @@ import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
 import express, { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
-import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
 import { config } from './config';
 import {
@@ -61,8 +60,6 @@ const startServer = async () => {
       }),
     })
   );
-
-  handleMcpAppRequests(app, '/mcp');
 
   // Proxy /auction HTTP requests to auction service
   const auctionProxyEnabled = process.env.ENABLE_AUCTION_PROXY !== 'false';
@@ -145,7 +142,9 @@ const startServer = async () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('An error occurred:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 };
 

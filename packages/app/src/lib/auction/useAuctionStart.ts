@@ -18,7 +18,7 @@ import {
 } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
-  wager: string; // wei string - taker's wager amount
+  wager: string; // wei string - taker's position size
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   taker: `0x${string}`; // taker EOA address
