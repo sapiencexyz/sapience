@@ -31,6 +31,8 @@ import PicksSummary from '~/components/shared/PicksSummary';
 import CountdownCell from '~/components/shared/CountdownCell';
 import type { UILeg } from '~/components/positions/PositionsTable';
 
+const POSITIONS_PAGE_SIZE = 20;
+
 const FeedPageContent: React.FC = () => {
   const chainId = CHAIN_ID_ETHEREAL;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
@@ -38,6 +40,7 @@ const FeedPageContent: React.FC = () => {
   type TabValue = (typeof TAB_VALUES)[number];
 
   const [tabValue, setTabValue] = useState<TabValue>('positions');
+  const [positionsPage, setPositionsPage] = useState(0);
 
   const { messages } = useAuctionRelayerFeed({
     observeVaultQuotes: tabValue === 'vault-quotes',
@@ -45,9 +48,15 @@ const FeedPageContent: React.FC = () => {
 
   const { data: recentPositions, isLoading: positionsLoading } =
     useRecentPositions({
-      take: 20,
+      take: POSITIONS_PAGE_SIZE + 1,
+      skip: positionsPage * POSITIONS_PAGE_SIZE,
       chainId,
     });
+
+  const hasNextPage = recentPositions.length > POSITIONS_PAGE_SIZE;
+  const displayPositions = hasNextPage
+    ? recentPositions.slice(0, POSITIONS_PAGE_SIZE)
+    : recentPositions;
 
   // Display real server broadcasts only; sort by time desc
   const displayMessages = useMemo(() => {
@@ -317,180 +326,259 @@ const FeedPageContent: React.FC = () => {
           </div>
 
           <TabsContent value="positions">
-            {positionsLoading && recentPositions.length === 0 ? (
+            {positionsLoading && displayPositions.length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="inline-flex items-center gap-1 text-foreground">
                   <span className="inline-block h-[6px] w-[6px] rounded-full bg-foreground opacity-80 animate-ping mr-1.5" />
                   <span>Loading positions...</span>
                 </span>
               </div>
-            ) : recentPositions.length === 0 ? (
+            ) : displayPositions.length === 0 && positionsPage === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="text-muted-foreground">
                   No positions found
                 </span>
               </div>
             ) : (
-              <div className="border border-border rounded-lg overflow-hidden bg-brand-black">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
-                    <thead className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
-                      <tr>
-                        <th className="px-4 py-3 text-left align-middle font-medium">
-                          Created
-                        </th>
-                        <th className="px-4 py-3 text-left align-middle font-medium">
-                          Predictions
-                        </th>
-                        <th className="px-4 py-3 text-left align-middle font-medium">
-                          Predictor
-                        </th>
-                        <th className="px-4 py-3 text-left align-middle font-medium">
-                          Position Size
-                        </th>
-                        <th className="px-4 py-3 text-left align-middle font-medium">
-                          Ends
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentPositions.map((pos) => {
-                        const createdAt = pos.mintedAt * 1000;
-                        const timeAgo = formatDistanceToNow(
-                          new Date(createdAt),
-                          { addSuffix: true }
-                        );
-                        const legs: UILeg[] = (pos.predictions || []).map(
-                          (pred) => ({
-                            question:
-                              pred.condition?.question ||
-                              pred.conditionId,
-                            choice: pred.outcomeYes ? 'YES' : 'NO',
-                            conditionId: pred.conditionId,
-                            settled: pred.condition?.settled,
-                            resolvedToYes:
-                              pred.condition?.resolvedToYes,
-                            source: 'uma' as const,
-                          })
-                        );
-                        const positionSizeEth = Number(
-                          formatEther(
-                            BigInt(pos.predictorCollateral || '0')
-                          )
-                        );
-                        const endsAtSec =
-                          pos.endsAt ||
-                          Math.max(
-                            0,
-                            ...(pos.predictions || []).map(
-                              (o) => o.condition?.endTime || 0
+              <>
+                <div className="border border-border rounded-lg overflow-hidden bg-brand-black">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
+                      <thead className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
+                        <tr>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Created
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Predictions
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Predictor
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Opponent
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Result
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayPositions.map((pos) => {
+                          const createdAt = pos.mintedAt * 1000;
+                          const timeAgo = formatDistanceToNow(
+                            new Date(createdAt),
+                            { addSuffix: true }
+                          );
+                          const legs: UILeg[] = (pos.predictions || []).map(
+                            (pred) => ({
+                              question:
+                                pred.condition?.question ||
+                                pred.conditionId,
+                              choice: pred.outcomeYes ? 'YES' : 'NO',
+                              conditionId: pred.conditionId,
+                              resolverAddress:
+                                pred.condition?.resolver ?? null,
+                              categorySlug:
+                                (pred.condition as any)?.category
+                                  ?.slug ?? null,
+                              endTime:
+                                pred.condition?.endTime ?? null,
+                              settled: pred.condition?.settled,
+                              resolvedToYes:
+                                pred.condition?.resolvedToYes,
+                              source: 'uma' as const,
+                            })
+                          );
+                          const predictorSizeEth = Number(
+                            formatEther(
+                              BigInt(pos.predictorCollateral || '0')
                             )
                           );
-                        const endsAtMs = endsAtSec * 1000;
-                        const isActive = pos.status === 'active';
-                        const positionWon = pos.predictorWon === true;
-                        const positionLost = pos.predictorWon === false;
+                          const opponentSizeEth = Number(
+                            formatEther(
+                              BigInt(pos.counterpartyCollateral || '0')
+                            )
+                          );
+                          const totalEth = Number(
+                            formatEther(BigInt(pos.totalCollateral || '0'))
+                          );
+                          const endsAtSec =
+                            pos.endsAt ||
+                            Math.max(
+                              0,
+                              ...(pos.predictions || []).map(
+                                (o) => o.condition?.endTime || 0
+                              )
+                            );
+                          const endsAtMs = endsAtSec * 1000;
+                          const isActive = pos.status === 'active';
+                          const predictorWon = pos.predictorWon === true;
+                          const opponentWon = pos.predictorWon === false;
 
-                        return (
-                          <tr
-                            key={pos.id}
-                            className="border-b last:border-b-0"
-                          >
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div className="text-sm">
-                                <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                  Created
-                                </div>
-                                <span className="text-brand-white whitespace-nowrap">
-                                  {timeAgo}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-sm">
-                                <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                  Predictions
-                                </div>
-                                {legs.length > 0 ? (
-                                  <PicksSummary
-                                    legs={legs}
-                                    positionId={pos.predictorNftTokenId}
-                                    marketAddress={pos.marketAddress}
-                                  />
-                                ) : (
-                                  <span className="text-muted-foreground">
-                                    —
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div>
-                                <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                  Predictor
-                                </div>
-                                <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
-                                  <EnsAvatar
-                                    address={pos.predictor}
-                                    className="shrink-0 rounded-sm ring-1 ring-border/50"
-                                    width={16}
-                                    height={16}
-                                  />
-                                  <AddressDisplay
-                                    address={pos.predictor}
-                                  />
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div>
-                                <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                  Position Size
-                                </div>
-                                <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-                                  <NumberDisplay
-                                    value={positionSizeEth}
-                                    className="tabular-nums text-brand-white font-mono"
-                                  />{' '}
-                                  <span className="tabular-nums text-brand-white font-mono">
-                                    {collateralAssetTicker}
+                          return (
+                            <tr
+                              key={pos.id}
+                              className="border-b last:border-b-0"
+                            >
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="text-sm">
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Created
+                                  </div>
+                                  <span className="text-brand-white whitespace-nowrap">
+                                    {timeAgo}
                                   </span>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap">
-                              <div>
-                                <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                  Ends
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-sm">
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Predictions
+                                  </div>
+                                  {legs.length > 0 ? (
+                                    <PicksSummary
+                                      legs={legs}
+                                      positionId={pos.predictorNftTokenId}
+                                      marketAddress={pos.marketAddress}
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
                                 </div>
-                                {isActive && endsAtMs > Date.now() ? (
-                                  <CountdownCell endTime={endsAtSec} />
-                                ) : isActive ? (
-                                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                                    Pending
-                                  </span>
-                                ) : positionWon ? (
-                                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
-                                    Won
-                                  </span>
-                                ) : positionLost ? (
-                                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-red-600 cursor-default">
-                                    Lost
-                                  </span>
-                                ) : (
-                                  <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-                                    Settled
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Predictor
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}>
+                                      <EnsAvatar
+                                        address={pos.predictor}
+                                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                                        width={16}
+                                        height={16}
+                                      />
+                                      <AddressDisplay
+                                        address={pos.predictor}
+                                      />
+                                    </span>
+                                    <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+                                      <NumberDisplay
+                                        value={predictorSizeEth}
+                                        className="tabular-nums text-muted-foreground font-mono"
+                                      />{' '}
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Opponent
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className={`inline-flex items-center gap-1.5 text-sm font-mono ${opponentWon ? 'text-green-400' : 'text-brand-white'}`}>
+                                      <EnsAvatar
+                                        address={pos.counterparty}
+                                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                                        width={16}
+                                        height={16}
+                                      />
+                                      <AddressDisplay
+                                        address={pos.counterparty}
+                                      />
+                                    </span>
+                                    <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+                                      <NumberDisplay
+                                        value={opponentSizeEth}
+                                        className="tabular-nums text-muted-foreground font-mono"
+                                      />{' '}
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Total
+                                  </div>
+                                  <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+                                    <NumberDisplay
+                                      value={totalEth}
+                                      className="tabular-nums text-brand-white font-mono"
+                                    />{' '}
+                                    <span className="tabular-nums text-brand-white font-mono">
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Result
+                                  </div>
+                                  {isActive && endsAtMs > Date.now() ? (
+                                    <CountdownCell endTime={endsAtSec} />
+                                  ) : isActive ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                                      Pending
+                                    </span>
+                                  ) : predictorWon ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                                      Predictor won
+                                    </span>
+                                  ) : opponentWon ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                                      Opponent won
+                                    </span>
+                                  ) : (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                                      Settled
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+                <div className="flex items-center justify-between mt-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPositionsPage((p) => Math.max(0, p - 1))
+                    }
+                    disabled={positionsPage === 0}
+                    className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {positionsPage + 1}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPositionsPage((p) => p + 1)}
+                    disabled={!hasNextPage}
+                    className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
             )}
           </TabsContent>
 
