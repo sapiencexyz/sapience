@@ -626,7 +626,7 @@ export default function QuestionPageContent({
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
@@ -735,7 +735,7 @@ export default function QuestionPageContent({
           <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
-          {!isPastEndTime && (
+          {!data?.settled && (
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}

@@ -212,65 +212,75 @@ export default function PredictionForm({
 
   return (
     <div className={`flex flex-col gap-4 ${className ?? ''}`}>
-      {/* Current Forecast, Resolved, or Pending Display */}
-      <div className="border border-border rounded-lg bg-brand-black p-4">
-        <div className="flex flex-col items-start gap-1">
-          {settled || isPastEndTime ? (
-            <div className="flex items-center gap-2">
-              <Label className="text-foreground font-normal text-lg -mt-0.5">
-                {settled ? 'Resolved' : 'Resolution'}
-              </Label>
-              {settled ? (
-                <Badge
-                  variant="outline"
-                  className={`px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono ${
-                    resolvedToYes
-                      ? 'border-yes/40 bg-yes/10 text-yes'
-                      : 'border-no/40 bg-no/10 text-no'
-                  }`}
-                >
-                  {resolvedToYes ? 'YES' : 'NO'}
-                </Badge>
-              ) : (
+      {/* Resolved or Resolution Pending Display */}
+      {settled && (
+        <div className="border border-border rounded-lg bg-brand-black p-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-foreground font-normal text-lg -mt-0.5">
+              Resolved
+            </Label>
+            <Badge
+              variant="outline"
+              className={`px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono ${
+                resolvedToYes
+                  ? 'border-yes/40 bg-yes/10 text-yes'
+                  : 'border-no/40 bg-no/10 text-no'
+              }`}
+            >
+              {resolvedToYes ? 'YES' : 'NO'}
+            </Badge>
+          </div>
+        </div>
+      )}
+
+      {/* Current Forecast or Resolution Pending */}
+      {!settled && (
+        <div className="border border-border rounded-lg bg-brand-black p-4">
+          <div className="flex flex-col items-start gap-1">
+            {isPastEndTime ? (
+              <div className="flex items-center gap-2">
+                <Label className="text-foreground font-normal text-lg -mt-0.5">
+                  Resolution
+                </Label>
                 <Badge
                   variant="outline"
                   className="px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
                 >
                   RESOLUTION PENDING
                 </Badge>
-              )}
-            </div>
-          ) : (
-            <>
-              <Label className="text-foreground font-normal text-lg -mt-0.5">
-                Current Forecast
-              </Label>
-              <span className="font-mono text-ethena text-3xl">
-                {currentForecast !== null ? (
-                  `${currentForecast}% chance`
-                ) : isWaitingForBids ? (
-                  <span className="text-muted-foreground/60 animate-pulse">
-                    Requesting...
-                  </span>
-                ) : showRequestBidsButton ? (
-                  <button
-                    type="button"
-                    onClick={handleRequestBids}
-                    className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
-                  >
-                    Request
-                  </button>
-                ) : (
-                  '\u00A0'
-                )}
-              </span>
-            </>
-          )}
+              </div>
+            ) : (
+              <>
+                <Label className="text-foreground font-normal text-lg -mt-0.5">
+                  Current Forecast
+                </Label>
+                <span className="font-mono text-ethena text-3xl">
+                  {currentForecast !== null ? (
+                    `${currentForecast}% chance`
+                  ) : isWaitingForBids ? (
+                    <span className="text-muted-foreground/60 animate-pulse">
+                      Requesting...
+                    </span>
+                  ) : showRequestBidsButton ? (
+                    <button
+                      type="button"
+                      onClick={handleRequestBids}
+                      className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
+                    >
+                      Request
+                    </button>
+                  ) : (
+                    '\u00A0'
+                  )}
+                </span>
+              </>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Make a Prediction - Only show if not past end time */}
-      {!isPastEndTime && (
+      {/* Make a Prediction - Show if not settled */}
+      {!settled && (
         <div className="border border-border rounded-lg bg-brand-black p-4 pb-5">
           <div className="flex flex-col items-start gap-1">
             <Label className="text-foreground font-normal text-lg -mt-0.5">

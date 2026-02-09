@@ -139,9 +139,7 @@ export const CreatePositionProvider = ({
       STORAGE_KEY_SELECTIONS,
       []
     );
-    // Filter out selections whose endTime has passed
-    const nowSec = Math.floor(Date.now() / 1000);
-    return stored.filter((s) => !s.endTime || s.endTime > nowSec);
+    return stored;
   });
   const [isPopoverOpen, setIsPopoverOpen] = useState(() => {
     // Auto-open popover if loaded from a slip URL
