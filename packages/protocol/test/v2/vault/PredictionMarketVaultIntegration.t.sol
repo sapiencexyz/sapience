@@ -79,8 +79,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vm.startPrank(owner);
         resolver = new ManualConditionResolver(owner);
         resolver.approveSettler(settler);
-        // Set interaction delay to 0 for testing
-        vault.setInteractionDelay(0);
+        // Set interaction delays to 0 for testing
+        vault.setDepositInteractionDelay(0);
+        vault.setWithdrawalInteractionDelay(0);
         vm.stopPrank();
 
         // Mint tokens
