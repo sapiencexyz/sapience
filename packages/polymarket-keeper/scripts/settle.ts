@@ -43,6 +43,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
+import { RESOLVER_ADDRESS, CHAIN_ID_ETHEREAL } from '../src/constants.js';
 
 // ============ Constants ============
 
@@ -109,6 +110,17 @@ const conditionalTokensReaderAbi = [
     stateMutability: 'payable',
     inputs: [{ name: 'conditionId', type: 'bytes32' }],
     outputs: [],
+  },
+] as const;
+
+// LZConditionalTokensResolver ABI (Ethereal) — getConditionResolution reverts for unresolved conditions
+const lzConditionalTokenResolverAbi = [
+  {
+    type: 'function',
+    name: 'getConditionResolution',
+    stateMutability: 'view',
+    inputs: [{ name: 'conditionId', type: 'bytes32' }],
+    outputs: [{ name: 'resolvedToYes', type: 'bool' }],
   },
 ] as const;
 
@@ -270,6 +282,7 @@ async function fetchUnresolvedConditions(apiUrl: string): Promise<SapienceCondit
 
 interface SettlementResult {
   conditionId: string;
+  alreadyResolved: boolean;
   canResolve: boolean;
   settled: boolean;
   txHash?: string;
@@ -278,6 +291,7 @@ interface SettlementResult {
 
 async function checkAndSettleCondition(
   publicClient: PublicClient,
+  etherealClient: PublicClient,
   walletClient: WalletClient<Transport, Chain, Account> | null,
   condition: SapienceCondition,
   options: CLIOptions
@@ -285,6 +299,21 @@ async function checkAndSettleCondition(
   const conditionId = condition.id as Hex;
 
   try {
+    // Check if condition is already resolved on Ethereal
+    console.log(`[${conditionId}] Checking if already resolved on Ethereal...`);
+    try {
+      const resolvedToYes = await etherealClient.readContract({
+        address: RESOLVER_ADDRESS,
+        abi: lzConditionalTokenResolverAbi,
+        functionName: 'getConditionResolution',
+        args: [conditionId],
+      });
+      console.log(`[${conditionId}] Already resolved on Ethereal (resolvedToYes=${resolvedToYes})`);
+      return { conditionId, alreadyResolved: true, canResolve: false, settled: false };
+    } catch {
+      // Revert means not yet resolved on Ethereal — proceed with Polygon check
+    }
+
     // Check if condition can be resolved on Polymarket
     console.log(`[${conditionId}] Checking canRequestResolution...`);
     const canResolve = await publicClient.readContract({
@@ -296,7 +325,7 @@ async function checkAndSettleCondition(
 
     if (!canResolve) {
       console.log(`[${conditionId}] Not resolved on Polymarket yet`);
-      return { conditionId, canResolve: false, settled: false };
+      return { conditionId, alreadyResolved: false, canResolve: false, settled: false };
     }
 
     // Get the LayerZero fee quote
@@ -313,11 +342,11 @@ async function checkAndSettleCondition(
 
     if (options.dryRun) {
       console.log(`[${conditionId}] DRY RUN - would call requestResolution`);
-      return { conditionId, canResolve: true, settled: false };
+      return { conditionId, alreadyResolved: false, canResolve: true, settled: false };
     }
 
     if (!walletClient) {
-      return { conditionId, canResolve: true, settled: false, error: 'No wallet client (missing ADMIN_PRIVATE_KEY)' };
+      return { conditionId, alreadyResolved: false, canResolve: true, settled: false, error: 'No wallet client (missing ADMIN_PRIVATE_KEY)' };
     }
 
     // Execute the settlement
@@ -351,11 +380,11 @@ async function checkAndSettleCondition(
       console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
     }
 
-    return { conditionId, canResolve: true, settled: true, txHash: hash };
+    return { conditionId, alreadyResolved: false, canResolve: true, settled: true, txHash: hash };
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return { conditionId, canResolve: false, settled: false, error: errorMessage };
+    return { conditionId, alreadyResolved: false, canResolve: false, settled: false, error: errorMessage };
   }
 }
 
@@ -396,6 +425,11 @@ async function main() {
     transport: http(polygonRpcUrl),
   });
 
+  const etherealClient = createPublicClient({
+    transport: http('https://rpc.ethereal.trade'),
+  });
+  console.log(`Ethereal client connected (chain ${CHAIN_ID_ETHEREAL}, resolver ${RESOLVER_ADDRESS})`);
+
   let walletClient: WalletClient<Transport, typeof polygon, Account> | null = null;
 
   if (privateKey) {
@@ -425,6 +459,7 @@ async function main() {
 
     const results = {
       total: conditions.length,
+      alreadyResolved: 0,
       canResolve: 0,
       settled: 0,
       skipped: 0,
@@ -434,12 +469,15 @@ async function main() {
     for (const condition of conditions) {
       const result = await checkAndSettleCondition(
         publicClient,
+        etherealClient,
         walletClient,
         condition,
         options
       );
 
-      if (result.error) {
+      if (result.alreadyResolved) {
+        results.alreadyResolved++;
+      } else if (result.error) {
         console.error(`Error for ${condition.id}: ${result.error}`);
         results.errors++;
       } else if (!result.canResolve) {
@@ -453,7 +491,7 @@ async function main() {
     }
 
     // Summary
-    console.log(`Summary: ${results.total} processed, ${results.canResolve} resolvable, ${results.settled} settled, ${results.skipped} skipped, ${results.errors} errors`);
+    console.log(`Summary: ${results.total} processed, ${results.alreadyResolved} already resolved on Ethereal, ${results.canResolve} resolvable, ${results.settled} settled, ${results.skipped} skipped, ${results.errors} errors`);
 
   } catch (error) {
     console.error('Error:', error);
