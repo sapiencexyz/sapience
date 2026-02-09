@@ -11,11 +11,10 @@ import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw } from 'lucide-react';
-import type { ConditionType } from '~/hooks/graphql/useConditions';
 import {
-  useInfiniteQuestions,
-  type QuestionType,
-} from '~/hooks/graphql/useInfiniteQuestions';
+  useConditions,
+  type ConditionType,
+} from '~/hooks/graphql/useConditions';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -41,25 +40,6 @@ type ComboWithQuote = {
   status: 'pending' | 'requesting' | 'received' | 'error';
 };
 
-/** Flatten QuestionType[] → ConditionType[] (groups → individual conditions) */
-function extractConditionsFromQuestions(
-  questions: QuestionType[]
-): ConditionType[] {
-  const conditions: ConditionType[] = [];
-  for (const q of questions) {
-    if (q.questionType === 'group' && q.group) {
-      for (const gc of q.group.conditions) {
-        // ConditionGroupConditionType has the same runtime fields as ConditionType;
-        // only differs by optional displayOrder/conditionGroup
-        conditions.push(gc as unknown as ConditionType);
-      }
-    } else if (q.questionType === 'condition' && q.condition) {
-      conditions.push(q.condition);
-    }
-  }
-  return conditions;
-}
-
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
 const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
@@ -70,19 +50,10 @@ const DISPLAY_TIMEOUT_MS = 4000;
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
 
-  // Share the same React Query cache as MarketsPage's initial fetch
-  const { data: questions, isLoading } = useInfiniteQuestions({
+  const { data: allConditions = [], isLoading } = useConditions({
+    take: 100,
     chainId,
-    sortField: 'openInterest',
-    sortDirection: 'desc',
-    resolutionStatus: 'unresolved',
-    pageSize: 20,
   });
-
-  const allConditions = React.useMemo(
-    () => extractConditionsFromQuestions(questions),
-    [questions]
-  );
   const { addSelection, clearSelections } = useCreatePositionContext();
   const { apiBaseUrl } = useSettings();
   const { address: walletAddress } = useAccount();
@@ -154,8 +125,6 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         if (!c.public) return false;
         const end = typeof c.endTime === 'number' ? c.endTime : 0;
         if (end <= nowSec) return false;
-        // Only include conditions that have similarMarkets
-        if (!c.similarMarkets || c.similarMarkets.length === 0) return false;
         return true;
       });
       if (publicConditions.length === 0) return [];
@@ -296,12 +265,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     takerNonce,
   ]);
 
-  // Trigger quote requests when conditions load
+  // Trigger quote requests when conditions first load.
+  // Deliberately omit requestAllQuotes from deps: we only want this to fire
+  // once when data arrives, not re-fire when takerNonce/wsUrl change (which
+  // would reset comboQuotes and the timeout timer, causing permanent skeletons).
   React.useEffect(() => {
     if (!isLoading && allConditions.length > 0) {
       requestAllQuotes();
     }
-  }, [isLoading, allConditions.length, requestAllQuotes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, allConditions.length]);
 
   // Update probabilities from hub bids
   React.useEffect(() => {
