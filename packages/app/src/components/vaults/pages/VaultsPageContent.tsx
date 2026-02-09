@@ -760,14 +760,14 @@ const VaultsPageContent = () => {
     const effectiveApy =
       vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
 
-    // Daily yield estimate based on effective APY
+    // Weekly yield estimate based on effective APY
     const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
-    const dailyYield = annualYieldToVault / 365;
+    const weeklyYield = (annualYieldToVault / 365) * 7;
 
     return {
       protocolTvl: formatDecimalWithCommasFixed2(protocolTvlNum.toString()),
       annualYield: formatDecimalWithCommasFixed2(annualYieldToVault.toString()),
-      dailyYield: formatDecimalWithCommasFixed2(dailyYield.toString()),
+      weeklyYield: formatDecimalWithCommasFixed2(weeklyYield.toString()),
       effectiveApy: effectiveApy.toFixed(2),
     };
   }, [tvlWei, formatAssetAmount, protocolStats]);
@@ -1004,10 +1004,10 @@ const VaultsPageContent = () => {
                               </div>
                               <div className="sm:pl-4">
                                 <div className="text-3xl font-medium font-mono">
-                                  {yieldMetrics.dailyYield} {collateralSymbol}
+                                  {yieldMetrics.weeklyYield} {collateralSymbol}
                                 </div>
                                 <div className="text-sm text-muted-foreground">
-                                  Approximate Daily Distribution
+                                  Approximate Weekly Distribution
                                 </div>
                               </div>
                             </div>

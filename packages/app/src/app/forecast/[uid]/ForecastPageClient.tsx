@@ -1,15 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { format, formatDistanceStrict } from 'date-fns';
+import { format, formatDistanceToNow, formatDistanceStrict } from 'date-fns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import type { AttestationData } from '~/app/og/_forecast-helpers';
 import { d18ToPercentage } from '~/app/og/_forecast-helpers';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ConditionStatus from '~/components/shared/ConditionStatus';
-import ShareDialog from '~/components/shared/ShareDialog';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Share2 } from 'lucide-react';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 
 export default function ForecastPageClient({
   uid,
@@ -29,7 +33,6 @@ export default function ForecastPageClient({
   const question =
     serverAttestation.condition?.question ?? 'Question not available';
   const attester = serverAttestation.attester;
-  const shortAttester = `${attester.slice(0, 6)}...${attester.slice(-4)}`;
   const createdAt = new Date(serverAttestation.time * 1000);
   const comment = serverAttestation.comment?.trim() || null;
 
@@ -58,133 +61,163 @@ export default function ForecastPageClient({
     ? formatDistanceStrict(createdAt, resolutionDate)
     : null;
 
-  // Share dialog params
-  const oddsStr = percentage !== null ? `${Math.round(percentage)}%` : '';
-  const createdTsSec = Math.floor(createdAt.getTime() / 1000);
-  const endTsSec = resolutionDate
-    ? Math.floor(resolutionDate.getTime() / 1000)
-    : null;
+  // Status
+  const isSettled = serverAttestation.condition?.settled ?? false;
+  const resolvedToYes = serverAttestation.condition?.resolvedToYes;
 
   return (
-    <div className="space-y-6">
-      {/* Question */}
-      <div>
-        <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-          Question
+    <div className="space-y-4 pt-2">
+      {/* Header row */}
+      <div className="flex items-center gap-2">
+        <h2 className="eyebrow text-foreground">
+          Forecast {uid.slice(0, 6)}...{uid.slice(-4)}
+        </h2>
+        {isSettled ? (
+          resolvedToYes ? (
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
+              RESOLVED YES
+            </span>
+          ) : (
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-no/40 bg-no/10 text-no">
+              RESOLVED NO
+            </span>
+          )
+        ) : (
+          <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
+            ACTIVE
+          </span>
+        )}
+        <div className="flex items-center gap-2 ml-auto">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="whitespace-nowrap text-muted-foreground text-xs cursor-default">
+                  created {formatDistanceToNow(createdAt, { addSuffix: false })}{' '}
+                  ago
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span>
+                  {createdAt.toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short',
+                  })}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-        <h1 className="text-xl font-semibold text-foreground leading-snug">
-          {question}
-        </h1>
       </div>
 
-      {/* Prediction */}
-      {percentage !== null && (
-        <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            Forecast
-          </div>
-          <span
-            className={`font-mono text-2xl font-bold ${predictionColorClass}`}
-          >
-            {formatPercentChance(percentage / 100)} chance
-          </span>
+      {/* Question */}
+      <div className="space-y-1">
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+          Question
         </div>
-      )}
+        {serverAttestation.condition ? (
+          <ConditionTitleLink
+            conditionId={serverAttestation.condition.id}
+            resolverAddress={serverAttestation.condition.resolver ?? undefined}
+            title={question}
+            className="text-base md:text-lg font-medium"
+          />
+        ) : (
+          <h1 className="text-base md:text-lg font-medium text-foreground leading-snug">
+            {question}
+          </h1>
+        )}
+      </div>
 
-      {/* Comment */}
-      {comment && (
-        <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            Comment
-          </div>
-          <p className="text-foreground/90 leading-relaxed">{comment}</p>
-        </div>
-      )}
-
-      {/* Metadata grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-2 border-t border-border">
+      {/* Stats grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         {/* Forecaster */}
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono mb-1">
             Forecaster
           </div>
           <Link
             href={`/profile/${attester}`}
-            className="inline-flex items-center gap-1.5 text-sm text-foreground hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium font-mono text-foreground hover:text-accent-gold transition-colors"
           >
-            <EnsAvatar address={attester} width={16} height={16} />
-            {shortAttester}
+            <EnsAvatar
+              address={attester}
+              className="shrink-0 rounded-sm ring-1 ring-border/50"
+              width={16}
+              height={16}
+            />
+            {`${attester.slice(0, 6)}...${attester.slice(-4)}`}
           </Link>
         </div>
 
-        {/* Submitted */}
+        {/* Prediction */}
         <div>
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            Submitted
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono mb-1">
+            Prediction
           </div>
-          <span className="text-sm text-foreground">
-            {format(createdAt, 'MMM d, yyyy')}
+          {percentage !== null ? (
+            <span
+              className={`text-sm md:text-base font-medium tabular-nums font-mono ${predictionColorClass}`}
+            >
+              {formatPercentChance(percentage / 100)} chance
+            </span>
+          ) : (
+            <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+              —
+            </span>
+          )}
+        </div>
+
+        {/* Ends / Status */}
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono mb-1">
+            Ends
+          </div>
+          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+            <ConditionStatus
+              settled={isSettled}
+              resolvedToYes={resolvedToYes}
+              endTime={endTime}
+            />
           </span>
         </div>
 
-        {/* Resolution / Horizon */}
-        {resolutionStr && (
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-              Resolution
-            </div>
-            <span className="text-sm text-foreground">{resolutionStr}</span>
+        {/* Resolution Date */}
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono mb-1">
+            Resolution
           </div>
-        )}
+          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+            {resolutionStr ?? '—'}
+          </span>
+        </div>
 
-        {horizonStr && (
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-              Horizon
-            </div>
-            <span className="text-sm text-foreground">{horizonStr}</span>
+        {/* Horizon */}
+        <div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono mb-1">
+            Horizon
           </div>
-        )}
+          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+            {horizonStr ?? '—'}
+          </span>
+        </div>
       </div>
 
-      {/* Status */}
-      {serverAttestation.condition && (
-        <div className="pt-2 border-t border-border">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
-            Status
+      {/* Comment */}
+      {comment && (
+        <div className="space-y-1">
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+            Comment
           </div>
-          <ConditionStatus
-            settled={serverAttestation.condition.settled}
-            resolvedToYes={serverAttestation.condition.resolvedToYes}
-            endTime={endTime}
-          />
+          <p className="text-base md:text-lg text-foreground/90 leading-relaxed">
+            {comment}
+          </p>
         </div>
       )}
-
-      {/* Share button */}
-      <div className="pt-2 border-t border-border">
-        <ShareDialog
-          title="Share"
-          question={question}
-          owner={attester}
-          imagePath="/og/forecast"
-          forecastUid={uid}
-          extraParams={{
-            uid,
-            res: resolutionStr || '',
-            hor: horizonStr || '',
-            odds: oddsStr,
-            created: String(createdTsSec),
-            ...(endTsSec ? { end: String(endTsSec) } : {}),
-          }}
-          trigger={
-            <Button variant="outline" size="sm">
-              <Share2 className="mr-1.5 h-4 w-4" />
-              Share
-            </Button>
-          }
-        />
-      </div>
     </div>
   );
 }
