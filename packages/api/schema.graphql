@@ -1934,6 +1934,11 @@ type Query {
   profitRankByAddress(owner: String!): ProfitRankType!
   protocolStats: [ProtocolStat!]!
   questionsSorted(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: String, search: String, skip: Int!, sortDirection: String!, sortField: String, take: Int!): [Question!]!
+
+  """
+  Returns the most recently created positions globally, ordered by mintedAt descending.
+  """
+  recentPositions(chainId: Int, skip: Int! = 0, status: String, take: Int! = 20): [PositionType!]!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User

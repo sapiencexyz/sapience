@@ -40,7 +40,7 @@ const FeedPageContent: React.FC = () => {
   type TabValue = (typeof TAB_VALUES)[number];
 
   const [tabValue, setTabValue] = useState<TabValue>('positions');
-  const [positionsPage, setPositionsPage] = useState(0);
+  const [positionsTake, setPositionsTake] = useState(POSITIONS_PAGE_SIZE);
 
   const { messages } = useAuctionRelayerFeed({
     observeVaultQuotes: tabValue === 'vault-quotes',
@@ -48,14 +48,13 @@ const FeedPageContent: React.FC = () => {
 
   const { data: recentPositions, isLoading: positionsLoading } =
     useRecentPositions({
-      take: POSITIONS_PAGE_SIZE + 1,
-      skip: positionsPage * POSITIONS_PAGE_SIZE,
+      take: positionsTake + 1,
       chainId,
     });
 
-  const hasNextPage = recentPositions.length > POSITIONS_PAGE_SIZE;
-  const displayPositions = hasNextPage
-    ? recentPositions.slice(0, POSITIONS_PAGE_SIZE)
+  const hasMore = recentPositions.length > positionsTake;
+  const displayPositions = hasMore
+    ? recentPositions.slice(0, positionsTake)
     : recentPositions;
 
   // Display real server broadcasts only; sort by time desc
@@ -333,7 +332,7 @@ const FeedPageContent: React.FC = () => {
                   <span>Loading positions...</span>
                 </span>
               </div>
-            ) : displayPositions.length === 0 && positionsPage === 0 ? (
+            ) : displayPositions.length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="text-muted-foreground">
                   No positions found
@@ -376,27 +375,20 @@ const FeedPageContent: React.FC = () => {
                           const legs: UILeg[] = (pos.predictions || []).map(
                             (pred) => ({
                               question:
-                                pred.condition?.question ||
-                                pred.conditionId,
+                                pred.condition?.question || pred.conditionId,
                               choice: pred.outcomeYes ? 'YES' : 'NO',
                               conditionId: pred.conditionId,
-                              resolverAddress:
-                                pred.condition?.resolver ?? null,
+                              resolverAddress: pred.condition?.resolver ?? null,
                               categorySlug:
-                                (pred.condition as any)?.category
-                                  ?.slug ?? null,
-                              endTime:
-                                pred.condition?.endTime ?? null,
+                                (pred.condition as any)?.category?.slug ?? null,
+                              endTime: pred.condition?.endTime ?? null,
                               settled: pred.condition?.settled,
-                              resolvedToYes:
-                                pred.condition?.resolvedToYes,
+                              resolvedToYes: pred.condition?.resolvedToYes,
                               source: 'uma' as const,
                             })
                           );
                           const predictorSizeEth = Number(
-                            formatEther(
-                              BigInt(pos.predictorCollateral || '0')
-                            )
+                            formatEther(BigInt(pos.predictorCollateral || '0'))
                           );
                           const opponentSizeEth = Number(
                             formatEther(
@@ -458,16 +450,16 @@ const FeedPageContent: React.FC = () => {
                                     Predictor
                                   </div>
                                   <div className="flex flex-col gap-0.5">
-                                    <span className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}>
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
+                                    >
                                       <EnsAvatar
                                         address={pos.predictor}
                                         className="shrink-0 rounded-sm ring-1 ring-border/50"
                                         width={16}
                                         height={16}
                                       />
-                                      <AddressDisplay
-                                        address={pos.predictor}
-                                      />
+                                      <AddressDisplay address={pos.predictor} />
                                     </span>
                                     <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
                                       <NumberDisplay
@@ -485,7 +477,9 @@ const FeedPageContent: React.FC = () => {
                                     Opponent
                                   </div>
                                   <div className="flex flex-col gap-0.5">
-                                    <span className={`inline-flex items-center gap-1.5 text-sm font-mono ${opponentWon ? 'text-green-400' : 'text-brand-white'}`}>
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 text-sm font-mono ${opponentWon ? 'text-green-400' : 'text-brand-white'}`}
+                                    >
                                       <EnsAvatar
                                         address={pos.counterparty}
                                         className="shrink-0 rounded-sm ring-1 ring-border/50"
@@ -555,29 +549,19 @@ const FeedPageContent: React.FC = () => {
                     </table>
                   </div>
                 </div>
-                <div className="flex items-center justify-between mt-4 mb-12">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setPositionsPage((p) => Math.max(0, p - 1))
-                    }
-                    disabled={positionsPage === 0}
-                    className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    Previous
-                  </button>
-                  <span className="text-sm text-muted-foreground">
-                    Page {positionsPage + 1}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setPositionsPage((p) => p + 1)}
-                    disabled={!hasNextPage}
-                    className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    Next
-                  </button>
-                </div>
+                {hasMore && (
+                  <div className="flex justify-center mt-4 mb-12">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPositionsTake((t) => t + POSITIONS_PAGE_SIZE)
+                      }
+                      className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+                    >
+                      Show more
+                    </button>
+                  </div>
+                )}
               </>
             )}
           </TabsContent>
