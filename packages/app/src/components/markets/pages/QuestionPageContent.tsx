@@ -473,13 +473,6 @@ export default function QuestionPageContent({
     predictionMarket[chainId]?.address ??
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
 
-  // Check if market is past end time
-  const isPastEndTime = useMemo(() => {
-    if (!data?.endTime) return false;
-    const nowSec = Math.floor(Date.now() / 1000);
-    return data.endTime <= nowSec;
-  }, [data?.endTime]);
-
   if (isLoading) {
     return (
       <div
@@ -547,10 +540,10 @@ export default function QuestionPageContent({
   const renderScatterPlotCard = () => (
     <div
       className={`relative w-full min-w-0 bg-brand-black border border-border rounded-lg pt-6 pr-8 pb-2 pl-2 min-h-[320px] h-[320px] sm:h-[360px] ${
-        isPastEndTime ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
+        data?.settled ? 'lg:h-[205px] lg:min-h-0' : 'lg:min-h-[350px] lg:h-full'
       }`}
       // Explicit height on small screens so Recharts can compute dimensions
-      // When past end time, use fixed height on desktop to match shorter sidebar
+      // When settled, use fixed height on desktop to match shorter sidebar
     >
       <PredictionScatterChart
         scatterData={scatterData}
