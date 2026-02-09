@@ -23,10 +23,7 @@ export function FocusAreaBadge({ categorySlug }: FocusAreaBadgeProps) {
         boxShadow: `inset 0 0 0 1px ${getColorWithAlpha(style.color, 0.4)}`,
       }}
     >
-      <CategoryIcon
-        className="w-4 h-4"
-        style={{ color: style.color }}
-      />
+      <CategoryIcon className="w-4 h-4" style={{ color: style.color }} />
       <span className="text-brand-white">{style.name}</span>
     </Link>
   );

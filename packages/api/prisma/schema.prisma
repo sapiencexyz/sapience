@@ -203,6 +203,9 @@ model Condition {
   @@index([conditionGroupId])
   @@index([resolver], map: "IDX_condition_resolver")
   @@index([public, chainId, settled, conditionGroupId], map: "IDX_condition_market_filter")
+  // Raw SQL indexes (not representable in Prisma, managed via migration):
+  // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
+  // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
   @@map("condition")
 }
 

@@ -196,17 +196,100 @@ const getCategoryColor = (categorySlug?: string | null): string => {
   return getDeterministicCategoryColor(categorySlug);
 };
 
-// Shared hook to know if a condition has passed its end time
-function useIsPastEndTime(endTime?: number | null) {
-  const [nowMs, setNowMs] = React.useState<number>(() => Date.now());
+// End time cell that reactively switches to resolution badge when time passes
+function EndTimeCell({
+  endTime,
+  settled,
+  resolvedToYes,
+  allSettled,
+}: {
+  endTime: number;
+  settled: boolean;
+  resolvedToYes?: boolean | null;
+  /** For group rows: whether all conditions are settled */
+  allSettled?: boolean;
+}) {
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
+    setNowMs(Date.now());
+    // No need to tick if already settled
+    if (settled) return;
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [settled]);
 
-  if (!endTime) return false;
-  return endTime * 1000 <= nowMs;
+  // SSR / pre-hydration: render placeholder
+  if (nowMs === null) {
+    return (
+      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+        —
+      </span>
+    );
+  }
+
+  const isPastEnd = endTime * 1000 <= nowMs;
+
+  if (settled || isPastEnd) {
+    // Determine badge status
+    let status: ResolutionBadgeStatus;
+    if (allSettled) {
+      status = 'settled';
+    } else if (settled) {
+      status = resolvedToYes ? 'resolvedYes' : 'resolvedNo';
+    } else {
+      status = 'endsSoon';
+    }
+    return <ResolutionBadge status={status} />;
+  }
+
+  return <CountdownCell endTime={endTime} />;
+}
+
+// Resolution status badge shown in the Ends column
+type ResolutionBadgeStatus =
+  | 'endsSoon'
+  | 'settled'
+  | 'resolvedYes'
+  | 'resolvedNo';
+
+function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
+  if (status === 'settled') {
+    return (
+      <div className="flex justify-end">
+        <Badge
+          variant="outline"
+          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
+        >
+          SETTLED
+        </Badge>
+      </div>
+    );
+  }
+  if (status === 'resolvedYes' || status === 'resolvedNo') {
+    const isYes = status === 'resolvedYes';
+    return (
+      <div className="flex justify-end">
+        <Badge
+          variant="outline"
+          className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
+            isYes
+              ? 'border-yes/40 bg-yes/10 text-yes'
+              : 'border-no/40 bg-no/10 text-no'
+          }`}
+        >
+          RESOLVED {isYes ? 'YES' : 'NO'}
+        </Badge>
+      </div>
+    );
+  }
+  // End time is an estimate — show "ENDS SOON" once past the estimated end
+  // until the market is actually settled on-chain
+  return (
+    <span className="whitespace-nowrap font-mono text-accent-gold">
+      ENDS SOON
+    </span>
+  );
 }
 
 // Forecast cell that shows prediction request or resolution status
@@ -221,54 +304,25 @@ function ForecastCell({
   onPrediction?: (p: number) => void;
   skipViewportCheck?: boolean;
 }) {
-  const { endTime, settled, resolvedToYes, openInterest } = condition;
+  const { settled } = condition;
 
-  // Check if past end time synchronously (no state needed)
-  const nowSec = Math.floor(Date.now() / 1000);
-  const isPastEnd = !!endTime && endTime <= nowSec;
-
-  // If not past end time, show the regular prediction request
-  if (!isPastEnd) {
+  // If settled, show dash — resolution status is in the Ends column
+  if (settled) {
     return (
-      <MarketPredictionRequest
-        conditionId={condition.id}
-        prefetchedProbability={prefetchedProbability}
-        onPrediction={onPrediction}
-        skipViewportCheck={skipViewportCheck}
-      />
+      <span className="text-muted-foreground h-8 flex items-center justify-end">
+        —
+      </span>
     );
   }
 
-  // Past end time - show resolution status from GraphQL API
-  // Use settled and resolvedToYes fields that are already fetched from the API
-  // Don't show "Resolution Pending" if there's no open interest (no positions to resolve)
-  if (!settled) {
-    const hasOpenInterest = openInterest && openInterest !== '0';
-    if (!hasOpenInterest) {
-      return <span className="text-muted-foreground">—</span>;
-    }
-    return (
-      <Badge
-        variant="outline"
-        className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-      >
-        RESOLUTION PENDING
-      </Badge>
-    );
-  }
-
-  // Resolved - show badge with Yes or No based on resolvedToYes from GraphQL
+  // End time is an estimate, so keep showing predictions until settled on-chain
   return (
-    <Badge
-      variant="outline"
-      className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-        resolvedToYes
-          ? 'border-yes/40 bg-yes/10 text-yes'
-          : 'border-no/40 bg-no/10 text-no'
-      }`}
-    >
-      RESOLVED {resolvedToYes ? 'YES' : 'NO'}
-    </Badge>
+    <MarketPredictionRequest
+      conditionId={condition.id}
+      prefetchedProbability={prefetchedProbability}
+      onPrediction={onPrediction}
+      skipViewportCheck={skipViewportCheck}
+    />
   );
 }
 
@@ -289,8 +343,6 @@ function GroupForecastCell({
 function PredictCell({ condition }: { condition: ConditionType }) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
-
-  const isPastEnd = useIsPastEndTime(condition.endTime);
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -353,10 +405,11 @@ function PredictCell({ condition }: { condition: ConditionType }) {
     addSelection,
   ]);
 
-  if (isPastEnd) {
+  // End time is an estimate — only disable trading once settled on-chain
+  if (condition.settled) {
     return (
-      <div className="w-full max-w-[320px] ml-auto text-sm text-center text-muted-foreground opacity-50">
-        <Minus className="h-3 w-3 mx-auto" />
+      <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
+        <Minus className="h-3 w-3" />
       </div>
     );
   }
@@ -404,7 +457,7 @@ const CELL_CLASS_MAP: Record<string, string> = {
   question: 'py-2 pl-4 w-full max-w-0 min-w-[300px] sm:min-w-[200px]',
   forecast: 'py-2 text-right',
   openInterest: 'py-2 text-right',
-  endTime: 'py-2 text-right',
+  endTime: 'py-2 text-right whitespace-nowrap min-w-[170px]',
   predict: 'py-2 pr-4',
 };
 
@@ -523,7 +576,7 @@ function createColumns(
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
-              className="-mr-4 px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+              className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Open Interest
               {sorted === 'asc' ? (
@@ -548,12 +601,6 @@ function createColumns(
           maximumFractionDigits: 2,
         });
 
-        // Check if market has ended
-        const endTime = getRowEndTime(row.original);
-        const nowMs = Date.now();
-        const endMs = endTime * 1000;
-        const isPast = endMs <= nowMs;
-
         // Show em dash for zero open interest
         if (openInterestWei === 0n) {
           return (
@@ -565,11 +612,6 @@ function createColumns(
 
         return (
           <div className="text-sm whitespace-nowrap text-right">
-            {isPast && (
-              <span className="text-muted-foreground tabular-nums mr-1">
-                Peak
-              </span>
-            )}
             <span className="tabular-nums text-foreground">
               {formattedValue}
             </span>
@@ -595,7 +637,7 @@ function createColumns(
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
-              className="-mr-4 px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+              className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Ends
               {sorted === 'asc' ? (
@@ -613,9 +655,29 @@ function createColumns(
         );
       },
       cell: ({ row }) => {
-        const endTime = getRowEndTime(row.original);
+        const data = row.original;
+        const endTime = getRowEndTime(data);
         if (!endTime) return <span className="text-muted-foreground">—</span>;
-        return <CountdownCell endTime={endTime} />;
+
+        if (data.kind === 'condition') {
+          return (
+            <EndTimeCell
+              endTime={endTime}
+              settled={!!data.condition.settled}
+              resolvedToYes={data.condition.resolvedToYes}
+            />
+          );
+        }
+
+        // data.kind === 'group'
+        const allSettled = data.conditions.every((c) => c.settled);
+        return (
+          <EndTimeCell
+            endTime={endTime}
+            settled={allSettled}
+            allSettled={allSettled}
+          />
+        );
       },
       sortingFn: (rowA, rowB) => {
         const a = getRowEndTime(rowA.original);
@@ -718,11 +780,6 @@ function ChildConditionRow({
             <span className="text-muted-foreground">—</span>
           ) : (
             <>
-              {condition.endTime && condition.endTime * 1000 <= Date.now() && (
-                <span className="text-muted-foreground tabular-nums mr-1">
-                  Peak
-                </span>
-              )}
               <span className="tabular-nums text-foreground">
                 {formattedValue}
               </span>
@@ -733,7 +790,11 @@ function ChildConditionRow({
       </TableCell>
       <TableCell className="py-2 text-right">
         {condition.endTime ? (
-          <CountdownCell endTime={condition.endTime} />
+          <EndTimeCell
+            endTime={condition.endTime}
+            settled={!!condition.settled}
+            resolvedToYes={condition.resolvedToYes}
+          />
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
@@ -873,25 +934,27 @@ export default function MarketsDataTable({
   }, []);
 
   // Build the top-level row model from unified questions
-  // Backend handles sorting and interleaving - just map to our row format
+  // Backend handles sorting, filtering, and interleaving - just map to our row format
+  // For "ENDS SOON" groups (past end time), flatten to individual conditions with >0 OI
+  // so users see the relevant markets directly instead of a group full of 0 OI options
   const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    return questions
-      .map((item): TopLevelRow | null => {
-        if (item.questionType === 'group' && item.group) {
-          const group = item.group;
-          if (group.conditions.length === 0) return null;
+    return questions.flatMap((item): TopLevelRow[] => {
+      if (item.questionType === 'group' && item.group) {
+        const group = item.group;
+        if (group.conditions.length === 0) return [];
 
-          // Compute aggregates for display
-          let openInterestWei = 0n;
-          let maxEndTime = 0;
-          for (const c of group.conditions) {
-            openInterestWei += BigInt(c.openInterest || '0');
-            if (c.endTime > maxEndTime) {
-              maxEndTime = c.endTime;
-            }
+        // Compute aggregates for display
+        let openInterestWei = 0n;
+        let maxEndTime = 0;
+        for (const c of group.conditions) {
+          openInterestWei += BigInt(c.openInterest || '0');
+          if (c.endTime > maxEndTime) {
+            maxEndTime = c.endTime;
           }
+        }
 
-          return {
+        return [
+          {
             kind: 'group' as const,
             id: `group-${group.id}`,
             groupId: group.id,
@@ -900,17 +963,19 @@ export default function MarketsDataTable({
             conditions: group.conditions,
             openInterestWei,
             maxEndTime,
-          };
-        } else if (item.questionType === 'condition' && item.condition) {
-          return {
+          },
+        ];
+      } else if (item.questionType === 'condition' && item.condition) {
+        return [
+          {
             kind: 'condition' as const,
             id: `condition-${item.condition.id}`,
             condition: item.condition,
-          };
-        }
-        return null;
-      })
-      .filter((row): row is TopLevelRow => row !== null);
+          },
+        ];
+      }
+      return [];
+    });
   }, [questions]);
 
   // Apply client-side filters (open interest range, time to resolution)
@@ -920,15 +985,16 @@ export default function MarketsDataTable({
     const nowSec = Math.floor(Date.now() / 1000);
 
     const result = topLevelRows.filter((row) => {
-      // Open interest filter (in USDe, so convert from wei)
       const oiWei = getRowOpenInterest(row);
       const oiUsde = parseFloat(formatEther(oiWei));
+      const endTime = getRowEndTime(row);
+
+      // Open interest filter (in USDe, so convert from wei)
       if (oiUsde < minOI || oiUsde > maxOI) {
         return false;
       }
 
       // Time to resolution filter (in days)
-      const endTime = getRowEndTime(row);
       if (endTime) {
         const daysFromNow = (endTime - nowSec) / 86400;
         // Only apply if not at extreme bounds (Infinity/-Infinity)
@@ -1140,38 +1206,17 @@ export default function MarketsDataTable({
                   );
                 })}
                 {/* Pulsating loading row while fetching next page */}
-                {isFetchingMore && (
+                {isFetchingMore && hasMore && (
                   <TableRow className="hover:bg-transparent border-b border-brand-white/20">
-                    <TableCell colSpan={columns.length} className="py-4">
+                    <TableCell colSpan={columns.length} className="py-2">
                       <div className="flex items-center gap-3 animate-pulse">
-                        <div className="h-4 w-4 rounded-full bg-brand-white/20" />
-                        <div className="h-4 flex-1 max-w-[200px] rounded bg-brand-white/20" />
-                        <div className="h-4 w-20 rounded bg-brand-white/20 ml-auto" />
-                        <div className="h-4 w-24 rounded bg-brand-white/20" />
-                        <div className="h-8 w-16 rounded bg-brand-white/20" />
+                        <div className="h-6 w-6 rounded-full bg-brand-white/10 shrink-0" />
+                        <div className="h-5 flex-1 max-w-[260px] rounded bg-brand-white/10" />
+                        <div className="h-5 w-16 rounded bg-brand-white/10 ml-auto" />
+                        <div className="h-5 w-20 rounded bg-brand-white/10" />
+                        <div className="h-5 w-28 rounded bg-brand-white/10" />
+                        <div className="h-8 w-[130px] rounded bg-brand-white/10" />
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-                {/* Scroll hint when more data is available */}
-                {hasMore && !isFetchingMore && (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={columns.length}
-                      className="py-3 text-center text-muted-foreground text-sm"
-                    >
-                      Scroll down for more markets
-                    </TableCell>
-                  </TableRow>
-                )}
-                {/* End of results indicator */}
-                {!hasMore && !isFetchingMore && (
-                  <TableRow className="hover:bg-transparent">
-                    <TableCell
-                      colSpan={columns.length}
-                      className="py-4 text-center text-muted-foreground text-sm"
-                    >
-                      End of results
                     </TableCell>
                   </TableRow>
                 )}

@@ -101,8 +101,9 @@ const MarketsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState<FilterState>({
     openInterestRange: [0, Infinity],
-    timeToResolutionRange: [0, Infinity], // Default to future markets only
+    timeToResolutionRange: [-Infinity, Infinity],
     selectedCategories: [],
+    resolutionStatus: 'unresolved',
   });
 
   // Pick up ?category= from URL on initial load and client-side navigation
@@ -158,11 +159,13 @@ const MarketsPage = () => {
       filters.selectedCategories.length > 0
         ? filters.selectedCategories
         : undefined,
-    pageSize: 30,
+    pageSize: 20,
     sortField,
     sortDirection,
     // Backend filtering for markets after this time
     minEndTime,
+    // Backend filtering by resolution status
+    resolutionStatus: filters.resolutionStatus,
   });
 
   const handlePythPick = useCallback(
