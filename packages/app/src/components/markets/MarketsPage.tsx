@@ -22,6 +22,7 @@ import {
   type SortDirection,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
+import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
@@ -98,8 +99,8 @@ const MarketsPage = () => {
   // Filter state managed here, passed down to MarketsDataTable
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
+  const [searchTerm, setSearchTerm] = useSessionState('sapience.markets.searchTerm', '');
+  const [filters, setFilters] = useSessionState<FilterState>('sapience.markets.filters', {
     openInterestRange: [0, Infinity],
     timeToResolutionRange: [-Infinity, Infinity],
     selectedCategories: [],
@@ -121,8 +122,8 @@ const MarketsPage = () => {
   }, [searchParams, router]);
 
   // Sorting state - lifted here so backend can respect it during pagination
-  const [sortField, setSortField] = useState<SortField>('openInterest');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortField, setSortField] = useSessionState<SortField>('sapience.markets.sortField', 'openInterest');
+  const [sortDirection, setSortDirection] = useSessionState<SortDirection>('sapience.markets.sortDirection', 'desc');
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {

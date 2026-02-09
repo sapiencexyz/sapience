@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMobile, useIsBelow } from '@sapience/ui/hooks/use-mobile';
+import { useSessionState } from '~/hooks/useSessionState';
 import { motion } from 'framer-motion';
 import { parseUnits, erc20Abi } from 'viem';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -84,19 +85,21 @@ const TerminalPageContent: React.FC = () => {
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
     new Set()
   );
-  const [positionSizeRange, setPositionSizeRange] = useState<[number, number]>([
+  const [positionSizeRange, setPositionSizeRange] = useSessionState<[number, number]>('sapience.terminal.positionSizeRange', [
     0,
     Infinity,
   ]);
-  const [bidsRange, setBidsRange] = useState<[number, number]>([0, Infinity]);
-  const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>(
+  const [bidsRange, setBidsRange] = useSessionState<[number, number]>('sapience.terminal.bidsRange', [0, Infinity]);
+  const [selectedCategorySlugs, setSelectedCategorySlugs] = useSessionState<string[]>(
+    'sapience.terminal.selectedCategorySlugs',
     []
   );
-  const [selectedConditionIds, setSelectedConditionIds] = useState<string[]>(
+  const [selectedConditionIds, setSelectedConditionIds] = useSessionState<string[]>(
+    'sapience.terminal.selectedConditionIds',
     []
   );
-  const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
-  const [signedFilter, setSignedFilter] = useState<SignedFilterValue>('all');
+  const [selectedAddresses, setSelectedAddresses] = useSessionState<string[]>('sapience.terminal.selectedAddresses', []);
+  const [signedFilter, setSignedFilter] = useSessionState<SignedFilterValue>('sapience.terminal.signedFilter', 'all');
   const togglePin = useCallback((auctionId: string | null) => {
     if (!auctionId) return;
     setPinnedAuctions((prev) => {
