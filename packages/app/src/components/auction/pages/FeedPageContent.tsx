@@ -2,7 +2,7 @@
 
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { decodeAbiParameters } from 'viem';
+import { decodeAbiParameters, formatEther } from 'viem';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { SquareStack as SquareStackIcon } from 'lucide-react';
@@ -25,18 +25,37 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useRecentPositions } from '~/hooks/graphql/useRecentPositions';
+import { formatDistanceToNow } from 'date-fns';
+import PicksSummary from '~/components/shared/PicksSummary';
+import CountdownCell from '~/components/shared/CountdownCell';
+import type { UILeg } from '~/components/positions/PositionsTable';
 
-const AuctionPageContent: React.FC = () => {
+const POSITIONS_PAGE_SIZE = 20;
+
+const FeedPageContent: React.FC = () => {
   const chainId = CHAIN_ID_ETHEREAL;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
-  const TAB_VALUES = ['auctions', 'vault-quotes'] as const;
+  const TAB_VALUES = ['positions', 'auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];
 
-  const [tabValue, setTabValue] = useState<TabValue>('auctions');
+  const [tabValue, setTabValue] = useState<TabValue>('positions');
+  const [positionsTake, setPositionsTake] = useState(POSITIONS_PAGE_SIZE);
 
   const { messages } = useAuctionRelayerFeed({
     observeVaultQuotes: tabValue === 'vault-quotes',
   });
+
+  const { data: recentPositions, isLoading: positionsLoading } =
+    useRecentPositions({
+      take: positionsTake + 1,
+      chainId,
+    });
+
+  const hasMore = recentPositions.length > positionsTake;
+  const displayPositions = hasMore
+    ? recentPositions.slice(0, positionsTake)
+    : recentPositions;
 
   // Display real server broadcasts only; sort by time desc
   const displayMessages = useMemo(() => {
@@ -55,13 +74,14 @@ const AuctionPageContent: React.FC = () => {
         { vaultAddress: string; time: number; quote?: string }
       >();
       for (const m of relevant) {
-        const vaultAddress = String((m as any)?.data?.vaultAddress ?? '');
+        const d = m.data as Record<string, unknown> | null;
+        const vaultAddress = String(d?.vaultAddress ?? '');
         if (!vaultAddress) continue;
         const existing = map.get(vaultAddress);
         const time = Number(m.time);
         let quote = existing?.quote;
         if (m.type === 'vault_quote.update') {
-          const v = (m as any)?.data?.vaultCollateralPerShare;
+          const v = d?.vaultCollateralPerShare;
           if (v != null) quote = String(v);
         }
         const latestTime = existing ? Math.max(existing.time, time) : time;
@@ -77,20 +97,19 @@ const AuctionPageContent: React.FC = () => {
     }
   }, [displayMessages]);
 
-  // Removed ray-to-decimal formatting; relayer now sends decimal strings
-
   // Collect unique conditionIds from auction.started messages for enrichment
   const conditionIds = useMemo(() => {
     const set = new Set<string>();
     try {
       for (const m of messages) {
         if (m.type !== 'auction.started') continue;
-        const arr = Array.isArray((m.data as any)?.predictedOutcomes)
-          ? ((m.data as any).predictedOutcomes as string[])
+        const d = m.data as Record<string, unknown> | null;
+        const arr = Array.isArray(d?.predictedOutcomes)
+          ? (d.predictedOutcomes as string[])
           : [];
         if (arr.length === 0) continue;
         try {
-          const decodedUnknown = decodeAbiParameters(
+          const decoded = decodeAbiParameters(
             [
               {
                 type: 'tuple[]',
@@ -101,10 +120,8 @@ const AuctionPageContent: React.FC = () => {
               },
             ] as const,
             arr[0] as `0x${string}`
-          ) as unknown;
-          const decodedArr = Array.isArray(decodedUnknown)
-            ? (decodedUnknown as any)[0]
-            : [];
+          );
+          const decodedArr = decoded[0] ?? [];
           for (const o of decodedArr || []) {
             const id = o?.marketId as string | undefined;
             if (id && typeof id === 'string') set.add(id);
@@ -124,7 +141,7 @@ const AuctionPageContent: React.FC = () => {
     { id: string; shortName?: string | null; question?: string | null }[],
     Error
   >({
-    queryKey: ['auctionConditionsByIds', conditionIds.sort().join(',')],
+    queryKey: ['auctionConditionsByIds', [...conditionIds].sort().join(',')],
     enabled: conditionIds.length > 0,
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
@@ -154,13 +171,16 @@ const AuctionPageContent: React.FC = () => {
     return new Map(conditions.map((c) => [c.id, c]));
   }, [conditions]);
 
-  // Note: bids are shown per auction via `AuctionBidsDialog` which fetches its own live data on demand.
-
-  function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
+  function toUiTx(m: {
+    time: number;
+    type: string;
+    data: unknown;
+  }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
+    const d = m.data as Record<string, any> | null;
     if (m.type === 'auction.started') {
-      const maker = m.data?.maker || '';
-      const positionSize = m.data?.wager || '0';
+      const maker = d?.maker || '';
+      const positionSize = d?.wager || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -170,7 +190,7 @@ const AuctionPageContent: React.FC = () => {
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
-      const bids = Array.isArray(m.data?.bids) ? (m.data.bids as any[]) : [];
+      const bids = Array.isArray(d?.bids) ? d.bids : [];
       const top = bids.reduce((best, b) => {
         try {
           const cur = BigInt(String(b?.makerWager ?? '0'));
@@ -200,11 +220,11 @@ const AuctionPageContent: React.FC = () => {
   }
 
   const getHashValue = () => {
-    if (typeof window === 'undefined') return 'auctions' as TabValue;
+    if (typeof window === 'undefined') return 'positions' as TabValue;
     const rawHash = window.location.hash?.replace('#', '').toLowerCase();
     const desired = (TAB_VALUES as readonly string[]).includes(rawHash)
       ? (rawHash as TabValue)
-      : ('auctions' as TabValue);
+      : ('positions' as TabValue);
     return desired;
   };
 
@@ -229,7 +249,7 @@ const AuctionPageContent: React.FC = () => {
   const handleTabChange = (value: string) => {
     const nextValue = (TAB_VALUES as readonly string[]).includes(value)
       ? (value as TabValue)
-      : ('auctions' as TabValue);
+      : ('positions' as TabValue);
     setTabValue(nextValue);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${nextValue}`;
@@ -237,17 +257,18 @@ const AuctionPageContent: React.FC = () => {
     }
   };
 
-  function renderPredictionsCell(m: { type: string; data: any }) {
+  function renderPredictionsCell(m: { type: string; data: unknown }) {
     try {
       if (m.type !== 'auction.started')
         return <span className="text-muted-foreground">—</span>;
-      const arr = Array.isArray(m.data?.predictedOutcomes)
-        ? (m.data.predictedOutcomes as string[])
+      const d = m.data as Record<string, unknown> | null;
+      const arr = Array.isArray(d?.predictedOutcomes)
+        ? (d.predictedOutcomes as string[])
         : [];
       if (arr.length === 0)
         return <span className="text-muted-foreground">—</span>;
       // Decode first encoded blob: tuple(bytes32 marketId, bool prediction)[]
-      const decodedUnknown = decodeAbiParameters(
+      const decoded = decodeAbiParameters(
         [
           {
             type: 'tuple[]',
@@ -258,10 +279,8 @@ const AuctionPageContent: React.FC = () => {
           },
         ] as const,
         arr[0] as `0x${string}`
-      ) as unknown;
-      const decodedArr = Array.isArray(decodedUnknown)
-        ? (decodedUnknown as any)[0]
-        : [];
+      );
+      const decodedArr = decoded[0] ?? [];
       const legs = (decodedArr || []).map(
         (o: { marketId: `0x${string}`; prediction: boolean }) => {
           const cond = conditionMap.get(o.marketId);
@@ -269,9 +288,6 @@ const AuctionPageContent: React.FC = () => {
             shortName: cond?.shortName ?? undefined,
             question: cond?.question ?? undefined,
             conditionId: o.marketId,
-            // Taker-facing display: show what needs to happen for the taker to win.
-            // Taker wins if the maker is wrong on any leg, so invert the maker's
-            // prediction for presentation only. On-chain encoding remains true = "Yes".
             choice: o.prediction ? ('No' as const) : ('Yes' as const),
           };
         }
@@ -301,15 +317,258 @@ const AuctionPageContent: React.FC = () => {
           <div className="mt-3 mb-6 lg:mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h1 className="text-xl font-medium inline-flex items-center gap-2">
               <SquareStackIcon className="h-5 w-5" aria-hidden="true" />
-              <span>Auction Feed</span>
+              <span>Feed</span>
             </h1>
             <div className="flex items-center gap-3 md:gap-4 md:justify-end">
               <SegmentedTabsList>
+                <TabsTrigger value="positions">Positions</TabsTrigger>
                 <TabsTrigger value="auctions">Auctions</TabsTrigger>
                 <TabsTrigger value="vault-quotes">Vault Quotes</TabsTrigger>
               </SegmentedTabsList>
             </div>
           </div>
+
+          <TabsContent value="positions">
+            {positionsLoading && displayPositions.length === 0 ? (
+              <div className="flex justify-center py-24">
+                <span className="inline-flex items-center gap-1 text-foreground">
+                  <span className="inline-block h-[6px] w-[6px] rounded-full bg-foreground opacity-80 animate-ping mr-1.5" />
+                  <span>Loading positions...</span>
+                </span>
+              </div>
+            ) : displayPositions.length === 0 ? (
+              <div className="flex justify-center py-24">
+                <span className="text-muted-foreground">
+                  No positions found
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="border border-border rounded-lg overflow-hidden bg-brand-black">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
+                      <thead className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
+                        <tr>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Created
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Predictions
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Predictor
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Opponent
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Total
+                          </th>
+                          <th className="px-4 py-3 text-left align-middle font-medium">
+                            Result
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayPositions.map((pos) => {
+                          const createdAt = pos.mintedAt * 1000;
+                          const timeAgo = formatDistanceToNow(
+                            new Date(createdAt),
+                            { addSuffix: true }
+                          );
+                          const legs: UILeg[] = (pos.predictions || []).map(
+                            (pred) => ({
+                              question:
+                                pred.condition?.question || pred.conditionId,
+                              choice: pred.outcomeYes ? 'YES' : 'NO',
+                              conditionId: pred.conditionId,
+                              resolverAddress: pred.condition?.resolver ?? null,
+                              categorySlug:
+                                pred.condition?.category?.slug ?? null,
+                              endTime: pred.condition?.endTime ?? null,
+                              settled: pred.condition?.settled,
+                              resolvedToYes: pred.condition?.resolvedToYes,
+                              source: 'uma' as const,
+                            })
+                          );
+                          const predictorSizeEth = Number(
+                            formatEther(BigInt(pos.predictorCollateral || '0'))
+                          );
+                          const opponentSizeEth = Number(
+                            formatEther(
+                              BigInt(pos.counterpartyCollateral || '0')
+                            )
+                          );
+                          const totalEth = Number(
+                            formatEther(BigInt(pos.totalCollateral || '0'))
+                          );
+                          const endsAtSec =
+                            pos.endsAt ||
+                            Math.max(
+                              0,
+                              ...(pos.predictions || []).map(
+                                (o) => o.condition?.endTime || 0
+                              )
+                            );
+                          const endsAtMs = endsAtSec * 1000;
+                          const isActive = pos.status === 'active';
+                          const predictorWon = pos.predictorWon === true;
+                          const opponentWon = pos.predictorWon === false;
+
+                          return (
+                            <tr
+                              key={pos.id}
+                              className="border-b last:border-b-0"
+                            >
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div className="text-sm">
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Created
+                                  </div>
+                                  <span className="text-brand-white whitespace-nowrap">
+                                    {timeAgo}
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="text-sm">
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Predictions
+                                  </div>
+                                  {legs.length > 0 ? (
+                                    <PicksSummary
+                                      legs={legs}
+                                      positionId={pos.predictorNftTokenId}
+                                      marketAddress={pos.marketAddress}
+                                    />
+                                  ) : (
+                                    <span className="text-muted-foreground">
+                                      —
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Predictor
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
+                                    >
+                                      <EnsAvatar
+                                        address={pos.predictor}
+                                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                                        width={16}
+                                        height={16}
+                                      />
+                                      <AddressDisplay address={pos.predictor} />
+                                    </span>
+                                    <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+                                      <NumberDisplay
+                                        value={predictorSizeEth}
+                                        className="tabular-nums text-muted-foreground font-mono"
+                                      />{' '}
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Opponent
+                                  </div>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 text-sm font-mono ${opponentWon ? 'text-green-400' : 'text-brand-white'}`}
+                                    >
+                                      <EnsAvatar
+                                        address={pos.counterparty}
+                                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                                        width={16}
+                                        height={16}
+                                      />
+                                      <AddressDisplay
+                                        address={pos.counterparty}
+                                      />
+                                    </span>
+                                    <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+                                      <NumberDisplay
+                                        value={opponentSizeEth}
+                                        className="tabular-nums text-muted-foreground font-mono"
+                                      />{' '}
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Total
+                                  </div>
+                                  <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+                                    <NumberDisplay
+                                      value={totalEth}
+                                      className="tabular-nums text-brand-white font-mono"
+                                    />{' '}
+                                    <span className="tabular-nums text-brand-white font-mono">
+                                      {collateralAssetTicker}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <div>
+                                  <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                                    Result
+                                  </div>
+                                  {isActive && endsAtMs > Date.now() ? (
+                                    <CountdownCell endTime={endsAtSec} />
+                                  ) : isActive ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                                      Pending
+                                    </span>
+                                  ) : predictorWon ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                                      Predictor won
+                                    </span>
+                                  ) : opponentWon ? (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                                      Opponent won
+                                    </span>
+                                  ) : (
+                                    <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                                      Settled
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                {hasMore && (
+                  <div className="flex justify-center mt-4 mb-12">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setPositionsTake((t) => t + POSITIONS_PAGE_SIZE)
+                      }
+                      className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
+                    >
+                      Show more
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
 
           <TabsContent value="auctions">
             {displayMessages.filter((m) => m.type === 'auction.started')
@@ -376,19 +635,16 @@ const AuctionPageContent: React.FC = () => {
                             </td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               {(() => {
+                                const d = m.data as Record<string, any> | null;
                                 const auctionId =
-                                  (m as any)?.channel ||
-                                  ((m as any)?.data?.auctionId as string) ||
-                                  ((m as any)?.data?.payload
-                                    ?.auctionId as string) ||
-                                  ((m as any)?.auctionId as string) ||
+                                  m.channel ||
+                                  (d?.auctionId as string) ||
+                                  (d?.payload?.auctionId as string) ||
                                   null;
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
-                                    makerWager={String(
-                                      (m as any)?.data?.wager ?? '0'
-                                    )}
+                                    makerWager={String(d?.wager ?? '0')}
                                     collateralAssetTicker={
                                       collateralAssetTicker
                                     }
@@ -495,4 +751,4 @@ const AuctionPageContent: React.FC = () => {
   );
 };
 
-export default AuctionPageContent;
+export default FeedPageContent;
