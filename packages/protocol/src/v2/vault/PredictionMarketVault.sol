@@ -124,8 +124,11 @@ contract PredictionMarketVault is
     /// @notice The EOA manager who can approve funds for use by protocols
     address public manager;
 
-    /// @notice Interaction delay in seconds between user requests (default: 1 day)
-    uint256 public interactionDelay = DEFAULT_INTERACTION_DELAY; // 1 day
+    /// @notice Interaction delay in seconds between deposit requests (default: 1 day)
+    uint256 public depositInteractionDelay = DEFAULT_INTERACTION_DELAY;
+
+    /// @notice Interaction delay in seconds between withdrawal requests (default: 1 day)
+    uint256 public withdrawalInteractionDelay = DEFAULT_INTERACTION_DELAY;
 
     /// @notice Expiration time in seconds for user requests before they can be cancelled (default: 10 minutes)
     uint256 public expirationTime = DEFAULT_EXPIRATION_TIME; // 10 minutes
@@ -138,6 +141,12 @@ contract PredictionMarketVault is
 
     /// @notice Total assets reserved for pending deposit requests
     uint256 private unconfirmedAssets = 0;
+
+    /// @notice Total shares pending withdrawal
+    uint256 private pendingWithdrawalShares = 0;
+
+    /// @notice Total assets pending withdrawal
+    uint256 private pendingWithdrawalAssets = 0;
 
     /// @notice Mapping of user to their pending request (only one request per user at a time)
     mapping(address => PendingRequest) public pendingRequests;
@@ -239,8 +248,8 @@ contract PredictionMarketVault is
         }
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
-                && lastUserInteractionTimestamp[msg.sender] + interactionDelay
-                    > block.timestamp
+                && lastUserInteractionTimestamp[msg.sender]
+                        + withdrawalInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
 
         PendingRequest storage request = pendingRequests[msg.sender];
@@ -258,6 +267,9 @@ contract PredictionMarketVault is
             isDeposit: false,
             processed: false
         });
+
+        pendingWithdrawalShares += shares;
+        pendingWithdrawalAssets += expectedAssets;
 
         emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
@@ -278,8 +290,8 @@ contract PredictionMarketVault is
         if (expectedShares == 0) revert InvalidShares(expectedShares);
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
-                && lastUserInteractionTimestamp[msg.sender] + interactionDelay
-                    > block.timestamp
+                && lastUserInteractionTimestamp[msg.sender]
+                        + depositInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
         PendingRequest storage request = pendingRequests[msg.sender];
         if (request.user == msg.sender && !request.processed) {
@@ -323,6 +335,9 @@ contract PredictionMarketVault is
         if (request.timestamp + expirationTime > block.timestamp) {
             revert RequestNotExpired();
         }
+
+        pendingWithdrawalShares -= request.shares;
+        pendingWithdrawalAssets -= request.assets;
 
         request.user = address(0);
 
@@ -476,6 +491,10 @@ contract PredictionMarketVault is
         }
 
         request.processed = true;
+
+        pendingWithdrawalShares -= request.shares;
+        pendingWithdrawalAssets -= request.assets;
+
         _burn(requestedBy, request.shares);
 
         // Transfer assets from vault to user
@@ -622,6 +641,20 @@ contract PredictionMarketVault is
     }
 
     /**
+     * @notice Get the total pending withdrawal volume
+     * @return shares Total shares pending withdrawal
+     * @return assets Total assets pending withdrawal
+     */
+    function getPendingWithdrawals()
+        external
+        view
+        returns (uint256 shares, uint256 assets)
+    {
+        shares = pendingWithdrawalShares;
+        assets = pendingWithdrawalAssets;
+    }
+
+    /**
      * @notice Get the number of shares locked for a pending withdrawal request
      * @param user Address of the user
      * @return Number of shares locked for withdrawal, 0 if no pending withdrawal
@@ -725,13 +758,26 @@ contract PredictionMarketVault is
     }
 
     /**
-     * @notice Set interaction delay between user requests
+     * @notice Set interaction delay between deposit requests
      * @param newDelay New interaction delay in seconds
      */
-    function setInteractionDelay(uint256 newDelay) external onlyOwner {
-        uint256 oldDelay = interactionDelay;
-        interactionDelay = newDelay;
-        emit InteractionDelayUpdated(oldDelay, newDelay);
+    function setDepositInteractionDelay(uint256 newDelay) external onlyOwner {
+        uint256 oldDelay = depositInteractionDelay;
+        depositInteractionDelay = newDelay;
+        emit DepositInteractionDelayUpdated(oldDelay, newDelay);
+    }
+
+    /**
+     * @notice Set interaction delay between withdrawal requests
+     * @param newDelay New interaction delay in seconds
+     */
+    function setWithdrawalInteractionDelay(uint256 newDelay)
+        external
+        onlyOwner
+    {
+        uint256 oldDelay = withdrawalInteractionDelay;
+        withdrawalInteractionDelay = newDelay;
+        emit WithdrawalInteractionDelayUpdated(oldDelay, newDelay);
     }
 
     /**

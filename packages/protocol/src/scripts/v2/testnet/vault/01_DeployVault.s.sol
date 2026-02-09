@@ -35,8 +35,9 @@ contract DeployVault is Script {
         PredictionMarketVault vault =
             new PredictionMarketVault(collateralToken, manager, name, symbol);
 
-        // Configure interaction delay to 0 for testing (can be changed later)
-        vault.setInteractionDelay(0);
+        // Configure interaction delays to 0 for testing (can be changed later)
+        vault.setDepositInteractionDelay(0);
+        vault.setWithdrawalInteractionDelay(0);
 
         // Configure expiration time (default 10 minutes)
         uint256 expirationTime =
@@ -50,7 +51,12 @@ contract DeployVault is Script {
         console.log("PredictionMarketVault:", address(vault));
         console.log("Owner:", vault.owner());
         console.log("Manager:", vault.manager());
-        console.log("Interaction Delay:", vault.interactionDelay());
+        console.log(
+            "Deposit Interaction Delay:", vault.depositInteractionDelay()
+        );
+        console.log(
+            "Withdrawal Interaction Delay:", vault.withdrawalInteractionDelay()
+        );
         console.log("Expiration Time:", vault.expirationTime());
         console.log("");
         console.log("Add to .env:");

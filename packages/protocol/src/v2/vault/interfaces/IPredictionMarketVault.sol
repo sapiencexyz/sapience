@@ -44,14 +44,16 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
     event ExpirationTimeUpdated(
         uint256 oldExpirationTime, uint256 newExpirationTime
     );
-    event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
+    event DepositInteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
+    event WithdrawalInteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
 
     // ============ State Variables ============
 
     function manager() external view returns (address);
     function expirationTime() external view returns (uint256);
-    function interactionDelay() external view returns (uint256);
+    function depositInteractionDelay() external view returns (uint256);
+    function withdrawalInteractionDelay() external view returns (uint256);
     function availableAssets() external view returns (uint256);
     function emergencyMode() external view returns (bool);
 
@@ -84,12 +86,17 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
 
     function getLockedShares(address user) external view returns (uint256);
     function getAvailableShares(address user) external view returns (uint256);
+    function getPendingWithdrawals()
+        external
+        view
+        returns (uint256 shares, uint256 assets);
 
     // ============ Admin Functions ============
 
     function setManager(address newManager) external;
     function setExpirationTime(uint256 newExpirationTime) external;
-    function setInteractionDelay(uint256 newDelay) external;
+    function setDepositInteractionDelay(uint256 newDelay) external;
+    function setWithdrawalInteractionDelay(uint256 newDelay) external;
     function toggleEmergencyMode() external;
     function pause() external;
     function unpause() external;
