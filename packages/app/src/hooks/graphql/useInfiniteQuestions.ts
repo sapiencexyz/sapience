@@ -131,9 +131,16 @@ export function useInfiniteQuestions(
     pageSize = 20,
     sortField = 'openInterest',
     sortDirection = 'desc',
-    minEndTime,
+    minEndTime: rawMinEndTime,
     resolutionStatus,
   } = opts;
+
+  // Normalize minEndTime: treat non-finite values (e.g. -Infinity from default
+  // range filters) as undefined so query keys match across components
+  const minEndTime =
+    rawMinEndTime != null && Number.isFinite(rawMinEndTime)
+      ? rawMinEndTime
+      : undefined;
 
   const [skip, setSkip] = useState(0);
   const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);

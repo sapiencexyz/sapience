@@ -209,42 +209,52 @@ function EndTimeCell({
   /** For group rows: whether all conditions are settled */
   allSettled?: boolean;
 }) {
-  const [nowMs, setNowMs] = React.useState<number>(() => Date.now());
-  const isPastEnd = endTime * 1000 <= nowMs;
+  const [nowMs, setNowMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    // No need to tick if already settled or past end
-    if (settled || isPastEnd) return;
+    setNowMs(Date.now());
+    // No need to tick if already settled
+    if (settled) return;
     const interval = setInterval(() => setNowMs(Date.now()), 1000);
     return () => clearInterval(interval);
-  }, [settled, isPastEnd]);
+  }, [settled]);
+
+  // SSR / pre-hydration: render placeholder
+  if (nowMs === null) {
+    return (
+      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
+        —
+      </span>
+    );
+  }
+
+  const isPastEnd = endTime * 1000 <= nowMs;
 
   if (settled || isPastEnd) {
-    const isResolved = allSettled !== undefined ? allSettled : settled;
-    return (
-      <ResolutionBadge
-        settled={isResolved}
-        resolvedToYes={resolvedToYes}
-        groupSettled={allSettled}
-      />
-    );
+    // Determine badge status
+    let status: ResolutionBadgeStatus;
+    if (allSettled) {
+      status = 'settled';
+    } else if (settled) {
+      status = resolvedToYes ? 'resolvedYes' : 'resolvedNo';
+    } else {
+      status = 'endsSoon';
+    }
+    return <ResolutionBadge status={status} />;
   }
 
   return <CountdownCell endTime={endTime} />;
 }
 
 // Resolution status badge shown in the Ends column
-function ResolutionBadge({
-  settled,
-  resolvedToYes,
-  groupSettled,
-}: {
-  settled: boolean;
-  resolvedToYes?: boolean | null;
-  /** When true, shows a neutral "SETTLED" badge (for groups with mixed resolutions) */
-  groupSettled?: boolean;
-}) {
-  if (groupSettled) {
+type ResolutionBadgeStatus =
+  | 'endsSoon'
+  | 'settled'
+  | 'resolvedYes'
+  | 'resolvedNo';
+
+function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
+  if (status === 'settled') {
     return (
       <div className="flex justify-end">
         <Badge
@@ -256,18 +266,19 @@ function ResolutionBadge({
       </div>
     );
   }
-  if (settled) {
+  if (status === 'resolvedYes' || status === 'resolvedNo') {
+    const isYes = status === 'resolvedYes';
     return (
       <div className="flex justify-end">
         <Badge
           variant="outline"
           className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-            resolvedToYes
+            isYes
               ? 'border-yes/40 bg-yes/10 text-yes'
               : 'border-no/40 bg-no/10 text-no'
           }`}
         >
-          RESOLVED {resolvedToYes ? 'YES' : 'NO'}
+          RESOLVED {isYes ? 'YES' : 'NO'}
         </Badge>
       </div>
     );
@@ -658,18 +669,15 @@ function createColumns(
           );
         }
 
-        if (data.kind === 'group') {
-          const allSettled = data.conditions.every((c) => c.settled);
-          return (
-            <EndTimeCell
-              endTime={endTime}
-              settled={allSettled}
-              allSettled={allSettled}
-            />
-          );
-        }
-
-        return <CountdownCell endTime={endTime} />;
+        // data.kind === 'group'
+        const allSettled = data.conditions.every((c) => c.settled);
+        return (
+          <EndTimeCell
+            endTime={endTime}
+            settled={allSettled}
+            allSettled={allSettled}
+          />
+        );
       },
       sortingFn: (rowA, rowB) => {
         const a = getRowEndTime(rowA.original);
@@ -1202,11 +1210,12 @@ export default function MarketsDataTable({
                   <TableRow className="hover:bg-transparent border-b border-brand-white/20">
                     <TableCell colSpan={columns.length} className="py-2">
                       <div className="flex items-center gap-3 animate-pulse">
-                        <div className="h-4 w-4 rounded-full bg-brand-white/20" />
-                        <div className="h-4 flex-1 max-w-[200px] rounded bg-brand-white/20" />
-                        <div className="h-4 w-20 rounded bg-brand-white/20 ml-auto" />
-                        <div className="h-4 w-24 rounded bg-brand-white/20" />
-                        <div className="h-8 w-16 rounded bg-brand-white/20" />
+                        <div className="h-6 w-6 rounded-full bg-brand-white/10 shrink-0" />
+                        <div className="h-5 flex-1 max-w-[260px] rounded bg-brand-white/10" />
+                        <div className="h-5 w-16 rounded bg-brand-white/10 ml-auto" />
+                        <div className="h-5 w-20 rounded bg-brand-white/10" />
+                        <div className="h-5 w-28 rounded bg-brand-white/10" />
+                        <div className="h-8 w-[130px] rounded bg-brand-white/10" />
                       </div>
                     </TableCell>
                   </TableRow>

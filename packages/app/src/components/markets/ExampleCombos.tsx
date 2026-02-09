@@ -11,10 +11,11 @@ import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import type { ConditionType } from '~/hooks/graphql/useConditions';
 import {
-  useConditions,
-  type ConditionType,
-} from '~/hooks/graphql/useConditions';
+  useInfiniteQuestions,
+  type QuestionType,
+} from '~/hooks/graphql/useInfiniteQuestions';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -40,6 +41,25 @@ type ComboWithQuote = {
   status: 'pending' | 'requesting' | 'received' | 'error';
 };
 
+/** Flatten QuestionType[] → ConditionType[] (groups → individual conditions) */
+function extractConditionsFromQuestions(
+  questions: QuestionType[]
+): ConditionType[] {
+  const conditions: ConditionType[] = [];
+  for (const q of questions) {
+    if (q.questionType === 'group' && q.group) {
+      for (const gc of q.group.conditions) {
+        // ConditionGroupConditionType has the same runtime fields as ConditionType;
+        // only differs by optional displayOrder/conditionGroup
+        conditions.push(gc as unknown as ConditionType);
+      }
+    } else if (q.questionType === 'condition' && q.condition) {
+      conditions.push(q.condition);
+    }
+  }
+  return conditions;
+}
+
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
 const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
@@ -49,10 +69,20 @@ const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
-  const { data: allConditions = [], isLoading } = useConditions({
-    take: 100,
+
+  // Share the same React Query cache as MarketsPage's initial fetch
+  const { data: questions, isLoading } = useInfiniteQuestions({
     chainId,
+    sortField: 'openInterest',
+    sortDirection: 'desc',
+    resolutionStatus: 'unresolved',
+    pageSize: 30,
   });
+
+  const allConditions = React.useMemo(
+    () => extractConditionsFromQuestions(questions),
+    [questions]
+  );
   const { addSelection, clearSelections } = useCreatePositionContext();
   const { apiBaseUrl } = useSettings();
   const { address: walletAddress } = useAccount();
@@ -480,9 +510,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                   </span>
                                   <br />
                                   <span className="text-muted-foreground">
-                                    payout{' '}
+                                    payout
                                   </span>
-                                  <span className="text-brand-white font-medium font-mono">
+                                  <span className="text-brand-white font-medium font-mono ml-1">
                                     {(1 / (1 - probability)).toFixed(2)} USDe
                                   </span>
                                 </>
@@ -570,9 +600,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 className="font-mono text-ethena"
                               />
                               <span className="text-muted-foreground ml-1">
-                                implied by 1 USDe for payout{' '}
+                                implied by 1 USDe for payout
                               </span>
-                              <span className="text-brand-white font-medium font-mono">
+                              <span className="text-brand-white font-medium font-mono ml-1">
                                 {(1 / (1 - probability)).toFixed(2)} USDe
                               </span>
                             </div>
