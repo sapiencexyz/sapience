@@ -1,7 +1,10 @@
 import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
 import { createAuctionWs } from '@sapience/sdk/relayer/auctionWs';
-import { PREFERRED_ESTIMATE_QUOTER, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import {
+  PREFERRED_ESTIMATE_QUOTER,
+  CHAIN_ID_ETHEREAL,
+} from '@sapience/sdk/constants';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import {
   og,
@@ -64,7 +67,15 @@ const CATEGORY_NAMES: Record<string, string> = {
 };
 
 // Lucide icon SVG paths for satori (can't use React components)
-function CategoryIcon({ slug, color, size }: { slug: string; color: string; size: number }) {
+function CategoryIcon({
+  slug,
+  color,
+  size,
+}: {
+  slug: string;
+  color: string;
+  size: number;
+}) {
   const svgProps = {
     width: size,
     height: size,
@@ -235,7 +246,10 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           };
           client.send(JSON.stringify(msg));
         },
-        onMessage: (msg: { type?: string; payload?: { bids?: Array<{ maker?: string; makerWager?: string }> } }) => {
+        onMessage: (msg: {
+          type?: string;
+          payload?: { bids?: Array<{ maker?: string; makerWager?: string }> };
+        }) => {
           if (settled) return;
           if (msg?.type !== 'auction.bids') return;
 
@@ -244,8 +258,7 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
 
           const quoterBid = bids.find(
             (b) =>
-              b.maker?.toLowerCase() ===
-              PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+              b.maker?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
           if (!quoterBid) return;
 
@@ -343,7 +356,7 @@ export async function GET(req: Request) {
           ? 42 * scale
           : 48 * scale;
 
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
@@ -385,7 +398,11 @@ export async function GET(req: Request) {
                       fontFamily: FONT_FAMILY.sans,
                     }}
                   >
-                    <CategoryIcon slug={categorySlug} color={categoryRgb(categorySlug)} size={Math.round(16 * scale)} />
+                    <CategoryIcon
+                      slug={categorySlug}
+                      color={categoryRgb(categorySlug)}
+                      size={Math.round(16 * scale)}
+                    />
                     {categoryName}
                   </div>
                 </div>
@@ -408,7 +425,7 @@ export async function GET(req: Request) {
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    marginTop: 24 * scale,
+                    marginTop: 32 * scale,
                   }}
                 >
                   <div
@@ -420,10 +437,10 @@ export async function GET(req: Request) {
                       color: og.colors.foregroundLight,
                       textTransform: 'uppercase',
                       letterSpacing: 0.06 * scale + 'em',
-                      marginBottom: 8 * scale,
+                      marginBottom: 4 * scale,
                     }}
                   >
-                    Forecast
+                    Current Forecast
                   </div>
                   <div
                     style={{
@@ -451,6 +468,16 @@ export async function GET(req: Request) {
         fonts: fontsFromData(fonts),
       }
     );
+
+    // Cache the rendered image for 15 minutes at the CDN layer, with a
+    // 30-minute stale-while-revalidate window. This prevents redundant
+    // WebSocket auction calls for the same question within a window.
+    imageResponse.headers.set(
+      'Cache-Control',
+      'public, max-age=900, s-maxage=900, stale-while-revalidate=1800'
+    );
+
+    return imageResponse;
   } catch (err) {
     return createErrorImageResponse(err);
   }

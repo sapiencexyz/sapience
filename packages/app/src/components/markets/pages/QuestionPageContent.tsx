@@ -655,6 +655,7 @@ export default function QuestionPageContent({
             />
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="normal"
               appearance="brandWhite"
             />
@@ -763,6 +764,7 @@ export default function QuestionPageContent({
             />
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="normal"
               appearance="brandWhite"
             />
@@ -848,6 +850,7 @@ export default function QuestionPageContent({
             {/* End Time Badge */}
             <EndTimeDisplay
               endTime={data.endTime ?? null}
+              settled={data.settled}
               size="large"
               appearance="brandWhite"
             />

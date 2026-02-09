@@ -3,6 +3,10 @@ import QuestionPageClient from './QuestionPageClient';
 
 const APP_URL = 'https://sapience.xyz';
 
+// Re-generate page metadata every 15 minutes so the OG image URL
+// cache-buster advances and social platforms fetch a fresh image.
+export const revalidate = 900;
+
 type Props = {
   params: Promise<{ parts: string[] }>;
 };
@@ -82,6 +86,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const ogParams = new URLSearchParams({ conditionId });
   if (resolverAddress) ogParams.set('resolver', resolverAddress);
+  // Time-bucketed cache buster: advances every 15 minutes so social
+  // platforms (Twitter, Discord, Slack) re-scrape a fresh OG image.
+  const cacheBucket = Math.floor(Date.now() / (15 * 60 * 1000));
+  ogParams.set('v', String(cacheBucket));
   const ogImageUrl = `${APP_URL}/og/question?${ogParams.toString()}`;
 
   return {
