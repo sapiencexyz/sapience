@@ -11,6 +11,7 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useSignMessage } from 'wagmi';
+import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import { keccak256, stringToHex } from 'viem';
 
 interface RequiredReferralCodeDialogProps {
@@ -32,6 +33,7 @@ const RequiredReferralCodeDialog = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
 
@@ -176,17 +178,19 @@ const RequiredReferralCodeDialog = ({
         </DialogHeader>
 
         <p className="text-base text-foreground -mb-2">
-          Request an invite code in{' '}
-          <a
-            href="https://discord.gg/sapience"
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => setIsGetAccessOpen(true)}
             className="gold-link"
           >
-            Discord
-          </a>
-          .
+            Get an invite code
+          </button>{' '}
+          for early access.
         </p>
+        <GetAccessDialog
+          open={isGetAccessOpen}
+          onOpenChange={setIsGetAccessOpen}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-1.5">
