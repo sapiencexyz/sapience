@@ -32,6 +32,7 @@ import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import MarketBadge from '~/components/markets/MarketBadge';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import { formatPercentChance } from '~/lib/format/percentChance';
 import type { PredictionData, ForecastData } from './types';
 
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -274,7 +275,7 @@ export function PredictionScatterChart({
                           combinedPredictions &&
                           combinedPredictions.length > 0 &&
                           `${combinedWithYes === false ? '<' : '>'}`}
-                        {Math.round(point.y)}% chance
+                        {formatPercentChance(point.y / 100)} chance
                       </span>
                     </div>
                     {/* Position Size row - only for predictions */}

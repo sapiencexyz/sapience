@@ -92,6 +92,7 @@ interface OgShareDialogBaseProps {
   progressState?: PositionProgressState; // Progress state for showing submission stages
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
   shareUrl?: string; // Override share URL (e.g. for slip preview cards)
+  forecastUid?: string; // For forecast share URLs (/forecast/{uid})
 }
 
 export default function OgShareDialogBase({
@@ -108,6 +109,7 @@ export default function OgShareDialogBase({
   progressState,
   onPositionIndexed,
   shareUrl: shareUrlProp,
+  forecastUid,
 }: OgShareDialogBaseProps) {
   // Support both expectedPicks and expectedLegs for backward compatibility
   const picks = expectedPicks || expectedLegs;
@@ -353,8 +355,10 @@ export default function OgShareDialogBase({
     const marketAddress =
       resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
 
-    let relativeUrl = '/share';
-    if (nftId && marketAddress) {
+    let relativeUrl = '/';
+    if (forecastUid) {
+      relativeUrl = `/forecast/${forecastUid}`;
+    } else if (nftId && marketAddress) {
       relativeUrl = `/positions/${marketAddress}/${nftId}`;
     }
 
@@ -362,7 +366,7 @@ export default function OgShareDialogBase({
       return relativeUrl;
     }
     return `${window.location.origin}${relativeUrl}`;
-  }, [shareUrlProp, resolvedPositionData, positionShareParams]);
+  }, [shareUrlProp, resolvedPositionData, positionShareParams, forecastUid]);
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {

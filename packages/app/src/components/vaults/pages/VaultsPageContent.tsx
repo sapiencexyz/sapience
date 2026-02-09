@@ -864,8 +864,7 @@ const VaultsPageContent = () => {
                             {deployedDisplay} of {tvlDisplay}{' '}
                             <span className="normal-case">
                               {collateralSymbol}
-                            </span>{' '}
-                            deployed
+                            </span>
                           </span>
                           <Link
                             href={`/profile/${VAULT_ADDRESS}`}
@@ -984,10 +983,9 @@ const VaultsPageContent = () => {
                               VAULT REWARDS
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              Ethena rewards are automatically distributed into
-                              the vault. This is separate from profit or loss
-                              realized by providing liquidity to prediction
-                              markets.
+                              Ethena rewards can be claimed by vault depositors.
+                              This is separate from profit or loss realized by
+                              the vault's participation in prediction markets.
                             </p>
                           </div>
                           {isAnalyticsLoading || !vaultData ? (

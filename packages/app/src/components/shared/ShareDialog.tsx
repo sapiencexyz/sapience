@@ -27,6 +27,7 @@ interface ShareDialogProps {
   legs?: Array<{ question: string; choice: string }>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  forecastUid?: string; // For forecast share URLs (/forecast/{uid})
 }
 
 export default function ShareDialog({
@@ -48,6 +49,7 @@ export default function ShareDialog({
   open: controlledOpen,
   onOpenChange,
   legs,
+  forecastUid,
 }: ShareDialogProps) {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
@@ -58,6 +60,11 @@ export default function ShareDialog({
       sp.set('nftId', String(nftId));
       sp.set('marketAddress', String(marketAddress));
       return sp.toString();
+    }
+
+    // For forecast OG images, set uid so the edge endpoint can fetch attestation data
+    if (forecastUid && imagePath === '/og/forecast') {
+      sp.set('uid', forecastUid);
     }
 
     // Otherwise, build query string from all parameters (backward compatibility)
@@ -105,6 +112,7 @@ export default function ShareDialog({
     extraParams,
     legs,
     imagePath,
+    forecastUid,
   ]);
 
   // Note: OgShareDialog handles cache busting via its own cacheBust mechanism
@@ -118,6 +126,7 @@ export default function ShareDialog({
       trigger={trigger}
       open={controlledOpen}
       onOpenChange={onOpenChange}
+      forecastUid={forecastUid}
     />
   );
 }

@@ -37,6 +37,7 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import MarketBadge from '~/components/markets/MarketBadge';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import PercentChance from '~/components/shared/PercentChance';
 import type { PredictionData } from './types';
 
 interface PredictionsTableProps {
@@ -185,11 +186,17 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
           }
 
           return (
-            <span className="font-mono text-ethena whitespace-nowrap">
+            <span className="font-mono whitespace-nowrap">
               {combinedPredictions &&
                 combinedPredictions.length > 0 &&
                 `${combinedWithYes === false ? '<' : '>'}`}
-              {Math.round(impliedPercent)}% chance
+              <PercentChance
+                probability={impliedPercent / 100}
+                showLabel
+                label="chance"
+                className="font-mono"
+                colorByProbability
+              />
             </span>
           );
         },

@@ -22,6 +22,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
 import React, { useMemo, useRef, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
@@ -93,9 +94,12 @@ const renderSubmittedCell = ({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="whitespace-nowrap text-muted-foreground cursor-default">
+          <Link
+            href={`/forecast/${row.original.uid}`}
+            className="whitespace-nowrap text-muted-foreground hover:text-foreground transition-colors"
+          >
             {createdDisplay}
-          </span>
+          </Link>
         </TooltipTrigger>
         <TooltipContent>
           <span>{exactLocalDisplay}</span>
@@ -197,70 +201,10 @@ const renderQuestionCell = ({
   );
 };
 
-const renderActionsCell = ({
-  row,
-  conditionsMap,
-}: {
-  row: { original: FormattedAttestation };
-  conditionsMap?: Record<string, ConditionData>;
-}) => {
-  const createdAt = new Date(Number(row.original.rawTime) * 1000);
-  const conditionId = row.original.conditionId;
-
-  let questionText: string = 'Forecast on Sapience';
-  let resolutionDate: Date | null = null;
-
-  // Look up condition for question text and end time
-  if (conditionId && conditionsMap) {
-    const condition = conditionsMap[conditionId.toLowerCase()];
-    if (condition) {
-      questionText = condition.question;
-      if (condition.endTime) {
-        resolutionDate = new Date(condition.endTime * 1000);
-      }
-    }
-  }
-
-  const resolutionStr = resolutionDate
-    ? format(resolutionDate, 'MMM d, yyyy')
-    : 'TBD';
-  const horizonStr = resolutionDate
-    ? formatDistanceStrict(createdAt, resolutionDate, { unit: 'day' })
-    : '—';
-
-  // Compute odds percentage from D18 format
-  let oddsPercent: number | null = null;
-  try {
-    oddsPercent = Math.round(d18ToPercentage(row.original.value));
-  } catch (err) {
-    console.error('Failed to compute odds percentage from D18 value', err);
-  }
-
-  const oddsStr = oddsPercent !== null ? `${oddsPercent}%` : '';
-
-  const createdTsSec = Math.floor(createdAt.getTime() / 1000);
-  const endTsSec = resolutionDate
-    ? Math.floor(resolutionDate.getTime() / 1000)
-    : null;
-
-  return (
-    <ShareDialog
-      title="Share"
-      question={questionText}
-      owner={row.original.attester}
-      imagePath="/og/forecast"
-      extraParams={{
-        res: resolutionStr,
-        hor: horizonStr,
-        odds: oddsStr,
-        created: String(createdTsSec),
-        ...(endTsSec ? { end: String(endTsSec) } : {}),
-      }}
-    />
-  );
-};
-
 const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
+  // Share dialog state
+  const [openShareUid, setOpenShareUid] = React.useState<string | null>(null);
+
   // Filter state
   const [filters, setFilters] = React.useState<ForecastsFilterState>(
     getDefaultForecastsFilterState
@@ -598,11 +542,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       {
         id: 'actions',
         enableSorting: false,
-        cell: (info) =>
-          renderActionsCell({
-            row: info.row,
-            conditionsMap,
-          }),
+        header: () => null,
+        cell: (info) => (
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-start xl:justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              onClick={() => setOpenShareUid(info.row.original.uid)}
+            >
+              Share
+            </button>
+          </div>
+        ),
       },
     ],
     [conditionsMap, isConditionsLoading]
@@ -946,6 +897,68 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           )}
         </>
       )}
+      {openShareUid &&
+        (() => {
+          const att = attestations.find((a) => a.uid === openShareUid);
+          if (!att) return null;
+
+          const createdAt = new Date(Number(att.rawTime) * 1000);
+          const conditionId = att.conditionId;
+          let questionText = 'Forecast on Sapience';
+          let resolutionDate: Date | null = null;
+
+          if (conditionId && conditionsMap) {
+            const condition = conditionsMap[conditionId.toLowerCase()];
+            if (condition) {
+              questionText = condition.question;
+              if (condition.endTime) {
+                resolutionDate = new Date(condition.endTime * 1000);
+              }
+            }
+          }
+
+          const resolutionStr = resolutionDate
+            ? format(resolutionDate, 'MMM d, yyyy')
+            : 'TBD';
+          const horizonStr = resolutionDate
+            ? formatDistanceStrict(createdAt, resolutionDate, { unit: 'day' })
+            : '—';
+
+          let oddsPercent: number | null = null;
+          try {
+            oddsPercent = Math.round(d18ToPercentage(att.value));
+          } catch {
+            // ignore
+          }
+          const oddsStr = oddsPercent !== null ? `${oddsPercent}%` : '';
+          const createdTsSec = Math.floor(createdAt.getTime() / 1000);
+          const endTsSec = resolutionDate
+            ? Math.floor(resolutionDate.getTime() / 1000)
+            : null;
+
+          return (
+            <ShareDialog
+              title="Share Forecast"
+              question={questionText}
+              owner={att.attester}
+              imagePath="/og/forecast"
+              forecastUid={att.uid}
+              extraParams={{
+                uid: att.uid,
+                res: resolutionStr,
+                hor: horizonStr,
+                odds: oddsStr,
+                created: String(createdTsSec),
+                ...(endTsSec ? { end: String(endTsSec) } : {}),
+              }}
+              open={openShareUid !== null}
+              onOpenChange={(next) => {
+                if (!next) setOpenShareUid(null);
+              }}
+              trigger={<span />}
+            />
+          );
+        })()}
     </div>
   );
 };
