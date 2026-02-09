@@ -804,17 +804,13 @@ export default function QuestionPageContent({
 
             {/* Open Interest Badge */}
             {(() => {
-              const isPastEndTime =
-                typeof data.endTime === 'number' &&
-                data.endTime > 0 &&
-                Date.now() / 1000 >= data.endTime;
               return (
                 <Badge
                   variant="outline"
                   className="h-9 items-center px-3.5 text-sm leading-none inline-flex bg-card border-brand-white/20 text-brand-white font-medium"
                 >
                   <DollarSign className="h-4 w-4 mr-1.5 -mt-[1px] opacity-70" />
-                  {isPastEndTime ? 'Peak Open Interest' : 'Open Interest'}
+                  Open Interest
                   <span
                     aria-hidden="true"
                     className="hidden md:inline-block mx-2.5 h-4 w-px bg-muted-foreground/30"
