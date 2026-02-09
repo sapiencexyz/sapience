@@ -10,46 +10,6 @@ type AccuracyRankType {
   totalForecasters: Int!
 }
 
-type AggregateAttestation {
-  _avg: AttestationAvgAggregate
-  _count: AttestationCountAggregate
-  _max: AttestationMaxAggregate
-  _min: AttestationMinAggregate
-  _sum: AttestationSumAggregate
-}
-
-type AggregateCategory {
-  _avg: CategoryAvgAggregate
-  _count: CategoryCountAggregate
-  _max: CategoryMaxAggregate
-  _min: CategoryMinAggregate
-  _sum: CategorySumAggregate
-}
-
-type AggregateCondition {
-  _avg: ConditionAvgAggregate
-  _count: ConditionCountAggregate
-  _max: ConditionMaxAggregate
-  _min: ConditionMinAggregate
-  _sum: ConditionSumAggregate
-}
-
-type AggregateConditionGroup {
-  _avg: ConditionGroupAvgAggregate
-  _count: ConditionGroupCountAggregate
-  _max: ConditionGroupMaxAggregate
-  _min: ConditionGroupMinAggregate
-  _sum: ConditionGroupSumAggregate
-}
-
-type AggregateUser {
-  _avg: UserAvgAggregate
-  _count: UserCountAggregate
-  _max: UserMaxAggregate
-  _min: UserMinAggregate
-  _sum: UserSumAggregate
-}
-
 type AggregatedProfitEntryType {
   owner: String!
   totalPnL: Float!
@@ -75,181 +35,14 @@ type Attestation {
   uid: String!
 }
 
-type AttestationAvgAggregate {
-  blockNumber: Float
-  id: Float
-  time: Float
-}
-
-input AttestationAvgOrderByAggregateInput {
-  blockNumber: SortOrder
-  id: SortOrder
-  time: SortOrder
-}
-
-type AttestationCountAggregate {
-  _all: Int!
-  attester: Int!
-  blockNumber: Int!
-  comment: Int!
-  conditionId: Int!
-  createdAt: Int!
-  data: Int!
-  decodedDataJson: Int!
-  id: Int!
-  prediction: Int!
-  recipient: Int!
-  resolver: Int!
-  schemaId: Int!
-  time: Int!
-  transactionHash: Int!
-  uid: Int!
-}
-
-input AttestationCountOrderByAggregateInput {
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrder
-  conditionId: SortOrder
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  prediction: SortOrder
-  recipient: SortOrder
-  resolver: SortOrder
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
-}
-
-type AttestationGroupBy {
-  _avg: AttestationAvgAggregate
-  _count: AttestationCountAggregate
-  _max: AttestationMaxAggregate
-  _min: AttestationMinAggregate
-  _sum: AttestationSumAggregate
-  attester: String!
-  blockNumber: Int!
-  comment: String
-  conditionId: String
-  createdAt: DateTimeISO!
-  data: String!
-  decodedDataJson: String!
-  id: Int!
-  prediction: String!
-  recipient: String!
-  resolver: String
-  schemaId: String!
-  time: Int!
-  transactionHash: String!
-  uid: String!
-}
-
 input AttestationListRelationFilter {
   every: AttestationWhereInput
   none: AttestationWhereInput
   some: AttestationWhereInput
 }
 
-type AttestationMaxAggregate {
-  attester: String
-  blockNumber: Int
-  comment: String
-  conditionId: String
-  createdAt: DateTimeISO
-  data: String
-  decodedDataJson: String
-  id: Int
-  prediction: String
-  recipient: String
-  resolver: String
-  schemaId: String
-  time: Int
-  transactionHash: String
-  uid: String
-}
-
-input AttestationMaxOrderByAggregateInput {
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrder
-  conditionId: SortOrder
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  prediction: SortOrder
-  recipient: SortOrder
-  resolver: SortOrder
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
-}
-
-type AttestationMinAggregate {
-  attester: String
-  blockNumber: Int
-  comment: String
-  conditionId: String
-  createdAt: DateTimeISO
-  data: String
-  decodedDataJson: String
-  id: Int
-  prediction: String
-  recipient: String
-  resolver: String
-  schemaId: String
-  time: Int
-  transactionHash: String
-  uid: String
-}
-
-input AttestationMinOrderByAggregateInput {
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrder
-  conditionId: SortOrder
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  prediction: SortOrder
-  recipient: SortOrder
-  resolver: SortOrder
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
-}
-
 input AttestationOrderByRelationAggregateInput {
   _count: SortOrder
-}
-
-input AttestationOrderByWithAggregationInput {
-  _avg: AttestationAvgOrderByAggregateInput
-  _count: AttestationCountOrderByAggregateInput
-  _max: AttestationMaxOrderByAggregateInput
-  _min: AttestationMinOrderByAggregateInput
-  _sum: AttestationSumOrderByAggregateInput
-  attester: SortOrder
-  blockNumber: SortOrder
-  comment: SortOrderInput
-  conditionId: SortOrderInput
-  createdAt: SortOrder
-  data: SortOrder
-  decodedDataJson: SortOrder
-  id: SortOrder
-  prediction: SortOrder
-  recipient: SortOrder
-  resolver: SortOrderInput
-  schemaId: SortOrder
-  time: SortOrder
-  transactionHash: SortOrder
-  uid: SortOrder
 }
 
 input AttestationOrderByWithRelationInput {
@@ -293,27 +86,6 @@ enum AttestationScalarFieldEnum {
   time
   transactionHash
   uid
-}
-
-input AttestationScalarWhereWithAggregatesInput {
-  AND: [AttestationScalarWhereWithAggregatesInput!]
-  NOT: [AttestationScalarWhereWithAggregatesInput!]
-  OR: [AttestationScalarWhereWithAggregatesInput!]
-  attester: StringWithAggregatesFilter
-  blockNumber: IntWithAggregatesFilter
-  comment: StringNullableWithAggregatesFilter
-  conditionId: StringNullableWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  data: StringWithAggregatesFilter
-  decodedDataJson: StringWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  prediction: StringWithAggregatesFilter
-  recipient: StringWithAggregatesFilter
-  resolver: StringNullableWithAggregatesFilter
-  schemaId: StringWithAggregatesFilter
-  time: IntWithAggregatesFilter
-  transactionHash: StringWithAggregatesFilter
-  uid: StringWithAggregatesFilter
 }
 
 type AttestationScore {
@@ -381,18 +153,6 @@ input AttestationScoreWhereInput {
   used: BoolFilter
 }
 
-type AttestationSumAggregate {
-  blockNumber: Int
-  id: Int
-  time: Int
-}
-
-input AttestationSumOrderByAggregateInput {
-  blockNumber: SortOrder
-  id: SortOrder
-  time: SortOrder
-}
-
 input AttestationWhereInput {
   AND: [AttestationWhereInput!]
   NOT: [AttestationWhereInput!]
@@ -449,14 +209,6 @@ input BoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-input BoolWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedBoolFilter
-  _min: NestedBoolFilter
-  equals: Boolean
-  not: NestedBoolWithAggregatesFilter
-}
-
 type Category {
   _count: CategoryCount
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
@@ -467,89 +219,14 @@ type Category {
   slug: String!
 }
 
-type CategoryAvgAggregate {
-  id: Float
-}
-
-input CategoryAvgOrderByAggregateInput {
-  id: SortOrder
-}
-
 type CategoryCount {
   condition(where: ConditionWhereInput): Int!
   condition_group(where: ConditionGroupWhereInput): Int!
 }
 
-type CategoryCountAggregate {
-  _all: Int!
-  createdAt: Int!
-  id: Int!
-  name: Int!
-  slug: Int!
-}
-
-input CategoryCountOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  slug: SortOrder
-}
-
-type CategoryGroupBy {
-  _avg: CategoryAvgAggregate
-  _count: CategoryCountAggregate
-  _max: CategoryMaxAggregate
-  _min: CategoryMinAggregate
-  _sum: CategorySumAggregate
-  createdAt: DateTimeISO!
-  id: Int!
-  name: String!
-  slug: String!
-}
-
-type CategoryMaxAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  name: String
-  slug: String
-}
-
-input CategoryMaxOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  slug: SortOrder
-}
-
-type CategoryMinAggregate {
-  createdAt: DateTimeISO
-  id: Int
-  name: String
-  slug: String
-}
-
-input CategoryMinOrderByAggregateInput {
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  slug: SortOrder
-}
-
 input CategoryNullableRelationFilter {
   is: CategoryWhereInput
   isNot: CategoryWhereInput
-}
-
-input CategoryOrderByWithAggregationInput {
-  _avg: CategoryAvgOrderByAggregateInput
-  _count: CategoryCountOrderByAggregateInput
-  _max: CategoryMaxOrderByAggregateInput
-  _min: CategoryMinOrderByAggregateInput
-  _sum: CategorySumOrderByAggregateInput
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  slug: SortOrder
 }
 
 input CategoryOrderByWithRelationInput {
@@ -566,24 +243,6 @@ enum CategoryScalarFieldEnum {
   id
   name
   slug
-}
-
-input CategoryScalarWhereWithAggregatesInput {
-  AND: [CategoryScalarWhereWithAggregatesInput!]
-  NOT: [CategoryScalarWhereWithAggregatesInput!]
-  OR: [CategoryScalarWhereWithAggregatesInput!]
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  name: StringWithAggregatesFilter
-  slug: StringWithAggregatesFilter
-}
-
-type CategorySumAggregate {
-  id: Int
-}
-
-input CategorySumOrderByAggregateInput {
-  id: SortOrder
 }
 
 type CategorySummary {
@@ -644,76 +303,9 @@ type Condition {
   similarMarkets: [String!]!
 }
 
-type ConditionAvgAggregate {
-  assertionTimestamp: Float
-  categoryId: Float
-  chainId: Float
-  conditionGroupId: Float
-  displayOrder: Float
-  endTime: Float
-  settledAt: Float
-}
-
-input ConditionAvgOrderByAggregateInput {
-  assertionTimestamp: SortOrder
-  categoryId: SortOrder
-  chainId: SortOrder
-  conditionGroupId: SortOrder
-  displayOrder: SortOrder
-  endTime: SortOrder
-  settledAt: SortOrder
-}
-
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
   predictions(where: PredictionWhereInput): Int!
-}
-
-type ConditionCountAggregate {
-  _all: Int!
-  assertionId: Int!
-  assertionTimestamp: Int!
-  categoryId: Int!
-  chainId: Int!
-  claimStatement: Int!
-  conditionGroupId: Int!
-  createdAt: Int!
-  description: Int!
-  displayOrder: Int!
-  endTime: Int!
-  id: Int!
-  openInterest: Int!
-  public: Int!
-  question: Int!
-  resolvedToYes: Int!
-  resolver: Int!
-  settled: Int!
-  settledAt: Int!
-  shortName: Int!
-  similarMarkets: Int!
-}
-
-input ConditionCountOrderByAggregateInput {
-  assertionId: SortOrder
-  assertionTimestamp: SortOrder
-  categoryId: SortOrder
-  chainId: SortOrder
-  claimStatement: SortOrder
-  conditionGroupId: SortOrder
-  createdAt: SortOrder
-  description: SortOrder
-  displayOrder: SortOrder
-  endTime: SortOrder
-  id: SortOrder
-  openInterest: SortOrder
-  public: SortOrder
-  question: SortOrder
-  resolvedToYes: SortOrder
-  resolver: SortOrder
-  settled: SortOrder
-  settledAt: SortOrder
-  shortName: SortOrder
-  similarMarkets: SortOrder
 }
 
 type ConditionGroup {
@@ -727,110 +319,14 @@ type ConditionGroup {
   similarMarkets: [String!]!
 }
 
-type ConditionGroupAvgAggregate {
-  categoryId: Float
-  id: Float
-}
-
-input ConditionGroupAvgOrderByAggregateInput {
-  categoryId: SortOrder
-  id: SortOrder
-}
-
-type ConditionGroupBy {
-  _avg: ConditionAvgAggregate
-  _count: ConditionCountAggregate
-  _max: ConditionMaxAggregate
-  _min: ConditionMinAggregate
-  _sum: ConditionSumAggregate
-  assertionId: String
-  assertionTimestamp: Int
-  categoryId: Int
-  chainId: Int!
-  claimStatement: String!
-  conditionGroupId: Int
-  createdAt: DateTimeISO!
-  description: String!
-  displayOrder: Int
-  endTime: Int!
-  id: String!
-  openInterest: String!
-  public: Boolean!
-  question: String!
-  resolvedToYes: Boolean!
-  resolver: String
-  settled: Boolean!
-  settledAt: Int
-  shortName: String
-  similarMarkets: [String!]
-}
-
 type ConditionGroupCount {
   condition(where: ConditionWhereInput): Int!
-}
-
-type ConditionGroupCountAggregate {
-  _all: Int!
-  categoryId: Int!
-  createdAt: Int!
-  id: Int!
-  name: Int!
-  similarMarkets: Int!
-}
-
-input ConditionGroupCountOrderByAggregateInput {
-  categoryId: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  similarMarkets: SortOrder
-}
-
-type ConditionGroupGroupBy {
-  _avg: ConditionGroupAvgAggregate
-  _count: ConditionGroupCountAggregate
-  _max: ConditionGroupMaxAggregate
-  _min: ConditionGroupMinAggregate
-  _sum: ConditionGroupSumAggregate
-  categoryId: Int
-  createdAt: DateTimeISO!
-  id: Int!
-  name: String!
-  similarMarkets: [String!]
 }
 
 input ConditionGroupListRelationFilter {
   every: ConditionGroupWhereInput
   none: ConditionGroupWhereInput
   some: ConditionGroupWhereInput
-}
-
-type ConditionGroupMaxAggregate {
-  categoryId: Int
-  createdAt: DateTimeISO
-  id: Int
-  name: String
-}
-
-input ConditionGroupMaxOrderByAggregateInput {
-  categoryId: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-}
-
-type ConditionGroupMinAggregate {
-  categoryId: Int
-  createdAt: DateTimeISO
-  id: Int
-  name: String
-}
-
-input ConditionGroupMinOrderByAggregateInput {
-  categoryId: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
 }
 
 input ConditionGroupNullableRelationFilter {
@@ -840,19 +336,6 @@ input ConditionGroupNullableRelationFilter {
 
 input ConditionGroupOrderByRelationAggregateInput {
   _count: SortOrder
-}
-
-input ConditionGroupOrderByWithAggregationInput {
-  _avg: ConditionGroupAvgOrderByAggregateInput
-  _count: ConditionGroupCountOrderByAggregateInput
-  _max: ConditionGroupMaxOrderByAggregateInput
-  _min: ConditionGroupMinOrderByAggregateInput
-  _sum: ConditionGroupSumOrderByAggregateInput
-  categoryId: SortOrderInput
-  createdAt: SortOrder
-  id: SortOrder
-  name: SortOrder
-  similarMarkets: SortOrder
 }
 
 input ConditionGroupOrderByWithRelationInput {
@@ -871,27 +354,6 @@ enum ConditionGroupScalarFieldEnum {
   id
   name
   similarMarkets
-}
-
-input ConditionGroupScalarWhereWithAggregatesInput {
-  AND: [ConditionGroupScalarWhereWithAggregatesInput!]
-  NOT: [ConditionGroupScalarWhereWithAggregatesInput!]
-  OR: [ConditionGroupScalarWhereWithAggregatesInput!]
-  categoryId: IntNullableWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  name: StringWithAggregatesFilter
-  similarMarkets: StringNullableListFilter
-}
-
-type ConditionGroupSumAggregate {
-  categoryId: Int
-  id: Int
-}
-
-input ConditionGroupSumOrderByAggregateInput {
-  categoryId: SortOrder
-  id: SortOrder
 }
 
 input ConditionGroupWhereInput {
@@ -926,94 +388,6 @@ input ConditionListRelationFilter {
   some: ConditionWhereInput
 }
 
-type ConditionMaxAggregate {
-  assertionId: String
-  assertionTimestamp: Int
-  categoryId: Int
-  chainId: Int
-  claimStatement: String
-  conditionGroupId: Int
-  createdAt: DateTimeISO
-  description: String
-  displayOrder: Int
-  endTime: Int
-  id: String
-  openInterest: String
-  public: Boolean
-  question: String
-  resolvedToYes: Boolean
-  resolver: String
-  settled: Boolean
-  settledAt: Int
-  shortName: String
-}
-
-input ConditionMaxOrderByAggregateInput {
-  assertionId: SortOrder
-  assertionTimestamp: SortOrder
-  categoryId: SortOrder
-  chainId: SortOrder
-  claimStatement: SortOrder
-  conditionGroupId: SortOrder
-  createdAt: SortOrder
-  description: SortOrder
-  displayOrder: SortOrder
-  endTime: SortOrder
-  id: SortOrder
-  openInterest: SortOrder
-  public: SortOrder
-  question: SortOrder
-  resolvedToYes: SortOrder
-  resolver: SortOrder
-  settled: SortOrder
-  settledAt: SortOrder
-  shortName: SortOrder
-}
-
-type ConditionMinAggregate {
-  assertionId: String
-  assertionTimestamp: Int
-  categoryId: Int
-  chainId: Int
-  claimStatement: String
-  conditionGroupId: Int
-  createdAt: DateTimeISO
-  description: String
-  displayOrder: Int
-  endTime: Int
-  id: String
-  openInterest: String
-  public: Boolean
-  question: String
-  resolvedToYes: Boolean
-  resolver: String
-  settled: Boolean
-  settledAt: Int
-  shortName: String
-}
-
-input ConditionMinOrderByAggregateInput {
-  assertionId: SortOrder
-  assertionTimestamp: SortOrder
-  categoryId: SortOrder
-  chainId: SortOrder
-  claimStatement: SortOrder
-  conditionGroupId: SortOrder
-  createdAt: SortOrder
-  description: SortOrder
-  displayOrder: SortOrder
-  endTime: SortOrder
-  id: SortOrder
-  openInterest: SortOrder
-  public: SortOrder
-  question: SortOrder
-  resolvedToYes: SortOrder
-  resolver: SortOrder
-  settled: SortOrder
-  settledAt: SortOrder
-  shortName: SortOrder
-}
-
 input ConditionNullableRelationFilter {
   is: ConditionWhereInput
   isNot: ConditionWhereInput
@@ -1021,34 +395,6 @@ input ConditionNullableRelationFilter {
 
 input ConditionOrderByRelationAggregateInput {
   _count: SortOrder
-}
-
-input ConditionOrderByWithAggregationInput {
-  _avg: ConditionAvgOrderByAggregateInput
-  _count: ConditionCountOrderByAggregateInput
-  _max: ConditionMaxOrderByAggregateInput
-  _min: ConditionMinOrderByAggregateInput
-  _sum: ConditionSumOrderByAggregateInput
-  assertionId: SortOrderInput
-  assertionTimestamp: SortOrderInput
-  categoryId: SortOrderInput
-  chainId: SortOrder
-  claimStatement: SortOrder
-  conditionGroupId: SortOrderInput
-  createdAt: SortOrder
-  description: SortOrder
-  displayOrder: SortOrderInput
-  endTime: SortOrder
-  id: SortOrder
-  openInterest: SortOrder
-  public: SortOrder
-  question: SortOrder
-  resolvedToYes: SortOrder
-  resolver: SortOrderInput
-  settled: SortOrder
-  settledAt: SortOrderInput
-  shortName: SortOrderInput
-  similarMarkets: SortOrder
 }
 
 input ConditionOrderByWithRelationInput {
@@ -1104,52 +450,6 @@ enum ConditionScalarFieldEnum {
   settledAt
   shortName
   similarMarkets
-}
-
-input ConditionScalarWhereWithAggregatesInput {
-  AND: [ConditionScalarWhereWithAggregatesInput!]
-  NOT: [ConditionScalarWhereWithAggregatesInput!]
-  OR: [ConditionScalarWhereWithAggregatesInput!]
-  assertionId: StringNullableWithAggregatesFilter
-  assertionTimestamp: IntNullableWithAggregatesFilter
-  categoryId: IntNullableWithAggregatesFilter
-  chainId: IntWithAggregatesFilter
-  claimStatement: StringWithAggregatesFilter
-  conditionGroupId: IntNullableWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  description: StringWithAggregatesFilter
-  displayOrder: IntNullableWithAggregatesFilter
-  endTime: IntWithAggregatesFilter
-  id: StringWithAggregatesFilter
-  openInterest: StringWithAggregatesFilter
-  public: BoolWithAggregatesFilter
-  question: StringWithAggregatesFilter
-  resolvedToYes: BoolWithAggregatesFilter
-  resolver: StringNullableWithAggregatesFilter
-  settled: BoolWithAggregatesFilter
-  settledAt: IntNullableWithAggregatesFilter
-  shortName: StringNullableWithAggregatesFilter
-  similarMarkets: StringNullableListFilter
-}
-
-type ConditionSumAggregate {
-  assertionTimestamp: Int
-  categoryId: Int
-  chainId: Int
-  conditionGroupId: Int
-  displayOrder: Int
-  endTime: Int
-  settledAt: Int
-}
-
-input ConditionSumOrderByAggregateInput {
-  assertionTimestamp: SortOrder
-  categoryId: SortOrder
-  chainId: SortOrder
-  conditionGroupId: SortOrder
-  displayOrder: SortOrder
-  endTime: SortOrder
-  settledAt: SortOrder
 }
 
 type ConditionSummary {
@@ -1255,20 +555,6 @@ input DateTimeNullableFilter {
   notIn: [DateTimeISO!]
 }
 
-input DateTimeWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedDateTimeFilter
-  _min: NestedDateTimeFilter
-  equals: DateTimeISO
-  gt: DateTimeISO
-  gte: DateTimeISO
-  in: [DateTimeISO!]
-  lt: DateTimeISO
-  lte: DateTimeISO
-  not: NestedDateTimeWithAggregatesFilter
-  notIn: [DateTimeISO!]
-}
-
 input EnumLimitOrderStatusFilter {
   equals: LimitOrderStatus
   in: [LimitOrderStatus!]
@@ -1322,38 +608,6 @@ input IntNullableFilter {
   lt: Int
   lte: Int
   not: NestedIntNullableFilter
-  notIn: [Int!]
-}
-
-input IntNullableWithAggregatesFilter {
-  _avg: NestedFloatNullableFilter
-  _count: NestedIntNullableFilter
-  _max: NestedIntNullableFilter
-  _min: NestedIntNullableFilter
-  _sum: NestedIntNullableFilter
-  equals: Int
-  gt: Int
-  gte: Int
-  in: [Int!]
-  lt: Int
-  lte: Int
-  not: NestedIntNullableWithAggregatesFilter
-  notIn: [Int!]
-}
-
-input IntWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedIntFilter
-  _min: NestedIntFilter
-  _sum: NestedIntFilter
-  equals: Int
-  gt: Int
-  gte: Int
-  in: [Int!]
-  lt: Int
-  lte: Int
-  not: NestedIntWithAggregatesFilter
   notIn: [Int!]
 }
 
@@ -1452,14 +706,6 @@ input NestedBoolNullableFilter {
   not: NestedBoolNullableFilter
 }
 
-input NestedBoolWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedBoolFilter
-  _min: NestedBoolFilter
-  equals: Boolean
-  not: NestedBoolWithAggregatesFilter
-}
-
 input NestedDateTimeFilter {
   equals: DateTimeISO
   gt: DateTimeISO
@@ -1482,20 +728,6 @@ input NestedDateTimeNullableFilter {
   notIn: [DateTimeISO!]
 }
 
-input NestedDateTimeWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedDateTimeFilter
-  _min: NestedDateTimeFilter
-  equals: DateTimeISO
-  gt: DateTimeISO
-  gte: DateTimeISO
-  in: [DateTimeISO!]
-  lt: DateTimeISO
-  lte: DateTimeISO
-  not: NestedDateTimeWithAggregatesFilter
-  notIn: [DateTimeISO!]
-}
-
 input NestedEnumLimitOrderStatusFilter {
   equals: LimitOrderStatus
   in: [LimitOrderStatus!]
@@ -1508,17 +740,6 @@ input NestedEnumPositionStatusFilter {
   in: [PositionStatus!]
   not: NestedEnumPositionStatusFilter
   notIn: [PositionStatus!]
-}
-
-input NestedFloatFilter {
-  equals: Float
-  gt: Float
-  gte: Float
-  in: [Float!]
-  lt: Float
-  lte: Float
-  not: NestedFloatFilter
-  notIn: [Float!]
 }
 
 input NestedFloatNullableFilter {
@@ -1554,38 +775,6 @@ input NestedIntNullableFilter {
   notIn: [Int!]
 }
 
-input NestedIntNullableWithAggregatesFilter {
-  _avg: NestedFloatNullableFilter
-  _count: NestedIntNullableFilter
-  _max: NestedIntNullableFilter
-  _min: NestedIntNullableFilter
-  _sum: NestedIntNullableFilter
-  equals: Int
-  gt: Int
-  gte: Int
-  in: [Int!]
-  lt: Int
-  lte: Int
-  not: NestedIntNullableWithAggregatesFilter
-  notIn: [Int!]
-}
-
-input NestedIntWithAggregatesFilter {
-  _avg: NestedFloatFilter
-  _count: NestedIntFilter
-  _max: NestedIntFilter
-  _min: NestedIntFilter
-  _sum: NestedIntFilter
-  equals: Int
-  gt: Int
-  gte: Int
-  in: [Int!]
-  lt: Int
-  lte: Int
-  not: NestedIntWithAggregatesFilter
-  notIn: [Int!]
-}
-
 input NestedStringFilter {
   contains: String
   endsWith: String
@@ -1614,57 +803,9 @@ input NestedStringNullableFilter {
   startsWith: String
 }
 
-input NestedStringNullableWithAggregatesFilter {
-  _count: NestedIntNullableFilter
-  _max: NestedStringNullableFilter
-  _min: NestedStringNullableFilter
-  contains: String
-  endsWith: String
-  equals: String
-  gt: String
-  gte: String
-  in: [String!]
-  lt: String
-  lte: String
-  not: NestedStringNullableWithAggregatesFilter
-  notIn: [String!]
-  startsWith: String
-}
-
-input NestedStringWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedStringFilter
-  _min: NestedStringFilter
-  contains: String
-  endsWith: String
-  equals: String
-  gt: String
-  gte: String
-  in: [String!]
-  lt: String
-  lte: String
-  not: NestedStringWithAggregatesFilter
-  notIn: [String!]
-  startsWith: String
-}
-
 enum NullsOrder {
   first
   last
-}
-
-type PnLType {
-  collateralAddress: String
-  collateralDecimals: Int
-  collateralSymbol: String
-  marketId: Int!
-  openPositionsPnL: String!
-  owner: String!
-  positionCount: Int!
-  positions: [Int!]!
-  totalDeposits: String!
-  totalPnL: String!
-  totalWithdrawals: String!
 }
 
 """Position model to store on-chain prediction positions"""
@@ -1896,43 +1037,15 @@ type ProtocolStat {
 
 type Query {
   accuracyRankByAddress(attester: String!): AccuracyRankType!
-  aggregateAttestation(cursor: AttestationWhereUniqueInput, orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): AggregateAttestation!
-  aggregateCategory(cursor: CategoryWhereUniqueInput, orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): AggregateCategory!
-  aggregateCondition(cursor: ConditionWhereUniqueInput, orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): AggregateCondition!
-  aggregateConditionGroup(cursor: ConditionGroupWhereUniqueInput, orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): AggregateConditionGroup!
-  aggregateUser(cursor: UserWhereUniqueInput, orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): AggregateUser!
   allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
-  attestation(where: AttestationWhereUniqueInput!): Attestation
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
-  category(where: CategoryWhereUniqueInput!): Category
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   dailyVolumes: [DailyVolume!]!
-  findFirstAttestation(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
-  findFirstAttestationOrThrow(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): Attestation
-  findFirstCategory(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
-  findFirstCategoryOrThrow(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): Category
-  findFirstCondition(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): Condition
-  findFirstConditionGroup(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): ConditionGroup
-  findFirstConditionGroupOrThrow(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): ConditionGroup
-  findFirstConditionOrThrow(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): Condition
-  findFirstUser(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User
-  findFirstUserOrThrow(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): User
   forecasterScore(attester: String!): ForecasterScoreType
-  getAttestation(where: AttestationWhereUniqueInput!): Attestation
-  getCategory(where: CategoryWhereUniqueInput!): Category
-  getCondition(where: ConditionWhereUniqueInput!): Condition
-  getConditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
-  getLeaderboard(chainId: Int!, marketAddress: String!): [PnLType!]!
-  getUser(where: UserWhereUniqueInput!): User
-  groupByAttestation(by: [AttestationScalarFieldEnum!]!, having: AttestationScalarWhereWithAggregatesInput, orderBy: [AttestationOrderByWithAggregationInput!], skip: Int, take: Int, where: AttestationWhereInput): [AttestationGroupBy!]!
-  groupByCategory(by: [CategoryScalarFieldEnum!]!, having: CategoryScalarWhereWithAggregatesInput, orderBy: [CategoryOrderByWithAggregationInput!], skip: Int, take: Int, where: CategoryWhereInput): [CategoryGroupBy!]!
-  groupByCondition(by: [ConditionScalarFieldEnum!]!, having: ConditionScalarWhereWithAggregatesInput, orderBy: [ConditionOrderByWithAggregationInput!], skip: Int, take: Int, where: ConditionWhereInput): [ConditionGroupBy!]!
-  groupByConditionGroup(by: [ConditionGroupScalarFieldEnum!]!, having: ConditionGroupScalarWhereWithAggregatesInput, orderBy: [ConditionGroupOrderByWithAggregationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroupGroupBy!]!
-  groupByUser(by: [UserScalarFieldEnum!]!, having: UserScalarWhereWithAggregatesInput, orderBy: [UserOrderByWithAggregationInput!], skip: Int, take: Int, where: UserWhereInput): [UserGroupBy!]!
   positions(address: String, chainId: Int, endsAtGte: Int, marketAddress: String, nftTokenId: String, orderBy: String, orderDirection: String, skip: Int! = 0, status: String, take: Int! = 50): [PositionType!]!
   positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
   positionsCount(address: String!, chainId: Int): Int!
@@ -2061,42 +1174,6 @@ input StringNullableListFilter {
   isEmpty: Boolean
 }
 
-input StringNullableWithAggregatesFilter {
-  _count: NestedIntNullableFilter
-  _max: NestedStringNullableFilter
-  _min: NestedStringNullableFilter
-  contains: String
-  endsWith: String
-  equals: String
-  gt: String
-  gte: String
-  in: [String!]
-  lt: String
-  lte: String
-  mode: QueryMode
-  not: NestedStringNullableWithAggregatesFilter
-  notIn: [String!]
-  startsWith: String
-}
-
-input StringWithAggregatesFilter {
-  _count: NestedIntFilter
-  _max: NestedStringFilter
-  _min: NestedStringFilter
-  contains: String
-  endsWith: String
-  equals: String
-  gt: String
-  gte: String
-  in: [String!]
-  lt: String
-  lte: String
-  mode: QueryMode
-  not: NestedStringWithAggregatesFilter
-  notIn: [String!]
-  startsWith: String
-}
-
 """
 Application-level user record, keyed by wallet address,
 used for referrals and other per-wallet metadata.
@@ -2125,111 +1202,14 @@ type User {
   updatedAt: DateTimeISO!
 }
 
-type UserAvgAggregate {
-  id: Float
-  maxReferrals: Float
-  referredByCodeId: Float
-  referredById: Float
-}
-
-input UserAvgOrderByAggregateInput {
-  id: SortOrder
-  maxReferrals: SortOrder
-  referredByCodeId: SortOrder
-  referredById: SortOrder
-}
-
 type UserCount {
   referrals(where: UserWhereInput): Int!
-}
-
-type UserCountAggregate {
-  _all: Int!
-  address: Int!
-  createdAt: Int!
-  id: Int!
-  maxReferrals: Int!
-  refCodeHash: Int!
-  referredByCodeId: Int!
-  referredById: Int!
-  updatedAt: Int!
-}
-
-input UserCountOrderByAggregateInput {
-  address: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  maxReferrals: SortOrder
-  refCodeHash: SortOrder
-  referredByCodeId: SortOrder
-  referredById: SortOrder
-  updatedAt: SortOrder
-}
-
-type UserGroupBy {
-  _avg: UserAvgAggregate
-  _count: UserCountAggregate
-  _max: UserMaxAggregate
-  _min: UserMinAggregate
-  _sum: UserSumAggregate
-  address: String!
-  createdAt: DateTimeISO!
-  id: Int!
-  maxReferrals: Int!
-  refCodeHash: String
-  referredByCodeId: Int
-  referredById: Int
-  updatedAt: DateTimeISO!
 }
 
 input UserListRelationFilter {
   every: UserWhereInput
   none: UserWhereInput
   some: UserWhereInput
-}
-
-type UserMaxAggregate {
-  address: String
-  createdAt: DateTimeISO
-  id: Int
-  maxReferrals: Int
-  refCodeHash: String
-  referredByCodeId: Int
-  referredById: Int
-  updatedAt: DateTimeISO
-}
-
-input UserMaxOrderByAggregateInput {
-  address: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  maxReferrals: SortOrder
-  refCodeHash: SortOrder
-  referredByCodeId: SortOrder
-  referredById: SortOrder
-  updatedAt: SortOrder
-}
-
-type UserMinAggregate {
-  address: String
-  createdAt: DateTimeISO
-  id: Int
-  maxReferrals: Int
-  refCodeHash: String
-  referredByCodeId: Int
-  referredById: Int
-  updatedAt: DateTimeISO
-}
-
-input UserMinOrderByAggregateInput {
-  address: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  maxReferrals: SortOrder
-  refCodeHash: SortOrder
-  referredByCodeId: SortOrder
-  referredById: SortOrder
-  updatedAt: SortOrder
 }
 
 input UserNullableRelationFilter {
@@ -2239,22 +1219,6 @@ input UserNullableRelationFilter {
 
 input UserOrderByRelationAggregateInput {
   _count: SortOrder
-}
-
-input UserOrderByWithAggregationInput {
-  _avg: UserAvgOrderByAggregateInput
-  _count: UserCountOrderByAggregateInput
-  _max: UserMaxOrderByAggregateInput
-  _min: UserMinOrderByAggregateInput
-  _sum: UserSumOrderByAggregateInput
-  address: SortOrder
-  createdAt: SortOrder
-  id: SortOrder
-  maxReferrals: SortOrder
-  refCodeHash: SortOrderInput
-  referredByCodeId: SortOrderInput
-  referredById: SortOrderInput
-  updatedAt: SortOrder
 }
 
 input UserOrderByWithRelationInput {
@@ -2280,34 +1244,6 @@ enum UserScalarFieldEnum {
   referredByCodeId
   referredById
   updatedAt
-}
-
-input UserScalarWhereWithAggregatesInput {
-  AND: [UserScalarWhereWithAggregatesInput!]
-  NOT: [UserScalarWhereWithAggregatesInput!]
-  OR: [UserScalarWhereWithAggregatesInput!]
-  address: StringWithAggregatesFilter
-  createdAt: DateTimeWithAggregatesFilter
-  id: IntWithAggregatesFilter
-  maxReferrals: IntWithAggregatesFilter
-  refCodeHash: StringNullableWithAggregatesFilter
-  referredByCodeId: IntNullableWithAggregatesFilter
-  referredById: IntNullableWithAggregatesFilter
-  updatedAt: DateTimeWithAggregatesFilter
-}
-
-type UserSumAggregate {
-  id: Int
-  maxReferrals: Int
-  referredByCodeId: Int
-  referredById: Int
-}
-
-input UserSumOrderByAggregateInput {
-  id: SortOrder
-  maxReferrals: SortOrder
-  referredByCodeId: SortOrder
-  referredById: SortOrder
 }
 
 input UserWhereInput {

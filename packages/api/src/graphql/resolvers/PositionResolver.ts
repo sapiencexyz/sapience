@@ -251,6 +251,7 @@ export class PositionResolver {
     @Arg('marketAddress', () => String, { nullable: true })
     marketAddress?: string
   ): Promise<PositionType[]> {
+    take = Math.min(take, 200);
     const addr = address?.toLowerCase();
 
     // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
@@ -467,6 +468,8 @@ export class PositionResolver {
     status?: 'active' | 'settled' | 'consolidated',
     @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
   ): Promise<PositionType[]> {
+    take = Math.min(take, 200);
+
     const predictionMatches = await prisma.prediction.findMany({
       where: {
         positionId: { not: null },

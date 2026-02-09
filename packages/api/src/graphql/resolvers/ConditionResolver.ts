@@ -25,7 +25,7 @@ import type { ApolloContext } from '../startApolloServer';
  * Exception: When fetching by specific ID(s), the public filter is bypassed to allow
  * retrieving any condition by its known identifier.
  *
- * This resolver replaces the generated FindManyConditionResolver and FindFirstConditionResolver.
+ * This resolver replaces the generated FindManyConditionResolver.
  */
 @Resolver(() => Condition)
 export class ConditionResolver {
@@ -85,73 +85,13 @@ export class ConditionResolver {
             public: { equals: true },
           };
 
+    const effectiveTake = take != null ? Math.min(take, 1000) : undefined;
+
     return getPrismaFromContext(ctx).condition.findMany({
       where: effectiveWhere,
       orderBy,
       cursor,
-      take,
-      skip,
-      distinct,
-      ...(_count && transformCountFieldIntoSelectRelationsCount(_count)),
-    });
-  }
-
-  @Query(() => Condition, { nullable: true })
-  async findFirstCondition(
-    @Ctx() ctx: ApolloContext,
-    @Info() info: GraphQLResolveInfo,
-    @Arg('where', () => ConditionWhereInput, { nullable: true })
-    where?: ConditionWhereInput,
-    @Arg('orderBy', () => [ConditionOrderByWithRelationInput], {
-      nullable: true,
-    })
-    orderBy?: ConditionOrderByWithRelationInput[],
-    @Arg('cursor', () => ConditionWhereUniqueInput, { nullable: true })
-    cursor?: ConditionWhereUniqueInput,
-    @Arg('take', () => Int, { nullable: true }) take?: number,
-    @Arg('skip', () => Int, { nullable: true }) skip?: number,
-    @Arg('distinct', () => [ConditionScalarFieldEnum], { nullable: true })
-    distinct?: Array<
-      | 'id'
-      | 'createdAt'
-      | 'question'
-      | 'shortName'
-      | 'categoryId'
-      | 'endTime'
-      | 'public'
-      | 'claimStatement'
-      | 'description'
-      | 'similarMarkets'
-      | 'chainId'
-      | 'openInterest'
-      | 'resolver'
-      | 'settled'
-      | 'resolvedToYes'
-      | 'settledAt'
-      | 'assertionId'
-      | 'assertionTimestamp'
-      | 'conditionGroupId'
-      | 'displayOrder'
-    >
-  ): Promise<Condition | null> {
-    const { _count } = transformInfoIntoPrismaArgs(info);
-
-    const hasIdFilter = this.hasIdFilter(where);
-    const hasExplicitPublicFilter = this.hasPublicFilter(where);
-
-    const effectiveWhere: ConditionWhereInput =
-      hasIdFilter || hasExplicitPublicFilter
-        ? (where ?? {})
-        : {
-            ...where,
-            public: { equals: true },
-          };
-
-    return getPrismaFromContext(ctx).condition.findFirst({
-      where: effectiveWhere,
-      orderBy,
-      cursor,
-      take,
+      take: effectiveTake,
       skip,
       distinct,
       ...(_count && transformCountFieldIntoSelectRelationsCount(_count)),
