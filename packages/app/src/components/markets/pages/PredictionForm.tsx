@@ -203,7 +203,6 @@ export default function PredictionForm({
     triggerQuoteRequest({ forceRefresh: true, requireSignature: false });
   }, [triggerQuoteRequest]);
 
-
   return (
     <div className={`flex flex-col gap-4 ${className ?? ''}`}>
       {/* Resolved or Resolution Pending Display */}
