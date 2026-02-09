@@ -203,12 +203,6 @@ export default function PredictionForm({
     triggerQuoteRequest({ forceRefresh: true, requireSignature: false });
   }, [triggerQuoteRequest]);
 
-  // Check if we're past the end time
-  const isPastEndTime = React.useMemo(() => {
-    if (!endTime) return false;
-    const nowSec = Math.floor(Date.now() / 1000);
-    return endTime <= nowSec;
-  }, [endTime]);
 
   return (
     <div className={`flex flex-col gap-4 ${className ?? ''}`}>
@@ -233,48 +227,32 @@ export default function PredictionForm({
         </div>
       )}
 
-      {/* Current Forecast or Resolution Pending */}
+      {/* Current Forecast */}
       {!settled && (
         <div className="border border-border rounded-lg bg-brand-black p-4">
           <div className="flex flex-col items-start gap-1">
-            {isPastEndTime ? (
-              <div className="flex items-center gap-2">
-                <Label className="text-foreground font-normal text-lg -mt-0.5">
-                  Resolution
-                </Label>
-                <Badge
-                  variant="outline"
-                  className="px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-                >
-                  RESOLUTION PENDING
-                </Badge>
-              </div>
-            ) : (
-              <>
-                <Label className="text-foreground font-normal text-lg -mt-0.5">
-                  Current Forecast
-                </Label>
-                <span className="font-mono text-ethena text-3xl">
-                  {currentForecast !== null ? (
-                    `${currentForecast}% chance`
-                  ) : isWaitingForBids ? (
-                    <span className="text-muted-foreground/60 animate-pulse">
-                      Requesting...
-                    </span>
-                  ) : showRequestBidsButton ? (
-                    <button
-                      type="button"
-                      onClick={handleRequestBids}
-                      className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
-                    >
-                      Request
-                    </button>
-                  ) : (
-                    '\u00A0'
-                  )}
+            <Label className="text-foreground font-normal text-lg -mt-0.5">
+              Current Forecast
+            </Label>
+            <span className="font-mono text-ethena text-3xl">
+              {currentForecast !== null ? (
+                `${currentForecast}% chance`
+              ) : isWaitingForBids ? (
+                <span className="text-muted-foreground/60 animate-pulse">
+                  Requesting...
                 </span>
-              </>
-            )}
+              ) : showRequestBidsButton ? (
+                <button
+                  type="button"
+                  onClick={handleRequestBids}
+                  className="text-brand-white border-b border-dotted border-brand-white/50 hover:border-brand-white transition-colors"
+                >
+                  Request
+                </button>
+              ) : (
+                '\u00A0'
+              )}
+            </span>
           </div>
         </div>
       )}
