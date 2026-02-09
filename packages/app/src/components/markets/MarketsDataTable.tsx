@@ -1153,7 +1153,7 @@ export default function MarketsDataTable({
             ))}
           </TableHeader>
           <TableBody className="bg-brand-black">
-            {isLoading && displayedRows.length === 0 ? (
+            {isLoading || (displayedRows.length === 0 && hasMore !== false) ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell
                   colSpan={columns.length}
