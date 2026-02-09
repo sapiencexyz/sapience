@@ -97,9 +97,12 @@ export const initializeApolloServer = async () => {
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
     schema,
-    formatError: (error) => {
+    formatError: (formattedError, error) => {
       console.error('GraphQL Error:', error);
-      return error;
+      if (!config.isDev) {
+        delete formattedError.extensions?.stacktrace;
+      }
+      return formattedError;
     },
     introspection: true,
     validationRules: [depthLimit(5)],
