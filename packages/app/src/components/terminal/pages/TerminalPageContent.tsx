@@ -85,21 +85,27 @@ const TerminalPageContent: React.FC = () => {
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
     new Set()
   );
-  const [positionSizeRange, setPositionSizeRange] = useSessionState<[number, number]>('sapience.terminal.positionSizeRange', [
-    0,
-    Infinity,
-  ]);
-  const [bidsRange, setBidsRange] = useSessionState<[number, number]>('sapience.terminal.bidsRange', [0, Infinity]);
-  const [selectedCategorySlugs, setSelectedCategorySlugs] = useSessionState<string[]>(
-    'sapience.terminal.selectedCategorySlugs',
+  const [positionSizeRange, setPositionSizeRange] = useSessionState<
+    [number, number]
+  >('sapience.terminal.positionSizeRange', [0, Infinity]);
+  const [bidsRange, setBidsRange] = useSessionState<[number, number]>(
+    'sapience.terminal.bidsRange',
+    [0, Infinity]
+  );
+  const [selectedCategorySlugs, setSelectedCategorySlugs] = useSessionState<
+    string[]
+  >('sapience.terminal.selectedCategorySlugs', []);
+  const [selectedConditionIds, setSelectedConditionIds] = useSessionState<
+    string[]
+  >('sapience.terminal.selectedConditionIds', []);
+  const [selectedAddresses, setSelectedAddresses] = useSessionState<string[]>(
+    'sapience.terminal.selectedAddresses',
     []
   );
-  const [selectedConditionIds, setSelectedConditionIds] = useSessionState<string[]>(
-    'sapience.terminal.selectedConditionIds',
-    []
+  const [signedFilter, setSignedFilter] = useSessionState<SignedFilterValue>(
+    'sapience.terminal.signedFilter',
+    'all'
   );
-  const [selectedAddresses, setSelectedAddresses] = useSessionState<string[]>('sapience.terminal.selectedAddresses', []);
-  const [signedFilter, setSignedFilter] = useSessionState<SignedFilterValue>('sapience.terminal.signedFilter', 'all');
   const togglePin = useCallback((auctionId: string | null) => {
     if (!auctionId) return;
     setPinnedAuctions((prev) => {
