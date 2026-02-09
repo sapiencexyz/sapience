@@ -99,13 +99,19 @@ const MarketsPage = () => {
   // Filter state managed here, passed down to MarketsDataTable
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useSessionState('sapience.markets.searchTerm', '');
-  const [filters, setFilters] = useSessionState<FilterState>('sapience.markets.filters', {
-    openInterestRange: [0, Infinity],
-    timeToResolutionRange: [-Infinity, Infinity],
-    selectedCategories: [],
-    resolutionStatus: 'unresolved',
-  });
+  const [searchTerm, setSearchTerm] = useSessionState(
+    'sapience.markets.searchTerm',
+    ''
+  );
+  const [filters, setFilters] = useSessionState<FilterState>(
+    'sapience.markets.filters',
+    {
+      openInterestRange: [0, Infinity],
+      timeToResolutionRange: [-Infinity, Infinity],
+      selectedCategories: [],
+      resolutionStatus: 'unresolved',
+    }
+  );
 
   // Pick up ?category= from URL on initial load and client-side navigation
   const appliedCategoryRef = useRef<string | null>(null);
@@ -122,8 +128,14 @@ const MarketsPage = () => {
   }, [searchParams, router]);
 
   // Sorting state - lifted here so backend can respect it during pagination
-  const [sortField, setSortField] = useSessionState<SortField>('sapience.markets.sortField', 'openInterest');
-  const [sortDirection, setSortDirection] = useSessionState<SortDirection>('sapience.markets.sortDirection', 'desc');
+  const [sortField, setSortField] = useSessionState<SortField>(
+    'sapience.markets.sortField',
+    'openInterest'
+  );
+  const [sortDirection, setSortDirection] = useSessionState<SortDirection>(
+    'sapience.markets.sortDirection',
+    'desc'
+  );
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {
