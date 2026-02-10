@@ -20,7 +20,7 @@ export async function generateMetadata(
 
   const question = attestation?.condition?.question ?? 'Forecast on Sapience';
   const img = buildForecastImageUrl(uid);
-  const title = `${question} | Sapience`;
+  const title = question;
   const description = `Forecast on Sapience`;
 
   return {

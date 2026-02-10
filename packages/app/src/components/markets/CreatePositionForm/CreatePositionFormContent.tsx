@@ -89,7 +89,7 @@ export function CreatePositionFormContent({
           <div className="w-full h-full flex items-center justify-center text-center">
             <div className="flex flex-col items-center gap-2 py-20">
               <p className="text-sm font-mono uppercase text-accent-gold max-w-[260px] mx-auto bg-transparent tracking-wide">
-                ADD PREDICTIONS TO SEE POTENTIAL WINNINGS
+                ADD PREDICTIONS TO SEE POTENTIAL PAYOUT
               </p>
             </div>
           </div>
