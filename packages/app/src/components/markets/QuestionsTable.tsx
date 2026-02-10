@@ -1132,7 +1132,7 @@ export default function QuestionsTable({
     isLoading || (displayedRows.length === 0 && hasMore !== false);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4 h-full">
       <TableFilters
         filters={filters}
         onFiltersChange={onFiltersChange}
@@ -1145,12 +1145,13 @@ export default function QuestionsTable({
       />
       <div
         className={cn(
-          'rounded-md border border-brand-white/20 overflow-hidden',
+          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black flex-1',
           showLoading && 'flex flex-col'
         )}
         style={{
-          minHeight:
-            'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
+          maxHeight:
+            'calc(100dvh - var(--page-top-offset, 0px) - 28rem)',
+          overflowY: 'auto',
         }}
       >
         <Table>
@@ -1247,7 +1248,7 @@ export default function QuestionsTable({
         </Table>
         {/* Loading indicator rendered outside table for proper flex centering */}
         {showLoading && (
-          <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground py-12">
             <div className="flex items-center gap-2">
               <Loader className="h-4 w-4" durationMs={1000} />
               <span>Loading...</span>
