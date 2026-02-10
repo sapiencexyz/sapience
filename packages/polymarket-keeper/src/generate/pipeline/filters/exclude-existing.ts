@@ -29,10 +29,10 @@ export async function checkExistingConditions(
       }
     `;
 
-    const TAKE_SIZE = 100;
+    const PAGE_SIZE = 100;
     const chunks: string[][] = [];
-    for (let i = 0; i < conditionIds.length; i += TAKE_SIZE) {
-      chunks.push(conditionIds.slice(i, i + TAKE_SIZE));
+    for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
+      chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
     }
     const existingIds = new Set<string>();
     for (const chunk of chunks) {

@@ -138,10 +138,10 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
       }
     `;
     try {
-      const BATCH = 100;
+      const PAGE_SIZE = 100;
       const chunks: string[][] = [];
-      for (let i = 0; i < missing.length; i += BATCH) {
-        chunks.push(missing.slice(i, i + BATCH));
+      for (let i = 0; i < missing.length; i += PAGE_SIZE) {
+        chunks.push(missing.slice(i, i + PAGE_SIZE));
       }
       const allConditions = (await Promise.all(
         chunks.map(async (chunk) => {

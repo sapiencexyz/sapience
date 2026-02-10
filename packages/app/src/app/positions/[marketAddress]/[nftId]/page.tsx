@@ -83,10 +83,10 @@ async function fetchPosition(
     // Fetch category slugs via the full Condition type (ConditionSummary lacks category)
     try {
       const conditionIds = position.predictions.map((p) => p.conditionId);
-      const BATCH = 100;
+      const PAGE_SIZE = 100;
       const chunks: string[][] = [];
-      for (let i = 0; i < conditionIds.length; i += BATCH) {
-        chunks.push(conditionIds.slice(i, i + BATCH));
+      for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
+        chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
       }
       const conditions: { id: string; category?: { slug: string } | null }[] = (
         await Promise.all(
