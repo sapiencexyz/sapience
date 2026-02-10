@@ -1137,14 +1137,10 @@ export default function QuestionsTable({
           'rounded-md border border-brand-white/20 overflow-hidden',
           showLoading && 'flex flex-col'
         )}
-        style={
-          showLoading
-            ? {
-                minHeight:
-                  'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
-              }
-            : undefined
-        }
+        style={{
+          minHeight:
+            'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
+        }}
       >
         <Table>
           <TableHeader>
