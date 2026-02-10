@@ -25,7 +25,7 @@ import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
@@ -337,14 +337,12 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       type RawCondition = Omit<ConditionData, 'categorySlug'> & {
         category?: { slug: string } | null;
       };
-      type Result = {
-        conditions: RawCondition[];
-      };
-      const res = await graphqlRequest<Result>(query, {
-        where: { id: { in: conditionIds } },
-      });
+      const conditions = await fetchConditionsByIds<RawCondition>(
+        query,
+        conditionIds
+      );
       const map: Record<string, ConditionData> = {};
-      for (const c of res.conditions || []) {
+      for (const c of conditions) {
         map[c.id.toLowerCase()] = {
           ...c,
           categorySlug: c.category?.slug ?? null,
