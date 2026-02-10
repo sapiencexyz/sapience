@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { cn } from '@sapience/ui/lib/utils';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
 import TableFilters, {
@@ -92,7 +93,7 @@ function groupConditionToConditionType(
   };
 }
 
-interface MarketsDataTableProps {
+interface QuestionsTableProps {
   questions: QuestionType[];
   isLoading?: boolean;
   isFetchingMore?: boolean;
@@ -806,7 +807,7 @@ function ChildConditionRow({
   );
 }
 
-export default function MarketsDataTable({
+export default function QuestionsTable({
   questions,
   isLoading,
   isFetchingMore,
@@ -820,7 +821,7 @@ export default function MarketsDataTable({
   sortField,
   sortDirection,
   onSortChange,
-}: MarketsDataTableProps) {
+}: QuestionsTableProps) {
   // Derive table sorting state from controlled props
   const sorting: SortingState = React.useMemo(
     () => [{ id: sortField, desc: sortDirection === 'desc' }],
@@ -1127,6 +1128,9 @@ export default function MarketsDataTable({
     }
   }, [isLoading, hasMore, isFetchingMore, onFetchMore]);
 
+  const showLoading =
+    isLoading || (displayedRows.length === 0 && hasMore !== false);
+
   return (
     <div className="space-y-4">
       <TableFilters
@@ -1139,7 +1143,16 @@ export default function MarketsDataTable({
         onSearchChange={onSearchChange}
         className="mt-4"
       />
-      <div className="rounded-md border border-brand-white/20 overflow-hidden">
+      <div
+        className={cn(
+          'rounded-md border border-brand-white/20 overflow-hidden',
+          showLoading && 'flex flex-col'
+        )}
+        style={{
+          minHeight:
+            'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
+        }}
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -1164,19 +1177,7 @@ export default function MarketsDataTable({
             ))}
           </TableHeader>
           <TableBody className="bg-brand-black">
-            {isLoading || (displayedRows.length === 0 && hasMore !== false) ? (
-              <TableRow className="hover:bg-transparent">
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Loader className="h-4 w-4" durationMs={1000} />
-                    <span>Loading...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : displayedRows.length ? (
+            {showLoading ? null : displayedRows.length ? (
               <>
                 {displayedRows.map((row) => {
                   const data = row.original;
@@ -1244,6 +1245,15 @@ export default function MarketsDataTable({
             )}
           </TableBody>
         </Table>
+        {/* Loading indicator rendered outside table for proper flex centering */}
+        {showLoading && (
+          <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <Loader className="h-4 w-4" durationMs={1000} />
+              <span>Loading...</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Infinite scroll sentinel (invisible) */}

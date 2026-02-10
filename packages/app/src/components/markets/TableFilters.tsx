@@ -285,10 +285,12 @@ export default function TableFilters({
           { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
       />
-      <ResolutionStatusFilter
-        value={filters.resolutionStatus}
-        onChange={handleResolutionStatusChange}
-      />
+      <div className="col-span-2 md:col-span-1">
+        <ResolutionStatusFilter
+          value={filters.resolutionStatus}
+          onChange={handleResolutionStatusChange}
+        />
+      </div>
     </div>
   );
 }
