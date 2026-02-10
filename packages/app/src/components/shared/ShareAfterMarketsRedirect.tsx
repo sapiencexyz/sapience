@@ -473,11 +473,6 @@ export default function ShareAfterMarketsRedirect() {
     return storedClientTimestamp;
   }, [imageSrc, storedClientTimestamp]);
 
-  const expectedLegs = useMemo(() => {
-    if (!imageSrc) return undefined;
-    return storedExpectedLegs;
-  }, [imageSrc, storedExpectedLegs]);
-
   const lastNftId = useMemo(() => {
     if (!imageSrc) {
       return undefined;
@@ -499,7 +494,6 @@ export default function ShareAfterMarketsRedirect() {
       title="Trade Submitted"
       trackPosition={true}
       positionTimestamp={positionTimestamp}
-      expectedLegs={expectedLegs}
       lastNftId={lastNftId}
     />
   );

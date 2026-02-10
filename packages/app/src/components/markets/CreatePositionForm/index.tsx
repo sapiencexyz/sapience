@@ -1021,7 +1021,6 @@ const CreatePositionFormInner = ({
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
       trackPosition={true}
-      expectedPicks={shareDialogData?.picks}
       lastNftId={shareDialogData?.lastNftId}
       progressState={progressState}
       onPositionIndexed={handlePositionIndexed}

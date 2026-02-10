@@ -22,7 +22,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { marketAddress, nftId } = await props.params;
   const img = buildPositionImageUrl(nftId, marketAddress);
-  const title = `Position #${nftId} | Sapience`;
+  const title = `Position #${nftId}`;
   const description = `Position #${nftId} on Sapience Prediction Markets`;
 
   return {
