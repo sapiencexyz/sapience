@@ -84,11 +84,8 @@ export class QuestionsResolver {
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
     // Exclude dead markets: 0 open interest + past end time (no positions, can't trade)
-    // Only apply when not searching, so users can find dead markets if needed
     const nowSec = Math.floor(Date.now() / 1000);
-    const deadMarketFilter = boundedSearch
-      ? Prisma.empty
-      : Prisma.sql`AND NOT (c."openInterest" = '0' AND c."endTime" < ${nowSec})`;
+    const deadMarketFilter = Prisma.sql`AND NOT (c."openInterest" = '0' AND c."endTime" < ${nowSec})`;
 
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
@@ -290,9 +287,7 @@ export class QuestionsResolver {
       ...(minEndTime !== null ? { endTime: { gte: minEndTime } } : {}),
       // Mirror the SQL deadMarketFilter: exclude conditions with 0 OI + past end time
       // so nested group conditions don't include dead markets the SQL query excluded
-      ...(!boundedSearch
-        ? { NOT: { openInterest: '0', endTime: { lt: nowSec } } }
-        : {}),
+      NOT: { openInterest: '0', endTime: { lt: nowSec } },
     };
 
     const groupInclude = {

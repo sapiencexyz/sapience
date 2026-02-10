@@ -43,36 +43,38 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
     const hoursDiff = Math.abs(differenceInHours(date, now));
 
     // Smart display logic:
-    // - Future: "Closes in X" with full date
-    // - Past < 1 day: "Closed X hours ago"
-    // - Past < 7 days: "Closed X days ago"
-    // - Past >= 7 days: "Closed [short date]"
+    // - Future: "Ends in X" with full date
+    // - Past + not settled: "Ends soon" (end times are estimates)
+    // - Past + settled < 1 day: "Ended X hours ago"
+    // - Past + settled < 7 days: "Ended X days ago"
+    // - Past + settled >= 7 days: "Ended [short date]"
     let badgeText: string;
     let showExpandedDate: boolean;
-
-    // Use "Ended" if settled, "Ends" if past end time but not yet settled
-    const pastVerb = settled ? 'Ended' : 'Ends';
 
     if (!isPast) {
       // Future: show relative time
       badgeText = `Ends ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
+    } else if (!settled) {
+      // Past end time but not yet settled — end times are estimates, show "Ends soon"
+      badgeText = 'Ends soon';
+      showExpandedDate = false;
     } else if (hoursDiff < 24) {
-      // Past recently (within 24 hours): show relative time only
-      badgeText = `${pastVerb} ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Settled recently (within 24 hours): show relative time only
+      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else if (daysDiff < 7) {
-      // Past within a week: show relative time only
-      badgeText = `${pastVerb} ${formatDistanceToNow(date, { addSuffix: true })}`;
+      // Settled within a week: show relative time only
+      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else {
-      // Past more than a week ago: show short date format
+      // Settled more than a week ago: show short date format
       const shortDate = new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',
         year: 'numeric',
       }).format(date);
-      badgeText = `${pastVerb} ${shortDate}`;
+      badgeText = `Ended ${shortDate}`;
       showExpandedDate = false;
     }
 

@@ -250,7 +250,12 @@ const MarketsPage = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
+      <div
+        className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
+        style={{
+          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
+        }}
+      >
         {/* Featured Positions section */}
         <ExampleCombos className="mt-4 md:mt-0" />
 
@@ -265,7 +270,7 @@ const MarketsPage = () => {
         )}
 
         {/* Results area - always table view */}
-        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
+        <div className="relative w-full max-w-full overflow-x-hidden flex-1">
           <motion.div
             key="table-view"
             initial={{ opacity: 0 }}
