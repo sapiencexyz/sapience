@@ -1140,7 +1140,8 @@ export default function QuestionsTable({
         style={
           showLoading
             ? {
-                minHeight: 'calc(100dvh - var(--page-top-offset, 0px) - 12rem)',
+                minHeight:
+                  'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
               }
             : undefined
         }
