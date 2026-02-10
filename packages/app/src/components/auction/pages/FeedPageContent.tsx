@@ -4,7 +4,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { decodeAbiParameters, formatEther } from 'viem';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { batchFetchConditions } from '~/hooks/graphql/batchFetchConditions';
 import { SquareStack as SquareStackIcon } from 'lucide-react';
 import {
   Tabs,
@@ -156,14 +156,11 @@ const FeedPageContent: React.FC = () => {
           }
         }
       `;
-      const resp = await graphqlRequest<{
-        conditions: Array<{
-          id: string;
-          shortName?: string | null;
-          question?: string | null;
-        }>;
-      }>(CONDITIONS_BY_IDS, { where: { id: { in: conditionIds } } });
-      return resp?.conditions || [];
+      return batchFetchConditions<{
+        id: string;
+        shortName?: string | null;
+        question?: string | null;
+      }>(CONDITIONS_BY_IDS, conditionIds);
     },
   });
 

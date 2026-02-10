@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { batchFetchConditions } from './batchFetchConditions';
 import type { Position } from './useUserPositions';
 
 // Note: GraphQL query name matches API schema (positionsByConditionId)
@@ -113,13 +114,11 @@ export function usePositionsByConditionId(params: {
         resolver?: string | null;
         category?: { slug: string } | null;
       };
-      const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
+      const condRows = await batchFetchConditions<CondRow>(
         CONDITIONS_BY_IDS,
-        { where: { id: { in: conditionIds } } }
+        conditionIds
       );
-      const conditionDataMap = new Map(
-        (condResp?.conditions || []).map((c) => [c.id, c])
-      );
+      const conditionDataMap = new Map(condRows.map((c) => [c.id, c]));
 
       // Enrich predictions.condition with shortName, description, category, resolver if available
       return base.map((p) => ({

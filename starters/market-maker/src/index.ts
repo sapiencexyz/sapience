@@ -138,11 +138,21 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
       }
     `;
     try {
-      const resp = await graphqlRequest<{ conditions: { id: string; shortName?: string | null; question?: string | null }[] }>(
-        QUERY,
-        { where: { id: { in: missing } } }
-      );
-      for (const row of resp?.conditions ?? []) {
+      const BATCH = 100;
+      const chunks: string[][] = [];
+      for (let i = 0; i < missing.length; i += BATCH) {
+        chunks.push(missing.slice(i, i + BATCH));
+      }
+      const allConditions = (await Promise.all(
+        chunks.map(async (chunk) => {
+          const resp = await graphqlRequest<{ conditions: { id: string; shortName?: string | null; question?: string | null }[] }>(
+            QUERY,
+            { where: { id: { in: chunk } } }
+          );
+          return resp?.conditions ?? [];
+        })
+      )).flat();
+      for (const row of allConditions) {
         conditionCache.set(row.id, { shortName: row.shortName ?? null, question: row.question ?? null });
       }
     } catch (e) {

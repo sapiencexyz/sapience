@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { batchFetchConditions } from './batchFetchConditions';
 
 type ConditionById = {
   id: string;
@@ -41,11 +41,11 @@ export function useConditionsByIds(ids: string[]) {
           }
         }
       `;
-      const resp = await graphqlRequest<{ conditions: ConditionById[] }>(
+      const conditions = await batchFetchConditions<ConditionById>(
         QUERY,
-        { where: { id: { in: sorted } } }
+        sorted
       );
-      return { conditions: resp?.conditions || [] };
+      return { conditions };
     },
   });
 
