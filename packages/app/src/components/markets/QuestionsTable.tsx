@@ -28,6 +28,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { cn } from '@sapience/ui/lib/utils';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
 import TableFilters, {
@@ -1012,29 +1013,6 @@ export default function QuestionsTable({
     return result;
   }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange]);
 
-  // Ref for the bordered table container – used to stretch it to the viewport
-  // bottom during the loading state so the border matches the sidebar column.
-  const tableContainerRef = React.useRef<HTMLDivElement>(null);
-  const [loadingMinHeight, setLoadingMinHeight] = React.useState<
-    number | undefined
-  >(undefined);
-
-  React.useEffect(() => {
-    if (isLoading && tableContainerRef.current) {
-      const containerTop =
-        tableContainerRef.current.getBoundingClientRect().top;
-      // Match the sidebar column's bottom edge, capped at viewport
-      const sidebar = document.querySelector('[data-sidebar-column]');
-      const targetBottom = sidebar
-        ? Math.min(sidebar.getBoundingClientRect().bottom, window.innerHeight)
-        : window.innerHeight;
-      // Subtract 40px to match the sidebar column's visual bottom offset
-      setLoadingMinHeight(targetBottom - containerTop - 40);
-    } else if (!isLoading) {
-      setLoadingMinHeight(undefined);
-    }
-  }, [isLoading]);
-
   // Ref for infinite scroll sentinel
   const loadMoreRef = React.useRef<HTMLDivElement>(null);
 
@@ -1139,6 +1117,9 @@ export default function QuestionsTable({
     }
   }, [isLoading, hasMore, isFetchingMore, onFetchMore]);
 
+  const showLoading =
+    isLoading || (displayedRows.length === 0 && hasMore !== false);
+
   return (
     <div className="space-y-4">
       <TableFilters
@@ -1152,12 +1133,16 @@ export default function QuestionsTable({
         className="mt-4"
       />
       <div
-        ref={tableContainerRef}
-        className={`rounded-md border border-brand-white/20 overflow-hidden ${
-          loadingMinHeight != null ? 'flex flex-col' : ''
-        }`}
+        className={cn(
+          'rounded-md border border-brand-white/20 overflow-hidden',
+          showLoading && 'flex flex-col'
+        )}
         style={
-          loadingMinHeight != null ? { minHeight: loadingMinHeight } : undefined
+          showLoading
+            ? {
+                minHeight: 'calc(100dvh - var(--page-top-offset, 0px) - 12rem)',
+              }
+            : undefined
         }
       >
         <Table>
@@ -1184,9 +1169,7 @@ export default function QuestionsTable({
             ))}
           </TableHeader>
           <TableBody className="bg-brand-black">
-            {isLoading ||
-            (displayedRows.length === 0 &&
-              hasMore !== false) ? null : displayedRows.length ? (
+            {showLoading ? null : displayedRows.length ? (
               <>
                 {displayedRows.map((row) => {
                   const data = row.original;
@@ -1255,7 +1238,7 @@ export default function QuestionsTable({
           </TableBody>
         </Table>
         {/* Loading indicator rendered outside table for proper flex centering */}
-        {(isLoading || (displayedRows.length === 0 && hasMore !== false)) && (
+        {showLoading && (
           <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground">
             <div className="flex items-center gap-2">
               <Loader className="h-4 w-4" durationMs={1000} />

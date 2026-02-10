@@ -294,10 +294,7 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky position form sidebar */}
       {!isCompact && (
-        <div
-          data-sidebar-column
-          className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6"
-        >
+        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
           <div
             className="rounded-none shadow-lg overflow-hidden"
             style={{
