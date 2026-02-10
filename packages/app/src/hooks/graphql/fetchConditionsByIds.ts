@@ -3,7 +3,7 @@ import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 const TAKE_SIZE = 100;
 const MAX_CONCURRENT_REQUESTS = 3;
 
-export async function batchFetchConditions<T>(
+export async function fetchConditionsByIds<T>(
   query: string,
   ids: string[],
   resultKey = 'conditions'

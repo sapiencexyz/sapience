@@ -25,7 +25,7 @@ import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
-import { batchFetchConditions } from '~/hooks/graphql/batchFetchConditions';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
 import type { FormattedAttestation } from '~/hooks/graphql/useForecasts';
@@ -337,7 +337,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
       type RawCondition = Omit<ConditionData, 'categorySlug'> & {
         category?: { slug: string } | null;
       };
-      const conditions = await batchFetchConditions<RawCondition>(
+      const conditions = await fetchConditionsByIds<RawCondition>(
         query,
         conditionIds
       );

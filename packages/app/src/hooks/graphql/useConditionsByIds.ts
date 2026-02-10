@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { batchFetchConditions } from './batchFetchConditions';
+import { fetchConditionsByIds } from './fetchConditionsByIds';
 
 type ConditionById = {
   id: string;
@@ -41,7 +41,7 @@ export function useConditionsByIds(ids: string[]) {
           }
         }
       `;
-      const conditions = await batchFetchConditions<ConditionById>(
+      const conditions = await fetchConditionsByIds<ConditionById>(
         QUERY,
         sorted
       );

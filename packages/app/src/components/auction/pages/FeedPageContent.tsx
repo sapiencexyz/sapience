@@ -4,7 +4,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { decodeAbiParameters, formatEther } from 'viem';
 import { useQuery } from '@tanstack/react-query';
-import { batchFetchConditions } from '~/hooks/graphql/batchFetchConditions';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { SquareStack as SquareStackIcon } from 'lucide-react';
 import {
   Tabs,
@@ -156,7 +156,7 @@ const FeedPageContent: React.FC = () => {
           }
         }
       `;
-      return batchFetchConditions<{
+      return fetchConditionsByIds<{
         id: string;
         shortName?: string | null;
         question?: string | null;

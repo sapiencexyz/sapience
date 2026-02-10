@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import { batchFetchConditions } from './batchFetchConditions';
+import { fetchConditionsByIds } from './fetchConditionsByIds';
 import type { Position } from './useUserPositions';
 
 // Note: GraphQL query name matches API schema (positionsByConditionId)
@@ -114,7 +114,7 @@ export function usePositionsByConditionId(params: {
         resolver?: string | null;
         category?: { slug: string } | null;
       };
-      const condRows = await batchFetchConditions<CondRow>(
+      const condRows = await fetchConditionsByIds<CondRow>(
         CONDITIONS_BY_IDS,
         conditionIds
       );

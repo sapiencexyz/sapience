@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { batchFetchConditions } from '~/hooks/graphql/batchFetchConditions';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
@@ -227,7 +227,7 @@ const Comments = ({
           }
         }
       `;
-      const conditions = await batchFetchConditions<ConditionData>(
+      const conditions = await fetchConditionsByIds<ConditionData>(
         query,
         conditionIds
       );
