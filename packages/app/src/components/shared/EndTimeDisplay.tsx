@@ -11,7 +11,6 @@ import {
   formatDistanceToNow,
   fromUnixTime,
   differenceInDays,
-  differenceInHours,
 } from 'date-fns';
 import { Timer } from 'lucide-react';
 
@@ -38,37 +37,19 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
     const now = new Date();
     const isPast = date.getTime() <= now.getTime();
 
-    // Calculate time differences for smarter display
-    const daysDiff = Math.abs(differenceInDays(date, now));
-    const hoursDiff = Math.abs(differenceInHours(date, now));
-
-    // Smart display logic:
-    // - Future: "Ends in X" with full date
-    // - Past + not settled: "Ends soon" (end times are estimates)
-    // - Past + settled < 1 day: "Ended X hours ago"
-    // - Past + settled < 7 days: "Ended X days ago"
-    // - Past + settled >= 7 days: "Ended [short date]"
     let badgeText: string;
     let showExpandedDate: boolean;
 
     if (!isPast) {
-      // Future: show relative time
       badgeText = `Ends ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
     } else if (!settled) {
-      // Past end time but not yet settled — end times are estimates, show "Ends soon"
       badgeText = 'Ends soon';
       showExpandedDate = false;
-    } else if (hoursDiff < 24) {
-      // Settled recently (within 24 hours): show relative time only
-      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
-      showExpandedDate = false;
-    } else if (daysDiff < 7) {
-      // Settled within a week: show relative time only
+    } else if (Math.abs(differenceInDays(date, now)) < 7) {
       badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else {
-      // Settled more than a week ago: show short date format
       const shortDate = new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',
