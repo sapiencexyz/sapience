@@ -64,20 +64,28 @@ export class PositionReconciler {
       for (const chainId of chainIds) {
         const client = getProviderForChain(chainId);
 
-        const toBlock = 'latest' as const;
+        const toBlock = await client.getBlockNumber();
 
         const watermark = await this.getWatermark(chainId);
+        console.log(
+          `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: watermark=${watermark ?? 'none'}, toBlock=${toBlock}`
+        );
         let fromBlock: bigint | null = null;
         if (watermark) {
           fromBlock = watermark + 1n;
         }
         if (fromBlock === null) {
-          const latestBlockNumber = await client.getBlockNumber();
           const offset = BigInt(
             POSITION_RECONCILE_CONFIG.fallbackBlockLookback
           );
           fromBlock =
-            latestBlockNumber > offset ? latestBlockNumber - offset : 0n;
+            toBlock > offset ? toBlock - offset : 0n;
+        }
+        if (fromBlock > toBlock) {
+          console.log(
+            `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: fromBlock=${fromBlock} > toBlock=${toBlock}, chain has not advanced past watermark — skipping`
+          );
+          continue;
         }
         if (!watermark && lookbackSecondsEffective > 0) {
           try {
@@ -133,6 +141,9 @@ export class PositionReconciler {
         }
 
         try {
+          console.log(
+            `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: scanning blocks ${fromBlock} to ${toBlock} (range=${toBlock - fromBlock})`
+          );
           const logs = await client.getLogs({
             address: addresses,
             fromBlock,
@@ -168,11 +179,10 @@ export class PositionReconciler {
               }
             }
           }
-          const lastLogBlockNumber =
-            logs.length > 0 ? logs[logs.length - 1].blockNumber : null;
-          const newWatermark =
-            lastLogBlockNumber ?? (await client.getBlockNumber());
-          await this.setWatermark(chainId, newWatermark);
+          await this.setWatermark(chainId, toBlock);
+          console.log(
+            `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: watermark updated to ${toBlock}`
+          );
         } catch (e) {
           console.error(
             `${POSITION_RECONCILE_CONFIG.logPrefix} Failed processing batch for chain=${chainId}:`,
