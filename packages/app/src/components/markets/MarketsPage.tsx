@@ -13,7 +13,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
-import MarketsDataTable from '~/components/markets/MarketsDataTable';
+import QuestionsTable from '~/components/markets/QuestionsTable';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -96,7 +96,7 @@ const MarketsPage = () => {
     }
   }, []);
 
-  // Filter state managed here, passed down to MarketsDataTable
+  // Filter state managed here, passed down to QuestionsTable
   const searchParams = useSearchParams();
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useSessionState(
@@ -273,7 +273,7 @@ const MarketsPage = () => {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <MarketsDataTable
+            <QuestionsTable
               questions={questions}
               isLoading={isLoadingData}
               isFetchingMore={isFetchingMore}
@@ -294,7 +294,10 @@ const MarketsPage = () => {
 
       {/* Desktop/Tablet sticky position form sidebar */}
       {!isCompact && (
-        <div className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6">
+        <div
+          data-sidebar-column
+          className="hidden lg:block w-[24rem] shrink-0 self-start sticky top-24 z-30 lg:ml-1 xl:ml-2 lg:mr-6"
+        >
           <div
             className="rounded-none shadow-lg overflow-hidden"
             style={{
