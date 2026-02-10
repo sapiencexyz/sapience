@@ -6,13 +6,11 @@ export const FONT_FAMILY = {
   sans: 'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
 } as const;
 
-const BASE_WIDTH = 1200;
-const BASE_HEIGHT = 630;
-export const WIDTH = 2400; // default 2×
-export const HEIGHT = 1260;
+export const WIDTH = 1200;
+export const HEIGHT = 630;
 
 export function getScale(width: number) {
-  return width / BASE_WIDTH;
+  return width / 1200;
 }
 
 export function normalizeText(val: string | null, max: number): string {
@@ -31,6 +29,7 @@ export async function loadFontData(req: Request) {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(new URL(path, req.url), {
         signal: controller.signal,
+        cache: 'force-cache',
       });
       clearTimeout(timeout);
       if (!res.ok) return null;
@@ -45,19 +44,22 @@ export async function loadFontData(req: Request) {
       new URL(
         '/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     fetch(
       new URL(
         '/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     fetch(
       new URL(
         '/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     // IBM Plex Mono - load reliably like Avenir fonts (no short timeout)
     fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-400.woff', 5000),
@@ -161,8 +163,8 @@ export function Background({
       <img
         src={bgUrl}
         alt=""
-        width={BASE_WIDTH * scale}
-        height={BASE_HEIGHT * scale}
+        width={1200 * scale}
+        height={630 * scale}
         style={{
           display: 'flex',
           width: '100%',
