@@ -1248,7 +1248,7 @@ export default function QuestionsTable({
         </Table>
         {/* Loading indicator rendered outside table for proper flex centering */}
         {showLoading && (
-          <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground">
+          <div className="flex-1 flex items-center justify-center bg-brand-black text-muted-foreground py-12">
             <div className="flex items-center gap-2">
               <Loader className="h-4 w-4" durationMs={1000} />
               <span>Loading...</span>
