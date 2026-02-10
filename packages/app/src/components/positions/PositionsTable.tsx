@@ -1199,53 +1199,8 @@ export default function PositionsTable({
               );
             }
             if (
-              row.original.status === 'active' &&
-              row.original.endsAt <= Date.now()
-            ) {
-              const {
-                allConditionsSettled,
-                predictorWonFromDb,
-                isCounterpartyPosition,
-              } = row.original;
-
-              if (!allConditionsSettled) {
-                return (
-                  <span className="inline-flex items-center gap-2">
-                    {endedAgo && (
-                      <span className="text-brand-white text-sm">
-                        {endedAgo}
-                      </span>
-                    )}
-                  </span>
-                );
-              }
-
-              // Determine if this position won
-              const positionWon = isCounterpartyPosition
-                ? predictorWonFromDb === false // Counterparty wins when predictor loses
-                : predictorWonFromDb === true; // Predictor wins when predictorWon is true
-
-              if (positionWon) {
-                return (
-                  <span className="inline-flex items-center gap-2">
-                    {endedAgo && (
-                      <span className="text-brand-white text-sm">
-                        {endedAgo}
-                      </span>
-                    )}
-                  </span>
-                );
-              }
-
-              return (
-                <span className="inline-flex items-center gap-2">
-                  {endedAgo && (
-                    <span className="text-brand-white text-sm">{endedAgo}</span>
-                  )}
-                </span>
-              );
-            }
-            if (
+              (row.original.status === 'active' &&
+                row.original.endsAt <= Date.now()) ||
               row.original.status === 'won' ||
               row.original.status === 'lost'
             ) {
