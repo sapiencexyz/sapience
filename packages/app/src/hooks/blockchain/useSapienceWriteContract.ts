@@ -615,12 +615,11 @@ export function useSapienceWriteContract({
               ];
               const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
-              const txHashFromSession = await executeViaSessionKey(
-                sessionClient,
-                calls,
-                _chainId
-              );
-              handleTransactionSuccess(txHashFromSession);
+              await executeViaSessionKey(sessionClient, calls, _chainId);
+              // Don't pass userOpHash to handleTransactionSuccess — it's not a real
+              // transaction hash and useMonitorTxStatus (wagmi getTransactionReceipt)
+              // would fail to look it up, showing a false "Transaction Failed" toast.
+              handleTransactionSuccess();
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
