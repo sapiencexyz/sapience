@@ -83,18 +83,28 @@ async function fetchPosition(
     // Fetch category slugs via the full Condition type (ConditionSummary lacks category)
     try {
       const conditionIds = position.predictions.map((p) => p.conditionId);
-      const catResp = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: CONDITIONS_QUERY,
-          variables: { where: { id: { in: conditionIds } } },
-        }),
-        next: { revalidate: 30 },
-      });
-      const catJson = await catResp.json();
-      const conditions: { id: string; category?: { slug: string } | null }[] =
-        catJson?.data?.conditions ?? [];
+      const PAGE_SIZE = 100;
+      const chunks: string[][] = [];
+      for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
+        chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
+      }
+      const conditions: { id: string; category?: { slug: string } | null }[] = (
+        await Promise.all(
+          chunks.map(async (chunk) => {
+            const catResp = await fetch(endpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                query: CONDITIONS_QUERY,
+                variables: { where: { id: { in: chunk } } },
+              }),
+              next: { revalidate: 30 },
+            });
+            const catJson = await catResp.json();
+            return catJson?.data?.conditions ?? [];
+          })
+        )
+      ).flat();
       const catMap = new Map(
         conditions.map((c) => [c.id, c.category?.slug ?? null])
       );

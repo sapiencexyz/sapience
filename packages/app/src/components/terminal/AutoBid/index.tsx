@@ -97,7 +97,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   });
 
   const { data: conditionCatalog = [] } = useConditions({
-    take: 200,
+    take: 100,
     chainId: chainId || undefined,
   });
 

@@ -9,7 +9,7 @@ import {
   useEffect,
 } from 'react';
 import { z } from 'zod';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 
 // localStorage key for position selections persistence
 const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
@@ -181,12 +181,10 @@ export const CreatePositionProvider = ({
       }
     `;
 
-    graphqlRequest<{ conditions: { id: string; settled: boolean }[] }>(QUERY, {
-      where: { id: { in: conditionIds } },
-    })
-      .then((resp) => {
+    fetchConditionsByIds<{ id: string; settled: boolean }>(QUERY, conditionIds)
+      .then((conditions) => {
         const settledIds = new Set(
-          (resp?.conditions ?? []).filter((c) => c.settled).map((c) => c.id)
+          conditions.filter((c) => c.settled).map((c) => c.id)
         );
         if (settledIds.size > 0) {
           setSelections((prev) =>

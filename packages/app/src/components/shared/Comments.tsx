@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
@@ -227,14 +227,12 @@ const Comments = ({
           }
         }
       `;
-      type Result = {
-        conditions: ConditionData[];
-      };
-      const res = await graphqlRequest<Result>(query, {
-        where: { id: { in: conditionIds } },
-      });
+      const conditions = await fetchConditionsByIds<ConditionData>(
+        query,
+        conditionIds
+      );
       const map: Record<string, ConditionData> = {};
-      for (const c of res.conditions || []) {
+      for (const c of conditions) {
         map[c.id.toLowerCase()] = c;
       }
       return map;
