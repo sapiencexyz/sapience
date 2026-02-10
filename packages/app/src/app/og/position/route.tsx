@@ -229,48 +229,69 @@ export async function GET(req: Request) {
                       }}
                     >
                       {legs.map((leg, idx) => {
-                        // Split text into words so badge flows inline
+                        // Split text into words so badge flows inline.
+                        // Icon sits outside the wrapping text so wrapped lines align to text edge, not the icon.
                         const words = leg.text.split(' ');
+                        const lineH = (compact ? 30 : 40) * scale;
                         return (
                           <div
                             key={idx}
                             style={{
                               display: 'flex',
-                              flexWrap: 'wrap',
-                              alignItems: 'center',
+                              alignItems: 'flex-start',
                             }}
                           >
                             {leg.resolution && (
-                              <ResolutionIcon
-                                status={leg.resolution}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  height: lineH,
+                                  marginBottom: (compact ? 4 : 6) * scale,
+                                  marginTop: 2 * scale,
+                                }}
+                              >
+                                <ResolutionIcon
+                                  status={leg.resolution}
+                                  scale={scale}
+                                  compact={compact}
+                                />
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
+                                flex: 1,
+                                minWidth: 0,
+                              }}
+                            >
+                              {words.map((word, wordIdx) => (
+                                <div
+                                  key={wordIdx}
+                                  style={{
+                                    display: 'flex',
+                                    fontSize: (compact ? 24 : 32) * scale,
+                                    lineHeight: `${(compact ? 30 : 40) * scale}px`,
+                                    fontWeight: 550,
+                                    letterSpacing: -0.16 * scale,
+                                    color: og.colors.brandWhite,
+                                    fontFamily: FONT_FAMILY.mono,
+                                    marginRight: (compact ? 8 : 12) * scale,
+                                    marginBottom: (compact ? 4 : 6) * scale,
+                                  }}
+                                >
+                                  {word}
+                                </div>
+                              ))}
+                              <Pill
+                                text={leg.choice}
+                                tone={leg.tone}
                                 scale={scale}
                                 compact={compact}
                               />
-                            )}
-                            {words.map((word, wordIdx) => (
-                              <div
-                                key={wordIdx}
-                                style={{
-                                  display: 'flex',
-                                  fontSize: (compact ? 24 : 32) * scale,
-                                  lineHeight: `${(compact ? 30 : 40) * scale}px`,
-                                  fontWeight: 550,
-                                  letterSpacing: -0.16 * scale,
-                                  color: og.colors.brandWhite,
-                                  fontFamily: FONT_FAMILY.mono,
-                                  marginRight: (compact ? 8 : 12) * scale,
-                                  marginBottom: (compact ? 4 : 6) * scale,
-                                }}
-                              >
-                                {word}
-                              </div>
-                            ))}
-                            <Pill
-                              text={leg.choice}
-                              tone={leg.tone}
-                              scale={scale}
-                              compact={compact}
-                            />
+                            </div>
                           </div>
                         );
                       })}
