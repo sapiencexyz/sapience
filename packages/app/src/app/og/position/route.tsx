@@ -192,7 +192,7 @@ export async function GET(req: Request) {
     const compact = legs.length > 3;
     const potentialReturn = computePotentialReturn(positionSize, payout);
 
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
@@ -320,6 +320,13 @@ export async function GET(req: Request) {
         fonts: fontsFromData(fonts),
       }
     );
+
+    imageResponse.headers.set(
+      'Cache-Control',
+      'public, max-age=300, s-maxage=300, stale-while-revalidate=600'
+    );
+
+    return imageResponse;
   } catch (err) {
     return createErrorImageResponse(err);
   }
