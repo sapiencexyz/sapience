@@ -29,25 +29,29 @@ export async function checkExistingConditions(
       }
     `;
 
-    const response = await fetchWithRetry(graphqlUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query,
-        variables: { where: { id: { in: conditionIds } } },
-      }),
-    });
-
-    if (!response.ok) {
-      console.warn(`[API] GraphQL query failed: ${response.status}`);
-      return new Set();
+    const TAKE_SIZE = 100;
+    const chunks: string[][] = [];
+    for (let i = 0; i < conditionIds.length; i += TAKE_SIZE) {
+      chunks.push(conditionIds.slice(i, i + TAKE_SIZE));
     }
-
-    const result = await response.json();
     const existingIds = new Set<string>();
+    for (const chunk of chunks) {
+      const response = await fetchWithRetry(graphqlUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query,
+          variables: { where: { id: { in: chunk } } },
+        }),
+      });
 
-    if (result.data?.conditions) {
-      for (const condition of result.data.conditions) {
+      if (!response.ok) {
+        console.warn(`[API] GraphQL query failed: ${response.status}`);
+        continue;
+      }
+
+      const result = await response.json();
+      for (const condition of result.data?.conditions ?? []) {
         existingIds.add(condition.id);
       }
     }
