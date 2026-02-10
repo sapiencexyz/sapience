@@ -163,11 +163,10 @@ Question: ${condition?.shortName || condition?.question || "Unknown"}
       const marketId = parseInt(marketIdMatch[1]);
       elizaLogger.info(`Analyzing market ${marketId}`);
 
-      // Get market data via direct GraphQL query
       const { sapienceGraphql } = getApiEndpoints();
       const marketsQuery = /* GraphQL */ `
-        query ActiveMarkets {
-          conditions(orderBy: { createdAt: desc }, take: 200) {
+        query ActiveMarkets($take: Int!, $skip: Int!) {
+          conditions(orderBy: { createdAt: desc }, take: $take, skip: $skip) {
             id
             question
             shortName
@@ -182,14 +181,21 @@ Question: ${condition?.shortName || condition?.question || "Unknown"}
         }
       `;
 
-      const marketsRes = await fetch(sapienceGraphql, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: marketsQuery }),
-      });
-
-      const marketsJson = await marketsRes.json().catch(() => ({}));
-      const markets = marketsJson?.data?.conditions || [];
+      const PAGE_SIZE = 100;
+      const markets: any[] = [];
+      let skip = 0;
+      while (true) {
+        const marketsRes = await fetch(sapienceGraphql, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: marketsQuery, variables: { take: PAGE_SIZE, skip } }),
+        });
+        const marketsJson = await marketsRes.json().catch(() => ({}));
+        const page = marketsJson?.data?.conditions || [];
+        markets.push(...page);
+        if (page.length < PAGE_SIZE) break;
+        skip += PAGE_SIZE;
+      }
 
       if (!markets.length) {
         throw new Error("Failed to fetch markets from Sapience API");
