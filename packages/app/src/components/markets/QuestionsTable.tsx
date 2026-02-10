@@ -1145,12 +1145,15 @@ export default function QuestionsTable({
       />
       <div
         className={cn(
-          'rounded-md border border-brand-white/20 overflow-hidden',
+          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black',
           showLoading && 'flex flex-col'
         )}
         style={{
           minHeight:
             'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
+          maxHeight:
+            'calc(100dvh - var(--page-top-offset, 0px) - 12rem - 14px)',
+          overflowY: 'auto',
         }}
       >
         <Table>
