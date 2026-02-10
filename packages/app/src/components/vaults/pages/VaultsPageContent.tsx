@@ -34,6 +34,9 @@ import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import VaultUPnLChart from '~/components/vaults/VaultUPnLChart';
+import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
+import PeriodFilter, { type Period } from '~/components/shared/PeriodFilter';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
@@ -77,6 +80,9 @@ const VaultsPageContent = () => {
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { data: protocolStats, isLoading: isAnalyticsLoading } =
     useProtocolStats();
+
+  // PnL chart period state (shared between Realized and uPnL tabs)
+  const [pnlPeriod, setPnlPeriod] = useState<Period>('3M');
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -609,6 +615,38 @@ const VaultsPageContent = () => {
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="flex flex-col gap-6 order-2 lg:order-1 lg:min-h-0">
+                      {/* Vault PnL Charts (Realized / uPnL) */}
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
+                        <Tabs defaultValue="realized">
+                          <div className="flex items-center justify-between mb-1">
+                            <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+                              <TabsTrigger value="realized">Realized</TabsTrigger>
+                              <TabsTrigger value="unrealized">uPnL</TabsTrigger>
+                            </SegmentedTabsList>
+                            <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
+                          </div>
+                          <TabsContent value="realized" className="mt-0">
+                            <VaultPnlChart
+                              protocolStats={protocolStats ?? undefined}
+                              isLoading={isAnalyticsLoading}
+                              showHeader={false}
+                              externalPeriod={pnlPeriod}
+                              className="flex-1"
+                            />
+                          </TabsContent>
+                          <TabsContent value="unrealized" className="mt-0">
+                            <VaultUPnLChart
+                              protocolStats={protocolStats ?? undefined}
+                              isLoading={isAnalyticsLoading}
+                              showHeader={false}
+                              externalPeriod={pnlPeriod}
+                              className="flex-1"
+                            />
+                          </TabsContent>
+                        </Tabs>
+                      </div>
+
+                      {/* Utilization Block */}
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
                         <h4 className="font-mono text-base uppercase tracking-wider text-brand-white mb-3 sm:mb-2">
                           Vault Balance

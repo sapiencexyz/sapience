@@ -46,6 +46,10 @@ const validators = {
     default: 50,
     desc: 'Max concurrent GraphQL operations before shedding load with 503',
   }),
+  RELAYER_WS_URL: str({
+    default: 'wss://relayer.sapience.xyz/auction',
+    desc: 'WebSocket URL for the relayer (vault quotes, auctions)',
+  }),
   // x402 payment integration
   X402_PAY_TO: str({
     default: '',

@@ -1196,16 +1196,22 @@ type ProtocolStat {
   escrowBalance: String!
   openInterest: String!
 
+
   """Unix epoch timestamp (seconds) for midnight UTC of the snapshot day"""
   timestamp: Int!
+  uPnLQuoteFromRelayer: Boolean!
   vaultAirdropGains: String!
   vaultAvailableAssets: String!
   vaultBalance: String!
+  vaultCollateralPerShare: String!
   vaultCumulativePnL: String!
   vaultDeployed: String!
   vaultDeposits: String!
+  vaultFairValueAssets: String!
   vaultPositionsLost: Int!
   vaultPositionsWon: Int!
+  vaultTotalSupply: String!
+  vaultUPnL: String!
   vaultWithdrawals: String!
 }
 

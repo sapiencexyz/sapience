@@ -1,10 +1,12 @@
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
+import WebSocket from 'ws';
 import prisma from '../db';
 import { LegacyPositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { config } from '../config';
 
 interface VaultPnLResult {
   realizedPnL: bigint;
@@ -32,6 +34,11 @@ interface ProtocolStatsData {
   vaultPositionsLost: number;
   vaultCollateralWon: bigint;
   vaultCollateralLost: bigint;
+  vaultCollateralPerShare: string;
+  vaultTotalSupply: bigint;
+  vaultFairValueAssets: bigint;
+  vaultUPnL: bigint;
+  uPnLQuoteFromRelayer: boolean;
 }
 
 /**
@@ -129,6 +136,123 @@ export async function fetchVaultAvailableAssets(
   })) as bigint;
 
   return availableAssets;
+}
+
+/**
+ * Fetch Vault totalSupply (shares outstanding, in wei).
+ */
+export async function fetchVaultTotalSupply(
+  chainId: number = DEFAULT_CHAIN_ID
+): Promise<bigint> {
+  const client = getProviderForChain(chainId);
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+
+  if (!vaultAddress) {
+    throw new Error(`Vault not configured for chain ${chainId}`);
+  }
+
+  const totalSupply = (await client.readContract({
+    address: vaultAddress,
+    abi: predictionMarketVaultAbi,
+    functionName: 'totalSupply',
+    args: [],
+  })) as bigint;
+
+  return totalSupply;
+}
+
+/**
+ * Fetch vault collateralPerShare from relayer via ephemeral WebSocket.
+ * Returns the decimal string (e.g. "1.05") or null on timeout/error.
+ */
+export async function fetchVaultQuoteFromRelayer(
+  chainId: number,
+  vaultAddress: string,
+  timeoutMs: number = 30_000
+): Promise<{ vaultCollateralPerShare: string } | null> {
+  const wsUrl = config.RELAYER_WS_URL;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value: { vaultCollateralPerShare: string } | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try {
+        ws.close();
+      } catch {
+        // ignore close errors
+      }
+      resolve(value);
+    };
+
+    const timer = setTimeout(() => {
+      console.warn('[ProtocolStats] Relayer vault quote timed out');
+      settle(null);
+    }, timeoutMs);
+
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      console.warn('[ProtocolStats] Failed to create WebSocket:', err);
+      clearTimeout(timer);
+      resolve(null);
+      return;
+    }
+
+    ws.on('open', () => {
+      ws.send(
+        JSON.stringify({
+          type: 'vault_quote.subscribe',
+          payload: { chainId, vaultAddress },
+        })
+      );
+    });
+
+    ws.on('message', (raw: WebSocket.Data) => {
+      try {
+        const msg = JSON.parse(raw.toString()) as {
+          type?: string;
+          payload?: { vaultCollateralPerShare?: string };
+        };
+        if (
+          msg.type === 'vault_quote.update' &&
+          msg.payload?.vaultCollateralPerShare
+        ) {
+          settle({
+            vaultCollateralPerShare: msg.payload.vaultCollateralPerShare,
+          });
+        }
+      } catch {
+        // ignore parse errors
+      }
+    });
+
+    ws.on('error', (err: Error) => {
+      console.warn('[ProtocolStats] Relayer WebSocket error:', err.message);
+      settle(null);
+    });
+
+    ws.on('close', () => {
+      settle(null);
+    });
+  });
+}
+
+/**
+ * Compute fair-value total assets from collateralPerShare (decimal string) and totalSupply (wei).
+ * collateralPerShare is a decimal like "1.05" representing assets per 1e18 shares.
+ * Result = collateralPerShare * totalSupply (in wei).
+ */
+function computeFairValueAssets(
+  collateralPerShare: string,
+  totalSupply: bigint
+): bigint {
+  // Convert the decimal string to a fixed-point bigint with 18 decimals
+  const cpsWei = parseUnits(collateralPerShare, 18);
+  // fairValue = cps * totalSupply / 1e18
+  return (cpsWei * totalSupply) / 10n ** 18n;
 }
 
 /**
@@ -442,6 +566,11 @@ async function upsertProtocolStatsSnapshot(
       vaultPositionsLost: data.vaultPositionsLost,
       vaultCollateralWon: data.vaultCollateralWon.toString(),
       vaultCollateralLost: data.vaultCollateralLost.toString(),
+      vaultCollateralPerShare: data.vaultCollateralPerShare,
+      vaultTotalSupply: data.vaultTotalSupply.toString(),
+      vaultFairValueAssets: data.vaultFairValueAssets.toString(),
+      vaultUPnL: data.vaultUPnL.toString(),
+      uPnLQuoteFromRelayer: data.uPnLQuoteFromRelayer,
     },
     update: {
       vaultBalance: data.vaultBalance.toString(),
@@ -456,6 +585,11 @@ async function upsertProtocolStatsSnapshot(
       vaultPositionsLost: data.vaultPositionsLost,
       vaultCollateralWon: data.vaultCollateralWon.toString(),
       vaultCollateralLost: data.vaultCollateralLost.toString(),
+      vaultCollateralPerShare: data.vaultCollateralPerShare,
+      vaultTotalSupply: data.vaultTotalSupply.toString(),
+      vaultFairValueAssets: data.vaultFairValueAssets.toString(),
+      vaultUPnL: data.vaultUPnL.toString(),
+      uPnLQuoteFromRelayer: data.uPnLQuoteFromRelayer,
     },
   });
 }
@@ -518,6 +652,45 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Airdrop gains: ${formatUnits(airdropGains, 18)} USDe`
   );
 
+  // Fetch vault totalSupply and relayer quote for uPnL
+  let totalSupply = 0n;
+  let collateralPerShare = '0';
+  let fairValueAssets = actualTotalAssets; // book value fallback
+  let uPnLQuoteFromRelayer = false;
+  let uPnL = 0n;
+
+  try {
+    totalSupply = await fetchVaultTotalSupply(chainId);
+    console.log(
+      `[ProtocolStats] Vault totalSupply: ${formatUnits(totalSupply, 18)}`
+    );
+
+    if (vaultAddress) {
+      const relayerQuote = await fetchVaultQuoteFromRelayer(
+        chainId,
+        vaultAddress
+      );
+      if (relayerQuote) {
+        collateralPerShare = relayerQuote.vaultCollateralPerShare;
+        fairValueAssets = computeFairValueAssets(
+          collateralPerShare,
+          totalSupply
+        );
+        uPnLQuoteFromRelayer = true;
+        uPnL = fairValueAssets - actualTotalAssets;
+        console.log(
+          `[ProtocolStats] Relayer quote: cps=${collateralPerShare}, fairValue=${formatUnits(fairValueAssets, 18)}, uPnL=${formatUnits(uPnL, 18)}`
+        );
+      } else {
+        console.log(
+          '[ProtocolStats] No relayer quote available, uPnL defaults to 0'
+        );
+      }
+    }
+  } catch (err) {
+    console.warn('[ProtocolStats] Failed to fetch uPnL data:', err);
+  }
+
   await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
     vaultBalance,
     vaultAvailableAssets,
@@ -531,6 +704,11 @@ export async function computeAndStoreProtocolStats(
     vaultPositionsLost: pnlResult.positionsLost,
     vaultCollateralWon: pnlResult.totalCollateralWon,
     vaultCollateralLost: pnlResult.totalCollateralLost,
+    vaultCollateralPerShare: collateralPerShare,
+    vaultTotalSupply: totalSupply,
+    vaultFairValueAssets: fairValueAssets,
+    vaultUPnL: uPnL,
+    uPnLQuoteFromRelayer,
   });
 
   console.log(`[ProtocolStats] Snapshot stored successfully`);
@@ -656,6 +834,11 @@ export async function backfillProtocolStats(
         vaultPositionsLost: pnlResult.positionsLost,
         vaultCollateralWon: pnlResult.totalCollateralWon,
         vaultCollateralLost: pnlResult.totalCollateralLost,
+        vaultCollateralPerShare: '0',
+        vaultTotalSupply: 0n,
+        vaultFairValueAssets: 0n,
+        vaultUPnL: 0n,
+        uPnLQuoteFromRelayer: false,
       });
 
       console.log(

@@ -434,6 +434,17 @@ model ProtocolStatsSnapshot {
   vaultCollateralWon    String   @default("0") @db.VarChar
   vaultCollateralLost   String   @default("0") @db.VarChar
 
+  /// Vault collateral per share from relayer quote (decimal string, e.g. "1.05")
+  vaultCollateralPerShare  String   @default("0") @db.VarChar
+  /// Vault totalSupply on-chain (in wei)
+  vaultTotalSupply         String   @default("0") @db.VarChar
+  /// Vault total assets at fair value: collateralPerShare * totalSupply (in wei)
+  vaultFairValueAssets     String   @default("0") @db.VarChar
+  /// uPnL = fairValueAssets - bookValue (in wei, can be negative)
+  vaultUPnL                String   @default("0") @db.VarChar
+  /// Whether the quote was fetched from relayer (false = fallback to book value)
+  uPnLQuoteFromRelayer     Boolean  @default(false)
+
   @@unique([chainId, vaultAddress, timestamp], map: "UQ_protocol_stats_snapshot_chain_vault_timestamp")
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
   @@index([chainId])

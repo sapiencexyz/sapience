@@ -1339,14 +1339,19 @@ export type ProtocolStat = {
   openInterest: Scalars['String']['output'];
   /** Unix epoch timestamp (seconds) for midnight UTC of the snapshot day */
   timestamp: Scalars['Int']['output'];
+  uPnLQuoteFromRelayer: Scalars['Boolean']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];
+  vaultCollateralPerShare: Scalars['String']['output'];
   vaultCumulativePnL: Scalars['String']['output'];
   vaultDeployed: Scalars['String']['output'];
   vaultDeposits: Scalars['String']['output'];
+  vaultFairValueAssets: Scalars['String']['output'];
   vaultPositionsLost: Scalars['Int']['output'];
   vaultPositionsWon: Scalars['Int']['output'];
+  vaultTotalSupply: Scalars['String']['output'];
+  vaultUPnL: Scalars['String']['output'];
   vaultWithdrawals: Scalars['String']['output'];
 };
 

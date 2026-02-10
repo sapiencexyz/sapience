@@ -59,6 +59,21 @@ class ProtocolStat {
   vaultAirdropGains!: string;
 
   @Field(() => String)
+  vaultCollateralPerShare!: string;
+
+  @Field(() => String)
+  vaultTotalSupply!: string;
+
+  @Field(() => String)
+  vaultFairValueAssets!: string;
+
+  @Field(() => String)
+  vaultUPnL!: string;
+
+  @Field(() => Boolean)
+  uPnLQuoteFromRelayer!: boolean;
+
+  @Field(() => String)
   dailyPnL!: string;
 
   @Field(() => String)
@@ -193,6 +208,11 @@ export class AnalyticsResolver {
         vaultDeposits: snapshot.vaultDeposits,
         vaultWithdrawals: snapshot.vaultWithdrawals,
         vaultAirdropGains: snapshot.vaultAirdropGains,
+        vaultCollateralPerShare: snapshot.vaultCollateralPerShare,
+        vaultTotalSupply: snapshot.vaultTotalSupply,
+        vaultFairValueAssets: snapshot.vaultFairValueAssets,
+        vaultUPnL: snapshot.vaultUPnL,
+        uPnLQuoteFromRelayer: snapshot.uPnLQuoteFromRelayer,
         dailyPnL,
         dailyVolume,
       };
