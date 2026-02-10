@@ -7,7 +7,6 @@ import {
   HEIGHT,
   getScale,
   normalizeText,
-  parseEthereumAddress,
   loadFontData,
   fontsFromData,
   commonAssets,
@@ -15,7 +14,6 @@ import {
   baseContainerStyle,
   contentContainerStyle,
   ForecastFooter,
-  TopLeftAvatar,
   SectionLabel,
   FONT_FAMILY,
   createErrorImageResponse,
@@ -78,15 +76,12 @@ export async function GET(req: Request) {
     const resolutionParam = normalizeText(searchParams.get('res'), 48);
     const horizonParam = normalizeText(searchParams.get('hor'), 48);
     let oddsRaw = normalizeText(searchParams.get('odds'), 8);
-    let rawAddr = (searchParams.get('addr') || '').toString();
-
     if (uidParam) {
       const attestation = await fetchAttestationByUid(uidParam);
       if (attestation) {
         question =
           normalizeText(attestation.condition?.question ?? null, 160) ||
           question;
-        rawAddr = attestation.attester || rawAddr;
         createdTs = attestation.time || createdTs;
         if (attestation.condition?.endTime) {
           endTs = attestation.condition.endTime;
@@ -109,8 +104,6 @@ export async function GET(req: Request) {
     const horizon =
       endTs && createdTs ? formatHorizonDays(createdTs, endTs) : horizonParam;
 
-    const addr = parseEthereumAddress(rawAddr || searchParams.get('addr'));
-
     const { bgUrl } = commonAssets(req);
     const fonts = await loadFontData(req);
 
@@ -122,7 +115,6 @@ export async function GET(req: Request) {
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
-          <TopLeftAvatar addr={addr} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>

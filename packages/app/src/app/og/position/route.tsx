@@ -5,13 +5,11 @@ import {
   HEIGHT,
   getScale,
   normalizeText,
-  parseEthereumAddress,
   loadFontData,
   fontsFromData,
   commonAssets,
   Background,
   Footer,
-  TopLeftAvatar,
   baseContainerStyle,
   contentContainerStyle,
   addThousandsSeparators,
@@ -20,6 +18,8 @@ import {
   computePotentialReturn,
   FONT_FAMILY,
   createErrorImageResponse,
+  ResolutionIcon,
+  type ResolutionStatus,
 } from '../_shared';
 import {
   POSITION_BY_NFT_QUERY,
@@ -43,7 +43,6 @@ export async function GET(req: Request) {
     let positionSizeRaw = normalizeText(searchParams.get('wager'), 32);
     let payoutRaw = normalizeText(searchParams.get('payout'), 32);
     let symbol = normalizeText(searchParams.get('symbol'), 16);
-    let rawAddr = (searchParams.get('addr') || '').toString();
     let rawLegs: string[] = searchParams.getAll('leg');
     let antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
 
@@ -71,16 +70,11 @@ export async function GET(req: Request) {
             positions && positions.length > 0 ? positions[0] : null;
 
           if (position) {
-            // Extract data from position
-            rawAddr = position.predictor?.toLowerCase() || rawAddr;
-
             // Determine if queried NFT is counterparty's NFT (for anti flag and position size display)
             const isCounterpartyNft =
               position.counterpartyNftTokenId === nftIdParam;
             if (isCounterpartyNft) {
               antiParam = '1';
-              // Use counterparty's address for display
-              rawAddr = position.counterparty?.toLowerCase() || rawAddr;
             }
 
             // Get position size and payout
@@ -103,13 +97,25 @@ export async function GET(req: Request) {
             }
 
             // Build legs from predictions
-            // OG images use shortName when available for more compact display
             if (position.predictions && position.predictions.length > 0) {
               rawLegs = position.predictions.map((pred: PositionPrediction) => {
                 const question =
-                  pred.condition?.shortName || pred.condition?.question || '';
+                  pred.condition?.question || pred.condition?.shortName || '';
                 const choice = pred.outcomeYes ? 'Yes' : 'No';
-                return `${question}|${choice}`;
+                // Compute resolution status per leg
+                let resolution: ResolutionStatus | null = null;
+                if (pred.condition?.settled) {
+                  const predictorCorrect =
+                    pred.outcomeYes === pred.condition.resolvedToYes;
+                  // Counterparty wins when predictor is wrong
+                  const correct = isCounterpartyNft
+                    ? !predictorCorrect
+                    : predictorCorrect;
+                  resolution = correct ? 'correct' : 'incorrect';
+                } else if (pred.condition?.settled === false) {
+                  resolution = 'pending';
+                }
+                return `${question}|${choice}|${resolution ?? ''}`;
               });
             }
           }
@@ -150,23 +156,27 @@ export async function GET(req: Request) {
       antiParam
     );
 
-    // Validate and normalize Ethereum address (optional)
-    const addr = parseEthereumAddress(rawAddr);
-
     // Shared assets and fonts
     const { bgUrl } = commonAssets(req);
 
-    // Parse legs passed as repeated `leg` params: text|Yes or text|No
+    // Parse legs passed as repeated `leg` params: text|Yes or text|No or text|Yes|resolution
     const legs = rawLegs
       .slice(0, 12) // safety cap
       .map((entry) => entry.split('|'))
-      .map(([text, choice]) => {
+      .map(([text, choice, resolutionStr]) => {
         const label = normalizeText(choice || '', 48) || '—';
         const normalized = normalizeChoiceLabel(label);
+        const resolution: ResolutionStatus | null =
+          resolutionStr === 'correct' ||
+          resolutionStr === 'incorrect' ||
+          resolutionStr === 'pending'
+            ? resolutionStr
+            : null;
         return {
           text: normalizeText(text || '', 120),
           choice: label,
           tone: getChoiceTone(normalized),
+          resolution,
         };
       })
       .filter((l) => l.text);
@@ -186,7 +196,6 @@ export async function GET(req: Request) {
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
-          <TopLeftAvatar addr={addr} scale={scale} />
 
           <div style={contentContainerStyle(scale)}>
             <div style={{ display: 'flex', flex: 1, alignItems: 'center' }}>
@@ -202,7 +211,7 @@ export async function GET(req: Request) {
                   style={{
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 6 * scale,
+                    gap: 12 * scale,
                     flex: 1,
                   }}
                 >
@@ -231,6 +240,13 @@ export async function GET(req: Request) {
                               alignItems: 'center',
                             }}
                           >
+                            {leg.resolution && (
+                              <ResolutionIcon
+                                status={leg.resolution}
+                                scale={scale}
+                                compact={compact}
+                              />
+                            )}
                             {words.map((word, wordIdx) => (
                               <div
                                 key={wordIdx}
