@@ -253,7 +253,7 @@ const MarketsPage = () => {
       <div
         className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
         style={{
-          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
+          height: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
         {/* Featured Positions section */}
@@ -270,8 +270,9 @@ const MarketsPage = () => {
         )}
 
         {/* Results area - always table view */}
-        <div className="relative w-full max-w-full overflow-x-hidden flex-1">
+        <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
           <motion.div
+            className="h-full"
             key="table-view"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -303,7 +304,7 @@ const MarketsPage = () => {
           <div
             className="rounded-none shadow-lg overflow-hidden"
             style={{
-              height: 'calc(100dvh - var(--page-top-offset, 0px))',
+              height: 'calc(100dvh - 6rem)',
             }}
           >
             <div className="h-full overflow-y-auto">

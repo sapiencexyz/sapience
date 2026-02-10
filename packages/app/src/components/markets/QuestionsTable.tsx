@@ -1145,14 +1145,10 @@ export default function QuestionsTable({
       />
       <div
         className={cn(
-          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black flex-1',
+          'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black flex-1 min-h-0',
           showLoading && 'flex flex-col'
         )}
-        style={{
-          maxHeight:
-            'calc(100dvh - var(--page-top-offset, 0px) - 28rem)',
-          overflowY: 'auto',
-        }}
+        style={{ overflowY: 'auto' }}
       >
         <Table>
           <TableHeader>
@@ -1255,10 +1251,9 @@ export default function QuestionsTable({
             </div>
           </div>
         )}
+        {/* Infinite scroll sentinel (inside scroll container) */}
+        <div ref={loadMoreRef} className="h-1" />
       </div>
-
-      {/* Infinite scroll sentinel (invisible) */}
-      <div ref={loadMoreRef} className="h-1" />
     </div>
   );
 }

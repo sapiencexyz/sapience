@@ -7,11 +7,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@sapience/ui/components/ui/tooltip';
-import {
-  formatDistanceToNow,
-  fromUnixTime,
-  differenceInDays,
-} from 'date-fns';
+import { formatDistanceToNow, fromUnixTime, differenceInDays } from 'date-fns';
 import { Timer } from 'lucide-react';
 
 interface EndTimeDisplayProps {

@@ -1,5 +1,4 @@
 import { ImageResponse } from 'next/og';
-import { getBlockieSrc } from '~/lib/avatar';
 import { og } from '~/lib/theme/ogPalette';
 
 export const FONT_FAMILY = {
@@ -23,11 +22,6 @@ export function normalizeText(val: string | null, max: number): string {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);
-}
-
-export function parseEthereumAddress(raw: string | null): string {
-  const cleaned = (raw || '').toString().replace(/\s/g, '').toLowerCase();
-  return /^0x[a-f0-9]{40}$/.test(cleaned) ? cleaned : '';
 }
 
 export async function loadFontData(req: Request) {
@@ -213,11 +207,6 @@ export function PredictionsLabel({
   );
 }
 
-function truncateAddress(addr: string): string {
-  if (!addr) return '';
-  return addr.slice(0, 6) + '…' + addr.slice(-4);
-}
-
 // Shared tagline component for footer
 export function Tagline({ scale = 1 }: { scale?: number }) {
   return (
@@ -271,62 +260,6 @@ function createStatsRowStyles(scale: number) {
       justifyContent: 'space-between',
     } as React.CSSProperties,
   };
-}
-
-// Base footer wrapper component
-// Small blockie avatar positioned in the top-left of the card
-export function TopLeftAvatar({
-  addr,
-  scale = 1,
-}: {
-  addr: string;
-  scale?: number;
-}) {
-  if (!addr) return null;
-  const size = 26 * scale;
-  const radius = 4 * scale;
-  const pad = 40 * scale;
-  return (
-    <div
-      style={{
-        display: 'flex',
-        position: 'absolute',
-        top: pad,
-        left: pad,
-        alignItems: 'center',
-        gap: 10 * scale,
-        zIndex: 10,
-      }}
-    >
-      <img
-        src={getBlockieSrc(addr)}
-        alt=""
-        width={size}
-        height={size}
-        style={{
-          display: 'flex',
-          width: size,
-          height: size,
-          borderRadius: radius,
-          objectFit: 'cover',
-          background: 'rgba(255,255,255,0.06)',
-          border: `1px solid rgba(255,255,255,0.15)`,
-        }}
-      />
-      <div
-        style={{
-          display: 'flex',
-          fontSize: 22 * scale,
-          lineHeight: `${36 * scale}px`,
-          fontWeight: 400,
-          color: og.colors.mutedWhite64,
-          fontFamily: FONT_FAMILY.mono,
-        }}
-      >
-        {truncateAddress(addr)} submitted...
-      </div>
-    </div>
-  );
 }
 
 function StatsRow({
@@ -853,6 +786,92 @@ export function createErrorImageResponse(err: unknown): ImageResponse {
     width: WIDTH,
     height: HEIGHT,
   });
+}
+
+// Resolution status for position legs
+export type ResolutionStatus = 'correct' | 'incorrect' | 'pending';
+
+// Inline resolution icon rendered to the left of each prediction question.
+// Renders a filled circle (20% opacity) with a status icon stroke in full color.
+// Uses separate return paths per status to avoid fragments/conditionals inside SVG (Satori limitation).
+export function ResolutionIcon({
+  status,
+  scale = 1,
+  compact = false,
+}: {
+  status: ResolutionStatus;
+  scale?: number;
+  compact?: boolean;
+}) {
+  const size = Math.round((compact ? 28 : 34) * scale);
+  const color =
+    status === 'correct'
+      ? og.colors.success
+      : status === 'incorrect'
+        ? og.colors.danger
+        : og.colors.foregroundLight;
+  const bgColor = toRgba(color, 0.2);
+  const svgStyle: React.CSSProperties = {
+    display: 'flex',
+    flexShrink: 0,
+    marginRight: (compact ? 10 : 14) * scale,
+  };
+
+  if (status === 'correct') {
+    const sw = Math.max(1, 1.5 * scale);
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+        <circle cx="14" cy="14" r="13" fill={bgColor} />
+        <path
+          d="M9 14.5L12.5 18L19 10.5"
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (status === 'incorrect') {
+    const sw = Math.max(1, 1.5 * scale);
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+        <circle cx="14" cy="14" r="13" fill={bgColor} />
+        <path
+          d="M10.5 10.5L17.5 17.5M17.5 10.5L10.5 17.5"
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  // pending — clock icon, neutral foreground to match COMING SOON badge style
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+      <circle cx="14" cy="14" r="13" fill={bgColor} />
+      <circle
+        cx="14"
+        cy="14"
+        r="5.75"
+        fill="none"
+        stroke={color}
+        strokeWidth="1"
+      />
+      <path
+        d="M14 10.75V14.25L16.5 16"
+        fill="none"
+        stroke={color}
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export { og };
