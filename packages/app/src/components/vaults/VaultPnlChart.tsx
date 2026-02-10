@@ -289,22 +289,22 @@ export default function VaultPnlChart({
         </div>
       )}
       <div
-        className={useFlexHeight ? 'flex-1' : ''}
+        className={`${useFlexHeight ? 'flex-1' : ''} relative`}
         style={{
           height: useFlexHeight ? undefined : height,
-          minHeight: useFlexHeight ? height : undefined,
+          minHeight: height,
         }}
       >
         {isLoading ? (
-          <div className="flex items-center justify-center h-full">
+          <div className="absolute inset-0 flex items-center justify-center">
             <Loader className="w-6 h-6" />
           </div>
         ) : chartData.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
             No data for this period
           </div>
         ) : (
-          <div className="w-full h-full transition-opacity duration-300">
+          <div className="absolute inset-0 transition-opacity duration-300">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData} margin={CHART_MARGIN}>
                 <defs>
