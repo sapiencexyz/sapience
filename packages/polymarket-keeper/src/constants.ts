@@ -14,7 +14,7 @@ export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
 
 // Minimum volume threshold (in USD) for including markets
-export const MIN_VOLUME_THRESHOLD = 50_000;
+export const MIN_VOLUME_THRESHOLD = 10_000;
 
 // Minimum liquidity threshold (in USD) for including markets
 export const MIN_LIQUIDITY_THRESHOLD = 1_000;
