@@ -8,6 +8,8 @@ import {
   useCallback,
   useEffect,
 } from 'react';
+import { z } from 'zod';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 
 // localStorage key for position selections persistence
 const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
@@ -37,7 +39,7 @@ interface CreatePositionEntry {
   marketId: number;
   question: string;
   chainId: number; // Add chainId to identify which chain the market is on
-  wagerAmount?: string; // Store default wager amount
+  positionSize?: string; // Store default position size
   marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
@@ -45,12 +47,27 @@ interface CreatePositionEntry {
 interface PositionSelection {
   id: string; // unique within position form
   conditionId: string;
-  question: string;
+  question: string; // Full question text (always shown in tooltips)
+  shortName?: string | null; // Short display name (used in CreatePositionForm only)
   prediction: boolean; // true = yes, false = no
   categorySlug?: string | null; // category slug for icon display
   resolverAddress?: string | null; // resolver address for canonical links
   endTime?: number | null; // Unix timestamp in seconds for filtering expired conditions
 }
+
+// Zod schema for validating PositionSelection from URL params
+const positionSelectionSchema = z.object({
+  id: z.string(),
+  conditionId: z.string(),
+  question: z.string(),
+  shortName: z.string().nullable().optional(),
+  prediction: z.boolean(),
+  categorySlug: z.string().nullable().optional(),
+  resolverAddress: z.string().nullable().optional(),
+  endTime: z.number().nullable().optional(),
+});
+
+const positionSelectionsSchema = z.array(positionSelectionSchema);
 
 // Interface for market data with position
 interface PositionWithMarketData {
@@ -110,20 +127,85 @@ export const CreatePositionProvider = ({
     []
   );
   const [selections, setSelections] = useState<PositionSelection[]>(() => {
-    const stored = loadFromStorage<PositionSelection[]>(
-      STORAGE_KEY_SELECTIONS,
-      []
-    );
-    // Filter out selections whose endTime has passed
-    const nowSec = Math.floor(Date.now() / 1000);
-    return stored.filter((s) => !s.endTime || s.endTime > nowSec);
+    if (typeof window === 'undefined') return [];
+
+    // URL query param takes priority over localStorage
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get('position');
+      if (encoded) {
+        const parsed = positionSelectionsSchema.safeParse(
+          JSON.parse(decodeURIComponent(escape(atob(encoded))))
+        );
+        if (parsed.success && parsed.data.length > 0) {
+          return parsed.data;
+        }
+      }
+    } catch {
+      // ignore malformed position param, fall through to localStorage
+    }
+
+    return loadFromStorage<PositionSelection[]>(STORAGE_KEY_SELECTIONS, []);
   });
-  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(() => {
+    // Auto-open popover if loaded from a slip URL
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return !!params.get('position');
+    } catch {
+      return false;
+    }
+  });
+
+  // Clean up slip param from URL after hydrating (avoid re-triggering on navigation)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('position')) {
+      params.delete('position');
+      const newUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
 
   // Persist position selections to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_SELECTIONS, JSON.stringify(selections));
   }, [selections]);
+
+  // Remove settled conditions from the bet slip on mount
+  useEffect(() => {
+    const conditionIds = selections.map((s) => s.conditionId);
+    if (conditionIds.length === 0) return;
+
+    const QUERY = /* GraphQL */ `
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
+          id
+          settled
+        }
+      }
+    `;
+
+    fetchConditionsByIds<{ id: string; settled: boolean }>(QUERY, conditionIds)
+      .then((conditions) => {
+        const settledIds = new Set(
+          conditions.filter((c) => c.settled).map((c) => c.id)
+        );
+        if (settledIds.size > 0) {
+          setSelections((prev) =>
+            prev.filter((s) => !settledIds.has(s.conditionId))
+          );
+        }
+      })
+      .catch(() => {
+        // Silently ignore — selections will remain until next load
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Spot market functionality removed - positionsWithMarketData is empty
   const positionsWithMarketData: PositionWithMarketData[] = singlePositions.map(
@@ -160,7 +242,7 @@ export const CreatePositionProvider = ({
                     marketId: position.marketId,
                     question: position.question,
                     marketClassification: position.marketClassification,
-                    wagerAmount: p.wagerAmount || defaults.wagerAmount,
+                    positionSize: p.positionSize || defaults.positionSize,
                   }
                 : p
             )
@@ -186,7 +268,7 @@ export const CreatePositionProvider = ({
                   prediction: position.prediction,
                   question: position.question,
                   marketClassification: position.marketClassification,
-                  wagerAmount: p.wagerAmount || defaults.wagerAmount,
+                  positionSize: p.positionSize || defaults.positionSize,
                 }
               : p
           )
@@ -196,7 +278,7 @@ export const CreatePositionProvider = ({
         const enhancedPosition: CreatePositionEntry = {
           ...position,
           id,
-          wagerAmount: position.wagerAmount || defaults.wagerAmount,
+          positionSize: position.positionSize || defaults.positionSize,
           prediction: position.prediction ?? defaults.prediction ?? false,
         };
         setSinglePositions((prev) => [...prev, enhancedPosition]);

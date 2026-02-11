@@ -17,7 +17,7 @@ export function useLastTradeForIntent(params: {
 }) {
   const predictor = (params.predictor || '')?.toLowerCase?.() || '';
   const outcomesSignature = params.outcomesSignature || '';
-  const take = params.take ?? 200;
+  const take = Math.min(params.take ?? 100, 100);
   const enabled = Boolean(predictor && outcomesSignature);
   const key = ['lastTrade', 'predictor', predictor, outcomesSignature] as const;
 

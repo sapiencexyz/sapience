@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from './fetchConditionsByIds';
 
 type ConditionById = {
   id: string;
@@ -28,8 +28,8 @@ export function useConditionsByIds(ids: string[]) {
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const QUERY = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1000) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             shortName
             question
@@ -41,11 +41,11 @@ export function useConditionsByIds(ids: string[]) {
           }
         }
       `;
-      const resp = await graphqlRequest<{ conditions: ConditionById[] }>(
+      const conditions = await fetchConditionsByIds<ConditionById>(
         QUERY,
-        { ids: sorted }
+        sorted
       );
-      return { conditions: resp?.conditions || [] };
+      return { conditions };
     },
   });
 

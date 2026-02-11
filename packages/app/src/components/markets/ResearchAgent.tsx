@@ -8,7 +8,7 @@ import { ChatMessages } from '~/components/shared/chat/ChatMessages';
 import { ChatInput } from '~/components/shared/chat/ChatInput';
 import type { ChatMessage } from '~/components/shared/chat/types';
 import { useSettings } from '~/lib/context/SettingsContext';
-import WagerDisclaimer from '~/components/markets/forms/shared/WagerDisclaimer';
+import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 
 // Generate a stable storage key for chat history based on question
 function getStorageKey(question?: string | null): string {
@@ -307,7 +307,7 @@ const ResearchAgent: React.FC<ResearchAgentProps> = ({
         onLogin={() => {}}
       />
       <div className="px-3 pb-3">
-        <WagerDisclaimer message="Agents make mistakes; check important info" />
+        <RiskDisclaimer message="Agents make mistakes; check important info" />
       </div>
     </div>
   );

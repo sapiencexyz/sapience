@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from './fetchConditionsByIds';
 
 type PredictedOutcome = {
   conditionId: string;
@@ -47,6 +48,8 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
     $orderBy: String
     $orderDirection: String
     $chainId: Int
+    $status: String
+    $endsAtGte: Int
   ) {
     positions(
       address: $address
@@ -55,6 +58,8 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
       orderBy: $orderBy
       orderDirection: $orderDirection
       chainId: $chainId
+      status: $status
+      endsAtGte: $endsAtGte
     ) {
       id
       chainId
@@ -117,6 +122,8 @@ export function useUserPositions(params: {
   orderBy?: string;
   orderDirection?: string;
   chainId?: number;
+  status?: string;
+  endsAtGte?: number;
 }) {
   const {
     address,
@@ -125,6 +132,8 @@ export function useUserPositions(params: {
     orderBy,
     orderDirection,
     chainId,
+    status,
+    endsAtGte,
   } = params;
   const enabled = Boolean(address);
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -136,10 +145,13 @@ export function useUserPositions(params: {
       orderBy,
       orderDirection,
       chainId,
+      status,
+      endsAtGte,
     ],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
+    placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
@@ -152,6 +164,8 @@ export function useUserPositions(params: {
           orderBy,
           orderDirection,
           chainId: chainId ?? null,
+          status: status ?? null,
+          endsAtGte: endsAtGte ?? null,
         }
       );
       const base = resp?.positions ?? [];
@@ -167,8 +181,8 @@ export function useUserPositions(params: {
 
       // Fetch shortName, description, category, settled, resolvedToYes, resolver values for these condition IDs and join client-side
       const CONDITIONS_BY_IDS = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]!) {
-          conditions(where: { id: { in: $ids } }, take: 1000) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             shortName
             description
@@ -191,13 +205,11 @@ export function useUserPositions(params: {
         resolver?: string | null;
         category?: { slug: string } | null;
       };
-      const condResp = await graphqlRequest<{ conditions: CondRow[] }>(
+      const condRows = await fetchConditionsByIds<CondRow>(
         CONDITIONS_BY_IDS,
-        { ids: conditionIds }
+        conditionIds
       );
-      const conditionDataMap = new Map(
-        (condResp?.conditions || []).map((c) => [c.id, c])
-      );
+      const conditionDataMap = new Map(condRows.map((c) => [c.id, c]));
 
       // Enrich predictions.condition with shortName, description, category, settled, resolvedToYes, resolver if available
       return base.map((p) => ({

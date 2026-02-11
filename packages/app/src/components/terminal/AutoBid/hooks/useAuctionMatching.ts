@@ -274,7 +274,7 @@ export function useAuctionMatching({
           );
           makerWagerWei = copiedWei + incrementWei;
         } else {
-          // For conditions strategy: calculate wager based on probability threshold
+          // For conditions strategy: calculate position size based on probability threshold
           // Formula: makerWager = (probability * takerWager) / (1 - probability)
           // This gives us the exact odds we want
           const takerWagerBigInt = BigInt(takerWager || '0');
@@ -313,14 +313,14 @@ export function useAuctionMatching({
           if (denominator <= 0n || numerator <= 0n) {
             pushLogEntry({
               kind: 'system',
-              message: `${tag} bid skipped, cannot calculate wager amount`,
+              message: `${tag} bid skipped, cannot calculate position size`,
               severity: 'warning',
               meta: {
                 orderId: details.order.id,
                 labelSnapshot: orderLabelSnapshot,
                 formattedPrefix: tag,
                 verb: 'bid',
-                highlight: 'skipped, cannot calculate wager amount',
+                highlight: 'skipped, cannot calculate position size',
               },
               dedupeKey: `calc:${details.order.id}:${details.auctionId}`,
             });
@@ -381,11 +381,11 @@ export function useAuctionMatching({
         const makerAmount = formatCollateralAmount(makerWagerWei.toString());
         const takerWagerBigInt = BigInt(takerWager || '0');
         const totalWei = makerWagerWei + takerWagerBigInt;
-        const toWinAmount = formatCollateralAmount(totalWei.toString());
+        const payoutAmount = formatCollateralAmount(totalWei.toString());
 
         const submittedStatus =
-          makerAmount && toWinAmount
-            ? `${makerAmount} ${collateralSymbol} to win ${toWinAmount} ${collateralSymbol}`
+          makerAmount && payoutAmount
+            ? `${makerAmount} ${collateralSymbol} for payout ${payoutAmount} ${collateralSymbol}`
             : makerAmount
               ? `${makerAmount} ${collateralSymbol}`
               : 'Submitted';

@@ -16,12 +16,15 @@ import {
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { Plus, Upload } from 'lucide-react';
+import { Copy, Plus, Upload } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import type { Address } from 'viem';
 
+import { getSmartAccountAddress } from '~/lib/session/sessionKeyManager';
 import RFQTab from './RFQTab';
 import ConditionGroupsTab from './ConditionGroupsTab';
+import ReferralCodesTab from './ReferralCodesTab';
 import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
@@ -104,7 +107,7 @@ const ReindexAccuracyForm = () => {
       <Button type="submit" disabled={isLoading}>
         {isLoading ? (
           <>
-            <Loader size={12} />
+            <Loader className="w-3 h-3" />
             <span className="ml-2">Processing...</span>
           </>
         ) : (
@@ -130,9 +133,43 @@ const Admin = () => {
   );
   const [adminError, setAdminError] = useState<string | null>(null);
 
+  // Smart Account Lookup state
+  const [smartAccountLookupOpen, setSmartAccountLookupOpen] = useState(false);
+  const [eoaInput, setEoaInput] = useState('');
+  const [smartAccountResult, setSmartAccountResult] = useState('');
+  const [isLookupLoading, setIsLookupLoading] = useState(false);
+
   // Condition Groups state
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [groupCsvImportOpen, setGroupCsvImportOpen] = useState(false);
+
+  // Referral Codes state
+  const [createReferralCodeOpen, setCreateReferralCodeOpen] = useState(false);
+
+  const { toast } = useToast();
+
+  const handleSmartAccountLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = eoaInput.trim();
+    if (!trimmed) return;
+
+    try {
+      setIsLookupLoading(true);
+      setSmartAccountResult('');
+      const result = await getSmartAccountAddress(trimmed as Address);
+      setSmartAccountResult(result);
+    } catch (error) {
+      console.error('Smart account lookup error:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Lookup failed',
+        description:
+          error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE,
+      });
+    } finally {
+      setIsLookupLoading(false);
+    }
+  };
 
   const isHttpUrl = (value: string) => {
     try {
@@ -194,6 +231,78 @@ const Admin = () => {
                 <DialogTitle>Backfill Protocol Stats</DialogTitle>
               </DialogHeader>
               <BackfillProtocolStatsForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={smartAccountLookupOpen}
+            onOpenChange={(open) => {
+              setSmartAccountLookupOpen(open);
+              if (!open) {
+                setEoaInput('');
+                setSmartAccountResult('');
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Smart Account Lookup
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Smart Account Lookup</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSmartAccountLookup} className="space-y-4">
+                <div className="space-y-2">
+                  <label htmlFor="eoaAddress" className="text-sm font-medium">
+                    EOA Address
+                  </label>
+                  <Input
+                    id="eoaAddress"
+                    placeholder="0x..."
+                    value={eoaInput}
+                    onChange={(e) => setEoaInput(e.target.value)}
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={isLookupLoading || !eoaInput.trim()}
+                >
+                  {isLookupLoading ? (
+                    <>
+                      <Loader className="w-3 h-3" />
+                      <span className="ml-2">Looking up...</span>
+                    </>
+                  ) : (
+                    'Lookup'
+                  )}
+                </Button>
+                {smartAccountResult && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Smart Account Address
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        readOnly
+                        value={smartAccountResult}
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => {
+                          navigator.clipboard.writeText(smartAccountResult);
+                          toast({ title: 'Copied to clipboard' });
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </form>
             </DialogContent>
           </Dialog>
           <Dialog open={adminDialogOpen} onOpenChange={setAdminDialogOpen}>
@@ -278,6 +387,7 @@ const Admin = () => {
         <TabsList className="mb-4">
           <TabsTrigger value="conditions">Conditions</TabsTrigger>
           <TabsTrigger value="groups">Condition Groups</TabsTrigger>
+          <TabsTrigger value="referral-codes">Referral Codes</TabsTrigger>
         </TabsList>
 
         <TabsContent value="conditions">
@@ -326,6 +436,19 @@ const Admin = () => {
                   New Group
                 </Button>
               </>
+            }
+          />
+        </TabsContent>
+
+        <TabsContent value="referral-codes">
+          <ReferralCodesTab
+            createOpen={createReferralCodeOpen}
+            setCreateOpen={setCreateReferralCodeOpen}
+            actionButtons={
+              <Button size="sm" onClick={() => setCreateReferralCodeOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" />
+                New Referral Code
+              </Button>
             }
           />
         </TabsContent>

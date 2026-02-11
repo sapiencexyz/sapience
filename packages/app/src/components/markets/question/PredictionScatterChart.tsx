@@ -32,6 +32,7 @@ import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import MarketBadge from '~/components/markets/MarketBadge';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import { formatPercentChance } from '~/lib/format/percentChance';
 import type { PredictionData, ForecastData } from './types';
 
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -43,7 +44,7 @@ interface PredictionScatterChartProps {
   scatterData: PredictionData[];
   forecastScatterData: ForecastData[];
   isLoading?: boolean;
-  wagerRange: { wagerMin: number; wagerMax: number };
+  positionSizeRange: { positionSizeMin: number; positionSizeMax: number };
   xDomain: [number, number];
   xTicks: number[];
   xTickLabels: Record<number, string>;
@@ -53,7 +54,7 @@ export function PredictionScatterChart({
   scatterData,
   forecastScatterData,
   isLoading,
-  wagerRange,
+  positionSizeRange,
   xDomain,
   xTicks,
   xTickLabels,
@@ -114,7 +115,7 @@ export function PredictionScatterChart({
   if (isLoading) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <Loader size={16} />
+        <Loader className="w-4 h-4" />
       </div>
     );
   }
@@ -244,7 +245,7 @@ export function PredictionScatterChart({
                     }, 100);
                   }}
                 >
-                  {/* Top section: Time, Forecast, Wager */}
+                  {/* Top section: Time, Forecast, Position Size */}
                   <div className="px-3 py-2.5 space-y-1.5">
                     {/* Time row */}
                     <div className="flex items-center justify-between gap-6 h-5">
@@ -274,17 +275,17 @@ export function PredictionScatterChart({
                           combinedPredictions &&
                           combinedPredictions.length > 0 &&
                           `${combinedWithYes === false ? '<' : '>'}`}
-                        {Math.round(point.y)}% chance
+                        {formatPercentChance(point.y / 100)} chance
                       </span>
                     </div>
-                    {/* Wager row - only for predictions */}
-                    {!isForecast && 'wager' in point && (
+                    {/* Position Size row - only for predictions */}
+                    {!isForecast && 'positionSize' in point && (
                       <div className="flex items-center justify-between gap-6 h-5">
                         <span className="text-xs text-muted-foreground font-mono uppercase tracking-wider">
-                          Wager
+                          Position Size
                         </span>
                         <span className="text-sm text-foreground">
-                          {point.wager.toFixed(2)} USDe
+                          {point.positionSize.toFixed(2)} USDe
                         </span>
                       </div>
                     )}
@@ -459,25 +460,26 @@ export function PredictionScatterChart({
             fill="hsl(var(--ethena))"
             shape={(props: any) => {
               const { cx, cy, payload } = props;
-              // Scale wager to radius: min 4px, max 20px
-              // Use actual wager range from data
+              // Scale position size to radius: min 4px, max 20px
+              // Use actual position size range from data
               const minR = 4;
               const maxR = 20;
-              const { wagerMin, wagerMax } = wagerRange;
-              const wager = payload?.wager ?? 0;
+              const { positionSizeMin, positionSizeMax } = positionSizeRange;
+              const positionSize = payload?.positionSize ?? 0;
 
-              // Normalize wager to the calculated range
-              const normalizedWager = Math.max(
-                wagerMin,
-                Math.min(wagerMax, wager)
+              // Normalize position size to the calculated range
+              const normalizedPositionSize = Math.max(
+                positionSizeMin,
+                Math.min(positionSizeMax, positionSize)
               );
 
-              // Calculate radius based on normalized wager
-              const wagerRangeSize = wagerMax - wagerMin;
+              // Calculate radius based on normalized position size
+              const positionSizeRangeSize = positionSizeMax - positionSizeMin;
               const radius =
-                wagerRangeSize > 0
+                positionSizeRangeSize > 0
                   ? minR +
-                    ((normalizedWager - wagerMin) / wagerRangeSize) *
+                    ((normalizedPositionSize - positionSizeMin) /
+                      positionSizeRangeSize) *
                       (maxR - minR)
                   : minR; // Fallback if range is 0
 
@@ -820,7 +822,10 @@ export function PredictionScatterChart({
                           : 'border-muted-foreground/40 bg-muted/10 text-muted-foreground'
                     }`}
                   >
-                    {hoveredComment.data.predictionPercent}% chance
+                    {formatPercentChance(
+                      hoveredComment.data.predictionPercent / 100
+                    )}{' '}
+                    chance
                   </Badge>
                 )}
 

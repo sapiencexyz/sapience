@@ -10,6 +10,7 @@ This document captures the context agents need when working in the Sapience mono
   - `packages/app` – Next.js 14 product app consuming the SDK and API.
   - `packages/sdk` – Shared TypeScript SDK (ABIs, hooks, UI kit, GraphQL helpers) built via `tsup` and Storybook.
   - `packages/docs` – Documentation portal powered by Vocs.
+  - `packages/polymarket-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
 - Shared script: `render-build-sdk.sh` installs workspace devDependencies and builds the SDK before deployment.
 
 ## Core Commands

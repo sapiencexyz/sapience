@@ -5,7 +5,7 @@ description: "Use the Trading Terminal to provide liquidity and earn in Sapience
 
 # Market Making
 
-Market makers provide liquidity by responding to auction requests. When someone creates a prediction, you compete with other responders to offer them the best odds—if your bid wins and the prediction fails, you collect the total amount wagered. Since predictions can contain multiple picks, you only need *one* of the requester's picks to be wrong to win.
+Market makers provide liquidity by responding to auction requests. When someone creates a prediction, you compete with other responders to offer them the best odds—if your bid wins and the prediction fails, you collect the total position size. Since predictions can contain multiple picks, you only need *one* of the requester's picks to be wrong to win.
 
 The [Trading Terminal](https://sapience.xyz/terminal) is a real-time interface for market making. It streams live auctions and lets you respond in three ways: manual bidding, automated limit orders, and copy trading.
 
@@ -13,8 +13,8 @@ The [Trading Terminal](https://sapience.xyz/terminal) is a real-time interface f
 
 Click any auction row in the terminal to expand it and place a bid directly.
 
-1. **Review the prediction** — See exactly which picks the requester is wagering on and their wager amount.
-2. **Set your bid amount** — This is your wager (the responder's stake). Combined with the requester's wager, it determines the implied odds.
+1. **Review the prediction** — See exactly which picks the requester is predicting and their position size.
+2. **Set your bid amount** — This is your position size (the responder's stake). Combined with the requester's position size, it determines the implied odds.
 3. **Set an expiration** — Bids are cryptographically signed with an expiration timestamp. If the requester doesn't accept before it expires, your bid is void.
 4. **Submit** — Your signature is sent to the relayer and shown to the requester. If they accept, the trade settles onchain.
 
@@ -24,13 +24,13 @@ Quick-increment buttons (+0.01, +1, +10, +100) let you rapidly outbid competitor
 
 When you bid, the terminal shows your implied probability:
 
-| Your Bid | Requester Wager | Total Wager | Your Implied Probability |
-|----------|-----------------|-------------|--------------------------|
-| 10 USDe  | 90 USDe         | 100 USDe    | 10% (you believe 90%+ the prediction fails) |
-| 50 USDe  | 50 USDe         | 100 USDe    | 50% (even odds) |
-| 90 USDe  | 10 USDe         | 100 USDe    | 90% (you believe 10%+ the prediction fails) |
+| Your Bid | Requester Position Size | Total Position Size | Your Implied Probability |
+|----------|-------------------------|---------------------|--------------------------|
+| 10 USDe  | 90 USDe                 | 100 USDe            | 10% (you believe 90%+ the prediction fails) |
+| 50 USDe  | 50 USDe                 | 100 USDe            | 50% (even odds) |
+| 90 USDe  | 10 USDe                 | 100 USDe            | 90% (you believe 10%+ the prediction fails) |
 
-Higher bids mean you're offering better odds to the requester—you're betting that their prediction is less likely to succeed.
+Higher bids mean you're offering better odds to the requester—you're expressing confidence that their prediction is less likely to succeed.
 
 ## Limit Orders
 

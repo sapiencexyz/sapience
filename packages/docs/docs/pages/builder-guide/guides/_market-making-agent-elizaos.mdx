@@ -78,7 +78,7 @@ export const marketMakingAction: Action = {
 # Market making configuration
 SAPIENCE_WS_URL=wss://relayer.sapience.xyz/auction
 BID_AMOUNT=2000000000000000000       # $2 bid amount (18 decimals)
-MIN_MAKER_WAGER=1000000000000000000  # Minimum $1 auction to bid on
+MIN_MAKER_POSITION_SIZE=1000000000000000000  # Minimum $1 auction to bid on
 PREDICTION_MARKET_ADDRESS=0xb04841cad1147675505816e2ec5c915430857b40
 ```
 
@@ -86,7 +86,7 @@ PREDICTION_MARKET_ADDRESS=0xb04841cad1147675505816e2ec5c915430857b40
 
 - **Forecast-Based Pricing**: Use your agent's probability forecasts to size bids
 - **Risk Management**: Track total exposure across all open positions
-- **Auction Filtering**: Filter by wager size, market topic, or time to expiration
+- **Auction Filtering**: Filter by position size, market topic, or time to expiration
 - **Opposite Side**: As a market maker, you take the opposite position from the taker
 
 ### Resources

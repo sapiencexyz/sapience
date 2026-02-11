@@ -7,12 +7,13 @@ import {
 } from '@sapience/ui';
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
-import MarketsDataTable from '~/components/markets/MarketsDataTable';
+import QuestionsTable from '~/components/markets/QuestionsTable';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -21,6 +22,7 @@ import {
   type SortDirection,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
+import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
 const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
@@ -94,17 +96,46 @@ const MarketsPage = () => {
     }
   }, []);
 
-  // Filter state managed here, passed down to MarketsDataTable
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    openInterestRange: [0, Infinity],
-    timeToResolutionRange: [0, Infinity], // Default to future markets only
-    selectedCategories: [],
-  });
+  // Filter state managed here, passed down to QuestionsTable
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = useSessionState(
+    'sapience.markets.searchTerm',
+    ''
+  );
+  const [filters, setFilters] = useSessionState<FilterState>(
+    'sapience.markets.filters',
+    {
+      openInterestRange: [0, Infinity],
+      timeToResolutionRange: [-Infinity, Infinity],
+      selectedCategories: [],
+      resolutionStatus: 'unresolved',
+    }
+  );
+
+  // Pick up ?category= from URL on initial load and client-side navigation
+  const appliedCategoryRef = useRef<string | null>(null);
+  useEffect(() => {
+    const category = searchParams.get('category');
+    if (category && category !== appliedCategoryRef.current) {
+      appliedCategoryRef.current = category;
+      setFilters((prev) => ({
+        ...prev,
+        selectedCategories: [category],
+      }));
+      router.replace('/markets', { scroll: false });
+    }
+  }, [searchParams, router]);
 
   // Sorting state - lifted here so backend can respect it during pagination
-  const [sortField, setSortField] = useState<SortField>('openInterest');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortField, setSortField] = useSessionState<SortField>(
+    'sapience.markets.sortField',
+    'openInterest'
+  );
+  const [sortDirection, setSortDirection] = useSessionState<SortDirection>(
+    'sapience.markets.sortDirection',
+    'desc'
+  );
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {
@@ -141,11 +172,13 @@ const MarketsPage = () => {
       filters.selectedCategories.length > 0
         ? filters.selectedCategories
         : undefined,
-    pageSize: 30,
+    pageSize: 20,
     sortField,
     sortDirection,
     // Backend filtering for markets after this time
     minEndTime,
+    // Backend filtering by resolution status
+    resolutionStatus: filters.resolutionStatus,
   });
 
   const handlePythPick = useCallback(
@@ -170,7 +203,7 @@ const MarketsPage = () => {
         },
       ]);
 
-      // Mobile UX: open the bet slip drawer so users can see their selection
+      // Mobile UX: open the create position form drawer so users can see their selection
       if (isCompact) {
         openPopover();
       }
@@ -217,7 +250,12 @@ const MarketsPage = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6">
+      <div
+        className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
+        style={{
+          height: 'calc(100dvh - var(--page-top-offset, 0px))',
+        }}
+      >
         {/* Featured Positions section */}
         <ExampleCombos className="mt-4 md:mt-0" />
 
@@ -232,15 +270,16 @@ const MarketsPage = () => {
         )}
 
         {/* Results area - always table view */}
-        <div className="relative w-full max-w-full overflow-x-hidden min-h-[300px]">
+        <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
           <motion.div
+            className="h-full"
             key="table-view"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <MarketsDataTable
+            <QuestionsTable
               questions={questions}
               isLoading={isLoadingData}
               isFetchingMore={isFetchingMore}
@@ -265,7 +304,7 @@ const MarketsPage = () => {
           <div
             className="rounded-none shadow-lg overflow-hidden"
             style={{
-              height: 'calc(100dvh - var(--page-top-offset, 0px))',
+              height: 'calc(100dvh - 6rem)',
             }}
           >
             <div className="h-full overflow-y-auto">

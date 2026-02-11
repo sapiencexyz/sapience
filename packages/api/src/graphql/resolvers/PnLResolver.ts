@@ -1,4 +1,4 @@
-import { Resolver, Query, Arg, Int, Directive } from 'type-graphql';
+import { Resolver, Query, Arg, Directive } from 'type-graphql';
 import { PnLType } from '../types/PnLType';
 import {
   AggregatedProfitEntryType,
@@ -21,28 +21,6 @@ export class PnLResolver {
     ttlMs: 60_000,
     maxSize: 10,
   });
-
-  @Query(() => [PnLType])
-  @Directive('@cacheControl(maxAge: 60)')
-  async getLeaderboard(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('marketAddress', () => String) marketAddress: string
-  ): Promise<PnLType[]> {
-    // Get position PnL directly from calculation
-    const positionPnL = await calculatePositionPnL(chainId, marketAddress);
-
-    return positionPnL.map((r) => ({
-      marketId: 0, // positions don't have marketId, use 0 as placeholder
-      owner: r.owner,
-      totalDeposits: '0',
-      totalWithdrawals: '0',
-      openPositionsPnL: '0',
-      totalPnL: r.totalPnL,
-      positions: [],
-      positionCount: r.positionCount,
-      collateralDecimals: DEFAULT_DECIMALS,
-    }));
-  }
 
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')

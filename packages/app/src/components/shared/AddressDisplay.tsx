@@ -15,15 +15,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, User, Vault } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-
-// Create a public client for ENS resolution
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http(),
-});
+import { mainnetClient } from '~/lib/utils/util';
 
 // Hook to fetch ENS names
 const useEnsName = (address: string) => {
@@ -32,7 +25,7 @@ const useEnsName = (address: string) => {
     queryFn: async () => {
       try {
         if (!address) return null;
-        return await publicClient.getEnsName({
+        return await mainnetClient.getEnsName({
           address: address as `0x${string}`,
         });
       } catch (error) {
@@ -110,8 +103,8 @@ const AddressDisplay = ({
     });
   };
 
-  const containerGapClass = isCompact ? 'gap-1' : 'gap-3';
-  const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-1.5';
+  const containerGapClass = isCompact ? 'gap-1' : 'gap-1.5';
+  const iconsGapClass = isCompact ? 'gap-0.5' : 'gap-0.5';
   const nameTextClass = isLarge
     ? 'text-2xl'
     : isCompact

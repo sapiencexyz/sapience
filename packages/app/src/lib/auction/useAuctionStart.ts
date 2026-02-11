@@ -13,9 +13,14 @@ import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import {
+  logAuction,
+  logAuctionWarn,
+  formatBidForLog,
+} from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
-  wager: string; // wei string - taker's wager amount
+  wager: string; // wei string - taker's position size
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   taker: `0x${string}`; // taker EOA address
@@ -101,7 +106,16 @@ function jsonStableStringify(value: unknown): string {
   return JSON.stringify(serialize(value));
 }
 
-export function useAuctionStart() {
+export interface UseAuctionStartOptions {
+  /** Disable logging for this hook instance (use for forecast-only components) */
+  disableLogging?: boolean;
+}
+
+export function useAuctionStart(options?: UseAuctionStartOptions) {
+  const shouldLog = !options?.disableLogging;
+  // Create conditional log functions to avoid noisy logs from forecast-only components
+  const log = shouldLog ? logAuction : () => {};
+  const logWarn = shouldLog ? logAuctionWarn : () => {};
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const inflightRef = useRef<string>('');
@@ -139,6 +153,13 @@ export function useAuctionStart() {
   const lastAuctionRef = useRef<AuctionParams | null>(null);
   // Track latest auctionId in a ref to avoid stale closures in ws handlers
   const latestAuctionIdRef = useRef<string | null>(null);
+  // Track which stale auction IDs we've already logged to reduce noise
+  // (ExampleCombos creates multiple auctions that trigger stale bid warnings)
+  const loggedStaleAuctionsRef = useRef<Set<string>>(new Set());
+  // Track the current pending request to handle race conditions
+  // When a new request is made, we generate a unique ID. Only the response
+  // matching the latest request ID will update the auction state.
+  const pendingRequestIdRef = useRef<string | null>(null);
   const [currentAuctionParams, setCurrentAuctionParams] =
     useState<AuctionParams | null>(null);
 
@@ -163,8 +184,23 @@ export function useAuctionStart() {
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
+            // Only log once per stale auction ID to reduce noise
+            // (ExampleCombos creates multiple auctions that would spam logs)
+            if (!loggedStaleAuctionsRef.current.has(targetAuctionId)) {
+              loggedStaleAuctionsRef.current.add(targetAuctionId);
+              log(
+                `Ignoring bids for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
+              );
+            }
             return;
           }
+
+          log(
+            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
+          );
+          rawBids.forEach((b) => {
+            log(`  - ${formatBidForLog(b)}`);
+          });
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
@@ -280,6 +316,12 @@ export function useAuctionStart() {
       debounceTimer.current = window.setTimeout(async () => {
         const client = getSharedAuctionWsClient(wsUrl);
 
+        // Generate a unique request ID to track this specific request
+        // This prevents race conditions where a newer request's response
+        // would be overwritten by an older request completing later
+        const thisRequestId = crypto.randomUUID();
+        pendingRequestIdRef.current = thisRequestId;
+
         // Generate SIWE signature for the auction request if required
         let takerSignature: string | undefined;
         let takerSignedAt: string | undefined;
@@ -315,12 +357,20 @@ export function useAuctionStart() {
             takerSignedAt = issuedAt;
           } catch (signError) {
             // If signature is required and fails, log and return early
-            console.warn(
-              '[AuctionStart] Failed to sign auction request:',
-              signError
-            );
+            logWarn('Failed to sign auction request:', signError);
+            // Clear pending request since we're aborting
+            if (pendingRequestIdRef.current === thisRequestId) {
+              pendingRequestIdRef.current = null;
+            }
             return;
           }
+        }
+
+        // Check if a newer request was made while we were signing
+        // If so, abort this request to avoid race conditions
+        if (pendingRequestIdRef.current !== thisRequestId) {
+          log('Aborting stale request (newer request in progress)');
+          return;
         }
 
         // Build final payload with signature and session data
@@ -339,10 +389,13 @@ export function useAuctionStart() {
             : {}),
         };
 
-        // Clear previous auction state
+        // Update inflight tracking and clear bids for new request
+        // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
+        // Setting it to null would cause bids for the current auction to be
+        // rejected as "stale" while we wait for the server response.
+        // Instead, we only update latestAuctionIdRef when we receive the
+        // new auction ID from the server.
         inflightRef.current = key;
-        latestAuctionIdRef.current = null; // Clear so we don't process stale bids
-        setAuctionId(null);
         setBids([]);
         // Store params with effectiveTaker so buildMintRequestDataFromBid uses the correct address
         // (smart account address when session is active, otherwise EOA)
@@ -401,6 +454,7 @@ export function useAuctionStart() {
 
             const newId = v2Response?.auctionId || null;
             latestAuctionIdRef.current = newId;
+            loggedStaleAuctionsRef.current.clear();
             setAuctionId(newId);
 
             // Subscribe to V2 auction updates
@@ -420,15 +474,30 @@ export function useAuctionStart() {
           }
         } else {
           // V1 Auction Start (original logic)
+          log(
+            `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, taker=${effectiveTaker.slice(0, 10)}...`
+          );
+
           try {
             const response = await client.sendWithAck<{ auctionId?: string }>(
               'auction.start',
               payloadWithSignature,
               { timeoutMs: 10000 }
             );
+
+            // Only update state if this is still the latest request
+            if (pendingRequestIdRef.current !== thisRequestId) {
+              log(
+                `Ignoring response for stale request (newer request completed)`
+              );
+              return;
+            }
+
             const newId = response?.auctionId || null;
             latestAuctionIdRef.current = newId;
+            loggedStaleAuctionsRef.current.clear();
             setAuctionId(newId);
+            log(`Auction started: id=${newId}`);
 
             // Also subscribe to V2 auction updates for this auctionId
             // This enables receiving V2 bids on the same auction
@@ -438,9 +507,13 @@ export function useAuctionStart() {
                 payload: { auctionId: newId },
               });
             }
-          } catch {
-            // On timeout or error, clear inflight but keep params for retry
-            inflightRef.current = '';
+          } catch (err) {
+            // Only update state if this is still the latest request
+            if (pendingRequestIdRef.current === thisRequestId) {
+              inflightRef.current = '';
+              pendingRequestIdRef.current = null;
+            }
+            log(`Auction request failed:`, err);
           }
         }
       }, 400);
@@ -501,10 +574,9 @@ export function useAuctionStart() {
 
       // Validate bid is from the current auction to avoid stale nonce errors
       if (args.selectedBid.auctionId !== auctionId) {
-        console.error('[useAuctionStart] Stale bid - auctionId mismatch', {
-          bidAuctionId: args.selectedBid.auctionId,
-          currentAuctionId: auctionId,
-        });
+        log(
+          `Stale bid rejected - auctionId mismatch: bid=${args.selectedBid.auctionId}, current=${auctionId}`
+        );
         return null;
       }
 

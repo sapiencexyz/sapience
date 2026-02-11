@@ -205,17 +205,22 @@ model Condition {
   @@index([endTime])
   @@index([conditionGroupId])
   @@index([resolver], map: "IDX_condition_resolver")
+  @@index([public, chainId, settled, conditionGroupId], map: "IDX_condition_market_filter")
+  // Raw SQL indexes (not representable in Prisma, managed via migration):
+  // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
+  // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
   @@map("condition")
 }
 
 model ConditionGroup {
-  id         Int         @id @default(autoincrement())
-  createdAt  DateTime    @default(now()) @db.Timestamp(6)
-  name       String      @unique @db.VarChar
-  categoryId Int?
-  category   Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id             Int         @id @default(autoincrement())
+  createdAt      DateTime    @default(now()) @db.Timestamp(6)
+  name           String      @unique @db.VarChar
+  categoryId     Int?
+  category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  similarMarkets String[]    @default([])
   /// @TypeGraphQL.field(name: "conditions")
-  condition  Condition[]
+  condition      Condition[]
 
   @@index([categoryId])
   @@map("condition_group")
@@ -361,8 +366,31 @@ model User {
   referredBy   User?  @relation("UserReferrals", fields: [referredById], references: [id])
   referrals    User[] @relation("UserReferrals")
 
+  referredByCodeId  Int?
+  referredByCode    ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
+
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
+}
+
+
+model ReferralCode {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+
+
+  codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
+  maxClaims    Int
+  isActive     Boolean   @default(true)
+  expiresAt    Int?
+  createdBy    String    @db.VarChar
+  creatorType  String    @default("user") @db.VarChar(10)
+  claimedBy    User[]    @relation("AdminCodeClaims")
+  @@index([codeHash], map: "IDX_referral_code_hash")
+  @@index([isActive], map: "IDX_referral_code_active")
+  @@index([createdBy], map: "IDX_referral_code_created_by")
+  @@map("referral_code")
 }
 
 /// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
@@ -371,15 +399,33 @@ model ProtocolStatsSnapshot {
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
-  timestamp Int @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+  timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+  chainId       Int      @default(5064014)
 
-  /// Vault balance: wUSDe.balanceOf(vault) + vault.totalDeployed() (in wei)
-  vaultBalance String @db.VarChar
+  /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
+  vaultBalance  String   @db.VarChar
+
+  /// Vault available assets: vault.availableAssets() - excludes pending deposits (in wei)
+  vaultAvailableAssets String @default("0") @db.VarChar
+
+  /// Vault deployed: vault.totalDeployed() - funds deployed to escrow (in wei)
+  vaultDeployed String   @default("0") @db.VarChar
 
   /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
   escrowBalance String @db.VarChar
 
+  /// Vault PnL metrics
+  vaultRealizedPnL      String   @default("0") @db.VarChar  // Total realized PnL from predictions
+  vaultAirdropGains     String   @default("0") @db.VarChar  // Unexpected balance increases
+  vaultDeposits         String   @default("0") @db.VarChar  // Total user deposits
+  vaultWithdrawals      String   @default("0") @db.VarChar  // Total user withdrawals
+  vaultPositionsWon     Int      @default(0)
+  vaultPositionsLost    Int      @default(0)
+  vaultCollateralWon    String   @default("0") @db.VarChar
+  vaultCollateralLost   String   @default("0") @db.VarChar
+
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
+  @@index([chainId])
   @@map("protocol_stats_snapshot")
 }
 
@@ -609,4 +655,24 @@ model V2IndexerState {
   lastIndexedAt    DateTime @db.Timestamp(6)
 
   @@map("v2_indexer_state")
+}
+
+/// Indexed vault deposit/withdrawal events for accurate PnL tracking
+model VaultFlowEvent {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  chainId         Int
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  timestamp       Int
+  logIndex        Int
+  eventType       String   @db.VarChar  // 'deposit' or 'withdrawal'
+  user            String   @db.VarChar
+  assets          String   @db.VarChar  // Amount in wei
+  shares          String   @db.VarChar  // Shares minted/burned
+
+  @@unique([chainId, transactionHash, logIndex])
+  @@index([chainId, timestamp])
+  @@index([eventType])
+  @@map("vault_flow_event")
 }

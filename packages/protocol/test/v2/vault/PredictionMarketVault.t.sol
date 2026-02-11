@@ -46,8 +46,9 @@ contract PredictionMarketVaultTest is Test {
         asset.mint(user2, INITIAL_SUPPLY);
         asset.mint(user3, INITIAL_SUPPLY);
 
-        // Set interaction delay to 0 for testing
-        vault.setInteractionDelay(0);
+        // Set interaction delays to 0 for testing
+        vault.setDepositInteractionDelay(0);
+        vault.setWithdrawalInteractionDelay(0);
 
         vm.stopPrank();
     }
@@ -591,13 +592,22 @@ contract PredictionMarketVaultTest is Test {
         vault.setManager(newManager);
     }
 
-    function test_setInteractionDelay() public {
+    function test_setDepositInteractionDelay() public {
         uint256 newDelay = 2 days;
 
         vm.prank(owner);
-        vault.setInteractionDelay(newDelay);
+        vault.setDepositInteractionDelay(newDelay);
 
-        assertEq(vault.interactionDelay(), newDelay);
+        assertEq(vault.depositInteractionDelay(), newDelay);
+    }
+
+    function test_setWithdrawalInteractionDelay() public {
+        uint256 newDelay = 12 hours;
+
+        vm.prank(owner);
+        vault.setWithdrawalInteractionDelay(newDelay);
+
+        assertEq(vault.withdrawalInteractionDelay(), newDelay);
     }
 
     function test_setExpirationTime() public {
@@ -799,9 +809,9 @@ contract PredictionMarketVaultTest is Test {
 
     // ============ Interaction Delay Tests ============
 
-    function test_interactionDelayEnforced() public {
+    function test_depositInteractionDelayEnforced() public {
         vm.prank(owner);
-        vault.setInteractionDelay(1 hours);
+        vault.setDepositInteractionDelay(1 hours);
 
         // First deposit
         vm.startPrank(user1);
@@ -827,9 +837,86 @@ contract PredictionMarketVaultTest is Test {
         vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
     }
 
-    function test_interactionDelayResetAfterCancel() public {
+    function test_withdrawalInteractionDelayEnforced() public {
         vm.prank(owner);
-        vault.setInteractionDelay(1 hours);
+        vault.setWithdrawalInteractionDelay(1 hours);
+
+        uint256 shares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        // Wait past withdrawal delay (deposit set the shared timestamp)
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Request withdrawal
+        vm.prank(user1);
+        vault.requestWithdrawal(shares / 2, DEPOSIT_AMOUNT / 2);
+
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+
+        // Try another withdrawal immediately
+        vm.prank(user1);
+        vm.expectRevert(
+            PredictionMarketVault.InteractionDelayNotExpired.selector
+        );
+        vault.requestWithdrawal(shares / 2, DEPOSIT_AMOUNT / 2);
+
+        // Wait for delay
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Now it should work
+        vm.prank(user1);
+        vault.requestWithdrawal(shares / 2, DEPOSIT_AMOUNT / 2);
+    }
+
+    function test_splitDelaysAreIndependent() public {
+        vm.startPrank(owner);
+        vault.setDepositInteractionDelay(2 hours);
+        vault.setWithdrawalInteractionDelay(30 minutes);
+        vm.stopPrank();
+
+        uint256 shares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        // Wait past the withdrawal delay (deposit set the shared timestamp)
+        vm.warp(block.timestamp + 31 minutes);
+
+        // Withdrawal should work (only 30 min withdrawal delay from last action)
+        vm.prank(user1);
+        vault.requestWithdrawal(shares / 2, DEPOSIT_AMOUNT / 2);
+
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+
+        // After another 31 min: withdrawal delay passed but deposit delay not
+        vm.warp(block.timestamp + 31 minutes);
+
+        // Withdrawal should work again
+        vm.prank(user1);
+        vault.requestWithdrawal(shares / 4, DEPOSIT_AMOUNT / 4);
+
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+
+        // Deposit should still be blocked (need 2 hours from last action)
+        vm.startPrank(user1);
+        asset.approve(address(vault), DEPOSIT_AMOUNT);
+        vm.expectRevert(
+            PredictionMarketVault.InteractionDelayNotExpired.selector
+        );
+        vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
+        vm.stopPrank();
+
+        // Wait for full deposit delay
+        vm.warp(block.timestamp + 2 hours);
+
+        // Now deposit should work
+        vm.startPrank(user1);
+        vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
+        vm.stopPrank();
+    }
+
+    function test_depositInteractionDelayResetAfterCancel() public {
+        vm.prank(owner);
+        vault.setDepositInteractionDelay(1 hours);
 
         // Make a deposit request
         vm.startPrank(user1);
@@ -845,6 +932,101 @@ contract PredictionMarketVaultTest is Test {
         // Should be able to make a new request immediately
         vm.prank(user1);
         vault.requestDeposit(DEPOSIT_AMOUNT, DEPOSIT_AMOUNT);
+    }
+
+    function test_withdrawalInteractionDelayResetAfterCancel() public {
+        vm.prank(owner);
+        vault.setWithdrawalInteractionDelay(1 hours);
+
+        uint256 shares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        // Wait past withdrawal delay (deposit set the shared timestamp)
+        vm.warp(block.timestamp + 1 hours + 1);
+
+        // Make a withdrawal request
+        vm.prank(user1);
+        vault.requestWithdrawal(shares, DEPOSIT_AMOUNT);
+
+        // Wait for expiration and cancel
+        vm.warp(block.timestamp + 11 minutes);
+        vm.prank(user1);
+        vault.cancelWithdrawal();
+
+        // Should be able to make a new request immediately (cancel resets timestamp)
+        vm.prank(user1);
+        vault.requestWithdrawal(shares, DEPOSIT_AMOUNT);
+    }
+
+    // ============ Pending Withdrawals Accumulator Tests ============
+
+    function test_getPendingWithdrawals_zeroByDefault() public view {
+        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        assertEq(shares, 0);
+        assertEq(assets, 0);
+    }
+
+    function test_getPendingWithdrawals_incrementsOnRequest() public {
+        uint256 depositShares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        vm.prank(user1);
+        vault.requestWithdrawal(depositShares, DEPOSIT_AMOUNT);
+
+        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        assertEq(shares, depositShares);
+        assertEq(assets, DEPOSIT_AMOUNT);
+    }
+
+    function test_getPendingWithdrawals_decrementsOnProcess() public {
+        uint256 depositShares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        vm.prank(user1);
+        vault.requestWithdrawal(depositShares, DEPOSIT_AMOUNT);
+
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+
+        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        assertEq(shares, 0);
+        assertEq(assets, 0);
+    }
+
+    function test_getPendingWithdrawals_decrementsOnCancel() public {
+        uint256 depositShares = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+
+        vm.prank(user1);
+        vault.requestWithdrawal(depositShares, DEPOSIT_AMOUNT);
+
+        // Wait for expiration and cancel
+        vm.warp(block.timestamp + 11 minutes);
+        vm.prank(user1);
+        vault.cancelWithdrawal();
+
+        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        assertEq(shares, 0);
+        assertEq(assets, 0);
+    }
+
+    function test_getPendingWithdrawals_multipleUsers() public {
+        uint256 shares1 = _approveAndDeposit(user1, DEPOSIT_AMOUNT);
+        uint256 shares2 = _approveAndDeposit(user2, DEPOSIT_AMOUNT * 2);
+
+        vm.prank(user1);
+        vault.requestWithdrawal(shares1, DEPOSIT_AMOUNT);
+
+        vm.prank(user2);
+        vault.requestWithdrawal(shares2, DEPOSIT_AMOUNT * 2);
+
+        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        assertEq(shares, shares1 + shares2);
+        assertEq(assets, DEPOSIT_AMOUNT * 3);
+
+        // Process one
+        vm.prank(manager);
+        vault.processWithdrawal(user1);
+
+        (shares, assets) = vault.getPendingWithdrawals();
+        assertEq(shares, shares2);
+        assertEq(assets, DEPOSIT_AMOUNT * 2);
     }
 
     // ============ ERC1271 Signature Tests ============

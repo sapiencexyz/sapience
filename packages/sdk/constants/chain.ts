@@ -33,6 +33,9 @@ export const etherealChain = {
       url: 'https://explorer.ethereal.trade',
     },
   },
+  fees: {
+    defaultPriorityFee: 1n,
+  },
 } as const satisfies Chain;
 
 /**

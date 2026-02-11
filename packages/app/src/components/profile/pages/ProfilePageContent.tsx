@@ -96,16 +96,22 @@ const ProfilePageContent = () => {
   }, []);
 
   const tabSwitcher = (
-    <SegmentedTabsList>
-      <TabsTrigger className="justify-center" value="positions">
+    <SegmentedTabsList className="w-full md:w-auto">
+      <TabsTrigger
+        className="justify-center flex-1 md:flex-none"
+        value="positions"
+      >
         <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
         Positions
       </TabsTrigger>
-      <TabsTrigger className="justify-center" value="v2positions">
+      <TabsTrigger className="justify-center flex-1 md:flex-none" value="v2positions">
         <Coins className="h-4 w-4 mr-2" />
         V2 Positions
       </TabsTrigger>
-      <TabsTrigger className="justify-center" value="forecasts">
+      <TabsTrigger
+        className="justify-center flex-1 md:flex-none"
+        value="forecasts"
+      >
         <Telescope className="h-4 w-4 mr-2" />
         Forecasts
       </TabsTrigger>
@@ -113,13 +119,10 @@ const ProfilePageContent = () => {
   );
 
   return (
-    <div className="mx-auto pb-0 px-3 md:px-6 lg:px-8 w-full">
+    <div className="mx-auto pb-0 px-3 md:px-6 lg:px-8 w-full pt-4 md:pt-0">
       <ShareAfterRedirect address={address} />
-      <div className="mb-6">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <ProfileHeader address={address} className="mb-0" />
-      </div>
-
-      <div className="mb-5">
         {hasLoadedOnce ? (
           <ProfileQuickMetrics
             address={address}

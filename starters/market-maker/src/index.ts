@@ -117,11 +117,11 @@ const V2_VERIFYING_CONTRACT = (process.env.V2_VERIFYING_CONTRACT || (addressBook
 const V2_ENABLED = process.env.V2_ENABLED !== 'false' && !!V2_VERIFYING_CONTRACT && !!buildCounterpartyMintTypedData;
 
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
-const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_WAGER || '10';
+const MIN_MAKER_POSITION_SIZE_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
 
 const BID_AMOUNT = parseEther(BID_AMOUNT_DEC);
-const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
+const MIN_MAKER_POSITION_SIZE = parseEther(MIN_MAKER_POSITION_SIZE_DEC);
 
 const account = PRIVATE_KEY_HEX
   ? privateKeyToAccount(PRIVATE_KEY_HEX)
@@ -146,8 +146,8 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
   const missing = uniqueIds.filter((id) => !conditionCache.has(id));
   if (missing.length > 0) {
     const QUERY = /* GraphQL */ `
-      query ConditionsByIds($ids: [String!]!) {
-        conditions(where: { id: { in: $ids } }, take: 1000) {
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
           id
           shortName
           question
@@ -155,11 +155,21 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
       }
     `;
     try {
-      const resp = await graphqlRequest<{ conditions: { id: string; shortName?: string | null; question?: string | null }[] }>(
-        QUERY,
-        { ids: missing }
-      );
-      for (const row of resp?.conditions ?? []) {
+      const PAGE_SIZE = 100;
+      const chunks: string[][] = [];
+      for (let i = 0; i < missing.length; i += PAGE_SIZE) {
+        chunks.push(missing.slice(i, i + PAGE_SIZE));
+      }
+      const allConditions = (await Promise.all(
+        chunks.map(async (chunk) => {
+          const resp = await graphqlRequest<{ conditions: { id: string; shortName?: string | null; question?: string | null }[] }>(
+            QUERY,
+            { where: { id: { in: chunk } } }
+          );
+          return resp?.conditions ?? [];
+        })
+      )).flat();
+      for (const row of allConditions) {
         conditionCache.set(row.id, { shortName: row.shortName ?? null, question: row.question ?? null });
       }
     } catch (e) {
@@ -312,7 +322,7 @@ function start() {
       if (type === 'auction.started') {
         const auction = msg.payload || {};
         const auctionId = auction.auctionId as string;
-        const takerWager = BigInt(auction.wager || '0');
+        const takerPositionSize = BigInt(auction.wager || '0');
         const auctionChainId = (auction.chainId as number | undefined);
         const makerNonce = BigInt(auction.takerNonce as number ?? 0);
 
@@ -329,8 +339,8 @@ function start() {
           return;
         }
 
-        // Ignore auctions below minimum before logging anything
-        if (takerWager < MIN_MAKER_WAGER) {
+        // Ignore auctions below minimum position size before logging anything
+        if (takerPositionSize < MIN_MAKER_POSITION_SIZE) {
           return;
         }
 

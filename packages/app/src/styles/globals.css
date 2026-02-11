@@ -295,6 +295,47 @@
     animation-delay: 2s;
   }
 
+  /* Get Access button – category-colored gradient, continuously animated */
+  @keyframes prismatic-sweep {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 0 600%;
+    }
+  }
+
+  .btn-get-access {
+    position: relative;
+    background: hsl(var(--accent-gold));
+    overflow: hidden;
+  }
+
+  .btn-get-access::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      hsl(var(--category-3)) 0%,
+      hsl(var(--category-2)) 14.3%,
+      hsl(var(--category-1)) 28.6%,
+      hsl(var(--category-5)) 42.9%,
+      hsl(var(--category-4)) 57.1%,
+      hsl(var(--category-7)) 71.4%,
+      hsl(var(--category-6)) 85.7%,
+      hsl(var(--category-3)) 100%
+    );
+    background-size: 100% 1200%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .btn-get-access:hover::before {
+    opacity: 1;
+    animation: prismatic-sweep 30s linear infinite;
+  }
+
   /* Loader pulse animation - subtle, tight pulse for loading indicators */
   @keyframes loader-pulse {
     0%,

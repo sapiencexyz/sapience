@@ -11,8 +11,8 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import { createWalletClient, custom, http, keccak256, stringToHex } from 'viem';
-import { mainnet } from 'viem/chains';
+import { useSignMessage } from 'wagmi';
+import { keccak256, stringToHex } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
@@ -58,6 +58,7 @@ const ReferralsDialog = ({
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
   const { toast } = useToast();
+  const { signMessageAsync } = useSignMessage();
 
   const userVolume = useProfileVolume(walletAddress ?? undefined);
   const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
@@ -139,17 +140,6 @@ const ReferralsDialog = ({
       setSubmitting(true);
       setError(null);
 
-      if (typeof window === 'undefined' || !(window as any).ethereum) {
-        throw new Error('Wallet not available for signing');
-      }
-
-      const walletClient = createWalletClient({
-        chain: mainnet,
-        transport: (window as any).ethereum
-          ? custom((window as any).ethereum)
-          : http(),
-      });
-
       const normalizedAddress = walletAddress.toLowerCase();
       const normalizedCode = code.trim().toLowerCase();
       const codeHash = keccak256(stringToHex(normalizedCode));
@@ -163,10 +153,7 @@ const ReferralsDialog = ({
       };
 
       const message = JSON.stringify(payload);
-      const signature = await walletClient.signMessage({
-        account: normalizedAddress as `0x${string}`,
-        message,
-      });
+      const signature = await signMessageAsync({ message });
 
       const resp = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/code`,
@@ -223,6 +210,13 @@ const ReferralsDialog = ({
       // and any updated maxReferrals before closing.
       await fetchReferrals(walletAddress);
       onOpenChange(false);
+    } catch (err) {
+      console.error('Failed to set referral code', err);
+      toast({
+        title: 'Unable to set referral code',
+        description: err instanceof Error ? err.message : 'Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setSubmitting(false);
     }

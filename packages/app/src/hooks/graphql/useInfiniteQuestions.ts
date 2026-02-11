@@ -22,8 +22,8 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
     $sortDirection: String!
     $search: String
     $categorySlugs: [String!]
-    $excludeSettled: Boolean
     $minEndTime: Int
+    $resolutionStatus: String
   ) {
     questionsSorted(
       take: $take
@@ -33,8 +33,8 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
       sortDirection: $sortDirection
       search: $search
       categorySlugs: $categorySlugs
-      excludeSettled: $excludeSettled
       minEndTime: $minEndTime
+      resolutionStatus: $resolutionStatus
     ) {
       questionType
       group {
@@ -107,10 +107,10 @@ export interface UseInfiniteQuestionsOptions {
   pageSize?: number;
   sortField?: SortField;
   sortDirection?: SortDirection;
-  /** Exclude settled/resolved markets from results */
-  excludeSettled?: boolean;
   /** Only include markets with endTime >= this value (unix timestamp) */
   minEndTime?: number;
+  /** Filter by resolution status: 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo' */
+  resolutionStatus?: string;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -131,9 +131,16 @@ export function useInfiniteQuestions(
     pageSize = 20,
     sortField = 'openInterest',
     sortDirection = 'desc',
-    excludeSettled,
-    minEndTime,
+    minEndTime: rawMinEndTime,
+    resolutionStatus,
   } = opts;
+
+  // Normalize minEndTime: treat non-finite values (e.g. -Infinity from default
+  // range filters) as undefined so query keys match across components
+  const minEndTime =
+    rawMinEndTime != null && Number.isFinite(rawMinEndTime)
+      ? rawMinEndTime
+      : undefined;
 
   const [skip, setSkip] = useState(0);
   const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);
@@ -156,8 +163,8 @@ export function useInfiniteQuestions(
     categorySlugs,
     sortField,
     sortDirection,
-    excludeSettled,
     minEndTime,
+    resolutionStatus,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
 
@@ -194,8 +201,8 @@ export function useInfiniteQuestions(
       categorySlugs,
       sortField,
       sortDirection,
-      excludeSettled,
       minEndTime,
+      resolutionStatus,
     ],
     queryFn: async (): Promise<QuestionType[]> => {
       type QuestionsQueryResult = {
@@ -209,8 +216,8 @@ export function useInfiniteQuestions(
         sortDirection,
         search: search?.trim() || null,
         categorySlugs: categorySlugs?.length ? categorySlugs : null,
-        excludeSettled: excludeSettled ?? null,
         minEndTime: minEndTime ?? null,
+        resolutionStatus: resolutionStatus ?? null,
       };
 
       const data = await graphqlRequest<QuestionsQueryResult>(

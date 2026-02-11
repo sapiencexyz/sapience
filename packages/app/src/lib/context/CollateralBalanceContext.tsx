@@ -31,8 +31,8 @@ interface CollateralBalanceContextValue {
   effectiveAddress: `0x${string}` | undefined;
   /** Current chain ID */
   chainId: number;
-  /** Suggested initial wager: min(balance, 10), formatted. Null if balance not ready */
-  suggestedInitialWager: string | null;
+  /** Suggested initial position size: min(balance, 10), formatted. Null if balance not ready */
+  suggestedInitialPositionSize: string | null;
   /** Whether balance has finished loading and is available */
   isBalanceReady: boolean;
   /** Whether we're using the user's wallet (EOA) vs smart account */
@@ -78,13 +78,13 @@ export function CollateralBalanceProvider({
   // Derive from SessionContext's canonical state
   const isUsingEoa = !isUsingSmartAccount;
 
-  // Compute suggested initial wager: min(balance, 10), or null if not ready
-  const suggestedInitialWager = useMemo(() => {
+  // Compute suggested initial position size: min(balance, 10), or null if not ready
+  const suggestedInitialPositionSize = useMemo(() => {
     if (isLoading || balance <= 0) return null;
-    const initialWager = Math.min(balance, 10);
-    return Number.isInteger(initialWager)
-      ? initialWager.toString()
-      : initialWager.toFixed(2);
+    const initialPositionSize = Math.min(balance, 10);
+    return Number.isInteger(initialPositionSize)
+      ? initialPositionSize.toString()
+      : initialPositionSize.toFixed(2);
   }, [isLoading, balance]);
 
   const isBalanceReady = !isLoading && balance > 0;
@@ -102,7 +102,7 @@ export function CollateralBalanceProvider({
     refetch,
     effectiveAddress: effectiveAddress ?? undefined,
     chainId,
-    suggestedInitialWager,
+    suggestedInitialPositionSize,
     isBalanceReady,
     isUsingEoa,
   };

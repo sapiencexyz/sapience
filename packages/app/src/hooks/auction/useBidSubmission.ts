@@ -33,6 +33,7 @@ import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
@@ -43,9 +44,9 @@ import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 
 export type BidSubmissionParams = {
   auctionId: string;
-  /** Bidder's wager in wei */
+  /** Bidder's position size in wei */
   makerWager: bigint;
-  /** Auction creator's wager in wei */
+  /** Auction creator's position size in wei */
   takerWager: bigint;
   /** Encoded predicted outcomes (V1) */
   predictedOutcomes: `0x${string}`[];
@@ -117,9 +118,11 @@ export function useBidSubmission(
     effectiveAddress,
     signTypedData: sessionSignTypedData,
     isUsingSession,
+    isUsingSmartAccount,
     v2SessionKeyApproval,
     chainClients,
   } = useSession();
+  const { toast } = useToast();
 
   // Get wUSDe contract address for the chain
   const wusdeAddress = collateralTokenAddresses[chainId]?.address as
@@ -194,6 +197,21 @@ export function useBidSubmission(
       // Validate required data
       if (!signerAddress) {
         return { success: false, error: 'Wallet not connected' };
+      }
+
+      // Smart account mode is not supported for terminal bidding
+      if (isUsingSmartAccount) {
+        toast({
+          title: 'Smart Account Not Supported',
+          description:
+            'The trading terminal does not currently support smart account mode. Please switch to EOA mode in settings to place bids.',
+          variant: 'destructive',
+          duration: 6000,
+        });
+        return {
+          success: false,
+          error: 'Smart account mode not supported for terminal bidding',
+        };
       }
 
       if (!auctionId) {
@@ -570,11 +588,13 @@ export function useBidSubmission(
       isV2Chain,
       v2Nonce,
       isUsingSession,
+      isUsingSmartAccount,
       sessionSignTypedData,
       v2SessionKeyApproval,
       chainClients,
       wusdeAddress,
       formatAmount,
+      toast,
     ]
   );
 

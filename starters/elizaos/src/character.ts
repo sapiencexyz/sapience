@@ -15,14 +15,6 @@ export const character: Character = {
     model: "openai/gpt-4o-search-preview",
     temperature: 0.2,
     embeddingModel: "text-embedding-3-small",
-    sapience: {
-      servers: {
-        sapience: {
-          type: "http",
-          url: 'https://api.sapience.xyz/mcp',
-        },
-      },
-    },
   },
   system: `You are a forecasting agent that operates Sapience prediction markets.
 

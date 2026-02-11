@@ -263,19 +263,26 @@ export const claimWinningsAction: Action = {
       elizaLogger.info(`[ClaimWinnings] Wallet: ${walletAddress}`);
       elizaLogger.info(`[ClaimWinnings] GraphQL endpoint: ${sapienceGraphql}`);
 
-      // Query for ACTIVE positions (not yet claimed)
-      const response = await graphqlRequest<PositionsResponse>(
-        sapienceGraphql,
-        CLAIMABLE_POSITIONS_QUERY,
-        {
-          address: walletAddress,
-          chainId: CHAIN_ID_ETHEREAL,
-          take: 100,
-          skip: 0,
-        }
-      );
-
-      const positions = response.positions || [];
+      
+      const PAGE_SIZE = 100;
+      const positions: ClaimablePosition[] = [];
+      let skip = 0;
+      while (true) {
+        const response = await graphqlRequest<PositionsResponse>(
+          sapienceGraphql,
+          CLAIMABLE_POSITIONS_QUERY,
+          {
+            address: walletAddress,
+            chainId: CHAIN_ID_ETHEREAL,
+            take: PAGE_SIZE,
+            skip,
+          }
+        );
+        const page = response.positions || [];
+        positions.push(...page);
+        if (page.length < PAGE_SIZE) break;
+        skip += PAGE_SIZE;
+      }
       elizaLogger.info(`[ClaimWinnings] Found ${positions.length} active positions`);
 
       if (positions.length === 0) {

@@ -130,9 +130,7 @@ const ForecastPageImp = () => {
                 <ConditionForecastForm
                   conditionId={selectedCondition.id}
                   resolver={umaResolver[CHAIN_ID_ARBITRUM]?.address ?? ''}
-                  question={
-                    selectedCondition.shortName || selectedCondition.question
-                  }
+                  question={selectedCondition.question}
                   endTime={selectedCondition.endTime}
                   categorySlug={selectedCondition.category?.slug || null}
                   onSuccess={refetchComments}

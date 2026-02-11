@@ -41,8 +41,6 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     useCreatePositionContext();
   const router = useRouter();
 
-  const displayQ = shortName || question;
-
   const selectionState = React.useMemo(() => {
     if (!id) return { selectedYes: false, selectedNo: false };
     const existing = selections.find((s) => s.conditionId === id);
@@ -61,7 +59,8 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     }
     addSelection({
       conditionId: id,
-      question: displayQ,
+      question,
+      shortName,
       prediction: true,
       categorySlug,
       resolverAddress: resolver,
@@ -70,7 +69,8 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     router.push('/markets');
   }, [
     id,
-    displayQ,
+    question,
+    shortName,
     categorySlug,
     resolver,
     endTime,
@@ -89,7 +89,8 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     }
     addSelection({
       conditionId: id,
-      question: displayQ,
+      question,
+      shortName,
       prediction: false,
       categorySlug,
       resolverAddress: resolver,
@@ -98,7 +99,8 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
     router.push('/markets');
   }, [
     id,
-    displayQ,
+    question,
+    shortName,
     categorySlug,
     resolver,
     endTime,
@@ -120,7 +122,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
           <div className="pl-4 pr-0.5 py-2">
             <div className="flex items-center gap-2 md:gap-3 min-w-0">
               <MarketBadge
-                label={displayQ}
+                label={question}
                 size={24}
                 color={color}
                 categorySlug={categorySlug}
@@ -129,7 +131,7 @@ const TickerMarketCard: React.FC<TickerMarketCardProps> = ({
                 <ConditionTitleLink
                   conditionId={id}
                   resolverAddress={resolver ?? undefined}
-                  title={displayQ}
+                  title={question}
                   endTime={endTime}
                   description={description}
                   clampLines={1}

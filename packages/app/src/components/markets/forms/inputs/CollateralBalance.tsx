@@ -7,17 +7,17 @@ import { useSession } from '~/lib/context/SessionContext';
 interface CollateralBalanceProps {
   collateralSymbol?: string;
   collateralAddress?: `0x${string}`;
-  onSetWagerAmount?: (amount: string) => void;
+  onSetPositionSize?: (amount: string) => void;
   chainId?: number;
   chainShortName?: string;
 }
 
 export default function CollateralBalance({
-  onSetWagerAmount,
+  onSetPositionSize,
   chainId,
 }: CollateralBalanceProps) {
   const { address: accountAddress, isConnected } = useAccount();
-  const { effectiveAddress, isUsingSmartAccount } = useSession();
+  const { effectiveAddress } = useSession();
 
   const {
     balance: numericBalance,
@@ -35,10 +35,10 @@ export default function CollateralBalance({
     }
   }, [isConnected, effectiveAddress, chainId, refetchBalance]);
 
-  const handleSetWager = (percentage: number) => {
-    if (onSetWagerAmount && numericBalance > 0) {
+  const handleSetPositionSize = (percentage: number) => {
+    if (onSetPositionSize && numericBalance > 0) {
       const amount = (numericBalance * percentage).toString();
-      onSetWagerAmount(amount);
+      onSetPositionSize(amount);
     }
   };
 
@@ -57,23 +57,19 @@ export default function CollateralBalance({
 
   const isReady = hasValidBalance;
 
-  // Label to indicate which account's balance is being shown
-  const balanceLabel = isUsingSmartAccount ? 'Sapience' : 'Wallet';
-
   return (
     <div
       className={`flex items-center space-x-2 transition-opacity duration-300 ${
         isReady ? 'opacity-100' : 'opacity-0'
       }`}
     >
-      <span className="text-xs text-muted-foreground">{balanceLabel}</span>
-      {onSetWagerAmount && (
+      {onSetPositionSize && (
         <>
           <Button
             variant="outline"
             size="xs"
             className="h-6 px-1.5 text-xs leading-none"
-            onClick={() => handleSetWager(0.5)}
+            onClick={() => handleSetPositionSize(0.5)}
             type="button"
             disabled={!isReady}
           >
@@ -83,7 +79,7 @@ export default function CollateralBalance({
             variant="outline"
             size="xs"
             className="h-6 px-1.5 text-xs leading-none"
-            onClick={() => handleSetWager(1)}
+            onClick={() => handleSetPositionSize(1)}
             type="button"
             disabled={!isReady}
           >

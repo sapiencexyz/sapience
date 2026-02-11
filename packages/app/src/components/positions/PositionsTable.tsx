@@ -31,7 +31,6 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { Abi } from 'abitype';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   Tooltip,
@@ -40,8 +39,9 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import EmptyTabState from '~/components/shared/EmptyTabState';
-import StackedPredictions from '~/components/shared/StackedPredictions';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import PicksSummary from '~/components/shared/PicksSummary';
+import CountdownCell from '~/components/shared/CountdownCell';
+import { formatDistanceToNow } from 'date-fns';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -55,63 +55,62 @@ import {
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import ShareDialog from '~/components/shared/ShareDialog';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import AwaitingSettlementBadge from '~/components/shared/AwaitingSettlementBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import Loader from '~/components/shared/Loader';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import type { PythPrediction } from '@sapience/ui';
+import { calculatePositionPnLWei } from '~/lib/utils/calculatePositionPnL';
 import {
   PositionsTableFilters,
   getDefaultPositionsFilterState,
   type PositionsFilterState,
 } from '~/components/positions/PositionsTableFilters';
+import PositionDialog from '~/components/positions/PositionDialog';
 
-function EndsInButton({ endsAtMs }: { endsAtMs: number }) {
-  const [nowMs, setNowMs] = React.useState(() => Date.now());
-  React.useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 60_000);
-    return () => clearInterval(id);
-  }, []);
-  const isPast = endsAtMs <= nowMs;
-  if (isPast) {
-    return <AwaitingSettlementBadge />;
-  }
-  const settlesAt = new Date(endsAtMs);
-  const label = formatDistanceToNowStrict(settlesAt, {
-    roundingMethod: 'round',
-  });
-  const settlesAtLocalDisplay = settlesAt.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short',
-  });
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="whitespace-nowrap"
-              disabled
-            >
-              {`Ends in ${label}`}
-            </Button>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <div>{`Ends at ${settlesAtLocalDisplay}`}</div>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
+export type UILeg = {
+  question: string;
+  choice: string;
+  conditionId?: string;
+  resolverAddress?: string | null;
+  categorySlug?: string | null;
+  endTime?: number | null;
+  description?: string | null;
+  source?: 'uma' | 'pyth';
+  pythPrediction?: PythPrediction;
+  // For Pyth legs only: maker-side prediction (true=Over, false=Under).
+  // Used to render the correct side for counterparty rows (which take the opposite side).
+  pythMakerPrediction?: boolean;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  predictorBetYes?: boolean;
+};
+
+export type UIPosition = {
+  uniqueRowKey: string;
+  positionId: number;
+  legs: UILeg[];
+  direction: 'Long' | 'Short';
+  endsAt: number; // ms
+  status: 'active' | 'won' | 'lost';
+  tokenIdToClaim?: bigint;
+  createdAt: number; // ms
+  totalPayoutWei: bigint; // total payout if won
+  /** Position size for this position (predictor's collateral if predictor position, counterparty's if counterparty position) */
+  positionSizeWei: bigint;
+  pnlWei: string; // pnl for settled positions
+  /** Whether this is a counterparty position (as opposed to predictor position) - intrinsic to the NFT */
+  isCounterpartyPosition: boolean;
+  /** The opponent's address (counterparty if this is predictor position, predictor if counterparty position) */
+  opponentAddress?: Address | null;
+  /** Absolute predictor address */
+  predictor?: Address | null;
+  /** Absolute counterparty address */
+  counterparty?: Address | null;
+  chainId: number;
+  marketAddress: Address;
+  allConditionsSettled?: boolean;
+  predictorWonFromDb?: boolean;
+};
 
 export default function PositionsTable({
   account,
@@ -124,16 +123,6 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
-  const pythSideForRole = (
-    makerPrediction: boolean,
-    role: UIPosition['addressRole']
-  ): { choice: 'OVER' | 'UNDER'; direction: 'over' | 'under' } => {
-    const displayPrediction =
-      role === 'counterparty' ? !makerPrediction : makerPrediction;
-    return displayPrediction
-      ? { choice: 'OVER', direction: 'over' }
-      : { choice: 'UNDER', direction: 'under' };
-  };
   // ---
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 42161] || 'testUSDe';
   const queryClient = useQueryClient();
@@ -156,45 +145,6 @@ export default function PositionsTable({
         .catch(() => {});
     },
   });
-  type UILeg = {
-    question: string;
-    choice: string;
-    conditionId?: string;
-    resolverAddress?: string | null;
-    categorySlug?: string | null;
-    endTime?: number | null;
-    description?: string | null;
-    source?: 'uma' | 'pyth';
-    pythPrediction?: PythPrediction;
-    // For Pyth legs only: maker-side prediction (true=Over, false=Under).
-    // Used to render the correct side for counterparty rows (which take the opposite side).
-    pythMakerPrediction?: boolean;
-    settled?: boolean;
-    resolvedToYes?: boolean;
-
-    predictorBetYes?: boolean;
-  };
-  type UIPosition = {
-    uniqueRowKey: string;
-    positionId: number;
-    legs: UILeg[];
-    direction: 'Long' | 'Short';
-    endsAt: number; // ms
-    status: 'active' | 'won' | 'lost';
-    tokenIdToClaim?: bigint;
-    createdAt: number; // ms
-    totalPayoutWei: bigint; // total payout if won
-    predictorCollateralWei?: bigint; // user's wager if they are predictor
-    counterpartyCollateralWei?: bigint; // user's wager if they are counterparty
-    userPnL: string; // pnl for settled positions
-    addressRole: 'predictor' | 'counterparty' | 'unknown';
-    counterpartyAddress?: Address | null;
-    chainId: number;
-    marketAddress: Address;
-    allConditionsSettled?: boolean;
-    predictorWonFromDb?: boolean;
-  };
-
   // Infinite scroll state
   const ITEMS_PER_PAGE = 50;
   const [skip, setSkip] = React.useState(0);
@@ -212,16 +162,53 @@ export default function PositionsTable({
   );
 
   // Convert sorting state to API params
-  const orderBy = sorting[0]?.id;
+  const sortId = sorting[0]?.id;
+  const orderBy =
+    sortId === 'created' ? 'created' : sortId === 'status' ? 'endsAt' : sortId;
   const orderDirection = sorting[0]?.desc ? 'desc' : 'asc';
 
+  // Map filter state to server-side params
+  const serverStatus = React.useMemo((): string | undefined => {
+    // UI statuses: active, won, lost
+    // Server statuses: active, settled, consolidated
+    // "active" maps directly; "won" and "lost" both map to "settled"
+    if (filters.status.length === 1) {
+      if (filters.status[0] === 'active') return 'active';
+      if (filters.status[0] === 'won' || filters.status[0] === 'lost')
+        return 'settled';
+    }
+    // If both won+lost selected (but not active), that's all settled
+    if (
+      filters.status.length === 2 &&
+      filters.status.includes('won') &&
+      filters.status.includes('lost')
+    ) {
+      return 'settled';
+    }
+    return undefined;
+  }, [filters.status]);
+
+  const serverEndsAtGte = React.useMemo((): number | undefined => {
+    // dateRange[0] >= 0 means "ends in the future"
+    if (filters.dateRange[0] >= 0) {
+      return Math.floor(Date.now() / 1000);
+    }
+    return undefined;
+  }, [filters.dateRange]);
+
+  // Track what data we've already processed to avoid infinite loops
+  const processedRef = React.useRef<{ skip: number; length: number } | null>(
+    null
+  );
+
   // Reset when account, sorting, or chainId change (server-side params only)
-  // Note: filters are applied client-side, so they shouldn't reset the loaded data
+  // Don't clear allLoadedData — placeholderData in the hook keeps stale results
+  // visible until new data arrives, preventing layout collapse
   React.useEffect(() => {
     setSkip(0);
-    setAllLoadedData([]);
     setHasMore(true);
-  }, [account, sorting, chainId]);
+    processedRef.current = null;
+  }, [account, sorting, chainId, serverStatus, serverEndsAtGte]);
 
   // Fetch total count
   const totalCount = useUserPositionsCount(String(account), chainId);
@@ -234,14 +221,9 @@ export default function PositionsTable({
     orderBy,
     orderDirection,
     chainId,
+    status: serverStatus,
+    endsAtGte: serverEndsAtGte,
   });
-
-  // Append new data when it arrives
-  // Use a ref to track what we've already processed to avoid infinite loops
-  // (rawData may be a new reference on every render even with same contents)
-  const processedRef = React.useRef<{ skip: number; length: number } | null>(
-    null
-  );
 
   React.useEffect(() => {
     const dataLength = rawData?.length ?? 0;
@@ -327,8 +309,7 @@ export default function PositionsTable({
       };
 
       const legs: UILeg[] = (p.predictions || []).map((o: any) => {
-        const question =
-          o?.condition?.shortName || o?.condition?.question || o.conditionId;
+        const question = o?.condition?.question || o.conditionId;
         const desc = o?.condition?.description ?? null;
         const pythMeta = parsePythDescriptor(desc);
         if (pythMeta) {
@@ -345,9 +326,7 @@ export default function PositionsTable({
             endTimeSec !== null
               ? formatUnixSecondsToLocalInput(BigInt(endTimeSec))
               : '';
-          const feedLabel = String(
-            o?.condition?.shortName || o?.condition?.question || question || ''
-          );
+          const feedLabel = String(o?.condition?.question || question || '');
 
           // Note: `o.outcomeYes` is stored as the maker/predictor-side prediction for Pyth.
           // We keep it here and compute display direction per-role later.
@@ -436,82 +415,72 @@ export default function PositionsTable({
         }
       })();
 
-      const roles: UIPosition['addressRole'][] =
+      // Determine which position types to show for this account
+      // Each position can have predictor NFT, counterparty NFT, or both (if same account owns both)
+      const positionTypes: boolean[] = // true = counterparty position, false = predictor position
         userIsPredictor && userIsCounterparty
-          ? (['predictor', 'counterparty'] as const)
+          ? [false, true] // Show both positions
           : userIsPredictor
-            ? (['predictor'] as const)
+            ? [false] // Predictor position only
             : userIsCounterparty
-              ? (['counterparty'] as const)
-              : (['unknown'] as const);
+              ? [true] // Counterparty position only
+              : [false]; // Default to predictor view for unknown
 
-      const buildRowForRole = (role: UIPosition['addressRole']): UIPosition => {
-        const roleWon =
+      const buildRowForPositionType = (
+        isCounterpartyPosition: boolean
+      ): UIPosition => {
+        const positionWon =
           !isActive &&
-          (role === 'predictor'
-            ? p.predictorWon === true
-            : role === 'counterparty'
-              ? p.predictorWon === false
-              : false);
+          (isCounterpartyPosition
+            ? p.predictorWon === false // Counterparty wins when predictor loses
+            : p.predictorWon === true); // Predictor wins when predictorWon is true
 
         const status: UIPosition['status'] = isActive
           ? 'active'
-          : roleWon
+          : positionWon
             ? 'won'
             : 'lost';
 
         const tokenIdToClaim = (() => {
-          if (!roleWon) return undefined;
+          if (!positionWon) return undefined;
           try {
-            if (role === 'predictor') return BigInt(p.predictorNftTokenId);
-            if (role === 'counterparty')
-              return BigInt(p.counterpartyNftTokenId);
-            return undefined;
+            return isCounterpartyPosition
+              ? BigInt(p.counterpartyNftTokenId)
+              : BigInt(p.predictorNftTokenId);
           } catch {
             return undefined;
           }
         })();
 
-        // Calculate PnL for settled positions (per-role; important when viewer is both sides)
-        let userPnL = '0';
+        // Position size is the collateral for this position type
+        const positionSizeWei = isCounterpartyPosition
+          ? (viewerCounterpartyCollateralWei ?? 0n)
+          : (viewerPredictorCollateralWei ?? 0n);
+
+        // Calculate PnL for settled positions
+        let pnlWei = '0';
         if (
           !isActive &&
           p.predictorCollateral &&
           p.counterpartyCollateral &&
-          p.totalCollateral &&
-          role !== 'unknown'
+          p.totalCollateral
         ) {
-          try {
-            const predictorCollateral = BigInt(p.predictorCollateral);
-            const counterpartyCollateral = BigInt(p.counterpartyCollateral);
-            const totalCollateral = BigInt(p.totalCollateral);
-
-            if (role === 'predictor') {
-              userPnL = p.predictorWon
-                ? (totalCollateral - predictorCollateral).toString()
-                : (-predictorCollateral).toString();
-            } else if (role === 'counterparty') {
-              userPnL = !p.predictorWon
-                ? (totalCollateral - counterpartyCollateral).toString()
-                : (-counterpartyCollateral).toString();
-            }
-          } catch (e) {
-            console.error('Error calculating position PnL:', e);
-          }
+          pnlWei = calculatePositionPnLWei({
+            predictorWon: p.predictorWon,
+            isCounterparty: isCounterpartyPosition,
+            predictorCollateral: p.predictorCollateral,
+            counterpartyCollateral: p.counterpartyCollateral,
+            totalCollateral: p.totalCollateral,
+          });
         }
 
-        // Choose positionId based on the role for this row.
-        const positionId =
-          role === 'predictor'
-            ? Number(p.predictorNftTokenId)
-            : role === 'counterparty'
-              ? Number(p.counterpartyNftTokenId)
-              : p.predictorNftTokenId
-                ? Number(p.predictorNftTokenId)
-                : p.id;
+        // Choose positionId based on position type (which NFT this row represents)
+        const positionId = isCounterpartyPosition
+          ? Number(p.counterpartyNftTokenId)
+          : Number(p.predictorNftTokenId) || p.id;
 
-        // Create unique row key combining prediction id, role, and token id (stable + unique).
-        const uniqueRowKey = `${p.id}-${role}-${positionId}`;
+        // Create unique row key combining prediction id and position type
+        const uniqueRowKey = `${p.id}-${isCounterpartyPosition ? 'counterparty' : 'predictor'}-${positionId}`;
 
         // Compute settlement status from database conditions
         const allConditionsSettled =
@@ -526,25 +495,30 @@ export default function PositionsTable({
             })
           : undefined;
 
+        // Determine opponent address (the other side of the position)
+        const opponentAddress = isCounterpartyPosition
+          ? ((p.predictor as Address | undefined) ?? null)
+          : ((p.counterparty as Address | undefined) ?? null);
+
         return {
           uniqueRowKey,
           positionId,
           allConditionsSettled,
           predictorWonFromDb,
           legs: legs.map((leg) => {
-            // Flip display sides for counterparty rows:
-            // - Pyth: maker prediction is stored; counterparty is opposite
+            // Flip display sides for counterparty positions:
+            // - Pyth: predictor prediction is stored; counterparty is opposite
             // - UMA: counterparty is opposite of the predictor's YES/NO
-            if (role === 'counterparty') {
+            if (isCounterpartyPosition) {
               if (leg.source === 'pyth' && leg.pythPrediction) {
-                const makerPrediction = Boolean(leg.pythMakerPrediction);
-                const side = pythSideForRole(makerPrediction, role);
+                const predictorPrediction = Boolean(leg.pythMakerPrediction);
+                const displayPrediction = !predictorPrediction; // Counterparty takes opposite
                 return {
                   ...leg,
-                  choice: side.choice,
+                  choice: displayPrediction ? 'OVER' : 'UNDER',
                   pythPrediction: {
                     ...leg.pythPrediction,
-                    direction: side.direction,
+                    direction: displayPrediction ? 'over' : 'under',
                   },
                 };
               }
@@ -555,15 +529,14 @@ export default function PositionsTable({
             }
 
             if (leg.source === 'pyth' && leg.pythPrediction) {
-              // Predictor row (or unknown): ensure Pyth direction matches maker side.
-              const makerPrediction = Boolean(leg.pythMakerPrediction);
-              const side = pythSideForRole(makerPrediction, role);
+              // Predictor position: ensure Pyth direction matches predictor side
+              const predictorPrediction = Boolean(leg.pythMakerPrediction);
               return {
                 ...leg,
-                choice: side.choice,
+                choice: predictorPrediction ? 'OVER' : 'UNDER',
                 pythPrediction: {
                   ...leg.pythPrediction,
-                  direction: side.direction,
+                  direction: predictorPrediction ? 'over' : 'under',
                 },
               };
             }
@@ -576,65 +549,69 @@ export default function PositionsTable({
           tokenIdToClaim,
           createdAt: p.mintedAt ? Number(p.mintedAt) * 1000 : Date.now(),
           totalPayoutWei: totalPayoutWei,
-          predictorCollateralWei: viewerPredictorCollateralWei,
-          counterpartyCollateralWei: viewerCounterpartyCollateralWei,
-          userPnL,
-          addressRole: role,
-          counterpartyAddress:
-            (role === 'predictor'
-              ? (p.counterparty as Address | undefined)
-              : role === 'counterparty'
-                ? (p.predictor as Address | undefined)
-                : undefined) ?? null,
+          positionSizeWei,
+          pnlWei,
+          isCounterpartyPosition,
+          opponentAddress,
+          predictor: (p.predictor as Address | undefined) ?? null,
+          counterparty: (p.counterparty as Address | undefined) ?? null,
           chainId: Number(p.chainId || DEFAULT_CHAIN_ID),
           marketAddress: p.marketAddress as Address,
         };
       };
 
-      return roles.map(buildRowForRole);
+      return positionTypes.map(buildRowForPositionType);
     });
 
     return positionRows;
   }, [data, viewer]);
 
-  // Apply client-side filtering
+  // Apply client-side filtering (only for filters not handled server-side)
   const filteredRows = React.useMemo(() => {
     let result = rows;
 
-    // Filter by status
+    // Filter by status (client-side only when server can't fully handle it)
+    // Server handles: single status, or won+lost combo (both map to "settled")
+    // Client still needed: to distinguish won vs lost when server returns "settled"
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((row) => filters.status.includes(row.status));
     }
 
-    // Filter by wager range
-    if (filters.wagerRange[0] > 0 || filters.wagerRange[1] < Infinity) {
+    // Filter by position size range (server doesn't support this)
+    if (
+      filters.positionSizeRange[0] > 0 ||
+      filters.positionSizeRange[1] < Infinity
+    ) {
       result = result.filter((row) => {
-        const viewerWagerWei =
-          row.addressRole === 'predictor'
-            ? (row.predictorCollateralWei ?? 0n)
-            : row.addressRole === 'counterparty'
-              ? (row.counterpartyCollateralWei ?? 0n)
-              : (row.predictorCollateralWei ??
-                row.counterpartyCollateralWei ??
-                0n);
-        const wager = Number(formatEther(viewerWagerWei));
-        return wager >= filters.wagerRange[0] && wager <= filters.wagerRange[1];
-      });
-    }
-
-    // Filter by date range (days from now based on endsAt)
-    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      const nowMs = Date.now();
-      result = result.filter((row) => {
-        const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
+        const positionSize = Number(formatEther(row.positionSizeWei));
         return (
-          daysFromNow >= filters.dateRange[0] &&
-          daysFromNow <= filters.dateRange[1]
+          positionSize >= filters.positionSizeRange[0] &&
+          positionSize <= filters.positionSizeRange[1]
         );
       });
     }
 
-    // Filter by search term
+    // Filter by date range (client-side only when server can't handle it)
+    // Server handles: "ends in the future" (dateRange[0] >= 0) via endsAtGte
+    // Client still needed: upper bound filtering and "ended in the past" scenarios
+    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
+      // Skip client-side date filtering if server is handling "ends in the future"
+      // and there's no upper bound constraint
+      const serverHandlesDate =
+        filters.dateRange[0] >= 0 && filters.dateRange[1] === Infinity;
+      if (!serverHandlesDate) {
+        const nowMs = Date.now();
+        result = result.filter((row) => {
+          const daysFromNow = (row.endsAt - nowMs) / (1000 * 60 * 60 * 24);
+          return (
+            daysFromNow >= filters.dateRange[0] &&
+            daysFromNow <= filters.dateRange[1]
+          );
+        });
+      }
+    }
+
+    // Filter by search term (server doesn't support this)
     if (filters.searchTerm.trim()) {
       const term = filters.searchTerm.toLowerCase();
       result = result.filter((row) => {
@@ -699,6 +676,15 @@ export default function PositionsTable({
     return rows.find((r) => r.positionId === openSharePositionId) || null;
   }, [rows, openSharePositionId]);
 
+  // Position dialog state (for "X PICKS" click)
+  const [openPositionDialogId, setOpenPositionDialogId] = React.useState<
+    number | null
+  >(null);
+  const selectedPositionForDialog = React.useMemo(() => {
+    if (openPositionDialogId === null) return null;
+    return rows.find((r) => r.positionId === openPositionDialogId) || null;
+  }, [rows, openPositionDialogId]);
+
   // Find the original Position data to get predictorNftTokenId for sharing
   const selectedPositionData = React.useMemo(() => {
     if (!selectedPosition) return null;
@@ -722,9 +708,6 @@ export default function PositionsTable({
       {
         id: 'created',
         accessorFn: (row) => row.createdAt,
-        size: 150,
-        minSize: 0,
-        maxSize: 160,
         header: ({ column }) => (
           <Button
             type="button"
@@ -754,48 +737,27 @@ export default function PositionsTable({
           </Button>
         ),
         cell: ({ row }) => {
-          const createdDate = new Date(row.original.createdAt);
-          const createdDisplay = formatDistanceToNow(createdDate, {
+          const createdAt = row.original.createdAt;
+          const timeAgo = formatDistanceToNow(new Date(createdAt), {
             addSuffix: true,
           });
-          const exactLocalDisplay = createdDate.toLocaleString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: '2-digit',
-            hour: 'numeric',
-            minute: '2-digit',
-            second: '2-digit',
-            timeZoneName: 'short',
-          });
           return (
-            <div>
+            <div className="text-sm">
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Created
               </div>
-              <div className="text-[15px] leading-[1.35] tracking-[-0.01em] mb-0.5 whitespace-nowrap">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="cursor-help">{createdDisplay}</span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div>{exactLocalDisplay}</div>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <div className="text-sm text-muted-foreground whitespace-nowrap font-mono uppercase">{`ID #${row.original.positionId}`}</div>
+              <span className="text-brand-white whitespace-nowrap">
+                {timeAgo}
+              </span>
             </div>
           );
         },
       },
       {
-        id: 'conditions',
+        id: 'predictions',
         accessorFn: (row) => row.legs.length,
         enableSorting: false,
-        size: 400,
-        minSize: 300,
-        header: () => <span>Predictions</span>,
+        header: () => <span className="text-sm font-medium">Predictions</span>,
         cell: ({ row }) => {
           const hasPythLeg = (row.original.legs || []).some(
             (leg) => leg.source === 'pyth'
@@ -805,73 +767,22 @@ export default function PositionsTable({
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Predictions
               </div>
-              <div className="flex flex-col xl:flex-row xl:items-center gap-2">
-                {row.original.addressRole === 'counterparty' && (
-                  <>
-                    {/* Counterparty badge is only shown for UMA (non-Pyth) positions */}
-                    {!hasPythLeg ? <CounterpartyBadge /> : null}
-                  </>
-                )}
-                <StackedPredictions
-                  legs={row.original.legs}
-                  className="max-w-full flex-1 min-w-0"
-                />
-              </div>
+              <PicksSummary
+                legs={row.original.legs}
+                positionId={row.original.positionId}
+                isCounterparty={row.original.isCounterpartyPosition}
+                hasPythLeg={hasPythLeg}
+                marketAddress={row.original.marketAddress}
+                onClick={() => setOpenPositionDialogId(row.original.positionId)}
+              />
             </div>
           );
         },
       },
 
       {
-        id: 'counterparty',
-        accessorFn: (row) => row.counterpartyAddress ?? null,
-        enableSorting: false,
-        size: 240,
-        minSize: 200,
-        header: () => <span>Opponent</span>,
-        cell: ({ row }) => (
-          <div>
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
-              Opponent
-            </div>
-            {row.original.counterpartyAddress ? (
-              <div className="whitespace-nowrap text-[15px] min-w-0">
-                <div className="flex items-center gap-2 min-w-0">
-                  <EnsAvatar
-                    address={row.original.counterpartyAddress}
-                    className="shrink-0 rounded-sm ring-1 ring-border/50"
-                    width={20}
-                    height={20}
-                  />
-                  <AddressDisplay
-                    address={row.original.counterpartyAddress}
-                    className="text-[15px] min-w-0"
-                  />
-                </div>
-              </div>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            )}
-          </div>
-        ),
-      },
-
-      {
-        id: 'wager',
-        accessorFn: (row) => {
-          // Show the viewer's contributed collateral as the wager
-          const viewerWagerWei =
-            row.addressRole === 'predictor'
-              ? (row.predictorCollateralWei ?? 0n)
-              : row.addressRole === 'counterparty'
-                ? (row.counterpartyCollateralWei ?? 0n)
-                : (row.predictorCollateralWei ??
-                  row.counterpartyCollateralWei ??
-                  0n);
-          return Number(formatEther(viewerWagerWei));
-        },
-        size: 180,
-        minSize: 150,
+        id: 'against',
+        accessorFn: (row) => row.opponentAddress ?? '',
         header: ({ column }) => (
           <Button
             type="button"
@@ -887,7 +798,62 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            Wager
+            Opponent
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => {
+          const addr = row.original.opponentAddress;
+          if (!addr) {
+            return <span className="text-muted-foreground">—</span>;
+          }
+          return (
+            <div>
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Opponent
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+                <EnsAvatar
+                  address={addr}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={addr} />
+              </span>
+            </div>
+          );
+        },
+      },
+
+      {
+        id: 'positionSize',
+        accessorFn: (row) => Number(formatEther(row.positionSizeWei)),
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Position Size
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -902,24 +868,18 @@ export default function PositionsTable({
         ),
         cell: ({ row }) => {
           const symbol = collateralSymbol;
-          const viewerWagerWei =
-            row.original.addressRole === 'predictor'
-              ? (row.original.predictorCollateralWei ?? 0n)
-              : row.original.addressRole === 'counterparty'
-                ? (row.original.counterpartyCollateralWei ?? 0n)
-                : (row.original.predictorCollateralWei ??
-                  row.original.counterpartyCollateralWei ??
-                  0n);
-          const viewerWager = Number(formatEther(viewerWagerWei));
+          const positionSize = Number(
+            formatEther(row.original.positionSizeWei)
+          );
 
           return (
             <div>
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                Wager
+                Position Size
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
                 <NumberDisplay
-                  value={viewerWager}
+                  value={positionSize}
                   className="tabular-nums text-brand-white font-mono"
                 />{' '}
                 <span className="tabular-nums text-brand-white font-mono">
@@ -931,15 +891,13 @@ export default function PositionsTable({
         },
       },
       {
-        id: 'toWin',
+        id: 'payout',
         accessorFn: (row) => {
           const totalPayout = Number(formatEther(row.totalPayoutWei || 0n));
           // For sorting, treat lost as 0
           if (row.status === 'lost') return 0;
           return totalPayout;
         },
-        size: 180,
-        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -955,7 +913,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            To Win
+            Payout
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -973,18 +931,17 @@ export default function PositionsTable({
           const totalPayout = Number(
             formatEther(row.original.totalPayoutWei || 0n)
           );
-          const viewerLostFromDb =
+          // Determine if this position lost based on settlement
+          const positionLostFromDb =
             row.original.allConditionsSettled &&
-            (row.original.addressRole === 'predictor'
-              ? row.original.predictorWonFromDb === false
-              : row.original.addressRole === 'counterparty'
-                ? row.original.predictorWonFromDb === true
-                : false);
-          if (row.original.status === 'lost' || viewerLostFromDb) {
+            (row.original.isCounterpartyPosition
+              ? row.original.predictorWonFromDb === true // Counterparty loses when predictor wins
+              : row.original.predictorWonFromDb === false); // Predictor loses when predictorWon is false
+          if (row.original.status === 'lost' || positionLostFromDb) {
             return (
               <div>
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                  To Win
+                  Payout
                 </div>
                 <div className="whitespace-nowrap tabular-nums text-muted-foreground font-mono line-through">
                   <NumberDisplay
@@ -1001,7 +958,7 @@ export default function PositionsTable({
           return (
             <div>
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                To Win
+                Payout
               </div>
               <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
                 <NumberDisplay
@@ -1019,11 +976,9 @@ export default function PositionsTable({
       {
         id: 'pnl',
         accessorFn: (row) => {
-          const pnlValue = Number(formatEther(BigInt(row.userPnL || '0')));
+          const pnlValue = Number(formatEther(BigInt(row.pnlWei || '0')));
           return pnlValue;
         },
-        size: 180,
-        minSize: 150,
         header: ({ column }) => (
           <Button
             type="button"
@@ -1056,15 +1011,84 @@ export default function PositionsTable({
           const symbol = collateralSymbol;
           const isClosed = row.original.status !== 'active';
 
-          const viewerLostFromDb =
+          // Determine if this position lost based on settlement
+          const positionLostFromDb =
             row.original.allConditionsSettled &&
-            (row.original.addressRole === 'predictor'
-              ? row.original.predictorWonFromDb === false
-              : row.original.addressRole === 'counterparty'
-                ? row.original.predictorWonFromDb === true
-                : false);
+            (row.original.isCounterpartyPosition
+              ? row.original.predictorWonFromDb === true // Counterparty loses when predictor wins
+              : row.original.predictorWonFromDb === false); // Predictor loses when predictorWon is false
           const lostPositionUnclaimed =
-            row.original.status === 'active' && viewerLostFromDb;
+            row.original.status === 'active' && positionLostFromDb;
+
+          // Determine if this position is claimable
+          const isClaimable = (() => {
+            if (
+              row.original.status === 'active' &&
+              row.original.endsAt <= Date.now() &&
+              row.original.allConditionsSettled
+            ) {
+              const positionWon = row.original.isCounterpartyPosition
+                ? row.original.predictorWonFromDb === false
+                : row.original.predictorWonFromDb === true;
+              if (positionWon) {
+                const tokenId = BigInt(row.original.positionId);
+                return { tokenId };
+              }
+            }
+            if (
+              row.original.status === 'won' &&
+              row.original.tokenIdToClaim !== undefined &&
+              claimableTokenIds.has(String(row.original.tokenIdToClaim))
+            ) {
+              return { tokenId: row.original.tokenIdToClaim };
+            }
+            return null;
+          })();
+
+          if (isClaimable) {
+            const isOwnerConnected =
+              effectiveAddress &&
+              effectiveAddress === String(account || '').toLowerCase();
+            const isThisTokenClaiming =
+              isClaimPending && claimingTokenId === isClaimable.tokenId;
+            return (
+              <div>
+                <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                  Profit/Loss
+                </div>
+                {isOwnerConnected ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setClaimingTokenId(isClaimable.tokenId);
+                      burn(isClaimable.tokenId, ZERO_REF_CODE);
+                    }}
+                    disabled={isClaimPending}
+                    className="font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isThisTokenClaiming ? 'CLAIMING...' : 'CLAIM'}
+                  </button>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="font-mono font-semibold text-brand-white underline decoration-dotted underline-offset-4 cursor-not-allowed">
+                          CLAIM
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="max-w-[220px]">
+                          {hasWallet
+                            ? 'You can only claim winnings from the account that owns this position.'
+                            : 'Connect your account to claim this position.'}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
+              </div>
+            );
+          }
 
           if (!isClosed && !lostPositionUnclaimed) {
             return (
@@ -1072,223 +1096,153 @@ export default function PositionsTable({
                 <div className="xl:hidden text-xs text-muted-foreground mb-1">
                   Profit/Loss
                 </div>
-                <span className="text-muted-foreground">Pending</span>
+                <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                  PENDING
+                </span>
               </div>
             );
           }
 
-          const viewerWagerWei =
-            row.original.addressRole === 'predictor'
-              ? (row.original.predictorCollateralWei ?? 0n)
-              : row.original.addressRole === 'counterparty'
-                ? (row.original.counterpartyCollateralWei ?? 0n)
-                : (row.original.predictorCollateralWei ??
-                  row.original.counterpartyCollateralWei ??
-                  0n);
-          const viewerWager = Number(formatEther(viewerWagerWei));
+          const positionSize = Number(
+            formatEther(row.original.positionSizeWei)
+          );
 
           const pnlValue = lostPositionUnclaimed
-            ? -viewerWager
-            : Number(formatEther(BigInt(row.original.userPnL || '0')));
+            ? -positionSize
+            : Number(formatEther(BigInt(row.original.pnlWei || '0')));
 
-          const roi = viewerWager > 0 ? (pnlValue / viewerWager) * 100 : 0;
+          const roi = positionSize > 0 ? (pnlValue / positionSize) * 100 : 0;
 
           return (
-            <div>
+            <div className="relative">
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
                 Profit/Loss
               </div>
-              <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+              <div
+                className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
                 <NumberDisplay
                   value={pnlValue}
-                  className="tabular-nums text-brand-white font-mono"
+                  className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 />{' '}
-                <span className="tabular-nums text-brand-white font-mono">
+                <span
+                  className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                >
                   {symbol}
                 </span>
+                {positionSize > 0 && (
+                  <span
+                    className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {roi >= 0 ? '+' : ''}
+                    {Math.round(roi).toLocaleString()}%
+                  </span>
+                )}
               </div>
-              {viewerWager > 0 && (
-                <div
-                  className={`text-xs tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {roi >= 0 ? '+' : ''}
-                  {Math.round(roi).toLocaleString()}%
-                </div>
-              )}
             </div>
           );
         },
       },
 
       {
-        id: 'actions',
+        id: 'status',
+        accessorFn: (row) => {
+          if (row.status === 'active' && row.endsAt > Date.now())
+            return row.endsAt;
+          if (row.status === 'active') return 0;
+          if (row.status === 'won') return -1;
+          if (row.status === 'lost') return -2;
+          return -3;
+        },
+        header: ({ column }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
+            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+            aria-sort={
+              column.getIsSorted() === false
+                ? 'none'
+                : column.getIsSorted() === 'asc'
+                  ? 'ascending'
+                  : 'descending'
+            }
+          >
+            Ends
+            {column.getIsSorted() === 'asc' ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : column.getIsSorted() === 'desc' ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <span className="flex flex-col -my-2">
+                <ChevronUp className="h-3 w-3 -mb-2 opacity-50" />
+                <ChevronDown className="h-3 w-3 opacity-50" />
+              </span>
+            )}
+          </Button>
+        ),
+        cell: ({ row }) => {
+          // Helper to format "x days ago" for settled positions
+          const endedAgo =
+            row.original.endsAt && row.original.endsAt <= Date.now()
+              ? formatDistanceToNow(new Date(row.original.endsAt), {
+                  addSuffix: true,
+                })
+              : null;
+
+          const content = (() => {
+            if (
+              row.original.status === 'active' &&
+              row.original.endsAt > Date.now()
+            ) {
+              return (
+                <CountdownCell
+                  endTime={Math.floor(row.original.endsAt / 1000)}
+                />
+              );
+            }
+            if (
+              (row.original.status === 'active' &&
+                row.original.endsAt <= Date.now()) ||
+              row.original.status === 'won' ||
+              row.original.status === 'lost'
+            ) {
+              return (
+                <span className="inline-flex items-center gap-2">
+                  {endedAgo && (
+                    <span className="text-brand-white text-sm">{endedAgo}</span>
+                  )}
+                </span>
+              );
+            }
+            return null;
+          })();
+
+          return (
+            <div className="whitespace-nowrap xl:mt-0">
+              <div className="xl:hidden text-xs text-muted-foreground mb-1">
+                Ends
+              </div>
+              {content}
+            </div>
+          );
+        },
+      },
+
+      {
+        id: 'share',
         enableSorting: false,
-        size: 140,
-        minSize: 100,
         header: () => null,
         cell: ({ row }) => (
-          <div className="whitespace-nowrap xl:mt-0">
-            <div className="flex items-center gap-2 justify-start xl:justify-end">
-              {row.original.status === 'active' &&
-                row.original.endsAt > Date.now() && (
-                  <EndsInButton endsAtMs={row.original.endsAt} />
-                )}
-              {row.original.status === 'active' &&
-                row.original.endsAt <= Date.now() &&
-                row.original.addressRole !== 'unknown' &&
-                (() => {
-                  const {
-                    allConditionsSettled,
-                    predictorWonFromDb,
-                    addressRole,
-                    positionId,
-                  } = row.original;
-
-                  // If conditions are not all settled, show awaiting badge
-                  if (!allConditionsSettled) {
-                    return <AwaitingSettlementBadge />;
-                  }
-
-                  const viewerWon =
-                    addressRole === 'predictor'
-                      ? predictorWonFromDb === true
-                      : addressRole === 'counterparty'
-                        ? predictorWonFromDb === false
-                        : false;
-
-                  if (viewerWon) {
-                    const tokenIdToClaim =
-                      addressRole === 'predictor'
-                        ? BigInt(positionId)
-                        : BigInt(positionId);
-
-                    const isOwnerConnected =
-                      effectiveAddress &&
-                      effectiveAddress === String(account || '').toLowerCase();
-                    const isThisTokenClaiming =
-                      isClaimPending && claimingTokenId === tokenIdToClaim;
-
-                    return isOwnerConnected ? (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setClaimingTokenId(tokenIdToClaim);
-                          burn(tokenIdToClaim, ZERO_REF_CODE);
-                        }}
-                        disabled={isClaimPending}
-                      >
-                        {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
-                      </Button>
-                    ) : (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span>
-                              <Button size="sm" variant="outline" disabled>
-                                Claim Winnings
-                              </Button>
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p className="max-w-[220px]">
-                              {hasWallet
-                                ? 'You can only claim winnings from the account that owns this position.'
-                                : 'Connect your account to claim this position.'}
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    );
-                  }
-
-                  // Viewer lost
-                  return (
-                    <Button size="sm" variant="outline" disabled>
-                      Wager Lost
-                    </Button>
-                  );
-                })()}
-              {row.original.status === 'won' &&
-                row.original.tokenIdToClaim !== undefined &&
-                claimableTokenIds.has(String(row.original.tokenIdToClaim)) &&
-                (() => {
-                  const isOwnerConnected =
-                    effectiveAddress &&
-                    effectiveAddress === String(account || '').toLowerCase();
-                  const isThisTokenClaiming =
-                    isClaimPending &&
-                    claimingTokenId === row.original.tokenIdToClaim;
-                  return isOwnerConnected ? (
-                    <Button
-                      size="sm"
-                      onClick={() => {
-                        setClaimingTokenId(row.original.tokenIdToClaim!);
-                        burn(row.original.tokenIdToClaim!, ZERO_REF_CODE);
-                      }}
-                      disabled={isClaimPending}
-                    >
-                      {isThisTokenClaiming ? 'Claiming...' : 'Claim Winnings'}
-                    </Button>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span>
-                            <Button size="sm" variant="outline" disabled>
-                              Claim Winnings
-                            </Button>
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-[220px]">
-                            {hasWallet
-                              ? 'You can only claim winnings from the account that owns this position.'
-                              : 'Connect your account to claim this position.'}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  );
-                })()}
-              {row.original.status === 'won' &&
-                (row.original.tokenIdToClaim === undefined ||
-                  !claimableTokenIds.has(
-                    String(row.original.tokenIdToClaim)
-                  )) && (
-                  <Button size="sm" variant="outline" disabled>
-                    Claimed
-                  </Button>
-                )}
-              {row.original.status === 'lost' && (
-                <Button size="sm" variant="outline" disabled>
-                  Wager Lost
-                </Button>
-              )}
-              {(() => {
-                // Hide Share button when a lost state is displayed
-                const viewerLostFromDb =
-                  row.original.allConditionsSettled &&
-                  (row.original.addressRole === 'predictor'
-                    ? row.original.predictorWonFromDb === false
-                    : row.original.addressRole === 'counterparty'
-                      ? row.original.predictorWonFromDb === true
-                      : false);
-                const isLostDisplayed =
-                  row.original.status === 'lost' || viewerLostFromDb;
-                if (isLostDisplayed) return null;
-                return (
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-                    onClick={() =>
-                      setOpenSharePositionId(row.original.positionId)
-                    }
-                  >
-                    Share
-                  </button>
-                );
-              })()}
-            </div>
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-start xl:justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              onClick={() => setOpenSharePositionId(row.original.positionId)}
+            >
+              Share
+            </button>
           </div>
         ),
       },
@@ -1348,11 +1302,11 @@ export default function PositionsTable({
       )}
       {isLoading && rows.length === 0 ? (
         <div className="w-full min-h-[300px] flex items-center justify-center bg-brand-black/80">
-          <Loader size={24} />
+          <Loader className="w-6 h-6" />
         </div>
       ) : (
         <>
-          <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+          <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
             {leftSlot}
             <div className="flex-1">
               <PositionsTableFilters
@@ -1361,124 +1315,183 @@ export default function PositionsTable({
               />
             </div>
           </div>
-          {rows.length === 0 ? (
-            <EmptyTabState centered message="No positions found" />
-          ) : filteredRows.length === 0 ? (
-            <EmptyTabState centered message="No positions match your filters" />
-          ) : (
-            <>
-              <div className="overflow-hidden bg-brand-black relative">
-                {isLoading && (
-                  <div className="absolute inset-0 bg-brand-black/50 flex items-center justify-center z-10">
-                    <Loader size={12} />
-                  </div>
-                )}
-                <Table className="w-full table-fixed">
-                  <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <TableRow
-                        key={headerGroup.id}
-                        className="hover:!bg-background bg-background border-b border-border"
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <TableHead
-                            key={header.id}
-                            className={
-                              [
-                                header.id === 'created'
-                                  ? 'xl:w-[150px] whitespace-nowrap'
-                                  : '',
-                                header.id === 'conditions' ? 'xl:w-auto' : '',
-                                header.id === 'counterparty'
-                                  ? 'xl:w-[240px]'
-                                  : '',
-                                header.id === 'wager' ? 'xl:w-[170px]' : '',
-                                header.id === 'toWin' ? 'xl:w-[170px]' : '',
-                                header.id === 'pnl' ? 'xl:w-[170px]' : '',
-                                header.id === 'actions'
-                                  ? 'xl:w-[220px] text-right'
-                                  : '',
-                              ]
-                                .filter(Boolean)
-                                .join(' ') || undefined
-                            }
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableHeader>
-                  <TableBody>
-                    {table.getRowModel().rows.map((row) => (
-                      <TableRow
-                        key={row.id}
-                        className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
-                              cell.column.id === 'created'
-                                ? 'xl:w-[150px] whitespace-nowrap'
-                                : ''
-                            } ${cell.column.id === 'conditions' ? 'xl:w-auto' : ''} ${
-                              cell.column.id === 'counterparty'
-                                ? 'xl:w-[240px] min-w-0'
-                                : ''
-                            } ${cell.column.id === 'wager' ? 'xl:w-[170px]' : ''} ${
-                              cell.column.id === 'toWin' ? 'xl:w-[170px]' : ''
-                            } ${cell.column.id === 'pnl' ? 'xl:w-[170px]' : ''} ${
-                              cell.column.id === 'actions'
-                                ? 'xl:w-[220px] text-left xl:text-right xl:mt-0'
-                                : ''
-                            }`}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              {/* Infinite scroll sentinel - triggers auto-load when visible */}
-              {hasMore && (
-                <div
-                  ref={loadMoreRef}
-                  className="flex items-center justify-center px-4 py-6 bg-brand-black"
-                >
-                  {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader size={12} />
-                      <span className="text-sm text-muted-foreground">
-                        Loading more positions...
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">
-                      Scroll to load more • {data.length} of {totalCount}
-                    </span>
-                  )}
+          <>
+            <div className="overflow-hidden bg-brand-black relative">
+              {isLoading && rows.length > 0 && (
+                <div className="absolute inset-x-0 top-0 z-10 flex justify-center pt-24 bg-brand-black/50 h-full animate-in fade-in duration-150">
+                  <Loader className="w-5 h-5" />
                 </div>
               )}
-            </>
-          )}
+              <Table className="w-full table-auto">
+                <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow
+                      key={headerGroup.id}
+                      className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60"
+                    >
+                      {headerGroup.headers.map((header) => (
+                        <TableHead
+                          key={header.id}
+                          className={
+                            [
+                              header.id === 'predictions'
+                                ? ''
+                                : 'whitespace-nowrap',
+                            ]
+                              .filter(Boolean)
+                              .join(' ') || undefined
+                          }
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={columns.length} className="p-0">
+                        <EmptyTabState
+                          centered
+                          message={
+                            rows.length === 0
+                              ? 'No positions found'
+                              : 'No positions match your filters'
+                          }
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                  {table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      className="group xl:table-row block border-b space-y-3 xl:space-y-0 px-4 py-4 xl:py-0 align-top hover:bg-muted/50"
+                    >
+                      {(() => {
+                        const cells = row.getVisibleCells();
+                        const pairedIds = new Set([
+                          'positionSize',
+                          'payout',
+                          'pnl',
+                          'status',
+                        ]);
+                        const result: React.ReactNode[] = [];
+                        let i = 0;
+                        while (i < cells.length) {
+                          const cell = cells[i];
+                          // Pair positionSize+payout and pnl+ends in a 2-col grid on mobile
+                          if (
+                            pairedIds.has(cell.column.id) &&
+                            i + 1 < cells.length &&
+                            pairedIds.has(cells[i + 1].column.id)
+                          ) {
+                            const next = cells[i + 1];
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                colSpan={2}
+                                className="block xl:hidden px-0 py-0"
+                              >
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      cell.column.columnDef.cell,
+                                      cell.getContext()
+                                    )}
+                                  </div>
+                                  <div className="text-brand-white whitespace-nowrap">
+                                    {flexRender(
+                                      next.column.columnDef.cell,
+                                      next.getContext()
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            );
+                            // Also render individually for desktop
+                            result.push(
+                              <TableCell
+                                key={`${cell.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            result.push(
+                              <TableCell
+                                key={`${next.id}-xl`}
+                                className="hidden xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white whitespace-nowrap"
+                              >
+                                {flexRender(
+                                  next.column.columnDef.cell,
+                                  next.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i += 2;
+                          } else {
+                            result.push(
+                              <TableCell
+                                key={cell.id}
+                                className={`block xl:table-cell px-0 py-0 xl:px-4 xl:py-3 text-brand-white ${
+                                  cell.column.id !== 'predictions'
+                                    ? 'whitespace-nowrap'
+                                    : ''
+                                }`}
+                              >
+                                {flexRender(
+                                  cell.column.columnDef.cell,
+                                  cell.getContext()
+                                )}
+                              </TableCell>
+                            );
+                            i++;
+                          }
+                        }
+                        return result;
+                      })()}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {/* Infinite scroll sentinel - triggers auto-load when visible */}
+            {hasMore && !(isLoading && rows.length > 0) && (
+              <div
+                ref={loadMoreRef}
+                className="flex items-center justify-center px-4 py-6 bg-brand-black"
+              >
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <Loader className="w-3 h-3" />
+                    <span className="text-sm text-muted-foreground">
+                      Loading more positions...
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-xs font-mono uppercase text-muted-foreground tracking-wider">
+                    Displaying {data.length} of {totalCount}
+                  </span>
+                )}
+              </div>
+            )}
+          </>
         </>
       )}
       {selectedPosition && (
         <ShareDialog
           question={`Position #${selectedPosition.positionId}`}
           nftId={
-            selectedPosition.addressRole === 'counterparty'
+            selectedPosition.isCounterpartyPosition
               ? selectedPositionData?.counterpartyNftTokenId
               : selectedPositionData?.predictorNftTokenId ||
                 String(selectedPosition.positionId)
@@ -1488,21 +1501,13 @@ export default function PositionsTable({
             question: l.question,
             choice: l.choice,
           }))}
-          wager={Number(
-            formatEther(
-              selectedPosition.predictorCollateralWei ??
-                selectedPosition.counterpartyCollateralWei ??
-                0n
-            )
-          )}
+          positionSize={Number(formatEther(selectedPosition.positionSizeWei))}
           payout={Number(formatEther(selectedPosition.totalPayoutWei || 0n))}
           symbol="USDe"
           owner={String(account)}
           imagePath="/og/position"
           extraParams={{
-            ...(selectedPosition.addressRole === 'counterparty'
-              ? { anti: '1' }
-              : {}),
+            ...(selectedPosition.isCounterpartyPosition ? { anti: '1' } : {}),
           }}
           open={openSharePositionId !== null}
           onOpenChange={(next) => {
@@ -1512,6 +1517,12 @@ export default function PositionsTable({
           title="Share Your Position"
         />
       )}
+      <PositionDialog
+        open={openPositionDialogId !== null}
+        onOpenChange={(open) => !open && setOpenPositionDialogId(null)}
+        position={selectedPositionForDialog}
+        collateralSymbol={collateralSymbol}
+      />
     </div>
   );
 }

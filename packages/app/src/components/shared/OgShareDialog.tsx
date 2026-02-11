@@ -25,34 +25,6 @@ import type { PositionProgressState } from '~/types/positionProgress';
 // Stable counter for cache busting - increments each time a dialog opens
 let dialogOpenCounter = 0;
 
-function picksMatch(
-  positionPicks: Array<{ question: string; choice: string }>,
-  expectedPicks: Array<{ question: string; choice: string }>
-): boolean {
-  if (positionPicks.length !== expectedPicks.length) {
-    return false;
-  }
-
-  const toKey = (leg: { question: string; choice: string }): string =>
-    `${leg.question}|${leg.choice}`;
-
-  const expectedSet = new Set(expectedPicks.map(toKey));
-  const positionSet = new Set(positionPicks.map(toKey));
-
-  // Check both sets have identical keys
-  if (expectedSet.size !== positionSet.size) {
-    return false;
-  }
-
-  for (const key of expectedSet) {
-    if (!positionSet.has(key)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 interface OgShareDialogBaseProps {
   imageSrc: string; // Relative path with query, e.g. "/og/position?..."
   title?: string; // Dialog title
@@ -62,11 +34,11 @@ interface OgShareDialogBaseProps {
   onOpenChange?: (open: boolean) => void;
   trackPosition?: boolean; // Enable position tracking
   positionTimestamp?: number; // Timestamp when position was placed (ms)
-  expectedPicks?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Expected conditions from position form for validation
-  expectedLegs?: Array<{ question: string; choice: 'Yes' | 'No' }>; // Alias for expectedPicks (backward compatibility)
   lastNftId?: string; // Last NFT ID before this position was submitted (for validation)
   progressState?: PositionProgressState; // Progress state for showing submission stages
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
+  shareUrl?: string; // Override share URL (e.g. for slip preview cards)
+  forecastUid?: string; // For forecast share URLs (/forecast/{uid})
 }
 
 export default function OgShareDialogBase({
@@ -77,14 +49,12 @@ export default function OgShareDialogBase({
   onOpenChange,
   trackPosition = false,
   positionTimestamp,
-  expectedPicks,
-  expectedLegs,
   lastNftId,
   progressState,
   onPositionIndexed,
+  shareUrl: shareUrlProp,
+  forecastUid,
 }: OgShareDialogBaseProps) {
-  // Support both expectedPicks and expectedLegs for backward compatibility
-  const picks = expectedPicks || expectedLegs;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -120,6 +90,7 @@ export default function OgShareDialogBase({
   const { effectiveAddress } = useSession();
   const chainId = CHAIN_ID_ETHEREAL;
   const [positionResolved, setPositionResolved] = useState(false);
+
   // Store resolved position data for share URL
   const [resolvedPositionData, setResolvedPositionData] = useState<{
     nftId: string;
@@ -155,7 +126,18 @@ export default function OgShareDialogBase({
       return;
     }
 
+    console.debug('[OgShareDialog] polling started', {
+      userAddress,
+      lastNftId,
+      dialogOpenTimestamp: dialogOpenTimestampRef.current,
+    });
+
     const resolvePosition = (position: Position): void => {
+      console.debug('[OgShareDialog] resolved!', {
+        nftId: position.predictorNftTokenId,
+        marketAddress: position.marketAddress,
+        mintedAt: position.mintedAt,
+      });
       setPositionResolved(true);
       setResolvedPositionData({
         nftId: position.predictorNftTokenId,
@@ -168,66 +150,73 @@ export default function OgShareDialogBase({
       }
     };
 
+    let pollCount = 0;
+
     const checkPosition = (positionsToCheck: Position[]): boolean => {
       if (!positionsToCheck || positionsToCheck.length === 0) {
         return false;
       }
 
-      const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 2 * 60 * 1000;
-      const minTimestampSeconds = Math.floor(minTimestamp / 1000);
+      const nftIds = positionsToCheck.map((p) => p.predictorNftTokenId);
 
-      const candidatePositions = positionsToCheck.filter((p: Position) => {
-        const mintedAtSeconds = Number(p.mintedAt);
-        return mintedAtSeconds >= minTimestampSeconds;
-      });
-
-      if (candidatePositions.length === 0) {
-        return false;
-      }
-
-      let filteredByNftId = candidatePositions;
+      // Primary strategy: find position with NFT ID > lastNftId.
+      // The modal is blocking so only one new position can exist.
       if (lastNftId) {
         try {
           const lastNftIdBigInt = BigInt(lastNftId);
-          filteredByNftId = candidatePositions.filter((p: Position) => {
+          const found = positionsToCheck.find((p: Position) => {
             try {
-              const currentNftId = BigInt(p.predictorNftTokenId || '0');
-              return currentNftId > lastNftIdBigInt;
+              return BigInt(p.predictorNftTokenId || '0') > lastNftIdBigInt;
             } catch {
               return false;
             }
           });
-
-          if (filteredByNftId.length === 0) {
-            return false;
+          if (found) {
+            resolvePosition(found);
+            return true;
+          }
+          // Log every ~5s (every 10th poll) to avoid spam
+          if (pollCount % 10 === 0) {
+            console.debug('[OgShareDialog] no nftId > lastNftId yet', {
+              lastNftId,
+              nftIds,
+              pollCount,
+            });
           }
         } catch {
-          // Continue without NFT ID filter on parse error
+          console.warn('[OgShareDialog] lastNftId parse error', { lastNftId });
         }
-      }
-
-      if (picks && picks.length > 0) {
-        const foundPosition = filteredByNftId.find((p: Position) => {
-          const positionPicks = (p.predictions || []).map((pred) => ({
-            question:
-              pred.condition?.shortName || pred.condition?.question || '',
-            choice: pred.outcomeYes ? 'Yes' : 'No',
-          }));
-          return picksMatch(positionPicks, picks);
-        });
-
-        if (foundPosition) {
-          resolvePosition(foundPosition);
-          return true;
-        }
+        // Don't fall through — wait for NFT ID match to avoid resolving a stale position
         return false;
       }
 
-      const foundPosition = filteredByNftId[0];
-      if (foundPosition) {
-        resolvePosition(foundPosition);
+      // Fallback (no lastNftId, e.g. first-time user): accept any position
+      // minted after the dialog opened (10s buffer for clock skew)
+      const minTimestamp =
+        (dialogOpenTimestampRef.current || Date.now()) - 10 * 1000;
+      const minTimestampSeconds = Math.floor(minTimestamp / 1000);
+
+      const found = positionsToCheck.find((p: Position) => {
+        const mintedAtSeconds = Number(p.mintedAt);
+        return mintedAtSeconds >= minTimestampSeconds;
+      });
+
+      if (found) {
+        console.debug('[OgShareDialog] resolved via timestamp fallback', {
+          mintedAt: found.mintedAt,
+          minTimestampSeconds,
+        });
+        resolvePosition(found);
         return true;
+      }
+
+      if (pollCount % 10 === 0) {
+        const mintedAts = positionsToCheck.map((p) => p.mintedAt);
+        console.debug('[OgShareDialog] timestamp fallback: no match', {
+          minTimestampSeconds,
+          mintedAts,
+          pollCount,
+        });
       }
       return false;
     };
@@ -237,16 +226,23 @@ export default function OgShareDialogBase({
       checkPosition(positions);
     }
 
-    // Only start polling if not already polling (or if timestamp changed, restart polling)
+    // Only start polling if not already polling
     if (!pollingIntervalRef.current) {
-      // Poll every half second
       pollingIntervalRef.current = setInterval(async () => {
+        pollCount++;
         try {
           const result = await refetchPositions();
           const latestPositions = result.data || [];
+          if (latestPositions.length === 0 && pollCount % 10 === 0) {
+            console.warn('[OgShareDialog] refetch returned 0 positions', {
+              pollCount,
+              resultStatus: result.status,
+              error: result.error?.message,
+            });
+          }
           checkPosition(latestPositions);
-        } catch {
-          // Error refetching positions - will retry on next interval
+        } catch (err) {
+          console.warn('[OgShareDialog] refetch threw', err);
         }
       }, 500);
     }
@@ -263,7 +259,6 @@ export default function OgShareDialogBase({
     userAddress,
     positionResolved,
     refetchPositions,
-    picks,
     lastNftId,
     onPositionIndexed,
   ]);
@@ -318,23 +313,24 @@ export default function OgShareDialogBase({
   }, [imageSrc]);
 
   const buildShareUrl = useCallback((): string => {
+    if (shareUrlProp) return shareUrlProp;
+
     const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
     const marketAddress =
       resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
 
-    let relativeUrl = '/share';
-    if (nftId && marketAddress) {
-      const qp = new URLSearchParams();
-      qp.set('nftId', nftId);
-      qp.set('marketAddress', marketAddress);
-      relativeUrl = `/share?${qp.toString()}`;
+    let relativeUrl = '/';
+    if (forecastUid) {
+      relativeUrl = `/forecast/${forecastUid}`;
+    } else if (nftId && marketAddress) {
+      relativeUrl = `/positions/${marketAddress}/${nftId}`;
     }
 
     if (typeof window === 'undefined') {
       return relativeUrl;
     }
     return `${window.location.origin}${relativeUrl}`;
-  }, [resolvedPositionData, positionShareParams]);
+  }, [shareUrlProp, resolvedPositionData, positionShareParams, forecastUid]);
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {
@@ -396,7 +392,10 @@ export default function OgShareDialogBase({
                     : 'opacity-100'
                 }`}
               >
-                <PositionProgressBar progressState={progressState} />
+                <PositionProgressBar
+                  progressState={progressState}
+                  userAddress={userAddress}
+                />
               </div>
             )}
             {/* Buttons - fade in on top of progress bar when resolved */}

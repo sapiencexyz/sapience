@@ -20,6 +20,7 @@ type Props = {
   taker?: string | null;
   hasMultipleConditions?: boolean;
   tokenDecimals: number;
+  invalidBidCount?: number;
 };
 
 const AuctionRequestChart: React.FC<Props> = ({
@@ -31,6 +32,7 @@ const AuctionRequestChart: React.FC<Props> = ({
   taker,
   hasMultipleConditions,
   tokenDecimals,
+  invalidBidCount = 0,
 }) => {
   // Throttle incoming bids to ~10–12 fps using rAF
   const [displayBids, setDisplayBids] = useState<AuctionBid[]>(bids || []);
@@ -101,7 +103,7 @@ const AuctionRequestChart: React.FC<Props> = ({
               : '0.00'}{' '}
             {collateralAssetTicker}
           </span>
-          <span className="text-muted-foreground">wager request</span>
+          <span className="text-muted-foreground">position request</span>
           {showRequester ? (
             <div className="w-full sm:w-auto inline-flex items-center gap-1 min-w-0">
               <span className="text-muted-foreground">from</span>
@@ -119,7 +121,14 @@ const AuctionRequestChart: React.FC<Props> = ({
             </div>
           ) : null}
         </div>
-        <div />
+        {invalidBidCount > 0 ? (
+          <span className="text-muted-foreground whitespace-nowrap">
+            {invalidBidCount} invalid bid{invalidBidCount === 1 ? '' : 's'}{' '}
+            hidden
+          </span>
+        ) : (
+          <div />
+        )}
       </div>
       <div className="h-[110px] md:h-auto md:flex-1 md:min-h-0">
         <AuctionBidsChart

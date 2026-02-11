@@ -746,7 +746,7 @@ const ConditionGroupsTab = ({
                             {index + 1}.
                           </span>
                           <span className="flex-1 truncate text-sm">
-                            {condition?.shortName || condition?.question || id}
+                            {condition?.question || id}
                           </span>
                           <div className="flex gap-1">
                             <Button
@@ -806,7 +806,7 @@ const ConditionGroupsTab = ({
                     ?.filter((c) => !selectedConditionIds.includes(c.id))
                     .map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        {c.shortName || c.question}
+                        {c.question}
                       </SelectItem>
                     ))}
                 </SelectContent>

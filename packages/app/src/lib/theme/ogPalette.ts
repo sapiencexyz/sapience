@@ -22,6 +22,8 @@ export const og = {
     neutralBg06: 'rgba(11,16,33,0.06)',
     neutralBorder12: 'rgba(11,16,33,0.12)',
     neutralFg: 'rgb(11,16,33)',
+    // Ethena blue for implied probability
+    ethenaBlue: 'hsl(219 76% 75%)', // #91B3F0
     // App accent gold (matches --accent-gold in globals.css)
     accentGold: hslTokenToCss('46 86% 73%'),
   },
