@@ -1,5 +1,5 @@
 # ---- Base stage: shared across all services ----
-FROM node:20-slim AS base
+FROM node:24-slim AS base
 RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@9
 WORKDIR /app
