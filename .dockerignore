@@ -1,0 +1,8 @@
+node_modules
+.git
+docs
+packages/app
+packages/protocol
+packages/ui
+starters
+*.md
