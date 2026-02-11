@@ -1,14 +1,10 @@
 # ---- Base stage: shared across all services ----
 FROM node:20-slim AS base
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@9
 WORKDIR /app
-COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/sdk/package.json packages/sdk/
-COPY packages/api/package.json packages/api/
-COPY packages/relayer/package.json packages/relayer/
-COPY packages/polymarket-keeper/package.json packages/polymarket-keeper/
-RUN pnpm install --frozen-lockfile
 COPY . .
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @sapience/sdk run build:lib
 
 # ---- API service ----
