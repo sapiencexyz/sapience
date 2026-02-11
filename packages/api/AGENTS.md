@@ -42,9 +42,9 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
 - `codegen.ts` – GraphQL Code Generator configuration.
 
 ## Deployment
-- Railway deploys all backend services via Docker (see root `Dockerfile` and `railway.toml`). The API uses Docker target `api`, and the background worker uses target `worker`. Both stages run `prisma:generate` at build time.
-- `DATABASE_URL` is provided by the Railway PostgreSQL plugin (`${{Postgres.DATABASE_URL}}`).
-- Two environments: **staging** (deploys from a WIP PR branch) and **production** (deploys from `main`).
+- Railway deploys the API and worker as separate services. Both share the same build command (install deps, build SDK, `prisma:generate`) with different start commands (`start:service` vs `start:worker`).
+- `DATABASE_URL` is provided via Railway environment variables.
+- Two environments: **testing** (deploys from a WIP branch) and **production** (deploys from `main`).
 
 ## Agent Tips
 - Run `prisma:setup` before tests or local servers to avoid missing migrations or generated clients.

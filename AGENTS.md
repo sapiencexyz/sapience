@@ -11,7 +11,7 @@ This document captures the context agents need when working in the Sapience mono
   - `packages/sdk` – Shared TypeScript SDK (ABIs, hooks, UI kit, GraphQL helpers) built via `tsup` and Storybook.
   - `packages/docs` – Documentation portal powered by Vocs.
   - `packages/polymarket-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
-- Docker: multi-stage `Dockerfile` at the repo root builds all backend services from a shared base layer (SDK pre-compiled).
+- Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
 
 ## Core Commands
 Run from repo root unless noted.
@@ -44,7 +44,7 @@ Package-specific highlights:
 - Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/sdk run build-storybook`).
 
 ## Deployment & Ops
-- Backend services are deployed on Railway via Docker (see `Dockerfile` and `railway.toml`). Two environments exist: **staging** (deploys from a WIP PR branch) and **production** (deploys from `main`). Each service targets a specific Dockerfile stage (`api`, `worker`, `relayer`, `stats-cron`, `keeper-cron`) configured per-service in the Railway dashboard.
+- Backend services are deployed on Railway (see `railway.toml`). Two environments exist: **testing** (deploys from a WIP branch) and **production** (deploys from `main`). Each service has its own build and start commands configured in the Railway dashboard.
 - Contracts deploy via Cannon (`deploy:*` scripts) targeting Sepolia/Base; dry runs available with `simulate-deploy:*`.
 
 ## Agent Tips
