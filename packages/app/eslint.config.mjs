@@ -113,16 +113,7 @@ export default typescriptPlugin.config(
       '@typescript-eslint/no-unsafe-call': 'off',
 
       // Import rules
-      'import/extensions': [
-        'error',
-        'ignorePackages',
-        {
-          'js': 'never',
-          'jsx': 'never',
-          'ts': 'never',
-          'tsx': 'never'
-        }
-      ],
+      'import/extensions': 'off',
       'import/order': 'warn'
     },
     settings: {

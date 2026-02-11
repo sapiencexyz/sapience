@@ -9,11 +9,11 @@ import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
 interface CreatePositionFormContentProps {
   formMethods: UseFormReturn<{
-    wagerAmount: string;
+    positionSize: string;
     limitAmount: string | number;
     positions: Record<
       string,
-      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
     >;
   }>;
   /** Submit handler - receives the exact bid being submitted */
@@ -29,7 +29,7 @@ interface CreatePositionFormContentProps {
   collateralToken?: `0x${string}`;
   collateralSymbol?: string;
   collateralDecimals?: number;
-  minWager?: string;
+  minPositionSize?: string;
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
@@ -47,7 +47,7 @@ export function CreatePositionFormContent({
   collateralToken,
   collateralSymbol,
   collateralDecimals,
-  minWager,
+  minPositionSize,
   predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
@@ -88,8 +88,8 @@ export function CreatePositionFormContent({
         {!hasItems ? (
           <div className="w-full h-full flex items-center justify-center text-center">
             <div className="flex flex-col items-center gap-2 py-20">
-              <p className="text-sm font-mono uppercase text-accent-gold max-w-[260px] mx-auto bg-transparent tracking-wide">
-                ADD PREDICTIONS TO SEE POTENTIAL WINNINGS
+              <p className="text-sm font-mono uppercase text-accent-gold max-w-[220px] mx-auto bg-transparent tracking-wide">
+                ADD PREDICTIONS TO SEE YOUR POTENTIAL PAYOUT
               </p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export function CreatePositionFormContent({
             collateralToken={collateralToken}
             collateralSymbol={collateralSymbol}
             collateralDecimals={collateralDecimals}
-            minWager={minWager}
+            minPositionSize={minPositionSize}
             predictionMarketAddress={predictionMarketAddress}
             pythPredictions={pythPredictions}
             onRemovePythPrediction={onRemovePythPrediction}

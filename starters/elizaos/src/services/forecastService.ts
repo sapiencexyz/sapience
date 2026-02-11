@@ -1,8 +1,6 @@
 import { elizaLogger, IAgentRuntime, ModelType, Memory, HandlerCallback } from "@elizaos/core";
-// @ts-ignore - Sapience plugin types not available at build time
-import type { SapienceService } from "./sapienceService.js";
 import { loadSdk } from "../utils/sdk.js";
-import { getWalletAddress, hasPrivateKey } from "../utils/blockchain.js";
+import { getWalletAddress, hasPrivateKey, getApiEndpoints } from "../utils/blockchain.js";
 import TradingMarketService from "./tradingMarketService.js";
 
 type AutonomousMode = "forecast" | "trade";
@@ -84,21 +82,11 @@ export class ForecastService {
     try {
       // Auto-start if any autonomous mode is configured
       if (this.config.modes.length > 0) {
-        await this.waitForSapiencePlugin();
         await this.startAutonomous();
       }
     } catch (error) {
       elizaLogger.error("[ForecastService] Failed to initialize:", error);
     }
-  }
-
-  private async waitForSapiencePlugin(): Promise<void> {
-    for (let i = 0; i < 30; i++) {
-      const sapienceService = this.runtime.getService("sapience") as SapienceService;
-      if (sapienceService) return;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    throw new Error("[ForecastService] Sapience plugin failed to initialize");
   }
 
   async startAutonomous(): Promise<void> {
@@ -231,12 +219,6 @@ export class ForecastService {
     };
 
     try {
-      const sapienceService = this.runtime.getService("sapience") as SapienceService;
-      if (!sapienceService) {
-        elizaLogger.error("[ForecastService] Sapience service not available");
-        return result;
-      }
-
       const walletAddress = await this.getWalletAddress();
       const allMyForecasts = walletAddress
         ? await this.getAllMyForecasts(walletAddress)
@@ -254,7 +236,7 @@ export class ForecastService {
         try {
           const matchingForecast = allMyForecasts.find(
             (att) =>
-              (att.questionId?.toLowerCase?.() || "") ===
+              (att.conditionId?.toLowerCase?.() || "") ===
               (condition.id?.toLowerCase?.() || "")
           );
 
@@ -578,18 +560,32 @@ Analyze and respond with ONLY valid JSON:
 
   private async getAllMyForecasts(walletAddress: string): Promise<any[]> {
     try {
-      const sapienceService = this.runtime.getService("sapience") as SapienceService;
-      const result = await sapienceService.callTool("sapience", "get_attestations_by_address", {
-        attesterAddress: walletAddress,
+      const { sapienceGraphql } = getApiEndpoints();
+      const query = /* GraphQL */ `
+        query AttestationsByAddress($attester: StringFilter) {
+          attestations(where: { attester: $attester }, orderBy: { time: desc }) {
+            conditionId
+            prediction
+            createdAt
+            attester
+          }
+        }
+      `;
+
+      const res = await fetch(sapienceGraphql, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query,
+          variables: { attester: { equals: walletAddress } },
+        }),
       });
 
-      if (result?.content) {
-        const forecasts = JSON.parse(result.content?.[0]?.text ?? "[]");
-        return forecasts.sort((a: any, b: any) => 
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-      }
-      return [];
+      const json = await res.json().catch(() => ({}));
+      const forecasts = json?.data?.attestations || [];
+      return forecasts.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
     } catch (error) {
       elizaLogger.error(`[ForecastService] Failed to get forecasts for ${walletAddress}:`, error);
       return [];

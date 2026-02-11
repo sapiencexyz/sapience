@@ -204,8 +204,8 @@ export const useForecasts = ({
     enabled: options?.enabled ?? Boolean(schemaId),
     retry: 3,
     retryDelay: 1000,
-    refetchInterval: 10000, // Refetch every 10 seconds
-    staleTime: options?.staleTime ?? 10000,
+    refetchInterval: 60000, // Refetch every 60 seconds
+    staleTime: options?.staleTime ?? 60000,
     refetchOnMount: options?.refetchOnMount ?? false,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
   });
@@ -336,4 +336,74 @@ export const useInfiniteForecasts = ({
     hasNextPage: Boolean(query.hasNextPage),
     isFetchingNextPage: query.isFetchingNextPage,
   };
+};
+
+// Skip-based paginated hook for profile table (matches PositionsTable pattern)
+interface UseUserForecastsParams {
+  attesterAddress: string;
+  schemaId?: string;
+  conditionId?: string;
+  take: number;
+  skip: number;
+  orderBy: string;
+  orderDirection: 'asc' | 'desc';
+}
+
+export const useUserForecasts = ({
+  attesterAddress,
+  schemaId = SCHEMA_UID,
+  conditionId,
+  take,
+  skip,
+  orderBy,
+  orderDirection,
+}: UseUserForecastsParams) => {
+  let normalizedAttesterAddress = attesterAddress;
+  if (attesterAddress) {
+    try {
+      normalizedAttesterAddress = getAddress(attesterAddress);
+    } catch (_e) {
+      // swallow normalization error
+    }
+  }
+
+  const filters: Record<string, { equals: string }>[] = [];
+  if (normalizedAttesterAddress) {
+    filters.push({ attester: { equals: normalizedAttesterAddress } });
+  }
+  if (conditionId) {
+    filters.push({ conditionId: { equals: conditionId } });
+  }
+
+  return useQuery<FormattedAttestation[]>({
+    queryKey: [
+      'forecasts',
+      schemaId,
+      attesterAddress,
+      conditionId || null,
+      take,
+      skip,
+      orderBy,
+      orderDirection,
+    ],
+    queryFn: async () => {
+      const variables = {
+        where: {
+          schemaId: { equals: schemaId },
+          AND: filters,
+        },
+        take,
+        skip,
+        orderBy: [{ [orderBy]: orderDirection }],
+      };
+      const data = await graphqlRequest<AttestationsQueryResponse>(
+        GET_ATTESTATIONS_PAGINATED_QUERY,
+        variables
+      );
+      return (data.attestations || []).map((att) => formatAttestationData(att));
+    },
+    enabled: Boolean(attesterAddress),
+    staleTime: 30_000,
+    placeholderData: (prev) => prev,
+  });
 };

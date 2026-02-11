@@ -40,8 +40,8 @@ export function PredictionChoiceBadge({
     <Badge
       variant="outline"
       className={[
-        'shrink-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center',
-        compact ? 'w-9 px-0' : 'w-auto px-2',
+        'shrink-0 py-0 text-[10px] font-medium !rounded font-mono flex items-center justify-center',
+        compact ? 'w-7 px-0' : 'w-auto px-1.5',
         positive
           ? 'border-emerald-500 bg-emerald-500/50 dark:bg-emerald-500/70 text-emerald-900 dark:text-white/90'
           : 'border-rose-500 bg-rose-500/50 dark:bg-rose-500/70 text-rose-900 dark:text-white/90',

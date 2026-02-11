@@ -85,7 +85,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     Amount
                   </th>
                   <th className="px-3 py-2 text-left align-middle font-medium">
-                    To Win
+                    Payout
                   </th>
                 </tr>
               </thead>
@@ -106,7 +106,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     }
                     return { label: 'Expired', isExpired: true } as const;
                   })();
-                  const toWinStr = (() => {
+                  const payoutStr = (() => {
                     try {
                       const taker = BigInt(String(makerWager ?? '0'));
                       const maker = BigInt(String(b?.makerWager ?? '0'));
@@ -122,9 +122,9 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     collateral: String(b?.makerWager || '0'),
                     position: { owner: b?.maker || '' },
                   } as any;
-                  const uiTxToWin = {
+                  const uiTxPayout = {
                     ...uiTxAmount,
-                    collateral: toWinStr,
+                    collateral: payoutStr,
                   };
                   return (
                     <tr key={i} className="border-b last:border-b-0">
@@ -156,7 +156,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap">
                         <TransactionAmountCell
-                          tx={uiTxToWin}
+                          tx={uiTxPayout}
                           collateralAssetTicker={collateralAssetTicker}
                         />
                       </td>

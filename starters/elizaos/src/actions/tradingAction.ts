@@ -25,7 +25,7 @@ import {
 import { 
   encodeTradeOutcomes, 
   selectBestBid, 
-  formatWagerAmount 
+  formatPositionSize
 } from "../utils/trading.js";
 
 interface Bid {
@@ -46,7 +46,7 @@ interface Bid {
 export const tradingAction: Action = {
   name: "TRADING",
   description: "Start trading auction with 2 legs from different categories and accept best bid from takers",
-  similes: ["trade markets", "make trade", "start auction", "bet trade"],
+  similes: ["trade markets", "make trade", "start auction", "place trade"],
 
   validate: async () => true,
 
@@ -94,7 +94,7 @@ export const tradingAction: Action = {
       const privateKey = getPrivateKey();
       const walletAddress = getWalletAddress();
       const rpcUrl = getTradingRpcUrl();
-      const { wagerAmount } = getTradingConfig();
+      const { positionSize: positionSizeAmount } = getTradingConfig();
 
       elizaLogger.info(`[Trading] Starting trading auction with ${markets.length} legs`);
 
@@ -103,7 +103,7 @@ export const tradingAction: Action = {
         markets,
         predictions,
         walletAddress,
-        wagerAmount,
+        positionSizeAmount,
         rpcUrl,
       });
 
@@ -112,7 +112,7 @@ export const tradingAction: Action = {
           `[Trading] Trade executed successfully: ${auctionResult.txHash}`,
         );
         await callback?.({
-          text: `Trade executed: ${markets.length} legs, wager ${formatWagerAmount(wagerAmount)} (TX: ${auctionResult.txHash})`,
+          text: `Trade executed: ${markets.length} legs, position size ${formatPositionSize(positionSizeAmount)} (TX: ${auctionResult.txHash})`,
           content: {
             success: true,
             legs: markets.length,
@@ -137,13 +137,13 @@ async function startTradingAuction({
   markets,
   predictions,
   walletAddress,
-  wagerAmount,
+  positionSizeAmount,
   rpcUrl,
 }: {
   markets: any[];
   predictions: any[];
   walletAddress: string;
-  wagerAmount: string;
+  positionSizeAmount: string;
   rpcUrl: string;
 }): Promise<{ success: boolean; txHash?: string; error?: string }> {
   return new Promise((resolve) => {
@@ -202,7 +202,7 @@ async function startTradingAuction({
           // Prepare base auction payload
           const payload = {
             taker: walletAddress,
-            wager: wagerAmount,
+            wager: positionSizeAmount,
             resolver: RESOLVER,
             predictedOutcomes,
             takerNonce: contractNonce,

@@ -53,23 +53,15 @@ interface CollateralBalanceButtonProps {
 }
 
 /**
- * Formats a balance as dollar-like: max 2 decimal places, no trailing zeros.
- * e.g. 1234.567 → "1234.57", 100.00 → "100", 50.10 → "50.1"
+ * Formats a balance with commas and exactly 2 decimal places.
+ * e.g. 1234.567 → "1,234.57", 100 → "100.00", 62.9 → "62.90"
  */
 function formatDollarLikeBalance(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(num)) return '0';
+  if (isNaN(num)) return '0.00';
 
-  // Round to 2 decimal places
-  const rounded = Math.round(num * 100) / 100;
-
-  // Format without trailing zeros
-  if (Number.isInteger(rounded)) {
-    return rounded.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  }
-
-  return rounded.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
+  return num.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
@@ -324,7 +316,7 @@ export default function CollateralBalanceButton({
       setWithdrawStatus('');
       toast({
         title: 'Withdraw Successful',
-        description: `${withdrawAmountNum.toFixed(2)} wUSDe transferred to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
+        description: `${formatDollarLikeBalance(withdrawAmountNum)} wUSDe transferred to ${eoaAddress.slice(0, 6)}...${eoaAddress.slice(-4)}`,
         duration: 5000,
       });
 
@@ -358,7 +350,7 @@ export default function CollateralBalanceButton({
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
           <div
-            className={`inline-flex items-center rounded-md h-9 px-3 min-w-[122px] justify-start gap-2 bg-brand-black text-brand-white border border-ethena/40 hover:bg-brand-black/90 font-mono shadow-[0_0_12px_rgba(136,180,245,0.3)] hover:shadow-[0_0_18px_rgba(136,180,245,0.5)] transition-shadow cursor-default text-sm ${buttonClassName ?? ''}`}
+            className={`inline-flex items-center rounded-md h-9 px-3 justify-start gap-2 bg-brand-black text-brand-white border border-ethena/40 hover:bg-brand-black/90 font-mono shadow-[0_0_12px_rgba(136,180,245,0.3)] hover:shadow-[0_0_18px_rgba(136,180,245,0.5)] transition-shadow cursor-default text-sm ${buttonClassName ?? ''}`}
           >
             <div className="flex items-center gap-2">
               <Image
@@ -369,7 +361,7 @@ export default function CollateralBalanceButton({
                 className="opacity-90 ml-[-2px] w-5 h-5"
               />
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                {displayedBalance.toFixed(2)} {symbol}
+                {formatDollarLikeBalance(displayedBalance)} {symbol}
               </span>
             </div>
           </div>
@@ -395,7 +387,7 @@ export default function CollateralBalanceButton({
                   </div>
                 )}
                 <p className="text-2xl font-mono pt-1">
-                  {displayedBalance.toFixed(2)} {symbol}
+                  {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </p>
               </div>
               <Button
@@ -500,7 +492,7 @@ export default function CollateralBalanceButton({
                             Native USDe
                           </span>
                           <span className="font-mono">
-                            {eoaNativeBalance.toFixed(2)}
+                            {formatDollarLikeBalance(eoaNativeBalance)}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -508,7 +500,7 @@ export default function CollateralBalanceButton({
                             Wrapped USDe
                           </span>
                           <span className="font-mono">
-                            {eoaWrappedBalance.toFixed(2)}
+                            {formatDollarLikeBalance(eoaWrappedBalance)}
                           </span>
                         </div>
                       </div>
@@ -553,7 +545,7 @@ export default function CollateralBalanceButton({
                     <HoverCardTrigger asChild>
                       <div className="flex items-baseline gap-1.5 cursor-default">
                         <span className="font-mono text-lg font-medium text-brand-white">
-                          {smartAccountBalance.toFixed(2)}
+                          {formatDollarLikeBalance(smartAccountBalance)}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {symbol}
@@ -567,7 +559,7 @@ export default function CollateralBalanceButton({
                             Native USDe
                           </span>
                           <span className="font-mono">
-                            {smartAccountNativeBalance.toFixed(2)}
+                            {formatDollarLikeBalance(smartAccountNativeBalance)}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -575,7 +567,9 @@ export default function CollateralBalanceButton({
                             Wrapped USDe
                           </span>
                           <span className="font-mono">
-                            {smartAccountWrappedBalance.toFixed(2)}
+                            {formatDollarLikeBalance(
+                              smartAccountWrappedBalance
+                            )}
                           </span>
                         </div>
                       </div>
@@ -616,7 +610,7 @@ export default function CollateralBalanceButton({
                                 Wrapped USDe
                               </span>
                               <span className="font-mono">
-                                {fromWrapped.toFixed(2)}
+                                {formatDollarLikeBalance(fromWrapped)}
                               </span>
                             </div>
                           )}
@@ -626,7 +620,7 @@ export default function CollateralBalanceButton({
                                 Native USDe (to wrap)
                               </span>
                               <span className="font-mono">
-                                {fromNative.toFixed(2)}
+                                {formatDollarLikeBalance(fromNative)}
                               </span>
                             </div>
                           )}
@@ -698,7 +692,7 @@ export default function CollateralBalanceButton({
                     <HoverCardTrigger asChild>
                       <div className="flex items-baseline gap-1.5 cursor-default">
                         <span className="font-mono text-lg font-medium text-brand-white">
-                          {smartAccountBalance.toFixed(2)}
+                          {formatDollarLikeBalance(smartAccountBalance)}
                         </span>
                         <span className="text-sm text-muted-foreground">
                           {symbol}
@@ -712,7 +706,7 @@ export default function CollateralBalanceButton({
                             Native USDe
                           </span>
                           <span className="font-mono">
-                            {smartAccountNativeBalance.toFixed(2)}
+                            {formatDollarLikeBalance(smartAccountNativeBalance)}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -720,7 +714,9 @@ export default function CollateralBalanceButton({
                             Wrapped USDe
                           </span>
                           <span className="font-mono">
-                            {smartAccountWrappedBalance.toFixed(2)}
+                            {formatDollarLikeBalance(
+                              smartAccountWrappedBalance
+                            )}
                           </span>
                         </div>
                       </div>
@@ -771,7 +767,7 @@ export default function CollateralBalanceButton({
                             Native USDe
                           </span>
                           <span className="font-mono">
-                            {eoaNativeBalance.toFixed(2)}
+                            {formatDollarLikeBalance(eoaNativeBalance)}
                           </span>
                         </div>
                         <div className="flex justify-between gap-4">
@@ -779,7 +775,7 @@ export default function CollateralBalanceButton({
                             Wrapped USDe
                           </span>
                           <span className="font-mono">
-                            {eoaWrappedBalance.toFixed(2)}
+                            {formatDollarLikeBalance(eoaWrappedBalance)}
                           </span>
                         </div>
                       </div>

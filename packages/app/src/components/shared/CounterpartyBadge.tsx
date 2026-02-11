@@ -20,10 +20,10 @@ export default function CounterpartyBadge({
   className,
   labelClassName,
   iconClassName,
-  tooltip = 'As the counterparty, this user needs only one of these predictions to be correct.',
+  tooltip = 'As the counterparty, this position needs only one of these predictions to be correct to win.',
 }: CounterpartyBadgeProps) {
   return (
-    <TooltipProvider>
+    <TooltipProvider delayDuration={300}>
       <div className="inline-flex items-center">
         <Badge
           variant="outline"
@@ -34,13 +34,12 @@ export default function CounterpartyBadge({
           </span>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                type="button"
+              <span
                 aria-label="Counterparty details"
-                className={`inline-flex items-center justify-center h-4 w-4 text-muted-foreground hover:text-foreground ${iconClassName ?? ''}`}
+                className={`inline-flex items-center justify-center h-4 w-4 text-muted-foreground hover:text-foreground cursor-help ${iconClassName ?? ''}`}
               >
                 <HelpCircle className="h-3.5 w-3.5" />
-              </button>
+              </span>
             </TooltipTrigger>
             <TooltipContent>
               <p>{tooltip}</p>

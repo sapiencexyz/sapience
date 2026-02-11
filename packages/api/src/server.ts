@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { initializeDataSource } from './db';
-import { expressMiddleware } from '@apollo/server/express4';
+import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
@@ -10,9 +10,8 @@ import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
-import { NextFunction, Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
-import { handleMcpAppRequests } from './routes/mcp';
 import prisma from './db';
 import { config } from './config';
 import {
@@ -38,9 +37,22 @@ const startServer = async () => {
 
   const apolloServer = await initializeApolloServer();
 
-  // Add GraphQL endpoint
+  // Add GraphQL endpoint with payload size limit and request timeout
   app.use(
     '/graphql',
+    express.json({ limit: '100kb' }),
+    // Request timeout middleware
+    (req: Request, res: Response, next: NextFunction) => {
+      const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
+      res.setTimeout(timeout, () => {
+        if (!res.headersSent) {
+          res.status(408).json({
+            errors: [{ message: `Request timeout after ${timeout}ms` }],
+          });
+        }
+      });
+      next();
+    },
     expressMiddleware(apolloServer, {
       context: async () => ({
         loaders: createLoaders(),
@@ -48,8 +60,6 @@ const startServer = async () => {
       }),
     })
   );
-
-  handleMcpAppRequests(app, '/mcp');
 
   // Proxy /auction HTTP requests to auction service
   const auctionProxyEnabled = process.env.ENABLE_AUCTION_PROXY !== 'false';
@@ -132,7 +142,9 @@ const startServer = async () => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('An error occurred:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 };
 

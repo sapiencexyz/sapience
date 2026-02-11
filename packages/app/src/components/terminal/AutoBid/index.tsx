@@ -31,6 +31,9 @@ import OrdersList from './components/OrdersList';
 import LogsPanel from './components/LogsPanel';
 import OrderBuilderDialog from './components/OrderBuilderDialog';
 
+// Max display threshold - if allowance exceeds 1 billion tokens, cap the display
+const MAX_DISPLAY_ALLOWANCE = 10n ** 27n; // 1 billion tokens (10^9) with 18 decimals
+
 const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
   const chainId = CHAIN_ID_ETHEREAL;
@@ -94,7 +97,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   });
 
   const { data: conditionCatalog = [] } = useConditions({
-    take: 200,
+    take: 100,
     chainId: chainId || undefined,
   });
 
@@ -132,7 +135,12 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const allowanceValue = useMemo(() => {
     try {
       if (allowance == null) return 0;
-      return Number(formatUnits(allowance as unknown as bigint, tokenDecimals));
+      const allowanceBigInt = allowance as unknown as bigint;
+      // Cap at a reasonable display value to avoid JS Number precision issues
+      if (allowanceBigInt >= MAX_DISPLAY_ALLOWANCE) {
+        return Infinity;
+      }
+      return Number(formatUnits(allowanceBigInt, tokenDecimals));
     } catch {
       return 0;
     }
@@ -257,10 +265,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const conditionItems = useMemo<MultiSelectItem[]>(() => {
     return activeConditionCatalog.map((condition) => ({
       value: condition.id,
-      label:
-        (condition.shortName as string | undefined) ||
-        (condition.question as string | undefined) ||
-        condition.id,
+      label: (condition.question as string | undefined) || condition.id,
     }));
   }, [activeConditionCatalog]);
 
@@ -268,9 +273,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     return Object.fromEntries(
       (conditionCatalog || []).map((condition) => [
         condition.id,
-        (condition.shortName as string | undefined) ||
-          (condition.question as string | undefined) ||
-          condition.id,
+        (condition.question as string | undefined) || condition.id,
       ])
     );
   }, [conditionCatalog]);

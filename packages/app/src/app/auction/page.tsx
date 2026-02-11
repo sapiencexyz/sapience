@@ -1,19 +1,7 @@
-import type { Metadata } from 'next';
-import AuctionPageContent from '~/components/auction/pages/AuctionPageContent';
-
-export const metadata: Metadata = {
-  title: 'Live Order Flow',
-  description: 'Monitor live order flow and market activity',
-};
+import { redirect } from 'next/navigation';
 
 const AuctionPage = () => {
-  return (
-    <div className="relative min-h-screen">
-      <div className="relative">
-        <AuctionPageContent />
-      </div>
-    </div>
-  );
+  redirect('/feed#auctions');
 };
 
 export default AuctionPage;

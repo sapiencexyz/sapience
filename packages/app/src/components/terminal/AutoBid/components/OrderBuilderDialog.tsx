@@ -718,7 +718,7 @@ const OrderBuilderDialog: React.FC<OrderBuilderDialogProps> = ({
                           </div>
                           <div className="text-right">
                             <p className="text-[11px] font-mono uppercase tracking-tight text-muted-foreground">
-                              100 USDe to win
+                              100 USDe payout
                             </p>
                             <Popover
                               open={isPayoutPopoverOpen}
@@ -735,7 +735,7 @@ const OrderBuilderDialog: React.FC<OrderBuilderDialogProps> = ({
                               <PopoverContent align="end" className="w-48 p-2">
                                 <div className="flex flex-col gap-1.5">
                                   <Label className="text-xs">
-                                    Example <em>To Win</em> Amount
+                                    Example <em>Payout</em> Amount
                                   </Label>
                                   <div className="flex">
                                     <Input

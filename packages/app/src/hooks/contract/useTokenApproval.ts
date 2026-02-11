@@ -1,9 +1,10 @@
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useReadContract } from 'wagmi';
 
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 interface UseTokenApprovalProps {
   tokenAddress?: `0x${string}`;
@@ -25,7 +26,7 @@ export function useTokenApproval({
   decimals = 18,
   enabled = true,
 }: UseTokenApprovalProps) {
-  const { address, isConnected } = useAccount();
+  const { currentAddress, isConnected } = useCurrentAddress();
   const [isApproving, setIsApproving] = useState(false);
   const [isApproveSuccess, setIsApproveSuccess] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
@@ -50,14 +51,14 @@ export function useTokenApproval({
     abi: erc20ABI,
     address: tokenAddress,
     functionName: 'allowance',
-    args: [address as `0x${string}`, spenderAddress as `0x${string}`],
-    account: address || zeroAddress,
+    args: [currentAddress as `0x${string}`, spenderAddress as `0x${string}`],
+    account: currentAddress || zeroAddress,
     chainId,
     query: {
       enabled:
         enabled &&
         isConnected &&
-        !!address &&
+        !!currentAddress &&
         !!tokenAddress &&
         !!spenderAddress &&
         !!chainId,

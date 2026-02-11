@@ -7,22 +7,19 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from '@sapience/ui/components/ui/tooltip';
-import {
-  formatDistanceToNow,
-  fromUnixTime,
-  differenceInDays,
-  differenceInHours,
-} from 'date-fns';
+import { formatDistanceToNow, fromUnixTime, differenceInDays } from 'date-fns';
 import { Timer } from 'lucide-react';
 
 interface EndTimeDisplayProps {
   endTime?: number | null;
+  settled?: boolean | null;
   size?: 'normal' | 'large';
   appearance?: 'default' | 'brandWhite';
 }
 
 const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
   endTime,
+  settled,
   size = 'normal',
   appearance = 'default',
 }) => {
@@ -36,32 +33,19 @@ const EndTimeDisplay: React.FC<EndTimeDisplayProps> = ({
     const now = new Date();
     const isPast = date.getTime() <= now.getTime();
 
-    // Calculate time differences for smarter display
-    const daysDiff = Math.abs(differenceInDays(date, now));
-    const hoursDiff = Math.abs(differenceInHours(date, now));
-
-    // Smart display logic:
-    // - Future: "Closes in X" with full date
-    // - Past < 1 day: "Closed X hours ago"
-    // - Past < 7 days: "Closed X days ago"
-    // - Past >= 7 days: "Closed [short date]"
     let badgeText: string;
     let showExpandedDate: boolean;
 
     if (!isPast) {
-      // Future: show relative time
       badgeText = `Ends ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = true;
-    } else if (hoursDiff < 24) {
-      // Ended recently (within 24 hours): show relative time only
-      badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
+    } else if (!settled) {
+      badgeText = 'Ends soon';
       showExpandedDate = false;
-    } else if (daysDiff < 7) {
-      // Ended within a week: show relative time only
+    } else if (Math.abs(differenceInDays(date, now)) < 7) {
       badgeText = `Ended ${formatDistanceToNow(date, { addSuffix: true })}`;
       showExpandedDate = false;
     } else {
-      // Ended more than a week ago: show short date format
       const shortDate = new Intl.DateTimeFormat(undefined, {
         month: 'short',
         day: 'numeric',

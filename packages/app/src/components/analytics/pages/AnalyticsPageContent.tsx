@@ -8,7 +8,7 @@ import {
   HoverCardTrigger,
 } from '@sapience/ui/components/ui/hover-card';
 import { Info } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AreaChart,
   Area,
@@ -25,6 +25,11 @@ import {
   useDailyVolumes,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
+import PeriodFilter, {
+  type Period,
+  PERIOD_DAYS,
+} from '~/components/shared/PeriodFilter';
+import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 function formatLargeNumber(
   value: number,
@@ -151,10 +156,26 @@ const CHART_AXIS_STYLE = {
   tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
 };
 
-const CHART_MARGIN = { top: 10, right: 30, left: 0, bottom: 0 };
+const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
+
+function filterDataByPeriod<T extends { timestamp: string }>(
+  data: T[],
+  period: Period
+): T[] {
+  const days = PERIOD_DAYS[period];
+  if (days === Infinity) return data;
+  const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
+  return data.filter((item) => parseInt(item.timestamp, 10) >= cutoff);
+}
 
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+
+  // Period states for each chart
+  const [volumePeriod, setVolumePeriod] = useState<Period>('3M');
+  const [oiPeriod, setOiPeriod] = useState<Period>('3M');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('3M');
+  const [pnlPeriod, setPnlPeriod] = useState<Period>('3M');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -172,12 +193,14 @@ function AnalyticsPageContent(): React.ReactElement {
 
     return protocolStats.map((point) => {
       const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
+      const vaultDeployed = parseFloat(point.vaultDeployed) / 1e18;
       const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       return {
         timestamp: point.timestamp,
         openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + escrowBalance,
+        totalBalance: vaultBalance + vaultDeployed + escrowBalance,
         vaultBalance,
+        vaultDeployed,
         escrowBalance,
       };
     });
@@ -193,6 +216,22 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [dailyVolumes]);
 
+  // Filter chart data based on selected periods
+  const filteredVolumeData = useMemo(
+    () => filterDataByPeriod(volumeChartData, volumePeriod),
+    [volumeChartData, volumePeriod]
+  );
+
+  const filteredOiData = useMemo(
+    () => filterDataByPeriod(statsChartData, oiPeriod),
+    [statsChartData, oiPeriod]
+  );
+
+  const filteredTvlData = useMemo(
+    () => filterDataByPeriod(statsChartData, tvlPeriod),
+    [statsChartData, tvlPeriod]
+  );
+
   const isLoading = statsLoading || volumesLoading;
 
   return (
@@ -206,7 +245,7 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-4 md:mb-8">
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
@@ -237,7 +276,12 @@ function AnalyticsPageContent(): React.ReactElement {
                           Protocol Vault Reserve
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.vaultBalance || '0')}{' '}
+                          {formatNumber(
+                            String(
+                              BigInt(summary?.vaultBalance || '0') +
+                                BigInt(summary?.vaultDeployed || '0')
+                            )
+                          )}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -248,13 +292,14 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
                     {formatNumber(
                       String(
                         BigInt(summary?.vaultBalance || '0') +
+                          BigInt(summary?.vaultDeployed || '0') +
                           BigInt(summary?.escrowBalance || '0')
                       )
                     )}{' '}
@@ -273,7 +318,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
@@ -293,7 +338,7 @@ function AnalyticsPageContent(): React.ReactElement {
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
                   <div className="w-full flex justify-center pt-3">
-                    <Loader size={24} />
+                    <Loader className="w-6 h-6" />
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
@@ -307,17 +352,20 @@ function AnalyticsPageContent(): React.ReactElement {
         </div>
 
         {/* Charts */}
-        <div className="space-y-8">
+        <div className="space-y-4 md:space-y-8">
           {/* Volume Chart - Daily Bar */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Daily Volume</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Daily Volume</h3>
+                <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
-                ) : volumeChartData.length === 0 ? (
+                ) : filteredVolumeData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
@@ -325,7 +373,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
                       <ComposedChart
-                        data={volumeChartData}
+                        data={filteredVolumeData}
                         margin={CHART_MARGIN}
                       >
                         <CartesianGrid
@@ -367,20 +415,23 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Open Interest Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Open Interest</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Open Interest</h3>
+                <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
-                ) : statsChartData.length === 0 ? (
+                ) : filteredOiData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
+                      <AreaChart data={filteredOiData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="openInterestGradient"
@@ -443,20 +494,23 @@ function AnalyticsPageContent(): React.ReactElement {
           {/* Protocol TVL Chart */}
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
-              <h3 className="sc-heading text-foreground mb-4">Protocol TVL</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">Protocol TVL</h3>
+                <PeriodFilter value={tvlPeriod} onChange={setTvlPeriod} />
+              </div>
               <div className="h-[300px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full">
-                    <Loader size={32} />
+                    <Loader className="w-8 h-8" />
                   </div>
-                ) : statsChartData.length === 0 ? (
+                ) : filteredTvlData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     No data available
                   </div>
                 ) : (
                   <div className="w-full h-full transition-opacity duration-300">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={statsChartData} margin={CHART_MARGIN}>
+                      <AreaChart data={filteredTvlData} margin={CHART_MARGIN}>
                         <defs>
                           <linearGradient
                             id="protocolTVLGradient"
@@ -512,6 +566,27 @@ function AnalyticsPageContent(): React.ReactElement {
                     </ResponsiveContainer>
                   </div>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Vault PnL Chart */}
+          <Card className="bg-brand-black border border-brand-white/10">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="sc-heading text-foreground">
+                  Vault Profit/Loss
+                </h3>
+                <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
+              </div>
+              <div className="h-[300px]">
+                <VaultPnlChart
+                  protocolStats={protocolStats}
+                  isLoading={statsLoading}
+                  externalPeriod={pnlPeriod}
+                  showHeader={false}
+                  height={300}
+                />
               </div>
             </CardContent>
           </Card>

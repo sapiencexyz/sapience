@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
@@ -112,7 +112,7 @@ function attestationToComment(
   if (!isZeroConditionId && conditionsMap && conditionId) {
     const condition = conditionsMap[conditionId.toLowerCase()];
     if (condition) {
-      question = condition.shortName || condition.question;
+      question = condition.question;
       category = condition.category?.slug || undefined;
       endTime = condition.endTime;
       description = condition.description;
@@ -213,8 +213,8 @@ const Comments = ({
     gcTime: 5 * 60 * 1000,
     queryFn: async () => {
       const query = /* GraphQL */ `
-        query ConditionsByIds($ids: [String!]) {
-          conditions(where: { id: { in: $ids } }) {
+        query ConditionsByIds($where: ConditionWhereInput!) {
+          conditions(where: $where, take: 100) {
             id
             question
             shortName
@@ -227,12 +227,12 @@ const Comments = ({
           }
         }
       `;
-      type Result = {
-        conditions: ConditionData[];
-      };
-      const res = await graphqlRequest<Result>(query, { ids: conditionIds });
+      const conditions = await fetchConditionsByIds<ConditionData>(
+        query,
+        conditionIds
+      );
       const map: Record<string, ConditionData> = {};
-      for (const c of res.conditions || []) {
+      for (const c of conditions) {
         map[c.id.toLowerCase()] = c;
       }
       return map;
@@ -314,7 +314,7 @@ const Comments = ({
         <>
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-16">
-              <Loader size={16} />
+              <Loader className="w-4 h-4" />
             </div>
           ) : displayComments.length === 0 ? null : (
             <>
@@ -433,7 +433,7 @@ const Comments = ({
               })}
               {isFetchingNextPage && (
                 <div className="flex flex-col items-center justify-center py-6">
-                  <Loader size={12} />
+                  <Loader className="w-3 h-3" />
                 </div>
               )}
               {!hasNextPage && <div className="py-4" />}

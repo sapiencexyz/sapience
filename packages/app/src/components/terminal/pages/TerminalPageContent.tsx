@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMobile, useIsBelow } from '@sapience/ui/hooks/use-mobile';
+import { useSessionState } from '~/hooks/useSessionState';
 import { motion } from 'framer-motion';
 import { parseUnits, erc20Abi } from 'viem';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -13,6 +14,7 @@ import AutoBid from '~/components/terminal/AutoBid';
 import { ApprovalDialogProvider } from '~/components/terminal/ApprovalDialogContext';
 import ApprovalDialog from '~/components/terminal/ApprovalDialog';
 import { TerminalLogsProvider } from '~/components/terminal/TerminalLogsContext';
+import { useTradeSettledNotifications } from '~/hooks/useTradeSettledNotifications';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import StackedPredictions, {
   type Pick,
@@ -28,7 +30,7 @@ import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
 import MinBidsFilter from '~/components/terminal/filters/MinBidsFilter';
-import MinWagerFilter from '~/components/terminal/filters/MinWagerFilter';
+import MinPositionSizeFilter from '~/components/terminal/filters/MinPositionSizeFilter';
 import AddressFilter from '~/components/terminal/filters/AddressFilter';
 import SignedFilter, {
   type SignedFilterValue,
@@ -54,6 +56,12 @@ interface AuctionStartedData {
   predictedOutcomes?: string[];
 }
 
+// Defined outside TerminalPageContent to prevent remounting on parent re-renders
+const TradeNotifications = () => {
+  useTradeSettledNotifications();
+  return null;
+};
+
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
   const chainId = CHAIN_ID_ETHEREAL;
@@ -77,16 +85,27 @@ const TerminalPageContent: React.FC = () => {
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
     new Set()
   );
-  const [wagerRange, setWagerRange] = useState<[number, number]>([0, Infinity]);
-  const [bidsRange, setBidsRange] = useState<[number, number]>([0, Infinity]);
-  const [selectedCategorySlugs, setSelectedCategorySlugs] = useState<string[]>(
+  const [positionSizeRange, setPositionSizeRange] = useSessionState<
+    [number, number]
+  >('sapience.terminal.positionSizeRange', [0, Infinity]);
+  const [bidsRange, setBidsRange] = useSessionState<[number, number]>(
+    'sapience.terminal.bidsRange',
+    [0, Infinity]
+  );
+  const [selectedCategorySlugs, setSelectedCategorySlugs] = useSessionState<
+    string[]
+  >('sapience.terminal.selectedCategorySlugs', []);
+  const [selectedConditionIds, setSelectedConditionIds] = useSessionState<
+    string[]
+  >('sapience.terminal.selectedConditionIds', []);
+  const [selectedAddresses, setSelectedAddresses] = useSessionState<string[]>(
+    'sapience.terminal.selectedAddresses',
     []
   );
-  const [selectedConditionIds, setSelectedConditionIds] = useState<string[]>(
-    []
+  const [signedFilter, setSignedFilter] = useSessionState<SignedFilterValue>(
+    'sapience.terminal.signedFilter',
+    'all'
   );
-  const [selectedAddresses, setSelectedAddresses] = useState<string[]>([]);
-  const [signedFilter, setSignedFilter] = useState<SignedFilterValue>('all');
   const togglePin = useCallback((auctionId: string | null) => {
     if (!auctionId) return;
     setPinnedAuctions((prev) => {
@@ -397,14 +416,14 @@ const TerminalPageContent: React.FC = () => {
             </span>
           );
         }
-        return <Loader size={16} />;
+        return <Loader className="w-4 h-4" />;
       }
 
       const legs = decoded.data.map((o) => {
         const cond = renderConditionMap.get(o.marketId);
         return {
           id: o.marketId,
-          title: cond?.shortName ?? cond?.question ?? String(o.marketId),
+          title: cond?.question ?? String(o.marketId),
           categorySlug: cond?.category?.slug ?? null,
           // In the auction/taker view we show what the TAKER needs to win.
           // The taker wins if the maker is wrong on at least one leg, so we invert
@@ -489,15 +508,18 @@ const TerminalPageContent: React.FC = () => {
     return 18;
   }, [erc20MetaRead.data]);
 
-  const wagerRangeWei = useMemo((): [bigint, bigint] => {
+  const positionSizeRangeWei = useMemo((): [bigint, bigint] => {
     try {
-      const minWei = parseUnits(String(wagerRange[0] || 0), tokenDecimals);
+      const minWei = parseUnits(
+        String(positionSizeRange[0] || 0),
+        tokenDecimals
+      );
       const maxWei =
-        wagerRange[1] === Infinity
+        positionSizeRange[1] === Infinity
           ? BigInt(
               '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
             )
-          : parseUnits(String(wagerRange[1]), tokenDecimals);
+          : parseUnits(String(positionSizeRange[1]), tokenDecimals);
       return [minWei, maxWei];
     } catch {
       return [
@@ -507,7 +529,7 @@ const TerminalPageContent: React.FC = () => {
         ),
       ];
     }
-  }, [wagerRange, tokenDecimals]);
+  }, [positionSizeRange, tokenDecimals]);
 
   const bidsRangeNum = useMemo((): [number, number] => {
     const minBids =
@@ -605,15 +627,15 @@ const TerminalPageContent: React.FC = () => {
       if (signedFilter === 'unsigned' && isSigned) return false;
 
       try {
-        const makerWagerWei = BigInt(String(auctionData?.wager ?? '0'));
+        const positionSizeWei = BigInt(String(auctionData?.wager ?? '0'));
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
         if (bidsRangeNum[1] !== Infinity && bidsCount > bidsRangeNum[1])
           return false;
-        // Check wager range
-        if (makerWagerWei < wagerRangeWei[0]) return false;
-        if (makerWagerWei > wagerRangeWei[1]) return false;
+        // Check position size range
+        if (positionSizeWei < positionSizeRangeWei[0]) return false;
+        if (positionSizeWei > positionSizeRangeWei[1]) return false;
         return true;
       } catch {
         // On parse failure, do not include the row
@@ -637,7 +659,7 @@ const TerminalPageContent: React.FC = () => {
     latestStartedByAuction,
     lastActivityByAuction,
     pinnedAuctions,
-    wagerRangeWei,
+    positionSizeRangeWei,
     bidsRangeNum,
     bidsCountByAuction,
     selectedCategorySlugs,
@@ -678,7 +700,7 @@ const TerminalPageContent: React.FC = () => {
       /* noop */
     }
   }, [
-    wagerRangeWei,
+    positionSizeRangeWei,
     bidsRangeNum,
     selectedCategorySlugs,
     selectedConditionIds,
@@ -818,6 +840,7 @@ const TerminalPageContent: React.FC = () => {
   return (
     <TerminalLogsProvider>
       <ApprovalDialogProvider>
+        <TradeNotifications />
         <div className="h-full min-h-0">
           <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
             {isCompact ? (
@@ -921,11 +944,11 @@ const TerminalPageContent: React.FC = () => {
                           />
                         </div>
 
-                        {/* Wager Range */}
+                        {/* Position Size Range */}
                         <div className="flex flex-col md:col-span-1">
-                          <MinWagerFilter
-                            value={wagerRange}
-                            onChange={setWagerRange}
+                          <MinPositionSizeFilter
+                            value={positionSizeRange}
+                            onChange={setPositionSizeRange}
                             unit={collateralAssetTicker}
                           />
                         </div>

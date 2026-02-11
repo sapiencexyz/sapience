@@ -14,7 +14,7 @@ export type PositionStatus = 'active' | 'won' | 'lost';
 
 export interface PositionsFilterState {
   status: PositionStatus[];
-  wagerRange: [number, number]; // in USDe, 0 to Infinity
+  positionSizeRange: [number, number]; // in USDe, 0 to Infinity
   dateRange: [number, number]; // days from now, -Infinity to Infinity
   searchTerm: string; // search prediction questions
 }
@@ -32,7 +32,7 @@ const STATUS_OPTIONS: StatusOption<PositionStatus>[] = [
 ];
 
 // Map slider bounds to Infinity for range filters
-const WAGER_SLIDER_MAX = 10000;
+const POSITION_SIZE_SLIDER_MAX = 10000;
 const DATE_SLIDER_MAX = 365;
 const DATE_SLIDER_MIN = -365;
 
@@ -43,20 +43,20 @@ export function PositionsTableFilters({
 }: PositionsTableFiltersProps) {
   const isMobile = useIsMobile();
 
-  // Map Infinity to slider max for wager display
-  const wagerSliderValue: [number, number] = [
-    filters.wagerRange[0],
-    filters.wagerRange[1] === Infinity
-      ? WAGER_SLIDER_MAX
-      : Math.min(filters.wagerRange[1], WAGER_SLIDER_MAX),
+  // Map Infinity to slider max for position size display
+  const positionSizeSliderValue: [number, number] = [
+    filters.positionSizeRange[0],
+    filters.positionSizeRange[1] === Infinity
+      ? POSITION_SIZE_SLIDER_MAX
+      : Math.min(filters.positionSizeRange[1], POSITION_SIZE_SLIDER_MAX),
   ];
 
-  const handleWagerChange = (value: [number, number]) => {
+  const handlePositionSizeChange = (value: [number, number]) => {
     onFiltersChange({
       ...filters,
-      wagerRange: [
+      positionSizeRange: [
         value[0],
-        value[1] >= WAGER_SLIDER_MAX ? Infinity : value[1],
+        value[1] >= POSITION_SIZE_SLIDER_MAX ? Infinity : value[1],
       ],
     });
   };
@@ -115,15 +115,17 @@ export function PositionsTableFilters({
         allLabel="All statuses"
       />
       <RangeFilter
-        placeholder="Any wager"
-        value={wagerSliderValue}
-        onChange={handleWagerChange}
+        placeholder="Any size"
+        value={positionSizeSliderValue}
+        onChange={handlePositionSizeChange}
         min={0}
-        max={WAGER_SLIDER_MAX}
+        max={POSITION_SIZE_SLIDER_MAX}
         step={10}
-        formatValue={(v) => (v >= WAGER_SLIDER_MAX ? '∞' : v.toLocaleString())}
+        formatValue={(v) =>
+          v >= POSITION_SIZE_SLIDER_MAX ? '∞' : v.toLocaleString()
+        }
         parseValue={(v) => {
-          if (v === '∞') return WAGER_SLIDER_MAX;
+          if (v === '∞') return POSITION_SIZE_SLIDER_MAX;
           return Number(v.replace(/,/g, ''));
         }}
         unit="USDe"
@@ -158,7 +160,7 @@ export function PositionsTableFilters({
 
 export const getDefaultPositionsFilterState = (): PositionsFilterState => ({
   status: [],
-  wagerRange: [0, Infinity],
+  positionSizeRange: [0, Infinity],
   dateRange: [-Infinity, Infinity],
   searchTerm: '',
 });

@@ -42,15 +42,16 @@ type ComboWithQuote = {
 
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
-const TAKER_WAGER_WEI = parseUnits('1', 18).toString();
+const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const chainId = CHAIN_ID_ETHEREAL;
+
   const { data: allConditions = [], isLoading } = useConditions({
-    take: 200,
+    take: 100,
     chainId,
   });
   const { addSelection, clearSelections } = useCreatePositionContext();
@@ -78,9 +79,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const [comboQuotes, setComboQuotes] = React.useState<ComboWithQuote[]>([]);
   const [hubTick, setHubTick] = React.useState(0);
 
-  // State for locking displayed combos (fade in once, never change)
+  // State for locking displayed combos (lock which combos, but allow price updates)
   const [isLocked, setIsLocked] = React.useState(false);
-  const [lockedCombos, setLockedCombos] = React.useState<ComboWithQuote[]>([]);
+  const [lockedIndices, setLockedIndices] = React.useState<number[]>([]);
   const [timeoutPassed, setTimeoutPassed] = React.useState(false);
 
   // Subscribe to hub updates
@@ -105,7 +106,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const comboToLegs = React.useCallback(
     (combo: ComboPick[]): Pick[] =>
       combo.map((leg) => ({
-        question: leg.condition.shortName || leg.condition.question,
+        question: leg.condition.question,
         choice: leg.prediction ? ('Yes' as const) : ('No' as const),
         conditionId: leg.condition.id,
         resolverAddress: leg.condition.resolver,
@@ -124,8 +125,6 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         if (!c.public) return false;
         const end = typeof c.endTime === 'number' ? c.endTime : 0;
         if (end <= nowSec) return false;
-        // Only include conditions that have similarMarkets
-        if (!c.similarMarkets || c.similarMarkets.length === 0) return false;
         return true;
       });
       if (publicConditions.length === 0) return [];
@@ -196,7 +195,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
     // Reset lock state so new combos can be displayed
     setIsLocked(false);
-    setLockedCombos([]);
+    setLockedIndices([]);
     setTimeoutPassed(false);
 
     // Request quotes with jittered timing
@@ -212,7 +211,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           }));
           const payload = buildAuctionStartPayload(outcomes, chainId);
           const requestPayload = {
-            wager: TAKER_WAGER_WEI,
+            wager: TAKER_POSITION_SIZE_WEI,
             resolver: payload.resolver,
             predictedOutcomes: payload.predictedOutcomes,
             taker: selectedTakerAddress,
@@ -266,12 +265,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     takerNonce,
   ]);
 
-  // Trigger quote requests when conditions load
+  // Trigger quote requests when conditions first load.
+  // Deliberately omit requestAllQuotes from deps: we only want this to fire
+  // once when data arrives, not re-fire when takerNonce/wsUrl change (which
+  // would reset comboQuotes and the timeout timer, causing permanent skeletons).
   React.useEffect(() => {
     if (!isLoading && allConditions.length > 0) {
       requestAllQuotes();
     }
-  }, [isLoading, allConditions.length, requestAllQuotes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, allConditions.length]);
 
   // Update probabilities from hub bids
   React.useEffect(() => {
@@ -291,13 +294,11 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           return BigInt(cur.makerWager) > BigInt(acc.makerWager) ? cur : acc;
         }, list[0]);
 
-        const taker = BigInt(TAKER_WAGER_WEI);
+        const taker = BigInt(TAKER_POSITION_SIZE_WEI);
         const maker = BigInt(String(best?.makerWager || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
-        // Allow probability to range from 0.1% to 99.9% to avoid division by zero
-        // while enabling chance display from <1% to >99%
-        const safeProbability = Math.max(0.001, Math.min(0.999, prob));
+        const safeProbability = Math.max(0, Math.min(1, prob));
 
         return {
           ...q,
@@ -312,31 +313,34 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   React.useEffect(() => {
     if (isLocked) return; // Already locked, don't update
 
-    const quotesWithProb = comboQuotes.filter(
-      (q) => q.probability !== null && q.status === 'received'
-    );
+    const quotesWithProb = comboQuotes
+      .map((q, idx) => ({ ...q, originalIndex: idx }))
+      .filter((q) => q.probability !== null && q.status === 'received');
     const allReceived = quotesWithProb.length >= NUM_QUOTES_TO_REQUEST;
     const hasAtLeastOne = quotesWithProb.length >= 1;
 
     // Lock when: all 9 received OR (timeout passed AND at least 1 received)
     if (allReceived || (timeoutPassed && hasAtLeastOne)) {
-      // Sort by highest probability (highest payout)
+      // Sort by highest probability (highest payout) and lock the indices
       const sorted = [...quotesWithProb].sort(
         (a, b) => (b.probability ?? 0) - (a.probability ?? 0)
       );
-      setLockedCombos(sorted.slice(0, NUM_TO_DISPLAY));
+      setLockedIndices(
+        sorted.slice(0, NUM_TO_DISPLAY).map((q) => q.originalIndex)
+      );
       setIsLocked(true);
     }
   }, [comboQuotes, timeoutPassed, isLocked]);
 
-  // Get top 3 - use locked combos once locked, otherwise empty (shows skeleton)
+  // Get top 3 - use locked indices to look up current values (allows price updates)
   const topCombos = React.useMemo(() => {
     if (isLocked) {
-      return lockedCombos;
+      // Map locked indices back to current comboQuotes for live price updates
+      return lockedIndices.map((idx) => comboQuotes[idx]).filter(Boolean);
     }
     // Return empty array while waiting (keeps skeleton visible)
     return [];
-  }, [isLocked, lockedCombos]);
+  }, [isLocked, lockedIndices, comboQuotes]);
 
   const handlePickCombo = React.useCallback(
     (combo: ComboPick[]) => {
@@ -344,7 +348,8 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
       combo.forEach((leg) => {
         addSelection({
           conditionId: leg.condition.id,
-          question: leg.condition.shortName || leg.condition.question,
+          question: leg.condition.question,
+          shortName: leg.condition.shortName,
           prediction: leg.prediction,
           categorySlug: leg.condition.category?.slug,
           resolverAddress: leg.condition.resolver,
@@ -361,7 +366,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         <h2 className="sc-heading text-foreground">
           Example combo
           <AnimatePresence mode="wait">
-            {!(isLocked && lockedCombos.length === 1) && (
+            {!(isLocked && lockedIndices.length === 1) && (
               <motion.span
                 key="plural-s"
                 initial={{ opacity: 1 }}
@@ -386,7 +391,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
       <div className="rounded-md border border-brand-white/20 overflow-hidden bg-brand-black">
         <Table className="w-full table-fixed">
           <TableBody>
-            {Array.from({ length: NUM_TO_DISPLAY }).map((_, idx) => {
+            {Array.from({
+              length: isLocked ? topCombos.length : NUM_TO_DISPLAY,
+            }).map((_, idx) => {
               const item = topCombos[idx];
               const isReady = !!item;
               const combo = item?.combo;
@@ -474,9 +481,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                   </span>
                                   <br />
                                   <span className="text-muted-foreground">
-                                    to win{' '}
+                                    payout
                                   </span>
-                                  <span className="text-brand-white font-medium font-mono">
+                                  <span className="text-brand-white font-medium font-mono ml-1">
                                     {(1 / (1 - probability)).toFixed(2)} USDe
                                   </span>
                                 </>
@@ -564,9 +571,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 className="font-mono text-ethena"
                               />
                               <span className="text-muted-foreground ml-1">
-                                implied by 1 USDe to win{' '}
+                                implied by 1 USDe for payout
                               </span>
-                              <span className="text-brand-white font-medium font-mono">
+                              <span className="text-brand-white font-medium font-mono ml-1">
                                 {(1 / (1 - probability)).toFixed(2)} USDe
                               </span>
                             </div>

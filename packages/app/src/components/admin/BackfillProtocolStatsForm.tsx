@@ -116,7 +116,7 @@ const BackfillProtocolStatsForm = () => {
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? (
           <>
-            <Loader size={12} />
+            <Loader className="w-3 h-3" />
             <span className="ml-2">Processing...</span>
           </>
         ) : (

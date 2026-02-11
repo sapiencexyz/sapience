@@ -61,7 +61,10 @@ export function useCollateralBalance({
   } = useBalance({
     address,
     chainId: effectiveChainId,
-    query: { enabled: enabled && Boolean(address) && isEtherealChain },
+    query: {
+      enabled: enabled && Boolean(address) && isEtherealChain,
+      refetchInterval: 5000,
+    },
   });
 
   const { data: wusdeDecimals, isLoading: isLoadingWusdeDecimals } =
@@ -70,7 +73,10 @@ export function useCollateralBalance({
       address: WUSDE_ADDRESS,
       functionName: 'decimals',
       chainId: effectiveChainId,
-      query: { enabled: enabled && Boolean(address) && isEtherealChain },
+      query: {
+        enabled: enabled && Boolean(address) && isEtherealChain,
+        refetchInterval: 5000,
+      },
     });
 
   const {
@@ -83,7 +89,10 @@ export function useCollateralBalance({
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: effectiveChainId,
-    query: { enabled: enabled && Boolean(address) && isEtherealChain },
+    query: {
+      enabled: enabled && Boolean(address) && isEtherealChain,
+      refetchInterval: 5000,
+    },
   });
 
   const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
@@ -94,7 +103,10 @@ export function useCollateralBalance({
       address: collateralAssetAddress,
       functionName: 'decimals',
       chainId: effectiveChainId,
-      query: { enabled: enabled && Boolean(address) && !isEtherealChain },
+      query: {
+        enabled: enabled && Boolean(address) && !isEtherealChain,
+        refetchInterval: 5000,
+      },
     });
 
   const {
@@ -107,7 +119,10 @@ export function useCollateralBalance({
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: effectiveChainId,
-    query: { enabled: enabled && Boolean(address) && !isEtherealChain },
+    query: {
+      enabled: enabled && Boolean(address) && !isEtherealChain,
+      refetchInterval: 5000,
+    },
   });
 
   const isLoading = isEtherealChain

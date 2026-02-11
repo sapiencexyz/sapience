@@ -1,5 +1,4 @@
 import { ImageResponse } from 'next/og';
-import { getBlockieSrc } from '~/lib/avatar';
 import { og } from '~/lib/theme/ogPalette';
 
 export const FONT_FAMILY = {
@@ -7,13 +6,11 @@ export const FONT_FAMILY = {
   sans: 'AvenirNextRounded, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto',
 } as const;
 
-const BASE_WIDTH = 1200;
-const BASE_HEIGHT = 630;
-export const WIDTH = 2400; // default 2×
-export const HEIGHT = 1260;
+export const WIDTH = 1200;
+export const HEIGHT = 630;
 
 export function getScale(width: number) {
-  return width / BASE_WIDTH;
+  return width / 1200;
 }
 
 export function normalizeText(val: string | null, max: number): string {
@@ -25,11 +22,6 @@ export function normalizeText(val: string | null, max: number): string {
     .slice(0, max);
 }
 
-export function parseEthereumAddress(raw: string | null): string {
-  const cleaned = (raw || '').toString().replace(/\s/g, '').toLowerCase();
-  return /^0x[a-f0-9]{40}$/.test(cleaned) ? cleaned : '';
-}
-
 export async function loadFontData(req: Request) {
   const fetchOptionalFont = async (path: string, timeoutMs = 250) => {
     try {
@@ -37,6 +29,7 @@ export async function loadFontData(req: Request) {
       const timeout = setTimeout(() => controller.abort(), timeoutMs);
       const res = await fetch(new URL(path, req.url), {
         signal: controller.signal,
+        cache: 'force-cache',
       });
       clearTimeout(timeout);
       if (!res.ok) return null;
@@ -51,19 +44,22 @@ export async function loadFontData(req: Request) {
       new URL(
         '/AvenirNextRoundedRegular-1080183-export/AvenirNextRoundedRegular-1080183.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     fetch(
       new URL(
         '/AvenirNextRoundedDemi-1080178-export/AvenirNextRoundedDemi-1080178.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     fetch(
       new URL(
         '/AvenirNextRoundedBold-1080176-export/AvenirNextRoundedBold-1080176.ttf',
         req.url
-      )
+      ),
+      { cache: 'force-cache' }
     ).then((res) => res.arrayBuffer()),
     // IBM Plex Mono - load reliably like Avenir fonts (no short timeout)
     fetchOptionalFont('/fonts/ibm-plex-mono/plex-mono-400.woff', 5000),
@@ -167,8 +163,8 @@ export function Background({
       <img
         src={bgUrl}
         alt=""
-        width={BASE_WIDTH * scale}
-        height={BASE_HEIGHT * scale}
+        width={1200 * scale}
+        height={630 * scale}
         style={{
           display: 'flex',
           width: '100%',
@@ -200,8 +196,8 @@ export function PredictionsLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -213,29 +209,25 @@ export function PredictionsLabel({
   );
 }
 
-function truncateAddress(addr: string): string {
-  if (!addr) return '';
-  return addr.slice(0, 6) + '…' + addr.slice(-4);
-}
-
 // Shared tagline component for footer
-function Tagline({ scale = 1 }: { scale?: number }) {
+export function Tagline({ scale = 1 }: { scale?: number }) {
   return (
     <div
       style={{
         display: 'flex',
-        marginTop: 20 * scale,
+        marginTop: 16 * scale,
         justifyContent: 'flex-start',
-        fontSize: 27 * scale,
+        fontSize: 22 * scale,
         lineHeight: `${36 * scale}px`,
-        fontWeight: 600,
-        color: og.colors.foregroundLight,
+        fontWeight: 400,
+        fontFamily: FONT_FAMILY.mono,
+        color: og.colors.accentGold,
       }}
     >
-      <span>Forecast the future on</span>
-      <span style={{ marginLeft: 6 * scale, color: og.colors.accentGold }}>
-        www.sapience.xyz
+      <span style={{ color: og.colors.mutedWhite64 }}>
+        powered by open source prediction markets on
       </span>
+      <span style={{ marginLeft: 12 * scale }}>sapience.xyz</span>
     </div>
   );
 }
@@ -249,8 +241,8 @@ function createStatsRowStyles(scale: number) {
     } as React.CSSProperties,
     valueStyle: {
       display: 'flex',
-      fontSize: 43 * scale,
-      lineHeight: `${43 * scale}px`,
+      fontSize: 32 * scale,
+      lineHeight: `${40 * scale}px`,
       fontWeight: 600,
       color: og.colors.brandWhite,
       fontFamily: FONT_FAMILY.mono,
@@ -260,19 +252,9 @@ function createStatsRowStyles(scale: number) {
       flexDirection: 'column',
       flex: 1,
     } as React.CSSProperties,
-    symbolStyle: {
-      display: 'flex',
-      fontSize: 32 * scale,
-      marginTop: 2 * scale,
-      lineHeight: `${32 * scale}px`,
-      fontWeight: 600,
-      color: og.colors.white,
-      fontFamily: FONT_FAMILY.mono,
-    } as React.CSSProperties,
     containerStyle: {
       display: 'flex',
       flexDirection: 'column',
-      flex: 1,
     } as React.CSSProperties,
     rowStyle: {
       display: 'flex',
@@ -282,143 +264,24 @@ function createStatsRowStyles(scale: number) {
   };
 }
 
-// Base footer wrapper component
-function BaseFooter({
-  addr,
-  avatarUrl,
-  scale = 1,
-  children,
-}: {
-  addr: string;
-  avatarUrl?: string | null;
-  scale?: number;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16 * scale,
-        marginLeft: -(180 + 34) * scale,
-        marginRight: -40 * scale,
-      }}
-    >
-      <div style={{ display: 'flex', marginLeft: (180 + 16) * scale }}>
-        <BottomIdentity addr={addr} avatarUrl={avatarUrl} scale={scale} />
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          flex: 1,
-          minWidth: 0,
-          marginTop: -32 * scale,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function BottomIdentity({
-  addr,
-  avatarUrl,
-  scale = 1,
-}: {
-  addr: string;
-  avatarUrl?: string | null;
-  scale?: number;
-}) {
-  const avatarSize = 144 * scale;
-  const radius = 6 * scale; // tighter rounding per request
-  return (
-    <div
-      style={{
-        display: 'flex',
-        width: 180 * scale,
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
-    >
-      <div
-        style={{
-          position: 'relative',
-          width: avatarSize,
-          height: avatarSize,
-          display: 'flex',
-        }}
-      >
-        <img
-          src={getBlockieSrc(addr)}
-          alt=""
-          width={avatarSize}
-          height={avatarSize}
-          style={{
-            display: 'flex',
-            width: avatarSize,
-            height: avatarSize,
-            borderRadius: radius,
-            objectFit: 'cover',
-            background: 'rgba(255,255,255,0.06)',
-            border: `1px solid rgba(255,255,255,0.1)`,
-          }}
-        />
-        {avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt=""
-            width={avatarSize}
-            height={avatarSize}
-            style={{
-              position: 'absolute',
-              top: Math.max(2, Math.round(6 * scale)),
-              left: Math.max(2, Math.round(6 * scale)),
-              display: 'flex',
-              width: avatarSize - Math.max(4, Math.round(12 * scale)),
-              height: avatarSize - Math.max(4, Math.round(12 * scale)),
-              borderRadius: Math.max(2, Math.round(radius - 2 * scale)),
-              objectFit: 'contain',
-              background: 'rgba(0,0,0,0.08)',
-              border: `1px solid rgba(255,255,255,0.12)`,
-            }}
-          />
-        ) : null}
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          marginTop: 12 * scale,
-          fontSize: 20 * scale,
-          lineHeight: `${24 * scale}px`,
-          fontWeight: 600,
-          color: og.colors.mutedWhite64,
-          fontFamily: FONT_FAMILY.mono,
-        }}
-      >
-        {truncateAddress(addr)}
-      </div>
-    </div>
-  );
-}
-
 function StatsRow({
-  wager,
+  positionSize,
   payout,
   potentialReturn,
+  implied,
   symbol: _symbol,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   potentialReturn?: string | null;
+  implied?: string | null;
   symbol?: string;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   const parseNumber = (val?: string | null): number => {
     if (!val) return 0;
@@ -426,16 +289,17 @@ function StatsRow({
     const n = Number(cleaned);
     return Number.isFinite(n) ? n : 0;
   };
-  const wagerNum = parseNumber(wager);
+  const positionSizeNum = parseNumber(positionSize);
   const returnNum = parseNumber(potentialReturn);
   const returnPercent =
-    wagerNum > 0 && returnNum > 0
-      ? Math.round((returnNum / wagerNum) * 100)
+    positionSizeNum > 0 && returnNum > 0
+      ? Math.round((returnNum / positionSizeNum) * 100)
       : null;
   const returnColor =
     returnPercent !== null && returnPercent < 100
       ? og.colors.danger
       : og.colors.success;
+  const hasPayout = Boolean(payout);
   const hasReturn = Boolean(potentialReturn && showReturn);
   const styles = createStatsRowStyles(scale);
   const symbolText = normalizeSymbol(_symbol);
@@ -444,7 +308,7 @@ function StatsRow({
       <div style={styles.rowStyle}>
         <div
           style={
-            hasReturn
+            hasReturn || hasPayout
               ? styles.colStyle
               : {
                   ...styles.colStyle,
@@ -454,56 +318,55 @@ function StatsRow({
           }
         >
           <div style={styles.labelWrapperStyle}>
-            <FooterLabel scale={scale}>Wagered</FooterLabel>
+            <FooterLabel scale={scale}>Position Size</FooterLabel>
           </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <div style={styles.valueStyle}>{wager}</div>
-            {symbolText ? (
-              <div style={styles.symbolStyle}>{symbolText}</div>
-            ) : null}
+          <div style={styles.valueStyle}>
+            {positionSize}
+            {symbolText ? ` ${symbolText}` : ''}
           </div>
         </div>
-        <div style={styles.colStyle}>
-          <div style={styles.labelWrapperStyle}>
-            <FooterLabel scale={scale}>To Win</FooterLabel>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8 * scale,
-              whiteSpace: 'nowrap',
-            }}
-          >
+        {hasPayout ? (
+          <div style={styles.colStyle}>
+            <div style={styles.labelWrapperStyle}>
+              <FooterLabel scale={scale}>Payout</FooterLabel>
+            </div>
             <div
               style={{
                 ...styles.valueStyle,
-                color: forceToWinGreen
+                color: forcePayoutGreen
                   ? og.colors.success
                   : styles.valueStyle.color,
               }}
             >
               {payout}
+              {symbolText ? ` ${symbolText}` : ''}
             </div>
-            {symbolText ? (
+          </div>
+        ) : null}
+        {hasPayout && implied ? (
+          <div style={styles.colStyle}>
+            <div style={styles.labelWrapperStyle}>
+              <FooterLabel scale={scale}>Implied</FooterLabel>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: 8 * scale,
+                whiteSpace: 'nowrap',
+              }}
+            >
               <div
                 style={{
-                  ...styles.symbolStyle,
-                  color: forceToWinGreen ? og.colors.success : og.colors.white,
+                  ...styles.valueStyle,
+                  color: og.colors.ethenaBlue,
                 }}
               >
-                {symbolText}
+                {implied} Chance
               </div>
-            ) : null}
+            </div>
           </div>
-        </div>
+        ) : null}
         {hasReturn ? (
           <div style={styles.colStyle}>
             <div style={styles.labelWrapperStyle}>
@@ -539,38 +402,35 @@ function StatsRow({
 }
 
 export function Footer({
-  addr,
-  avatarUrl,
-  wager,
+  positionSize,
   payout,
   symbol,
   potentialReturn,
+  implied,
   scale = 1,
   showReturn = true,
-  forceToWinGreen = false,
+  forcePayoutGreen = false,
 }: {
-  addr: string;
-  avatarUrl?: string | null;
-  wager?: string;
+  positionSize?: string;
   payout?: string;
   symbol?: string;
   potentialReturn?: string | null;
+  implied?: string | null;
   scale?: number;
   showReturn?: boolean;
-  forceToWinGreen?: boolean;
+  forcePayoutGreen?: boolean;
 }) {
   return (
-    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
-      <StatsRow
-        wager={wager}
-        payout={payout}
-        symbol={symbol}
-        potentialReturn={potentialReturn}
-        scale={scale}
-        showReturn={showReturn}
-        forceToWinGreen={forceToWinGreen}
-      />
-    </BaseFooter>
+    <StatsRow
+      positionSize={positionSize}
+      payout={payout}
+      symbol={symbol}
+      potentialReturn={potentialReturn}
+      implied={implied}
+      scale={scale}
+      showReturn={showReturn}
+      forcePayoutGreen={forcePayoutGreen}
+    />
   );
 }
 
@@ -629,29 +489,23 @@ function ForecastStatsRow({
 }
 
 export function ForecastFooter({
-  addr,
-  avatarUrl,
   resolution,
   horizon,
   odds,
   scale = 1,
 }: {
-  addr: string;
-  avatarUrl?: string | null;
   resolution?: string | null;
   horizon?: string | null;
   odds?: string | null;
   scale?: number;
 }) {
   return (
-    <BaseFooter addr={addr} avatarUrl={avatarUrl} scale={scale}>
-      <ForecastStatsRow
-        resolution={resolution || ''}
-        horizon={horizon || ''}
-        odds={odds || ''}
-        scale={scale}
-      />
-    </BaseFooter>
+    <ForecastStatsRow
+      resolution={resolution || ''}
+      horizon={horizon || ''}
+      odds={odds || ''}
+      scale={scale}
+    />
   );
 }
 
@@ -675,10 +529,10 @@ export function contentContainerStyle(scale = 1): React.CSSProperties {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    paddingTop: (80 - 40) * scale,
-    paddingRight: 80 * scale,
-    paddingBottom: (80 - 40) * scale,
-    paddingLeft: 80 * scale,
+    paddingTop: 80 * scale,
+    paddingRight: 40 * scale,
+    paddingBottom: 40 * scale,
+    paddingLeft: 40 * scale,
     width: '100%',
     height: '100%',
   } as const;
@@ -696,8 +550,8 @@ export function SectionLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -720,8 +574,8 @@ function FooterLabel({
     <div
       style={{
         display: 'flex',
-        fontSize: 24 * scale,
-        lineHeight: `${30 * scale}px`,
+        fontSize: 20 * scale,
+        lineHeight: `${26 * scale}px`,
         fontWeight: 600,
         color: og.colors.foregroundLight,
         textTransform: 'uppercase',
@@ -846,21 +700,25 @@ function getPillColors(tone: PillTone): {
   return { border: t.border, fg: t.fg, bg: t.bg };
 }
 
-function computePillStyle(scale: number, tone: PillTone): React.CSSProperties {
+function computePillStyle(
+  scale: number,
+  tone: PillTone,
+  compact = false
+): React.CSSProperties {
   const isHighlighted = tone === 'success' || tone === 'danger';
   const colors = getPillColors(tone);
 
   const borderWidth = Math.max(1, Math.round((isHighlighted ? 2 : 1) * scale));
-  const paddingY = Math.max(0, Math.round(3 * scale));
-  const paddingX = Math.max(0, Math.round(10 * scale));
-  const fontSize = Math.round(20 * scale);
-  const lineHeight = Math.round(24 * scale);
+  const paddingY = Math.max(0, Math.round((compact ? 2 : 3) * scale));
+  const paddingX = Math.max(0, Math.round((compact ? 7 : 10) * scale));
+  const fontSize = Math.round((compact ? 14 : 20) * scale);
+  const lineHeight = Math.round((compact ? 18 : 24) * scale);
 
   return {
     display: 'flex',
     alignItems: 'center',
     padding: `${paddingY}px ${paddingX}px`,
-    borderRadius: Math.round(6 * scale),
+    borderRadius: Math.round((compact ? 4 : 6) * scale),
     background: colors.bg,
     color: colors.fg,
     fontWeight: 600,
@@ -879,23 +737,25 @@ export function Pill({
   text,
   tone = 'neutral',
   scale = 1,
+  compact = false,
 }: {
   text: string;
   tone?: PillTone;
   scale?: number;
+  compact?: boolean;
 }) {
-  return <div style={computePillStyle(scale, tone)}>{text}</div>;
+  return <div style={computePillStyle(scale, tone, compact)}>{text}</div>;
 }
 
 export function computePotentialReturn(
-  wager: string,
+  positionSize: string,
   payout: string
 ): string | null {
-  const w = Number(String(wager || '0').replace(/,/g, ''));
+  const w = Number(String(positionSize || '0').replace(/,/g, ''));
   const p = Number(String(payout || '0').replace(/,/g, ''));
   if (!Number.isFinite(w) || !Number.isFinite(p)) return null;
-  // For ROI we want profit ("to win") over wager, not stake+profit.
-  // Return the "to win" amount so downstream percent is p / w.
+  // For ROI we want profit (payout) over position size, not stake+profit.
+  // Return the payout amount so downstream percent is p / w.
   const profit = p;
   if (profit <= 0) return null;
   return addThousandsSeparators(profit.toFixed(profit < 1 ? 4 : 2));
@@ -928,6 +788,92 @@ export function createErrorImageResponse(err: unknown): ImageResponse {
     width: WIDTH,
     height: HEIGHT,
   });
+}
+
+// Resolution status for position legs
+export type ResolutionStatus = 'correct' | 'incorrect' | 'pending';
+
+// Inline resolution icon rendered to the left of each prediction question.
+// Renders a filled circle (20% opacity) with a status icon stroke in full color.
+// Uses separate return paths per status to avoid fragments/conditionals inside SVG (Satori limitation).
+export function ResolutionIcon({
+  status,
+  scale = 1,
+  compact = false,
+}: {
+  status: ResolutionStatus;
+  scale?: number;
+  compact?: boolean;
+}) {
+  const size = Math.round((compact ? 28 : 34) * scale);
+  const color =
+    status === 'correct'
+      ? og.colors.success
+      : status === 'incorrect'
+        ? og.colors.danger
+        : og.colors.foregroundLight;
+  const bgColor = toRgba(color, 0.2);
+  const svgStyle: React.CSSProperties = {
+    display: 'flex',
+    flexShrink: 0,
+    marginRight: (compact ? 10 : 14) * scale,
+  };
+
+  if (status === 'correct') {
+    const sw = Math.max(1, 1.5 * scale);
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+        <circle cx="14" cy="14" r="13" fill={bgColor} />
+        <path
+          d="M9 14.5L12.5 18L19 10.5"
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
+  }
+
+  if (status === 'incorrect') {
+    const sw = Math.max(1, 1.5 * scale);
+    return (
+      <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+        <circle cx="14" cy="14" r="13" fill={bgColor} />
+        <path
+          d="M10.5 10.5L17.5 17.5M17.5 10.5L10.5 17.5"
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  // pending — clock icon, neutral foreground to match COMING SOON badge style
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" style={svgStyle}>
+      <circle cx="14" cy="14" r="13" fill={bgColor} />
+      <circle
+        cx="14"
+        cy="14"
+        r="5.75"
+        fill="none"
+        stroke={color}
+        strokeWidth="1"
+      />
+      <path
+        d="M14 10.75V14.25L16.5 16"
+        fill="none"
+        stroke={color}
+        strokeWidth="1"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 export { og };

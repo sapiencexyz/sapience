@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useAuctionBids } from '~/lib/auction/useAuctionBids';
+import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
@@ -54,7 +54,6 @@ const AuctionRequestRow: React.FC<Props> = ({
   isExpanded: isExpandedProp,
   onToggleExpanded,
 }) => {
-  const { bids } = useAuctionBids(auctionId);
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
   const chainId = CHAIN_ID_ETHEREAL;
@@ -138,30 +137,41 @@ const AuctionRequestRow: React.FC<Props> = ({
         enabled: Boolean(PREDICTION_MARKET_ADDRESS && taker),
       },
     });
+
   // Use controlled expanded state if provided, otherwise fall back to local state
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = isExpandedProp ?? localExpanded;
-  const [highlightNewBid, setHighlightNewBid] = useState(false);
-  const numBids = useMemo(
-    () => (Array.isArray(bids) ? bids.length : 0),
-    [bids]
+
+  // Use validated auction bids - validates bids by simulating mint transactions
+  // Only run validation when the row is expanded to save RPC calls
+  const { validBids, invalidBidCount, totalBidCount } = useValidatedAuctionBids(
+    auctionId,
+    {
+      chainId,
+      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+      takerAddress: taker as `0x${string}` | undefined,
+      takerWager: takerWager ?? undefined,
+      takerNonce: takerNonce ?? undefined,
+      encodedPredictedOutcomes: predictedOutcomes?.[0] as
+        | `0x${string}`
+        | undefined,
+      resolver: resolver as `0x${string}` | undefined,
+      enabled: isExpanded,
+    }
   );
+  const [highlightNewBid, setHighlightNewBid] = useState(false);
+  const numBids = totalBidCount;
   const bidsLabel = useMemo(
     () => (numBids === 1 ? '1 BID' : `${numBids} BIDS`),
     [numBids]
   );
 
+  // Compute best bid summary from valid bids only
+  // validBids are already filtered for non-expired and valid status
   const bestBidSummary = useMemo(() => {
     try {
-      if (!Array.isArray(bids) || bids.length === 0) return null;
-      const nowMs = Date.now();
-      const active = bids.filter((b) => {
-        const deadlineSec = Number(b?.makerDeadline || 0);
-        if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
-        return deadlineSec * 1000 > nowMs;
-      });
-      if (active.length === 0) return null;
-      const best = active.reduce((prev, curr) => {
+      if (!Array.isArray(validBids) || validBids.length === 0) return null;
+      const best = validBids.reduce((prev, curr) => {
         try {
           const currVal = BigInt(String(curr?.makerWager ?? '0'));
           const prevVal = BigInt(String(prev?.makerWager ?? '0'));
@@ -169,7 +179,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         } catch {
           return prev;
         }
-      }, active[0]);
+      }, validBids[0]);
       const makerBid = (() => {
         try {
           return BigInt(String(best?.makerWager ?? '0'));
@@ -187,7 +197,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       const total = makerBid + requester;
 
       let bidDisplay = '—';
-      let toWinDisplay = '—';
+      let payoutDisplay = '—';
       try {
         const bidNum = Number(formatEther(makerBid));
         if (Number.isFinite(bidNum)) {
@@ -200,9 +210,9 @@ const AuctionRequestRow: React.FC<Props> = ({
         /* noop */
       }
       try {
-        const toWinNum = Number(formatEther(total));
-        if (Number.isFinite(toWinNum)) {
-          toWinDisplay = toWinNum.toLocaleString(undefined, {
+        const payoutNum = Number(formatEther(total));
+        if (Number.isFinite(payoutNum)) {
+          payoutDisplay = payoutNum.toLocaleString(undefined, {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           });
@@ -222,13 +232,13 @@ const AuctionRequestRow: React.FC<Props> = ({
       }
       return {
         bidDisplay,
-        toWinDisplay,
+        payoutDisplay,
         pct,
       };
     } catch {
       return null;
     }
-  }, [bids, takerWager]);
+  }, [validBids, takerWager]);
 
   const takerWagerDisplay = useMemo(() => {
     try {
@@ -256,9 +266,9 @@ const AuctionRequestRow: React.FC<Props> = ({
       ? `${takerWagerDisplay} ${collateralAssetTicker}`
       : '—';
   const secondaryAmountText = bestBidSummary
-    ? bestBidSummary.toWinDisplay === '—'
+    ? bestBidSummary.payoutDisplay === '—'
       ? '—'
-      : `${bestBidSummary.toWinDisplay} ${collateralAssetTicker}`
+      : `${bestBidSummary.payoutDisplay} ${collateralAssetTicker}`
     : null;
   const hasBestBid = Boolean(bestBidSummary);
 
@@ -456,7 +466,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           if (!encodedPredicted) missing.push('predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
           if (takerNonceVal === undefined) missing.push('maker nonce');
-          if (takerWagerWei <= 0n) missing.push('taker wager');
+          if (takerWagerWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
           toast({
             title: 'Request not ready',
@@ -483,12 +493,12 @@ const AuctionRequestRow: React.FC<Props> = ({
         });
 
         if (result.success) {
-          // Calculate total to win (makerWager + takerWager)
+          // Calculate total payout (makerWager + takerWager)
           const totalWei = makerWagerWei + takerWagerWei;
           const decimalsForFormat = Number.isFinite(tokenDecimals)
             ? tokenDecimals
             : 18;
-          const toWinFormatted = Number(
+          const payoutFormatted = Number(
             formatUnits(totalWei, decimalsForFormat)
           ).toLocaleString(undefined, {
             minimumFractionDigits: 2,
@@ -500,7 +510,7 @@ const AuctionRequestRow: React.FC<Props> = ({
             source: 'manual',
             action: 'submitted',
             amount: data.amount,
-            toWinAmount: toWinFormatted,
+            payoutAmount: payoutFormatted,
             collateralSymbol: collateralAssetTicker,
             meta: {
               auctionId,
@@ -575,7 +585,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           </span>
           {hasBestBid ? (
             <>
-              <span className="text-muted-foreground">to win</span>
+              <span className="text-muted-foreground">for payout</span>
               <span className="font-mono text-brand-white tabular-nums">
                 {secondaryAmountText ?? '—'}
               </span>
@@ -664,17 +674,18 @@ const AuctionRequestRow: React.FC<Props> = ({
             }}
           >
             <AuctionRequestChart
-              bids={bids}
+              bids={validBids}
               takerWager={takerWager}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               taker={taker}
               hasMultipleConditions={conditionIds.length > 1}
               tokenDecimals={tokenDecimals}
+              invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
               uiTx={uiTx}
-              bids={bids}
+              bids={validBids}
               takerWager={takerWager}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}

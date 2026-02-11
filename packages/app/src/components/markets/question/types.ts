@@ -11,18 +11,20 @@ export type CombinedPrediction = {
 export type PredictionData = {
   x: number;
   y: number;
-  wager: number;
+  positionSize: number;
   predictor: string;
   counterparty: string;
   predictorPrediction: boolean; // true = predictor (maker) predicts YES, false = NO
-  predictorCollateral: number; // Predictor's wager amount
-  counterpartyCollateral: number; // Counterparty's wager amount
+  predictorCollateral: number; // Predictor's position size
+  counterpartyCollateral: number; // Counterparty's position size
   time: string;
   combinedPredictions?: CombinedPrediction[];
   combinedWithYes?: boolean; // true = combined predictions are tied to YES outcome
   comment?: string; // Optional comment text from forecast
   attester?: string; // Forecaster's address
   predictionPercent?: number; // Prediction as percentage (0-100)
+  marketAddress?: string; // Market contract address for position link
+  nftTokenId?: string; // NFT token ID for position link
 };
 
 // Type for forecast data used in scatter plot

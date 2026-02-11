@@ -517,22 +517,12 @@ export function useSapienceWriteContract({
       });
       timings.sendUserOpMs = Date.now() - sendStart;
 
-      // Notify that bundler accepted - now waiting for block inclusion
+      // Notify that bundler accepted - skip CONFIRMING stage, go directly to INDEXING
+      // The GraphQL polling in OgShareDialogBase will confirm the trade
       onTxSent?.(userOpHash);
-
-      // Step 3: Wait for bundler to include user op in a block
-      const waitStart = Date.now();
-      const receipt = await sessionClient.waitForUserOperationReceipt({
-        hash: userOpHash,
-      });
-      timings.waitForReceiptMs = Date.now() - waitStart;
-
-      const txHash = receipt.receipt.transactionHash;
-
-      // Notify that receipt was confirmed - now waiting for indexer
       onReceiptConfirmed?.();
 
-      // Log final summary
+      // Log final summary (no waitForReceipt - relying on indexer polling)
       timings.totalMs = Date.now() - startTime;
       console.log('[SessionTx] ═══════════════════════════════════════════');
       console.log('[SessionTx] TIMING BREAKDOWN:');
@@ -542,16 +532,16 @@ export function useSapienceWriteContract({
       console.log(
         `[SessionTx]   2. sendUserOperation:    ${String(timings.sendUserOpMs).padStart(5)}ms  ← (paymaster + bundler submit)`
       );
-      console.log(
-        `[SessionTx]   3. waitForReceipt:       ${String(timings.waitForReceiptMs).padStart(5)}ms  ← (block confirmation)`
-      );
       console.log(`[SessionTx]   ─────────────────────────────`);
       console.log(
         `[SessionTx]   TOTAL:                   ${String(timings.totalMs).padStart(5)}ms`
       );
+      console.log(
+        '[SessionTx] (skipping on-chain wait - indexer polling will confirm)'
+      );
       console.log('[SessionTx] ═══════════════════════════════════════════');
 
-      return txHash;
+      return userOpHash;
     },
     [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
   );
@@ -625,12 +615,11 @@ export function useSapienceWriteContract({
               ];
               const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
-              const txHashFromSession = await executeViaSessionKey(
-                sessionClient,
-                calls,
-                _chainId
-              );
-              handleTransactionSuccess(txHashFromSession);
+              await executeViaSessionKey(sessionClient, calls, _chainId);
+              // Don't pass userOpHash to handleTransactionSuccess — it's not a real
+              // transaction hash and useMonitorTxStatus (wagmi getTransactionReceipt)
+              // would fail to look it up, showing a false "Transaction Failed" toast.
+              handleTransactionSuccess();
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);
@@ -837,14 +826,23 @@ export function useSapienceWriteContract({
                 _chainId
               );
 
-              const txHashFromSession = await executeViaSessionKey(
+              console.log(
+                '[useSapienceWriteContract] Executing via session key...'
+              );
+              const userOpHash = await executeViaSessionKey(
                 sessionClient,
                 formattedCalls,
                 _chainId
               );
+              console.log(
+                '[useSapienceWriteContract] Session key execution complete, userOpHash:',
+                userOpHash
+              );
 
-              // Use consistent completion handler (same as EOA path)
-              completeSendCallsWithHash(txHashFromSession);
+              // For session key path, don't set txHash to avoid useMonitorTxStatus error
+              // The userOpHash is not a transaction hash and can't be looked up via getTransactionReceipt
+              // We rely on GraphQL polling in OgShareDialogBase to confirm the trade
+              completeSendCallsWithoutHash();
               return;
             } catch (sessionError: unknown) {
               console.error('[Session] UserOperation failed:', sessionError);

@@ -74,6 +74,59 @@ const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 
 /**
+ * Strip the `parameters` field from userOp objects in RPC requests.
+ * viem 2.33+ adds this field for EIP-7702 support, but ZeroDev's RPC doesn't recognize it.
+ */
+function stripParametersFromUserOp(params: unknown): unknown {
+  if (!Array.isArray(params)) return params;
+
+  return params.map((param) => {
+    if (param && typeof param === 'object' && 'userOp' in param) {
+      const { userOp, ...rest } = param as { userOp: Record<string, unknown> };
+      if (userOp && typeof userOp === 'object' && 'parameters' in userOp) {
+        const { parameters: _parameters, ...cleanUserOp } = userOp;
+        return { ...rest, userOp: cleanUserOp };
+      }
+    }
+    return param;
+  });
+}
+
+/**
+ * Create a transport wrapper that strips the `parameters` field from userOp.
+ * This fixes compatibility between viem 2.33+ and ZeroDev's RPC.
+ */
+function createZeroDevCompatibleTransport(
+  url: string
+): ReturnType<typeof http> {
+  const baseTransport = http(url);
+
+  // Return a transport factory that wraps the base transport
+  return ((config) => {
+    const transport = baseTransport(config);
+
+    return {
+      ...transport,
+      request: async (args: { method: string; params?: unknown }) => {
+        // Strip `parameters` field from userOp for ZeroDev RPC methods
+        if (
+          args.params &&
+          (args.method === 'zd_sponsorUserOperation' ||
+            args.method === 'eth_estimateUserOperationGas' ||
+            args.method === 'eth_sendUserOperation')
+        ) {
+          return transport.request({
+            ...args,
+            params: stripParametersFromUserOp(args.params),
+          });
+        }
+        return transport.request(args);
+      },
+    };
+  }) as ReturnType<typeof http>;
+}
+
+/**
  * Get ZeroDev bundler/paymaster URLs for a chain.
  * ZeroDev v3 API format: https://rpc.zerodev.app/api/v3/{projectId}/chain/{chainId}
  */
@@ -686,13 +739,13 @@ function createChainClient(
 
   const paymasterClient = createZeroDevPaymasterClient({
     chain,
-    transport: http(paymasterUrl),
+    transport: createZeroDevCompatibleTransport(paymasterUrl),
   });
 
   return createKernelAccountClient({
     account,
     chain,
-    bundlerTransport: http(bundlerUrl),
+    bundlerTransport: createZeroDevCompatibleTransport(bundlerUrl),
     paymaster: {
       getPaymasterData: async (userOperation) => {
         const paymasterStart = Date.now();

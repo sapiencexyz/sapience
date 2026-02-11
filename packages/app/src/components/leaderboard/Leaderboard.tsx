@@ -31,11 +31,11 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Info, BarChart2, Target } from 'lucide-react';
-import { useAccount } from 'wagmi';
 import ProfitCell from './ProfitCell';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import type { AggregatedLeaderboardEntry } from '~/hooks/graphql/useLeaderboard';
 import { useLeaderboard } from '~/hooks/graphql/useLeaderboard';
 import {
@@ -56,7 +56,7 @@ const RankCell = ({ row }: { row: { index: number } }) => (
 
 const LoadingIndicator = () => (
   <div className="flex justify-center items-center min-h-[200px] w-full">
-    <Loader size={16} />
+    <Loader className="w-4 h-4" />
   </div>
 );
 
@@ -145,7 +145,7 @@ const Leaderboard = () => {
 
 const PnLLeaderboard = () => {
   const { leaderboardData, isLoading } = useLeaderboard();
-  const { address } = useAccount();
+  const { currentAddress: address } = useCurrentAddress();
 
   const columns = useMemo<ColumnDef<AggregatedLeaderboardEntry>[]>(
     () => [
@@ -321,7 +321,7 @@ export default Leaderboard;
 
 const AccuracyLeaderboard = () => {
   const { data, isLoading } = useAccuracyLeaderboard(100);
-  const { address } = useAccount();
+  const { currentAddress: address } = useCurrentAddress();
 
   const columns = useMemo<ColumnDef<ForecasterScore>[]>(
     () => [

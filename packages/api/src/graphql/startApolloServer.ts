@@ -7,55 +7,38 @@ import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
 import depthLimit from 'graphql-depth-limit';
-import { createComplexityLimitRule } from 'graphql-validation-complexity';
+import { GraphQLError } from 'graphql';
+import { validateQuery } from './queryValidation.js';
+import {
+  getComplexity,
+  simpleEstimator,
+  fieldExtensionsEstimator,
+  listMultiplierEstimator,
+  fieldCostEstimator,
+} from './queryComplexity.js';
 import { config } from '../config';
 import Sentry from '../instrument';
 
-// Import only the query (read-only) resolvers from generated TypeGraphQL
+// Import only the actively-used query resolvers from generated TypeGraphQL
+// See graphql-audit._ljm_.md for the full audit of which resolvers are used by consumers
 import {
-  // Category queries
-  AggregateCategoryResolver,
-  FindFirstCategoryResolver,
-  FindFirstCategoryOrThrowResolver,
-  FindManyCategoryResolver,
-  FindUniqueCategoryResolver,
-  FindUniqueCategoryOrThrowResolver,
-  GroupByCategoryResolver,
-
-  // Attestation queries
-  AggregateAttestationResolver,
-  FindFirstAttestationResolver,
-  FindFirstAttestationOrThrowResolver,
+  // Attestation: only FindMany (used by app)
   FindManyAttestationResolver,
-  FindUniqueAttestationResolver,
-  FindUniqueAttestationOrThrowResolver,
-  GroupByAttestationResolver,
 
-  // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
-  // are replaced by custom ConditionResolver which defaults public: true)
-  AggregateConditionResolver,
-  FindFirstConditionOrThrowResolver,
+  // Category: only FindMany (used by app)
+  FindManyCategoryResolver,
+
+  // Condition: only FindUnique (used by sdk, parlay-bot)
+  // FindMany and FindFirst are replaced by custom ConditionResolver
   FindUniqueConditionResolver,
-  FindUniqueConditionOrThrowResolver,
-  GroupByConditionResolver,
 
-  // ConditionGroup queries
-  AggregateConditionGroupResolver,
-  FindFirstConditionGroupResolver,
-  FindFirstConditionGroupOrThrowResolver,
+  // ConditionGroup: FindUnique (used by parlay-bot) + FindMany (used by app)
   FindManyConditionGroupResolver,
   FindUniqueConditionGroupResolver,
-  FindUniqueConditionGroupOrThrowResolver,
-  GroupByConditionGroupResolver,
 
-  // User queries
-  AggregateUserResolver,
-  FindFirstUserResolver,
-  FindFirstUserOrThrowResolver,
+  // User: FindUnique (used by app) + FindMany (deprecated, kept for admin use)
   FindManyUserResolver,
   FindUniqueUserResolver,
-  FindUniqueUserOrThrowResolver,
-  GroupByUserResolver,
 } from '@generated/type-graphql';
 
 // Import the custom resolvers to keep
@@ -74,52 +57,16 @@ export interface ApolloContext {
 }
 
 export const initializeApolloServer = async () => {
-  // Define the query-only resolvers
+  // Generated query resolvers — only those with verified consumer usage
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   const queryResolvers: Function[] = [
-    // Category queries
-    AggregateCategoryResolver,
-    FindFirstCategoryResolver,
-    FindFirstCategoryOrThrowResolver,
-    FindManyCategoryResolver,
-    FindUniqueCategoryResolver,
-    FindUniqueCategoryOrThrowResolver,
-    GroupByCategoryResolver,
-
-    // Attestation queries
-    AggregateAttestationResolver,
-    FindFirstAttestationResolver,
-    FindFirstAttestationOrThrowResolver,
     FindManyAttestationResolver,
-    FindUniqueAttestationResolver,
-    FindUniqueAttestationOrThrowResolver,
-    GroupByAttestationResolver,
-
-    // Condition queries (FindManyConditionResolver and FindFirstConditionResolver
-    // replaced by custom ConditionResolver which defaults public: true)
-    AggregateConditionResolver,
-    FindFirstConditionOrThrowResolver,
+    FindManyCategoryResolver,
     FindUniqueConditionResolver,
-    FindUniqueConditionOrThrowResolver,
-    GroupByConditionResolver,
-
-    // ConditionGroup queries
-    AggregateConditionGroupResolver,
-    FindFirstConditionGroupResolver,
-    FindFirstConditionGroupOrThrowResolver,
     FindManyConditionGroupResolver,
     FindUniqueConditionGroupResolver,
-    FindUniqueConditionGroupOrThrowResolver,
-    GroupByConditionGroupResolver,
-
-    // User queries
-    AggregateUserResolver,
-    FindFirstUserResolver,
-    FindFirstUserOrThrowResolver,
     FindManyUserResolver,
     FindUniqueUserResolver,
-    FindUniqueUserOrThrowResolver,
-    GroupByUserResolver,
   ];
 
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
@@ -141,68 +88,135 @@ export const initializeApolloServer = async () => {
     emitSchemaFile: true,
   });
 
-  // Get max complexity from environment variable or use default
-  const maxComplexity = process.env.GRAPHQL_MAX_COMPLEXITY
-    ? parseInt(process.env.GRAPHQL_MAX_COMPLEXITY, 10)
-    : 4000;
+  // Default of 10000 allows all legitimate app queries (max ~8700) while blocking
+  // deeply nested queries like conditions(take: 200) with 5 levels of nesting (~55000)
+  const maxComplexity = config.GRAPHQL_MAX_COMPLEXITY;
 
   console.log(`GraphQL query complexity limit set to: ${maxComplexity}`);
 
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
     schema,
-    formatError: (error) => {
+    formatError: (formattedError, error) => {
       console.error('GraphQL Error:', error);
-      return error;
+      if (!config.isDev) {
+        delete formattedError.extensions?.stacktrace;
+      }
+      return formattedError;
     },
     introspection: true,
-    validationRules: [
-      depthLimit(5),
-      createComplexityLimitRule(maxComplexity, {
-        scalarCost: 1, // Cost per scalar field
-        objectCost: 0, // Cost per object (we count fields instead)
-        listFactor: 10, // Multiply cost by 10 for lists
-        onCost: (cost: number) => {
-          if (config.isDev) {
-            console.log(`Query complexity: ${cost}`);
-          }
-        },
-        createError: (max: number, actual: number) => {
-          const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${max}, Actual: ${actual}`;
-          const exceededBy = actual - max;
-
-          console.error(
-            `Complexity limit exceeded! Max: ${max}, Actual: ${actual} (exceeded by ${exceededBy})`
-          );
-
-          //only report to Sentry if complexity is significantly exceeded (>50% over limit)
-          const exceededThreshold = max * 1.5;
-          if (actual > exceededThreshold) {
-            Sentry.captureException(new Error(errorMessage), {
-              level: 'warning',
-              tags: {
-                type: 'query_complexity_exceeded',
-                graphql: 'validation',
-              },
-              extra: {
-                maxComplexity: max,
-                actualComplexity: actual,
-                exceededBy,
-                exceededByPercent: Math.round((exceededBy / max) * 100),
-              },
-            });
-          }
-
-          return new Error(errorMessage);
-        },
-      }),
-    ],
+    validationRules: [depthLimit(5)],
     plugins: [
       ApolloServerPluginLandingPageLocalDefault({
         embed: true,
         includeCookies: true,
       }),
       responseCachePlugin(),
+      // Query complexity plugin
+      // Note: Uses local adaptation of graphql-query-complexity to avoid
+      // the "dual package hazard" in ESM + pnpm environments.
+      // See: packages/api/src/graphql/queryComplexity.ts for details.
+      {
+        async requestDidStart() {
+          return {
+            async didResolveOperation({ request, document }) {
+              // Skip validation for pure introspection queries
+              // (queries that ONLY contain __schema or __type fields)
+              // Introspection is already gated by the introspection: true setting
+              // and doesn't touch the database
+              const isPureIntrospectionQuery = document.definitions.every(
+                (def) =>
+                  def.kind !== 'OperationDefinition' ||
+                  def.selectionSet.selections.every(
+                    (sel) =>
+                      sel.kind === 'Field' &&
+                      (sel.name.value === '__schema' ||
+                        sel.name.value === '__type')
+                  )
+              );
+              if (isPureIntrospectionQuery) {
+                return;
+              }
+
+              // Validate pagination arguments and field alias limits
+              validateQuery(document, {
+                maxListSize: config.GRAPHQL_MAX_LIST_SIZE,
+                maxFieldAliases: config.GRAPHQL_MAX_FIELD_ALIASES,
+                variables: request.variables ?? {},
+              });
+
+              const complexity = getComplexity({
+                schema,
+                query: document,
+                variables: request.variables ?? {},
+                estimators: [
+                  fieldExtensionsEstimator(),
+                  // Assign high costs to expensive aggregate operations (used in groupBy queries)
+                  // This allows simple groupBy queries but blocks full-table aggregations
+                  fieldCostEstimator((fieldName) => {
+                    // Block aggregate fields that require full table scans
+                    if (fieldName === '_all') return 10000;
+                    if (fieldName.startsWith('_count')) return 5000;
+                    if (fieldName.startsWith('_sum')) return 5000;
+                    if (fieldName.startsWith('_avg')) return 5000;
+                    if (fieldName.startsWith('_min')) return 5000;
+                    if (fieldName.startsWith('_max')) return 5000;
+                    // Introspection fields - cost for mixed queries
+                    // (pure introspection queries are skipped above)
+                    if (fieldName === '__schema') return 100;
+                    if (fieldName === '__type') return 50;
+                    return undefined;
+                  }),
+                  // Multiply complexity by list size (take/first/limit args) to capture N+1 cost
+                  // maxListSize synced with GRAPHQL_MAX_LIST_SIZE config
+                  listMultiplierEstimator({
+                    defaultListSize: 10,
+                    maxListSize: config.GRAPHQL_MAX_LIST_SIZE,
+                  }),
+                  simpleEstimator({ defaultComplexity: 1 }),
+                ],
+              });
+
+              if (config.isDev) {
+                console.log(`Query complexity: ${complexity}`);
+              }
+
+              if (complexity > maxComplexity) {
+                const errorMessage = `Query complexity limit exceeded. Maximum allowed: ${maxComplexity}, Actual: ${complexity}`;
+                const exceededBy = complexity - maxComplexity;
+
+                console.error(
+                  `Complexity limit exceeded! Max: ${maxComplexity}, Actual: ${complexity} (exceeded by ${exceededBy})`
+                );
+
+                // Only report to Sentry if complexity is significantly exceeded (>50% over limit)
+                const exceededThreshold = maxComplexity * 1.5;
+                if (complexity > exceededThreshold) {
+                  Sentry.captureException(new Error(errorMessage), {
+                    level: 'warning',
+                    tags: {
+                      type: 'query_complexity_exceeded',
+                      graphql: 'validation',
+                    },
+                    extra: {
+                      maxComplexity,
+                      actualComplexity: complexity,
+                      exceededBy,
+                      exceededByPercent: Math.round(
+                        (exceededBy / maxComplexity) * 100
+                      ),
+                    },
+                  });
+                }
+
+                throw new GraphQLError(errorMessage, {
+                  extensions: { code: 'QUERY_COMPLEXITY_EXCEEDED' },
+                });
+              }
+            },
+          };
+        },
+      },
     ],
   });
 

@@ -17,7 +17,7 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { WagerInput } from '~/components/markets/forms';
+import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
 import {
   buildAuctionStartPayload,
@@ -32,21 +32,22 @@ import { useCollateralBalanceContext } from '~/lib/context/CollateralBalanceCont
 import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle, getColorWithAlpha } from '~/lib/utils/categoryStyle';
-import { getMaxWagerAmount } from '~/lib/utils/positionFormUtils';
+import { getMaxPositionSize } from '~/lib/utils/positionFormUtils';
 import {
   PythPredictionListItem,
   UmaPredictionListItem,
   type PythPrediction,
   type UmaPrediction,
 } from '@sapience/ui';
+import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
-    wagerAmount: string;
+    positionSize: string;
     limitAmount: string | number;
     positions: Record<
       string,
-      { predictionValue: string; wagerAmount: string; isFlipped?: boolean }
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
     >;
   }>;
   /** Submit handler - receives the exact bid being submitted to ensure what user sees is what gets submitted */
@@ -63,7 +64,7 @@ interface PositionFormProps {
   collateralToken?: `0x${string}`;
   collateralSymbol?: string;
   collateralDecimals?: number;
-  minWager?: string;
+  minPositionSize?: string;
   // PredictionMarket contract address for fetching taker nonce
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
@@ -81,7 +82,7 @@ export default function PositionForm({
   collateralToken,
   collateralSymbol: collateralSymbolProp,
   collateralDecimals,
-  minWager,
+  minPositionSize,
   predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
@@ -103,7 +104,7 @@ export default function PositionForm({
   const [stickyEstimateBid, setStickyEstimateBid] = useState<QuoteBid | null>(
     null
   );
-  // State for managing bid clearing when wager/selections change (for animations)
+  // State for managing bid clearing when position size/selections change (for animations)
   // IMPORTANT: do NOT seed from `bids` prop.
   // `bids` comes from a shared auction hook and may contain leftover quotes from
   // a previous request for a different prediction set. We only want to display
@@ -111,7 +112,7 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSession } = useSession();
 
   // Use effectiveAddress from session context, falling back to zero address for logged-out users
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
@@ -135,30 +136,30 @@ export default function PositionForm({
   });
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
-  const wagerAmount = useWatch({
+  const positionSizeValue = useWatch({
     control: methods.control,
-    name: 'wagerAmount',
+    name: 'positionSize',
   });
-  const prevWagerAmountRef = useRef<string>(wagerAmount || '');
+  const prevPositionSizeRef = useRef<string>(positionSizeValue || '');
   // Track the request configuration to ignore stale bids
   const currentRequestKeyRef = useRef<string | null>(null);
 
-  // Apply rainbow hover effect only for wagers over 1k
+  // Apply rainbow hover effect only for position sizes over 1k
   const isRainbowHoverEnabled = useMemo(() => {
-    if (!wagerAmount) return false;
-    const wagerNum = Number(wagerAmount);
-    return !Number.isNaN(wagerNum) && wagerNum > 1000;
-  }, [wagerAmount]);
+    if (!positionSizeValue) return false;
+    const sizeNum = Number(positionSizeValue);
+    return !Number.isNaN(sizeNum) && sizeNum > 1000;
+  }, [positionSizeValue]);
 
-  // Calculate taker wager in wei for auction chart
-  const takerWagerWei = useMemo(() => {
+  // Calculate taker position size in wei for auction chart
+  const takerPositionSizeWei = useMemo(() => {
     const decimals = collateralDecimals ?? 18;
     try {
-      return parseUnits(wagerAmount || '0', decimals).toString();
+      return parseUnits(positionSizeValue || '0', decimals).toString();
     } catch {
       return '0';
     }
-  }, [wagerAmount, collateralDecimals]);
+  }, [positionSizeValue, collateralDecimals]);
 
   // Create a stable key from all prediction legs (UMA + Pyth) to detect changes
   // and ensure we clear/re-key bids correctly when *either* leg set changes.
@@ -178,22 +179,28 @@ export default function PositionForm({
   }, [selections, pythPredictions]);
   const prevPredictionsKeyRef = useRef<string>(predictionsKey);
 
-  // Clear bids when wager amount changes (for animations)
+  // Clear bids when position size changes (for animations)
   useEffect(() => {
-    if (prevWagerAmountRef.current !== (wagerAmount || '')) {
+    if (prevPositionSizeRef.current !== (positionSizeValue || '')) {
+      logPositionForm(
+        `Position size changed to ${positionSizeValue || '(empty)'}, clearing bids`
+      );
       setValidBids([]);
       setStickyEstimateBid(null);
-      setLastQuoteRequestMs(null); // Reset cooldown when wager changes
+      setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
-      prevWagerAmountRef.current = wagerAmount || '';
+      prevPositionSizeRef.current = positionSizeValue || '';
     }
-  }, [wagerAmount]);
+  }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
   // Old bids were generated for a different taker address (zero address for logged-out, user address for logged-in)
   const prevHasConnectedWalletRef = useRef(hasConnectedWallet);
   useEffect(() => {
     if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
+      logPositionForm(
+        `Wallet ${hasConnectedWallet ? 'connected' : 'disconnected'}, clearing bids`
+      );
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null);
@@ -205,6 +212,7 @@ export default function PositionForm({
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
     if (prevPredictionsKeyRef.current !== predictionsKey) {
+      logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
@@ -216,22 +224,28 @@ export default function PositionForm({
   // Update valid bids when new bids come in (for animations)
   // Only accept bids if they match the current request configuration
   useEffect(() => {
-    const currentRequestKey = `${predictionsKey}:${wagerAmount || ''}`;
+    const currentRequestKey = `${predictionsKey}:${positionSizeValue || ''}`;
     // If we have a request key set, only accept bids that match it
-    // If request key is null, it means selections/wager changed, so ignore all incoming bids
+    // If request key is null, it means selections/position size changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
-      // Configuration changed, ignore incoming bids
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
+      if (bids.length > 0) {
+        logPositionForm(`Received ${bids.length} bid(s)`);
+      }
       setValidBids(bids);
     }
-  }, [bids, predictionsKey, wagerAmount]);
+  }, [bids, predictionsKey, positionSizeValue]);
+
+  // Track previous filter result to avoid logging on every tick
+  const prevFilterResultRef = useRef<string | null>(null);
 
   // Filter bids: only show bids marked as valid as best bids
   const { bestBid, estimateBid } = useMemo(() => {
     if (!validBids || validBids.length === 0) {
+      prevFilterResultRef.current = null;
       return { bestBid: null, estimateBid: null };
     }
 
@@ -241,6 +255,11 @@ export default function PositionForm({
     );
 
     if (nonExpiredBids.length === 0) {
+      const resultKey = 'all-expired';
+      if (prevFilterResultRef.current !== resultKey) {
+        logPositionForm('All bids expired');
+        prevFilterResultRef.current = resultKey;
+      }
       return { bestBid: null, estimateBid: null };
     }
 
@@ -254,12 +273,24 @@ export default function PositionForm({
     const failedBids = nonExpiredBids.filter(
       (bid) => bid.validationStatus === 'invalid'
     );
+
     const estimateFromFailed =
       validFilteredBids.length === 0 && failedBids.length === 1
         ? failedBids[0]
         : null;
 
     if (validFilteredBids.length === 0) {
+      const resultKey = estimateFromFailed
+        ? `estimate:${estimateFromFailed.maker}`
+        : `no-valid:${failedBids.length}`;
+      if (prevFilterResultRef.current !== resultKey) {
+        if (estimateFromFailed) {
+          logPositionForm(
+            `Using estimate: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+          );
+        }
+        prevFilterResultRef.current = resultKey;
+      }
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
@@ -274,8 +305,14 @@ export default function PositionForm({
       }
     });
 
+    const resultKey = `best:${best.maker}:${best.makerWager}`;
+    if (prevFilterResultRef.current !== resultKey) {
+      logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
+      prevFilterResultRef.current = resultKey;
+    }
+
     return { bestBid: best, estimateBid: null };
-  }, [validBids, nowMs]);
+  }, [validBids, nowMs, collateralDecimals]);
 
   // Make estimate "sticky" so it doesn't disappear while we're still waiting for a success bid.
   useEffect(() => {
@@ -340,7 +377,7 @@ export default function PositionForm({
       if (!hasUma && !hasPyth) return;
       if (hasFormErrors) return;
 
-      const wagerStr = wagerAmount || '0';
+      const positionSizeStr = positionSizeValue || '0';
 
       try {
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
@@ -355,7 +392,10 @@ export default function PositionForm({
         }
 
         const decimals = collateralDecimals ?? 18;
-        const wagerWei = parseUnits(wagerStr, decimals).toString();
+        const positionSizeWei = parseUnits(
+          positionSizeStr,
+          decimals
+        ).toString();
 
         const payload = hasPyth
           ? buildPythAuctionStartPayload(
@@ -378,7 +418,7 @@ export default function PositionForm({
             );
 
         const params: AuctionParams = {
-          wager: wagerWei,
+          wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,
@@ -392,7 +432,7 @@ export default function PositionForm({
         });
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
-        currentRequestKeyRef.current = `${predictionsKey}:${wagerAmount || ''}`;
+        currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
         const msg =
@@ -418,7 +458,7 @@ export default function PositionForm({
       takerAddress,
       refetchTakerNonce,
       hasFormErrors,
-      wagerAmount,
+      positionSizeValue,
       collateralDecimals,
       chainId,
       predictionsKey,
@@ -428,22 +468,30 @@ export default function PositionForm({
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
   const handleRequestBids = useCallback(() => {
+    logPositionForm('Requesting bids (manual)');
     triggerAuctionRequest({
       forceRefresh: true,
       requireSignature: hasConnectedWallet,
     });
   }, [triggerAuctionRequest, hasConnectedWallet]);
 
-  // Auto-initiate auction when content (predictions/wager) changes
+  // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
+  // Only auto-trigger for:
+  // 1. Logged-out users (get unsigned estimates)
+  // 2. Smart account users with active session (session key signing, no popup)
+  // Skip for EOA users and smart account users without session - they must manually click "Request Bids"
   const autoAuctionDebounceRef = useRef<number | null>(null);
   useEffect(() => {
+    // Skip auto-auction for users who would get a wallet signature popup
+    // Only auto-trigger for logged-out users or smart account users with active session
+    if (hasConnectedWallet && !isUsingSession) return;
+
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
     if (hasConnectedWallet && isBalanceLoading) return;
 
-    // Don't auto-trigger if there are form errors (e.g., wager exceeds balance)
+    // Don't auto-trigger if there are form errors (e.g., position size exceeds balance)
     // Skip this check for logged-out users since they can't have balance-related errors
     if (hasConnectedWallet && hasFormErrors) return;
 
@@ -451,13 +499,13 @@ export default function PositionForm({
     const hasPredictions = selections.length > 0 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
-    // Must have a valid wager amount
-    const wagerNum = Number(wagerAmount || '0');
-    if (wagerNum <= 0 || Number.isNaN(wagerNum)) return;
+    // Must have a valid position size
+    const sizeNum = Number(positionSizeValue || '0');
+    if (sizeNum <= 0 || Number.isNaN(sizeNum)) return;
 
-    // Don't auto-trigger if wager exceeds user's balance (only for logged-in users)
-    // Logged-out users can enter any wager amount to see estimates
-    if (hasConnectedWallet && wagerNum > userBalance) return;
+    // Don't auto-trigger if position size exceeds user's balance (only for logged-in users)
+    // Logged-out users can enter any position size to see estimates
+    if (hasConnectedWallet && sizeNum > userBalance) return;
 
     // Clear previous debounce timer
     if (autoAuctionDebounceRef.current) {
@@ -466,6 +514,7 @@ export default function PositionForm({
 
     // Debounce for 300ms to let user finish typing/selecting
     autoAuctionDebounceRef.current = window.setTimeout(() => {
+      logPositionForm('Requesting bids (auto)');
       triggerAuctionRequest({
         forceRefresh: true,
         requireSignature: hasConnectedWallet,
@@ -479,10 +528,11 @@ export default function PositionForm({
     };
   }, [
     hasConnectedWallet,
+    isUsingSession,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,
-    wagerAmount,
+    positionSizeValue,
     triggerAuctionRequest,
     selections.length,
     pythPredictions.length,
@@ -599,10 +649,12 @@ export default function PositionForm({
             const categoryColor = getCategoryStyle(s.categorySlug).color;
             // Convert color to 10% opacity background (matches MarketBadge style)
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
+            // In CreatePositionForm: show shortName if available, always show question in tooltip
+            const displayTitle = s.shortName || s.question;
             const umaPrediction: UmaPrediction = {
               id: s.id,
               conditionId: s.conditionId,
-              question: s.question,
+              question: displayTitle,
               prediction: s.prediction,
               categorySlug: s.categorySlug,
             };
@@ -615,7 +667,7 @@ export default function PositionForm({
                   prediction={umaPrediction}
                   leading={
                     <div
-                      className="w-7 h-7 rounded-full shrink-0 flex items-center justify-center"
+                      className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"
                       style={{ backgroundColor: bgWithAlpha }}
                     >
                       <CategoryIcon
@@ -628,8 +680,10 @@ export default function PositionForm({
                     <ConditionTitleLink
                       conditionId={s.conditionId}
                       resolverAddress={s.resolverAddress ?? undefined}
-                      title={s.question}
+                      title={displayTitle}
+                      tooltipTitle={s.question}
                       clampLines={1}
+                      className="text-sm"
                     />
                   }
                   onRemove={removeSelection}
@@ -639,9 +693,9 @@ export default function PositionForm({
           })}
 
           <div className="mt-5">
-            <WagerInput
-              minAmount={minWager}
-              maxAmount={getMaxWagerAmount(userBalance, isEtherealChain)}
+            <PositionSizeInput
+              minAmount={minPositionSize}
+              maxAmount={getMaxPositionSize(userBalance, isEtherealChain)}
               collateralSymbol={collateralSymbol}
               collateralAddress={collateralToken}
               chainId={chainId}
@@ -656,7 +710,7 @@ export default function PositionForm({
             <BidDisplay
               bestBid={bestBid}
               estimateBid={stickyEstimateBid}
-              wagerAmount={wagerAmount || '0'}
+              positionSize={positionSizeValue || '0'}
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
               nowMs={nowMs}
@@ -669,7 +723,7 @@ export default function PositionForm({
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
-              takerWagerWei={takerWagerWei}
+              takerPositionSizeWei={takerPositionSizeWei}
               takerAddress={selectedTakerAddress}
               showAddPredictionsHint={selections.length === 1}
               isAuctionPending={recentlyRequested && !bestBid}
