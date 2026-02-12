@@ -199,13 +199,13 @@ test('Block: oversized payload (>100kb)', async () => {
 
 // — 7. Concurrency limiter —
 
-test('Concurrency: burst of 10000 parallel requests', async () => {
-  // Send 10k requests in parallel. With limit=15, most should get 503.
-  // We verify no crashes and that the server stays responsive.
-  const BURST_SIZE = 10_000;
+test('Concurrency: burst of 10000 requests (batched)', async () => {
+  // Send 10k requests in waves of 500 to avoid exhausting OS file descriptors.
+  // With concurrency limit=15, most requests get instant 503s.
+  const TOTAL = 10_000;
+  const BATCH_SIZE = 500;
   // Heavy query: 3 aliases of expensive SQL aggregations + nested relations
   // protocolStats(2000)×3 = 6000, conditions(~100)×3 = ~300 → total ~6300, within 10000 limit
-  // Each request runs multiple heavy SQL queries, forcing concurrency limiter to kick in
   const query = `{
     ps1: protocolStats { timestamp cumulativeVolume openInterest vaultBalance }
     ps2: protocolStats { timestamp cumulativeVolume openInterest vaultBalance }
@@ -240,19 +240,19 @@ test('Concurrency: burst of 10000 parallel requests', async () => {
           countOther++;
           otherCodes.add(status);
         }
-
-        // Progress every 1000 requests
-        if (completed % 1000 === 0 || completed === BURST_SIZE) {
-          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-          const rps = Math.round(completed / ((Date.now() - startTime) / 1000));
-          process.stdout.write(
-            `\r        [${completed}/${BURST_SIZE}] ${elapsed}s | ${rps} req/s | 200: ${count200} | 503: ${count503} | 429: ${count429}${countOther ? ` | other: ${countOther}` : ''}`
-          );
-        }
       });
 
-  const promises = Array.from({ length: BURST_SIZE }, () => makeRequest());
-  await Promise.all(promises);
+  // Fire requests in batches to stay within OS socket limits
+  for (let i = 0; i < TOTAL; i += BATCH_SIZE) {
+    const batchSize = Math.min(BATCH_SIZE, TOTAL - i);
+    await Promise.all(Array.from({ length: batchSize }, () => makeRequest()));
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    const rps = Math.round(completed / ((Date.now() - startTime) / 1000));
+    process.stdout.write(
+      `\r        [${completed}/${TOTAL}] ${elapsed}s | ${rps} req/s | 200: ${count200} | 503: ${count503} | 429: ${count429}${countOther ? ` | other: ${countOther}` : ''}`
+    );
+  }
   process.stdout.write('\n');
 
   if (countOther > 0) {
@@ -263,7 +263,7 @@ test('Concurrency: burst of 10000 parallel requests', async () => {
   }
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  const rps = Math.round(BURST_SIZE / ((Date.now() - startTime) / 1000));
+  const rps = Math.round(TOTAL / ((Date.now() - startTime) / 1000));
   return {
     passed: true,
     detail: `${count200} ok, ${count503} shed (503), ${count429} rate-limited (429) in ${elapsed}s (${rps} req/s). No crashes.`,
