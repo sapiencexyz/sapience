@@ -161,6 +161,12 @@ export const initializeApolloServer = async () => {
                     if (fieldName.startsWith('_avg')) return 5000;
                     if (fieldName.startsWith('_min')) return 5000;
                     if (fieldName.startsWith('_max')) return 5000;
+                    // Expensive custom queries — heavy SQL aggregations or unbounded reads
+                    if (fieldName === 'protocolStats') return 2000;
+                    if (fieldName === 'dailyVolumes') return 1500;
+                    if (fieldName === 'allTimeProfitLeaderboard') return 2000;
+                    if (fieldName === 'tradingVolumeByAddress') return 500;
+                    if (fieldName === 'profitRankByAddress') return 500;
                     // Introspection fields - cost for mixed queries
                     // (pure introspection queries are skipped above)
                     if (fieldName === '__schema') return 100;
