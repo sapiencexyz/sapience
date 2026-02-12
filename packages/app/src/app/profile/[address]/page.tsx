@@ -11,6 +11,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `Profile ${address}`,
     description: `View forecasting activity and performance for ${address}`,
+    openGraph: {
+      images: [
+        {
+          url: `/og/profile?address=${address}`,
+          width: 1200,
+          height: 630,
+          alt: `Profile ${address}`,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      images: [`/og/profile?address=${address}`],
+    },
   };
 }
 

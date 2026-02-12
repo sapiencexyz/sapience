@@ -1,6 +1,6 @@
 ---
 title: "Auction Relayer API"
-description: "WebSocket API for prediction market auctions between requesters and responders."
+description: "Connect to the real-time WebSocket API to submit and fill prediction market auctions."
 ---
 
 # Auction Relayer API
@@ -136,9 +136,9 @@ ws.on('message', (data) => {
 ```ts
 const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 
-// Listen for bids
-ws.onmessage = (ev) => {
-  const msg = JSON.parse(String(ev.data));
+// Listen for auctions
+ws.on('message', (data) => {
+  const msg = JSON.parse(String(data));
   
   if (msg.type === 'auction.started') {
     const auction = msg.payload;
@@ -375,4 +375,4 @@ Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 
 After selecting a bid, the requester constructs a `MintParlayRequestData` struct and calls `mint()` on the PredictionMarket contract. Both parties must have ERC-20 approvals set for the contract to pull their collateral (USDe).
 
-Reference implementation: `packages/api/src/auction/botExample.ts`
+Reference implementation: [`packages/relayer/src/botExample.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/relayer/src/botExample.ts)

@@ -1,6 +1,6 @@
 ---
 title: "ElizaOS Agent"
-description: "Deploy an autonomous forecasting and trading agent with the ElizaOS framework."
+description: "Build a conversational prediction market agent using the ElizaOS framework."
 ---
 
 # ElizaOS Agent
@@ -42,7 +42,7 @@ For setup details on your API keys and private key, see Get Started: [OpenRouter
 | Variable | Notes |
 | --- | --- |
 | `OPENROUTER_API_KEY` | Your OpenRouter API key for LLM access |
-| `ETHEREUM_PRIVATE_KEY` | Private key for publishing forecasts and executing trades |
+| `EVM_PRIVATE_KEY` | Private key for publishing forecasts and executing trades |
 
 Example `.env`:
 
@@ -157,7 +157,7 @@ Key areas to customize:
 
 ### Change the Model
 
-*Be sure to use a model with web search capability unless you've built a different workflow/pipeline to injest current information.*
+*Be sure to use a model with web search capability unless you've built a different workflow/pipeline to ingest current information.*
 
 The default model is `openai/gpt-4o-search-preview` via OpenRouter. To change it, edit `src/character.ts`:
 
