@@ -73,7 +73,8 @@ const AddressDisplay = ({
       ? `${checksummedAddress.slice(0, 6)}...${checksummedAddress.slice(-4)}`
       : checksummedAddress;
 
-  const displayName = ensName || (showFullAddress ? checksummedAddress : truncatedAddress);
+  const displayName =
+    ensName || (showFullAddress ? checksummedAddress : truncatedAddress);
   const isLarge = className?.includes('text-2xl');
   const isCompact = !!compact;
   const buttonSizeClass = isLarge
@@ -151,7 +152,10 @@ const AddressDisplay = ({
           </TooltipProvider>
         )}
         {!disableProfileLink && (
-          <Link href={`/profile/${checksummedAddress}`} className="flex items-center">
+          <Link
+            href={`/profile/${checksummedAddress}`}
+            className="flex items-center"
+          >
             <Button
               variant="ghost"
               size="icon"
