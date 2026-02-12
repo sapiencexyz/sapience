@@ -42,7 +42,7 @@ type ComboWithQuote = {
 
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
-const TAKER_POSITION_SIZE_WEI = parseUnits('10', 18).toString();
+const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
@@ -477,14 +477,14 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                     className="font-mono text-ethena"
                                   />
                                   <span className="text-muted-foreground ml-1">
-                                    implied by 10 USDe
+                                    implied by 1 USDe
                                   </span>
                                   <br />
                                   <span className="text-muted-foreground">
                                     payout
                                   </span>
                                   <span className="text-brand-white font-medium font-mono ml-1">
-                                    {(10 / (1 - probability)).toFixed(2)} USDe
+                                    {(1 / (1 - probability)).toFixed(2)} USDe
                                   </span>
                                 </>
                               ) : status === 'error' ? (
@@ -571,10 +571,10 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 className="font-mono text-ethena"
                               />
                               <span className="text-muted-foreground ml-1">
-                                implied by 10 USDe for payout
+                                implied by 1 USDe for payout
                               </span>
                               <span className="text-brand-white font-medium font-mono ml-1">
-                                {(10 / (1 - probability)).toFixed(2)} USDe
+                                {(1 / (1 - probability)).toFixed(2)} USDe
                               </span>
                             </div>
                           ) : status === 'error' ? (
