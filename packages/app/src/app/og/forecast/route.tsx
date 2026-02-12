@@ -111,7 +111,7 @@ export async function GET(req: Request) {
     const height = HEIGHT;
     const scale = getScale(width);
 
-    return new ImageResponse(
+    const imageResponse = new ImageResponse(
       (
         <div style={baseContainerStyle()}>
           <Background bgUrl={bgUrl} scale={scale} />
@@ -165,6 +165,13 @@ export async function GET(req: Request) {
         fonts: fontsFromData(fonts),
       }
     );
+
+    imageResponse.headers.set(
+      'Cache-Control',
+      'public, max-age=3600, s-maxage=3600, stale-while-revalidate=7200'
+    );
+
+    return imageResponse;
   } catch (err) {
     return createErrorImageResponse(err);
   }
