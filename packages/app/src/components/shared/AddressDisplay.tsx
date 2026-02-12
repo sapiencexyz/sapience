@@ -16,6 +16,7 @@ import { Copy, ExternalLink, User, Vault } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
+import { getAddress } from 'viem';
 import { mainnetClient } from '~/lib/utils/util';
 
 // Hook to fetch ENS names
@@ -65,13 +66,15 @@ const AddressDisplay = ({
   hideVaultIcon,
 }: AddressDisplayProps) => {
   const { toast } = useToast();
-  const { data: ensName } = useEnsName(address);
+  const checksummedAddress = getAddress(address);
+  const { data: ensName } = useEnsName(checksummedAddress);
   const truncatedAddress =
-    address.length > 10
-      ? `${address.slice(0, 6)}...${address.slice(-4)}`
-      : address;
+    checksummedAddress.length > 10
+      ? `${checksummedAddress.slice(0, 6)}...${checksummedAddress.slice(-4)}`
+      : checksummedAddress;
 
-  const displayName = ensName || (showFullAddress ? address : truncatedAddress);
+  const displayName =
+    ensName || (showFullAddress ? checksummedAddress : truncatedAddress);
   const isLarge = className?.includes('text-2xl');
   const isCompact = !!compact;
   const buttonSizeClass = isLarge
@@ -95,7 +98,7 @@ const AddressDisplay = ({
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    await navigator.clipboard.writeText(address);
+    await navigator.clipboard.writeText(checksummedAddress);
     toast({
       title: 'Copied to clipboard',
       description: 'Address copied successfully',
@@ -149,7 +152,10 @@ const AddressDisplay = ({
           </TooltipProvider>
         )}
         {!disableProfileLink && (
-          <Link href={`/profile/${address}`} className="flex items-center">
+          <Link
+            href={`/profile/${checksummedAddress}`}
+            className="flex items-center"
+          >
             <Button
               variant="ghost"
               size="icon"
@@ -185,7 +191,7 @@ const AddressDisplay = ({
                 <span className="font-medium">Copy Address</span>
               </button>
               <a
-                href={`https://explorer.ethereal.trade/address/${address}`}
+                href={`https://explorer.ethereal.trade/address/${checksummedAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
@@ -200,7 +206,7 @@ const AddressDisplay = ({
                 <span className="font-medium">Explorer</span>
               </a>
               <a
-                href={`https://app.zerion.io/${address}/history`}
+                href={`https://app.zerion.io/${checksummedAddress}/history`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
@@ -215,7 +221,7 @@ const AddressDisplay = ({
                 <span className="font-medium">Zerion</span>
               </a>
               <a
-                href={`https://debank.com/profile/${address}`}
+                href={`https://debank.com/profile/${checksummedAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
@@ -230,7 +236,7 @@ const AddressDisplay = ({
                 <span className="font-medium">DeBank</span>
               </a>
               <a
-                href={`https://intel.arkm.com/explorer/address/${address}`}
+                href={`https://intel.arkm.com/explorer/address/${checksummedAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
@@ -245,7 +251,7 @@ const AddressDisplay = ({
                 <span className="font-medium">Arkham Intel</span>
               </a>
               <a
-                href={`https://blockscan.com/address/${address}#transactions`}
+                href={`https://blockscan.com/address/${checksummedAddress}#transactions`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="group/address-action flex items-center gap-2 p-1 rounded hover:bg-transparent focus:bg-transparent hover:text-accent-gold focus-visible:text-accent-gold transition-all opacity-80 hover:opacity-100 text-xs"
