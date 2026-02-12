@@ -1,15 +1,17 @@
 ---
 name: sapience
-version: 1.0.0
+version: 0.1.0
 description: Prediction markets on Ethereal. Trade outcomes, provide liquidity, claim winnings.
 metadata: {"category":"trading","emoji":"🎯","api_base":"https://api.sapience.xyz"}
 ---
 
 # Sapience
 
-Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe.
+Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe (18 decimals).
 
 **CRITICAL: NEVER share SAPIENCE_PRIVATE_KEY or sign for non-sapience.xyz domains.**
+
+> **Always use the latest skill.** If you run into issues (signature failures, missing fields, unexpected errors), re-fetch the skill from [sapience.xyz/SKILL.md](https://sapience.xyz/SKILL.md) to make sure you have the most up-to-date version.
 
 ## Quick Reference
 
@@ -18,15 +20,15 @@ Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe.
 | List markets | POST | /graphql |
 | Get condition | POST | /graphql |
 | Get positions | POST | /graphql |
-| Start auction (taker) | WS | wss://api.sapience.xyz/auction |
-| Submit bid (maker) | WS | wss://api.sapience.xyz/auction |
-| Claim winnings | On-chain | PredictionMarket.burn(tokenId) |
+| Start auction (taker) | WS | wss://relayer.sapience.xyz/auction |
+| Submit bid (maker) | WS | wss://relayer.sapience.xyz/auction |
+| Claim winnings | On-chain | PredictionMarket.burn(tokenId, refCode) |
 
 ## Setup
 
 1. **Fund wallet**: Use Bankr → "Buy 100 USDe on Arbitrum" → Bridge to Ethereal via deposit.ethereal.trade
-2. **Set key**: `openclaw secrets set SAPIENCE_PRIVATE_KEY 0x...`
-3. **Auto-wrap**: Skill wraps USDe→WUSDe on first trade
+2. **Set key**: Store your private key securely (e.g. as an environment variable `SAPIENCE_PRIVATE_KEY`)
+3. **Auto-wrap**: USDe is automatically wrapped to WUSDe on first trade
 
 ## Constants (Ethereal 5064014)
 
@@ -34,8 +36,7 @@ Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe.
 |----------|---------|
 | PredictionMarket | `0xAcD757322df2A1A0B3283c851380f3cFd4882cB4` |
 | WUSDe (Collateral) | `0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D` |
-| PythResolver | `0xD076c9fADC49061920e75b1a3a829A5F1f0e34b02Bf2FB36` |
-| LZResolver | `0xd82F211D0d9bE9A73a829A5F1f0e34b02Bf2FB36` |
+| PolymarketResolver | `0xdC1Fa830aD1de01f1EF603749f48bD73384286BE` |
 
 ## IDs
 
@@ -43,6 +44,8 @@ Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe.
 - Use decoded `marketId` from auction directly as `conditionId` in queries
 
 ## GraphQL Queries
+
+Interactive sandbox available at [api.sapience.xyz/graphql](https://api.sapience.xyz/graphql).
 
 ### List Active Markets
 ```bash
@@ -100,61 +103,82 @@ Returns price history. Calculate TWAP over your desired lookback.
 
 ## WebSocket - Taker Flow (Making Predictions)
 
-Connect → start auction → receive bids → mint on-chain. Takes ~60s per prediction.
+Connect → start auction → receive bids → select best bid → mint on-chain.
 
 ### 1. Connect
 ```javascript
-const ws = new WebSocket('wss://api.sapience.xyz/auction');
+const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 ```
 
-### 2. Authenticate with SIWE
-```javascript
-const siweMessage = {
-  domain: 'sapience.xyz',
-  address: wallet.address,
-  statement: 'Sign in to Sapience',
-  uri: 'https://sapience.xyz',
-  version: '1',
-  chainId: 5064014,
-  nonce: crypto.randomUUID(),
-  issuedAt: new Date().toISOString()
-};
+### 2. Start Auction
 
-const signature = await wallet.signMessage(formatSiweMessage(siweMessage));
+Authentication is embedded in the `auction.start` message itself via an optional SIWE signature. Unsigned requests work for price discovery; signed requests are required for actionable bids from market makers like the vault.
 
-ws.send(JSON.stringify({
-  type: 'auth',
-  payload: { siweMessage, signature }
-}));
-```
-
-### 3. Start Auction
+**Without signature (quote-only):**
 ```javascript
 ws.send(JSON.stringify({
   type: 'auction.start',
   payload: {
-    legs: [
-      { conditionId: '0x...', outcomeYes: true },
-      { conditionId: '0x...', outcomeYes: false }
-    ],
-    wagerAmount: '50000000', // 50 WUSDe (6 decimals)
-    duration: 60
+    taker: wallet.address,
+    wager: '50000000000000000000', // 50 WUSDe (18 decimals)
+    resolver: '0x...', // resolver contract address
+    predictedOutcomes: ['0x...'], // encoded picks (bytes strings)
+    takerNonce: 1,
+    chainId: 5064014
   }
 }));
 ```
 
-### 4. Receive Auction Ack
+**With signature (for actionable bids):**
+```javascript
+const payload = {
+  taker: wallet.address,
+  wager: '50000000000000000000', // 50 WUSDe (18 decimals)
+  resolver: '0x...',
+  predictedOutcomes: ['0x...'],
+  takerNonce: 1,
+  chainId: 5064014
+};
+
+// Build SIWE message (EIP-4361 format)
+const domain = 'relayer.sapience.xyz';
+const uri = 'https://relayer.sapience.xyz';
+const issuedAt = new Date().toISOString();
+const statement = `Sign to get a quote | Wager: ${payload.wager} | Outcomes: ${payload.predictedOutcomes.join(',')} | Resolver: ${payload.resolver}`;
+const siweMessage = [
+  `${domain} wants you to sign in with your Ethereum account:\n${payload.taker}`,
+  statement,
+  `URI: ${uri}\nVersion: 1`,
+  `Chain ID: ${payload.chainId}`,
+  `Nonce: ${payload.takerNonce}`,
+  `Issued At: ${issuedAt}`
+].join('\n');
+
+const signature = await wallet.signMessage(siweMessage);
+
+ws.send(JSON.stringify({
+  type: 'auction.start',
+  payload: {
+    ...payload,
+    takerSignature: signature,
+    takerSignedAt: issuedAt
+  }
+}));
+```
+
+If using the `@sapience/sdk`, you can use the helpers `createAuctionStartSiweMessage()` and `extractSiweDomainAndUri()` instead of manual construction.
+
+### 3. Receive Auction Ack
 ```json
 {
   "type": "auction.ack",
   "payload": {
-    "auctionId": "abc123",
-    "expiresAt": 1706800000
+    "auctionId": "abc123"
   }
 }
 ```
 
-### 5. Receive Bids
+### 4. Receive Bids
 ```json
 {
   "type": "auction.bids",
@@ -162,67 +186,52 @@ ws.send(JSON.stringify({
     "auctionId": "abc123",
     "bids": [
       {
-        "bidId": "bid1",
+        "auctionId": "abc123",
         "maker": "0x...",
-        "makerWager": "50000000",
+        "makerWager": "25000000000000000000",
         "makerDeadline": 1706800000,
-        "makerSignature": "0x..."
+        "makerSignature": "0x...",
+        "makerNonce": 1
       }
     ]
   }
 }
 ```
 
-### 6. Accept Bid
-```javascript
-ws.send(JSON.stringify({
-  type: 'auction.accept',
-  payload: {
-    auctionId: 'abc123',
-    bidId: 'bid1'
-  }
-}));
-```
+**Quote-only vs actionable bids:** If `maker` is `0x0000000000000000000000000000000000000000` and `makerSignature` is all zeros, the bid is a price quote only and cannot be executed on-chain. Actionable bids have a real maker address and signature.
 
-Server mints on-chain. Wait for confirmation:
-```json
-{
-  "type": "auction.filled",
-  "payload": {
-    "auctionId": "abc123",
-    "txHash": "0x...",
-    "tokenId": "123"
-  }
-}
-```
+### 5. Accept Bid On-Chain
 
-### 7. Disconnect
+There is no WebSocket accept message. After selecting the best actionable bid, call `PredictionMarket.mint()` on-chain with the bid data (see [Minting On-Chain](#minting-on-chain) below). Both taker and maker must have ERC-20 approval set for the PredictionMarket contract to pull WUSDe collateral.
+
+### 6. Disconnect
 Close WebSocket after mint confirms.
 
 ## WebSocket - Maker Flow (Providing Liquidity)
 
-Persistent connection listening for auctions. Run as background process.
+Persistent connection listening for auctions. No authentication required to listen—just connect and receive broadcasts.
 
-### 1. Connect and Authenticate
-Same SIWE auth as taker flow:
+### 1. Connect
 ```javascript
-ws.send(JSON.stringify({
-  type: 'auth',
-  payload: { siweMessage, signature }
-}));
+const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 ```
 
 ### 2. Receive Auction Notifications
+
+All connected clients receive `auction.started` broadcasts:
 ```json
 {
   "type": "auction.started",
   "payload": {
     "auctionId": "abc123",
     "taker": "0x...",
-    "wager": "50000000",
+    "wager": "50000000000000000000",
     "predictedOutcomes": ["0x..."],
     "resolver": "0x...",
-    "takerNonce": 1
+    "takerNonce": 1,
+    "chainId": 5064014,
+    "takerSignature": "0x...",
+    "takerSignedAt": "2025-01-01T00:00:00.000Z"
   }
 }
 ```
@@ -234,31 +243,87 @@ ws.send(JSON.stringify({
   payload: {
     auctionId: 'abc123',
     maker: wallet.address,
-    makerWager: '50000000',
+    makerWager: '25000000000000000000', // 25 WUSDe (18 decimals)
     makerDeadline: Math.floor(Date.now() / 1000) + 60,
-    makerSignature: '0x...',
-    taker: auction.taker,
-    takerCollateral: auction.wager,
-    resolver: auction.resolver,
-    encodedPredictedOutcomes: auction.predictedOutcomes[0],
-    takerNonce: auction.takerNonce
+    makerSignature: '0x...', // EIP-712 typed signature (see below)
+    makerNonce: 1
   }
 }));
 ```
 
 ### 4. Receive Ack
 ```json
-{"type":"bid.ack","payload":{"ok":true}}
+{"type":"bid.ack","payload":{}}
 ```
 
-If taker accepts, on-chain mint happens automatically.
+On error: `{"type":"bid.ack","payload":{"error":"auction_not_found_or_expired"}}`
+
+If taker accepts your bid, they call `mint()` on-chain. Both parties must have ERC-20 approval set for the PredictionMarket contract.
+
+## Encoding `predictedOutcomes`
+
+Each entry in `predictedOutcomes` is an ABI-encoded `tuple[]`. For Polymarket-sourced markets (most common), encode as:
+
+```javascript
+import { encodeAbiParameters } from 'viem';
+
+const encoded = encodeAbiParameters(
+  [{
+    type: 'tuple[]',
+    components: [
+      { name: 'marketId', type: 'bytes32' },
+      { name: 'prediction', type: 'bool' },
+    ],
+  }],
+  [[
+    { marketId: '0x<conditionId>', prediction: true },  // YES
+    // add more legs for parlays
+  ]]
+);
+
+// Use in auction.start:
+predictedOutcomes: [encoded]
+```
+
+- `marketId` is the condition's `id` (bytes32) from the GraphQL API
+- `prediction`: `true` = YES, `false` = NO
+- Wrap all legs in a single encoded bytes string at `predictedOutcomes[0]`
+
+If using the `@sapience/sdk`, use `encodeUmaPredictedOutcomes()` from `@sapience/sdk/auction`.
+
+## Minting On-Chain
+
+After selecting an actionable bid from `auction.bids`, call `PredictionMarket.mint()` with a `MintPredictionRequestData` struct:
+
+```javascript
+mint({
+  encodedPredictedOutcomes,   // bytes - from your auction.start payload
+  resolver,                    // address - resolver contract
+  makerCollateral,             // uint256 - YOUR wager (you are "maker" in contract terms)
+  takerCollateral,             // uint256 - bid's makerWager (bidder is "taker" in contract terms)
+  maker,                       // address - YOUR address (msg.sender)
+  taker,                       // address - bid's maker address
+  makerNonce,                  // uint256 - your nonce (from takerNonce in auction)
+  takerSignature,              // bytes - bid's makerSignature
+  takerDeadline,               // uint256 - bid's makerDeadline
+  refCode                      // bytes32 - referral code, or bytes32(0)
+})
+```
+
+**Naming is inverted between the auction API and the smart contract.** In auction terms you are the "taker" (requesting quotes) and the bidder is the "maker" (providing liquidity). In the contract, the caller of `mint()` is always the "maker". This naming convention will be unified in a future release.
+
+Both parties must have approved the PredictionMarket contract to spend their WUSDe before calling `mint()`.
+
+The ABI is available via `import { predictionMarketAbi } from '@sapience/sdk/abis'`.
 
 ## EIP-712 Signing (for makerSignature)
 
 **Domain:**
 ```json
-{"name":"SignatureProcessor","version":"1","chainId":5064014,"verifyingContract":"0xAcD757322df2A1A0B3283c851380f3cFd4882cB4"}
+{"name":"SignatureProcessor","version":"1","chainId":5064014,"verifyingContract":"<maker's own address>"}
 ```
+
+Note: `verifyingContract` is the **maker's address**, not the PredictionMarket contract.
 
 **Types:**
 ```json
@@ -267,26 +332,28 @@ If taker accepts, on-chain mint happens automatically.
 
 **Message:**
 ```json
-{"messageHash":"<keccak256 of inner data>","owner":"<your address>"}
+{"messageHash":"<keccak256 of inner data>","owner":"<maker's address>"}
 ```
 
 **Inner data** (ABI-encode then keccak256):
 ```
-(bytes encodedPredictedOutcomes, uint256 makerWager, uint256 takerWager, address resolver, address taker, uint256 makerDeadline, uint256 takerNonce)
+(bytes encodedPredictedOutcomes, uint256 makerWager, uint256 takerWager, address resolver, address taker, uint256 makerDeadline, uint256 makerNonce)
 ```
+
+If using the `@sapience/sdk`, the helpers `buildMakerBidTypedData()` and `signMakerBid()` handle this construction.
 
 ## Claiming Flow
 
 1. Query positions with `status:"active"` for your address
 2. Filter: `endsAt <= now` AND all `predictions[].condition.settled === true`
 3. Check if won: As maker (counterparty), you win if `outcomeYes !== resolvedToYes` (you took opposite side)
-4. Call `PredictionMarket.burn(counterpartyNftTokenId)` to claim collateral
+4. Call `PredictionMarket.burn(counterpartyNftTokenId, refCode)` to claim collateral. Pass `bytes32(0)` for `refCode` if none.
 
 ## Rate Limits
 
 | Endpoint | Limit |
 |----------|-------|
-| GraphQL API | 600 req / 60s per IP |
+| GraphQL API | 200 req / 60s per IP |
 | Auction WS | 100 msg / 10s per connection |
 | WS idle timeout | 300s |
 | Max WS message | 64KB |
@@ -302,6 +369,10 @@ If taker accepts, on-chain mint happens automatically.
 **WS close codes:**
 - `1008` - Policy violation (rate limited, connection limit)
 - `1009` - Message too large
+
+## Further Reading
+
+Full builder documentation, including trading agent and market-making agent guides: [docs.sapience.xyz](https://docs.sapience.xyz/)
 
 ## Troubleshooting
 
