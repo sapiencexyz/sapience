@@ -29,6 +29,7 @@ Prediction markets on Ethereal (chain 5064014). Collateral: WUSDe (18 decimals).
 1. **Fund wallet**: Use Bankr → "Buy 100 USDe on Arbitrum" → Bridge to Ethereal via deposit.ethereal.trade
 2. **Set key**: Store your private key securely (e.g. as an environment variable `SAPIENCE_PRIVATE_KEY`)
 3. **Auto-wrap**: USDe is automatically wrapped to WUSDe on first trade
+4. **Gas**: On-chain calls (`mint`, `burn`, `approve`) require ETH on Ethereal for gas
 
 ## Constants (Ethereal 5064014)
 
@@ -80,7 +81,7 @@ https://polymarket.com/event/slug-name → slug: "slug-name"
 
 ### Get Market Data (prices, CLOB token IDs)
 ```bash
-curl "https://gamma-api.polymarket.com/markets/slug/will-trump-win-2024"
+curl "https://gamma-api.polymarket.com/markets/slug/<slug-from-url>"
 ```
 Response includes:
 - `outcomePrices`: `["0.65", "0.35"]` (YES/NO prices)
@@ -123,7 +124,7 @@ ws.send(JSON.stringify({
     wager: '50000000000000000000', // 50 WUSDe (18 decimals)
     resolver: '0x...', // resolver contract address
     predictedOutcomes: ['0x...'], // encoded picks (bytes strings)
-    takerNonce: 1,
+    takerNonce: 1, // call PredictionMarket.nonces(yourAddress) to get current nonce
     chainId: 5064014
   }
 }));
@@ -246,7 +247,7 @@ ws.send(JSON.stringify({
     makerWager: '25000000000000000000', // 25 WUSDe (18 decimals)
     makerDeadline: Math.floor(Date.now() / 1000) + 60,
     makerSignature: '0x...', // EIP-712 typed signature (see below)
-    makerNonce: 1
+    makerNonce: 1 // call PredictionMarket.nonces(yourAddress) to get current nonce
   }
 }));
 ```
@@ -346,8 +347,16 @@ If using the `@sapience/sdk`, the helpers `buildMakerBidTypedData()` and `signMa
 
 1. Query positions with `status:"active"` for your address
 2. Filter: `endsAt <= now` AND all `predictions[].condition.settled === true`
-3. Check if won: As maker (counterparty), you win if `outcomeYes !== resolvedToYes` (you took opposite side)
-4. Call `PredictionMarket.burn(counterpartyNftTokenId, refCode)` to claim collateral. Pass `bytes32(0)` for `refCode` if none.
+3. Check if won: The predictor wins if `resolvedToYes === outcomeYes`. The counterparty wins otherwise.
+4. Call `burn()` to claim collateral:
+```javascript
+await walletClient.writeContract({
+  address: '0xAcD757322df2A1A0B3283c851380f3cFd4882cB4', // PredictionMarket
+  abi: predictionMarketAbi,
+  functionName: 'burn',
+  args: [counterpartyNftTokenId, '0x' + '0'.repeat(64)] // tokenId, refCode (bytes32(0) if none)
+});
+```
 
 ## Rate Limits
 
@@ -357,6 +366,12 @@ If using the `@sapience/sdk`, the helpers `buildMakerBidTypedData()` and `signMa
 | Auction WS | 100 msg / 10s per connection |
 | WS idle timeout | 300s |
 | Max WS message | 64KB |
+
+To keep a long-lived WebSocket connection alive, send periodic pings before the 300s idle timeout:
+```javascript
+ws.send(JSON.stringify({ type: 'ping' }));
+// Server responds: { "type": "pong" }
+```
 
 ## Error Handling
 
@@ -385,7 +400,7 @@ curl -s https://sapience.xyz/SKILL.md | head -3
 
 2. **Compare to current version**: Check `version` in SKILL.md frontmatter
 
-3. **If newer version exists**: Fetch updated skill from `https://github.com/sapiencexyz/sapience/blob/main/packages/app/public/SKILL.md`
+3. **If newer version exists**: Fetch updated skill from `https://sapience.xyz/SKILL.md`
 
 4. **Still broken?** Check Discord or open issue on GitHub
 
