@@ -90,7 +90,7 @@ git push -u origin my-customization
 
 ## Build from Scratch with the SDK
 
-Scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Quoter/Auction APIs.
+Scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Auction APIs.
 
 ### Create a new Next.js app
 
@@ -140,73 +140,23 @@ import { TradeForm } from '@sapience/ui';
 ### Connect data
 
 - **GraphQL**: fetch markets, prices, and positions
-- **Quoter**: size your trades with price constraints
 - **Auction WS**: submit/receive quotes for Auction Markets
-
-```typescript
-// Quoter URL builder example
-function toQuoteUrl(params: {
-  base: string;
-  chainId: number;
-  marketGroupAddress: string;
-  marketId: number;
-  expectedPrice: number;
-  collateralAvailable: bigint;
-  maxIterations?: number;
-  priceLimit?: number;
-}) {
-  const { base, chainId, marketGroupAddress, marketId, expectedPrice, collateralAvailable, maxIterations, priceLimit } = params;
-  const qs = new URLSearchParams();
-  qs.set('expectedPrice', String(expectedPrice));
-  qs.set('collateralAvailable', String(collateralAvailable));
-  if (maxIterations) qs.set('maxIterations', String(maxIterations));
-  if (priceLimit) qs.set('priceLimit', String(priceLimit));
-  return `${base}/quoter/${chainId}/${marketGroupAddress}/${marketId}/?${qs.toString()}`;
-}
-```
 
 ### Example page
 
 ```tsx
-import { useMemo, useState } from 'react';
 import { TradeForm } from '@sapience/ui';
 
 export default function TradePage() {
-  const [baseUrl] = useState('https://api.sapience.xyz');
-  const chainId = 1;
-  const marketGroupAddress = '0x...';
-  const marketId = 1;
-
-  const getEstimatedCost = useMemo(() => {
-    return async (size: string, direction: 'Long' | 'Short') => {
-      // naive example: call quoter to size collateral given a target price
-      const expectedPrice = direction === 'Long' ? 0.55 : 0.45;
-      const collateralAvailable = BigInt(1e18); // 1 token in wei
-      const url = toQuoteUrl({
-        base: baseUrl,
-        chainId,
-        marketGroupAddress,
-        marketId,
-        expectedPrice,
-        collateralAvailable,
-      });
-      const res = await fetch(url);
-      const data = await res.json();
-      // return collateral cost estimate string (for demo use expected maxSize)
-      return data.maxSize ?? '0';
-    };
-  }, [baseUrl]);
-
   async function onTradeSubmit(values: { size: string; direction: 'Long' | 'Short'; slippage: string; }) {
-    // Integrate with write logic or relayer
+    // Integrate with contract write logic or auction relayer
     console.log('submit trade', values);
   }
 
   return (
     <TradeForm
       onTradeSubmit={onTradeSubmit}
-      getEstimatedCost={getEstimatedCost}
-      collateralAssetTicker="sUSDS"
+      collateralAssetTicker="USDe"
       walletBalanceDisplay="100.0"
     />
   );
@@ -254,8 +204,7 @@ export default {
 ### Next Steps
 
 - Add market data via [GraphQL](/builder-guide/api/graphql)
-- Use the [Quoter](/builder-guide/api/quoter) to compute max size and price constraints
-- Add [Auction Relayer](/builder-guide/api/auction-relayer) for batch markets and limit-like quotes
+- Add [Auction Relayer](/builder-guide/api/auction-relayer) for trading via auctions
 - Browse available [UI Components](/builder-guide/storybook) in Storybook
 
 </div>
