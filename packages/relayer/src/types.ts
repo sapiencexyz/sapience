@@ -29,7 +29,7 @@ export interface AuctionRequestPayload {
   resolver: string; // contract address for market validation
   taker: string; // EOA or smart account address of the taker initiating the auction
   takerNonce: number; // nonce for the taker
-  chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
+  chainId: number; // chain ID for the auction (e.g., 5064014 for Ethereal)
   takerSignature?: string; // EIP-191 signature of the taker (optional for price discovery)
   takerSignedAt?: string; // ISO timestamp when the signature was created (required if takerSignature is provided)
   sessionApproval?: string; // ZeroDev session approval (base64) for smart account session authentication

@@ -31,9 +31,7 @@ The service will start on `http://localhost:3002` with WebSocket endpoint at `ws
 
 ### Optional
 - `ENABLE_AUCTION_WS`: Enable WebSocket server (default: `true`)
-- `INFURA_API_KEY`: Infura API key for blockchain RPC calls
-- `RPC_URL`: Custom RPC URL for specific chains (e.g., Converge chain)
-- `CHAIN_5064014_RPC_URL`: Custom RPC URL for EtherealChain
+- `CHAIN_5064014_RPC_URL`: Custom RPC URL for EtherealChain (default: https://rpc.ethereal.trade)
 
 ## Production Deployment
 
@@ -57,8 +55,7 @@ Set these in your deployment platform:
 - `PORT`: `3002` (or your configured port)
 - `NODE_ENV`: `production`
 - `ENABLE_AUCTION_WS`: `true`
-- `INFURA_API_KEY`: Your Infura API key (if using Infura)
-- Any chain-specific RPC URLs if needed
+- `CHAIN_5064014_RPC_URL`: Custom RPC URL for EtherealChain if needed
 
 ## Reverse Proxy Setup
 

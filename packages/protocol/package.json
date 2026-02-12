@@ -9,11 +9,7 @@
     "test": "forge build --ast && cannon test deployments/tomls/cannonfile.test.toml --forge.vv",
     "lint": "forge lint",
     "format": "forge fmt",
-    "format:check": "forge fmt --check",
-    "deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/outputs/11155111",
-    "simulate-deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --dry-run --impersonate-all",
-    "deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --write-deployments ./deployments/outputs/8453-blobs",
-    "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run --impersonate-all"
+    "format:check": "forge fmt --check"
   },
   "devDependencies": {
     "@layerzerolabs/lz-evm-messagelib-v2": "3.0.123",

@@ -1,6 +1,6 @@
 # LayerZero Bridge for UMA Settlements
 
-This bridge implementation enables UMA settlement functionality on networks where UMA is not deployed (e.g., Converge) by using LayerZero for cross-chain communication.
+This bridge implementation enables UMA settlement functionality on networks where UMA is not deployed by using LayerZero for cross-chain communication.
 
 ## Architecture Overview
 
@@ -63,7 +63,7 @@ struct AssertionMarketData {
 
 ### Settlement Flow
 
-1. **Market Submission (Converge)**
+1. **Market Submission (Remote Chain)**
    ```
    Market -> UMASettlementModule -> MarketBridge.forwardAssertTruth()
    ```

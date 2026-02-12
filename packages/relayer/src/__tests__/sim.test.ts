@@ -9,7 +9,7 @@ const validAuction: AuctionRequestPayload = {
   resolver: '0x1234567890123456789012345678901234567890',
   taker: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
   takerNonce: 1,
-  chainId: 42161,
+  chainId: 5064014,
 };
 
 // Valid bid fixture
