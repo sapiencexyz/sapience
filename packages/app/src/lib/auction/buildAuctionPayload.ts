@@ -6,9 +6,9 @@ import {
 import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   encodePythBinaryOptionOutcomes,
-  encodeUmaPredictedOutcomes,
+  encodePolymarketPredictedOutcomes,
   type PythBinaryOptionOutcome,
-  type UmaPredictedOutcome,
+  type PolymarketPredictedOutcome,
 } from '@sapience/sdk';
 
 export interface PredictedOutcomeInputStub {
@@ -35,9 +35,9 @@ export interface PythOutcomeInputStub {
   overWinsOnTie?: boolean;
 }
 
-function normalizeUmaOutcomes(
+function normalizePolymarketOutcomes(
   outcomes: PredictedOutcomeInputStub[]
-): UmaPredictedOutcome[] {
+): PolymarketPredictedOutcome[] {
   return outcomes.map((o) => ({
     marketId: (o.marketId.startsWith('0x')
       ? o.marketId
@@ -188,7 +188,7 @@ export function buildAuctionStartPayload(
     ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
   // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
-  const encoded = encodeUmaPredictedOutcomes(normalizeUmaOutcomes(outcomes));
+  const encoded = encodePolymarketPredictedOutcomes(normalizePolymarketOutcomes(outcomes));
   const predictedOutcomes = [encoded];
 
   return { resolver, predictedOutcomes };
