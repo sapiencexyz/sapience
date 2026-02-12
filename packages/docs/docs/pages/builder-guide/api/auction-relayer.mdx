@@ -136,9 +136,9 @@ ws.on('message', (data) => {
 ```ts
 const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 
-// Listen for bids
-ws.onmessage = (ev) => {
-  const msg = JSON.parse(String(ev.data));
+// Listen for auctions
+ws.on('message', (data) => {
+  const msg = JSON.parse(String(data));
   
   if (msg.type === 'auction.started') {
     const auction = msg.payload;
