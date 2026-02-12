@@ -13,3 +13,6 @@ tsconfig.tsbuildinfo
 # Test NFT storage
 test-nft-ids.json
 test-assertion-data.json
+
+# Stress test (local-only, requires running API)
+src/graphql/__tests__/stress.test.ts
