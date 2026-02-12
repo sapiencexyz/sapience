@@ -290,7 +290,7 @@ predictedOutcomes: [encoded]
 - `prediction`: `true` = YES, `false` = NO
 - Wrap all legs in a single encoded bytes string at `predictedOutcomes[0]`
 
-If using the `@sapience/sdk`, use `encodeUmaPredictedOutcomes()` from `@sapience/sdk/auction`.
+If using the `@sapience/sdk`, use `encodePolymarketPredictedOutcomes()` from `@sapience/sdk/auction`.
 
 ## Minting On-Chain
 

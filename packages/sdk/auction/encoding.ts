@@ -5,15 +5,20 @@ import {
 } from 'viem';
 
 // ============================================================================
-// UMA Resolver Encoding (PredictionMarketUmaResolver.PredictedOutcome[])
+// Polymarket Resolver Encoding (PredictedOutcome[])
 // ============================================================================
 
-export type UmaPredictedOutcome = {
+export type PolymarketPredictedOutcome = {
   marketId: Hex; // bytes32
   prediction: boolean; // true = YES, false = NO
 };
 
-export function encodeUmaPredictedOutcomes(outcomes: UmaPredictedOutcome[]): Hex {
+/** @deprecated Use `PolymarketPredictedOutcome` instead. */
+export type UmaPredictedOutcome = PolymarketPredictedOutcome;
+/** @deprecated Use `PolymarketPredictedOutcome` instead. */
+export type PredictedOutcome = PolymarketPredictedOutcome;
+
+export function encodePolymarketPredictedOutcomes(outcomes: PolymarketPredictedOutcome[]): Hex {
   return encodeAbiParameters(
     [
       {
@@ -27,6 +32,11 @@ export function encodeUmaPredictedOutcomes(outcomes: UmaPredictedOutcome[]): Hex
     [outcomes]
   );
 }
+
+/** @deprecated Use `encodePolymarketPredictedOutcomes` instead. */
+export const encodeUmaPredictedOutcomes = encodePolymarketPredictedOutcomes;
+/** @deprecated Use `encodePolymarketPredictedOutcomes` instead. */
+export const encodePredictedOutcomes = encodePolymarketPredictedOutcomes;
 
 // ============================================================================
 // Pyth Resolver Encoding (PythResolver.BinaryOptionOutcome[])
