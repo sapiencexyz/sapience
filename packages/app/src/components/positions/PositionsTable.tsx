@@ -794,7 +794,7 @@ export default function PositionsTable({
                   : 'descending'
             }
           >
-            Opponent
+            Counterparty
             {column.getIsSorted() === 'asc' ? (
               <ChevronUp className="h-4 w-4" />
             ) : column.getIsSorted() === 'desc' ? (
@@ -815,7 +815,7 @@ export default function PositionsTable({
           return (
             <div>
               <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                Opponent
+                Counterparty
               </div>
               <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
                 <EnsAvatar
