@@ -37,12 +37,37 @@ const startServer = async () => {
 
   const apolloServer = await initializeApolloServer();
 
+  // Concurrency limiter — shed load when too many GraphQL operations are in-flight.
+  // Returns 503 instantly instead of letting requests queue behind saturated connections.
+  const maxConcurrent = config.GRAPHQL_MAX_CONCURRENT_OPERATIONS;
+  let activeOperations = 0;
+
   // Add GraphQL endpoint with payload size limit and request timeout
   app.use(
     '/graphql',
+    // Concurrency limiter — must be first to reject before any work
+    (_req: Request, res: Response, next: NextFunction) => {
+      if (activeOperations >= maxConcurrent) {
+        res.status(503).json({
+          errors: [
+            {
+              message: 'Server is busy. Please retry shortly.',
+              extensions: { code: 'SERVER_BUSY' },
+            },
+          ],
+        });
+        return;
+      }
+
+      activeOperations++;
+      res.on('finish', () => {
+        activeOperations--;
+      });
+      next();
+    },
     express.json({ limit: '100kb' }),
     // Request timeout middleware
-    (req: Request, res: Response, next: NextFunction) => {
+    (_req: Request, res: Response, next: NextFunction) => {
       const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
       res.setTimeout(timeout, () => {
         if (!res.headersSent) {
