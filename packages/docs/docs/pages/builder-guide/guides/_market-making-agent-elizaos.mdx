@@ -42,7 +42,8 @@ export const marketMakingAction: Action = {
       if (msg.type === 'auction.started') {
         const auction = msg.payload;
         
-        // Evaluate using your forecasts
+        // Implement your own evaluation logic here (e.g. compare auction
+        // predictions against your forecasts to decide whether to bid)
         const shouldBid = await evaluateAuction(runtime, auction);
         
         if (shouldBid) {
