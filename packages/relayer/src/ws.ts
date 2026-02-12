@@ -19,10 +19,6 @@ import {
   subscriptionsActive,
 } from './metrics';
 import { config } from './config';
-import {
-  PREDICTION_MARKET_ADDRESS_ARB1,
-  PREDICTION_MARKET_CHAIN_ID_ARB1,
-} from './constants';
 import Sentry from './instrument';
 import type {
   BotToServerMessage,
@@ -294,13 +290,6 @@ export function createAuctionWebSocketServer() {
     {
       type: 'function',
       name: 'manager',
-      stateMutability: 'view',
-      inputs: [],
-      outputs: [{ name: '', type: 'address' }],
-    },
-    {
-      type: 'function',
-      name: 'owner',
       stateMutability: 'view',
       inputs: [],
       outputs: [{ name: '', type: 'address' }],

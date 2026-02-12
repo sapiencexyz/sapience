@@ -28,8 +28,8 @@ import {
   extractSiweDomainAndUri,
 } from '@sapience/sdk';
 import {
-  PREDICTION_MARKET_ADDRESS_ARB1,
-  PREDICTION_MARKET_CHAIN_ID_ARB1,
+  PREDICTION_MARKET_ADDRESS,
+  PREDICTION_MARKET_CHAIN_ID,
 } from './src/constants';
 import type {
   AuctionRequestPayload,
@@ -115,7 +115,7 @@ async function createAuctionStartMessage(
     resolver: '0x0000000000000000000000000000000000000000',
     predictedOutcomes: ['0xdeadbeef'],
     takerNonce: messageId,
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   if (sigType === 'unsigned') {
@@ -172,7 +172,7 @@ async function createBidSubmitMessage(
     resolver: '0x0000000000000000000000000000000000000000',
     predictedOutcomes: ['0xdeadbeef'],
     takerNonce: 0,
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   const payload: BidPayload = {
@@ -203,8 +203,8 @@ async function createBidSubmitMessage(
     },
     makerWager: BigInt(payload.makerWager),
     makerDeadline: payload.makerDeadline,
-    chainId: PREDICTION_MARKET_CHAIN_ID_ARB1,
-    verifyingContract: PREDICTION_MARKET_ADDRESS_ARB1,
+    chainId: PREDICTION_MARKET_CHAIN_ID,
+    verifyingContract: PREDICTION_MARKET_ADDRESS,
     maker: maker as `0x${string}`,
     makerNonce: BigInt(payload.makerNonce),
   });

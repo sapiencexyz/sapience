@@ -75,7 +75,7 @@ async function createSignedAuction(): Promise<AuctionRequestPayload> {
     resolver: '0x1234567890123456789012345678901234567890',
     taker: takerAccount.address,
     takerNonce: Math.floor(Math.random() * 1000000),
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   const message = createAuctionStartSiweMessage(payload, domain, uri, takerSignedAt);
@@ -96,7 +96,7 @@ function createUnsignedAuction(): AuctionRequestPayload {
     resolver: '0x1234567890123456789012345678901234567890',
     taker: takerAccount.address,
     takerNonce: Math.floor(Math.random() * 1000000),
-    chainId: 42161,
+    chainId: 5064014,
   };
 }
 

@@ -88,7 +88,7 @@ export function PositionSizeInput({
   name = 'positionSize',
   collateralSymbol,
   collateralAddress = '0x0000000000000000000000000000000000000000',
-  chainId = 432,
+  chainId = 5064014,
   minAmount,
   maxAmount,
   hideHeader = false,
