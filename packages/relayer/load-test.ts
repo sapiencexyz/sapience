@@ -27,10 +27,11 @@ import {
   signMakerBid,
   extractSiweDomainAndUri,
 } from '@sapience/sdk';
-import {
-  PREDICTION_MARKET_ADDRESS,
-  PREDICTION_MARKET_CHAIN_ID,
-} from './src/constants';
+import { predictionMarket } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
+const PREDICTION_MARKET_ADDRESS = predictionMarket[CHAIN_ID_ETHEREAL]?.address as `0x${string}`;
+const PREDICTION_MARKET_CHAIN_ID = CHAIN_ID_ETHEREAL;
 import type {
   AuctionRequestPayload,
   BidPayload,

@@ -1,10 +1,10 @@
 import {
-  PublicClient,
+  type PublicClient,
   createPublicClient,
   http,
+  type Chain,
 } from 'viem';
-import * as viem from 'viem';
-import * as viemChains from 'viem/chains';
+import { cannon } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -20,7 +20,7 @@ function fromRoot(relativePath: string): string {
 // Load environment variables
 dotenv.config({ path: fromRoot('.env') });
 
-export const etherealChain: viem.Chain = {
+export const etherealChain: Chain = {
   id: 5064014,
   name: 'EtherealChain',
   nativeCurrency: {
@@ -36,18 +36,10 @@ export const etherealChain: viem.Chain = {
   },
 };
 
-export const chains: viem.Chain[] = [
-  ...Object.values(viemChains),
-  etherealChain,
-];
+const supportedChains: Chain[] = [cannon, etherealChain];
 
-export function getChainById(id: number): viem.Chain | undefined {
-  const chain = viem.extractChain({
-    chains,
-    id,
-  });
-
-  if (chain) return chain;
+export function getChainById(id: number): Chain | undefined {
+  return supportedChains.find((c) => c.id === id);
 }
 
 const clientMap = new Map<number, PublicClient>();

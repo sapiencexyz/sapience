@@ -38,6 +38,12 @@ describe('getProviderForChain', () => {
 });
 
 describe('getChainById', () => {
+  it('returns chain definition for cannon (13370)', () => {
+    const chain = getChainById(13370);
+    expect(chain).toBeDefined();
+    expect(chain!.id).toBe(13370);
+  });
+
   it('returns chain definition for ethereal (5064014)', () => {
     const chain = getChainById(5064014);
     expect(chain).toBeDefined();

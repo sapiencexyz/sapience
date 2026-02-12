@@ -187,11 +187,24 @@ export function createAuctionWebSocketServer() {
 
   const vaultSubscriptions = new Map<VaultKey, Set<WebSocket>>();
   const latestVaultQuoteByKey = new Map<VaultKey, PublishVaultQuotePayload>();
+  const SIGNER_CACHE_TTL_MS = 60_000;
+  const SIGNER_CACHE_MAX_SIZE = 500;
   const vaultSignerCache = new Map<
     VaultKey,
     { signers: Set<string>; fetchedAt: number }
   >();
   const vaultObservers = new Set<WebSocket>();
+
+  // Periodically evict expired signer cache entries to prevent unbounded growth
+  const cacheEvictionTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of vaultSignerCache) {
+      if (now - entry.fetchedAt > SIGNER_CACHE_TTL_MS) {
+        vaultSignerCache.delete(key);
+      }
+    }
+  }, SIGNER_CACHE_TTL_MS);
+  wss.on('close', () => clearInterval(cacheEvictionTimer));
 
   function makeVaultKey(chainId: number, vaultAddress: string): VaultKey {
     return `${chainId}:${vaultAddress.toLowerCase()}`;
@@ -562,13 +575,18 @@ export function createAuctionWebSocketServer() {
             const key = makeVaultKey(p.chainId, p.vaultAddress);
             let allowed = vaultSignerCache.get(key);
             const cacheFresh =
-              allowed && Date.now() - allowed.fetchedAt < 60_000;
+              allowed && Date.now() - allowed.fetchedAt < SIGNER_CACHE_TTL_MS;
             if (!cacheFresh) {
               const signers = await fetchAuthorizedVaultSigners(
                 p.chainId,
                 p.vaultAddress
               );
               allowed = { signers, fetchedAt: Date.now() };
+              // Evict oldest entry if cache is full
+              if (vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE && !vaultSignerCache.has(key)) {
+                const oldestKey = vaultSignerCache.keys().next().value;
+                if (oldestKey) vaultSignerCache.delete(oldestKey);
+              }
               vaultSignerCache.set(key, allowed);
             }
             const canonical = buildVaultCanonicalMessage(p);
