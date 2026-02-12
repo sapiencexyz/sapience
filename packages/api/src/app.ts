@@ -1,5 +1,6 @@
 import express, { Request } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { router } from './routes';
 import { config } from './config';
 import { rateLimiter } from './middleware';
@@ -35,7 +36,7 @@ const corsOptions: cors.CorsOptions = {
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) || //staging sites
+      /^https?:\/\/(app|docs)(-[a-z0-9]+-sapiencexyz)?\.vercel\.app$/.test(origin) || //staging sites
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);
@@ -55,6 +56,7 @@ const corsOptions: cors.CorsOptions = {
 const app = express();
 
 // Middleware
+app.use(helmet());
 app.use(express.json());
 app.use(cors(corsOptions));
 app.use(rateLimiter);

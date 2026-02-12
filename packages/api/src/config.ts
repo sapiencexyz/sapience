@@ -41,4 +41,15 @@ export const config = cleanEnv(process.env, {
     default: 8000,
     desc: 'Maximum time for a Prisma query to complete',
   }),
+  DATABASE_URL: str({
+    desc: 'Postgres connection string',
+  }),
+  CONNECTION_POOL_SIZE: num({
+    default: 20,
+    desc: 'Max Prisma connection pool size',
+  }),
+  GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
+    default: 15,
+    desc: 'Max concurrent GraphQL operations before shedding load with 503',
+  }),
 });

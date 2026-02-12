@@ -78,8 +78,7 @@ export class PositionReconciler {
           const offset = BigInt(
             POSITION_RECONCILE_CONFIG.fallbackBlockLookback
           );
-          fromBlock =
-            toBlock > offset ? toBlock - offset : 0n;
+          fromBlock = toBlock > offset ? toBlock - offset : 0n;
         }
         if (fromBlock > toBlock) {
           console.log(

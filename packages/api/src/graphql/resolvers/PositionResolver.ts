@@ -262,151 +262,89 @@ export class PositionResolver {
       useRawSql &&
       (orderBy === 'positionSize' || orderBy === 'payout' || orderBy === 'pnl')
     ) {
+      // Direction is an SQL keyword — validated to a literal, safe for Prisma.raw()
       const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
 
+      // Build conditional SQL fragments using Prisma.sql (parameterized) / Prisma.empty
       const validStatuses = ['active', 'settled', 'consolidated'] as const;
-      const sanitizedStatus =
-        status && validStatuses.includes(status) ? status : null;
-      const statusCondition = sanitizedStatus
-        ? `AND status = '${sanitizedStatus}'`
-        : '';
+      const statusFilter =
+        status && validStatuses.includes(status)
+          ? Prisma.sql`AND status = ${status}`
+          : Prisma.empty;
 
-      const sanitizedEndsAtGte =
+      const endsAtFilter =
         endsAtGte !== undefined &&
         endsAtGte !== null &&
         Number.isInteger(endsAtGte)
-          ? endsAtGte
-          : null;
-      const endsAtCondition = sanitizedEndsAtGte
-        ? `AND "endsAt" >= ${sanitizedEndsAtGte}`
-        : '';
+          ? Prisma.sql`AND "endsAt" >= ${endsAtGte}`
+          : Prisma.empty;
 
-      const extraConditions = `${statusCondition} ${endsAtCondition}`;
+      const chainIdFilter =
+        chainId !== undefined && chainId !== null
+          ? Prisma.sql`AND "chainId" = ${chainId}`
+          : Prisma.empty;
 
       if (orderBy === 'positionSize') {
-        if (chainId !== undefined && chainId !== null) {
-          const rows = await prisma.$queryRaw<Position[]>`
-            SELECT * FROM position
-            WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) AND "chainId" = ${chainId} ${Prisma.raw(extraConditions)}
-            ORDER BY CASE 
-              WHEN LOWER(predictor) = ${addr} THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-              WHEN LOWER(counterparty) = ${addr} THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-              ELSE 0
-            END ${Prisma.raw(direction)}
-            LIMIT ${take}
-            OFFSET ${skip}
-          `;
-          return processRows(rows);
-        } else {
-          const rows = await prisma.$queryRaw<Position[]>`
-            SELECT * FROM position
-            WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${Prisma.raw(extraConditions)}
-            ORDER BY CASE 
-              WHEN LOWER(predictor) = ${addr} THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-              WHEN LOWER(counterparty) = ${addr} THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-              ELSE 0
-            END ${Prisma.raw(direction)}
-            LIMIT ${take}
-            OFFSET ${skip}
-          `;
-          return processRows(rows);
-        }
+        const rows = await prisma.$queryRaw<Position[]>`
+          SELECT * FROM position
+          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
+          ORDER BY CASE
+            WHEN LOWER(predictor) = ${addr} THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+            WHEN LOWER(counterparty) = ${addr} THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+            ELSE 0
+          END ${Prisma.raw(direction)}
+          LIMIT ${take}
+          OFFSET ${skip}
+        `;
+        return processRows(rows);
       }
 
       if (orderBy === 'pnl') {
-        if (chainId !== undefined && chainId !== null) {
-          const rows = await prisma.$queryRaw<Position[]>`
-            SELECT * FROM position
-            WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) AND "chainId" = ${chainId} ${Prisma.raw(extraConditions)}
-            ORDER BY CASE 
-              WHEN status = 'active' THEN 0
-              WHEN LOWER(predictor) = ${addr} THEN
-                CASE 
-                  WHEN "predictorWon" = true THEN 
-                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-                  ELSE 
-                    -CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-                END
-              WHEN LOWER(counterparty) = ${addr} THEN
-                CASE 
-                  WHEN "predictorWon" = false THEN 
-                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-                  ELSE 
-                    -CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-                END
-              ELSE 0
-            END ${Prisma.raw(direction)}
-            LIMIT ${take}
-            OFFSET ${skip}
-          `;
-          return processRows(rows);
-        } else {
-          const rows = await prisma.$queryRaw<Position[]>`
-            SELECT * FROM position
-            WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${Prisma.raw(extraConditions)}
-            ORDER BY CASE 
-              WHEN status = 'active' THEN 0
-              WHEN LOWER(predictor) = ${addr} THEN
-                CASE 
-                  WHEN "predictorWon" = true THEN 
-                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-                  ELSE 
-                    -CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-                END
-              WHEN LOWER(counterparty) = ${addr} THEN
-                CASE 
-                  WHEN "predictorWon" = false THEN 
-                    CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-                  ELSE 
-                    -CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-                END
-              ELSE 0
-            END ${Prisma.raw(direction)}
-            LIMIT ${take}
-            OFFSET ${skip}
-          `;
-          return processRows(rows);
-        }
+        const rows = await prisma.$queryRaw<Position[]>`
+          SELECT * FROM position
+          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
+          ORDER BY CASE
+            WHEN status = 'active' THEN 0
+            WHEN LOWER(predictor) = ${addr} THEN
+              CASE
+                WHEN "predictorWon" = true THEN
+                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+                ELSE
+                  -CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+              END
+            WHEN LOWER(counterparty) = ${addr} THEN
+              CASE
+                WHEN "predictorWon" = false THEN
+                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+                ELSE
+                  -CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+              END
+            ELSE 0
+          END ${Prisma.raw(direction)}
+          LIMIT ${take}
+          OFFSET ${skip}
+        `;
+        return processRows(rows);
       }
 
-      // For payout, sort by totalCollateral but treat lost positions as 0
-      if (chainId !== undefined && chainId !== null) {
-        const rows = await prisma.$queryRaw<Position[]>`
-          SELECT * FROM position
-          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) AND "chainId" = ${chainId} ${Prisma.raw(extraConditions)}
-          ORDER BY CASE 
-            WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
-            WHEN status != 'active' THEN
-              CASE
-                WHEN (LOWER(predictor) = ${addr} AND "predictorWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
-                WHEN (LOWER(counterparty) = ${addr} AND "predictorWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
-                ELSE 0
-              END
-            ELSE 0
-          END ${Prisma.raw(direction)}
-          LIMIT ${take}
-          OFFSET ${skip}
-        `;
-        return processRows(rows);
-      } else {
-        const rows = await prisma.$queryRaw<Position[]>`
-          SELECT * FROM position
-          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${Prisma.raw(extraConditions)}
-          ORDER BY CASE 
-            WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
-            WHEN status != 'active' THEN
-              CASE
-                WHEN (LOWER(predictor) = ${addr} AND "predictorWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
-                WHEN (LOWER(counterparty) = ${addr} AND "predictorWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
-                ELSE 0
-              END
-            ELSE 0
-          END ${Prisma.raw(direction)}
-          LIMIT ${take}
-          OFFSET ${skip}
-        `;
-        return processRows(rows);
-      }
+      // payout: sort by totalCollateral but treat lost positions as 0
+      const rows = await prisma.$queryRaw<Position[]>`
+        SELECT * FROM position
+        WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
+        ORDER BY CASE
+          WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
+          WHEN status != 'active' THEN
+            CASE
+              WHEN (LOWER(predictor) = ${addr} AND "predictorWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
+              WHEN (LOWER(counterparty) = ${addr} AND "predictorWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
+              ELSE 0
+            END
+          ELSE 0
+        END ${Prisma.raw(direction)}
+        LIMIT ${take}
+        OFFSET ${skip}
+      `;
+      return processRows(rows);
     }
 
     let orderByClause: Prisma.PositionOrderByWithRelationInput = {

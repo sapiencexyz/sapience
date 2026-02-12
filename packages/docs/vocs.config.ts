@@ -1,6 +1,8 @@
 import { defineConfig } from "vocs";
 
 export default defineConfig({
+  ogImageUrl:
+    "https://vocs.dev/api/og?logo=https%3A%2F%2Fdocs.sapience.xyz%2Flogo.svg&title=%title&description=%description",
   title: "Sapience",
   logoUrl: "/logo.svg",
   head: [
