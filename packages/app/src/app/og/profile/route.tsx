@@ -201,15 +201,11 @@ export async function GET(req: Request) {
                             style={{
                               display: 'flex',
                               marginBottom: 8 * scale,
-                              fontSize: 20 * scale,
-                              lineHeight: `${26 * scale}px`,
-                              fontWeight: 600,
-                              color: og.colors.foregroundLight,
-                              textTransform: 'uppercase',
-                              letterSpacing: 0.06 * scale + 'em',
                             }}
                           >
-                            {metric.label}
+                            <SectionLabel scale={scale}>
+                              {metric.label}
+                            </SectionLabel>
                           </div>
                           <div
                             style={{
