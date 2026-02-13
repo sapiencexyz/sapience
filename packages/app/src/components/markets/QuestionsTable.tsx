@@ -449,16 +449,18 @@ function getRowEndTime(row: TopLevelRow): number {
 
 // Class name maps for table headers and cells
 const HEADER_CLASS_MAP: Record<string, string> = {
-  question: 'pl-4 w-full min-w-[300px] sm:min-w-[200px]',
-  endTime: 'pr-4',
+  question: 'pl-4 w-full min-w-[120px] sm:min-w-[200px]',
+  forecast: 'hidden sm:table-cell',
+  openInterest: 'hidden md:table-cell',
+  endTime: 'hidden md:table-cell pr-4',
   predict: 'text-center pr-4',
 };
 
 const CELL_CLASS_MAP: Record<string, string> = {
-  question: 'py-2 pl-4 w-full max-w-0 min-w-[300px] sm:min-w-[200px]',
-  forecast: 'py-2 text-right',
-  openInterest: 'py-2 text-right',
-  endTime: 'py-2 text-right whitespace-nowrap min-w-[170px]',
+  question: 'py-2 pl-4 w-full max-w-0 min-w-[120px] sm:min-w-[200px]',
+  forecast: 'py-2 text-right hidden sm:table-cell',
+  openInterest: 'py-2 text-right hidden md:table-cell',
+  endTime: 'py-2 text-right whitespace-nowrap min-w-[170px] hidden md:table-cell',
   predict: 'py-2 pr-4',
 };
 
@@ -749,7 +751,7 @@ function ChildConditionRow({
         isLast ? 'border-brand-white/20' : 'border-brand-white/10'
       }`}
     >
-      <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
+      <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[120px] sm:min-w-[200px]">
         <div className="flex items-center gap-3 w-full min-w-0">
           <MarketBadge
             label={condition.question}
@@ -766,7 +768,7 @@ function ChildConditionRow({
           />
         </div>
       </TableCell>
-      <TableCell className="py-2 text-right">
+      <TableCell className="py-2 text-right hidden sm:table-cell">
         <div className="text-sm whitespace-nowrap">
           <ForecastCell
             condition={conditionType}
@@ -775,7 +777,7 @@ function ChildConditionRow({
           />
         </div>
       </TableCell>
-      <TableCell className="py-2 text-right">
+      <TableCell className="py-2 text-right hidden md:table-cell">
         <div className="text-sm whitespace-nowrap text-right">
           {openInterestWei === 0n ? (
             <span className="text-muted-foreground">—</span>
@@ -789,7 +791,7 @@ function ChildConditionRow({
           )}
         </div>
       </TableCell>
-      <TableCell className="py-2 text-right">
+      <TableCell className="py-2 text-right hidden md:table-cell">
         {condition.endTime ? (
           <EndTimeCell
             endTime={condition.endTime}
