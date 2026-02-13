@@ -241,7 +241,7 @@ export default function CommandMenu() {
 
             {hasNoResults && <CommandEmpty>No results found.</CommandEmpty>}
 
-            {!isSearching && conditionRows.length > 0 && (
+            {!isSearching && debouncedSearch && conditionRows.length > 0 && (
               <CommandGroup>
                 {conditionRows.map((condition) => {
                   const categorySlug = condition.category?.slug || '';
@@ -283,7 +283,7 @@ export default function CommandMenu() {
 
             {filteredPages.length > 0 && (
               <>
-                {!isSearching && conditionRows.length > 0 && (
+                {!isSearching && debouncedSearch && conditionRows.length > 0 && (
                   <CommandSeparator />
                 )}
                 <CommandGroup>
