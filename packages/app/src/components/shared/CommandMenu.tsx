@@ -75,7 +75,7 @@ export default function CommandMenu() {
   const nowSec = Math.floor(Date.now() / 1000);
 
   const { data: questions } = useInfiniteQuestions({
-    take: 20,
+    pageSize: 20,
     chainId: CHAIN_ID_ETHEREAL,
     sortField: 'endTime',
     sortDirection: 'asc',
