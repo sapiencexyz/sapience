@@ -18,7 +18,7 @@
 
 ## What is Sapience?
 
-Sapience is an open-source prediction market protocol where you stake real money on the outcomes of future events. You make a prediction, an auction finds you the best odds, and a smart contract handles the rest.
+Sapience is an open-source prediction market protocol where you stake [USDe](https://ethena.fi) on the outcomes of future events. You make a prediction, an auction finds you the best odds, and a smart contract handles the rest.
 
 What makes it different:
 
