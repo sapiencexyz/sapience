@@ -62,22 +62,23 @@ export function useInfiniteScroll({
     };
   }, []);
 
-  // Post-load visibility re-check
+  // Post-load visibility re-check — uses refs to avoid effect re-firing
+  // when callback identity changes (which could cause double-fetches)
   const prevIsLoadingRef = useRef(isLoading);
   useEffect(() => {
     const wasLoading = prevIsLoadingRef.current;
     prevIsLoadingRef.current = isLoading;
 
-    if (wasLoading && !isLoading && hasMore && !isFetchingMore) {
+    if (wasLoading && !isLoading && hasMoreRef.current && !isFetchingMoreRef.current) {
       const sentinel = loadMoreRef.current;
       if (sentinel) {
         const rect = sentinel.getBoundingClientRect();
         const isVisible =
           rect.top < window.innerHeight + 100 && rect.bottom > -100;
-        if (isVisible) onFetchMore?.();
+        if (isVisible) onFetchMoreRef.current?.();
       }
     }
-  }, [isLoading, hasMore, isFetchingMore, onFetchMore]);
+  }, [isLoading]);
 
   return { loadMoreRef };
 }

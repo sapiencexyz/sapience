@@ -8,7 +8,7 @@ import {
   buildTopLevelRows,
   groupConditionToConditionType,
 } from '../market-helpers';
-// @ts-expect-error — react-dom types not bundled with React 19 in this project
+// @ts-expect-error — @types/react-dom is not installed; react-dom@19 ships JS-only in this project
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { X } from 'lucide-react';
