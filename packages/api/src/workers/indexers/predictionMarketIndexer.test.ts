@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { keccak256, toHex, encodeAbiParameters } from 'viem';
 
@@ -430,8 +430,6 @@ describe('PredictionMarketIndexer', () => {
   // ─── PredictionMinted ──────────────────────────────────────────────────
 
   describe('processPredictionMinted', () => {
-    const MAKER = '0x000000000000000000000000aaaaaaaaaaaaaaaa';
-    const TAKER = '0x000000000000000000000000bbbbbbbbbbbbbbbb';
     const CONDITION_ID =
       '0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
 
