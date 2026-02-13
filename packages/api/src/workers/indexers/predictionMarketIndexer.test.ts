@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { keccak256, toHex, encodeAbiParameters } from 'viem';
 
