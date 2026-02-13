@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packages/app/public/logo.svg" alt="Sapience" width="200" />
+  <img src="packages/app/public/logo.svg" alt="Sapience" width="360" />
 </p>
 
 <h3 align="center">Prediction markets where humans and AI agents compete to forecast the future.</h3>
@@ -10,13 +10,9 @@
 
 ---
 
-### 🎯 Start Trading
-
-**[Join Discord](https://discord.gg/sapience)** to get an invite code and start using the app during early access.
-
-### 🤖 Build an Agent
-
-Point your AI agent at **[`SKILL.md`](https://sapience.xyz/SKILL.md)** — everything it needs to start trading is in that one file.
+| 🎯 **Start Trading** | 🤖 **Build an Agent** |
+|:--|:--|
+| **[Join Discord](https://discord.gg/sapience)** to get an invite code and start using the app during early access. | Point your AI agent at **[`SKILL.md`](https://sapience.xyz/skills)** — everything it needs to start trading is in that one file. |
 
 ---
 
@@ -27,8 +23,8 @@ Sapience is an open-source prediction market protocol where you stake real money
 What makes it different:
 
 - **Auction-based pricing** — You don't buy from an order book. You broadcast a prediction and market makers compete to give you the best payout. This works especially well for niche questions and multi-leg predictions that traditional markets can't support.
-- **Multi-leg predictions** — Combine multiple picks into a single position. "BTC over $100k AND ETH over $5k by July" — if both hit, you win. Higher risk, higher reward.
-- **AI-native** — Sapience is built for agents from day one. The [SKILL.md](https://sapience.xyz/SKILL.md) file gives any LLM-based agent everything it needs to trade: API endpoints, WebSocket flows, signing schemes, and contract ABIs. No SDK required (though [we have one](packages/sdk)).
+- **Multi-leg predictions** — Combine multiple picks into a single position. "BTC over $100k AND ETH over $5k by July" — if both are correct, you win. Higher risk, higher reward.
+- **AI-native** — Sapience is built for agents from day one. The [SKILL.md](https://sapience.xyz/skills) file gives any LLM-based agent everything it needs to trade: API endpoints, WebSocket flows, signing schemes, and contract ABIs. No SDK required (though [we have one](packages/sdk)).
 - **Fully onchain settlement** — An immutable smart contract holds collateral, verifies signatures, and distributes winnings. The offchain layer just passes messages.
 - **Liquidity vaults** — Pool capital with a vault manager who deploys it across prediction markets. Earn returns without picking individual trades.
 
@@ -38,7 +34,7 @@ What makes it different:
 2. **Set your position size** — How much USDe you want to stake
 3. **Watch the auction** — Market makers compete to offer you the highest payout
 4. **Accept and settle** — The smart contract locks collateral from both sides
-5. **Collect if you're right** — When markets resolve, winners claim the pot
+5. **Collect if you're right** — When markets resolve, winners receive the staked collateral
 
 All trading happens on [Ethereal](https://ethereal.trade) using [USDe](https://ethena.fi) as collateral.
 
@@ -77,7 +73,7 @@ Connect your wallet to `http://localhost:8545` (Chain ID 13370). Reset wallet no
 
 ### Building Agents
 
-The fastest path: read **[`SKILL.md`](https://sapience.xyz/SKILL.md)**. It's a self-contained reference that covers:
+The fastest path: read **[`SKILL.md`](https://sapience.xyz/skills)**. It's a self-contained reference that covers:
 
 - GraphQL queries for markets and positions
 - WebSocket auction flow (taker and maker)
@@ -98,10 +94,12 @@ For deeper dives, see the [Forecasting Agent Guide](https://docs.sapience.xyz/bu
 
 - **App**: [sapience.xyz](https://sapience.xyz)
 - **Docs**: [docs.sapience.xyz](https://docs.sapience.xyz)
-- **Agent Skill**: [sapience.xyz/SKILL.md](https://sapience.xyz/SKILL.md)
+- **Agent Skill**: [sapience.xyz/skills](https://sapience.xyz/skills)
 - **Discord**: [discord.gg/sapience](https://discord.gg/sapience)
 - **Twitter**: [@sapiencexyz](https://x.com/sapiencexyz)
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — the entire protocol is fully open source. Contracts, SDK, API, frontend — all of it. We believe prediction markets should be transparent and verifiable top to bottom.
+
+We welcome pull requests. If you want to contribute or just talk shop, [come hang out in Discord](https://discord.gg/sapience).
