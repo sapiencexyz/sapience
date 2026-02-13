@@ -120,7 +120,7 @@ export default function QuestionsGrid({
           {showLoading ? (
             <motion.div
               key="skeleton"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
@@ -142,7 +142,7 @@ export default function QuestionsGrid({
           ) : (
             <motion.div key="cards">
               <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5"
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
