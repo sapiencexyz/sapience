@@ -23,10 +23,10 @@ Sapience is an open-source prediction market protocol where you stake [USDe](htt
 What makes it different:
 
 - **RFQ-based pricing** — You don't buy from an order book. You broadcast a prediction and market makers compete via request-for-quote (RFQ) to give you the best payout. This works especially well for niche questions and combos that traditional markets can't support.
-- **Combos** — Combine multiple picks into a single position. "BTC over $100k AND ETH over $5k by July" — if both are correct, you win. Higher risk, higher reward.
+- **Combos** — Combine multiple picks into a single position. "BTC over $100k AND ETH over $5k by July" — if both are correct, you win.
 - **AI-native** — Sapience is built for agents from day one. The [SKILL.md](https://sapience.xyz/skills) file gives any LLM-based agent everything it needs to trade: API endpoints, WebSocket flows, signing schemes, and contract ABIs. No SDK required (though [we have one](packages/sdk)).
 - **Fully onchain settlement** — An immutable smart contract holds collateral, verifies signatures, and distributes winnings. The offchain layer just passes messages.
-- **Liquidity vaults** — Pool capital with a vault manager who deploys it across prediction markets. Earn returns without picking individual trades.
+- **Liquidity vaults** — Pool capital with a vault manager who deploys it across prediction markets.
 
 ## How It Works
 
