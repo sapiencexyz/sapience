@@ -32,7 +32,7 @@ import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
-import { formatDistanceToNowStrict } from 'date-fns';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 
 const MAX_RESULTS = 10;
@@ -111,13 +111,6 @@ function getCategoryColor(categorySlug?: string | null): string {
   const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
   if (focusArea) return focusArea.color;
   return getDeterministicCategoryColor(categorySlug);
-}
-
-function formatEndTime(endTime: number): string {
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (endTime <= nowSec) return 'Ended';
-  const endDate = new Date(endTime * 1000);
-  return `Ends in ${formatDistanceToNowStrict(endDate)}`;
 }
 
 function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
@@ -258,23 +251,18 @@ export default function CommandMenu() {
                       className="flex items-center gap-3 py-2.5"
                     >
                       <MarketBadge
-                        label={condition.shortName || condition.question}
+                        label={condition.question}
                         size={24}
                         color={color}
                         categorySlug={categorySlug || null}
                       />
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <span className="truncate text-sm font-medium">
-                          {condition.shortName || condition.question}
-                        </span>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {condition.category?.name && (
-                            <span>{condition.category.name}</span>
-                          )}
-                          {condition.category?.name && <span>·</span>}
-                          <span>{formatEndTime(condition.endTime)}</span>
-                        </div>
-                      </div>
+                      <ConditionTitleLink
+                        conditionId={condition.id}
+                        resolverAddress={condition.resolver ?? undefined}
+                        title={condition.question}
+                        clampLines={1}
+                        className="text-sm min-w-0"
+                      />
                     </CommandItem>
                   );
                 })}
