@@ -7,6 +7,8 @@ import {
 } from '@sapience/ui';
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
+import { Search } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
@@ -14,6 +16,8 @@ import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import QuestionsTable from '~/components/markets/QuestionsTable';
+import QuestionsGrid from '~/components/markets/polymarket/QuestionsGrid';
+import SortControls from '~/components/markets/polymarket/SortControls';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -96,8 +100,11 @@ const MarketsPage = () => {
     }
   }, []);
 
-  // Filter state managed here, passed down to QuestionsTable
+  // View mode: default is table, ?view=polymarket switches to card grid
   const searchParams = useSearchParams();
+  const useCardGrid = searchParams.get('view') === 'polymarket';
+
+  // Filter state managed here, passed down to QuestionsTable / QuestionsGrid
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useSessionState(
     'sapience.markets.searchTerm',
@@ -236,7 +243,7 @@ const MarketsPage = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start"
+      className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start lg:gap-4"
     >
       {/* Render only one position form instance based on viewport */}
       {isCompact && (
@@ -251,49 +258,110 @@ const MarketsPage = () => {
 
       {/* Main Content */}
       <div
-        className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
-        style={{
-          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
-        }}
+        className={
+          useCardGrid
+            ? 'markets-grid-theme flex-1 min-w-0 max-w-full overflow-visible flex flex-col rounded-2xl'
+            : 'flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6'
+        }
+        style={
+          useCardGrid
+            ? {
+                height:
+                  'calc(100dvh - var(--page-top-offset, 0px) - 1.5rem)',
+                background:
+                  'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
+              }
+            : { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }
+        }
       >
-        {/* Featured Positions section */}
-        <ExampleCombos className="mt-4 md:mt-0" />
+        {/* Polymarket header (grid view only) */}
+        {useCardGrid && (
+          <div className="px-3 pt-4 pb-3 md:px-6 md:pt-6 md:pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Image
+                src="/polymarket-logomark.png"
+                alt="Polymarket"
+                width={36}
+                height={36}
+                className="rounded-full"
+              />
+              <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-[0.015em] text-white">
+                Polymarket Parlays
+              </h1>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Search prediction markets"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-8 w-full sm:w-64 rounded-full bg-white/15 border border-white/20 pl-9 pr-3 text-sm text-white placeholder:text-white/40 font-display focus:outline-none focus:border-white/40"
+                />
+              </div>
+              <SortControls
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+              />
+            </div>
+          </div>
+        )}
 
+        {/* Featured combos (table view only) */}
+        {!useCardGrid && <ExampleCombos className="mt-4 md:mt-0" />}
+
+        {/* Predict Prices (shared) */}
         {showPredictPrices && (
-          <div className="w-full mt-2">
+          <div className={`w-full mt-2 ${useCardGrid ? 'px-4' : ''}`}>
             <div className="flex items-center justify-between mb-2 px-1">
-              <h2 className="sc-heading text-foreground">Predict Prices</h2>
+              <h2
+                className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
+              >
+                Predict Prices
+              </h2>
             </div>
             <CreatePythPredictionForm onPick={handlePythPick} />
             <hr className="gold-hr mt-6 -mb-2" />
           </div>
         )}
 
-        {/* Results area - always table view */}
+        {/* Results area */}
         <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
           <motion.div
             className="h-full"
-            key="table-view"
+            key={useCardGrid ? 'grid-view' : 'table-view'}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.25 }}
           >
-            <QuestionsTable
-              questions={questions}
-              isLoading={isLoadingData}
-              isFetchingMore={isFetchingMore}
-              hasMore={hasMore}
-              onFetchMore={fetchMore}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
-              filters={filters}
-              onFiltersChange={setFilters}
-              categories={categoryOptions}
-              sortField={sortField}
-              sortDirection={sortDirection}
-              onSortChange={handleSortChange}
-            />
+            {useCardGrid ? (
+              <QuestionsGrid
+                questions={questions}
+                isLoading={isLoadingData}
+                isFetchingMore={isFetchingMore}
+                hasMore={hasMore}
+                onFetchMore={fetchMore}
+              />
+            ) : (
+              <QuestionsTable
+                questions={questions}
+                isLoading={isLoadingData}
+                isFetchingMore={isFetchingMore}
+                hasMore={hasMore}
+                onFetchMore={fetchMore}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                filters={filters}
+                onFiltersChange={setFilters}
+                categories={categoryOptions}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSortChange={handleSortChange}
+              />
+            )}
           </motion.div>
         </div>
       </div>
