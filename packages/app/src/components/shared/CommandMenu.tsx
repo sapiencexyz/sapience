@@ -30,6 +30,8 @@ import {
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import MarketBadge from '~/components/markets/MarketBadge';
 import { formatDistanceToNowStrict } from 'date-fns';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 
@@ -104,6 +106,13 @@ type QuestionResult = {
   } | null;
 };
 
+function getCategoryColor(categorySlug?: string | null): string {
+  if (!categorySlug) return 'hsl(var(--muted-foreground))';
+  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
+  if (focusArea) return focusArea.color;
+  return getDeterministicCategoryColor(categorySlug);
+}
+
 function formatEndTime(endTime: number): string {
   const nowSec = Math.floor(Date.now() / 1000);
   if (endTime <= nowSec) return 'Ended';
@@ -123,7 +132,6 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
         search: search?.trim() || null,
       });
 
-      // Flatten to condition rows
       return (data.questionsSorted ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
@@ -176,10 +184,10 @@ export default function CommandMenu() {
     }
   }, [open]);
 
-  const {
-    data: conditionRows = [],
-    isFetching,
-  } = useCommandMenuSearch(debouncedSearch || undefined, open);
+  const { data: conditionRows = [], isFetching } = useCommandMenuSearch(
+    debouncedSearch || undefined,
+    open
+  );
 
   // Filter pages client-side — use instant search for snappy UX
   const filteredPages = React.useMemo(() => {
@@ -234,11 +242,10 @@ export default function CommandMenu() {
             {hasNoResults && <CommandEmpty>No results found.</CommandEmpty>}
 
             {!isSearching && conditionRows.length > 0 && (
-              <CommandGroup heading="Questions">
+              <CommandGroup>
                 {conditionRows.map((condition) => {
                   const categorySlug = condition.category?.slug || '';
-                  const categoryColor =
-                    getDeterministicCategoryColor(categorySlug);
+                  const color = getCategoryColor(categorySlug);
                   const href = condition.resolver
                     ? `/questions/${condition.resolver}/${condition.id}`
                     : `/questions/${condition.id}`;
@@ -248,23 +255,25 @@ export default function CommandMenu() {
                       key={condition.id}
                       value={`${condition.shortName || condition.question} ${categorySlug}`}
                       onSelect={() => handleSelect(href)}
-                      className="flex flex-col items-start gap-0.5 py-2.5"
+                      className="flex items-center gap-3 py-2.5"
                     >
-                      <div className="flex items-center gap-2 w-full">
-                        <span
-                          className="inline-block h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: categoryColor }}
-                        />
+                      <MarketBadge
+                        label={condition.shortName || condition.question}
+                        size={24}
+                        color={color}
+                        categorySlug={categorySlug || null}
+                      />
+                      <div className="flex flex-col min-w-0 flex-1">
                         <span className="truncate text-sm font-medium">
                           {condition.shortName || condition.question}
                         </span>
-                      </div>
-                      <div className="flex items-center gap-2 pl-4 text-xs text-muted-foreground">
-                        {condition.category?.name && (
-                          <span>{condition.category.name}</span>
-                        )}
-                        {condition.category?.name && <span>·</span>}
-                        <span>{formatEndTime(condition.endTime)}</span>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          {condition.category?.name && (
+                            <span>{condition.category.name}</span>
+                          )}
+                          {condition.category?.name && <span>·</span>}
+                          <span>{formatEndTime(condition.endTime)}</span>
+                        </div>
                       </div>
                     </CommandItem>
                   );
@@ -277,7 +286,7 @@ export default function CommandMenu() {
                 {!isSearching && conditionRows.length > 0 && (
                   <CommandSeparator />
                 )}
-                <CommandGroup heading="Pages">
+                <CommandGroup>
                   {filteredPages.map((page) => (
                     <CommandItem
                       key={page.href}
