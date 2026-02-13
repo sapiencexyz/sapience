@@ -10,35 +10,6 @@ import {
 import type { Abi, EIP1193Provider, Hash, Hex } from 'viem';
 import { encodeFunctionData, parseAbi } from 'viem';
 
-// Type for transaction calls used in batch operations
-type TransactionCall = {
-  to: `0x${string}`;
-  data: Hex;
-  value: bigint;
-};
-
-// Type for write contract parameters extracted from wagmi
-interface WriteContractParams {
-  address: `0x${string}`;
-  abi: Abi;
-  functionName: string;
-  args?: readonly unknown[];
-  value?: bigint;
-  chainId?: number;
-}
-
-// Type for individual call in send calls (simplified from wagmi's complex generic type)
-interface SendCall {
-  to: `0x${string}`;
-  data?: Hex;
-  value?: bigint;
-}
-
-// Simplified type for send calls parameters (wagmi's type has complex generics we don't need)
-interface SendCallsParams {
-  chainId?: number;
-  calls?: SendCall[];
-}
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -56,10 +27,40 @@ import {
 import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
 
-// Ethereal chain configuration
-const CHAIN_ID_ETHEREAL = 5064014;
-const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
-const WUSDE_ABI = parseAbi(['function deposit() payable']);
+import {
+  type TransactionCall,
+  type WriteContractParams,
+  type ExecutionPath,
+  type SessionClient,
+  getExecutionPath,
+  prepareCallsWithWrapping,
+  encodeWriteContractToCall,
+  isEtherealChain,
+  formatSessionError,
+  pickFinalTransactionHash,
+  executeViaSessionKeyDefault,
+  executeTransaction,
+  CHAIN_ID_ETHEREAL,
+  WUSDE_ADDRESS,
+  WUSDE_ABI,
+  createWrapTransaction,
+} from './transactionExecutor';
+
+// Re-export types used by consumers
+export type { TransactionCall, WriteContractParams };
+
+// Type for individual call in send calls (simplified from wagmi's complex generic type)
+interface SendCall {
+  to: `0x${string}`;
+  data?: Hex;
+  value?: bigint;
+}
+
+// Simplified type for send calls parameters (wagmi's type has complex generics we don't need)
+interface SendCallsParams {
+  chainId?: number;
+  calls?: SendCall[];
+}
 
 // Success toast messages
 const SUCCESS_TITLE = 'Transaction successfully submitted.';
@@ -68,15 +69,6 @@ const SUCCESS_SUFFIX =
 
 function formatSuccessDescription(message?: string): string {
   return message ? `${message}\n\n${SUCCESS_SUFFIX}` : SUCCESS_SUFFIX;
-}
-
-function formatSessionError(error: unknown): string {
-  if (error instanceof Error) {
-    return (
-      (error as Error & { shortMessage?: string }).shortMessage || error.message
-    );
-  }
-  return String(error) || 'Session transaction failed';
 }
 
 interface useSapienceWriteContractProps {
@@ -148,16 +140,12 @@ export function useSapienceWriteContract({
   } = useSession();
 
   // Check if session can handle a specific chain
-  // Returns true ONLY if user is in smart-account mode AND session is active
-  // For Arbitrum, returns true even if session doesn't exist yet (will be created lazily)
   const canUseSessionForChain = useCallback(
     (chainId: number): boolean => {
-      // CRITICAL: Only use session if user is in smart-account mode AND session is active
       if (!isUsingSession) return false;
       if (!sessionConfig) return false;
       if (Date.now() > sessionConfig.expiresAt) return false;
       if (chainId === ethereal.id && chainClients.ethereal) return true;
-      // For Arbitrum, we can use session even if it doesn't exist yet (lazy creation)
       if (chainId === arbitrum.id) return true;
       return false;
     },
@@ -184,26 +172,15 @@ export function useSapienceWriteContract({
     [chainClients]
   );
 
-  // Determine execution path: 'session' | 'owner' | 'eoa'
-  // - 'session': Smart account mode with active session (gasless, auto-sign)
-  // - 'owner': Smart account mode without session (paymaster-sponsored, user signs as owner)
-  // - 'eoa': EOA mode (user's wallet directly, user pays gas)
-  const getExecutionPath = useCallback(
-    (chainId: number): 'session' | 'owner' | 'eoa' => {
-      if (!isUsingSmartAccount) return 'eoa';
-
-      // Smart account mode - check if session is available
-      if (canUseSessionForChain(chainId)) {
-        return 'session';
-      }
-
-      // Smart account mode but no session - use owner signing
-      return 'owner';
+  // Determine execution path using pure function
+  const getExecutionPathForChain = useCallback(
+    (chainId: number): ExecutionPath => {
+      return getExecutionPath(isUsingSmartAccount, canUseSessionForChain(chainId));
     },
     [isUsingSmartAccount, canUseSessionForChain]
   );
 
-  // Create chain switcher for owner signer
+  // Create owner signer for smart account transactions without session
   const createOwnerSigner = useCallback(
     async (address: `0x${string}`): Promise<OwnerSigner> => {
       if (!connector) {
@@ -252,6 +229,24 @@ export function useSapienceWriteContract({
     },
     [wagmiAddress, createOwnerSigner, onTxSending, onTxSent, onReceiptConfirmed]
   );
+
+  // Execute via session key using the extracted pure function
+  const executeViaSessionKey = useCallback(
+    async (
+      sessionClient: any,
+      calls: TransactionCall[],
+      chainId: number
+    ): Promise<Hash> => {
+      return executeViaSessionKeyDefault(sessionClient, calls, chainId, {
+        sessionConfig,
+        onTxSending,
+        onTxSent,
+        onReceiptConfirmed,
+      });
+    },
+    [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
+  );
+
   const [txHash, setTxHash] = useState<Hash | undefined>(undefined);
   const { toast } = useToast();
   const [chainId, setChainId] = useState<number | undefined>(undefined);
@@ -259,92 +254,65 @@ export function useSapienceWriteContract({
   const router = useRouter();
   const didRedirectRef = useRef(false);
   const didShowSuccessToastRef = useRef(false);
-  // Capture the address that submitted the transaction to avoid race conditions
-  // if user toggles account mode while transaction is in-flight
   const transactionAddressRef = useRef<`0x${string}` | null>(null);
-  // Get position form context - may be undefined if not within provider
   const createPositionContext = useContext(CreatePositionContext);
 
-  // Helper to check if we're on Ethereal chain
-  const isEtherealChain = (chainId: number): boolean =>
-    chainId === CHAIN_ID_ETHEREAL;
-
-  // Helper to create WUSDe wrap transaction for Ethereal chain
-  const createWrapTransaction = useCallback(
-    (amount: bigint): TransactionCall => ({
-      to: WUSDE_ADDRESS as `0x${string}`,
-      data: encodeFunctionData({
-        abi: WUSDE_ABI,
-        functionName: 'deposit',
-      }),
-      value: amount,
-    }),
-    []
-  );
-
-  // Helper to prepare calls with USDe wrapping for Ethereal chain
-  // This centralizes the wrapping logic used across session, owner, and EOA paths
-  const prepareCallsWithWrapping = useCallback(
-    (calls: TransactionCall[], chainId: number): TransactionCall[] => {
-      if (!isEtherealChain(chainId)) return calls;
-
-      // Calculate total value that needs wrapping
-      const totalValue = calls.reduce(
-        (sum, call) => sum + (call.value ?? 0n),
-        0n
-      );
-
-      if (totalValue === 0n) return calls;
-
-      // Prepend wrap transaction, then all calls with value zeroed
-      const wrapTx = createWrapTransaction(totalValue);
-      return [
-        wrapTx,
-        ...calls.map((call) => ({
-          ...call,
-          value: 0n, // Zero out value since we wrapped upfront
-        })),
-      ];
+  // Chain validation
+  const { validateAndSwitchChain } = useChainValidation({
+    onError: (errorMessage) => {
+      toast({
+        title: 'Chain Validation Failed',
+        description: errorMessage,
+        duration: 5000,
+        variant: 'destructive',
+      });
     },
-    [createWrapTransaction]
-  );
+  });
+
+  // Wagmi hooks
+  const {
+    writeContractAsync,
+    isPending: isWritingContract,
+    reset: resetWrite,
+  } = useWriteContract();
+
+  const {
+    sendCallsAsync,
+    isPending: isSendingCalls,
+    reset: resetCalls,
+  } = useSendCalls();
 
   const maybeRedirect = useCallback(() => {
-    // Determine if we should redirect
     const shouldRedirectToProfile =
       redirectPage === 'profile' && redirectProfileAnchor;
     const shouldRedirectToMarkets = redirectPage === 'markets';
 
     if (!shouldRedirectToProfile && !shouldRedirectToMarkets) return;
-    if (didRedirectRef.current) return; // Guard against double navigation
-    if (typeof window === 'undefined') return; // SSR safety
+    if (didRedirectRef.current) return;
+    if (typeof window === 'undefined') return;
 
     try {
       didRedirectRef.current = true;
 
       if (shouldRedirectToMarkets) {
         router.push(`/${redirectPage}`);
-        // Clear position form after redirect
         if (createPositionContext) {
           createPositionContext.clearPositionForm();
           createPositionContext.clearSelections();
         }
       } else if (shouldRedirectToProfile) {
-        // Use the address captured at transaction submission time to avoid race conditions
-        // if user toggles account mode while transaction is in-flight
         const connectedAddress =
           transactionAddressRef.current ??
           (isUsingSmartAccount && smartAccountAddress
             ? smartAccountAddress
             : wagmiAddress);
-        if (!connectedAddress) return; // No address available yet
+        if (!connectedAddress) return;
         const addressLower = String(connectedAddress).toLowerCase();
         const redirectUrl = `/${redirectPage}/${addressLower}#${redirectProfileAnchor}`;
         router.push(redirectUrl);
       }
     } catch (e) {
       console.error(e);
-      // noop on navigation errors
     }
   }, [
     redirectPage,
@@ -366,7 +334,6 @@ export function useSapienceWriteContract({
         onSuccess?.(undefined as any);
       }
 
-      // Only redirect automatically if not disabled
       if (!disableAutoRedirect) {
         maybeRedirect();
       }
@@ -398,50 +365,7 @@ export function useSapienceWriteContract({
     ]
   );
 
-  // Chain validation
-  const { validateAndSwitchChain } = useChainValidation({
-    onError: (errorMessage) => {
-      toast({
-        title: 'Chain Validation Failed',
-        description: errorMessage,
-        duration: 5000,
-        variant: 'destructive',
-      });
-    },
-  });
-
-  // Wagmi write contract hook (async usage; we handle promise resolution ourselves)
-  const {
-    writeContractAsync,
-    isPending: isWritingContract,
-    reset: resetWrite,
-  } = useWriteContract();
-
-  // Wagmi send calls hook (async usage; we handle promise resolution ourselves)
-  const {
-    sendCallsAsync,
-    isPending: isSendingCalls,
-    reset: resetCalls,
-  } = useSendCalls();
-
-  const pickFinalTransactionHash = useCallback(
-    (data: any): string | undefined => {
-      const receipts = data?.receipts;
-      if (Array.isArray(receipts) && receipts.length > 0) {
-        for (let i = receipts.length - 1; i >= 0; i--) {
-          const h = receipts?.[i]?.transactionHash;
-          if (typeof h === 'string' && h.length > 0) return h;
-        }
-      }
-      if (typeof data?.transactionHash === 'string')
-        return data.transactionHash;
-      if (typeof data?.txHash === 'string') return data.txHash;
-      return undefined;
-    },
-    []
-  );
-
-  // Helper to show success toast (used by sendCalls in multiple places)
+  // Helper to show success toast
   const showSuccessToast = useCallback(() => {
     if (disableSuccessToast || didShowSuccessToastRef.current) return;
     try {
@@ -476,76 +400,6 @@ export function useSapienceWriteContract({
     setIsSubmitting(false);
   }, [maybeRedirect, showSuccessToast, onSuccess]);
 
-  // Helper to execute transaction via session key (shared by writeContract and sendCalls)
-  const executeViaSessionKey = useCallback(
-    async (
-      sessionClient: NonNullable<typeof chainClients.ethereal>,
-      calls: TransactionCall[],
-      _chainId: number
-    ): Promise<Hash> => {
-      const timings: Record<string, number> = {};
-      const startTime = Date.now();
-
-      // Check session expiration before attempting transaction
-      if (sessionConfig) {
-        const nowMs = Date.now();
-        const msRemaining = sessionConfig.expiresAt - nowMs;
-
-        if (nowMs > sessionConfig.expiresAt) {
-          throw new Error(
-            `Session expired ${Math.abs(msRemaining / 1000 / 60).toFixed(0)} minutes ago. Please end the current session and start a new one.`
-          );
-        }
-      }
-
-      // Step 1: Encode calls
-      if (!sessionClient.account) {
-        throw new Error('Session client account not available');
-      }
-      const encodeStart = Date.now();
-      const encodedCalls = await sessionClient.account.encodeCalls(calls);
-      timings.encodeCallsMs = Date.now() - encodeStart;
-
-      // Notify that tx is about to be sent to bundler
-      onTxSending?.();
-
-      // Step 2: Send user operation to bundler
-      // Internally this does: gas estimation → paymaster sponsorship → sign → send to bundler
-      const sendStart = Date.now();
-      const userOpHash = await sessionClient.sendUserOperation({
-        callData: encodedCalls,
-      });
-      timings.sendUserOpMs = Date.now() - sendStart;
-
-      // Notify that bundler accepted - skip CONFIRMING stage, go directly to INDEXING
-      // The GraphQL polling in OgShareDialogBase will confirm the trade
-      onTxSent?.(userOpHash);
-      onReceiptConfirmed?.();
-
-      // Log final summary (no waitForReceipt - relying on indexer polling)
-      timings.totalMs = Date.now() - startTime;
-      console.log('[SessionTx] ═══════════════════════════════════════════');
-      console.log('[SessionTx] TIMING BREAKDOWN:');
-      console.log(
-        `[SessionTx]   1. encodeCalls:          ${String(timings.encodeCallsMs).padStart(5)}ms`
-      );
-      console.log(
-        `[SessionTx]   2. sendUserOperation:    ${String(timings.sendUserOpMs).padStart(5)}ms  ← (paymaster + bundler submit)`
-      );
-      console.log(`[SessionTx]   ─────────────────────────────`);
-      console.log(
-        `[SessionTx]   TOTAL:                   ${String(timings.totalMs).padStart(5)}ms`
-      );
-      console.log(
-        '[SessionTx] (skipping on-chain wait - indexer polling will confirm)'
-      );
-      console.log('[SessionTx] ═══════════════════════════════════════════');
-
-      return userOpHash;
-    },
-    [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
-  );
-
   // Custom write contract function that handles chain validation
   const sapienceWriteContract = useCallback(
     async (...args: Parameters<typeof writeContractAsync>) => {
@@ -562,25 +416,21 @@ export function useSapienceWriteContract({
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
 
-        // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPath(_chainId);
+        const executionPath = getExecutionPathForChain(_chainId);
 
-        // Capture the address at transaction submission time to avoid race conditions
-        // if user toggles account mode while transaction is in-flight
+        // Capture the address at transaction submission time
         transactionAddressRef.current =
           executionPath === 'eoa'
             ? (wagmiAddress ?? null)
             : (smartAccountAddress ?? wagmiAddress ?? null);
 
-        // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
+        // SESSION KEY PATH
         if (executionPath === 'session') {
-          // Get session client, creating Arbitrum session lazily if needed
           let sessionClient = getSessionClient(_chainId);
 
           if (needsArbitrumSession(_chainId)) {
             setIsSubmitting(true);
             try {
-              // Use returned client directly to avoid race condition with state updates
               sessionClient = await createArbitrumSessionIfNeeded();
             } catch (sessionCreateError) {
               console.error(
@@ -597,28 +447,13 @@ export function useSapienceWriteContract({
           if (sessionClient) {
             setIsSubmitting(true);
             const params = args[0] as WriteContractParams;
-            const { address, abi, functionName, args: fnArgs, value } = params;
+            const baseCalls: TransactionCall[] = [
+              encodeWriteContractToCall(params),
+            ];
+            const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
             try {
-              const calldata = encodeFunctionData({
-                abi,
-                functionName,
-                args: fnArgs,
-              });
-
-              const baseCalls: TransactionCall[] = [
-                {
-                  to: address,
-                  data: calldata,
-                  value: value ? BigInt(value) : 0n,
-                },
-              ];
-              const calls = prepareCallsWithWrapping(baseCalls, _chainId);
-
               await executeViaSessionKey(sessionClient, calls, _chainId);
-              // Don't pass userOpHash to handleTransactionSuccess — it's not a real
-              // transaction hash and useMonitorTxStatus (wagmi getTransactionReceipt)
-              // would fail to look it up, showing a false "Transaction Failed" toast.
               handleTransactionSuccess();
               return;
             } catch (sessionError: unknown) {
@@ -628,32 +463,19 @@ export function useSapienceWriteContract({
               );
             }
           }
-          // If sessionClient is null after lazy creation attempt, fall through to owner path
+          // Fall through to owner path if sessionClient is null
         }
 
-        // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
-        // For Ethereal transactions with value, we wrap native USDe automatically
-        if (executionPath === 'owner') {
+        // OWNER SIGNING PATH
+        if (executionPath === 'owner' || (executionPath === 'session' && !getSessionClient(_chainId))) {
           setIsSubmitting(true);
           const params = args[0] as WriteContractParams;
-          const { address, abi, functionName, args: fnArgs, value } = params;
+          const baseCalls: TransactionCall[] = [
+            encodeWriteContractToCall(params),
+          ];
+          const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
           try {
-            const calldata = encodeFunctionData({
-              abi,
-              functionName,
-              args: fnArgs,
-            });
-
-            const baseCalls: TransactionCall[] = [
-              {
-                to: address,
-                data: calldata,
-                value: value ? BigInt(value) : 0n,
-              },
-            ];
-            const calls = prepareCallsWithWrapping(baseCalls, _chainId);
-
             const txHashFromOwner = await executeViaOwnerSigning(
               calls,
               _chainId
@@ -668,32 +490,18 @@ export function useSapienceWriteContract({
           }
         }
 
-        // EOA PATH: Validate and switch chain if needed
+        // EOA PATH
         await validateAndSwitchChain(_chainId);
 
-        // For external wallets on Ethereal chain with value, wrap USDe first
         if (isEtherealChain(_chainId)) {
           const params = args[0] as WriteContractParams;
-          const { value, abi, functionName, args: fnArgs, address } = params;
+          const { value } = params;
 
           if (value && BigInt(value) > 0n) {
-            // Wrap USDe first, then execute main transaction in atomic batch
-            const wrapTx = createWrapTransaction(BigInt(value));
-
-            const mainCalldata = encodeFunctionData({
-              abi,
-              functionName,
-              args: fnArgs,
-            });
-
-            const calls = [
-              wrapTx,
-              {
-                to: address,
-                data: mainCalldata,
-                value: 0n, // No value for main tx since we wrapped
-              },
+            const baseCalls: TransactionCall[] = [
+              encodeWriteContractToCall(params),
             ];
+            const calls = prepareCallsWithWrapping(baseCalls, _chainId);
 
             const result = await sendCallsAsync({
               chainId: _chainId,
@@ -701,24 +509,13 @@ export function useSapienceWriteContract({
               experimental_fallback: true,
             });
 
-            // Type assertion needed because sendCallsAsync can return different shapes
-            // depending on EIP-5792 support vs fallback mode
-            const resultWithHash = result as
-              | {
-                  receipts?: Array<{ transactionHash?: string }>;
-                  transactionHash?: string;
-                  txHash?: string;
-                }
-              | undefined;
-            const transactionHash = pickFinalTransactionHash(resultWithHash);
+            const transactionHash = pickFinalTransactionHash(result as any);
             handleTransactionSuccess(transactionHash as Hash | undefined);
           } else {
-            // No wrapping needed
             const hash = await writeContractAsync(...args);
             handleTransactionSuccess(hash);
           }
         } else {
-          // Execute the transaction normally for non-Ethereal chains
           const hash = await writeContractAsync(...args);
           handleTransactionSuccess(hash);
         }
@@ -743,8 +540,7 @@ export function useSapienceWriteContract({
       handleTransactionSuccess,
       prepareCallsWithWrapping,
       sendCallsAsync,
-      pickFinalTransactionHash,
-      getExecutionPath,
+      getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
@@ -769,25 +565,20 @@ export function useSapienceWriteContract({
         didRedirectRef.current = false;
         didShowSuccessToastRef.current = false;
 
-        // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPath(_chainId);
+        const executionPath = getExecutionPathForChain(_chainId);
 
-        // Capture the address at transaction submission time to avoid race conditions
-        // if user toggles account mode while transaction is in-flight
         transactionAddressRef.current =
           executionPath === 'eoa'
             ? (wagmiAddress ?? null)
             : (smartAccountAddress ?? wagmiAddress ?? null);
 
-        // SESSION KEY PATH: Smart account mode with active session (gasless, auto-sign)
+        // SESSION KEY PATH
         if (executionPath === 'session') {
-          // Get session client, creating Arbitrum session lazily if needed
           let sessionClient = getSessionClient(_chainId);
 
           if (needsArbitrumSession(_chainId)) {
             setIsSubmitting(true);
             try {
-              // Use returned client directly to avoid race condition with state updates
               sessionClient = await createArbitrumSessionIfNeeded();
             } catch (sessionCreateError) {
               console.error(
@@ -813,7 +604,6 @@ export function useSapienceWriteContract({
             }
 
             try {
-              // Convert SendCall[] to TransactionCall[] and apply wrapping
               const baseCalls: TransactionCall[] = calls.map(
                 (call: SendCall) => ({
                   to: call.to,
@@ -839,9 +629,6 @@ export function useSapienceWriteContract({
                 userOpHash
               );
 
-              // For session key path, don't set txHash to avoid useMonitorTxStatus error
-              // The userOpHash is not a transaction hash and can't be looked up via getTransactionReceipt
-              // We rely on GraphQL polling in OgShareDialogBase to confirm the trade
               completeSendCallsWithoutHash();
               return;
             } catch (sessionError: unknown) {
@@ -851,12 +638,11 @@ export function useSapienceWriteContract({
               );
             }
           }
-          // If sessionClient is null after lazy creation attempt, fall through to owner path
+          // Fall through to owner path if sessionClient is null
         }
 
-        // OWNER SIGNING PATH: Smart account mode without active session (paymaster-sponsored, user signs)
-        // For Ethereal transactions with value, we wrap native USDe automatically
-        if (executionPath === 'owner') {
+        // OWNER SIGNING PATH
+        if (executionPath === 'owner' || (executionPath === 'session' && !getSessionClient(_chainId))) {
           setIsSubmitting(true);
           const body = (args[0] ?? {}) as SendCallsParams;
           const calls: SendCall[] = Array.isArray(body?.calls)
@@ -868,7 +654,6 @@ export function useSapienceWriteContract({
           }
 
           try {
-            // Convert SendCall[] to TransactionCall[] and apply wrapping
             const baseCalls: TransactionCall[] = calls.map(
               (call: SendCall) => ({
                 to: call.to,
@@ -886,7 +671,6 @@ export function useSapienceWriteContract({
               _chainId
             );
 
-            // Use consistent completion handler (same as EOA path)
             completeSendCallsWithHash(txHashFromOwner);
             return;
           } catch (ownerError: unknown) {
@@ -897,23 +681,19 @@ export function useSapienceWriteContract({
           }
         }
 
-        // EOA PATH: Validate and switch chain if needed
+        // EOA PATH
         await validateAndSwitchChain(_chainId);
-        // Execute the batch calls using wallet_sendCalls with fallback
         const data = await sendCallsAsync({
           ...args[0],
           experimental_fallback: true,
         });
-        // Handle response - try to get tx hash from EIP-5792 or fallback
         try {
           let transactionHash: string | undefined;
 
           if (data?.id) {
-            // EIP-5792 supported - poll for status
             const result = await waitForCallsStatus(client!, { id: data.id });
             transactionHash = pickFinalTransactionHash(result);
           } else {
-            // Fallback path without aggregator id
             transactionHash = pickFinalTransactionHash(data);
           }
 
@@ -924,7 +704,6 @@ export function useSapienceWriteContract({
           }
         } catch (e) {
           console.error(e);
-          // waitForCallsStatus unsupported or failed; assume success since sendCalls resolved
           completeSendCallsWithoutHash();
         }
       } catch (error) {
@@ -946,8 +725,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
-      pickFinalTransactionHash,
-      getExecutionPath,
+      getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
       createArbitrumSessionIfNeeded,
@@ -989,7 +767,6 @@ export function useSapienceWriteContract({
     [txHash, toast, fallbackErrorMessage, onError]
   );
 
-  // Transaction monitoring via useMonitorTxStatus with stable callbacks
   const { isPending: txPending } = useMonitorTxStatus({
     hash: txHash,
     chainId,
