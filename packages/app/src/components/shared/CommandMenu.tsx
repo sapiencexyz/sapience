@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   BarChart3,
   Trophy,
@@ -11,6 +11,7 @@ import {
   User,
   FileText,
   Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   Command,
@@ -27,14 +28,12 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
-import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 
 const MAX_RESULTS = 10;
@@ -122,6 +121,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
       const data = await graphqlRequest<{
         questionsSorted: QuestionResult[];
       }>(SEARCH_QUESTIONS, {
+        // Overfetch 2x because groups expand into multiple condition rows
         take: MAX_RESULTS * 2,
         chainId: CHAIN_ID_ETHEREAL,
         search: search?.trim() || null,
@@ -144,6 +144,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
     },
     enabled,
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -179,10 +180,11 @@ export default function CommandMenu() {
     }
   }, [open]);
 
-  const { data: conditionRows = [], isFetching } = useCommandMenuSearch(
-    debouncedSearch || undefined,
-    open
-  );
+  const {
+    data: conditionRows = [],
+    isFetching,
+    isError,
+  } = useCommandMenuSearch(debouncedSearch || undefined, open);
 
   // Filter pages client-side — use instant search for snappy UX
   const filteredPages = React.useMemo(() => {
@@ -213,6 +215,7 @@ export default function CommandMenu() {
   const isSearching = debouncedSearch !== search || isFetching;
   const hasNoResults =
     !isSearching &&
+    !isError &&
     debouncedSearch &&
     !addressMatch &&
     conditionRows.length === 0 &&
@@ -221,7 +224,6 @@ export default function CommandMenu() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
-        <TooltipProvider>
         <DialogTitle className="sr-only">Command Menu</DialogTitle>
         <DialogDescription className="sr-only">
           Search prediction markets, pages, and more
@@ -240,6 +242,13 @@ export default function CommandMenu() {
               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Searching...
+              </div>
+            )}
+
+            {isError && !isSearching && (
+              <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+                <AlertCircle className="h-4 w-4" />
+                Something went wrong. Try again.
               </div>
             )}
 
@@ -284,13 +293,11 @@ export default function CommandMenu() {
                         color={color}
                         categorySlug={categorySlug || null}
                       />
-                      <ConditionTitleLink
-                        conditionId={condition.id}
-                        resolverAddress={condition.resolver ?? undefined}
-                        title={condition.question}
-                        clampLines={1}
-                        className="text-sm min-w-0"
-                      />
+                      <span
+                        className="text-sm font-mono text-brand-white truncate min-w-0 underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4"
+                      >
+                        {condition.question}
+                      </span>
                     </CommandItem>
                   );
                 })}
@@ -318,7 +325,6 @@ export default function CommandMenu() {
             )}
           </CommandList>
         </Command>
-        </TooltipProvider>
       </DialogContent>
     </Dialog>
   );
