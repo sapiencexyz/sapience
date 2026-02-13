@@ -41,10 +41,8 @@ const corsOptions: cors.CorsOptions = {
     ) {
       callback(null, true);
     } else {
-      // Silently reject — don't throw, which would create Sentry noise for every
-      // bot/crawler/server-side request without an Origin header (DATA-2E, 5k+ events).
-      // callback(null, false) tells the cors middleware to omit CORS headers,
-      // so browsers still block the response. Same security, no error spam.
+      // Reject without throwing — omits CORS headers so browsers still block,
+      // but avoids Sentry noise from originless requests (bots/crawlers/SSR).
       callback(null, false);
     }
   },
