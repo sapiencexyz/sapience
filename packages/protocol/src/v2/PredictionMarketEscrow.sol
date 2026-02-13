@@ -114,14 +114,28 @@ contract PredictionMarketEscrow is
             revert InvalidToken();
         }
 
-        // Check that all tokens have been redeemed (total supply is 0)
+        // Check that winning-side tokens have been fully redeemed.
+        // For decisive outcomes, only the winning side needs to reach zero supply
+        // since losing-side holders have no economic incentive to burn (zero payout).
+        // For non-decisive (DRAW/REFUND), both sides should burn.
         uint256 predictorSupply =
             IPredictionMarketToken(tokenPair.predictorToken).totalSupply();
         uint256 counterpartySupply =
             IPredictionMarketToken(tokenPair.counterpartyToken).totalSupply();
 
-        if (predictorSupply > 0 || counterpartySupply > 0) {
-            revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+        if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
+            if (predictorSupply > 0) {
+                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+            }
+        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+            if (counterpartySupply > 0) {
+                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+            }
+        } else {
+            // NON_DECISIVE — both sides have claims
+            if (predictorSupply > 0 || counterpartySupply > 0) {
+                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+            }
         }
 
         // Calculate remaining dust
@@ -555,10 +569,12 @@ contract PredictionMarketEscrow is
         // Proportional payout: (amount / originalTotalTokens) * claimablePool
         payout = (amount * claimablePool) / originalTotalTokens;
 
-        if (payout > 0) {
-            // Burn the position tokens
-            IPredictionMarketToken(positionToken).burn(msg.sender, amount);
+        // Always burn the position tokens (including losing side with zero payout)
+        // M-1: Without this, losing-side tokens remain in circulation permanently,
+        // blocking sweepDust() which requires both token supplies to reach zero.
+        IPredictionMarketToken(positionToken).burn(msg.sender, amount);
 
+        if (payout > 0) {
             // Transfer collateral to holder
             collateralToken.safeTransfer(msg.sender, payout);
 
@@ -568,12 +584,12 @@ contract PredictionMarketEscrow is
             } else {
                 config.claimedCounterpartyCollateral += payout;
             }
-
-            // Note: We emit with pickConfigId since tokens are shared
-            emit TokensRedeemed(
-                pickConfigId, msg.sender, positionToken, amount, payout, refCode
-            );
         }
+
+        // Emit for both winning and losing redemptions
+        emit TokensRedeemed(
+            pickConfigId, msg.sender, positionToken, amount, payout, refCode
+        );
     }
 
     // ============ View Functions ============
