@@ -29,6 +29,7 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import MarketBadge from '~/components/markets/MarketBadge';
@@ -189,6 +190,13 @@ export default function CommandMenu() {
     return PAGES.filter((p) => p.name.toLowerCase().includes(q));
   }, [search]);
 
+  // Detect Ethereum address for profile link
+  const addressMatch = React.useMemo(() => {
+    const trimmed = search.trim();
+    if (isAddress(trimmed)) return getAddress(trimmed);
+    return null;
+  }, [search]);
+
   const handleSelect = React.useCallback(
     (href: string) => {
       setOpen(false);
@@ -205,6 +213,7 @@ export default function CommandMenu() {
   const hasNoResults =
     !isSearching &&
     debouncedSearch &&
+    !addressMatch &&
     conditionRows.length === 0 &&
     filteredPages.length === 0;
 
@@ -233,6 +242,23 @@ export default function CommandMenu() {
             )}
 
             {hasNoResults && <CommandEmpty>No results found.</CommandEmpty>}
+
+            {addressMatch && (
+              <CommandGroup>
+                <CommandItem
+                  value={addressMatch}
+                  onSelect={() =>
+                    handleSelect(`/profile/${addressMatch}`)
+                  }
+                  className="flex items-center gap-3"
+                >
+                  <User className="h-4 w-4 shrink-0" />
+                  <span className="text-sm font-mono truncate">
+                    {addressMatch}
+                  </span>
+                </CommandItem>
+              </CommandGroup>
+            )}
 
             {!isSearching && debouncedSearch && conditionRows.length > 0 && (
               <CommandGroup>
