@@ -36,7 +36,8 @@ const corsOptions: cors.CorsOptions = {
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
-      /^https?:\/\/(app|docs)(-[a-z0-9]+-sapiencexyz)?\.vercel\.app$/.test(origin) || //staging sites
+      /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) || // production Vercel
+      /^https?:\/\/(app|docs)-git-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(origin) || // preview deploys
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);
