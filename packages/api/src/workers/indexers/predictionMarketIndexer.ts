@@ -1122,6 +1122,8 @@ class PredictionMarketIndexer implements IIndexer {
             blockTimestamp: Number(block.timestamp),
             transactionHash: log.transactionHash || '',
             chainId: this.chainId,
+            nftId: String(eventData.makerNftTokenId),
+            marketAddress: log.address.toLowerCase(),
           });
         } catch (e) {
           console.error('[PredictionMarketIndexer] Discord alert failed:', e);

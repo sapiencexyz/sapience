@@ -11,6 +11,7 @@ import { formatUnits } from 'viem';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
+const APP_BASE_URL = 'https://sapience.xyz';
 
 const DISCORD_WEBHOOK_URLS: string[] = (
   process.env.DISCORD_WEBHOOK_URLS || ''
@@ -53,6 +54,10 @@ export interface PositionAlertData {
   blockTimestamp: number;
   transactionHash: string;
   chainId: number;
+  /** NFT token ID of the predictor's position */
+  nftId?: string;
+  /** Market contract address */
+  marketAddress?: string;
 }
 
 export function truncateAddress(addr: string): string {
@@ -113,18 +118,8 @@ export function buildPositionEmbed(data: PositionAlertData): object {
   const decimals = data.collateralDecimals ?? 18;
   const symbol = COLLATERAL_SYMBOLS[data.chainId] ?? 'N/A';
 
-  // ANSI color codes for Discord ```ansi code blocks
-  const ANSI_GREEN = '\u001b[1;32m';
-  const ANSI_RED = '\u001b[1;31m';
-  const ANSI_RESET = '\u001b[0m';
-
   const predictionsText = data.predictions
-    .map((p) => {
-      const outcome = p.outcomeYes
-        ? `${ANSI_GREEN}YES${ANSI_RESET}`
-        : `${ANSI_RED}NO${ANSI_RESET}`;
-      return `• ${p.question} → ${outcome}`;
-    })
+    .map((p) => `• ${p.question} → **${p.outcomeYes ? 'YES' : 'NO'}**`)
     .join('\n');
 
   const explorerBaseUrl =
@@ -146,9 +141,7 @@ export function buildPositionEmbed(data: PositionAlertData): object {
     fields: [
       {
         name: '📋 Predictions',
-        value: predictionsText
-          ? `\`\`\`ansi\n${predictionsText}\n\`\`\``
-          : '_No predictions decoded_',
+        value: predictionsText || '_No predictions decoded_',
         inline: false,
       },
       {
@@ -166,12 +159,21 @@ export function buildPositionEmbed(data: PositionAlertData): object {
         value: `${formatCollateral(data.totalCollateral, decimals)} ${symbol}`,
         inline: true,
       },
+      ...(data.nftId && data.marketAddress
+        ? [
+            {
+              name: '📄 Position',
+              value: `[View Position](${APP_BASE_URL}/positions/${data.marketAddress}/${data.nftId})`,
+              inline: true,
+            },
+          ]
+        : []),
       ...(txLink
         ? [
             {
               name: '🔗 Transaction',
               value: txLink,
-              inline: false,
+              inline: true,
             },
           ]
         : []),
