@@ -200,11 +200,24 @@ export function sendPositionAlert(data: PositionAlertData): void {
       headers: { 'Content-Type': 'application/json' },
       body: payload,
       signal: AbortSignal.timeout(5000),
-    }).catch((err) => {
-      console.error(
-        `[discordAlert] Webhook failed (${err?.status ?? 'network'}):`,
-        err?.message || err
-      );
-    });
+    })
+      .then((res) => {
+        if (!res.ok) {
+          res
+            .text()
+            .then((body) => {
+              console.error(
+                `[discordAlert] Webhook HTTP ${res.status}: ${body.slice(0, 200)}`
+              );
+            })
+            .catch(() => {});
+        }
+      })
+      .catch((err) => {
+        console.error(
+          `[discordAlert] Webhook failed (network):`,
+          err?.message || err
+        );
+      });
   }
 }
