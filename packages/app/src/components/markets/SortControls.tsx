@@ -1,7 +1,10 @@
 'use client';
 
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import type { SortField, SortDirection } from './market-helpers';
+import type {
+  SortField,
+  SortDirection,
+} from '~/hooks/graphql/useInfiniteQuestions';
 
 interface SortControlsProps {
   sortField: SortField;

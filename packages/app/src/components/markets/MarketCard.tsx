@@ -1,5 +1,4 @@
 'use client';
-/* eslint-disable no-restricted-syntax */
 
 import * as React from 'react';
 import { formatEther } from 'viem';
@@ -23,7 +22,7 @@ const cardVariants = {
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring', stiffness: 260, damping: 24 },
+    transition: { type: 'spring' as const, stiffness: 260, damping: 24 },
   },
 };
 
@@ -38,11 +37,12 @@ const staggerContainer = {
 };
 
 // ---------------------------------------------------------------------------
-// Visual elements
+// Visual elements (SVG gauges use raw hex for stroke colors)
 // ---------------------------------------------------------------------------
 
+/* eslint-disable no-restricted-syntax */
 function gaugeStrokeColor(percent: number): string {
-  if (percent < 15) return '#dc6a5a';
+  if (percent < 15) return '#dc4a4a';
   if (percent > 85) return '#3aad6e';
   return '#2E5CFF';
 }
@@ -124,6 +124,8 @@ function OptionsCountGauge({
   );
 }
 
+/* eslint-enable no-restricted-syntax */
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -157,6 +159,7 @@ function ConditionCard({
   const oiWei = BigInt(condition.openInterest || '0');
   const probability = predictionMapRef.current[condition.id];
   const percent = probability != null ? Math.round(probability * 100) : null;
+  const CategoryIcon = getCategoryIcon(condition.category?.slug);
 
   const handlePrediction = React.useCallback(
     (p: number) => onPrediction(condition.id, p),
@@ -166,22 +169,17 @@ function ConditionCard({
   return (
     <motion.div
       variants={cardVariants}
-      className={`market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200  flex flex-col ${
+      className={`market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200 flex flex-col ${
         variant === 'child' ? 'p-4' : 'p-5'
       }`}
     >
       {/* Top: category */}
-      {(() => {
-        const Icon = getCategoryIcon(condition.category?.slug);
-        return (
-          <div className="flex items-center gap-1.5">
-            <Icon className="h-3 w-3 text-royal-400 shrink-0" strokeWidth={1.5} />
-            <span className="font-display text-[11px] font-semibold tracking-wider text-royal-500 uppercase truncate">
-              {condition.category?.name ?? 'Uncategorized'}
-            </span>
-          </div>
-        );
-      })()}
+      <div className="flex items-center gap-1.5">
+        <CategoryIcon className="h-3 w-3 text-royal-400 shrink-0" />
+        <span className="font-display text-[11px] font-semibold tracking-wider text-royal-500 uppercase truncate">
+          {condition.category?.name ?? 'Uncategorized'}
+        </span>
+      </div>
 
       {/* Title + Gauge */}
       <div className="mt-2 flex items-start gap-3">
@@ -232,7 +230,7 @@ function ConditionCard({
 
       {/* YES / NO */}
       <div className="mt-3">
-        <PredictCell condition={condition} />
+        <PredictCell condition={condition} colorScheme="bold" />
       </div>
 
       {/* Bottom: OI left, end time right */}
@@ -268,24 +266,20 @@ interface GroupCardProps {
 function GroupCard({ row, onToggleExpand }: GroupCardProps) {
   const oiWei = row.openInterestWei;
   const endTime = row.maxEndTime;
+  const CategoryIcon = getCategoryIcon(row.category?.slug);
 
   return (
     <motion.div
       variants={cardVariants}
-      className="market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200  p-5 flex flex-col"
+      className="market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200 p-5 flex flex-col"
     >
       {/* Top: category */}
-      {(() => {
-        const Icon = getCategoryIcon(row.category?.slug);
-        return (
-          <div className="flex items-center gap-1.5">
-            <Icon className="h-3 w-3 text-royal-400 shrink-0" strokeWidth={1.5} />
-            <span className="font-display text-[11px] font-semibold tracking-wider text-royal-500 uppercase truncate">
-              {row.category?.name ?? 'Uncategorized'}
-            </span>
-          </div>
-        );
-      })()}
+      <div className="flex items-center gap-1.5">
+        <CategoryIcon className="h-3 w-3 text-royal-400 shrink-0" />
+        <span className="font-display text-[11px] font-semibold tracking-wider text-royal-500 uppercase truncate">
+          {row.category?.name ?? 'Uncategorized'}
+        </span>
+      </div>
 
       {/* Title + Options gauge */}
       <div className="mt-2 flex items-start gap-3">

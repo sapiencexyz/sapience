@@ -11,6 +11,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { cn } from '@sapience/ui/lib/utils';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -149,7 +150,7 @@ export function CountdownCell({ endTime }: { endTime: number }) {
           <span
             className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
           >
-            {isPast ? 'Ended' : <>Ends <span className="font-semibold">{formatCountdown()}</span></>}
+            {formatCountdown()}
           </span>
         </TooltipTrigger>
         <TooltipContent>
@@ -198,7 +199,7 @@ export function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
     );
   }
   return (
-    <span className="whitespace-nowrap font-display font-bold text-royal-500">
+    <span className="whitespace-nowrap font-mono text-accent-gold">
       ENDS SOON
     </span>
   );
@@ -297,7 +298,7 @@ export function GroupForecastCell({
 }
 
 /** YES/NO split-button wired to CreatePositionContext */
-export function PredictCell({ condition }: { condition: ConditionType }) {
+export function PredictCell({ condition, className, colorScheme }: { condition: ConditionType; className?: string; colorScheme?: 'default' | 'bold' }) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
 
@@ -371,7 +372,7 @@ export function PredictCell({ condition }: { condition: ConditionType }) {
   }
 
   return (
-    <div className="w-full font-mono">
+    <div className={cn("w-full font-mono", className)}>
       <YesNoSplitButton
         onYes={handleYes}
         onNo={handleNo}
@@ -381,6 +382,7 @@ export function PredictCell({ condition }: { condition: ConditionType }) {
         noLabel="NO"
         selectedYes={selectionState.selectedYes}
         selectedNo={selectionState.selectedNo}
+        colorScheme={colorScheme}
       />
     </div>
   );

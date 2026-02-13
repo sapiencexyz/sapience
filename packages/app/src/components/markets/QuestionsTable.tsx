@@ -17,17 +17,14 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Minus } from 'lucide-react';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 import Loader from '../shared/Loader';
-import { format } from 'date-fns';
 import { formatEther } from 'viem';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
@@ -35,63 +32,25 @@ import TableFilters, {
   type FilterState,
   type CategoryOption,
 } from './TableFilters';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
-import type { ConditionType } from '~/hooks/graphql/useConditions';
-import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
-import type {
-  SortField,
-  SortDirection,
-  QuestionType,
-} from '~/hooks/graphql/useInfiniteQuestions';
-
-// Union type for top-level table rows
-type TopLevelRow =
-  | {
-      kind: 'group';
-      id: string; // Unique row ID for React key
-      groupId: number;
-      name: string;
-      category?: { id: number; name: string; slug: string } | null;
-      conditions: ConditionGroupConditionType[];
-      // Computed aggregates
-      openInterestWei: bigint;
-      maxEndTime: number;
-    }
-  | {
-      kind: 'condition';
-      id: string;
-      condition: ConditionType;
-    };
-
-// Helper to convert group condition to ConditionType for reuse of existing cells
-function groupConditionToConditionType(
-  gc: ConditionGroupConditionType
-): ConditionType {
-  return {
-    id: gc.id,
-    createdAt: gc.createdAt,
-    question: gc.question,
-    shortName: gc.shortName,
-    endTime: gc.endTime,
-    public: gc.public,
-    claimStatement: gc.claimStatement,
-    description: gc.description,
-    similarMarkets: gc.similarMarkets,
-    chainId: gc.chainId,
-    resolver: gc.resolver,
-    category: gc.category,
-    openInterest: gc.openInterest,
-    settled: gc.settled,
-    resolvedToYes: gc.resolvedToYes,
-    assertionId: gc.assertionId,
-    assertionTimestamp: gc.assertionTimestamp,
-    conditionGroupId: gc.conditionGroupId,
-  };
-}
+import {
+  type TopLevelRow,
+  type ConditionGroupConditionType,
+  type SortField,
+  type SortDirection,
+  type QuestionType,
+  groupConditionToConditionType,
+  getCategoryColor,
+  getRowOpenInterest,
+  getRowEndTime,
+  buildTopLevelRows,
+  filterRows,
+  EndTimeCell,
+  ForecastCell,
+  GroupForecastCell,
+  PredictCell,
+} from './market-helpers';
+import { usePredictionMap } from '~/hooks/usePredictionMap';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 interface QuestionsTableProps {
   questions: QuestionType[];
@@ -111,340 +70,6 @@ interface QuestionsTableProps {
   sortField: SortField;
   sortDirection: SortDirection;
   onSortChange: (field: SortField, direction: SortDirection) => void;
-}
-
-// Countdown display component with live updates
-function CountdownCell({ endTime }: { endTime: number }) {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    // Set initial time on mount (client-side only)
-    setNowMs(Date.now());
-    const interval = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // endTime is in seconds, convert to milliseconds
-  const endMs = endTime * 1000;
-  const date = new Date(endMs);
-
-  // Format the full date with timezone for tooltip
-  const fullDateTime = format(date, "MMMM d, yyyy 'at' h:mm:ss a zzz");
-
-  // Show loading state until client-side hydration
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const diff = endMs - nowMs;
-  const isPast = diff <= 0;
-
-  // Calculate countdown parts
-  const formatCountdown = () => {
-    if (isPast) {
-      return 'Ended';
-    }
-
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    const d = days;
-    const h = hours % 24;
-    const m = minutes % 60;
-    const s = seconds % 60;
-
-    if (days > 0) {
-      return `${d}d ${h}h ${m}m`;
-    }
-    if (hours > 0) {
-      return `${h}h ${m}m ${s}s`;
-    }
-    if (minutes > 0) {
-      return `${m}m ${s}s`;
-    }
-    return `${s}s`;
-  };
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
-          >
-            {formatCountdown()}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullDateTime}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-// Helper to get category color
-const getCategoryColor = (categorySlug?: string | null): string => {
-  if (!categorySlug) return 'hsl(var(--muted-foreground))';
-  const focusArea = FOCUS_AREAS.find((fa) => fa.id === categorySlug);
-  if (focusArea) return focusArea.color;
-  return getDeterministicCategoryColor(categorySlug);
-};
-
-// End time cell that reactively switches to resolution badge when time passes
-function EndTimeCell({
-  endTime,
-  settled,
-  resolvedToYes,
-  allSettled,
-}: {
-  endTime: number;
-  settled: boolean;
-  resolvedToYes?: boolean | null;
-  /** For group rows: whether all conditions are settled */
-  allSettled?: boolean;
-}) {
-  const [nowMs, setNowMs] = React.useState<number | null>(null);
-
-  React.useEffect(() => {
-    setNowMs(Date.now());
-    // No need to tick if already settled
-    if (settled) return;
-    const interval = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(interval);
-  }, [settled]);
-
-  // SSR / pre-hydration: render placeholder
-  if (nowMs === null) {
-    return (
-      <span className="whitespace-nowrap tabular-nums text-muted-foreground">
-        —
-      </span>
-    );
-  }
-
-  const isPastEnd = endTime * 1000 <= nowMs;
-
-  if (settled || isPastEnd) {
-    // Determine badge status
-    let status: ResolutionBadgeStatus;
-    if (allSettled) {
-      status = 'settled';
-    } else if (settled) {
-      status = resolvedToYes ? 'resolvedYes' : 'resolvedNo';
-    } else {
-      status = 'endsSoon';
-    }
-    return <ResolutionBadge status={status} />;
-  }
-
-  return <CountdownCell endTime={endTime} />;
-}
-
-// Resolution status badge shown in the Ends column
-type ResolutionBadgeStatus =
-  | 'endsSoon'
-  | 'settled'
-  | 'resolvedYes'
-  | 'resolvedNo';
-
-function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
-  if (status === 'settled') {
-    return (
-      <div className="flex justify-end">
-        <Badge
-          variant="outline"
-          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
-        >
-          SETTLED
-        </Badge>
-      </div>
-    );
-  }
-  if (status === 'resolvedYes' || status === 'resolvedNo') {
-    const isYes = status === 'resolvedYes';
-    return (
-      <div className="flex justify-end">
-        <Badge
-          variant="outline"
-          className={`px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono ${
-            isYes
-              ? 'border-yes/40 bg-yes/10 text-yes'
-              : 'border-no/40 bg-no/10 text-no'
-          }`}
-        >
-          RESOLVED {isYes ? 'YES' : 'NO'}
-        </Badge>
-      </div>
-    );
-  }
-  // End time is an estimate — show "ENDS SOON" once past the estimated end
-  // until the market is actually settled on-chain
-  return (
-    <span className="whitespace-nowrap font-mono text-accent-gold">
-      ENDS SOON
-    </span>
-  );
-}
-
-// Forecast cell that shows prediction request or resolution status
-function ForecastCell({
-  condition,
-  prefetchedProbability,
-  onPrediction,
-  skipViewportCheck,
-}: {
-  condition: ConditionType;
-  prefetchedProbability?: number | null;
-  onPrediction?: (p: number) => void;
-  skipViewportCheck?: boolean;
-}) {
-  const { settled } = condition;
-
-  // If settled, show dash — resolution status is in the Ends column
-  if (settled) {
-    return (
-      <span className="text-muted-foreground h-8 flex items-center justify-end">
-        —
-      </span>
-    );
-  }
-
-  // End time is an estimate, so keep showing predictions until settled on-chain
-  return (
-    <MarketPredictionRequest
-      conditionId={condition.id}
-      prefetchedProbability={prefetchedProbability}
-      onPrediction={onPrediction}
-      skipViewportCheck={skipViewportCheck}
-    />
-  );
-}
-
-// Group forecast cell - shows option count (predictions load lazily when expanded)
-function GroupForecastCell({
-  conditions,
-}: {
-  conditions: ConditionGroupConditionType[];
-}) {
-  return (
-    <span className="text-muted-foreground font-mono">
-      {conditions.length} option{conditions.length === 1 ? '' : 's'}
-    </span>
-  );
-}
-
-// Predict buttons cell component
-function PredictCell({ condition }: { condition: ConditionType }) {
-  const { addSelection, removeSelection, selections } =
-    useCreatePositionContext();
-
-  const selectionState = React.useMemo(() => {
-    if (!condition.id) return { selectedYes: false, selectedNo: false };
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    return {
-      selectedYes: !!existing && existing.prediction === true,
-      selectedNo: !!existing && existing.prediction === false,
-    };
-  }, [selections, condition.id]);
-
-  const handleYes = React.useCallback(() => {
-    if (!condition.id) return;
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    if (existing && existing.prediction === true) {
-      removeSelection(existing.id);
-      return;
-    }
-    addSelection({
-      conditionId: condition.id,
-      question: condition.question,
-      shortName: condition.shortName,
-      prediction: true,
-      categorySlug: condition.category?.slug,
-      endTime: condition.endTime,
-    });
-  }, [
-    condition.id,
-    condition.category?.slug,
-    condition.endTime,
-    condition.question,
-    condition.shortName,
-    selections,
-    removeSelection,
-    addSelection,
-  ]);
-
-  const handleNo = React.useCallback(() => {
-    if (!condition.id) return;
-    const existing = selections.find((s) => s.conditionId === condition.id);
-    if (existing && existing.prediction === false) {
-      removeSelection(existing.id);
-      return;
-    }
-    addSelection({
-      conditionId: condition.id,
-      question: condition.question,
-      shortName: condition.shortName,
-      prediction: false,
-      categorySlug: condition.category?.slug,
-      endTime: condition.endTime,
-    });
-  }, [
-    condition.id,
-    condition.category?.slug,
-    condition.endTime,
-    condition.question,
-    condition.shortName,
-    selections,
-    removeSelection,
-    addSelection,
-  ]);
-
-  // End time is an estimate — only disable trading once settled on-chain
-  if (condition.settled) {
-    return (
-      <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
-        <Minus className="h-3 w-3" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-[320px] font-mono ml-auto">
-      <YesNoSplitButton
-        onYes={handleYes}
-        onNo={handleNo}
-        className="w-full gap-4"
-        size="sm"
-        yesLabel="YES"
-        noLabel="NO"
-        selectedYes={selectionState.selectedYes}
-        selectedNo={selectionState.selectedNo}
-      />
-    </div>
-  );
-}
-
-// Helper to get open interest value for a row (works for both types)
-function getRowOpenInterest(row: TopLevelRow): bigint {
-  if (row.kind === 'group') {
-    return row.openInterestWei;
-  }
-  return BigInt(row.condition.openInterest || '0');
-}
-
-// Helper to get end time for a row
-function getRowEndTime(row: TopLevelRow): number {
-  if (row.kind === 'group') {
-    return row.maxEndTime;
-  }
-  return row.condition.endTime ?? 0;
 }
 
 // Class name maps for table headers and cells
@@ -713,7 +338,12 @@ function createColumns(
             </div>
           );
         }
-        return <PredictCell condition={data.condition} />;
+        return (
+          <PredictCell
+            condition={data.condition}
+            className="max-w-[320px] ml-auto"
+          />
+        );
       },
       enableSorting: false,
       enableHiding: false,
@@ -801,7 +431,10 @@ function ChildConditionRow({
         )}
       </TableCell>
       <TableCell className="py-2 pr-4">
-        <PredictCell condition={conditionType} />
+        <PredictCell
+          condition={conditionType}
+          className="max-w-[320px] ml-auto"
+        />
       </TableCell>
     </TableRow>
   );
@@ -855,66 +488,9 @@ export default function QuestionsTable({
   const expandedGroupIdsRef = React.useRef<Set<number>>(expandedGroupIds);
   expandedGroupIdsRef.current = expandedGroupIds;
 
-  // Prediction probabilities map for forecast computation.
-  // Quotes can arrive rapidly; avoid re-rendering the entire table on every tick.
-  // We keep a live ref (updated on every quote) and a throttled/committed state
-  // (used for rendering and derived computations like group spread).
-  const livePredictionMapRef = React.useRef<Record<string, number>>({});
-  const [predictionMap, setPredictionMap] = React.useState<
-    Record<string, number>
-  >({});
-  // Ref for prediction map so column defs can access it without recreating columns
-  const predictionMapRef = React.useRef<Record<string, number>>(predictionMap);
-  predictionMapRef.current = predictionMap;
-  const commitTimerRef = React.useRef<number | null>(null);
-
-  const schedulePredictionCommit = React.useCallback(() => {
-    if (commitTimerRef.current != null) return;
-    commitTimerRef.current = window.setTimeout(() => {
-      commitTimerRef.current = null;
-      setPredictionMap((prev) => {
-        let next: Record<string, number> | null = null;
-        const live = livePredictionMapRef.current;
-
-        for (const [id, prob] of Object.entries(live)) {
-          const prevProb = prev[id];
-          // Always commit the first value so the UI can leave "Requesting..."
-          if (prevProb == null) {
-            next = next ?? { ...prev };
-            next[id] = prob;
-            continue;
-          }
-          // Only commit when the displayed integer percent changes
-          // to avoid jitter from tiny quote deltas.
-          const prevPct = Math.round(prevProb * 100);
-          const nextPct = Math.round(prob * 100);
-          if (prevPct !== nextPct) {
-            next = next ?? { ...prev };
-            next[id] = prob;
-          }
-        }
-
-        return next ?? prev;
-      });
-    }, 250);
-  }, []);
-
-  React.useEffect(() => {
-    return () => {
-      if (commitTimerRef.current != null) {
-        window.clearTimeout(commitTimerRef.current);
-        commitTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  const handlePrediction = React.useCallback(
-    (conditionId: string, probability: number) => {
-      livePredictionMapRef.current[conditionId] = probability;
-      schedulePredictionCommit();
-    },
-    [schedulePredictionCommit]
-  );
+  // Prediction probabilities — throttled to avoid re-rendering on every quote tick
+  const { predictionMap, predictionMapRef, handlePrediction } =
+    usePredictionMap();
 
   const handleToggleExpand = React.useCallback((groupId: number) => {
     setExpandedGroupIds((prev) => {
@@ -935,114 +511,24 @@ export default function QuestionsTable({
   }, []);
 
   // Build the top-level row model from unified questions
-  // Backend handles sorting, filtering, and interleaving - just map to our row format
-  // For "ENDS SOON" groups (past end time), flatten to individual conditions with >0 OI
-  // so users see the relevant markets directly instead of a group full of 0 OI options
-  const topLevelRows = React.useMemo((): TopLevelRow[] => {
-    return questions.flatMap((item): TopLevelRow[] => {
-      if (item.questionType === 'group' && item.group) {
-        const group = item.group;
-        if (group.conditions.length === 0) return [];
-
-        // Single-condition group: flatten to a standalone condition row
-        if (group.conditions.length === 1) {
-          return [
-            {
-              kind: 'condition' as const,
-              id: `condition-${group.conditions[0].id}`,
-              condition: groupConditionToConditionType(group.conditions[0]),
-            },
-          ];
-        }
-
-        // Compute aggregates for display
-        let openInterestWei = 0n;
-        let maxEndTime = 0;
-        for (const c of group.conditions) {
-          openInterestWei += BigInt(c.openInterest || '0');
-          if (c.endTime > maxEndTime) {
-            maxEndTime = c.endTime;
-          }
-        }
-
-        return [
-          {
-            kind: 'group' as const,
-            id: `group-${group.id}`,
-            groupId: group.id,
-            name: group.name,
-            category: group.category,
-            conditions: group.conditions,
-            openInterestWei,
-            maxEndTime,
-          },
-        ];
-      } else if (item.questionType === 'condition' && item.condition) {
-        return [
-          {
-            kind: 'condition' as const,
-            id: `condition-${item.condition.id}`,
-            condition: item.condition,
-          },
-        ];
-      }
-      return [];
-    });
-  }, [questions]);
+  const topLevelRows = React.useMemo(
+    () => buildTopLevelRows(questions),
+    [questions]
+  );
 
   // Apply client-side filters (open interest range, time to resolution)
-  const filteredRows = React.useMemo(() => {
-    const [minOI, maxOI] = filters.openInterestRange;
-    const [minDays, maxDays] = filters.timeToResolutionRange;
-    const nowSec = Math.floor(Date.now() / 1000);
+  const filteredRows = React.useMemo(
+    () => filterRows(topLevelRows, filters),
+    [topLevelRows, filters]
+  );
 
-    const result = topLevelRows.filter((row) => {
-      const oiWei = getRowOpenInterest(row);
-      const oiUsde = parseFloat(formatEther(oiWei));
-      const endTime = getRowEndTime(row);
-
-      // Open interest filter (in USDe, so convert from wei)
-      if (oiUsde < minOI || oiUsde > maxOI) {
-        return false;
-      }
-
-      // Time to resolution filter (in days)
-      if (endTime) {
-        const daysFromNow = (endTime - nowSec) / 86400;
-        // Only apply if not at extreme bounds (Infinity/-Infinity)
-        if (minDays !== -Infinity && daysFromNow < minDays) {
-          return false;
-        }
-        if (maxDays !== Infinity && daysFromNow > maxDays) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-
-    return result;
-  }, [topLevelRows, filters.openInterestRange, filters.timeToResolutionRange]);
-
-  // Ref for infinite scroll sentinel
-  const loadMoreRef = React.useRef<HTMLDivElement>(null);
-
-  // Refs for IntersectionObserver callback to avoid stale closures
-  // This prevents the observer from needing to be recreated when these values change
-  const hasMoreRef = React.useRef(hasMore);
-  const isFetchingMoreRef = React.useRef(isFetchingMore);
-  const onFetchMoreRef = React.useRef(onFetchMore);
-
-  // Keep refs in sync with props
-  React.useEffect(() => {
-    hasMoreRef.current = hasMore;
-  }, [hasMore]);
-  React.useEffect(() => {
-    isFetchingMoreRef.current = isFetchingMore;
-  }, [isFetchingMore]);
-  React.useEffect(() => {
-    onFetchMoreRef.current = onFetchMore;
-  }, [onFetchMore]);
+  // Infinite scroll
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isFetchingMore,
+    isLoading,
+    onFetchMore,
+  });
 
   // Create columns using refs so column definitions stay stable across prediction
   // updates (preventing cell remounts and visual flashing).
@@ -1074,59 +560,6 @@ export default function QuestionsTable({
   // Get all sorted rows for display (server-side pagination handles limiting)
   const allRows = table.getRowModel().rows;
   const displayedRows = allRows;
-
-  // Intersection Observer for infinite scroll - stable observer using refs
-  // Using refs avoids stale closures and prevents observer recreation
-  React.useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        // Use refs for current values - avoids stale closure issue
-        if (
-          entry?.isIntersecting &&
-          hasMoreRef.current &&
-          !isFetchingMoreRef.current
-        ) {
-          onFetchMoreRef.current?.();
-        }
-      },
-      { threshold: 0.1, rootMargin: '100px' }
-    );
-
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) {
-        observer.unobserve(currentRef);
-      }
-    };
-  }, []); // Empty deps - observer is stable, uses refs for current values
-
-  // After loading completes, check if sentinel is still visible and trigger fetchMore
-  // This handles the case where the observer fired during initial load (when isFetching was true)
-  // and the sentinel is still visible after loading completes
-  const prevIsLoadingRef = React.useRef(isLoading);
-  React.useEffect(() => {
-    const wasLoading = prevIsLoadingRef.current;
-    prevIsLoadingRef.current = isLoading;
-
-    // If we just finished loading (wasLoading -> !isLoading)
-    if (wasLoading && !isLoading && hasMore && !isFetchingMore) {
-      const sentinel = loadMoreRef.current;
-      if (sentinel) {
-        // Check if sentinel is currently visible
-        const rect = sentinel.getBoundingClientRect();
-        const isVisible =
-          rect.top < window.innerHeight + 100 && rect.bottom > -100;
-        if (isVisible) {
-          onFetchMore?.();
-        }
-      }
-    }
-  }, [isLoading, hasMore, isFetchingMore, onFetchMore]);
 
   const showLoading =
     isLoading || (displayedRows.length === 0 && hasMore !== false);

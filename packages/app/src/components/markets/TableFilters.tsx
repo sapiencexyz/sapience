@@ -234,7 +234,7 @@ export default function TableFilters({
         <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
-          placeholder="Search prediction markets"
+          placeholder="Search questions"
           value={searchTerm}
           onChange={handleSearchInputChange}
           className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 md:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"

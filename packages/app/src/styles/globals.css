@@ -1,6 +1,5 @@
 @import './fonts/AvenirRounded.css';
 @import './fonts/Foil.css';
-/* Avenir Next is loaded via system/local fonts (see AvenirRounded.css) */
 
 /* Global Styling here */
 @tailwind base;
@@ -533,7 +532,8 @@
     color: #2E5CFF !important;
   }
   .market-card .text-accent-gold {
-    color: #e67700 !important;
+    color: #2E5CFF !important;
+    font-weight: 700 !important;
     font-family: 'Avenir Next', sans-serif !important;
   }
   .market-card .text-muted-foreground {

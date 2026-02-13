@@ -257,15 +257,25 @@ const MarketsPage = () => {
       )}
 
       {/* Main Content */}
-      {useCardGrid ? (
-        <div
-          className="markets-grid-theme flex-1 min-w-0 max-w-full overflow-visible flex flex-col rounded-2xl"
-          style={{
-            height: 'calc(100dvh - var(--page-top-offset, 0px) - 1.5rem)',
-            background: 'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
-          }}
-        >
-          {/* Header: title + sort + search */}
+      <div
+        className={
+          useCardGrid
+            ? 'markets-grid-theme flex-1 min-w-0 max-w-full overflow-visible flex flex-col rounded-2xl'
+            : 'flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6'
+        }
+        style={
+          useCardGrid
+            ? {
+                height:
+                  'calc(100dvh - var(--page-top-offset, 0px) - 1.5rem)',
+                background:
+                  'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
+              }
+            : { height: 'calc(100dvh - var(--page-top-offset, 0px))' }
+        }
+      >
+        {/* Polymarket header (grid view only) */}
+        {useCardGrid && (
           <div className="px-4 pt-5 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex items-center gap-2">
               <Image
@@ -297,27 +307,37 @@ const MarketsPage = () => {
               />
             </div>
           </div>
+        )}
 
-          {showPredictPrices && (
-            <div className="w-full mt-2 px-4">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="sc-heading text-white/80">Predict Prices</h2>
-              </div>
-              <CreatePythPredictionForm onPick={handlePythPick} />
-              <hr className="gold-hr mt-6 -mb-2" />
+        {/* Featured combos (table view only) */}
+        {!useCardGrid && <ExampleCombos className="mt-4 md:mt-0" />}
+
+        {/* Predict Prices (shared) */}
+        {showPredictPrices && (
+          <div className={`w-full mt-2 ${useCardGrid ? 'px-4' : ''}`}>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h2
+                className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
+              >
+                Predict Prices
+              </h2>
             </div>
-          )}
+            <CreatePythPredictionForm onPick={handlePythPick} />
+            <hr className="gold-hr mt-6 -mb-2" />
+          </div>
+        )}
 
-          {/* Content area with cards */}
-          <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
-            <motion.div
-              className="h-full"
-              key="grid-view"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+        {/* Results area */}
+        <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
+          <motion.div
+            className="h-full"
+            key={useCardGrid ? 'grid-view' : 'table-view'}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            {useCardGrid ? (
               <QuestionsGrid
                 questions={questions}
                 isLoading={isLoadingData}
@@ -325,37 +345,7 @@ const MarketsPage = () => {
                 hasMore={hasMore}
                 onFetchMore={fetchMore}
               />
-            </motion.div>
-          </div>
-        </div>
-      ) : (
-        <div
-          className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
-          style={{
-            height: 'calc(100dvh - var(--page-top-offset, 0px))',
-          }}
-        >
-          <ExampleCombos className="mt-4 md:mt-0" />
-
-          {showPredictPrices && (
-            <div className="w-full mt-2">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h2 className="sc-heading text-foreground">Predict Prices</h2>
-              </div>
-              <CreatePythPredictionForm onPick={handlePythPick} />
-              <hr className="gold-hr mt-6 -mb-2" />
-            </div>
-          )}
-
-          <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">
-            <motion.div
-              className="h-full"
-              key="table-view"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-            >
+            ) : (
               <QuestionsTable
                 questions={questions}
                 isLoading={isLoadingData}
@@ -371,10 +361,10 @@ const MarketsPage = () => {
                 sortDirection={sortDirection}
                 onSortChange={handleSortChange}
               />
-            </motion.div>
-          </div>
+            )}
+          </motion.div>
         </div>
-      )}
+      </div>
 
       {/* Desktop/Tablet sticky position form sidebar */}
       {!isCompact && (

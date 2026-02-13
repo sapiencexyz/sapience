@@ -8,8 +8,10 @@ import {
   buildTopLevelRows,
   groupConditionToConditionType,
 } from './market-helpers';
+// @ts-expect-error — react-dom types not bundled with React 19 in this project
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import { usePredictionMap } from '~/hooks/usePredictionMap';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
@@ -118,7 +120,7 @@ export default function QuestionsGrid({
           {showLoading ? (
             <motion.div
               key="skeleton"
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
@@ -140,7 +142,7 @@ export default function QuestionsGrid({
           ) : (
             <motion.div key="cards">
               <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"
@@ -195,27 +197,27 @@ export default function QuestionsGrid({
                         />
                         {/* Panel */}
                         <motion.div
-                          className="markets-grid-theme relative rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.25)] p-4 w-full max-w-5xl max-h-[80vh] overflow-y-auto"
+                          className="markets-grid-theme relative rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.25)] p-6 w-full max-w-5xl max-h-[80vh] overflow-y-auto"
                           style={{ background: 'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)' }}
                           initial={{ scale: 0.97, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0.97, opacity: 0 }}
                           transition={{ duration: 0.2, ease: 'easeOut' }}
                         >
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="font-display text-[13px] font-semibold text-white">
+                          <div className="flex items-center justify-between mb-4">
+                            <p className="font-display text-lg font-semibold text-white">
                               {openGroupRow.name}
                             </p>
                             <button
                               type="button"
                               onClick={() => setOpenGroupId(null)}
-                              className="font-display text-[11px] font-bold tracking-wider uppercase text-white/70 hover:text-white"
+                              className="rounded-full p-1 text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                             >
-                              Close
+                              <X className="h-5 w-5" />
                             </button>
                           </div>
                           <motion.div
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
+                            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
                             variants={staggerContainer}
                             initial="hidden"
                             animate="visible"
