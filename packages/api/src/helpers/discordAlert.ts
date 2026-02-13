@@ -8,6 +8,7 @@
  * - Rate limited: max 10 alerts per 60s window
  */
 import { formatUnits } from 'viem';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 
@@ -110,9 +111,20 @@ function recordAlert(): void {
  */
 export function buildPositionEmbed(data: PositionAlertData): object {
   const decimals = data.collateralDecimals ?? 18;
+  const symbol = COLLATERAL_SYMBOLS[data.chainId] ?? 'N/A';
+
+  // ANSI color codes for Discord ```ansi code blocks
+  const ANSI_GREEN = '\u001b[1;32m';
+  const ANSI_RED = '\u001b[1;31m';
+  const ANSI_RESET = '\u001b[0m';
 
   const predictionsText = data.predictions
-    .map((p) => `• ${p.question} → **${p.outcomeYes ? 'YES' : 'NO'}**`)
+    .map((p) => {
+      const outcome = p.outcomeYes
+        ? `${ANSI_GREEN}YES${ANSI_RESET}`
+        : `${ANSI_RED}NO${ANSI_RESET}`;
+      return `• ${p.question} → ${outcome}`;
+    })
     .join('\n');
 
   const explorerBaseUrl =
@@ -134,31 +146,35 @@ export function buildPositionEmbed(data: PositionAlertData): object {
     fields: [
       {
         name: '📋 Predictions',
-        value: predictionsText || '_No predictions decoded_',
+        value: predictionsText
+          ? `\`\`\`ansi\n${predictionsText}\n\`\`\``
+          : '_No predictions decoded_',
         inline: false,
       },
       {
         name: '👤 Predictor',
-        value: `\`${truncateAddress(data.predictor)}\` (${formatCollateral(data.predictorCollateral, decimals)} USDe)`,
+        value: `\`${truncateAddress(data.predictor)}\` (${formatCollateral(data.predictorCollateral, decimals)} ${symbol})`,
         inline: true,
       },
       {
         name: '🤝 Counterparty',
-        value: `\`${truncateAddress(data.counterparty)}\` (${formatCollateral(data.counterpartyCollateral, decimals)} USDe)`,
+        value: `\`${truncateAddress(data.counterparty)}\` (${formatCollateral(data.counterpartyCollateral, decimals)} ${symbol})`,
         inline: true,
       },
       {
         name: '💰 Total',
-        value: `${formatCollateral(data.totalCollateral, decimals)} USDe`,
+        value: `${formatCollateral(data.totalCollateral, decimals)} ${symbol}`,
         inline: true,
       },
-      {
-        name: '⛓️ Chain',
-        value: txLink
-          ? `${getChainName(data.chainId)} · ${txLink}`
-          : getChainName(data.chainId),
-        inline: false,
-      },
+      ...(txLink
+        ? [
+            {
+              name: '🔗 Transaction',
+              value: txLink,
+              inline: false,
+            },
+          ]
+        : []),
     ],
     timestamp: new Date(data.blockTimestamp * 1000).toISOString(),
   };
