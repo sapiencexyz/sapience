@@ -72,6 +72,7 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
           question
           shortName
           endTime
+          openInterest
           resolver
           category {
             id
@@ -85,6 +86,7 @@ const SEARCH_QUESTIONS = /* GraphQL */ `
         question
         shortName
         endTime
+        openInterest
         resolver
         category {
           id
@@ -121,12 +123,14 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
       const data = await graphqlRequest<{
         questionsSorted: QuestionResult[];
       }>(SEARCH_QUESTIONS, {
-        // Overfetch 2x because groups expand into multiple condition rows
-        take: MAX_RESULTS * 2,
+        // Overfetch 3x: groups expand into multiple rows, and we re-sort
+        // client-side to prefer future markets over expired ones
+        take: MAX_RESULTS * 3,
         chainId: CHAIN_ID_ETHEREAL,
         search: search?.trim() || null,
       });
 
+      const nowSec = Math.floor(Date.now() / 1000);
       return (data.questionsSorted ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
@@ -139,6 +143,18 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
             }));
           }
           return [];
+        })
+        .sort((a, b) => {
+          // 1. Prefer future markets over expired
+          const aFuture = (a.endTime ?? 0) > nowSec ? 0 : 1;
+          const bFuture = (b.endTime ?? 0) > nowSec ? 0 : 1;
+          if (aFuture !== bFuture) return aFuture - bFuture;
+          // 2. Prefer markets with open interest
+          const aOI = BigInt(a.openInterest ?? '0') > 0n ? 0 : 1;
+          const bOI = BigInt(b.openInterest ?? '0') > 0n ? 0 : 1;
+          if (aOI !== bOI) return aOI - bOI;
+          // 3. Nearest deadline first
+          return (a.endTime ?? 0) - (b.endTime ?? 0);
         })
         .slice(0, MAX_RESULTS);
     },
