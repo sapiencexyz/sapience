@@ -2,14 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  BarChart3,
-  Trophy,
-  Radio,
-  Vault,
-  User,
-  FileText,
-} from 'lucide-react';
+import { BarChart3, Trophy, Radio, Vault, User, FileText } from 'lucide-react';
 import {
   CommandDialog,
   CommandEmpty,
@@ -86,18 +79,20 @@ export default function CommandMenu() {
   // Flatten questions into displayable condition rows
   const conditionRows = React.useMemo(() => {
     if (!questions) return [];
-    return questions.flatMap((q) => {
-      if (q.questionType === 'condition' && q.condition) {
-        return [q.condition];
-      }
-      if (q.questionType === 'group' && q.group?.conditions) {
-        return q.group.conditions.map((gc) => ({
-          ...gc,
-          category: q.group!.category,
-        }));
-      }
-      return [];
-    }).slice(0, 10);
+    return questions
+      .flatMap((q) => {
+        if (q.questionType === 'condition' && q.condition) {
+          return [q.condition];
+        }
+        if (q.questionType === 'group' && q.group?.conditions) {
+          return q.group.conditions.map((gc) => ({
+            ...gc,
+            category: q.group!.category,
+          }));
+        }
+        return [];
+      })
+      .slice(0, 10);
   }, [questions]);
 
   const handleSelect = React.useCallback(
@@ -114,9 +109,9 @@ export default function CommandMenu() {
 
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
-      <div className="mx-auto w-full max-w-lg">
+      <div className="mx-auto w-full max-w-2xl">
         <CommandInput
-          placeholder="Search questions, pages..."
+          placeholder="Search prediction markets and more..."
           value={search}
           onValueChange={setSearch}
         />
@@ -127,7 +122,8 @@ export default function CommandMenu() {
             <CommandGroup heading="Questions">
               {conditionRows.map((condition) => {
                 const categorySlug = condition.category?.slug || '';
-                const categoryColor = getDeterministicCategoryColor(categorySlug);
+                const categoryColor =
+                  getDeterministicCategoryColor(categorySlug);
                 const href = condition.resolver
                   ? `/questions/${condition.resolver}/${condition.id}`
                   : `/questions/${condition.id}`;
@@ -170,7 +166,7 @@ export default function CommandMenu() {
                 value={page.name}
                 onSelect={() => handleSelect(page.href)}
               >
-                <page.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                <page.icon className="mr-2 h-4 w-4" />
                 <span>{page.name}</span>
               </CommandItem>
             ))}
