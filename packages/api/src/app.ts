@@ -41,7 +41,9 @@ const corsOptions: cors.CorsOptions = {
     ) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Reject without throwing — omits CORS headers so browsers still block,
+      // but avoids Sentry noise from originless requests (bots/crawlers/SSR).
+      callback(null, false);
     }
   },
   optionsSuccessStatus: 200,
