@@ -111,11 +111,14 @@ export interface UseInfiniteQuestionsOptions {
   minEndTime?: number;
   /** Filter by resolution status: 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo' */
   resolutionStatus?: string;
+  /** Whether the query should execute (default: true) */
+  enabled?: boolean;
 }
 
 export interface UseInfiniteQuestionsResult {
   data: QuestionType[];
   isLoading: boolean;
+  isFetching: boolean;
   isFetchingMore: boolean;
   hasMore: boolean;
   fetchMore: () => void;
@@ -133,6 +136,7 @@ export function useInfiniteQuestions(
     sortDirection = 'desc',
     minEndTime: rawMinEndTime,
     resolutionStatus,
+    enabled = true,
   } = opts;
 
   // Normalize minEndTime: treat non-finite values (e.g. -Infinity from default
@@ -227,6 +231,7 @@ export function useInfiniteQuestions(
 
       return data.questionsSorted ?? [];
     },
+    enabled,
   });
 
   // Accumulate data when new page arrives
@@ -308,6 +313,7 @@ export function useInfiniteQuestions(
   return {
     data: allLoadedData,
     isLoading: isFetching && skip === 0,
+    isFetching,
     isFetchingMore: isFetching && skip > 0,
     hasMore,
     fetchMore,

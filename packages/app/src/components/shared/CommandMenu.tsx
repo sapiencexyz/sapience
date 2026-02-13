@@ -15,11 +15,15 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { useInfiniteQuestions } from '~/hooks/graphql/useInfiniteQuestions';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { formatDistanceToNowStrict } from 'date-fns';
+
+const MAX_RESULTS = 10;
 
 const PAGES = [
   { name: 'Markets', href: '/markets', icon: BarChart3 },
@@ -76,13 +80,14 @@ export default function CommandMenu() {
     }
   }, [open]);
 
-  const { data: questions, isLoading } = useInfiniteQuestions({
+  const { data: questions, isFetching } = useInfiniteQuestions({
     pageSize: 20,
     chainId: CHAIN_ID_ETHEREAL,
     sortField: 'endTime',
     sortDirection: 'asc',
     search: debouncedSearch || undefined,
     minEndTime,
+    enabled: open,
   });
 
   // Flatten questions into displayable condition rows
@@ -96,20 +101,20 @@ export default function CommandMenu() {
         if (q.questionType === 'group' && q.group?.conditions) {
           return q.group.conditions.map((gc) => ({
             ...gc,
-            category: q.group!.category,
+            category: gc.category ?? q.group!.category,
           }));
         }
         return [];
       })
-      .slice(0, 10);
+      .slice(0, MAX_RESULTS);
   }, [questions]);
 
-  // Filter pages client-side when searching
+  // Filter pages client-side — use instant search for snappy UX
   const filteredPages = React.useMemo(() => {
-    if (!debouncedSearch) return PAGES;
-    const q = debouncedSearch.toLowerCase();
+    if (!search) return PAGES;
+    const q = search.toLowerCase();
     return PAGES.filter((p) => p.name.toLowerCase().includes(q));
-  }, [debouncedSearch]);
+  }, [search]);
 
   const handleSelect = React.useCallback(
     (href: string) => {
@@ -123,13 +128,17 @@ export default function CommandMenu() {
     [router]
   );
 
-  const isSearching = debouncedSearch !== search || isLoading;
+  const isSearching = debouncedSearch !== search || isFetching;
   const hasNoResults =
-    !isSearching && conditionRows.length === 0 && filteredPages.length === 0;
+    !isSearching && debouncedSearch && conditionRows.length === 0 && filteredPages.length === 0;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
+        <DialogTitle className="sr-only">Command Menu</DialogTitle>
+        <DialogDescription className="sr-only">
+          Search prediction markets, pages, and more
+        </DialogDescription>
         <Command
           shouldFilter={false}
           className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
@@ -140,7 +149,7 @@ export default function CommandMenu() {
             onValueChange={setSearch}
           />
           <CommandList>
-            {isSearching && (
+            {isSearching && debouncedSearch !== '' && (
               <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Searching...
@@ -188,9 +197,11 @@ export default function CommandMenu() {
               </CommandGroup>
             )}
 
-            {!isSearching && filteredPages.length > 0 && (
+            {filteredPages.length > 0 && (
               <>
-                {conditionRows.length > 0 && <CommandSeparator />}
+                {!isSearching && conditionRows.length > 0 && (
+                  <CommandSeparator />
+                )}
                 <CommandGroup heading="Pages">
                   {filteredPages.map((page) => (
                     <CommandItem
