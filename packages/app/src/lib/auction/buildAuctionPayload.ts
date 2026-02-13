@@ -188,7 +188,9 @@ export function buildAuctionStartPayload(
     ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
   // Resolver expects a single bytes blob with abi.encode(PredictedOutcome[])
-  const encoded = encodePolymarketPredictedOutcomes(normalizePolymarketOutcomes(outcomes));
+  const encoded = encodePolymarketPredictedOutcomes(
+    normalizePolymarketOutcomes(outcomes)
+  );
   const predictedOutcomes = [encoded];
 
   return { resolver, predictedOutcomes };
