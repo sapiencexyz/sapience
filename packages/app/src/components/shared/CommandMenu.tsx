@@ -47,11 +47,6 @@ export default function CommandMenu() {
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const router = useRouter();
 
-  // Stable minEndTime — only recompute when dialog opens
-  const [minEndTime, setMinEndTime] = React.useState(() =>
-    Math.floor(Date.now() / 1000)
-  );
-
   // Debounce search input
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -70,11 +65,9 @@ export default function CommandMenu() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  // Reset search when dialog closes, refresh minEndTime when it opens
+  // Reset search when dialog closes
   React.useEffect(() => {
-    if (open) {
-      setMinEndTime(Math.floor(Date.now() / 1000));
-    } else {
+    if (!open) {
       setSearch('');
       setDebouncedSearch('');
     }
@@ -86,7 +79,6 @@ export default function CommandMenu() {
     sortField: 'endTime',
     sortDirection: 'asc',
     search: debouncedSearch || undefined,
-    minEndTime,
     enabled: open,
   });
 
