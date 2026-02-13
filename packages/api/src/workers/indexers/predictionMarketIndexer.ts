@@ -16,6 +16,7 @@ import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
 } from '../../helpers/scoringService';
+import { sendPositionAlert } from '../../helpers/discordAlert';
 
 // TODO: Move all of this code to the existsing event processing pipeline
 const BLOCK_BATCH_SIZE = 100;
@@ -1095,6 +1096,37 @@ class PredictionMarketIndexer implements IIndexer {
           },
         },
       });
+
+      // Send Discord alert — fire-and-forget, deliberately NOT awaited.
+      void (async () => {
+        try {
+          const conditions = await prisma.condition.findMany({
+            where: { id: { in: conditionIds } },
+            select: { id: true, question: true },
+          });
+          const questionMap = new Map(
+            conditions.map((c) => [c.id, c.question])
+          );
+
+          sendPositionAlert({
+            predictor: eventData.maker,
+            counterparty: eventData.taker,
+            predictorCollateral: eventData.makerCollateral,
+            counterpartyCollateral: eventData.takerCollateral,
+            totalCollateral: eventData.totalCollateral,
+            predictions: predictedOutcomes.map((o) => ({
+              conditionId: o.conditionId,
+              question: questionMap.get(o.conditionId) ?? o.conditionId,
+              outcomeYes: o.prediction,
+            })),
+            blockTimestamp: Number(block.timestamp),
+            transactionHash: log.transactionHash || '',
+            chainId: this.chainId,
+          });
+        } catch (e) {
+          console.error('[PredictionMarketIndexer] Discord alert failed:', e);
+        }
+      })();
 
       // Update open interest for all conditions in this position
       const collateralStr = eventData.totalCollateral;
