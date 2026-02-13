@@ -27,6 +27,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
@@ -220,6 +221,7 @@ export default function CommandMenu() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
+        <TooltipProvider>
         <DialogTitle className="sr-only">Command Menu</DialogTitle>
         <DialogDescription className="sr-only">
           Search prediction markets, pages, and more
@@ -316,6 +318,7 @@ export default function CommandMenu() {
             )}
           </CommandList>
         </Command>
+        </TooltipProvider>
       </DialogContent>
     </Dialog>
   );
