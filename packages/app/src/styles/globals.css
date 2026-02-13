@@ -505,7 +505,8 @@
 }
 
 /* =========================================================================
-   Markets Grid Theme — scoped to .markets-grid-theme wrapper
+   Polymarket Parlays feature — scoped to .markets-grid-theme / .market-card
+   Remove this entire block when the feature is removed.
    ========================================================================= */
 @layer components {
   .markets-grid-theme {
@@ -533,7 +534,7 @@
   }
   .market-card .text-accent-gold {
     color: #2E5CFF !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
     font-family: 'Avenir Next', sans-serif !important;
   }
   .market-card .text-muted-foreground {

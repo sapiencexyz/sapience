@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { formatEther } from 'viem';
 import { motion } from 'framer-motion';
-import ConditionTitleLink from './ConditionTitleLink';
+import ConditionTitleLink from '../ConditionTitleLink';
 import {
   type TopLevelRow,
   EndTimeCell,
   PredictCell,
-} from './market-helpers';
+} from '../market-helpers';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
@@ -244,6 +244,7 @@ function ConditionCard({
               endTime={condition.endTime}
               settled={!!condition.settled}
               resolvedToYes={condition.resolvedToYes}
+              variant="card"
             />
           ) : (
             '—'
@@ -317,6 +318,7 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
               endTime={endTime}
               settled={row.conditions.every((c) => c.settled)}
               allSettled={row.conditions.every((c) => c.settled)}
+              variant="card"
             />
           ) : (
             '—'

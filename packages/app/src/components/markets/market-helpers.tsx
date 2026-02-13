@@ -103,7 +103,7 @@ export function getRowEndTime(row: TopLevelRow): number {
 // ---------------------------------------------------------------------------
 
 /** Live countdown display */
-export function CountdownCell({ endTime }: { endTime: number }) {
+export function CountdownCell({ endTime, variant = 'default' }: { endTime: number; variant?: 'default' | 'card' }) {
   const [nowMs, setNowMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -150,7 +150,11 @@ export function CountdownCell({ endTime }: { endTime: number }) {
           <span
             className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
           >
-            {formatCountdown()}
+            {isPast || variant === 'default' ? (
+              formatCountdown()
+            ) : (
+              <>Ends <span className="font-semibold">{formatCountdown()}</span></>
+            )}
           </span>
         </TooltipTrigger>
         <TooltipContent>
@@ -211,11 +215,13 @@ export function EndTimeCell({
   settled,
   resolvedToYes,
   allSettled,
+  variant = 'default',
 }: {
   endTime: number;
   settled: boolean;
   resolvedToYes?: boolean | null;
   allSettled?: boolean;
+  variant?: 'default' | 'card';
 }) {
   const [nowMs, setNowMs] = React.useState<number | null>(null);
 
@@ -248,7 +254,7 @@ export function EndTimeCell({
     return <ResolutionBadge status={status} />;
   }
 
-  return <CountdownCell endTime={endTime} />;
+  return <CountdownCell endTime={endTime} variant={variant} />;
 }
 
 // ---------------------------------------------------------------------------

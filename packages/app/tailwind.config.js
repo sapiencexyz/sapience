@@ -11,7 +11,7 @@ module.exports = {
             fontFamily: {
                 sans: ['Avenir Next Rounded', 'sans-serif'],
                 heading: ['Avenir Next', 'sans-serif'],
-                display: ['Avenir Next', 'sans-serif'],
+                display: ['Avenir Next', 'sans-serif'], // Polymarket Parlays feature
                 mono: ['var(--font-ibm-plex-mono)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
             },
             colors: {
@@ -22,6 +22,7 @@ module.exports = {
                 'brand-red': 'hsl(var(--brand-red))',
                 'yes': 'hsl(var(--brand-green))',
                 'no': 'hsl(var(--brand-red))',
+                // Polymarket Parlays feature — royal palette
                 'royal-50': '#eef2ff',
                 'royal-100': '#dbe4ff',
                 'royal-200': '#bac8ff',

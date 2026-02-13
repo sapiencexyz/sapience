@@ -7,7 +7,7 @@ import {
   type QuestionType,
   buildTopLevelRows,
   groupConditionToConditionType,
-} from './market-helpers';
+} from '../market-helpers';
 // @ts-expect-error — react-dom types not bundled with React 19 in this project
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';

@@ -16,8 +16,8 @@ import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import QuestionsTable from '~/components/markets/QuestionsTable';
-import QuestionsGrid from '~/components/markets/QuestionsGrid';
-import SortControls from '~/components/markets/SortControls';
+import QuestionsGrid from '~/components/markets/polymarket/QuestionsGrid';
+import SortControls from '~/components/markets/polymarket/SortControls';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
