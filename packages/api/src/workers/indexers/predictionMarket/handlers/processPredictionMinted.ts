@@ -8,6 +8,7 @@ import {
   type Block,
 } from 'viem';
 import Sentry from '../../../../instrument';
+import { sendPositionAlert } from '../../../../helpers/discordAlert';
 import { PREDICTION_MARKET_ABI } from '../constants';
 import type { PredictionMintedEvent } from '../types';
 import type { HandlerContext } from '../handlerContext';
@@ -299,6 +300,39 @@ export async function processPredictionMinted(
         },
       },
     });
+
+    // Send Discord alert — fire-and-forget, deliberately NOT awaited.
+    void (async () => {
+      try {
+        const conditions = await prisma.condition.findMany({
+          where: { id: { in: conditionIds } },
+          select: { id: true, question: true },
+        });
+        const questionMap = new Map(
+          conditions.map((c) => [c.id, c.question])
+        );
+
+        sendPositionAlert({
+          predictor: eventData.maker,
+          counterparty: eventData.taker,
+          predictorCollateral: eventData.makerCollateral,
+          counterpartyCollateral: eventData.takerCollateral,
+          totalCollateral: eventData.totalCollateral,
+          predictions: predictedOutcomes.map((o) => ({
+            conditionId: o.conditionId,
+            question: questionMap.get(o.conditionId) ?? o.conditionId,
+            outcomeYes: o.prediction,
+          })),
+          blockTimestamp: Number(block.timestamp),
+          transactionHash: log.transactionHash || '',
+          chainId: ctx.chainId,
+          nftId: String(eventData.makerNftTokenId),
+          marketAddress: log.address.toLowerCase(),
+        });
+      } catch (e) {
+        console.error('[PredictionMarketIndexer] Discord alert failed:', e);
+      }
+    })();
 
     // Update open interest for all conditions in this position
     const collateralStr = eventData.totalCollateral;
