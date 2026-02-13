@@ -35,7 +35,6 @@ import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 import VaultUPnLChart from '~/components/vaults/VaultUPnLChart';
-import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import PeriodFilter, { type Period } from '~/components/shared/PeriodFilter';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
@@ -83,6 +82,7 @@ const VaultsPageContent = () => {
 
   // PnL chart period state (shared between Realized and uPnL tabs)
   const [pnlPeriod, setPnlPeriod] = useState<Period>('3M');
+  const [showUnrealized, setShowUnrealized] = useState(false);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -617,33 +617,38 @@ const VaultsPageContent = () => {
                     <div className="flex flex-col gap-6 order-2 lg:order-1 lg:min-h-0">
                       {/* Vault PnL Charts (Realized / uPnL) */}
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
-                        <Tabs defaultValue="realized">
-                          <div className="flex items-center justify-between mb-1">
-                            <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
-                              <TabsTrigger value="realized">Realized</TabsTrigger>
-                              <TabsTrigger value="unrealized">uPnL</TabsTrigger>
-                            </SegmentedTabsList>
-                            <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
+                              Profit/Loss
+                            </h4>
+                            <button
+                              type="button"
+                              onClick={() => setShowUnrealized((v) => !v)}
+                              className="text-xs font-mono px-2.5 py-0.5 rounded-full border border-brand-white/20 text-muted-foreground hover:text-brand-white hover:border-brand-white/40 transition-colors cursor-pointer"
+                            >
+                              {showUnrealized ? 'Unrealized' : 'Realized'}
+                            </button>
                           </div>
-                          <TabsContent value="realized" className="mt-0">
-                            <VaultPnlChart
-                              protocolStats={protocolStats ?? undefined}
-                              isLoading={isAnalyticsLoading}
-                              showHeader={false}
-                              externalPeriod={pnlPeriod}
-                              className="flex-1"
-                            />
-                          </TabsContent>
-                          <TabsContent value="unrealized" className="mt-0">
-                            <VaultUPnLChart
-                              protocolStats={protocolStats ?? undefined}
-                              isLoading={isAnalyticsLoading}
-                              showHeader={false}
-                              externalPeriod={pnlPeriod}
-                              className="flex-1"
-                            />
-                          </TabsContent>
-                        </Tabs>
+                          <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
+                        </div>
+                        {showUnrealized ? (
+                          <VaultUPnLChart
+                            protocolStats={protocolStats ?? undefined}
+                            isLoading={isAnalyticsLoading}
+                            showHeader={false}
+                            externalPeriod={pnlPeriod}
+                            className="flex-1"
+                          />
+                        ) : (
+                          <VaultPnlChart
+                            protocolStats={protocolStats ?? undefined}
+                            isLoading={isAnalyticsLoading}
+                            showHeader={false}
+                            externalPeriod={pnlPeriod}
+                            className="flex-1"
+                          />
+                        )}
                       </div>
 
                       {/* Utilization Block */}
