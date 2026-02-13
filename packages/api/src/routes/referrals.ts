@@ -273,11 +273,17 @@ router.post('/claim', async (req: Request, res: Response) => {
     });
 
     if (!validSignature) {
-      return res.status(401).json({ message: 'Invalid signature' });
+      return res.status(401).json({
+        message:
+          'Wallet signature could not be verified. Please reconnect your wallet and try again.',
+      });
     }
   } catch (e) {
     console.error('Error verifying referral claim signature', e);
-    return res.status(400).json({ message: 'Failed to verify signature' });
+    return res.status(400).json({
+      message:
+        'Signature verification failed. Your wallet may not support this signing method.',
+    });
   }
 
   try {
@@ -302,7 +308,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       }
 
       return res.status(409).json({
-        message: 'Already claimed a referral code',
+        message: 'You have already claimed a different referral code.',
       });
     }
 
@@ -313,25 +319,34 @@ router.post('/claim', async (req: Request, res: Response) => {
     });
 
     if (!code) {
-      return res.status(404).json({ message: 'Invalid referral code' });
+      return res
+        .status(404)
+        .json({ message: 'Invite code not found. Please check and try again.' });
     }
 
     // Validate: isActive, not expired, under capacity
     if (!code.isActive) {
-      return res.status(403).json({ message: 'Code is not active' });
+      return res
+        .status(403)
+        .json({ message: 'This invite code has been deactivated.' });
     }
 
     if (code.expiresAt && code.expiresAt < Math.floor(Date.now() / 1000)) {
-      return res.status(403).json({ message: 'Code has expired' });
+      return res.status(403).json({ message: 'This invite code has expired.' });
     }
 
     if (code._count.claimedBy >= code.maxClaims) {
-      return res.status(403).json({ message: 'Code has reached claim limit' });
+      return res.status(403).json({
+        message:
+          'This invite code has reached its claim limit. Please request a new code.',
+      });
     }
 
     // Prevent self-referral
     if (normalizeAddress(code.createdBy) === normalizeAddress(walletAddress)) {
-      return res.status(400).json({ message: 'Cannot claim your own code' });
+      return res
+        .status(400)
+        .json({ message: 'You cannot claim your own invite code.' });
     }
 
     // Create/update user with referredByCodeId
