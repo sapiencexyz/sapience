@@ -253,7 +253,7 @@ const MarketsPage = () => {
       <div
         className="flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6"
         style={{
-          height: 'calc(100dvh - var(--page-top-offset, 0px))',
+          minHeight: 'calc(100dvh - var(--page-top-offset, 0px))',
         }}
       >
         {/* Featured Positions section */}
