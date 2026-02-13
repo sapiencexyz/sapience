@@ -115,12 +115,12 @@ export default function QuestionsGrid({
   return (
     <div className="flex flex-col h-full">
       {/* Grid */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-8">
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-6 md:px-6 md:pb-8">
         <AnimatePresence mode="wait">
           {showLoading ? (
             <motion.div
               key="skeleton"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
               initial={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.25 }}
@@ -142,7 +142,7 @@ export default function QuestionsGrid({
           ) : (
             <motion.div key="cards">
               <motion.div
-                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
                 variants={staggerContainer}
                 initial="hidden"
                 animate="visible"

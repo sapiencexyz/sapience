@@ -276,7 +276,7 @@ const MarketsPage = () => {
       >
         {/* Polymarket header (grid view only) */}
         {useCardGrid && (
-          <div className="px-6 pt-6 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="px-3 pt-4 pb-3 md:px-6 md:pt-6 md:pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
             <div className="flex items-center gap-2">
               <Image
                 src="/polymarket-logomark.png"
