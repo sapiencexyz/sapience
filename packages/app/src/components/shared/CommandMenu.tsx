@@ -223,7 +223,7 @@ export default function CommandMenu() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
+      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl" hideCloseButton>
         <DialogTitle className="sr-only">Command Menu</DialogTitle>
         <DialogDescription className="sr-only">
           Search prediction markets, pages, and more
