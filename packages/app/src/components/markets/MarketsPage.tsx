@@ -271,7 +271,7 @@ const MarketsPage = () => {
                 background:
                   'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
               }
-            : { height: 'calc(100dvh - var(--page-top-offset, 0px))' }
+            : { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }
         }
       >
         {/* Polymarket header (grid view only) */}
