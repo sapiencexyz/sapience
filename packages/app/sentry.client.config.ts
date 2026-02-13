@@ -26,6 +26,25 @@ if (process.env.NODE_ENV === "production") {
 
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
+
+    // Filter out noise from wallet extensions — only things that can NEVER be our code
+    ignoreErrors: [
+      // Wallet extension errors (MetaMask, Coinbase, etc.)
+      /Failed to connect to MetaMask/,
+      /func sseError not found/,
+      /Can't find variable: CONFIG/,
+      // Safari in-app browser WebView bridge
+      /webkit\.messageHandlers/,
+    ],
+
+    // Ignore errors originating from browser extensions
+    denyUrls: [
+      /extensions\//i,
+      /^chrome:\/\//i,
+      /^chrome-extension:\/\//i,
+      /^moz-extension:\/\//i,
+      /inpage\.js/,
+    ],
   });
 } else {
   console.log("Sentry disabled in development mode");
