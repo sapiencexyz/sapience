@@ -33,6 +33,8 @@ function makeAlertData(
     transactionHash:
       '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
     chainId: 42161,
+    nftId: '42',
+    marketAddress: '0xb04841cad1147675505816e2ec5c915430857b40',
     ...overrides,
   };
 }
@@ -116,7 +118,7 @@ describe('buildPositionEmbed', () => {
       value: string;
       inline: boolean;
     }>;
-    expect(fields).toHaveLength(5);
+    expect(fields).toHaveLength(6);
 
     // Predictions field
     expect(fields[0].name).toBe('📋 Predictions');
@@ -125,18 +127,22 @@ describe('buildPositionEmbed', () => {
 
     // Predictor
     expect(fields[1].value).toContain('0xaabb…4455');
-    expect(fields[1].value).toContain('50 USDe');
+    expect(fields[1].value).toContain('50 testUSDe');
 
     // Counterparty
     expect(fields[2].value).toContain('0x1234…5678');
-    expect(fields[2].value).toContain('100 USDe');
+    expect(fields[2].value).toContain('100 testUSDe');
 
     // Total
-    expect(fields[3].value).toContain('150 USDe');
+    expect(fields[3].value).toContain('150 testUSDe');
 
-    // Chain + tx link
-    expect(fields[4].value).toContain('Arbitrum');
-    expect(fields[4].value).toContain('arbiscan.io');
+    // Position link
+    expect(fields[4].name).toBe('📄 Position');
+    expect(fields[4].value).toContain('View Position');
+
+    // Transaction link
+    expect(fields[5].name).toBe('🔗 Transaction');
+    expect(fields[5].value).toContain('arbiscan.io');
   });
 
   it('shows NO for false predictions', () => {
@@ -171,22 +177,27 @@ describe('buildPositionEmbed', () => {
     const base = buildPositionEmbed(
       makeAlertData({ chainId: 8453 })
     ) as Record<string, unknown>;
-    const fields = base.fields as Array<{ value: string }>;
-    expect(fields[4].value).toContain('basescan.org');
+    const fields = base.fields as Array<{ name: string; value: string }>;
+    const baseTx = fields.find((f) => f.name === '🔗 Transaction');
+    expect(baseTx?.value).toContain('basescan.org');
 
     const sepolia = buildPositionEmbed(
       makeAlertData({ chainId: 11155111 })
     ) as Record<string, unknown>;
-    const sepoliaFields = sepolia.fields as Array<{ value: string }>;
-    expect(sepoliaFields[4].value).toContain('sepolia.etherscan.io');
+    const sepoliaFields = sepolia.fields as Array<{ name: string; value: string }>;
+    const sepoliaTx = sepoliaFields.find((f) => f.name === '🔗 Transaction');
+    expect(sepoliaTx?.value).toContain('sepolia.etherscan.io');
   });
 
   it('handles missing transaction hash gracefully', () => {
     const data = makeAlertData({ transactionHash: '' });
     const embed = buildPositionEmbed(data) as Record<string, unknown>;
-    const fields = embed.fields as Array<{ value: string }>;
-    // Chain field should just have chain name, no link
-    expect(fields[4].value).toBe('Arbitrum');
+    const fields = embed.fields as Array<{ name: string; value: string }>;
+    // Only 5 fields: predictions, predictor, counterparty, total, position (no tx link)
+    expect(fields).toHaveLength(5);
+    expect(fields[4].name).toBe('📄 Position');
+    // No transaction field present
+    expect(fields.find((f) => f.name === '🔗 Transaction')).toBeUndefined();
   });
 });
 
