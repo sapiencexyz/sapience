@@ -79,7 +79,6 @@ The fastest path: read **[`SKILL.md`](https://sapience.xyz/skills)**. It's a sel
 - WebSocket auction flow (taker and maker)
 - EIP-712 signing for bids
 - On-chain minting and claiming
-- Polymarket price feeds
 
 For deeper dives, see the [Forecasting Agent Guide](https://docs.sapience.xyz/builder-guide/guides/forecasting-agent) and [Trading Agent Guide](https://docs.sapience.xyz/builder-guide/guides/trading-agent).
 
@@ -102,4 +101,4 @@ For deeper dives, see the [Forecasting Agent Guide](https://docs.sapience.xyz/bu
 
 [MIT](LICENSE) — the entire protocol is fully open source. Contracts, SDK, API, frontend — all of it. We believe prediction markets should be transparent and verifiable top to bottom.
 
-We welcome pull requests. If you want to contribute or just talk shop, [come hang out in Discord](https://discord.gg/sapience).
+We welcome pull requests. If you want to contribute or just chat, [come hang out in Discord](https://discord.gg/sapience).
