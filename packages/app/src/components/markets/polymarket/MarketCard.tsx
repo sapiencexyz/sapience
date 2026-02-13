@@ -302,7 +302,7 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
       <button
         type="button"
         onClick={() => onToggleExpand(row.groupId)}
-        className="mt-3 w-full h-8 rounded-md font-display text-sm font-semibold tracking-wider uppercase transition-colors border border-royal-200 text-royal-600 bg-royal-50/40 hover:bg-royal-100 hover:text-royal-700 flex items-center justify-center gap-1.5"
+        className="mt-3 w-full h-8 rounded-md font-display text-sm font-semibold tracking-wider uppercase transition-colors border border-royal-200 text-royal-600 bg-royal-50 hover:bg-royal-100 hover:text-royal-700 flex items-center justify-center gap-1.5"
       >
         SHOW OPTIONS
       </button>
