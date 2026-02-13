@@ -34,7 +34,7 @@ const RATE_LIMIT_MAX = 10;
 
 // Staleness threshold: skip alerts for blocks older than 5 minutes.
 // This prevents flooding Discord when reindexing historical blocks.
-const STALE_BLOCK_THRESHOLD_S = 5 * 60;
+export const STALE_BLOCK_THRESHOLD_S = 5 * 60;
 
 export interface PositionAlertData {
   predictor: string;
@@ -54,12 +54,12 @@ export interface PositionAlertData {
   chainId: number;
 }
 
-function truncateAddress(addr: string): string {
+export function truncateAddress(addr: string): string {
   if (addr.length <= 10) return addr;
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
 
-function formatCollateral(raw: string, decimals: number = 18): string {
+export function formatCollateral(raw: string, decimals: number = 18): string {
   try {
     const formatted = formatUnits(BigInt(raw), decimals);
     const n = parseFloat(formatted);
@@ -74,7 +74,7 @@ function formatCollateral(raw: string, decimals: number = 18): string {
   }
 }
 
-function getChainName(chainId: number): string {
+export function getChainName(chainId: number): string {
   switch (chainId) {
     case 1:
       return 'Ethereum';
@@ -104,27 +104,11 @@ function recordAlert(): void {
   alertTimestamps.push(Date.now());
 }
 
-export function sendPositionAlert(data: PositionAlertData): void {
-  // Skip stale blocks (reindex safety)
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (nowSec - data.blockTimestamp > STALE_BLOCK_THRESHOLD_S) {
-    console.debug(
-      `[discordAlert] Skipping stale block (age=${nowSec - data.blockTimestamp}s, threshold=${STALE_BLOCK_THRESHOLD_S}s)`
-    );
-    return;
-  }
-
-  // Skip if no webhooks configured
-  if (DISCORD_WEBHOOK_URLS.length === 0) return;
-
-  // Rate limit check
-  if (isRateLimited()) {
-    console.warn('[discordAlert] Rate limited, skipping position alert');
-    return;
-  }
-
-  recordAlert();
-
+/**
+ * Build the Discord embed payload for a position alert.
+ * Exported for testing — sendPositionAlert calls this internally.
+ */
+export function buildPositionEmbed(data: PositionAlertData): object {
   const decimals = data.collateralDecimals ?? 18;
 
   const predictionsText = data.predictions
@@ -144,7 +128,7 @@ export function sendPositionAlert(data: PositionAlertData): void {
     ? `[View tx](${explorerBaseUrl}/tx/${data.transactionHash})`
     : '';
 
-  const embed = {
+  return {
     title: '🔮 New Position',
     color: 0x7c3aed,
     fields: [
@@ -178,7 +162,35 @@ export function sendPositionAlert(data: PositionAlertData): void {
     ],
     timestamp: new Date(data.blockTimestamp * 1000).toISOString(),
   };
+}
 
+/** Reset rate limiter state (for testing only). */
+export function _resetRateLimiter(): void {
+  alertTimestamps.length = 0;
+}
+
+export function sendPositionAlert(data: PositionAlertData): void {
+  // Skip stale blocks (reindex safety)
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (nowSec - data.blockTimestamp > STALE_BLOCK_THRESHOLD_S) {
+    console.debug(
+      `[discordAlert] Skipping stale block (age=${nowSec - data.blockTimestamp}s, threshold=${STALE_BLOCK_THRESHOLD_S}s)`
+    );
+    return;
+  }
+
+  // Skip if no webhooks configured
+  if (DISCORD_WEBHOOK_URLS.length === 0) return;
+
+  // Rate limit check
+  if (isRateLimited()) {
+    console.warn('[discordAlert] Rate limited, skipping position alert');
+    return;
+  }
+
+  recordAlert();
+
+  const embed = buildPositionEmbed(data);
   const payload = JSON.stringify({ embeds: [embed] });
 
   // Fire-and-forget: send to all webhook URLs
