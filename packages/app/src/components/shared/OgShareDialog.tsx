@@ -96,7 +96,8 @@ export default function OgShareDialogBase({
     nftId: string;
     marketAddress: string;
   } | null>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingCancelledRef = useRef(false);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
   // Use effectiveAddress from session context for position tracking
@@ -119,9 +120,10 @@ export default function OgShareDialogBase({
 
     // Stop polling once position is resolved - prevents flickering
     if (positionResolved) {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+      pollingCancelledRef.current = true;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
       return;
     }
@@ -144,9 +146,10 @@ export default function OgShareDialogBase({
         marketAddress: position.marketAddress,
       });
       onPositionIndexed?.();
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+      pollingCancelledRef.current = true;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
     };
 
@@ -226,31 +229,40 @@ export default function OgShareDialogBase({
       checkPosition(positions);
     }
 
-    // Only start polling if not already polling
-    if (!pollingIntervalRef.current) {
-      pollingIntervalRef.current = setInterval(async () => {
-        pollCount++;
-        try {
-          const result = await refetchPositions();
-          const latestPositions = result.data || [];
-          if (latestPositions.length === 0 && pollCount % 10 === 0) {
-            console.warn('[OgShareDialog] refetch returned 0 positions', {
-              pollCount,
-              resultStatus: result.status,
-              error: result.error?.message,
-            });
-          }
-          checkPosition(latestPositions);
-        } catch (err) {
-          console.warn('[OgShareDialog] refetch threw', err);
+    // Poll with recursive setTimeout so each fetch completes before the next
+    // starts. Using setInterval with 500ms caused fetches to be cancelled by
+    // React Query's cancelRefetch default when the two-query queryFn took >500ms.
+    pollingCancelledRef.current = false;
+    const poll = async () => {
+      if (pollingCancelledRef.current) return;
+      pollCount++;
+      try {
+        const result = await refetchPositions();
+        const latestPositions = result.data || [];
+        if (latestPositions.length === 0 && pollCount % 10 === 0) {
+          console.warn('[OgShareDialog] refetch returned 0 positions', {
+            pollCount,
+            resultStatus: result.status,
+            error: result.error?.message,
+          });
         }
-      }, 500);
-    }
+        if (!pollingCancelledRef.current) {
+          checkPosition(latestPositions);
+        }
+      } catch (err) {
+        console.warn('[OgShareDialog] refetch threw', err);
+      }
+      if (!pollingCancelledRef.current) {
+        pollingTimerRef.current = setTimeout(poll, 500);
+      }
+    };
+    pollingTimerRef.current = setTimeout(poll, 500);
 
     return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+      pollingCancelledRef.current = true;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
     };
   }, [
@@ -270,9 +282,10 @@ export default function OgShareDialogBase({
       setResolvedPositionData(null); // Reset resolved position data
       setImgLoading(true); // Reset image loading state to prevent flash on reopen
       dialogOpenTimestampRef.current = null;
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current);
-        pollingIntervalRef.current = null;
+      pollingCancelledRef.current = true;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
     }
   }, [open]);
