@@ -54,6 +54,8 @@ interface IV2Types {
         bytes32 pickConfigId; // Hash of canonical picks
         uint256 totalPredictorCollateral; // Sum of all predictor wagers
         uint256 totalCounterpartyCollateral; // Sum of all counterparty wagers
+        uint256 totalPredictorTokensMinted; // Total tokens minted to predictor side
+        uint256 totalCounterpartyTokensMinted; // Total tokens minted to counterparty side
         uint256 claimedPredictorCollateral; // Amount claimed by predictor token holders
         uint256 claimedCounterpartyCollateral; // Amount claimed by counterparty token holders
         bool resolved; // Whether picks have been resolved
