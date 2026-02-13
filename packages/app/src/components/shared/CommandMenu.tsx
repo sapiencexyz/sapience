@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart3, Trophy, Radio, Vault, User, FileText } from 'lucide-react';
 import {
-  CommandDialog,
+  Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -12,6 +12,10 @@ import {
   CommandList,
   CommandSeparator,
 } from '@sapience/ui/components/ui/command';
+import {
+  Dialog,
+  DialogContent,
+} from '@sapience/ui/components/ui/dialog';
 import { useInfiniteQuestions } from '~/hooks/graphql/useInfiniteQuestions';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
@@ -108,8 +112,9 @@ export default function CommandMenu() {
   );
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen}>
-      <div className="mx-auto w-full max-w-2xl">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl">
+        <Command shouldFilter={false} className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5">
         <CommandInput
           placeholder="Search prediction markets and more..."
           value={search}
@@ -172,7 +177,8 @@ export default function CommandMenu() {
             ))}
           </CommandGroup>
         </CommandList>
-      </div>
-    </CommandDialog>
+        </Command>
+      </DialogContent>
+    </Dialog>
   );
 }
