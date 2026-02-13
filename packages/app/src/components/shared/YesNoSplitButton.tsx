@@ -65,7 +65,7 @@ export default function YesNoSplitButton({
       ? 'text-white bg-green-600 hover:bg-green-700 border-green-600 shadow-[0_0_0_2px_rgba(22,163,74,0.4)]'
       : 'text-emerald-900 dark:text-white/90 bg-emerald-500/50 hover:bg-emerald-500/60 dark:bg-emerald-500/70 dark:hover:bg-emerald-500/80 border-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.35)] dark:shadow-[0_0_0_2px_rgba(16,185,129,0.45)]'
     : bold
-      ? 'text-green-700 bg-green-500/15 hover:bg-green-500/25 border-transparent shadow-none hover:shadow-none'
+      ? 'text-green-700 bg-green-500/15 hover:bg-green-500/25 border-green-500/30 shadow-none hover:shadow-none'
       : 'text-emerald-700 dark:text-white/90 bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-400/60 shadow-[0_0_0_1px_rgba(16,185,129,0.18)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.28),_0_0_10px_rgba(16,185,129,0.18)] dark:shadow-[0_0_0_1px_rgba(16,185,129,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(16,185,129,0.4),_0_0_12px_rgba(16,185,129,0.3)]';
 
   const noColors = selectedNo
@@ -73,7 +73,7 @@ export default function YesNoSplitButton({
       ? 'text-white bg-red-500 hover:bg-red-600 border-red-500 shadow-[0_0_0_2px_rgba(239,68,68,0.4)]'
       : 'text-rose-900 dark:text-white/90 bg-rose-500/50 hover:bg-rose-500/60 dark:bg-rose-500/70 dark:hover:bg-rose-500/80 border-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.35)] dark:shadow-[0_0_0_2px_rgba(244,63,94,0.45)]'
     : bold
-      ? 'text-red-500 bg-red-500/15 hover:bg-red-500/25 border-transparent shadow-none hover:shadow-none'
+      ? 'text-red-500 bg-red-500/15 hover:bg-red-500/25 border-red-500/30 shadow-none hover:shadow-none'
       : 'text-rose-700 dark:text-white/90 bg-rose-500/10 hover:bg-rose-500/20 border-rose-400/60 shadow-[0_0_0_1px_rgba(244,63,94,0.18)] hover:shadow-[0_0_0_1px_rgba(244,63,94,0.28),_0_0_10px_rgba(244,63,94,0.18)] dark:shadow-[0_0_0_1px_rgba(244,63,94,0.28)] dark:hover:shadow-[0_0_0_1px_rgba(244,63,94,0.4),_0_0_12px_rgba(244,63,94,0.3)]';
 
   const yesOddsColor = bold
