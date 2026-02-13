@@ -31,7 +31,6 @@ const RequiredReferralCodeDialog = ({
 }: RequiredReferralCodeDialogProps) => {
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const { toast } = useToast();
@@ -70,7 +69,6 @@ const RequiredReferralCodeDialog = ({
     if (!walletAddress) return;
 
     setSubmitting(true);
-    setError(null);
 
     const normalizedAddress = walletAddress.toLowerCase();
     const normalizedCode = code.trim().toLowerCase();
@@ -92,10 +90,7 @@ const RequiredReferralCodeDialog = ({
     try {
       signature = await signMessageAsync({ message });
     } catch (signErr) {
-      const reason =
-        signErr instanceof Error ? signErr.message : 'Unknown error';
       console.error('Wallet signing failed:', signErr);
-      setError(`Wallet signature failed: ${reason}`);
       toast({
         title: 'Wallet signature failed',
         description:
@@ -137,14 +132,12 @@ const RequiredReferralCodeDialog = ({
           serverMessage,
         });
 
-        // Show the server error inline so the user can see and report it
-        setError(serverMessage);
-
         // Use a specific toast title based on the failure type
         const title =
           resp.status === 404
             ? 'Invite code not found'
-            : resp.status === 401 || serverMessage.includes('signature')
+            : resp.status === 401 ||
+                serverMessage.toLowerCase().includes('signature')
               ? 'Signature verification failed'
               : resp.status === 409
                 ? 'Already claimed'
@@ -166,7 +159,6 @@ const RequiredReferralCodeDialog = ({
       if (data && data.allowed === false && (data.index ?? null) === null) {
         const capacityMessage =
           'This referral code has reached its capacity. Please request a new code or try a different one.';
-        setError(capacityMessage);
         toast({
           title: 'Referral code full',
           description: capacityMessage,
@@ -189,13 +181,11 @@ const RequiredReferralCodeDialog = ({
       onCodeSet?.(code.trim());
       onOpenChange(false);
     } catch (err) {
-      const reason =
-        err instanceof Error ? err.message : 'Please try again.';
       console.error('Referral claim network error:', err);
-      setError(`Network error: ${reason}`);
       toast({
         title: 'Network error',
-        description: 'Could not reach the server. Please check your connection and try again.',
+        description:
+          'Could not reach the server. Please check your connection and try again.',
         variant: 'destructive',
       });
     } finally {
@@ -247,9 +237,6 @@ const RequiredReferralCodeDialog = ({
                 {submitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
-            {error && (
-              <p className="text-xs text-destructive mt-1.5">{error}</p>
-            )}
           </div>
         </form>
 
