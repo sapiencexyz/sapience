@@ -987,7 +987,12 @@ const CreatePositionFormInner = ({
     clearSelections();
     // Refetch positions so next trade has correct lastNftId
     refetchUserPositions();
-  }, [markPositionIndexed, clearPositionForm, clearSelections, refetchUserPositions]);
+  }, [
+    markPositionIndexed,
+    clearPositionForm,
+    clearSelections,
+    refetchUserPositions,
+  ]);
 
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
