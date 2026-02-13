@@ -10,6 +10,7 @@ import {
   PredictCell,
 } from '../market-helpers';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
+import { formatPercentChance } from '~/lib/format/percentChance';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 
@@ -158,7 +159,9 @@ function ConditionCard({
   const { condition } = row;
   const oiWei = BigInt(condition.openInterest || '0');
   const probability = predictionMapRef.current[condition.id];
-  const percent = probability != null ? Math.round(probability * 100) : null;
+  const percentLabel = probability != null ? formatPercentChance(probability) : null;
+  // Numeric percent for gauge arc (clamped 1–99 to avoid fully-empty/full visual)
+  const percent = probability != null ? Math.max(1, Math.min(99, Math.round(probability * 100))) : null;
   const CategoryIcon = getCategoryIcon(condition.category?.slug);
 
   const handlePrediction = React.useCallback(
@@ -194,13 +197,13 @@ function ConditionCard({
         </div>
         {!condition.settled && (
           <SemiCircleGaugeShell percent={percent}>
-            {percent != null ? (
+            {percentLabel != null ? (
               <div className="-mt-5 flex flex-col items-center">
                 <span
                   className="font-display text-[14px] font-bold"
-                  style={{ color: gaugeStrokeColor(percent) }}
+                  style={{ color: gaugeStrokeColor(percent!) }}
                 >
-                  {percent}%
+                  {percentLabel}
                 </span>
                 <span className="font-display text-[9px] text-royal-400 leading-tight">
                   chance
