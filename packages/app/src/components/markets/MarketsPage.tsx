@@ -283,7 +283,7 @@ const MarketsPage = () => {
             useCardGrid
               ? {
                   background:
-                    'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
+                    'linear-gradient(165deg, #1354F0 0%, #082B89 100%)',
                 }
               : { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }
           }

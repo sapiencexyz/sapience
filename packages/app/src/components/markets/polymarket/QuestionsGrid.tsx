@@ -198,7 +198,7 @@ export default function QuestionsGrid({
                         {/* Panel */}
                         <motion.div
                           className="markets-grid-theme relative rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.25)] p-6 w-full max-w-5xl max-h-[80vh] overflow-y-auto"
-                          style={{ background: 'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)' }}
+                          style={{ background: 'linear-gradient(165deg, #1354F0 0%, #082B89 100%)' }}
                           initial={{ scale: 0.97, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0.97, opacity: 0 }}
