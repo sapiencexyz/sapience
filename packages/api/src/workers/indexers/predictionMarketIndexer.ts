@@ -2316,10 +2316,11 @@ class PredictionMarketIndexer implements IIndexer {
           }
         },
         onError: (error) => {
-          console.error(
-            '[PredictionMarketIndexer] Error watching events:',
-            error
-          );
+          // mute this error log so that production isn't spammed with RPC errors from Ethereal RPCs
+          // console.error(
+          //   '[PredictionMarketIndexer] Error watching events:',
+          //   error
+          // );
           Sentry.captureException(error);
           this.isWatching = false;
 
