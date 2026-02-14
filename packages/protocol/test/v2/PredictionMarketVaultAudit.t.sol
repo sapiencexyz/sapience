@@ -4,7 +4,7 @@ pragma solidity ^0.8.22;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../../src/v2/vault/PredictionMarketVault.sol";
-import "./mocks/MockERC20.sol";
+import "../../test/v2/mocks/MockERC20.sol";
 
 /**
  * @title PredictionMarketVaultAudit
