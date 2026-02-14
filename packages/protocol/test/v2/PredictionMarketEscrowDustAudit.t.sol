@@ -6,8 +6,8 @@ import "forge-std/console.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import "./mocks/MockConditionResolver.sol";
-import "./mocks/MockERC20.sol";
+import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
+import "../../test/v2/mocks/MockERC20.sol";
 
 /**
  * @title PredictionMarketEscrowDustAudit
@@ -28,15 +28,17 @@ import "./mocks/MockERC20.sol";
 contract PredictionMarketEscrowDustAudit is Test {
     PredictionMarketEscrow public escrow;
     MockERC20 public collateral;
-    MockConditionResolver public resolver;
+    ManualConditionResolver public resolver;
 
     uint256 constant ALICE_PK = 0xA11CE;
     uint256 constant BOB_PK = 0xB0B;
     uint256 constant OWNER_PK = 0x0ACE;
+    uint256 constant SETTLER_PK = 0x5E77;
 
     address alice;
     address bob;
     address owner;
+    address settler;
 
     bytes32 constant CONDITION_ID = keccak256("DUST_TEST_CONDITION");
     bytes32 constant REF_CODE = bytes32(0);
@@ -45,14 +47,14 @@ contract PredictionMarketEscrowDustAudit is Test {
         alice = vm.addr(ALICE_PK);
         bob = vm.addr(BOB_PK);
         owner = vm.addr(OWNER_PK);
+        settler = vm.addr(SETTLER_PK);
 
         vm.startPrank(owner);
         collateral = new MockERC20("USD Collateral", "USDC", 6);
         escrow = new PredictionMarketEscrow(address(collateral), owner);
+        resolver = new ManualConditionResolver(owner);
+        resolver.approveSettler(settler);
         vm.stopPrank();
-
-        resolver = new MockConditionResolver();
-        resolver.setCondition(CONDITION_ID, true, false, 0, 0, false);
 
         collateral.mint(alice, 1_000_000e6);
         collateral.mint(bob, 1_000_000e6);
@@ -75,65 +77,60 @@ contract PredictionMarketEscrowDustAudit is Test {
         return picks;
     }
 
+    function _signApproval(
+        bytes32 predictionHash,
+        address signer,
+        uint256 wager,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pk
+    ) internal view returns (bytes memory) {
+        bytes32 digest = escrow.getMintApprovalHash(predictionHash, signer, wager, nonce, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
+        return abi.encodePacked(r, s, v);
+    }
+
     function _buildMintRequest(
-        address predictor,
-        uint256 predictorPk,
         uint256 predictorWager,
-        address counterparty,
-        uint256 counterpartyPk,
         uint256 counterpartyWager
-    ) internal view returns (IV2Types.MintRequest memory) {
+    ) internal view returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _buildPicks();
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorWager, counterpartyWager, predictor, counterparty)
+            abi.encode(pickConfigId, predictorWager, counterpartyWager, alice, bob)
         );
 
-        uint256 predictorNonce = escrow.getNonce(predictor);
-        uint256 counterpartyNonce = escrow.getNonce(counterparty);
+        uint256 pNonce = escrow.getNonce(alice);
+        uint256 cNonce = escrow.getNonce(bob);
         uint256 deadline = block.timestamp + 1 hours;
 
-        bytes32 predictorDigest = escrow.getMintApprovalHash(
-            predictionHash, predictor, predictorWager, predictorNonce, deadline
-        );
-        (uint8 pv, bytes32 pr, bytes32 ps) = vm.sign(predictorPk, predictorDigest);
-
-        bytes32 counterpartyDigest = escrow.getMintApprovalHash(
-            predictionHash, counterparty, counterpartyWager, counterpartyNonce, deadline
-        );
-        (uint8 cv, bytes32 cr, bytes32 cs) = vm.sign(counterpartyPk, counterpartyDigest);
-
-        return IV2Types.MintRequest({
-            picks: picks,
-            predictorWager: predictorWager,
-            counterpartyWager: counterpartyWager,
-            predictor: predictor,
-            counterparty: counterparty,
-            predictorNonce: predictorNonce,
-            counterpartyNonce: counterpartyNonce,
-            predictorDeadline: deadline,
-            counterpartyDeadline: deadline,
-            predictorSignature: abi.encodePacked(pr, ps, pv),
-            counterpartySignature: abi.encodePacked(cr, cs, cv),
-            refCode: REF_CODE,
-            predictorSessionKeyData: "",
-            counterpartySessionKeyData: ""
-        });
+        request.picks = picks;
+        request.predictorWager = predictorWager;
+        request.counterpartyWager = counterpartyWager;
+        request.predictor = alice;
+        request.counterparty = bob;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(predictionHash, alice, predictorWager, pNonce, deadline, ALICE_PK);
+        request.counterpartySignature = _signApproval(predictionHash, bob, counterpartyWager, cNonce, deadline, BOB_PK);
+        request.refCode = REF_CODE;
+        request.predictorSessionKeyData = "";
+        request.counterpartySessionKeyData = "";
     }
 
-    function _mint(
-        address predictor, uint256 predictorPk, uint256 predictorWager,
-        address counterparty, uint256 counterpartyPk, uint256 counterpartyWager
-    ) internal returns (bytes32 predictionId, address predictorToken, address counterpartyToken) {
-        IV2Types.MintRequest memory req = _buildMintRequest(
-            predictor, predictorPk, predictorWager,
-            counterparty, counterpartyPk, counterpartyWager
-        );
+    function _mint(uint256 predictorWager, uint256 counterpartyWager)
+        internal
+        returns (bytes32 predictionId, address predictorToken, address counterpartyToken)
+    {
+        IV2Types.MintRequest memory req = _buildMintRequest(predictorWager, counterpartyWager);
         return escrow.mint(req);
     }
 
     function _resolveYesWins() internal {
-        resolver.setCondition(CONDITION_ID, true, true, 1, 0, true);
+        vm.prank(settler);
+        resolver.settleCondition(CONDITION_ID, IV2Types.OutcomeVector(1, 0));
     }
 
     // ============ M-1 Tests ============
@@ -146,10 +143,7 @@ contract PredictionMarketEscrowDustAudit is Test {
      */
     function test_M1_losingTokensBurnOnRedeem() public {
         // Alice = predictor (YES), Bob = counterparty (NO)
-        (bytes32 pred1, address predToken, address ctrToken) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 100e6
-        );
+        (bytes32 pred1, address predToken, address ctrToken) = _mint(100e6, 100e6);
 
         // YES wins → predictor wins, counterparty loses
         _resolveYesWins();
@@ -192,10 +186,7 @@ contract PredictionMarketEscrowDustAudit is Test {
         // Create a bet with amounts that produce rounding dust
         // 100e6 + 33e6 = 133e6 total. If predictor wins, they get 133e6.
         // But with proportional minting, there may be rounding dust.
-        (bytes32 pred1, address predToken, address ctrToken) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 33e6
-        );
+        (bytes32 pred1, address predToken, address ctrToken) = _mint(100e6, 33e6);
 
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
@@ -229,7 +220,7 @@ contract PredictionMarketEscrowDustAudit is Test {
             escrow.sweepDust(escrow.getPickConfigIdFromToken(predToken), owner);
             console.log("M-1 FIX VERIFIED: sweepDust succeeded without losing-side redemption");
         } else {
-            console.log("No dust to sweep (exact division) — test passes trivially");
+            console.log("No dust to sweep (exact division) - test passes trivially");
         }
     }
 
@@ -240,10 +231,7 @@ contract PredictionMarketEscrowDustAudit is Test {
      * has fully redeemed their tokens.
      */
     function test_M1_sweepDustBlockedWithoutWinningRedemption() public {
-        (bytes32 pred1, address predToken,) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 50e6
-        );
+        (bytes32 pred1, address predToken,) = _mint(100e6, 50e6);
 
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
