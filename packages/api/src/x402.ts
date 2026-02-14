@@ -42,11 +42,55 @@ const COMPLEXITY_TIERS = {
 // Typical gas usage: ~60,000-80,000 gas units
 const ESTIMATED_GAS_UNITS = 80000;
 
-// Create public client for gas price checks
+// Chainlink ETH/USD price feed on Arbitrum One
+const CHAINLINK_ETH_USD = '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612';
+const CHAINLINK_ABI = [
+  {
+    name: 'latestRoundData',
+    type: 'function',
+    stateMutability: 'view',
+    inputs: [],
+    outputs: [
+      { name: 'roundId', type: 'uint80' },
+      { name: 'answer', type: 'int256' },
+      { name: 'startedAt', type: 'uint256' },
+      { name: 'updatedAt', type: 'uint256' },
+      { name: 'answeredInRound', type: 'uint80' },
+    ],
+  },
+] as const;
+
+// Create public client for gas price + Chainlink reads
 const publicClient = createPublicClient({
   chain: arbitrum,
   transport: http(config.X402_ARBITRUM_RPC_URL),
 });
+
+// Cache ETH/USD price for 60 seconds to avoid hitting the oracle on every request
+let cachedEthPrice: { price: number; fetchedAt: number } | null = null;
+const ETH_PRICE_CACHE_MS = 60_000;
+const ETH_PRICE_FALLBACK = 3000;
+
+async function getEthUsdPrice(): Promise<number> {
+  if (cachedEthPrice && Date.now() - cachedEthPrice.fetchedAt < ETH_PRICE_CACHE_MS) {
+    return cachedEthPrice.price;
+  }
+
+  try {
+    const [, answer] = await publicClient.readContract({
+      address: CHAINLINK_ETH_USD,
+      abi: CHAINLINK_ABI,
+      functionName: 'latestRoundData',
+    });
+    // Chainlink ETH/USD uses 8 decimals
+    const price = Number(answer) / 1e8;
+    cachedEthPrice = { price, fetchedAt: Date.now() };
+    return price;
+  } catch (error) {
+    console.error('[x402] Error fetching ETH/USD price from Chainlink:', error);
+    return cachedEthPrice?.price ?? ETH_PRICE_FALLBACK;
+  }
+}
 
 /**
  * Calculate GraphQL query complexity using the same estimators as Apollo validation
@@ -111,10 +155,9 @@ async function isGasTooExpensive(paymentAmountUSD: number): Promise<{ tooExpensi
     // Convert to ETH
     const gasCostETH = Number(gasCostWei) / 1e18;
 
-    // Rough ETH/USD rate (could fetch from oracle in production)
-    // For now, use a conservative estimate: $3000/ETH
-    const ETH_USD_RATE = 3000;
-    const gasCostUSD = gasCostETH * ETH_USD_RATE;
+    // Real-time ETH/USD from Chainlink (cached 60s, falls back to $3000)
+    const ethUsdRate = await getEthUsdPrice();
+    const gasCostUSD = gasCostETH * ethUsdRate;
 
     // Gas is too expensive if it costs more than the payment
     const tooExpensive = gasCostUSD > paymentAmountUSD;
