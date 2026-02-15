@@ -88,7 +88,9 @@ contract PredictionMarketEscrowAudit is Test {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 digest = escrow.getMintApprovalHash(predictionHash, signer, wager, nonce, deadline);
+        bytes32 digest = escrow.getMintApprovalHash(
+            predictionHash, signer, wager, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
     }
@@ -101,40 +103,72 @@ contract PredictionMarketEscrowAudit is Test {
         uint256 counterpartyPk,
         uint256 counterpartyWager
     ) internal view returns (IV2Types.MintRequest memory request) {
-        IV2Types.Pick[] memory picks = _buildPicks();
-        bytes32 pickConfigId = keccak256(abi.encode(picks));
-        bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorWager, counterpartyWager, predictor, counterparty)
-        );
-
-        uint256 pNonce = escrow.getNonce(predictor);
-        uint256 cNonce = escrow.getNonce(counterparty);
-        uint256 deadline = block.timestamp + 1 hours;
-
-        request.picks = picks;
+        request.picks = _buildPicks();
         request.predictorWager = predictorWager;
         request.counterpartyWager = counterpartyWager;
         request.predictor = predictor;
         request.counterparty = counterparty;
-        request.predictorNonce = pNonce;
-        request.counterpartyNonce = cNonce;
-        request.predictorDeadline = deadline;
-        request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, predictorWager, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, counterpartyWager, cNonce, deadline, counterpartyPk);
+        request.predictorNonce = escrow.getNonce(predictor);
+        request.counterpartyNonce = escrow.getNonce(counterparty);
+        request.predictorDeadline = block.timestamp + 1 hours;
+        request.counterpartyDeadline = block.timestamp + 1 hours;
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+
+        bytes32 pickConfigId = keccak256(abi.encode(request.picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                predictorWager,
+                counterpartyWager,
+                predictor,
+                counterparty
+            )
+        );
+
+        request.predictorSignature = _signApproval(
+            predictionHash,
+            predictor,
+            predictorWager,
+            request.predictorNonce,
+            request.predictorDeadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            counterparty,
+            counterpartyWager,
+            request.counterpartyNonce,
+            request.counterpartyDeadline,
+            counterpartyPk
+        );
     }
 
     function _mint(
-        address predictor, uint256 predictorPk, uint256 predictorWager,
-        address counterparty, uint256 counterpartyPk, uint256 counterpartyWager
-    ) internal returns (bytes32 predictionId, address predictorToken, address counterpartyToken) {
-        IV2Types.MintRequest memory req = _buildMintRequest(
-            predictor, predictorPk, predictorWager,
-            counterparty, counterpartyPk, counterpartyWager
-        );
+        address predictor,
+        uint256 predictorPk,
+        uint256 predictorWager,
+        address counterparty,
+        uint256 counterpartyPk,
+        uint256 counterpartyWager
+    )
+        internal
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
+    {
+        IV2Types.MintRequest memory req =
+            _buildMintRequest(
+                predictor,
+                predictorPk,
+                predictorWager,
+                counterparty,
+                counterpartyPk,
+                counterpartyWager
+            );
         return escrow.mint(req);
     }
 
@@ -159,16 +193,12 @@ contract PredictionMarketEscrowAudit is Test {
      */
     function test_C1_selfDealingDilutionAttack() public {
         // Bet 1: Alice 100 YES vs Bob 50 NO
-        (bytes32 pred1, address predToken, address ctrToken) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 50e6
-        );
+        (bytes32 pred1, address predToken,) =
+            _mint(alice, ALICE_PK, 100e6, bob, BOB_PK, 50e6);
 
         // Bet 2: Charlie self-deals 10000 YES vs 1 wei NO
-        (bytes32 pred2,,) = _mint(
-            charlie, CHARLIE_PK, 10000e6,
-            charlie, CHARLIE_PK, 1
-        );
+        (bytes32 pred2,,) =
+            _mint(charlie, CHARLIE_PK, 10_000e6, charlie, CHARLIE_PK, 1);
 
         // YES wins
         _resolveYesWins();
@@ -184,7 +214,11 @@ contract PredictionMarketEscrowAudit is Test {
         console.log("Alice wager: 100e6, expected payout >= 150e6");
 
         // FIXED: Alice gets her fair share (100 + Bob's 50)
-        assertGe(alicePayout, 150e6 - 1, "C-1 VULN: Alice was diluted by Charlie's self-deal");
+        assertGe(
+            alicePayout,
+            150e6 - 1,
+            "C-1 VULN: Alice was diluted by Charlie's self-deal"
+        );
     }
 
     /**
@@ -197,8 +231,7 @@ contract PredictionMarketEscrowAudit is Test {
         uint256 expectedTokens = predictorWager + counterpartyWager; // 150e6
 
         (, address predToken, address ctrToken) = _mint(
-            alice, ALICE_PK, predictorWager,
-            bob, BOB_PK, counterpartyWager
+            alice, ALICE_PK, predictorWager, bob, BOB_PK, counterpartyWager
         );
 
         uint256 aliceTokens = IERC20(predToken).balanceOf(alice);
@@ -210,8 +243,16 @@ contract PredictionMarketEscrowAudit is Test {
 
         // FIXED: Both sides get totalCollateral tokens
         // UNFIXED: Alice=100e6, Bob=50e6
-        assertEq(aliceTokens, expectedTokens, "C-1: Predictor should receive totalCollateral tokens");
-        assertEq(bobTokens, expectedTokens, "C-1: Counterparty should receive totalCollateral tokens");
+        assertEq(
+            aliceTokens,
+            expectedTokens,
+            "C-1: Predictor should receive totalCollateral tokens"
+        );
+        assertEq(
+            bobTokens,
+            expectedTokens,
+            "C-1: Counterparty should receive totalCollateral tokens"
+        );
     }
 
     // ============ C-2 Tests ============
@@ -222,17 +263,21 @@ contract PredictionMarketEscrowAudit is Test {
      * UNFIXED: Succeeds, allowing riskless extraction
      */
     function test_C2_mintAfterResolutionReverts() public {
-        (bytes32 pred1,,) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 50e6
-        );
+        (bytes32 pred1,,) = _mint(alice, ALICE_PK, 100e6, bob, BOB_PK, 50e6);
 
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
 
+        // Build request before expectRevert (getNonce/getMintApprovalHash are staticcalls)
+        IV2Types.MintRequest memory req = _buildMintRequest(
+            charlie, CHARLIE_PK, 100e6, charlie, CHARLIE_PK, 100e6
+        );
+
         // Should revert on fixed code
-        vm.expectRevert(IPredictionMarketEscrow.PickConfigAlreadyResolved.selector);
-        _mint(charlie, CHARLIE_PK, 100e6, charlie, CHARLIE_PK, 100e6);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PickConfigAlreadyResolved.selector
+        );
+        escrow.mint(req);
     }
 
     /**
@@ -241,16 +286,20 @@ contract PredictionMarketEscrowAudit is Test {
      * FIXED: Reverts on the second mint
      */
     function test_C2_mintAfterResolutionAttack() public {
-        (bytes32 pred1, address predToken,) = _mint(
-            alice, ALICE_PK, 100e6,
-            bob, BOB_PK, 100e6
-        );
+        (bytes32 pred1,,) = _mint(alice, ALICE_PK, 100e6, bob, BOB_PK, 100e6);
 
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
 
+        // Build request before expectRevert (getNonce/getMintApprovalHash are staticcalls)
+        IV2Types.MintRequest memory req = _buildMintRequest(
+            charlie, CHARLIE_PK, 1e6, charlie, CHARLIE_PK, 1000e6
+        );
+
         // Attacker tries to mint knowing YES won: 1e6 YES / 1000e6 NO
-        vm.expectRevert(IPredictionMarketEscrow.PickConfigAlreadyResolved.selector);
-        _mint(charlie, CHARLIE_PK, 1e6, charlie, CHARLIE_PK, 1000e6);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PickConfigAlreadyResolved.selector
+        );
+        escrow.mint(req);
     }
 }

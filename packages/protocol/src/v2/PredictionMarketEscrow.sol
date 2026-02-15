@@ -363,11 +363,17 @@ contract PredictionMarketEscrow is
         {
             IV2Types.PickConfiguration storage _config =
                 _pickConfigurations[request.pickConfigId];
-            uint256 predictorCollateralBacking = _config.totalPredictorTokensMinted > 0
-                ? (request.predictorTokenAmount * _config.totalPredictorCollateral) / _config.totalPredictorTokensMinted
+            uint256 predictorCollateralBacking = _config.totalPredictorTokensMinted
+                > 0
+                ? (request.predictorTokenAmount
+                        * _config.totalPredictorCollateral)
+                    / _config.totalPredictorTokensMinted
                 : 0;
-            uint256 counterpartyCollateralBacking = _config.totalCounterpartyTokensMinted > 0
-                ? (request.counterpartyTokenAmount * _config.totalCounterpartyCollateral) / _config.totalCounterpartyTokensMinted
+            uint256 counterpartyCollateralBacking = _config.totalCounterpartyTokensMinted
+                > 0
+                ? (request.counterpartyTokenAmount
+                        * _config.totalCounterpartyCollateral)
+                    / _config.totalCounterpartyTokensMinted
                 : 0;
             if (
                 request.predictorPayout + request.counterpartyPayout
@@ -460,11 +466,16 @@ contract PredictionMarketEscrow is
             .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
 
         // Update collateral tracking proportionally (compute before decrementing tokens)
-        uint256 predictorCollateralReturned = config.totalPredictorTokensMinted > 0
-            ? (request.predictorTokenAmount * config.totalPredictorCollateral) / config.totalPredictorTokensMinted
+        uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
+            > 0
+            ? (request.predictorTokenAmount * config.totalPredictorCollateral)
+                / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted > 0
-            ? (request.counterpartyTokenAmount * config.totalCounterpartyCollateral) / config.totalCounterpartyTokensMinted
+        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
+            > 0
+            ? (request.counterpartyTokenAmount
+                    * config.totalCounterpartyCollateral)
+                / config.totalCounterpartyTokensMinted
             : 0;
         config.totalPredictorCollateral -= predictorCollateralReturned;
         config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
