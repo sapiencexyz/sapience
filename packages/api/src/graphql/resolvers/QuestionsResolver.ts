@@ -64,7 +64,12 @@ export class QuestionsResolver {
     const prisma = getPrismaFromContext(ctx);
 
     // Validate sort field - throw if invalid, default to 'endTime' if not provided
-    const validSortFields = ['openInterest', 'endTime', 'createdAt', 'predictionCount'] as const;
+    const validSortFields = [
+      'openInterest',
+      'endTime',
+      'createdAt',
+      'predictionCount',
+    ] as const;
     type ValidSortField = (typeof validSortFields)[number];
     let sanitizedSortField: ValidSortField;
     if (sortField === null || sortField === undefined) {
@@ -146,12 +151,12 @@ export class QuestionsResolver {
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`
               : sanitizedSortField === 'predictionCount'
-                ? Prisma.sql`(SELECT COUNT(*) FROM prediction p INNER JOIN condition cc ON p."conditionId" = cc.id WHERE cc."conditionGroupId" = cg.id)::text`
+                ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)::text`
                 : sanitizedSortField === 'createdAt'
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM MAX(c."createdAt")))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
           } as sort_value,
-          (SELECT COUNT(*) FROM prediction p INNER JOIN condition cc ON p."conditionId" = cc.id WHERE cc."conditionGroupId" = cg.id) as prediction_count,
+          COALESCE(SUM(c."predictionCount"), 0) as prediction_count,
           COALESCE(MAX(c."endTime"), 0) as end_time
         FROM condition_group cg
         LEFT JOIN condition c ON c."conditionGroupId" = cg.id
@@ -181,12 +186,12 @@ export class QuestionsResolver {
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
               : sanitizedSortField === 'predictionCount'
-                ? Prisma.sql`(SELECT COUNT(*) FROM prediction p WHERE p."conditionId" = c.id)::text`
+                ? Prisma.sql`c."predictionCount"::text`
                 : sanitizedSortField === 'createdAt'
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value,
-          (SELECT COUNT(*) FROM prediction p WHERE p."conditionId" = c.id) as prediction_count,
+          c."predictionCount" as prediction_count,
           COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
         WHERE c."conditionGroupId" IS NULL
@@ -219,12 +224,12 @@ export class QuestionsResolver {
             sanitizedSortField === 'openInterest'
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
               : sanitizedSortField === 'predictionCount'
-                ? Prisma.sql`(SELECT COUNT(*) FROM prediction p WHERE p."conditionId" = c.id)::text`
+                ? Prisma.sql`c."predictionCount"::text`
                 : sanitizedSortField === 'createdAt'
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value,
-          (SELECT COUNT(*) FROM prediction p WHERE p."conditionId" = c.id) as prediction_count,
+          c."predictionCount" as prediction_count,
           COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
         WHERE EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = c."conditionGroupId")
