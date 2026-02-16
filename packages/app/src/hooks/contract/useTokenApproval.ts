@@ -1,7 +1,8 @@
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useMemo, useState } from 'react';
-import { parseUnits, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
+import { parseAmountToBigInt, buildApproveParams } from '@sapience/sdk';
 
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -31,16 +32,11 @@ export function useTokenApproval({
   const [isApproveSuccess, setIsApproveSuccess] = useState(false);
   const [error, setError] = useState<Error | undefined>(undefined);
 
-  // Parse amount to bigint
-  const parsedAmount = useMemo(() => {
-    if (!amount) return BigInt(0);
-    try {
-      return parseUnits(amount, decimals);
-    } catch (error) {
-      console.error('Error parsing amount:', error);
-      return BigInt(0);
-    }
-  }, [amount, decimals]);
+  // Parse amount to bigint using SDK utility
+  const parsedAmount = useMemo(
+    () => parseAmountToBigInt(amount, decimals),
+    [amount, decimals]
+  );
 
   // Check allowance
   const {

@@ -1,7 +1,12 @@
 import { useCallback, useState, useMemo } from 'react';
-import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
+import { erc20Abi } from 'viem';
 
-import { predictionMarketAbi } from '@sapience/sdk';
+import {
+  predictionMarketAbi,
+  toBigIntSafe,
+  validateTakerFunds,
+  prepareMintCalls,
+} from '@sapience/sdk';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -10,63 +15,6 @@ import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 
 const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
-
-function toBigIntSafe(
-  value: string | number | bigint | undefined
-): bigint | undefined {
-  if (value === undefined) return undefined;
-  return BigInt(value);
-}
-
-async function validateTakerFunds(
-  takerAddress: `0x${string}` | undefined,
-  takerCollateralWei: bigint,
-  collateralTokenAddress: `0x${string}`,
-  predictionMarketAddress: `0x${string}`,
-  publicClient: ReturnType<typeof getPublicClientForChainId>
-): Promise<void> {
-  if (!takerAddress || !collateralTokenAddress || !predictionMarketAddress) {
-    return;
-  }
-
-  try {
-    const [takerAllowance, takerBalance] = await Promise.all([
-      publicClient.readContract({
-        address: collateralTokenAddress,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [takerAddress, predictionMarketAddress],
-      }),
-      publicClient.readContract({
-        address: collateralTokenAddress,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [takerAddress],
-      }),
-    ]);
-
-    if (
-      takerAllowance < takerCollateralWei ||
-      takerBalance < takerCollateralWei
-    ) {
-      throw new Error(
-        'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
-      );
-    }
-  } catch (e) {
-    // Re-throw our own error, only catch RPC failures
-    if (e instanceof Error && e.message.includes('market maker')) {
-      throw e;
-    }
-    // Silently continue on RPC failures
-  }
-}
-
-// WUSDe ABI for wrapping
-const WUSDE_ABI = parseAbi([
-  'function deposit() payable',
-  'function withdraw(uint256 amount)',
-]);
 
 interface UseSubmitPositionProps {
   chainId: number;
@@ -177,99 +125,15 @@ export function useSubmitPosition({
   // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
     (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
-      const callsArray: {
-        to: `0x${string}`;
-        data: `0x${string}`;
-        value?: bigint;
-      }[] = [];
-
-      // Parse collateral amounts
-      const makerCollateralWei = BigInt(mintData.makerCollateral);
-      const takerCollateralWei = BigInt(mintData.takerCollateral);
-
-      // Validate inputs
-      if (makerCollateralWei <= 0 || takerCollateralWei <= 0) {
-        throw new Error('Invalid collateral amounts');
-      }
-
-      if (chainId === CHAIN_ID_ETHEREAL) {
-        const wrappedBal =
-          typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
-        const amountToWrap =
-          makerCollateralWei > wrappedBal
-            ? makerCollateralWei - wrappedBal
-            : 0n;
-
-        // Only wrap if existing wUSDe is insufficient for the maker collateral
-        if (amountToWrap > 0n) {
-          const wrapCalldata = encodeFunctionData({
-            abi: WUSDE_ABI,
-            functionName: 'deposit',
-          });
-
-          callsArray.push({
-            to: WUSDE_ADDRESS as `0x${string}`,
-            data: wrapCalldata,
-            value: amountToWrap,
-          });
-        }
-      }
-
-      // Use fresh allowance if provided (from direct RPC), otherwise fall back to cached
-      const effectiveAllowance = freshAllowance ?? currentAllowance;
-      const needsApproval =
-        effectiveAllowance === undefined ||
-        effectiveAllowance < makerCollateralWei;
-
-      // Add approval call if needed (batched with mint)
-      if (needsApproval) {
-        const approveCalldata = encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [predictionMarketAddress, makerCollateralWei],
-        });
-
-        callsArray.push({
-          to: collateralTokenAddress,
-          data: approveCalldata,
-        });
-      }
-
-      // Convert mintData to the structure expected by the contract
-      const makerNonceBigInt =
-        mintData.makerNonce !== undefined
-          ? BigInt(mintData.makerNonce)
-          : undefined;
-      if (makerNonceBigInt === undefined) {
-        throw new Error('Missing maker nonce');
-      }
-
-      const mintPredictionRequestData = {
-        encodedPredictedOutcomes: mintData.encodedPredictedOutcomes,
-        resolver: mintData.resolver,
-        makerCollateral: makerCollateralWei,
-        takerCollateral: takerCollateralWei,
-        maker: mintData.maker,
-        taker: mintData.taker,
-        makerNonce: makerNonceBigInt,
-        takerSignature: mintData.takerSignature,
-        takerDeadline: BigInt(mintData.takerDeadline),
-        refCode: mintData.refCode,
-      };
-
-      // Add PredictionMarket.mint call
-      const mintCalldata = encodeFunctionData({
-        abi: predictionMarketAbi,
-        functionName: 'mint',
-        args: [mintPredictionRequestData],
+      return prepareMintCalls({
+        mintData,
+        predictionMarketAddress,
+        collateralTokenAddress,
+        chainId,
+        currentWusdeBalance:
+          typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
+        currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
       });
-
-      callsArray.push({
-        to: predictionMarketAddress,
-        data: mintCalldata,
-      });
-
-      return callsArray;
     },
     [
       predictionMarketAddress,
