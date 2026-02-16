@@ -93,24 +93,20 @@ export default function QuestionsGrid({
     setOpenGroupId((prev) => (prev === groupId ? null : groupId));
   }, []);
 
-  const rows = React.useMemo(
-    () => buildTopLevelRows(questions),
-    [questions]
-  );
+  const rows = React.useMemo(() => buildTopLevelRows(questions), [questions]);
 
   const openGroupRow = React.useMemo(
     () =>
       openGroupId != null
-        ? rows.find(
+        ? (rows.find(
             (r): r is TopLevelRow & { kind: 'group' } =>
               r.kind === 'group' && r.groupId === openGroupId
-          ) ?? null
+          ) ?? null)
         : null,
     [rows, openGroupId]
   );
 
-  const showLoading =
-    isLoading || (rows.length === 0 && hasMore !== false);
+  const showLoading = !!isLoading;
 
   return (
     <div className="flex flex-col h-full">
@@ -198,7 +194,10 @@ export default function QuestionsGrid({
                         {/* Panel */}
                         <motion.div
                           className="markets-grid-theme relative rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.25)] p-6 w-full max-w-5xl max-h-[80vh] overflow-y-auto"
-                          style={{ background: 'linear-gradient(165deg, #1354F0 0%, #082B89 100%)' }}
+                          style={{
+                            background:
+                              'linear-gradient(165deg, #1354F0 0%, #082B89 100%)',
+                          }}
                           initial={{ scale: 0.97, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
                           exit={{ scale: 0.97, opacity: 0 }}
