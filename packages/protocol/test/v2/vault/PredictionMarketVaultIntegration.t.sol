@@ -47,6 +47,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
     uint256 public constant INITIAL_DEPOSIT = 100_000e18;
     uint256 public constant PREDICTOR_WAGER = 1000e18;
     uint256 public constant COUNTERPARTY_WAGER = 1500e18;
+    uint256 public constant TOTAL_COLLATERAL =
+        PREDICTOR_WAGER + COUNTERPARTY_WAGER;
     bytes32 public constant REF_CODE = keccak256("vault-integration-test");
 
     function setUp() public {
@@ -224,14 +226,14 @@ contract PredictionMarketVaultIntegrationTest is Test {
             vaultBalanceBefore - COUNTERPARTY_WAGER
         );
 
-        // Verify position tokens minted
+        // Verify position tokens minted (proportional: totalCollateral each)
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
-            PREDICTOR_WAGER
+            TOTAL_COLLATERAL
         );
         assertEq(
             IPredictionMarketToken(counterpartyToken).balanceOf(address(vault)),
-            COUNTERPARTY_WAGER
+            TOTAL_COLLATERAL
         );
 
         // Settle condition - Team A wins (YES) - predictor wins
@@ -244,19 +246,18 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Predictor redeems - gets all collateral
         vm.prank(predictor);
         uint256 payout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
-        uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
-        assertEq(payout, totalCollateral);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(predictor),
-            predictorBalanceBefore - PREDICTOR_WAGER + totalCollateral
+            predictorBalanceBefore - PREDICTOR_WAGER + TOTAL_COLLATERAL
         );
 
         // Vault's counterparty tokens are worthless
         vm.prank(address(vault));
         uint256 vaultPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
         assertEq(vaultPayout, 0);
     }
 
@@ -295,15 +296,14 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Manager redeems on behalf of vault
         vm.prank(address(vault));
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
-        assertEq(payout, totalCollateral);
+        assertEq(payout, TOTAL_COLLATERAL);
 
         // Vault balance should be original minus wager plus winnings
         assertEq(
             collateralToken.balanceOf(address(vault)),
-            vaultBalanceBefore - COUNTERPARTY_WAGER + totalCollateral
+            vaultBalanceBefore - COUNTERPARTY_WAGER + TOTAL_COLLATERAL
         );
     }
 
@@ -340,14 +340,14 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem - get original wagers back
+        // Both redeem (full TOTAL_COLLATERAL each) - get original wagers back
         vm.prank(predictor);
         uint256 predictorPayout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         vm.prank(address(vault));
         uint256 vaultPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         assertEq(predictorPayout, PREDICTOR_WAGER);
         assertEq(vaultPayout, COUNTERPARTY_WAGER);
@@ -404,14 +404,14 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Predictor redeems from winning prediction 1
         vm.prank(predictor);
         uint256 payout1 =
-            market.redeem(predictorToken1, PREDICTOR_WAGER, REF_CODE);
-        assertEq(payout1, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+            market.redeem(predictorToken1, TOTAL_COLLATERAL, REF_CODE);
+        assertEq(payout1, TOTAL_COLLATERAL);
 
         // Vault redeems from winning prediction 2
         vm.prank(address(vault));
         uint256 payout2 =
-            market.redeem(counterpartyToken2, COUNTERPARTY_WAGER, REF_CODE);
-        assertEq(payout2, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+            market.redeem(counterpartyToken2, TOTAL_COLLATERAL, REF_CODE);
+        assertEq(payout2, TOTAL_COLLATERAL);
     }
 
     /**
@@ -458,8 +458,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Vault redeems all collateral
         vm.prank(address(vault));
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
+        assertEq(payout, TOTAL_COLLATERAL);
     }
 
     /**
@@ -489,7 +489,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Vault redeems winnings
         vm.prank(address(vault));
-        market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+        market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Now depositor1 can withdraw with profits
         uint256 depositor1Shares = vault.balanceOf(depositor1);
@@ -571,8 +571,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Vault can still redeem from market even in emergency mode
         vm.prank(address(vault));
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
+        assertEq(payout, TOTAL_COLLATERAL);
     }
 
     /**
@@ -687,11 +687,11 @@ contract PredictionMarketVaultIntegrationTest is Test {
         resolver.settleCondition(conditionId, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
+        uint256 totalCollateral = smallPredictorWager + largecounterpartyWager;
         vm.prank(predictor);
         uint256 payout =
-            market.redeem(predictorToken, smallPredictorWager, REF_CODE);
+            market.redeem(predictorToken, totalCollateral, REF_CODE);
 
-        uint256 totalCollateral = smallPredictorWager + largecounterpartyWager;
         assertEq(payout, totalCollateral);
         assertEq(
             collateralToken.balanceOf(predictor),

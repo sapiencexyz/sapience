@@ -114,14 +114,35 @@ contract PredictionMarketEscrow is
             revert InvalidToken();
         }
 
-        // Check that all tokens have been redeemed (total supply is 0)
+        // Check that winning-side tokens have been fully redeemed.
+        // For decisive outcomes, only the winning side needs to reach zero supply
+        // since losing-side holders have no economic incentive to burn (zero payout).
+        // For non-decisive (DRAW/REFUND), both sides should burn.
         uint256 predictorSupply =
             IPredictionMarketToken(tokenPair.predictorToken).totalSupply();
         uint256 counterpartySupply =
             IPredictionMarketToken(tokenPair.counterpartyToken).totalSupply();
 
-        if (predictorSupply > 0 || counterpartySupply > 0) {
-            revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+        if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
+            if (predictorSupply > 0) {
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
+            }
+        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        {
+            if (counterpartySupply > 0) {
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
+            }
+        } else {
+            // NON_DECISIVE — both sides have claims
+            if (predictorSupply > 0 || counterpartySupply > 0) {
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
+            }
         }
 
         // Calculate remaining dust
@@ -243,6 +264,8 @@ contract PredictionMarketEscrow is
                 pickConfigId: pickConfigId,
                 totalPredictorCollateral: 0,
                 totalCounterpartyCollateral: 0,
+                totalPredictorTokensMinted: 0,
+                totalCounterpartyTokensMinted: 0,
                 claimedPredictorCollateral: 0,
                 claimedCounterpartyCollateral: 0,
                 resolved: false,
@@ -252,6 +275,11 @@ contract PredictionMarketEscrow is
             // Reuse existing tokens
             predictorToken = tokenPair.predictorToken;
             counterpartyToken = tokenPair.counterpartyToken;
+
+            // C-2: Prevent minting after resolution
+            if (_pickConfigurations[pickConfigId].resolved) {
+                revert PickConfigAlreadyResolved();
+            }
         }
 
         // Transfer collateral from both parties and execute remaining logic
@@ -280,20 +308,24 @@ contract PredictionMarketEscrow is
             request.counterparty, address(this), request.counterpartyWager
         );
 
-        // Mint tokens proportional to wager (1:1 ratio)
+        uint256 totalCollateral =
+            request.predictorWager + request.counterpartyWager;
+
+        // C-1: Mint tokens proportional to total collateral on the bet.
+        // Each token represents a 1:1 claim on collateral, making fungibility safe
+        // regardless of the odds at which any individual bet was placed.
         IPredictionMarketToken(predictorToken)
-            .mint(request.predictor, request.predictorWager);
+            .mint(request.predictor, totalCollateral);
         IPredictionMarketToken(counterpartyToken)
-            .mint(request.counterparty, request.counterpartyWager);
+            .mint(request.counterparty, totalCollateral);
 
         // Update pick configuration totals
         IV2Types.PickConfiguration storage config =
             _pickConfigurations[pickConfigId];
         config.totalPredictorCollateral += request.predictorWager;
         config.totalCounterpartyCollateral += request.counterpartyWager;
-
-        uint256 totalCollateral =
-            request.predictorWager + request.counterpartyWager;
+        config.totalPredictorTokensMinted += totalCollateral;
+        config.totalCounterpartyTokensMinted += totalCollateral;
 
         // Store escrow record for this specific bet (audit trail)
         _escrowRecords[predictionId] = IV2Types.EscrowRecord({
@@ -301,8 +333,8 @@ contract PredictionMarketEscrow is
             totalCollateral: totalCollateral,
             predictorWager: request.predictorWager,
             counterpartyWager: request.counterpartyWager,
-            predictorTokensMinted: request.predictorWager,
-            counterpartyTokensMinted: request.counterpartyWager,
+            predictorTokensMinted: totalCollateral,
+            counterpartyTokensMinted: totalCollateral,
             settled: false
         });
 
@@ -314,8 +346,8 @@ contract PredictionMarketEscrow is
             counterpartyWager: request.counterpartyWager,
             predictor: request.predictor,
             counterparty: request.counterparty,
-            predictorTokensMinted: request.predictorWager,
-            counterpartyTokensMinted: request.counterpartyWager,
+            predictorTokensMinted: totalCollateral,
+            counterpartyTokensMinted: totalCollateral,
             settled: false
         });
 
@@ -343,13 +375,33 @@ contract PredictionMarketEscrow is
             revert ZeroWager();
         }
 
-        // Validate conservation: total payout == total tokens burned
-        if (
-            request.predictorPayout + request.counterpartyPayout
-                != request.predictorTokenAmount
-                    + request.counterpartyTokenAmount
-        ) {
-            revert InvalidBurnAmounts();
+        // Validate conservation: total payout must not exceed the collateral
+        // backing the burned tokens. With proportional minting, each token's
+        // collateral value = (tokenAmount / totalTokensMinted) * totalCollateral.
+        // For a mutual cancel, both parties agree on the split — we just ensure
+        // they don't extract more than exists. The collateral backing is computed
+        // from the predictor side's proportion (both sides have equal token counts).
+        {
+            IV2Types.PickConfiguration storage _config =
+                _pickConfigurations[request.pickConfigId];
+            uint256 predictorCollateralBacking = _config.totalPredictorTokensMinted
+                > 0
+                ? (request.predictorTokenAmount
+                        * _config.totalPredictorCollateral)
+                    / _config.totalPredictorTokensMinted
+                : 0;
+            uint256 counterpartyCollateralBacking = _config.totalCounterpartyTokensMinted
+                > 0
+                ? (request.counterpartyTokenAmount
+                        * _config.totalCounterpartyCollateral)
+                    / _config.totalCounterpartyTokensMinted
+                : 0;
+            if (
+                request.predictorPayout + request.counterpartyPayout
+                    > predictorCollateralBacking + counterpartyCollateralBacking
+            ) {
+                revert InvalidBurnAmounts();
+            }
         }
 
         // Validate token pair exists
@@ -434,9 +486,24 @@ contract PredictionMarketEscrow is
         IPredictionMarketToken(tokenPair.counterpartyToken)
             .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
 
-        // Update accounting
-        config.totalPredictorCollateral -= request.predictorTokenAmount;
-        config.totalCounterpartyCollateral -= request.counterpartyTokenAmount;
+        // Update collateral tracking proportionally (compute before decrementing tokens)
+        uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
+            > 0
+            ? (request.predictorTokenAmount * config.totalPredictorCollateral)
+                / config.totalPredictorTokensMinted
+            : 0;
+        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
+            > 0
+            ? (request.counterpartyTokenAmount
+                    * config.totalCounterpartyCollateral)
+                / config.totalCounterpartyTokensMinted
+            : 0;
+        config.totalPredictorCollateral -= predictorCollateralReturned;
+        config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
+
+        // Update token tracking
+        config.totalPredictorTokensMinted -= request.predictorTokenAmount;
+        config.totalCounterpartyTokensMinted -= request.counterpartyTokenAmount;
 
         // Transfer collateral to holders
         if (request.predictorPayout > 0) {
@@ -538,11 +605,11 @@ contract PredictionMarketEscrow is
         // Determine if this is predictor or counterparty token
         bool isPredictor = _isPredictorToken[positionToken];
 
-        // Use ORIGINAL total tokens (= collateral in 1:1 ratio), not current totalSupply
+        // Use ORIGINAL total tokens minted (not current totalSupply or collateral)
         // This ensures consistent payouts even after partial redemptions
         uint256 originalTotalTokens = isPredictor
-            ? config.totalPredictorCollateral
-            : config.totalCounterpartyCollateral;
+            ? config.totalPredictorTokensMinted
+            : config.totalCounterpartyTokensMinted;
 
         // Calculate claimable pool based on result
         uint256 claimablePool = _calculateClaimablePool(
@@ -555,10 +622,12 @@ contract PredictionMarketEscrow is
         // Proportional payout: (amount / originalTotalTokens) * claimablePool
         payout = (amount * claimablePool) / originalTotalTokens;
 
-        if (payout > 0) {
-            // Burn the position tokens
-            IPredictionMarketToken(positionToken).burn(msg.sender, amount);
+        // Always burn the position tokens (including losing side with zero payout)
+        // M-1: Without this, losing-side tokens remain in circulation permanently,
+        // blocking sweepDust() which requires both token supplies to reach zero.
+        IPredictionMarketToken(positionToken).burn(msg.sender, amount);
 
+        if (payout > 0) {
             // Transfer collateral to holder
             collateralToken.safeTransfer(msg.sender, payout);
 
@@ -568,12 +637,12 @@ contract PredictionMarketEscrow is
             } else {
                 config.claimedCounterpartyCollateral += payout;
             }
-
-            // Note: We emit with pickConfigId since tokens are shared
-            emit TokensRedeemed(
-                pickConfigId, msg.sender, positionToken, amount, payout, refCode
-            );
         }
+
+        // Emit for both winning and losing redemptions
+        emit TokensRedeemed(
+            pickConfigId, msg.sender, positionToken, amount, payout, refCode
+        );
     }
 
     // ============ View Functions ============
@@ -668,10 +737,10 @@ contract PredictionMarketEscrow is
 
         bool isPredictor = _isPredictorToken[positionToken];
 
-        // Use ORIGINAL total tokens (= collateral in 1:1 ratio)
+        // Use ORIGINAL total tokens minted
         uint256 originalTotalTokens = isPredictor
-            ? config.totalPredictorCollateral
-            : config.totalCounterpartyCollateral;
+            ? config.totalPredictorTokensMinted
+            : config.totalCounterpartyTokensMinted;
 
         uint256 claimablePool = _calculateClaimablePool(
             config.result,

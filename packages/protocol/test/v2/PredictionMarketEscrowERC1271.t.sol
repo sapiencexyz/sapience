@@ -82,6 +82,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
     uint256 public constant PREDICTOR_WAGER = 100e18;
     uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    uint256 public constant TOTAL_COLLATERAL =
+        PREDICTOR_WAGER + COUNTERPARTY_WAGER;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -400,7 +402,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         assertEq(
             IPredictionMarketToken(predictorToken)
                 .balanceOf(address(predictorSmartAccount)),
-            PREDICTOR_WAGER
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -436,7 +438,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         assertEq(
             IPredictionMarketToken(counterpartyToken)
                 .balanceOf(address(counterpartySmartAccount)),
-            COUNTERPARTY_WAGER
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -471,12 +473,12 @@ contract PredictionMarketEscrowERC1271Test is Test {
         assertEq(
             IPredictionMarketToken(predictorToken)
                 .balanceOf(address(predictorSmartAccount)),
-            PREDICTOR_WAGER
+            TOTAL_COLLATERAL
         );
         assertEq(
             IPredictionMarketToken(counterpartyToken)
                 .balanceOf(address(counterpartySmartAccount)),
-            COUNTERPARTY_WAGER
+            TOTAL_COLLATERAL
         );
     }
 
@@ -688,10 +690,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         vm.prank(address(predictorSmartAccount));
         uint256 payout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Smart account should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(address(predictorSmartAccount)),
             balanceBefore + payout
@@ -721,10 +723,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         vm.prank(counterparty);
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Counterparty should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(counterparty),
             counterpartyBalanceBefore + payout
@@ -751,14 +753,14 @@ contract PredictionMarketEscrowERC1271Test is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Both smart accounts redeem
+        // Both smart accounts redeem (full TOTAL_COLLATERAL each)
         vm.prank(address(predictorSmartAccount));
         uint256 predictorPayout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         vm.prank(address(counterpartySmartAccount));
         uint256 counterpartyPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Each gets their original wager back
         assertEq(predictorPayout, PREDICTOR_WAGER);
