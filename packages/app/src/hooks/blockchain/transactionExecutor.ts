@@ -5,9 +5,8 @@
  * extracted from useSapienceWriteContract. All functions take their dependencies
  * as arguments, making them trivially testable without React or wagmi mocking.
  */
-import type { Abi, Hash, Hex, EIP1193Provider } from 'viem';
+import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
-import { arbitrum } from 'viem/chains';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -41,12 +40,6 @@ export interface SessionClient {
     encodeCalls: (calls: TransactionCall[]) => Promise<Hex>;
   };
   sendUserOperation: (params: { callData: Hex }) => Promise<Hash>;
-}
-
-export interface OwnerSigner {
-  address: `0x${string}`;
-  provider: EIP1193Provider;
-  switchChain: (chainId: number) => Promise<void>;
 }
 
 export interface SessionConfig {
@@ -191,7 +184,7 @@ export function pickFinalTransactionHash(data: any): string | undefined {
 export async function executeViaSessionKeyDefault(
   sessionClient: SessionClient,
   calls: TransactionCall[],
-  _chainId: number,
+  chainId: number,
   deps: {
     sessionConfig?: SessionConfig | null;
     onTxSending?: () => void;
@@ -285,7 +278,7 @@ export async function executeTransaction(
         }));
 
     try {
-      const userOpHash = await executeSession(sessionClient, wrappedCalls, chainId);
+      await executeSession(sessionClient, wrappedCalls, chainId);
       // Don't return userOpHash as hash - it's not a real tx hash
       return { path: 'session' };
     } catch (sessionError: unknown) {
