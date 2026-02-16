@@ -1370,6 +1370,7 @@ export type Question = {
   __typename?: 'Question';
   condition?: Maybe<Condition>;
   group?: Maybe<ConditionGroup>;
+  predictionCount?: Maybe<Scalars['Int']['output']>;
   questionType: Scalars['String']['output'];
 };
 

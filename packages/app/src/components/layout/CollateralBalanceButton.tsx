@@ -94,6 +94,7 @@ export default function CollateralBalanceButton({
     balance: smartAccountBalance,
     nativeBalance: smartAccountNativeBalance,
     wrappedBalance: smartAccountWrappedBalance,
+    isLoading: isSmartAccountBalanceLoading,
     refetch: refetchSmartAccountBalance,
   } = useCollateralBalance({
     address: smartAccountAddress as `0x${string}` | undefined,
@@ -345,8 +346,21 @@ export default function CollateralBalanceButton({
     ? smartAccountBalance
     : eoaBalance;
 
+  // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
+  const showFundButton =
+    isUsingSmartAccount && smartAccountBalance === 0 && !isSmartAccountBalanceLoading;
+
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
+      {showFundButton ? (
+          <button
+            type="button"
+            onClick={() => setIsGetUsdeOpen(true)}
+            className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
+          >
+            <span className="relative z-10">Fund Account</span>
+          </button>
+      ) : (
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
           <div
@@ -419,6 +433,7 @@ export default function CollateralBalanceButton({
           </div>
         </HoverCardContent>
       </HoverCard>
+      )}
 
       {/* Get USDe Dialog */}
       <Dialog open={isGetUsdeOpen} onOpenChange={setIsGetUsdeOpen}>
