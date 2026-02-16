@@ -6,9 +6,6 @@ import {
   type SortField,
   type SortDirection,
 } from '@sapience/sdk/queries';
-import type { ConditionType } from '@sapience/sdk/queries';
-import type { ConditionGroupType } from '@sapience/sdk/queries';
-
 export type { SortField, SortDirection, QuestionType };
 
 export interface UseInfiniteQuestionsOptions {

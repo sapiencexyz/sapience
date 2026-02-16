@@ -8,7 +8,6 @@ import {
   formatAttestationData,
   generateForecastsQueryKey,
   type FormattedAttestation,
-  type FetchForecastsParams,
 } from '@sapience/sdk/queries';
 
 import { SCHEMA_UID } from '~/lib/constants';
@@ -106,7 +105,7 @@ export const useInfiniteForecasts = ({
     queryFn: ({ pageParam }) =>
       fetchForecastsPage(
         { schemaId, attesterAddress, conditionId },
-        { take: pageSize, cursorId: pageParam as number | undefined }
+        { take: pageSize, cursorId: pageParam }
       ),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: (lastPage) => {

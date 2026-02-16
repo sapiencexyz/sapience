@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecentPositions, type Position } from '@sapience/sdk/queries';
+import { fetchRecentPositions } from '@sapience/sdk/queries';
 
 export function useRecentPositions(params: {
   take?: number;
