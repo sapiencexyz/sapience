@@ -12,6 +12,9 @@ const nextConfig = {
       test: /\.html$/,
       type: 'asset/source',
     });
+    // pino-pretty is an optional dep that pino tries to require at runtime;
+    // mark it as external so webpack doesn't fail the build.
+    config.externals = [...(config.externals || []), 'pino-pretty'];
     return config;
   },
   async headers() {
