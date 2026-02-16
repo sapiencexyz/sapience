@@ -68,7 +68,21 @@ export async function processPredictionConsolidated(
         console.log(
           `[PredictionMarketIndexer] Event exists but position not consolidated - updating position for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
         );
-        // Continue to position update logic below
+        // Recovery: update position
+        await prisma.$transaction(async (tx) => {
+          await tx.position.update({
+            where: { id: existingPosition.id },
+            data: {
+              status: 'consolidated',
+              predictorWon: true,
+              settledAt: Number(block.timestamp),
+            },
+          });
+        });
+        console.log(
+          `[PredictionMarketIndexer] Processed PredictionConsolidated (recovery): ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
+        );
+        return;
       } else {
         console.log(
           `[PredictionMarketIndexer] Event exists but position not found for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
@@ -76,19 +90,6 @@ export async function processPredictionConsolidated(
         return;
       }
     } else {
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-        },
-      });
-    }
-
-    // Update Position status
-    try {
       const position = await prisma.position.findFirst({
         where: {
           chainId: ctx.chainId,
@@ -97,21 +98,29 @@ export async function processPredictionConsolidated(
           counterpartyNftTokenId: eventData.takerNftTokenId,
         },
       });
-      if (position) {
-        await prisma.position.update({
-          where: { id: position.id },
+
+      await prisma.$transaction(async (tx) => {
+        await tx.event.create({
           data: {
-            status: 'consolidated',
-            predictorWon: true,
-            settledAt: Number(block.timestamp),
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
           },
         });
-      }
-    } catch (e) {
-      console.warn(
-        '[PredictionMarketIndexer] Failed updating Position on consolidate:',
-        e
-      );
+
+        if (position) {
+          await tx.position.update({
+            where: { id: position.id },
+            data: {
+              status: 'consolidated',
+              predictorWon: true,
+              settledAt: Number(block.timestamp),
+            },
+          });
+        }
+      });
     }
 
     console.log(

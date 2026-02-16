@@ -31,7 +31,10 @@ vi.mock('../../db', () => {
       upsert: vi.fn(),
     },
     $executeRaw: vi.fn(),
+    $transaction: vi.fn(),
   };
+  // $transaction executes the callback with mockPrisma as the tx client
+  mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(mockPrisma));
   return { default: mockPrisma };
 });
 

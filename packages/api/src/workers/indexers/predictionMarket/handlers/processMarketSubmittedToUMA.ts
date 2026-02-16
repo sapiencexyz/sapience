@@ -46,14 +46,14 @@ export async function processMarketSubmittedToUMA(
 
     // Always update Condition with assertionId (even if event already exists)
     // This ensures reindexing fills in missing data
-    try {
-      const condition = await prisma.condition.findUnique({
-        where: { id: eventData.marketId },
-      });
+    const condition = await prisma.condition.findUnique({
+      where: { id: eventData.marketId },
+    });
 
-      if (condition) {
-        // Update if assertionId or assertionTimestamp is missing
-        if (!condition.assertionId || !condition.assertionTimestamp) {
+    if (existingEvent) {
+      // Event already exists — still update condition if needed
+      try {
+        if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
           await prisma.condition.update({
             where: { id: condition.id },
             data: {
@@ -65,34 +65,51 @@ export async function processMarketSubmittedToUMA(
             `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} with assertionId ${eventData.assertionId} and timestamp ${block.timestamp}`
           );
         }
-      } else {
-        console.warn(
-          `[PredictionMarketIndexer] MarketSubmittedToUMA but no matching Condition found for marketId=${eventData.marketId}`
+      } catch (conditionError) {
+        console.error(
+          '[PredictionMarketIndexer] Failed to update Condition on submission:',
+          conditionError
         );
       }
-    } catch (conditionError) {
-      console.error(
-        '[PredictionMarketIndexer] Failed to update Condition on submission:',
-        conditionError
-      );
-    }
-
-    if (existingEvent) {
       console.log(
         `[PredictionMarketIndexer] Skipping duplicate MarketSubmittedToUMA event tx=${submittedKey.transactionHash}`
       );
       return;
     }
 
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
-        timestamp: BigInt(block.timestamp),
-        logIndex: log.logIndex || 0,
-        logData: eventData,
-      },
+    // Wrap condition update + event creation in a transaction
+    await prisma.$transaction(async (tx) => {
+      if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
+        await tx.condition.update({
+          where: { id: condition.id },
+          data: {
+            assertionId: eventData.assertionId,
+            assertionTimestamp: Number(block.timestamp),
+          },
+        });
+      }
+
+      await tx.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+        },
+      });
     });
+
+    if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
+      console.log(
+        `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} with assertionId ${eventData.assertionId} and timestamp ${block.timestamp}`
+      );
+    }
+    if (!condition) {
+      console.warn(
+        `[PredictionMarketIndexer] MarketSubmittedToUMA but no matching Condition found for marketId=${eventData.marketId}`
+      );
+    }
 
     console.log(
       `[PredictionMarketIndexer] Processed MarketSubmittedToUMA: marketId=${eventData.marketId}, assertionId=${eventData.assertionId}`

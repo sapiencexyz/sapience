@@ -60,16 +60,6 @@ export async function processOrderPlaced(
       return;
     }
 
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
-        timestamp: BigInt(block.timestamp),
-        logIndex: log.logIndex || 0,
-        logData: eventData,
-      },
-    });
-
     const encodedPredictedOutcomes = decoded.args
       .encodedPredictedOutcomes as `0x${string}`;
 
@@ -209,8 +199,18 @@ export async function processOrderPlaced(
       chainId: ctx.chainId,
     }));
 
-    try {
-      await prisma.limitOrder.upsert({
+    await prisma.$transaction(async (tx) => {
+      await tx.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
+        },
+      });
+
+      await tx.limitOrder.upsert({
         where: {
           chainId_marketAddress_orderId: {
             chainId: ctx.chainId,
@@ -248,12 +248,7 @@ export async function processOrderPlaced(
           },
         },
       });
-    } catch (orderError) {
-      console.error(
-        '[PredictionMarketIndexer] Failed to create LimitOrder:',
-        orderError
-      );
-    }
+    });
 
     console.log(
       `[PredictionMarketIndexer] Processed OrderPlaced: orderId=${eventData.orderId}, predictor=${eventData.predictor}`
