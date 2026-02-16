@@ -55,7 +55,7 @@ export function getProviderForChain(chainId: number): PublicClient {
     case 13370:
       // Cannon chain - use localhost for local dev
       newClient = createPublicClient({
-        chain: { id: 13370, name: 'Cannon' } as viem.Chain,
+        chain: { id: 13370, name: 'Cannon' } as Chain,
         transport: http('http://localhost:8545'),
         batch: { multicall: true },
       });

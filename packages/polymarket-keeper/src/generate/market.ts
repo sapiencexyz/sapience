@@ -2,7 +2,7 @@
  * Market fetching and filtering utilities
  */
 
-import type { PolymarketMarket, SapienceCondition } from '../types';
+import type { PolymarketMarket } from '../types';
 import { fetchWithRetry } from '../utils';
 import {
   runPipeline,

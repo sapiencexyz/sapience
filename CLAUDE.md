@@ -15,7 +15,7 @@ Or check only what you touched:
 ```bash
 pnpm --filter <package> run lint
 pnpm --filter <package> run type-check
-pnpm --filter <package> run test -- --run
+pnpm --filter <package> run test
 pnpm --filter <package> run format:check
 ```
 
