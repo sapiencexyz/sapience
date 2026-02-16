@@ -118,7 +118,7 @@ function OptionsCountGauge({
       <span className="font-display text-[14px] font-bold text-royal-900 -mt-5">
         {count}
       </span>
-      <span className="font-display text-[9px] text-royal-400 leading-tight">
+      <span className="font-display text-[9px] font-semibold text-royal-400 leading-tight">
         options
       </span>
     </div>
@@ -173,7 +173,7 @@ function ConditionCard({
     <motion.div
       variants={cardVariants}
       className={`market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200 flex flex-col ${
-        variant === 'child' ? 'p-4' : 'p-5'
+        variant === 'child' ? 'p-4 pb-3.5' : 'p-5 pb-4'
       }`}
     >
       {/* Top: category */}
@@ -192,7 +192,7 @@ function ConditionCard({
             resolverAddress={condition.resolver ?? undefined}
             title={condition.question}
             clampLines={2}
-            className="font-display text-[14px] font-medium tracking-tight leading-snug"
+            className="font-display text-[15px] font-semibold tracking-tight leading-snug"
           />
         </div>
         {!condition.settled && (
@@ -205,7 +205,7 @@ function ConditionCard({
                 >
                   {percentLabel}
                 </span>
-                <span className="font-display text-[9px] text-royal-400 leading-tight">
+                <span className="font-display text-[9px] font-semibold text-royal-400 leading-tight">
                   chance
                 </span>
               </div>
@@ -220,7 +220,7 @@ function ConditionCard({
                   onPrediction={handlePrediction}
                   inline
                   requestLabel="Request"
-                  className="[&_.font-mono]:font-display [&_.font-mono]:text-[9px] [&_button]:font-display [&_button]:text-[9px] [&_button]:text-royal-500 [&_.animate-pulse]:font-display [&_.animate-pulse]:text-[8px] [&_.animate-pulse]:text-royal-400"
+                  className="[&_.font-mono]:font-display [&_.font-mono]:font-semibold [&_.font-mono]:text-[9px] [&_button]:font-display [&_button]:font-semibold [&_button]:text-[9px] [&_button]:text-royal-500 [&_.animate-pulse]:font-display [&_.animate-pulse]:font-semibold [&_.animate-pulse]:text-[8px] [&_.animate-pulse]:text-royal-400"
                 />
               </div>
             )}
@@ -232,16 +232,16 @@ function ConditionCard({
       <div className="flex-1" />
 
       {/* YES / NO */}
-      <div className="mt-3">
+      <div className="mt-4">
         <PredictCell condition={condition} colorScheme="bold" />
       </div>
 
       {/* Bottom: OI left, end time right */}
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className="font-display text-[11px] text-royal-400 tabular-nums font-mono">
-          <span className="font-semibold text-brand-white">{formatOI(oiWei)} USDe</span> Open Interest
+      <div className="mt-2 flex items-center justify-between">
+        <span className="font-display text-[11px] text-gray-500 tabular-nums font-mono">
+          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open Interest
         </span>
-        <span className="font-display text-[11px] text-royal-400 shrink-0">
+        <span className="font-display text-[11px] text-gray-500 shrink-0">
           {condition.endTime ? (
             <EndTimeCell
               endTime={condition.endTime}
@@ -275,7 +275,7 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
   return (
     <motion.div
       variants={cardVariants}
-      className="market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200 p-5 flex flex-col"
+      className="market-card bg-white rounded-2xl border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(66,99,235,0.10)] hover:border-royal-200 transition-[box-shadow,border-color] duration-200 p-5 pb-4 flex flex-col"
     >
       {/* Top: category */}
       <div className="flex items-center gap-1.5">
@@ -291,7 +291,7 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
           <button
             type="button"
             onClick={() => onToggleExpand(row.groupId)}
-            className="text-left font-display text-[14px] font-medium tracking-tight leading-snug text-brand-white underline decoration-dotted decoration-1 underline-offset-4 decoration-[rgba(46,92,255,0.25)] hover:decoration-[rgba(46,92,255,0.5)] transition-colors line-clamp-2"
+            className="text-left font-display text-[15px] font-semibold tracking-tight leading-snug text-brand-white underline decoration-dotted decoration-1 underline-offset-4 decoration-[rgba(46,92,255,0.25)] hover:decoration-[rgba(46,92,255,0.5)] transition-colors line-clamp-2"
           >
             {row.name}
           </button>
@@ -305,17 +305,17 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
       <button
         type="button"
         onClick={() => onToggleExpand(row.groupId)}
-        className="mt-3 w-full h-8 rounded-md font-display text-sm font-semibold tracking-wider uppercase transition-colors border border-royal-200 text-royal-600 bg-royal-50 hover:bg-royal-100 hover:text-royal-700 flex items-center justify-center gap-1.5"
+        className="mt-4 w-full h-8 rounded-md font-display text-sm font-semibold tracking-wider uppercase transition-colors border border-royal-200 text-royal-600 bg-royal-50 hover:bg-royal-100 hover:text-royal-700 flex items-center justify-center gap-1.5"
       >
         SHOW OPTIONS
       </button>
 
       {/* Bottom: OI left, end time right */}
-      <div className="mt-1.5 flex items-center justify-between">
-        <span className="font-display text-[11px] text-royal-400 tabular-nums font-mono">
-          <span className="font-semibold text-brand-white">{formatOI(oiWei)} USDe</span> Open Interest
+      <div className="mt-2 flex items-center justify-between">
+        <span className="font-display text-[11px] text-gray-500 tabular-nums font-mono">
+          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open Interest
         </span>
-        <span className="font-display text-[11px] text-royal-400 shrink-0">
+        <span className="font-display text-[11px] text-gray-500 shrink-0">
           {endTime ? (
             <EndTimeCell
               endTime={endTime}

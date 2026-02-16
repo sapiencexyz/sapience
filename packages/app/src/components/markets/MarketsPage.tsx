@@ -8,7 +8,7 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { Search } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
@@ -258,22 +258,36 @@ const MarketsPage = () => {
 
       {/* Main Content */}
       <div
-        className={
-          useCardGrid
-            ? 'markets-grid-theme flex-1 min-w-0 max-w-full overflow-visible flex flex-col rounded-2xl'
-            : 'flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6'
-        }
-        style={
-          useCardGrid
-            ? {
-                height:
-                  'calc(100dvh - var(--page-top-offset, 0px) - 1.5rem)',
-                background:
-                  'linear-gradient(165deg, #1652F0 0%, #1652F0 5%, #2E5CFF 100%)',
-              }
-            : { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }
-        }
+        className={useCardGrid ? 'flex-1 min-w-0 max-w-full flex flex-col' : 'contents'}
+        style={useCardGrid ? { height: 'calc(100dvh - var(--page-top-offset, 0px))' } : undefined}
       >
+        {useCardGrid && (
+          <div className="px-3 lg:px-4 pt-1 pb-2">
+            <button
+              type="button"
+              onClick={() => router.push('/markets')}
+              className="font-display text-xs font-semibold uppercase tracking-[0.12em] text-white/40 flex items-center gap-0.5 hover:text-white/70 transition-colors"
+            >
+              <ChevronLeft className="h-3 w-3" />
+              All Markets
+            </button>
+          </div>
+        )}
+        <div
+          className={
+            useCardGrid
+              ? 'markets-grid-theme flex-1 min-w-0 min-h-0 max-w-full overflow-hidden flex flex-col rounded-2xl shadow-[inset_0_6px_40px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)] border border-white/15 mx-3 lg:mx-4 mb-3 lg:mb-4'
+              : 'flex-1 min-w-0 max-w-full overflow-visible flex flex-col gap-4 pr-0 lg:pr-4 pb-4 lg:pb-6'
+          }
+          style={
+            useCardGrid
+              ? {
+                  background:
+                    'linear-gradient(165deg, #1354F0 0%, #082B89 100%)',
+                }
+              : { minHeight: 'calc(100dvh - var(--page-top-offset, 0px))' }
+          }
+        >
         {/* Polymarket header (grid view only) */}
         {useCardGrid && (
           <div className="px-3 pt-4 pb-3 md:px-6 md:pt-6 md:pb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
@@ -364,6 +378,7 @@ const MarketsPage = () => {
             )}
           </motion.div>
         </div>
+      </div>
       </div>
 
       {/* Desktop/Tablet sticky position form sidebar */}

@@ -148,7 +148,7 @@ export function CountdownCell({ endTime, variant = 'default' }: { endTime: numbe
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
+            className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : variant === 'card' ? 'text-gray-500' : 'font-mono text-brand-white'}`}
           >
             {isPast || variant === 'default' ? (
               formatCountdown()
