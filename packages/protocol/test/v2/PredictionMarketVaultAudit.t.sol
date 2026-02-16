@@ -35,7 +35,9 @@ contract PredictionMarketVaultAudit is Test {
     function setUp() public {
         owner = address(this);
         asset = new MockERC20("USD Asset", "USDA", 18);
-        vault = new PredictionMarketVault(address(asset), manager, "Vault Share", "vSHR");
+        vault = new PredictionMarketVault(
+            address(asset), manager, "Vault Share", "vSHR"
+        );
 
         // Disable interaction delays for testing
         vault.setDepositInteractionDelay(0);
@@ -94,10 +96,8 @@ contract PredictionMarketVaultAudit is Test {
         vault.requestWithdrawal(1e18, type(uint256).max);
 
         // Step 4: Verify the vault is still functional
-        // On unfixed code, getPendingWithdrawals().assets would be corrupted
-        (uint256 pendingShares, uint256 pendingAssets) = vault.getPendingWithdrawals();
+        uint256 pendingShares = vault.getPendingWithdrawals();
         console.log("Pending shares:", pendingShares);
-        console.log("Pending assets:", pendingAssets);
 
         // Step 5: Let the request expire so attacker can cancel
         // expirationTime defaults to 10 minutes
@@ -119,9 +119,17 @@ contract PredictionMarketVaultAudit is Test {
         vm.prank(manager);
         vault.processWithdrawal(alice);
 
-        assertEq(vault.balanceOf(alice), 50e18, "Alice should have withdrawn half");
-        assertEq(asset.balanceOf(alice), 1000e18 - 100e18 + 50e18, "Alice should have received assets back");
+        assertEq(
+            vault.balanceOf(alice), 50e18, "Alice should have withdrawn half"
+        );
+        assertEq(
+            asset.balanceOf(alice),
+            1000e18 - 100e18 + 50e18,
+            "Alice should have received assets back"
+        );
 
-        console.log("C-3 FIX VERIFIED: Vault remains functional after griefing attempt");
+        console.log(
+            "C-3 FIX VERIFIED: Vault remains functional after griefing attempt"
+        );
     }
 }

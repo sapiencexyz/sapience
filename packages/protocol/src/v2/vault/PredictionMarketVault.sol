@@ -641,20 +641,9 @@ contract PredictionMarketVault is
     /**
      * @notice Get the total pending withdrawal volume
      * @return shares Total shares pending withdrawal
-     * @return assets Total assets pending withdrawal
      */
-    function getPendingWithdrawals()
-        external
-        view
-        returns (uint256 shares, uint256 assets)
-    {
+    function getPendingWithdrawals() external view returns (uint256 shares) {
         shares = pendingWithdrawalShares;
-        // C-3: Derive assets from shares at current exchange rate instead of
-        // tracking a separate accumulator (which was vulnerable to overflow griefing)
-        uint256 supply = totalSupply();
-        assets = supply > 0
-            ? Math.mulDiv(shares, _getAvailableAssets(), supply, Math.Rounding.Floor)
-            : 0;
     }
 
     /**
