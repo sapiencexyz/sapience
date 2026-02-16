@@ -116,7 +116,7 @@ export async function submitCondition(
     let errorData = { message: 'Unknown error' };
     try {
       errorData = JSON.parse(responseText);
-    } catch {}
+    } catch { /* ignore parse errors */ }
     const errorMsg = `HTTP ${response.status}: ${errorData.message || response.statusText}`;
     console.error(`[Condition] ${condition.question} submission failed: ${errorMsg}`);
     return { success: false, error: errorMsg };

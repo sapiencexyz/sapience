@@ -15,7 +15,9 @@
     "start": "node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
-    "format": "prettier --write src scripts"
+    "format": "prettier --write src scripts",
+    "type-check": "tsc --noEmit",
+    "format:check": "prettier --check src scripts"
   },
   "dependencies": {
     "dotenv": "16.4.5",
