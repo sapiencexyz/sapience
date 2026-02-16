@@ -649,7 +649,12 @@ contract PredictionMarketVault is
         returns (uint256 shares, uint256 assets)
     {
         shares = pendingWithdrawalShares;
-        assets = 0; // C-3: pendingWithdrawalAssets removed, return 0 for ABI compat
+        // C-3: Derive assets from shares at current exchange rate instead of
+        // tracking a separate accumulator (which was vulnerable to overflow griefing)
+        uint256 supply = totalSupply();
+        assets = supply > 0
+            ? Math.mulDiv(shares, _getAvailableAssets(), supply, Math.Rounding.Floor)
+            : 0;
     }
 
     /**
