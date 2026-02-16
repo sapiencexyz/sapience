@@ -1,104 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import type { ConditionType } from './useConditions';
-import type { ConditionGroupType } from './useConditionGroups';
+import {
+  fetchQuestionsSorted,
+  type QuestionType,
+  type SortField,
+  type SortDirection,
+} from '@sapience/sdk/queries';
+import type { ConditionType } from '@sapience/sdk/queries';
+import type { ConditionGroupType } from '@sapience/sdk/queries';
 
-export type SortField = 'openInterest' | 'endTime';
-export type SortDirection = 'asc' | 'desc';
-
-export interface QuestionType {
-  questionType: 'group' | 'condition';
-  group?: ConditionGroupType | null;
-  condition?: ConditionType | null;
-}
-
-const GET_QUESTIONS_SORTED = /* GraphQL */ `
-  query QuestionsSorted(
-    $take: Int!
-    $skip: Int!
-    $chainId: Int
-    $sortField: String!
-    $sortDirection: String!
-    $search: String
-    $categorySlugs: [String!]
-    $minEndTime: Int
-    $resolutionStatus: String
-  ) {
-    questionsSorted(
-      take: $take
-      skip: $skip
-      chainId: $chainId
-      sortField: $sortField
-      sortDirection: $sortDirection
-      search: $search
-      categorySlugs: $categorySlugs
-      minEndTime: $minEndTime
-      resolutionStatus: $resolutionStatus
-    ) {
-      questionType
-      group {
-        id
-        createdAt
-        name
-        category {
-          id
-          name
-          slug
-        }
-        conditions {
-          id
-          createdAt
-          question
-          shortName
-          endTime
-          public
-          claimStatement
-          description
-          similarMarkets
-          chainId
-          resolver
-          settled
-          resolvedToYes
-          assertionId
-          assertionTimestamp
-          openInterest
-          conditionGroupId
-          category {
-            id
-            name
-            slug
-          }
-          displayOrder
-        }
-      }
-      condition {
-        id
-        createdAt
-        question
-        shortName
-        endTime
-        public
-        claimStatement
-        description
-        similarMarkets
-        chainId
-        resolver
-        settled
-        resolvedToYes
-        assertionId
-        assertionTimestamp
-        openInterest
-        conditionGroupId
-        category {
-          id
-          name
-          slug
-        }
-      }
-    }
-  }
-`;
+export type { SortField, SortDirection, QuestionType };
 
 export interface UseInfiniteQuestionsOptions {
   chainId?: number;
@@ -107,9 +18,7 @@ export interface UseInfiniteQuestionsOptions {
   pageSize?: number;
   sortField?: SortField;
   sortDirection?: SortDirection;
-  /** Only include markets with endTime >= this value (unix timestamp) */
   minEndTime?: number;
-  /** Filter by resolution status: 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo' */
   resolutionStatus?: string;
 }
 
@@ -135,8 +44,6 @@ export function useInfiniteQuestions(
     resolutionStatus,
   } = opts;
 
-  // Normalize minEndTime: treat non-finite values (e.g. -Infinity from default
-  // range filters) as undefined so query keys match across components
   const minEndTime =
     rawMinEndTime != null && Number.isFinite(rawMinEndTime)
       ? rawMinEndTime
@@ -146,17 +53,11 @@ export function useInfiniteQuestions(
   const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);
   const [hasMore, setHasMore] = useState(true);
 
-  // Track processed fetches to avoid duplicate accumulation
   const processedSkipRef = useRef<number>(-1);
-
-  // Track if a fetch is pending (prevents multiple fetchMore calls)
   const isFetchPendingRef = useRef(false);
-
-  // Refs for stable fetchMore callback - avoids stale closures
   const hasMoreRef = useRef(hasMore);
   const isFetchingRef = useRef(false);
 
-  // Stable reference for filter comparison (includes sort to reset pagination when sort changes)
   const filtersKey = JSON.stringify({
     chainId,
     search,
@@ -167,8 +68,8 @@ export function useInfiniteQuestions(
     resolutionStatus,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
+  const lastSuccessfulSkipRef = useRef<number>(0);
 
-  // Reset when filters change
   useEffect(() => {
     if (prevFiltersKeyRef.current !== filtersKey) {
       prevFiltersKeyRef.current = filtersKey;
@@ -181,12 +82,6 @@ export function useInfiniteQuestions(
     }
   }, [filtersKey]);
 
-  // Track the last successfully processed skip value for error recovery
-  const lastSuccessfulSkipRef = useRef<number>(0);
-
-  // Fetch current page (+ 1 extra to detect if more exist)
-  // Use isFetching (not isLoading) - isLoading is only true on first load,
-  // isFetching is true whenever data is being fetched
   const {
     data: rawData,
     isFetching,
@@ -204,36 +99,24 @@ export function useInfiniteQuestions(
       minEndTime,
       resolutionStatus,
     ],
-    queryFn: async (): Promise<QuestionType[]> => {
-      type QuestionsQueryResult = {
-        questionsSorted: QuestionType[];
-      };
-      const variables = {
+    queryFn: () =>
+      fetchQuestionsSorted({
         take: pageSize + 1,
         skip,
-        chainId: chainId ?? null,
+        chainId,
         sortField,
         sortDirection,
-        search: search?.trim() || null,
-        categorySlugs: categorySlugs?.length ? categorySlugs : null,
-        minEndTime: minEndTime ?? null,
-        resolutionStatus: resolutionStatus ?? null,
-      };
-
-      const data = await graphqlRequest<QuestionsQueryResult>(
-        GET_QUESTIONS_SORTED,
-        variables
-      );
-
-      return data.questionsSorted ?? [];
-    },
+        search,
+        categorySlugs,
+        minEndTime,
+        resolutionStatus,
+      }),
   });
 
-  // Accumulate data when new page arrives
   useEffect(() => {
     if (rawData && processedSkipRef.current !== skip) {
       processedSkipRef.current = skip;
-      lastSuccessfulSkipRef.current = skip; // Track successful fetch
+      lastSuccessfulSkipRef.current = skip;
 
       const hasMoreItems = rawData.length > pageSize;
       setHasMore(hasMoreItems);
@@ -244,8 +127,6 @@ export function useInfiniteQuestions(
         setAllLoadedData(items);
       } else {
         setAllLoadedData((prev) => {
-          // Create a set of existing IDs to deduplicate
-          // This prevents duplicate keys if items shift between page fetches
           const existingIds = new Set(
             prev.map((item) =>
               item.questionType === 'group'
@@ -254,7 +135,6 @@ export function useInfiniteQuestions(
             )
           );
 
-          // Filter out any items that already exist in previous pages
           const newItems = items.filter((item) => {
             const id =
               item.questionType === 'group'
@@ -269,32 +149,25 @@ export function useInfiniteQuestions(
     }
   }, [rawData, skip, pageSize]);
 
-  // Reset skip on error to allow retry from last successful position
   useEffect(() => {
     if (isError && skip !== lastSuccessfulSkipRef.current) {
-      // Reset to last successful skip so user can retry
       setSkip(lastSuccessfulSkipRef.current);
       isFetchPendingRef.current = false;
     }
   }, [isError, skip]);
 
-  // Keep refs in sync with state for stable fetchMore callback
   useEffect(() => {
     hasMoreRef.current = hasMore;
   }, [hasMore]);
 
   useEffect(() => {
     isFetchingRef.current = isFetching;
-    // Reset pending flag when loading completes (success OR failure)
-    // This prevents the lock from persisting if the query fails or returns cached data
     if (!isFetching) {
       isFetchPendingRef.current = false;
     }
   }, [isFetching]);
 
-  // Stable fetchMore callback - uses refs to avoid stale closures
   const fetchMore = useCallback(() => {
-    // Block if: already fetching, no more data, or initial load in progress
     if (
       !isFetchPendingRef.current &&
       hasMoreRef.current &&
