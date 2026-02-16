@@ -4,6 +4,7 @@ import { isAddress, getAddress } from 'viem';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
 import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
+import { SCHEMA_UID } from '~/lib/constants';
 
 // ---------- GraphQL queries ----------
 
@@ -32,9 +33,6 @@ const TRADING_VOLUME_QUERY = `
     accountTotalVolume(address: $address)
   }
 `;
-
-const SCHEMA_UID =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
 
 const ATTESTATIONS_COUNT_QUERY = `
   query FindAttestations($where: AttestationWhereInput!, $take: Int!) {

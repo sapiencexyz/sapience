@@ -58,10 +58,8 @@ import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
 import { logPositionForm } from '~/lib/auction/bidLogger';
-import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_POSITION_SIZE,
-  getDefaultFormPredictionValue,
   getMaxPositionSize,
   getBestDisplayBid,
   calculatePayout,
@@ -158,7 +156,6 @@ const CreatePositionFormInner = ({
     clearPositionForm,
     selections,
     clearSelections,
-    positionsWithMarketData,
     getPicks,
   } = useCreatePositionContext();
 
@@ -452,47 +449,25 @@ const CreatePositionFormInner = ({
     return {
       positions: Object.fromEntries(
         createPositionEntries.map((position) => {
-          // Use stored market classification for smart defaults
-          const classification =
-            position.marketClassification || MarketGroupClassification.NUMERIC;
-
-          // Start with helper default (handles YES/NO and multichoice)
-          let predictionValue = getDefaultFormPredictionValue(
-            classification,
-            position.prediction,
-            position.marketId
-          );
-
-          // For numeric markets, leave blank to let the numeric input compute/display a midpoint locally
-          // For YES/NO, use default sqrt price
-          if (!predictionValue) {
-            if (classification === MarketGroupClassification.NUMERIC) {
-              predictionValue = '';
-            } else if (classification === MarketGroupClassification.YES_NO) {
-              predictionValue = YES_SQRT_PRICE_X96;
-            }
-          }
+          // All positions are YES/NO — use sqrtPriceX96 based on prediction
+          const predictionValue = position.prediction
+            ? YES_SQRT_PRICE_X96
+            : '0';
 
           const positionSizeVal =
             position.positionSize || DEFAULT_POSITION_SIZE;
-
-          const isFlipped =
-            classification === MarketGroupClassification.MULTIPLE_CHOICE
-              ? !position.prediction
-              : undefined;
 
           return [
             position.id,
             {
               predictionValue,
               positionSize: positionSizeVal,
-              isFlipped,
             },
           ];
         })
       ),
     };
-  }, [createPositionEntries, positionsWithMarketData]);
+  }, [createPositionEntries]);
 
   // Single form for both individual and position modes
   const formMethods = useForm<{
@@ -508,17 +483,8 @@ const CreatePositionFormInner = ({
       ...generateFormValues,
       positionSize: '',
       limitAmount:
-        positionsWithMarketData.filter(
-          (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-        ).length > 0
-          ? 10 *
-            Math.pow(
-              2,
-              positionsWithMarketData.filter(
-                (p) =>
-                  p.marketClassification !== MarketGroupClassification.NUMERIC
-              ).length
-            )
+        createPositionEntries.length > 0
+          ? 10 * Math.pow(2, createPositionEntries.length)
           : 2,
     },
     mode: 'onChange',
@@ -607,42 +573,17 @@ const CreatePositionFormInner = ({
       >) || {}),
     };
 
-    // For YES/NO positions, always reflect the latest clicked selection (position.prediction)
-    positionsWithMarketData.forEach((p) => {
-      if (p.marketClassification === MarketGroupClassification.YES_NO) {
-        const id = p.position.id;
-        if (defaults?.[id]?.predictionValue) {
-          mergedPositions[id] = {
-            predictionValue: defaults[id].predictionValue,
-            positionSize:
-              current?.positions?.[id]?.positionSize ||
-              defaults?.[id]?.positionSize ||
-              DEFAULT_POSITION_SIZE,
-            // Preserve isFlipped if it exists (not used for YES/NO but safe to keep)
-            isFlipped: (current?.positions?.[id] as { isFlipped?: boolean })
-              ?.isFlipped,
-          } as {
-            predictionValue: string;
-            positionSize: string;
-            isFlipped?: boolean;
-          };
-        }
-      }
-      if (
-        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-      ) {
-        const id = p.position.id;
-        const existing = mergedPositions[id];
-        if (existing) {
-          mergedPositions[id] = {
-            ...existing,
-            // Force isFlipped based on latest position.prediction from market components
-            isFlipped:
-              typeof p.position.prediction === 'boolean'
-                ? !p.position.prediction
-                : existing.isFlipped,
-          };
-        }
+    // For all positions, reflect the latest clicked selection (position.prediction)
+    createPositionEntries.forEach((position) => {
+      const id = position.id;
+      if (defaults?.[id]?.predictionValue) {
+        mergedPositions[id] = {
+          predictionValue: defaults[id].predictionValue,
+          positionSize:
+            current?.positions?.[id]?.positionSize ||
+            defaults?.[id]?.positionSize ||
+            DEFAULT_POSITION_SIZE,
+        };
       }
     });
 
@@ -657,7 +598,7 @@ const CreatePositionFormInner = ({
         keepTouched: true,
       }
     );
-  }, [formMethods, generateFormValues, positionsWithMarketData]);
+  }, [formMethods, generateFormValues, createPositionEntries]);
 
   // Note: Minimum position size validation is now handled in PositionForm
 
@@ -666,9 +607,7 @@ const CreatePositionFormInner = ({
   useEffect(() => {
     const currentPositionSize =
       formMethods.getValues('positionSize') || DEFAULT_POSITION_SIZE;
-    const listLength = positionsWithMarketData.filter(
-      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-    ).length;
+    const listLength = createPositionEntries.length;
 
     if (listLength > 0) {
       const minimumPayout =
@@ -679,7 +618,7 @@ const CreatePositionFormInner = ({
         { shouldValidate: true }
       );
     }
-  }, [positionsWithMarketData, formMethods]);
+  }, [createPositionEntries, formMethods]);
 
   // Use the position submission hook
   // Note: Share dialog is handled locally in this component
