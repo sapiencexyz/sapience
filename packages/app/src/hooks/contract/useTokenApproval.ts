@@ -2,7 +2,7 @@ import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useMemo, useState } from 'react';
 import { zeroAddress } from 'viem';
 import { useReadContract } from 'wagmi';
-import { parseAmountToBigInt, buildApproveParams } from '@sapience/sdk';
+import { parseAmountToBigInt } from '@sapience/sdk';
 
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';

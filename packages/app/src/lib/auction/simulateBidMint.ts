@@ -1,7 +1,5 @@
 import { predictionMarketAbi } from '@sapience/sdk';
 import {
-  getSoladyBalanceSlot,
-  getSoladyAllowanceSlot,
   parseSimulationError,
   buildSimulationStateOverride,
 } from '@sapience/sdk';
@@ -13,7 +11,6 @@ import type {
   ValidatedBid,
   SimulateBidMintOptions,
 } from '@sapience/sdk';
-import { toHex } from 'viem';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import {
   logBidValidation,

@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
+import { erc20Abi } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import {
-  erc20Abi,
-} from 'viem';
+import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import type { Abi } from 'abitype';
 import {
   liquidityVaultAbi,
@@ -18,7 +16,6 @@ import {
   parsePendingRequest,
   computeInteractionDelayRemaining,
   buildVaultQuoteMessage,
-  ZERO_ADDRESS,
 } from '@sapience/sdk';
 import { useReadContracts, useBalance, useReadContract } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -29,9 +26,6 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
-
-// wUSDe contract address on Ethereal
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 // Use ABI from SDK
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
@@ -268,7 +262,7 @@ export function usePassiveLiquidityVault(
   // wUSDe balance (for combined balance display)
   const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
     abi: erc20Abi,
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: currentAddress ? [currentAddress] : undefined,
     chainId: TARGET_CHAIN_ID,
@@ -282,7 +276,7 @@ export function usePassiveLiquidityVault(
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
-      address: WUSDE_ADDRESS,
+      address: ETHEREAL_WUSDE_ADDRESS,
       functionName: 'allowance',
       args:
         currentAddress && VAULT_ADDRESS
