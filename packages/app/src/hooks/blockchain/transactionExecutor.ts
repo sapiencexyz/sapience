@@ -223,7 +223,7 @@ export async function resolveEoaBatchResult(
 export async function executeViaSessionKeyDefault(
   sessionClient: SessionClient,
   calls: TransactionCall[],
-  chainId: number,
+  _chainId: number,
   deps: {
     sessionConfig?: SessionConfig | null;
     onTxSending?: () => void;
