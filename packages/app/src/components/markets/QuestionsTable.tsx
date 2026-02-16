@@ -561,8 +561,7 @@ export default function QuestionsTable({
   const allRows = table.getRowModel().rows;
   const displayedRows = allRows;
 
-  const showLoading =
-    isLoading || (displayedRows.length === 0 && hasMore !== false);
+  const showLoading = !!isLoading;
 
   return (
     <div className="flex flex-col gap-4 h-full">
