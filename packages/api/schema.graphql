@@ -1071,6 +1071,7 @@ enum QueryMode {
 type Question {
   condition: Condition
   group: ConditionGroup
+  predictionCount: Int
   questionType: String!
 }
 
