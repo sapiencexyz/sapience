@@ -60,16 +60,6 @@ export async function processConditionResolved(
       return;
     }
 
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
-        timestamp: BigInt(block.timestamp),
-        logIndex: log.logIndex || 0,
-        logData: eventData,
-      },
-    });
-
     // Update Condition status
     try {
       const condition = await prisma.condition.findUnique({
@@ -87,18 +77,40 @@ export async function processConditionResolved(
           eventSourceAddress &&
           conditionResolver !== eventSourceAddress
         ) {
+          // Still create the event even if we skip the condition update
+          await prisma.event.create({
+            data: {
+              blockNumber: Number(log.blockNumber || 0),
+              transactionHash: log.transactionHash || '',
+              timestamp: BigInt(block.timestamp),
+              logIndex: log.logIndex || 0,
+              logData: eventData,
+            },
+          });
           console.log(
             `[PredictionMarketIndexer] Skipping ConditionResolved for ${conditionId}: ` +
               `event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`
           );
         } else {
-          await prisma.condition.update({
-            where: { id: condition.id },
-            data: {
-              settled: true,
-              resolvedToYes: eventData.resolvedToYes,
-              settledAt: Number(decoded.args.timestamp),
-            },
+          await prisma.$transaction(async (tx) => {
+            await tx.event.create({
+              data: {
+                blockNumber: Number(log.blockNumber || 0),
+                transactionHash: log.transactionHash || '',
+                timestamp: BigInt(block.timestamp),
+                logIndex: log.logIndex || 0,
+                logData: eventData,
+              },
+            });
+
+            await tx.condition.update({
+              where: { id: condition.id },
+              data: {
+                settled: true,
+                resolvedToYes: eventData.resolvedToYes,
+                settledAt: Number(decoded.args.timestamp),
+              },
+            });
           });
           console.log(
             `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
@@ -128,6 +140,16 @@ export async function processConditionResolved(
           }
         }
       } else {
+        // No condition found, just create the event
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
+          },
+        });
         console.warn(
           `[PredictionMarketIndexer] ConditionResolved but no matching Condition found for conditionId=${conditionId}`
         );

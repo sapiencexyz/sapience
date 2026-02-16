@@ -71,7 +71,21 @@ export async function processPredictionBurned(
         console.log(
           `[PredictionMarketIndexer] Event exists but position not settled - updating position for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
         );
-        // Continue to position update logic below
+        // Recovery: update position in its own transaction
+        await prisma.$transaction(async (tx) => {
+          await tx.position.update({
+            where: { id: existingPosition.id },
+            data: {
+              status: 'settled',
+              predictorWon: eventData.makerWon,
+              settledAt: Number(block.timestamp),
+            },
+          });
+        });
+        console.log(
+          `[PredictionMarketIndexer] Processed PredictionBurned (recovery): ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
+        );
+        return;
       } else {
         console.log(
           `[PredictionMarketIndexer] Event exists but position not found for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
@@ -79,19 +93,7 @@ export async function processPredictionBurned(
         return;
       }
     } else {
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-        },
-      });
-    }
-
-    // Update Position status
-    try {
+      // Find position before transaction so we can update atomically
       const position = await prisma.position.findFirst({
         where: {
           chainId: ctx.chainId,
@@ -100,21 +102,29 @@ export async function processPredictionBurned(
           counterpartyNftTokenId: eventData.takerNftTokenId,
         },
       });
-      if (position) {
-        await prisma.position.update({
-          where: { id: position.id },
+
+      await prisma.$transaction(async (tx) => {
+        await tx.event.create({
           data: {
-            status: 'settled',
-            predictorWon: eventData.makerWon,
-            settledAt: Number(block.timestamp),
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
           },
         });
-      }
-    } catch (e) {
-      console.warn(
-        '[PredictionMarketIndexer] Failed updating Position on burn:',
-        e
-      );
+
+        if (position) {
+          await tx.position.update({
+            where: { id: position.id },
+            data: {
+              status: 'settled',
+              predictorWon: eventData.makerWon,
+              settledAt: Number(block.timestamp),
+            },
+          });
+        }
+      });
     }
 
     console.log(

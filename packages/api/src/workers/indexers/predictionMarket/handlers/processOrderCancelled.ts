@@ -50,29 +50,29 @@ export async function processOrderCancelled(
       return;
     }
 
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
-        timestamp: BigInt(block.timestamp),
-        logIndex: log.logIndex || 0,
-        logData: eventData,
+    const order = await prisma.limitOrder.findUnique({
+      where: {
+        chainId_marketAddress_orderId: {
+          chainId: ctx.chainId,
+          marketAddress: log.address.toLowerCase(),
+          orderId: eventData.orderId,
+        },
       },
     });
 
-    try {
-      const order = await prisma.limitOrder.findUnique({
-        where: {
-          chainId_marketAddress_orderId: {
-            chainId: ctx.chainId,
-            marketAddress: log.address.toLowerCase(),
-            orderId: eventData.orderId,
-          },
+    await prisma.$transaction(async (tx) => {
+      await tx.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: eventData,
         },
       });
 
       if (order) {
-        await prisma.limitOrder.update({
+        await tx.limitOrder.update({
           where: { id: order.id },
           data: {
             status: 'cancelled',
@@ -85,12 +85,7 @@ export async function processOrderCancelled(
           `[PredictionMarketIndexer] OrderCancelled but no matching LimitOrder found for orderId=${eventData.orderId}`
         );
       }
-    } catch (orderError) {
-      console.error(
-        '[PredictionMarketIndexer] Failed to update LimitOrder on cancel:',
-        orderError
-      );
-    }
+    });
 
     console.log(
       `[PredictionMarketIndexer] Processed OrderCancelled: orderId=${eventData.orderId}, predictor=${eventData.predictor}`

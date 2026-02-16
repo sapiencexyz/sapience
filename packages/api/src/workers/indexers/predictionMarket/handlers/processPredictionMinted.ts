@@ -257,49 +257,96 @@ export async function processPredictionMinted(
         console.log(
           `[PredictionMarketIndexer] Event exists but position missing - creating position for NFTs ${eventData.makerNftTokenId}/${eventData.takerNftTokenId}`
         );
-        // Continue to position creation logic below
+        // Recovery: create position in its own transaction
+        const predictionLegsData = predictedOutcomes.map((outcome) => ({
+          conditionId: outcome.conditionId,
+          outcomeYes: outcome.prediction,
+          chainId: ctx.chainId,
+        }));
+
+        await prisma.$transaction(async (tx) => {
+          await tx.position.create({
+            data: {
+              chainId: ctx.chainId,
+              marketAddress: log.address.toLowerCase(),
+              predictor: eventData.maker.toLowerCase(),
+              counterparty: eventData.taker.toLowerCase(),
+              predictorNftTokenId: eventData.makerNftTokenId,
+              counterpartyNftTokenId: eventData.takerNftTokenId,
+              totalCollateral: eventData.totalCollateral,
+              predictorCollateral: eventData.makerCollateral,
+              counterpartyCollateral: eventData.takerCollateral,
+              refCode: eventData.refCode,
+              status: 'active',
+              predictorWon: null,
+              mintedAt: Number(block.timestamp),
+              settledAt: null,
+              endsAt: endsAt ?? null,
+              predictions: {
+                create: predictionLegsData,
+              },
+            },
+          });
+        });
+
+        console.log(
+          `[PredictionMarketIndexer] Processed PredictionMinted (recovery): ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
+        );
+        return;
       }
     } else {
-      // Store new event in database
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: eventData,
-        },
+      // Store new event and create position atomically
+      const predictionLegsData = predictedOutcomes.map((outcome) => ({
+        conditionId: outcome.conditionId,
+        outcomeYes: outcome.prediction,
+        chainId: ctx.chainId,
+      }));
+
+      await prisma.$transaction(async (tx) => {
+        await tx.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: eventData,
+          },
+        });
+
+        await tx.position.create({
+          data: {
+            chainId: ctx.chainId,
+            marketAddress: log.address.toLowerCase(),
+            predictor: eventData.maker.toLowerCase(),
+            counterparty: eventData.taker.toLowerCase(),
+            predictorNftTokenId: eventData.makerNftTokenId,
+            counterpartyNftTokenId: eventData.takerNftTokenId,
+            totalCollateral: eventData.totalCollateral,
+            predictorCollateral: eventData.makerCollateral,
+            counterpartyCollateral: eventData.takerCollateral,
+            refCode: eventData.refCode,
+            status: 'active',
+            predictorWon: null,
+            mintedAt: Number(block.timestamp),
+            settledAt: null,
+            endsAt: endsAt ?? null,
+            predictions: {
+              create: predictionLegsData,
+            },
+          },
+        });
+
+        // Update open interest for all conditions in this position
+        const collateralStr = eventData.totalCollateral;
+        for (const conditionId of conditionIds) {
+          await tx.$executeRaw`
+            UPDATE condition 
+            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${collateralStr}::NUMERIC)::TEXT
+            WHERE id = ${conditionId}
+          `;
+        }
       });
     }
-    const predictionLegsData = predictedOutcomes.map((outcome) => ({
-      conditionId: outcome.conditionId,
-      outcomeYes: outcome.prediction,
-      chainId: ctx.chainId,
-    }));
-
-    // Create Position with normalized predictions
-    await prisma.position.create({
-      data: {
-        chainId: ctx.chainId,
-        marketAddress: log.address.toLowerCase(),
-        predictor: eventData.maker.toLowerCase(),
-        counterparty: eventData.taker.toLowerCase(),
-        predictorNftTokenId: eventData.makerNftTokenId,
-        counterpartyNftTokenId: eventData.takerNftTokenId,
-        totalCollateral: eventData.totalCollateral,
-        predictorCollateral: eventData.makerCollateral,
-        counterpartyCollateral: eventData.takerCollateral,
-        refCode: eventData.refCode,
-        status: 'active',
-        predictorWon: null,
-        mintedAt: Number(block.timestamp),
-        settledAt: null,
-        endsAt: endsAt ?? null,
-        predictions: {
-          create: predictionLegsData,
-        },
-      },
-    });
 
     // Send Discord alert — fire-and-forget, deliberately NOT awaited.
     void (async () => {
@@ -333,16 +380,6 @@ export async function processPredictionMinted(
         console.error('[PredictionMarketIndexer] Discord alert failed:', e);
       }
     })();
-
-    // Update open interest for all conditions in this position
-    const collateralStr = eventData.totalCollateral;
-    for (const conditionId of conditionIds) {
-      await prisma.$executeRaw`
-        UPDATE condition 
-        SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${collateralStr}::NUMERIC)::TEXT
-        WHERE id = ${conditionId}
-      `;
-    }
 
     console.log(
       `[PredictionMarketIndexer] Processed PredictionMinted: ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
