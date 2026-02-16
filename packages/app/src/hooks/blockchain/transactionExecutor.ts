@@ -8,12 +8,12 @@
 import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
 import { waitForCallsStatus } from 'viem/actions';
+import { ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+export { ETHEREAL_WUSDE_ADDRESS };
 export const CHAIN_ID_ETHEREAL = 5064014;
-export const WUSDE_ADDRESS =
-  '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D' as `0x${string}`;
 // deposit() selector: keccak256("deposit()") = 0xd0e30db0
 export const WUSDE_DEPOSIT_SELECTOR = '0xd0e30db0' as Hex;
 
@@ -128,7 +128,7 @@ export function encodeWriteContractToCall(
  */
 export function createWrapTransaction(amount: bigint): TransactionCall {
   return {
-    to: WUSDE_ADDRESS,
+    to: ETHEREAL_WUSDE_ADDRESS,
     data: WUSDE_DEPOSIT_SELECTOR,
     value: amount,
   };
