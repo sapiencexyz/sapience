@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo } from 'react';
 import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 
 import { predictionMarketAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL, WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
@@ -92,7 +92,7 @@ export function useSubmitPosition({
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: effectiveAddress ? [effectiveAddress] : undefined,
@@ -206,7 +206,7 @@ export function useSubmitPosition({
           });
 
           callsArray.push({
-            to: WUSDE_ADDRESS as `0x${string}`,
+            to: ETHEREAL_WUSDE_ADDRESS as `0x${string}`,
             data: wrapCalldata,
             value: amountToWrap,
           });

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
+import { zeroAddress } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, WUSDE_ADDRESS, ZERO_ADDRESS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import {
   erc20Abi,
   formatUnits,
@@ -269,7 +270,7 @@ export function usePassiveLiquidityVault(
   // wUSDe balance (for combined balance display)
   const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
     abi: erc20Abi,
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: currentAddress ? [currentAddress] : undefined,
     chainId: TARGET_CHAIN_ID,
@@ -283,7 +284,7 @@ export function usePassiveLiquidityVault(
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
-      address: WUSDE_ADDRESS,
+      address: ETHEREAL_WUSDE_ADDRESS,
       functionName: 'allowance',
       args:
         currentAddress && VAULT_ADDRESS
@@ -534,7 +535,7 @@ export function usePassiveLiquidityVault(
         ];
         if (
           !user ||
-          (user as string).toLowerCase() === ZERO_ADDRESS.toLowerCase()
+          (user as string).toLowerCase() === zeroAddress
         )
           return null;
         return { user, isDeposit, shares, assets, timestamp, processed };
@@ -549,7 +550,7 @@ export function usePassiveLiquidityVault(
       } as PendingRequestDetails;
       if (
         !candidate.user ||
-        (candidate.user as string).toLowerCase() === ZERO_ADDRESS.toLowerCase()
+        (candidate.user as string).toLowerCase() === zeroAddress
       )
         return null;
       return candidate;

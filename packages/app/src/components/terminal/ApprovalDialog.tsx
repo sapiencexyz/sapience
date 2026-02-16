@@ -26,7 +26,7 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
-  WUSDE_ADDRESS,
+  ETHEREAL_WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
@@ -95,7 +95,7 @@ const ApprovalDialog: React.FC = () => {
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {
-    return isEtherealChain ? WUSDE_ADDRESS : COLLATERAL_ADDRESS;
+    return isEtherealChain ? ETHEREAL_WUSDE_ADDRESS : COLLATERAL_ADDRESS;
   }, [isEtherealChain, COLLATERAL_ADDRESS]);
 
   const { data: decimals } = useReadContract({
@@ -116,7 +116,7 @@ const ApprovalDialog: React.FC = () => {
   // Read wUSDe balance (for Ethereal chain)
   const { data: wusdeBalance, refetch: refetchWusde } = useReadContract({
     abi: erc20Abi,
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId,
@@ -329,7 +329,7 @@ const ApprovalDialog: React.FC = () => {
           chainId,
           calls: [
             {
-              to: WUSDE_ADDRESS,
+              to: ETHEREAL_WUSDE_ADDRESS,
               data: wrapCalldata,
               value: wrapAmount,
             },
