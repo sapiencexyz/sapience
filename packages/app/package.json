@@ -20,7 +20,8 @@
     "up-latest": "pnpm up-interactive -L",
     "release": "cross-env HUSKY=0 standard-version",
     "push-release": "git push --follow-tags origin main",
-    "prepare": "echo 'Skipping husky install'"
+    "prepare": "echo 'Skipping husky install'",
+    "format:check": "prettier --check src"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.0",

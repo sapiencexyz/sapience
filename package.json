@@ -22,7 +22,9 @@
     "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy",
     "start:compute-stats": "pnpm --filter api run start:compute-stats",
     "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
-    "start:reindex-prediction-market": "pnpm --filter api run start:reindex-prediction-market"
+    "start:reindex-prediction-market": "pnpm --filter api run start:reindex-prediction-market",
+    "check": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm -r run lint && pnpm -r --filter=!protocol run type-check && pnpm -r run test -- --run",
+    "format:check": "pnpm -r run format:check"
   },
   "keywords": [],
   "devDependencies": {
