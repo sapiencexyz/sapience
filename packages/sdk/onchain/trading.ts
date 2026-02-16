@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { collateralToken, predictionMarket } from '../contracts/addresses';
 import { CHAIN_ID_ETHEREAL } from '../constants/chain';
+import { WUSDE_ADDRESS } from '../constants/addresses';
 
 type Hex = `0x${string}`;
 
@@ -31,9 +32,6 @@ export const tradingChain: Chain = {
 
 // Default trading RPC URL
 export const TRADING_RPC_URL = 'https://rpc.ethereal.trade';
-
-// WUSDe (Wrapped USDe) contract address - collateral token for trading
-export const WUSDE_ADDRESS = collateralToken[CHAIN_ID_ETHEREAL]?.address as Hex;
 
 // WUSDe ABI for wrap/unwrap operations
 const WUSDE_ABI = parseAbi([

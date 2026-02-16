@@ -26,6 +26,7 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
@@ -46,7 +47,6 @@ import { useApprovalDialog } from './ApprovalDialogContext';
 const GAS_RESERVE = 0.5;
 
 // wUSDe configuration for Ethereal chain
-const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
   'function withdraw(uint256 amount)',

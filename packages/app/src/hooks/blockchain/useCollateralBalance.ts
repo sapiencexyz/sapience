@@ -6,10 +6,9 @@ import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
+  WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
-
-const WUSDE_ADDRESS = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 interface UseCollateralBalanceProps {
   address?: `0x${string}`;

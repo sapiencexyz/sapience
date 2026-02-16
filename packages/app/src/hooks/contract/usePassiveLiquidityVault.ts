@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, WUSDE_ADDRESS, ZERO_ADDRESS } from '@sapience/sdk/constants';
 import {
   erc20Abi,
   formatUnits,
@@ -21,12 +21,8 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 
-// wUSDe contract address on Ethereal
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
-
 // Use ABI from SDK
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
 
 // ABI helper: check if contract implements a function with optional arity
 const hasFunction = (name: string, inputsLength?: number) => {
