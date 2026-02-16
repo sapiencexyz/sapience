@@ -146,7 +146,8 @@ contract PredictionMarketVault is
     uint256 private pendingWithdrawalShares = 0;
 
     /// @notice Total assets pending withdrawal
-    uint256 private pendingWithdrawalAssets = 0;
+    // C-3: pendingWithdrawalAssets removed — was unused bookkeeping vulnerable
+    // to griefing via unconstrained expectedAssets overflow
 
     /// @notice Mapping of user to their pending request (only one request per user at a time)
     mapping(address => PendingRequest) public pendingRequests;
@@ -269,7 +270,6 @@ contract PredictionMarketVault is
         });
 
         pendingWithdrawalShares += shares;
-        pendingWithdrawalAssets += expectedAssets;
 
         emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
@@ -337,7 +337,6 @@ contract PredictionMarketVault is
         }
 
         pendingWithdrawalShares -= request.shares;
-        pendingWithdrawalAssets -= request.assets;
 
         request.user = address(0);
 
@@ -493,7 +492,6 @@ contract PredictionMarketVault is
         request.processed = true;
 
         pendingWithdrawalShares -= request.shares;
-        pendingWithdrawalAssets -= request.assets;
 
         _burn(requestedBy, request.shares);
 
@@ -643,15 +641,9 @@ contract PredictionMarketVault is
     /**
      * @notice Get the total pending withdrawal volume
      * @return shares Total shares pending withdrawal
-     * @return assets Total assets pending withdrawal
      */
-    function getPendingWithdrawals()
-        external
-        view
-        returns (uint256 shares, uint256 assets)
-    {
+    function getPendingWithdrawals() external view returns (uint256 shares) {
         shares = pendingWithdrawalShares;
-        assets = pendingWithdrawalAssets;
     }
 
     /**

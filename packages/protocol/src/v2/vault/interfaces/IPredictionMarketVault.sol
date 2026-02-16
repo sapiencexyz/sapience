@@ -86,10 +86,7 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
 
     function getLockedShares(address user) external view returns (uint256);
     function getAvailableShares(address user) external view returns (uint256);
-    function getPendingWithdrawals()
-        external
-        view
-        returns (uint256 shares, uint256 assets);
+    function getPendingWithdrawals() external view returns (uint256 shares);
 
     // ============ Admin Functions ============
 
