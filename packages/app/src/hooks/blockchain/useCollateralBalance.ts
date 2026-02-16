@@ -113,7 +113,7 @@ export function useCollateralBalance({
     if (isEtherealChain) {
       // Both native USDe and WUSDe are 18 decimals — add raw bigints, format once
       const rawNative = nativeBalance?.value ?? 0n;
-      const rawWrapped = (wusdeBalance as bigint | undefined) ?? 0n;
+      const rawWrapped = wusdeBalance ?? 0n;
       const rawTotal = rawNative + rawWrapped;
 
       const nativeNum = Number(formatUnits(rawNative, USDE_DECIMALS));
@@ -130,7 +130,7 @@ export function useCollateralBalance({
     }
 
     // Non-Ethereal: single ERC-20 read
-    const raw = (erc20Balance as bigint | undefined) ?? 0n;
+    const raw = erc20Balance ?? 0n;
     const num = Number(formatUnits(raw, USDE_DECIMALS));
 
     return {
