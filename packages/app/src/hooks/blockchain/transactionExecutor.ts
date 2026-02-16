@@ -47,6 +47,14 @@ export interface SessionConfig {
   expiresAt: number;
 }
 
+/** Shape returned by wagmi sendCalls (EIP-5792 or fallback) */
+export interface SendCallsResult {
+  id?: string;
+  receipts?: Array<{ transactionHash?: string }>;
+  transactionHash?: string;
+  txHash?: string;
+}
+
 /** Dependencies injected into executeTransaction (no React required) */
 export interface ExecutionDeps {
   // Session path
@@ -68,9 +76,8 @@ export interface ExecutionDeps {
 
   // EOA path
   writeContractAsync?: (...args: any[]) => Promise<Hash>;
-  sendCallsAsync?: (...args: any[]) => Promise<any>;
+  sendCallsAsync?: (...args: any[]) => Promise<SendCallsResult>;
   validateAndSwitchChain?: (chainId: number) => Promise<void>;
-  client?: any; // connector client for waitForCallsStatus
 
   // Lifecycle callbacks
   onTxSending?: () => void;
@@ -163,7 +170,9 @@ export function formatSessionError(error: unknown): string {
 /**
  * Pick the final transaction hash from a potentially complex sendCalls result.
  */
-export function pickFinalTransactionHash(data: any): string | undefined {
+export function pickFinalTransactionHash(
+  data: SendCallsResult | null | undefined
+): string | undefined {
   const receipts = data?.receipts;
   if (Array.isArray(receipts) && receipts.length > 0) {
     for (let i = receipts.length - 1; i >= 0; i--) {
@@ -182,16 +191,25 @@ export function pickFinalTransactionHash(data: any): string | undefined {
  * polls for bundle status. Returns the resolved hash or undefined.
  */
 export async function resolveEoaBatchResult(
-  data: any,
-  client?: any
+  data: SendCallsResult | null | undefined,
+  client?: unknown
 ): Promise<string | undefined> {
   try {
     if (data?.id && client) {
-      const status = await waitForCallsStatus(client, { id: data.id });
-      return pickFinalTransactionHash(status);
+      // Cast: client is a viem Client from useConnectorClient; kept as unknown
+      // to avoid coupling this module to wagmi's specific Client subtype.
+      const status = await waitForCallsStatus(
+        client as Parameters<typeof waitForCallsStatus>[0],
+        { id: data.id }
+      );
+      return pickFinalTransactionHash(status as SendCallsResult);
     }
     return pickFinalTransactionHash(data);
-  } catch {
+  } catch (error) {
+    console.error(
+      '[resolveEoaBatchResult] Failed to resolve tx hash:',
+      error
+    );
     return undefined;
   }
 }
@@ -247,7 +265,7 @@ export interface ExecuteTransactionResult {
   /** Transaction hash (real tx hash or userOp hash, or undefined for session path) */
   hash?: Hash;
   /** Raw result data from sendCalls (EOA batch path) */
-  data?: any;
+  data?: SendCallsResult;
   /** Which execution path was taken */
   path: ExecutionPath;
 }
@@ -271,7 +289,7 @@ export async function executeTransaction(
   executionPath: ExecutionPath,
   deps: ExecutionDeps,
   mode: 'writeContract' | 'sendCalls' = 'sendCalls',
-  originalArgs?: any
+  originalArgs?: Record<string, unknown>
 ): Promise<ExecuteTransactionResult> {
   const wrappedCalls = prepareCallsWithWrapping(calls, chainId);
 
@@ -286,11 +304,19 @@ export async function executeTransaction(
 
     if (!sessionClient) {
       // Fall through to owner path if session client unavailable
-      return executeTransaction(calls, chainId, 'owner', deps, mode, originalArgs);
+      return executeTransaction(
+        calls,
+        chainId,
+        'owner',
+        deps,
+        mode,
+        originalArgs
+      );
     }
 
     const executeSession =
-      deps.executeViaSessionKey ?? ((c, calls, cid) =>
+      deps.executeViaSessionKey ??
+      ((c, calls, cid) =>
         executeViaSessionKeyDefault(c, calls, cid, {
           sessionConfig: deps.sessionConfig,
           onTxSending: deps.onTxSending,
@@ -332,9 +358,15 @@ export async function executeTransaction(
   if (mode === 'writeContract' && deps.writeContractAsync) {
     // Single-call writeContract path
     // If Ethereal with value, needs wrapping via sendCalls batch
-    if (isEtherealChain(chainId) && calls.length === 1 && calls[0].value > 0n) {
+    if (
+      isEtherealChain(chainId) &&
+      calls.length === 1 &&
+      calls[0].value > 0n
+    ) {
       if (!deps.sendCallsAsync) {
-        throw new Error('sendCallsAsync required for Ethereal wrapping in EOA mode');
+        throw new Error(
+          'sendCallsAsync required for Ethereal wrapping in EOA mode'
+        );
       }
       const result = await deps.sendCallsAsync({
         chainId,

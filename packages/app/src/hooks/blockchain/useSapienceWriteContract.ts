@@ -16,6 +16,7 @@ import { arbitrum } from 'viem/chains';
 import { useSwitchChain } from 'wagmi';
 
 import {
+  getExecutionPath,
   encodeWriteContractToCall,
   resolveEoaBatchResult,
   executeTransaction,
@@ -162,22 +163,10 @@ export function useSapienceWriteContract({
     [chainClients]
   );
 
-  // Determine execution path: 'session' | 'owner' | 'eoa'
-  // - 'session': Smart account mode with active session (gasless, auto-sign)
-  // - 'owner': Smart account mode without session (paymaster-sponsored, user signs as owner)
-  // - 'eoa': EOA mode (user's wallet directly, user pays gas)
-  const getExecutionPath = useCallback(
-    (chainId: number): 'session' | 'owner' | 'eoa' => {
-      if (!isUsingSmartAccount) return 'eoa';
-
-      // Smart account mode - check if session is available
-      if (canUseSessionForChain(chainId)) {
-        return 'session';
-      }
-
-      // Smart account mode but no session - use owner signing
-      return 'owner';
-    },
+  // Determine execution path for a given chain
+  const getExecutionPathForChain = useCallback(
+    (chainId: number) =>
+      getExecutionPath(isUsingSmartAccount, canUseSessionForChain(chainId)),
     [isUsingSmartAccount, canUseSessionForChain]
   );
 
@@ -395,7 +384,7 @@ export function useSapienceWriteContract({
         didShowSuccessToastRef.current = false;
 
         // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPath(_chainId);
+        const executionPath = getExecutionPathForChain(_chainId);
 
         // Capture the address at transaction submission time to avoid race conditions
         // if user toggles account mode while transaction is in-flight
@@ -449,7 +438,7 @@ export function useSapienceWriteContract({
       fallbackErrorMessage,
       onError,
       completeTransaction,
-      getExecutionPath,
+      getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
       wrapArbitrumSessionCreation,
@@ -478,7 +467,7 @@ export function useSapienceWriteContract({
         didShowSuccessToastRef.current = false;
 
         // Determine execution path based on account mode and session state
-        const executionPath = getExecutionPath(_chainId);
+        const executionPath = getExecutionPathForChain(_chainId);
 
         // Capture the address at transaction submission time to avoid race conditions
         // if user toggles account mode while transaction is in-flight
@@ -548,7 +537,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
-      getExecutionPath,
+      getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
       wrapArbitrumSessionCreation,
