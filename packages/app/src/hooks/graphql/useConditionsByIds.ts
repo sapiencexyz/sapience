@@ -1,16 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchConditionsByIds } from './fetchConditionsByIds';
-
-type ConditionById = {
-  id: string;
-  shortName?: string | null;
-  question?: string | null;
-  endTime?: number | null;
-  /** Canonical resolver address for this condition (latest observed wins) */
-  resolver?: string | null;
-  category?: { slug?: string | null } | null;
-};
+import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/queries';
 
 export function useConditionsByIds(ids: string[]) {
   const sorted = useMemo(() => Array.from(new Set(ids)).sort(), [ids]);
@@ -27,24 +17,7 @@ export function useConditionsByIds(ids: string[]) {
     gcTime: 72 * 60 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const QUERY = /* GraphQL */ `
-        query ConditionsByIds($where: ConditionWhereInput!) {
-          conditions(where: $where, take: 100) {
-            id
-            shortName
-            question
-            endTime
-            resolver
-            category {
-              slug
-            }
-          }
-        }
-      `;
-      const conditions = await fetchConditionsByIds<ConditionById>(
-        QUERY,
-        sorted
-      );
+      const conditions = await fetchConditionsByIdsQuery(sorted);
       return { conditions };
     },
   });
