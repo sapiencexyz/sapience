@@ -125,16 +125,23 @@ contract PredictionMarketEscrow is
 
         if (config.result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             if (predictorSupply > 0) {
-                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
             }
-        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
+        } else if (config.result == IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        {
             if (counterpartySupply > 0) {
-                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
             }
         } else {
             // NON_DECISIVE — both sides have claims
             if (predictorSupply > 0 || counterpartySupply > 0) {
-                revert TokensStillOutstanding(predictorSupply, counterpartySupply);
+                revert TokensStillOutstanding(
+                    predictorSupply, counterpartySupply
+                );
             }
         }
 
