@@ -6,6 +6,8 @@ import '@testing-library/jest-dom';
 // Enable React act() environment for React 19
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
 
+// React 19 act polyfill - not needed, act available in test/dev mode
+
 // Polyfill for TextEncoder/TextDecoder which is needed by viem
 class MockTextEncoder {
   encoding = 'utf-8';
