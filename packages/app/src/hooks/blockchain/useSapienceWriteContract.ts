@@ -8,7 +8,6 @@ import {
   useAccount,
 } from 'wagmi';
 import type { EIP1193Provider, Hash, Hex } from 'viem';
-import { waitForCallsStatus } from 'viem/actions';
 import { useRouter } from 'next/navigation';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -18,8 +17,9 @@ import { useSwitchChain } from 'wagmi';
 
 import {
   encodeWriteContractToCall,
-  pickFinalTransactionHash,
+  resolveEoaBatchResult,
   executeTransaction,
+  executeViaSessionKeyDefault,
   type TransactionCall,
   type WriteContractParams,
   type SessionClient,
@@ -290,8 +290,8 @@ export function useSapienceWriteContract({
     smartAccountAddress,
   ]);
 
-  // Common success handler
-  const handleTransactionSuccess = useCallback(
+  // Unified completion handler for all transaction paths
+  const completeTransaction = useCallback(
     (hash?: Hash) => {
       if (hash) {
         onTxHash?.(hash);
@@ -300,12 +300,11 @@ export function useSapienceWriteContract({
         onSuccess?.(undefined as any);
       }
 
-      // Only redirect automatically if not disabled
       if (!disableAutoRedirect) {
         maybeRedirect();
       }
 
-      if (!disableSuccessToast) {
+      if (!disableSuccessToast && !didShowSuccessToastRef.current) {
         try {
           toast({
             title: SUCCESS_TITLE,
@@ -320,16 +319,7 @@ export function useSapienceWriteContract({
 
       setIsSubmitting(false);
     },
-    [
-      onTxHash,
-      setTxHash,
-      onSuccess,
-      maybeRedirect,
-      toast,
-      successMessage,
-      disableSuccessToast,
-      disableAutoRedirect,
-    ]
+    [onTxHash, onSuccess, maybeRedirect, toast, successMessage, disableSuccessToast, disableAutoRedirect]
   );
 
   // Chain validation
@@ -358,41 +348,6 @@ export function useSapienceWriteContract({
     reset: resetCalls,
   } = useSendCalls();
 
-  // Helper to show success toast (used by sendCalls in multiple places)
-  const showSuccessToast = useCallback(() => {
-    if (disableSuccessToast || didShowSuccessToastRef.current) return;
-    try {
-      toast({
-        title: SUCCESS_TITLE,
-        description: formatSuccessDescription(successMessage),
-        duration: 5000,
-      });
-      didShowSuccessToastRef.current = true;
-    } catch {
-      // Silently ignore toast errors
-    }
-  }, [disableSuccessToast, toast, successMessage]);
-
-  // Helper to complete sendCalls with a tx hash
-  const completeSendCallsWithHash = useCallback(
-    (transactionHash: Hash) => {
-      maybeRedirect();
-      showSuccessToast();
-      onTxHash?.(transactionHash);
-      setTxHash(transactionHash);
-      setIsSubmitting(false);
-    },
-    [maybeRedirect, showSuccessToast, onTxHash]
-  );
-
-  // Helper to complete sendCalls without a tx hash
-  const completeSendCallsWithoutHash = useCallback(() => {
-    maybeRedirect();
-    showSuccessToast();
-    onSuccess?.(undefined as any);
-    setIsSubmitting(false);
-  }, [maybeRedirect, showSuccessToast, onSuccess]);
-
   // Helper to execute transaction via session key (shared by writeContract and sendCalls)
   const executeViaSessionKey = useCallback(
     async (
@@ -400,65 +355,15 @@ export function useSapienceWriteContract({
       calls: TransactionCall[],
       _chainId: number
     ): Promise<Hash> => {
-      const timings: Record<string, number> = {};
       const startTime = Date.now();
-
-      // Check session expiration before attempting transaction
-      if (sessionConfig) {
-        const nowMs = Date.now();
-        const msRemaining = sessionConfig.expiresAt - nowMs;
-
-        if (nowMs > sessionConfig.expiresAt) {
-          throw new Error(
-            `Session expired ${Math.abs(msRemaining / 1000 / 60).toFixed(0)} minutes ago. Please end the current session and start a new one.`
-          );
-        }
-      }
-
-      // Step 1: Encode calls
-      if (!sessionClient.account) {
-        throw new Error('Session client account not available');
-      }
-      const encodeStart = Date.now();
-      const encodedCalls = await sessionClient.account.encodeCalls(calls);
-      timings.encodeCallsMs = Date.now() - encodeStart;
-
-      // Notify that tx is about to be sent to bundler
-      onTxSending?.();
-
-      // Step 2: Send user operation to bundler
-      // Internally this does: gas estimation → paymaster sponsorship → sign → send to bundler
-      const sendStart = Date.now();
-      const userOpHash = await sessionClient.sendUserOperation({
-        callData: encodedCalls,
+      const hash = await executeViaSessionKeyDefault(sessionClient, calls, _chainId, {
+        sessionConfig,
+        onTxSending,
+        onTxSent,
+        onReceiptConfirmed,
       });
-      timings.sendUserOpMs = Date.now() - sendStart;
-
-      // Notify that bundler accepted - skip CONFIRMING stage, go directly to INDEXING
-      // The GraphQL polling in OgShareDialogBase will confirm the trade
-      onTxSent?.(userOpHash);
-      onReceiptConfirmed?.();
-
-      // Log final summary (no waitForReceipt - relying on indexer polling)
-      timings.totalMs = Date.now() - startTime;
-      console.log('[SessionTx] ═══════════════════════════════════════════');
-      console.log('[SessionTx] TIMING BREAKDOWN:');
-      console.log(
-        `[SessionTx]   1. encodeCalls:          ${String(timings.encodeCallsMs).padStart(5)}ms`
-      );
-      console.log(
-        `[SessionTx]   2. sendUserOperation:    ${String(timings.sendUserOpMs).padStart(5)}ms  ← (paymaster + bundler submit)`
-      );
-      console.log(`[SessionTx]   ─────────────────────────────`);
-      console.log(
-        `[SessionTx]   TOTAL:                   ${String(timings.totalMs).padStart(5)}ms`
-      );
-      console.log(
-        '[SessionTx] (skipping on-chain wait - indexer polling will confirm)'
-      );
-      console.log('[SessionTx] ═══════════════════════════════════════════');
-
-      return userOpHash;
+      console.log(`[SessionTx] Total: ${Date.now() - startTime}ms (skipping on-chain wait)`);
+      return hash;
     },
     [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
   );
@@ -523,7 +428,7 @@ export function useSapienceWriteContract({
           args[0]
         );
 
-        handleTransactionSuccess(result.hash);
+        completeTransaction(result.hash);
       } catch (error) {
         setIsSubmitting(false);
         toast({
@@ -543,7 +448,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
-      handleTransactionSuccess,
+      completeTransaction,
       getExecutionPath,
       getSessionClient,
       needsArbitrumSession,
@@ -618,33 +523,12 @@ export function useSapienceWriteContract({
           args[0]
         );
 
-        // Post-processing based on execution path
-        if (result.path === 'session') {
-          completeSendCallsWithoutHash();
-        } else if (result.hash) {
-          completeSendCallsWithHash(result.hash);
-        } else if (result.path === 'eoa' && result.data) {
-          try {
-            let hash: string | undefined;
-            if (result.data?.id && client) {
-              const status = await waitForCallsStatus(client, {
-                id: result.data.id,
-              });
-              hash = pickFinalTransactionHash(status);
-            } else {
-              hash = pickFinalTransactionHash(result.data);
-            }
-            if (hash) {
-              completeSendCallsWithHash(hash as Hash);
-            } else {
-              completeSendCallsWithoutHash();
-            }
-          } catch {
-            completeSendCallsWithoutHash();
-          }
-        } else {
-          completeSendCallsWithoutHash();
+        // Resolve hash for EOA batch results (EIP-5792 polling)
+        let finalHash = result.hash;
+        if (result.path === 'eoa' && result.data && !finalHash) {
+          finalHash = (await resolveEoaBatchResult(result.data, client)) as Hash | undefined;
         }
+        completeTransaction(finalHash);
       } catch (error) {
         setIsSubmitting(false);
         toast({
@@ -670,8 +554,7 @@ export function useSapienceWriteContract({
       wrapArbitrumSessionCreation,
       executeViaSessionKey,
       executeViaOwnerSigning,
-      completeSendCallsWithHash,
-      completeSendCallsWithoutHash,
+      completeTransaction,
       wagmiAddress,
       smartAccountAddress,
       sessionConfig,
@@ -681,13 +564,12 @@ export function useSapienceWriteContract({
   const handleTxSuccess = useCallback(
     (receipt: ReturnType<typeof useTransactionReceipt>['data']) => {
       if (!txHash) return;
-      showSuccessToast();
       onSuccess?.(receipt);
       setTxHash(undefined);
       setIsSubmitting(false);
       didShowSuccessToastRef.current = false;
     },
-    [txHash, showSuccessToast, onSuccess]
+    [txHash, onSuccess]
   );
 
   const handleTxError = useCallback(

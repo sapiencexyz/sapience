@@ -7,6 +7,7 @@
  */
 import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
+import { waitForCallsStatus } from 'viem/actions';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -173,6 +174,26 @@ export function pickFinalTransactionHash(data: any): string | undefined {
   if (typeof data?.transactionHash === 'string') return data.transactionHash;
   if (typeof data?.txHash === 'string') return data.txHash;
   return undefined;
+}
+
+/**
+ * Resolve a final transaction hash from an EIP-5792 sendCalls result.
+ * If the result contains a call bundle ID and a client is available,
+ * polls for bundle status. Returns the resolved hash or undefined.
+ */
+export async function resolveEoaBatchResult(
+  data: any,
+  client?: any
+): Promise<string | undefined> {
+  try {
+    if (data?.id && client) {
+      const status = await waitForCallsStatus(client, { id: data.id });
+      return pickFinalTransactionHash(status);
+    }
+    return pickFinalTransactionHash(data);
+  } catch {
+    return undefined;
+  }
 }
 
 // ─── Session Key Execution ───────────────────────────────────────────────────
