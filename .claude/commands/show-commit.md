@@ -1,14 +1,9 @@
-# show-commit
-
 Show files changed in a git commit and help navigate to them.
 
-## Usage
+Input: $ARGUMENTS
 
-```
-/show-commit <commit-hash> [--context-size=<N>]
-```
-
-- `<commit-hash>` — A full or abbreviated git commit hash (required, passed as the argument).
+Parse the input for:
+- `<commit-hash>` — A full or abbreviated git commit hash (required).
 - `--context-size=<N>` — Optional. Search N commits forward and N commits backward from the given commit and identify related commits to provide broader context. When omitted, only the single commit is shown.
 
 ## Steps
