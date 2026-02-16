@@ -24,6 +24,8 @@ contract PredictionMarketEscrowTest is Test {
 
     uint256 public constant PREDICTOR_WAGER = 100e18;
     uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    uint256 public constant TOTAL_COLLATERAL =
+        PREDICTOR_WAGER + COUNTERPARTY_WAGER;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -198,14 +200,14 @@ contract PredictionMarketEscrowTest is Test {
             PREDICTOR_WAGER + COUNTERPARTY_WAGER
         );
 
-        // Check position tokens were minted (amount = wager in fungible model)
+        // Check position tokens were minted (amount = totalCollateral in proportional model)
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
-            PREDICTOR_WAGER
+            TOTAL_COLLATERAL
         );
         assertEq(
             IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
-            COUNTERPARTY_WAGER
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -405,15 +407,15 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
-        // Predictor redeems (full token balance = PREDICTOR_WAGER)
+        // Predictor redeems (full token balance = TOTAL_COLLATERAL)
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 
         vm.prank(predictor);
         uint256 payout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Predictor should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(predictor),
             predictorBalanceBefore + payout
@@ -432,16 +434,16 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Counterparty redeems (full token balance = COUNTERPARTY_WAGER)
+        // Counterparty redeems (full token balance = TOTAL_COLLATERAL)
         uint256 counterpartyBalanceBefore =
             collateralToken.balanceOf(counterparty);
 
         vm.prank(counterparty);
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Counterparty should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(counterparty),
             counterpartyBalanceBefore + payout
@@ -463,14 +465,14 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem their full token balances
+        // Both redeem their full token balances (TOTAL_COLLATERAL each)
         vm.prank(predictor);
         uint256 predictorPayout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         vm.prank(counterparty);
         uint256 counterpartyPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Each gets their original wager back
         assertEq(predictorPayout, PREDICTOR_WAGER);
@@ -489,18 +491,17 @@ contract PredictionMarketEscrowTest is Test {
         market.settle(predictionId, REF_CODE);
 
         // Predictor redeems half of their tokens
-        uint256 redeemAmount = PREDICTOR_WAGER / 2;
+        uint256 redeemAmount = TOTAL_COLLATERAL / 2;
         vm.prank(predictor);
         uint256 payout = market.redeem(predictorToken, redeemAmount, REF_CODE);
 
         // Should get half of total (since they own all predictor tokens)
-        uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
-        assertEq(payout, totalCollateral / 2);
+        assertEq(payout, TOTAL_COLLATERAL / 2);
 
         // Should still have half the tokens
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
-            PREDICTOR_WAGER / 2
+            TOTAL_COLLATERAL / 2
         );
     }
 

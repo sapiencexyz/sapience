@@ -85,7 +85,9 @@ contract PredictionMarketEscrowDustAudit is Test {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 digest = escrow.getMintApprovalHash(predictionHash, signer, wager, nonce, deadline);
+        bytes32 digest = escrow.getMintApprovalHash(
+            predictionHash, signer, wager, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
     }
@@ -97,7 +99,9 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.Pick[] memory picks = _buildPicks();
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorWager, counterpartyWager, alice, bob)
+            abi.encode(
+                pickConfigId, predictorWager, counterpartyWager, alice, bob
+            )
         );
 
         uint256 pNonce = escrow.getNonce(alice);
@@ -113,8 +117,12 @@ contract PredictionMarketEscrowDustAudit is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, alice, predictorWager, pNonce, deadline, ALICE_PK);
-        request.counterpartySignature = _signApproval(predictionHash, bob, counterpartyWager, cNonce, deadline, BOB_PK);
+        request.predictorSignature = _signApproval(
+            predictionHash, alice, predictorWager, pNonce, deadline, ALICE_PK
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash, bob, counterpartyWager, cNonce, deadline, BOB_PK
+        );
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
@@ -122,9 +130,14 @@ contract PredictionMarketEscrowDustAudit is Test {
 
     function _mint(uint256 predictorWager, uint256 counterpartyWager)
         internal
-        returns (bytes32 predictionId, address predictorToken, address counterpartyToken)
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
     {
-        IV2Types.MintRequest memory req = _buildMintRequest(predictorWager, counterpartyWager);
+        IV2Types.MintRequest memory req =
+            _buildMintRequest(predictorWager, counterpartyWager);
         return escrow.mint(req);
     }
 
@@ -143,7 +156,8 @@ contract PredictionMarketEscrowDustAudit is Test {
      */
     function test_M1_losingTokensBurnOnRedeem() public {
         // Alice = predictor (YES), Bob = counterparty (NO)
-        (bytes32 pred1, address predToken, address ctrToken) = _mint(100e6, 100e6);
+        (bytes32 pred1, address predToken, address ctrToken) =
+            _mint(100e6, 100e6);
 
         // YES wins → predictor wins, counterparty loses
         _resolveYesWins();
@@ -168,7 +182,11 @@ contract PredictionMarketEscrowDustAudit is Test {
 
         // FIXED: Tokens should be burned even though payout is 0
         // UNFIXED: ctrSupplyAfter == ctrSupplyBefore (tokens not burned)
-        assertEq(ctrSupplyAfter, 0, "M-1 VULN: Losing tokens were not burned on redeem");
+        assertEq(
+            ctrSupplyAfter,
+            0,
+            "M-1 VULN: Losing tokens were not burned on redeem"
+        );
     }
 
     /**
@@ -186,7 +204,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         // Create a bet with amounts that produce rounding dust
         // 100e6 + 33e6 = 133e6 total. If predictor wins, they get 133e6.
         // But with proportional minting, there may be rounding dust.
-        (bytes32 pred1, address predToken, address ctrToken) = _mint(100e6, 33e6);
+        (bytes32 pred1, address predToken, address ctrToken) =
+            _mint(100e6, 33e6);
 
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
@@ -197,7 +216,11 @@ contract PredictionMarketEscrowDustAudit is Test {
         escrow.redeem(predToken, aliceTokens, REF_CODE);
 
         // Predictor tokens are now 0
-        assertEq(IERC20(predToken).totalSupply(), 0, "Predictor tokens should be fully redeemed");
+        assertEq(
+            IERC20(predToken).totalSupply(),
+            0,
+            "Predictor tokens should be fully redeemed"
+        );
 
         // Bob does NOT redeem (no incentive — payout is 0)
         // On the UNFIXED code, counterparty supply > 0 blocks sweepDust
@@ -208,8 +231,10 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.PickConfiguration memory config = escrow.getPickConfiguration(
             escrow.getPickConfigIdFromToken(predToken)
         );
-        uint256 totalCollateral = config.totalPredictorCollateral + config.totalCounterpartyCollateral;
-        uint256 totalClaimed = config.claimedPredictorCollateral + config.claimedCounterpartyCollateral;
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
+        uint256 totalClaimed = config.claimedPredictorCollateral
+            + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;
         console.log("Dust remaining:", dust);
 
@@ -218,9 +243,13 @@ contract PredictionMarketEscrowDustAudit is Test {
             // UNFIXED: Would revert with TokensStillOutstanding because ctrSupply > 0
             vm.prank(owner);
             escrow.sweepDust(escrow.getPickConfigIdFromToken(predToken), owner);
-            console.log("M-1 FIX VERIFIED: sweepDust succeeded without losing-side redemption");
+            console.log(
+                "M-1 FIX VERIFIED: sweepDust succeeded without losing-side redemption"
+            );
         } else {
-            console.log("No dust to sweep (exact division) - test passes trivially");
+            console.log(
+                "No dust to sweep (exact division) - test passes trivially"
+            );
         }
     }
 
@@ -244,6 +273,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         vm.expectRevert(); // TokensStillOutstanding
         escrow.sweepDust(pickConfigId, owner);
 
-        console.log("sweepDust correctly blocked when winning tokens still outstanding");
+        console.log(
+            "sweepDust correctly blocked when winning tokens still outstanding"
+        );
     }
 }

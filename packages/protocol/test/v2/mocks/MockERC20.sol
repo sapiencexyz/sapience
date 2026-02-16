@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+/// @title MockERC20
+/// @notice Simple mock ERC20 with public mint/burn for testing
 contract MockERC20 is ERC20 {
     uint8 private _decimals;
 
