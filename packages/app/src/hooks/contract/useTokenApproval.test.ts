@@ -15,10 +15,11 @@ jest.mock('@sapience/sdk/queries/abis/erc20abi.json', () => [], { virtual: true 
 
 const mockWriteContract = jest.fn();
 const mockResetWrite = jest.fn();
+let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
+
 jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   useSapienceWriteContract: (opts: Record<string, unknown>) => {
-    // Store callbacks for later invocation in tests
-    (global as any).__sapienceOpts = opts;
+    capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
       writeContract: mockWriteContract,
       isPending: false,
@@ -176,23 +177,132 @@ describe('useTokenApproval', () => {
     spy.mockRestore();
   });
 
-  it('reset clears error state', async () => {
+  it('onSuccess callback sets isApproveSuccess and clears error', () => {
     const { result } = renderHook(() =>
       useTokenApproval({
         tokenAddress: TOKEN,
         spenderAddress: SPENDER,
         amount: '1',
         chainId: 42161,
+        decimals: 18,
       })
     );
 
-    // Trigger an error by approving without tokenAddress set won't work here,
-    // so we test reset directly
+    // First trigger an error via onError
+    act(() => {
+      capturedCallbacks.onError?.(new Error('some error'));
+    });
+    expect(result.current.error?.message).toBe('some error');
+
+    // Now trigger onSuccess
+    act(() => {
+      capturedCallbacks.onSuccess?.();
+    });
+    expect(result.current.isApproveSuccess).toBe(true);
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it('onError callback sets error state', () => {
+    const { result } = renderHook(() =>
+      useTokenApproval({
+        tokenAddress: TOKEN,
+        spenderAddress: SPENDER,
+        amount: '1',
+        chainId: 42161,
+        decimals: 18,
+      })
+    );
+
+    act(() => {
+      capturedCallbacks.onError?.(new Error('tx reverted'));
+    });
+
+    expect(result.current.error?.message).toBe('tx reverted');
+    expect(result.current.isApproveSuccess).toBe(false);
+  });
+
+  it('onTxHash callback clears error', () => {
+    const { result } = renderHook(() =>
+      useTokenApproval({
+        tokenAddress: TOKEN,
+        spenderAddress: SPENDER,
+        amount: '1',
+        chainId: 42161,
+        decimals: 18,
+      })
+    );
+
+    // First set an error
+    act(() => {
+      capturedCallbacks.onError?.(new Error('some error'));
+    });
+    expect(result.current.error).toBeDefined();
+
+    // onTxHash should clear it
+    act(() => {
+      capturedCallbacks.onTxHash?.();
+    });
+    expect(result.current.error).toBeUndefined();
+  });
+
+  it('reset clears error state after an error was set', async () => {
+    const { result } = renderHook(() =>
+      useTokenApproval({
+        // missing tokenAddress to trigger error on approve
+        spenderAddress: SPENDER,
+        amount: '1',
+        chainId: 42161,
+      })
+    );
+
+    // First trigger an error
+    await act(async () => {
+      try {
+        await result.current.approve();
+      } catch {
+        // expected
+      }
+    });
+    expect(result.current.error).toBeDefined();
+
+    // Now reset should clear it
     act(() => {
       result.current.reset();
     });
 
     expect(result.current.error).toBeUndefined();
     expect(result.current.isApproveSuccess).toBe(false);
+  });
+
+  it('approve() propagates writeContract rejection to error state', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    mockWriteContract.mockRejectedValue(new Error('user rejected'));
+
+    mockUseReadContract.mockReturnValue({
+      data: 0n,
+      isLoading: false,
+      refetch: jest.fn(),
+    });
+
+    const { result } = renderHook(() =>
+      useTokenApproval({
+        tokenAddress: TOKEN,
+        spenderAddress: SPENDER,
+        amount: '1',
+        chainId: 42161,
+        decimals: 18,
+      })
+    );
+
+    await act(async () => {
+      try {
+        await result.current.approve();
+      } catch {
+        // expected
+      }
+    });
+
+    expect(result.current.error?.message).toBe('user rejected');
+    spy.mockRestore();
   });
 });

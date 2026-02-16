@@ -2,7 +2,6 @@
 module.exports = {
   preset: 'ts-jest',
   testEnvironment: 'jest-environment-jsdom',
-  setupFiles: ['<rootDir>/src/setupReactAct.js'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {

@@ -1,19 +1,22 @@
-import { renderHook } from '@testing-library/react';
+import { renderHook, act } from '@testing-library/react';
 import { useSubmitPosition } from './useSubmitPosition';
+import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
+const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
+const mockUseReadContract = jest.fn().mockReturnValue({
+  data: undefined,
+  isLoading: false,
+  refetch: jest.fn().mockResolvedValue({ data: undefined }),
+});
 jest.mock('wagmi', () => ({
-  useAccount: jest.fn().mockReturnValue({ address: '0xUserAddress' }),
-  useReadContract: jest.fn().mockReturnValue({
-    data: undefined,
-    isLoading: false,
-    refetch: jest.fn().mockResolvedValue({ data: undefined }),
-  }),
+  useAccount: (...args: unknown[]) => mockUseAccount(...args),
+  useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
   erc20Abi: [],
 }));
 
-// Mock viem - precompute to avoid jsdom issues
+const mockEncodeFunctionData = jest.fn().mockReturnValue('0xEncodedCalldata');
 jest.mock('viem', () => ({
-  encodeFunctionData: jest.fn().mockReturnValue('0xEncodedCalldata'),
+  encodeFunctionData: (...args: unknown[]) => mockEncodeFunctionData(...args),
   erc20Abi: [],
   parseAbi: jest.fn().mockReturnValue([]),
 }));
@@ -27,13 +30,18 @@ jest.mock('@sapience/sdk/constants', () => ({
 }));
 
 const mockSendCalls = jest.fn();
+let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
+
 jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
-  useSapienceWriteContract: () => ({
-    writeContract: jest.fn(),
-    sendCalls: mockSendCalls,
-    isPending: false,
-    reset: jest.fn(),
-  }),
+  useSapienceWriteContract: (opts: Record<string, unknown>) => {
+    capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
+    return {
+      writeContract: jest.fn(),
+      sendCalls: mockSendCalls,
+      isPending: false,
+      reset: jest.fn(),
+    };
+  },
 }));
 
 jest.mock('~/lib/context/SessionContext', () => ({
@@ -42,23 +50,45 @@ jest.mock('~/lib/context/SessionContext', () => ({
   }),
 }));
 
+const mockReadContract = jest.fn().mockResolvedValue(0n);
 jest.mock('~/lib/utils/util', () => ({
   getPublicClientForChainId: () => ({
-    readContract: jest.fn().mockResolvedValue(0n),
+    readContract: (...args: unknown[]) => mockReadContract(...args),
   }),
 }));
+
+const DEFAULT_PROPS = {
+  chainId: 5064014,
+  predictionMarketAddress: '0xMarket' as `0x${string}`,
+  collateralTokenAddress: '0xCollateral' as `0x${string}`,
+};
+
+const VALID_MINT_DATA: MintPredictionRequestData = {
+  encodedPredictedOutcomes: '0xABCD' as `0x${string}`,
+  resolver: '0xResolver' as `0x${string}`,
+  makerCollateral: '1000000000000000000', // 1e18
+  takerCollateral: '2000000000000000000', // 2e18
+  maker: '0xUserAddress' as `0x${string}`,
+  taker: '0xBidder' as `0x${string}`,
+  takerSignature: '0xSig' as `0x${string}`,
+  takerDeadline: '9999999999',
+  refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+};
 
 describe('useSubmitPosition', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSendCalls.mockResolvedValue(undefined);
+    // Default: makerNonce query returns 0n, refetch returns 0n
+    mockUseReadContract.mockReturnValue({
+      data: 0n,
+      isLoading: false,
+      refetch: jest.fn().mockResolvedValue({ data: 0n }),
+    });
+    mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
+    // Mock taker validation - return enough balance/allowance
+    mockReadContract.mockResolvedValue(999999999999999999999n);
   });
-
-  const DEFAULT_PROPS = {
-    chainId: 5064014,
-    predictionMarketAddress: '0xMarket' as `0x${string}`,
-    collateralTokenAddress: '0xCollateral' as `0x${string}`,
-  };
 
   it('returns expected shape', () => {
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -78,24 +108,166 @@ describe('useSubmitPosition', () => {
   it('reset clears error and success', () => {
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
     const { reset } = result.current;
-    // Just verify reset is callable (state is internal)
     expect(() => reset()).not.toThrow();
   });
-});
 
-// Test pure utility functions by importing the module source
-// toBigIntSafe and validateTakerFunds are not exported, so test behavior through the hook
-describe('toBigIntSafe (tested via hook behavior)', () => {
-  it.skip('toBigIntSafe is not exported - would need to be exported for direct testing', () => {
-    // If exported: expect(toBigIntSafe('100')).toBe(100n)
-    // expect(toBigIntSafe(undefined)).toBe(undefined)
+  it('submitPosition happy path calls sendCalls with batch of calls', async () => {
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      makerNonce: 0n,
+    };
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    expect(mockSendCalls).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chainId: 5064014,
+        calls: expect.arrayContaining([
+          expect.objectContaining({
+            to: '0xMarket',
+            data: '0xEncodedCalldata',
+          }),
+        ]),
+      })
+    );
+    expect(result.current.error).toBeNull();
   });
-});
 
-describe('validateTakerFunds (tested via hook behavior)', () => {
-  it.skip('validateTakerFunds is not exported - tested indirectly via submitPosition', () => {
-    // This function validates taker has sufficient balance and allowance
-    // It throws when taker has insufficient funds
-    // Tested indirectly when submitPosition is called
+  it('sets error when maker !== effectiveAddress (address mismatch)', async () => {
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      maker: '0xDifferentAddress' as `0x${string}`,
+      makerNonce: 0n,
+    };
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    expect(result.current.error).toContain('Address mismatch');
+  });
+
+  it('sets error when on-chain nonce differs from provided nonce', async () => {
+    // refetchMakerNonce returns a different nonce than what mintData provides
+    mockUseReadContract.mockReturnValue({
+      data: 0n,
+      isLoading: false,
+      refetch: jest.fn().mockResolvedValue({ data: 5n }), // on-chain nonce is 5
+    });
+
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      makerNonce: 0n, // but we're sending nonce 0
+    };
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    expect(result.current.error).toContain('nonce');
+  });
+
+  it('retries once with fresh nonce on InvalidMakerNonce for non-auction submissions', async () => {
+    // First sendCalls fails with InvalidMakerNonce, second succeeds
+    mockSendCalls
+      .mockRejectedValueOnce(new Error('InvalidMakerNonce'))
+      .mockResolvedValueOnce(undefined);
+
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      // no makerNonce → non-auction submission, hook will fetch nonce
+    };
+    delete (mintData as Partial<MintPredictionRequestData>).makerNonce;
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    // Should have retried: sendCalls called twice
+    expect(mockSendCalls).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry InvalidMakerNonce when auction-provided nonce is present', async () => {
+    mockSendCalls.mockRejectedValue(new Error('InvalidMakerNonce'));
+
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      makerNonce: 0n, // auction-provided nonce
+    };
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    // Should NOT retry - only called once
+    expect(mockSendCalls).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toContain('stale');
+  });
+
+  it('onSuccess callback sets success and clears error', () => {
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    act(() => {
+      capturedCallbacks.onSuccess?.();
+    });
+
+    expect(result.current.success).toBe('Position prediction minted successfully');
+    expect(result.current.error).toBeNull();
+  });
+
+  it('onError callback sets error', () => {
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    act(() => {
+      capturedCallbacks.onError?.({ message: 'Transaction failed' });
+    });
+
+    expect(result.current.error).toBe('Transaction failed');
+  });
+
+  it('submitPosition is a no-op when enabled=false', async () => {
+    const { result } = renderHook(() =>
+      useSubmitPosition({ ...DEFAULT_PROPS, enabled: false })
+    );
+
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      makerNonce: 0n,
+    };
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    expect(mockSendCalls).not.toHaveBeenCalled();
+  });
+
+  it('submitPosition is a no-op when address is undefined', async () => {
+    mockUseAccount.mockReturnValue({ address: undefined });
+
+    const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
+
+    const mintData: MintPredictionRequestData = {
+      ...VALID_MINT_DATA,
+      makerNonce: 0n,
+    };
+
+    await act(async () => {
+      await result.current.submitPosition(mintData);
+    });
+
+    expect(mockSendCalls).not.toHaveBeenCalled();
   });
 });

@@ -1,12 +1,7 @@
-// This file is referenced by jest.config.js in setupFilesAfterEnv, but its contents are currently not needed.
-// Keeping it empty satisfies the config without running unnecessary setup code.
-
 import '@testing-library/jest-dom';
 
 // Enable React act() environment for React 19
 (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
-
-// React 19 act polyfill - not needed, act available in test/dev mode
 
 // Polyfill for TextEncoder/TextDecoder which is needed by viem
 class MockTextEncoder {

@@ -158,4 +158,100 @@ describe('useCollateralBalance', () => {
     // DEFAULT_CHAIN_ID is 5064014 (Ethereal)
     expect(result.current.isEtherealChain).toBe(true);
   });
+
+  it('returns formattedBalance string', () => {
+    mockUseBalance.mockReturnValue({
+      data: { formatted: '1.5', value: 1500000000000000000n, decimals: 18 },
+      isLoading: false,
+      refetch: jest.fn(),
+    });
+    mockUseReadContract
+      .mockReturnValueOnce({ data: 18, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: 2000000000000000000n, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() });
+
+    const { result } = renderHook(() =>
+      useCollateralBalance({ address: ADDRESS, chainId: 5064014 })
+    );
+    expect(result.current.formattedBalance).toBe('3.5 USDe');
+  });
+
+  it('refetch() calls the correct underlying refetch fns per chain', () => {
+    const refetchNative = jest.fn();
+    const refetchWusde = jest.fn();
+    const refetchUsde = jest.fn();
+
+    // Ethereal chain: refetchNative and refetchWusde should be called
+    mockUseBalance.mockReturnValue({
+      data: undefined, isLoading: false, refetch: refetchNative,
+    });
+    mockUseReadContract
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() }) // wusde decimals
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: refetchWusde }) // wusde balanceOf
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() }) // usde decimals
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: refetchUsde }); // usde balanceOf
+
+    const { result } = renderHook(() =>
+      useCollateralBalance({ address: ADDRESS, chainId: 5064014 })
+    );
+    result.current.refetch();
+    expect(refetchNative).toHaveBeenCalled();
+    expect(refetchWusde).toHaveBeenCalled();
+    expect(refetchUsde).not.toHaveBeenCalled();
+  });
+
+  it('refetch() calls usde refetch on non-Ethereal chain', () => {
+    const refetchNative = jest.fn();
+    const refetchUsde = jest.fn();
+
+    mockUseBalance.mockReturnValue({
+      data: undefined, isLoading: false, refetch: refetchNative,
+    });
+    mockUseReadContract
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: refetchUsde });
+
+    const { result } = renderHook(() =>
+      useCollateralBalance({ address: ADDRESS, chainId: 42161 })
+    );
+    result.current.refetch();
+    expect(refetchNative).not.toHaveBeenCalled();
+    expect(refetchUsde).toHaveBeenCalled();
+  });
+
+  it('returns zeros when formatUnits throws (catch path)', () => {
+    // Override viem mock to throw on formatUnits
+    const viem = require('viem');
+    const originalFormatUnits = viem.formatUnits;
+    viem.formatUnits = () => { throw new Error('bad format'); };
+
+    mockUseBalance.mockReturnValue({
+      data: undefined, isLoading: false, refetch: jest.fn(),
+    });
+    mockUseReadContract
+      .mockReturnValueOnce({ data: 18, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: 999n, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() })
+      .mockReturnValueOnce({ data: undefined, isLoading: false, refetch: jest.fn() });
+
+    const { result } = renderHook(() =>
+      useCollateralBalance({ address: ADDRESS, chainId: 5064014 })
+    );
+    expect(result.current.balance).toBe(0);
+
+    viem.formatUnits = originalFormatUnits;
+  });
+
+  it('disables queries when enabled is false', () => {
+    const { result } = renderHook(() =>
+      useCollateralBalance({ address: ADDRESS, chainId: 5064014, enabled: false })
+    );
+    // With enabled=false, the queries pass enabled:false so no data is fetched
+    // The hook should still return default values
+    expect(result.current.balance).toBe(0);
+    expect(result.current.isLoading).toBe(false);
+  });
 });

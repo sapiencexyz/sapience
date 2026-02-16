@@ -2,23 +2,26 @@ import { renderHook, act } from '@testing-library/react';
 import { useSubmitPrediction } from './useSubmitPrediction';
 import { MarketGroupClassification } from '../../lib/types';
 
+const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
 jest.mock('wagmi', () => ({
-  useAccount: jest.fn().mockReturnValue({ address: '0xUserAddress' }),
+  useAccount: (...args: unknown[]) => mockUseAccount(...args),
 }));
 
 // Mock viem to avoid jsdom issues with encoding
+const mockEncodeAbiParameters = jest.fn().mockReturnValue('0xEncodedData');
+const mockParseAbiParameters = jest.fn().mockReturnValue([]);
 jest.mock('viem', () => ({
-  encodeAbiParameters: jest.fn().mockReturnValue('0xEncodedData'),
-  parseAbiParameters: jest.fn().mockReturnValue([]),
+  encodeAbiParameters: (...args: unknown[]) => mockEncodeAbiParameters(...args),
+  parseAbiParameters: (...args: unknown[]) => mockParseAbiParameters(...args),
 }));
 
 const mockWriteContract = jest.fn();
 const mockReset = jest.fn();
-let capturedCallbacks: Record<string, Function> = {};
+let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
 
 jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
-  useSapienceWriteContract: (opts: Record<string, any>) => {
-    capturedCallbacks = opts;
+  useSapienceWriteContract: (opts: Record<string, unknown>) => {
+    capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
       writeContract: mockWriteContract,
       isPending: false,
@@ -48,6 +51,7 @@ describe('useSubmitPrediction', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockWriteContract.mockResolvedValue(undefined);
+    mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
   });
 
   it('calls writeContract with EAS attestation params on submit', async () => {
@@ -69,8 +73,7 @@ describe('useSubmitPrediction', () => {
   });
 
   it('sets error when wallet not connected', async () => {
-    const useAccount = require('wagmi').useAccount;
-    useAccount.mockReturnValue({ address: undefined });
+    mockUseAccount.mockReturnValue({ address: undefined });
 
     const { result } = renderHook(() => useSubmitPrediction(DEFAULT_PROPS));
 
@@ -79,39 +82,103 @@ describe('useSubmitPrediction', () => {
     });
 
     expect(result.current.attestationError).toContain('Wallet not connected');
-
-    // Restore
-    useAccount.mockReturnValue({ address: '0xUserAddress' });
   });
 
-  it('onSuccess callback updates state', () => {
+  it('onSuccess callback sets attestationSuccess and calls external onSuccess', () => {
     const onSuccess = jest.fn();
-    renderHook(() =>
+    const { result } = renderHook(() =>
       useSubmitPrediction({ ...DEFAULT_PROPS, onSuccess })
     );
 
-    // Simulate the onSuccess callback from useSapienceWriteContract
     act(() => {
       capturedCallbacks.onSuccess?.();
     });
 
     expect(onSuccess).toHaveBeenCalled();
+    expect(result.current.attestationSuccess).toContain('Prediction submitted successfully');
   });
 
-  it('onError callback sets attestation error', () => {
-    renderHook(() => useSubmitPrediction(DEFAULT_PROPS));
+  it('onError callback sets attestationError', () => {
+    const { result } = renderHook(() => useSubmitPrediction(DEFAULT_PROPS));
 
     act(() => {
-      capturedCallbacks.onError?.(new Error('tx failed'));
+      capturedCallbacks.onError?.({ message: 'tx failed' });
     });
 
-    // The error state is set internally - we verify the callback was wired correctly
-    // by checking the hook doesn't throw
+    expect(result.current.attestationError).toBe('tx failed');
+  });
+
+  it('NUMERIC classification calls encodeAbiParameters correctly', async () => {
+    const { result } = renderHook(() =>
+      useSubmitPrediction({
+        ...DEFAULT_PROPS,
+        marketClassification: MarketGroupClassification.NUMERIC,
+        submissionValue: '42.5',
+      })
+    );
+
+    await act(async () => {
+      await result.current.submitPrediction();
+    });
+
+    expect(result.current.attestationError).toBeNull();
+    expect(mockEncodeAbiParameters).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        '0xResolver',
+        '0xCondition',
+        BigInt(Math.round(42.5 * 1e18)),
+        'test comment',
+      ])
+    );
+  });
+
+  it('MULTIPLE_CHOICE classification works', async () => {
+    const { result } = renderHook(() =>
+      useSubmitPrediction({
+        ...DEFAULT_PROPS,
+        marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
+        submissionValue: '60',
+      })
+    );
+
+    await act(async () => {
+      await result.current.submitPrediction();
+    });
+
+    expect(result.current.attestationError).toBeNull();
+    expect(mockEncodeAbiParameters).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        '0xResolver',
+        '0xCondition',
+        BigInt(Math.round(60 * 1e18)),
+        'test comment',
+      ])
+    );
+  });
+
+  it('negative numeric input sets error', async () => {
+    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { result } = renderHook(() =>
+      useSubmitPrediction({
+        ...DEFAULT_PROPS,
+        marketClassification: MarketGroupClassification.NUMERIC,
+        submissionValue: '-5',
+      })
+    );
+
+    await act(async () => {
+      await result.current.submitPrediction();
+    });
+
+    expect(result.current.attestationError).toBeTruthy();
+    spy.mockRestore();
   });
 
   it('resetAttestationStatus clears error and success', async () => {
-    const useAccount = require('wagmi').useAccount;
-    useAccount.mockReturnValue({ address: undefined });
+    mockUseAccount.mockReturnValue({ address: undefined });
 
     const { result } = renderHook(() => useSubmitPrediction(DEFAULT_PROPS));
 
@@ -124,7 +191,5 @@ describe('useSubmitPrediction', () => {
       result.current.resetAttestationStatus();
     });
     expect(result.current.attestationError).toBeNull();
-
-    useAccount.mockReturnValue({ address: '0xUserAddress' });
   });
 });
