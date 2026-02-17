@@ -8,12 +8,16 @@
 import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
 import { waitForCallsStatus } from 'viem/actions';
-import { ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import {
+  ETHEREAL_WUSDE_ADDRESS,
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export { ETHEREAL_WUSDE_ADDRESS };
-export const CHAIN_ID_ETHEREAL = 5064014;
+export { ETHEREAL_WUSDE_ADDRESS, DEFAULT_CHAIN_ID };
 // deposit() selector: keccak256("deposit()") = 0xd0e30db0
 export const WUSDE_DEPOSIT_SELECTOR = '0xd0e30db0' as Hex;
 
@@ -87,9 +91,9 @@ export interface ExecutionDeps {
 
 // ─── Pure Functions ──────────────────────────────────────────────────────────
 
-/** Check if a chain ID is the Ethereal chain */
+/** Check if a chain ID is an Ethereal chain (mainnet or testnet) */
 export function isEtherealChain(chainId: number): boolean {
-  return chainId === CHAIN_ID_ETHEREAL;
+  return chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 }
 
 /**

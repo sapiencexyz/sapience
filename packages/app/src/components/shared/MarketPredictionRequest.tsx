@@ -8,7 +8,6 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
-  CHAIN_ID_ETHEREAL,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { verifyMakerBidSignature } from '@sapience/sdk';
@@ -111,7 +110,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const { address: takerAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;

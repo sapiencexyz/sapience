@@ -24,7 +24,7 @@ import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRecentPositions } from '~/hooks/graphql/useRecentPositions';
 import { formatDistanceToNow } from 'date-fns';
 import PicksSummary from '~/components/shared/PicksSummary';
@@ -34,7 +34,7 @@ import type { UILeg } from '~/components/positions/PositionsTable';
 const POSITIONS_PAGE_SIZE = 20;
 
 const FeedPageContent: React.FC = () => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const TAB_VALUES = ['positions', 'auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];

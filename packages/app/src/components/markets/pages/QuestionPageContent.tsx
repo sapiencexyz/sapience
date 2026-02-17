@@ -22,7 +22,7 @@ import {
   Telescope,
 } from 'lucide-react';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatEther } from 'viem';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
@@ -142,7 +142,7 @@ export default function QuestionPageContent({
   }, []);
 
   // Use chain/resolver from the condition - no fallbacks
-  const chainId = data?.chainId ?? CHAIN_ID_ETHEREAL;
+  const chainId = data?.chainId ?? DEFAULT_CHAIN_ID;
   const resolverAddress = data?.resolver ?? undefined;
 
   // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.

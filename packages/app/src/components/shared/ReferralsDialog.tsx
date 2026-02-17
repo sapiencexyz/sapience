@@ -16,7 +16,7 @@ import { keccak256, stringToHex } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const VOLUME_THRESHOLD = 5000;
 
@@ -34,7 +34,7 @@ type ReferralRow = {
 };
 
 const ReferralVolumeCell = ({ address }: { address: string }) => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
 
   const { display, isLoading } = useProfileVolume(address);

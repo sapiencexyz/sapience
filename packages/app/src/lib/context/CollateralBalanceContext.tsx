@@ -4,7 +4,7 @@ import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 interface CollateralBalanceContextValue {
   /** User's collateral balance in human-readable units */
@@ -52,7 +52,7 @@ export function CollateralBalanceProvider({
   const { isConnected } = useAccount();
   const { effectiveAddress, isUsingSmartAccount, isCalculatingAddress } =
     useSession();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const {
     balance,

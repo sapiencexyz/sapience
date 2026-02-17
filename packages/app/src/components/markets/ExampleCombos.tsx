@@ -6,7 +6,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -48,7 +48,7 @@ const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const { data: allConditions = [], isLoading } = useConditions({
     take: 100,

@@ -196,7 +196,7 @@ export function buildAuctionStartPayload(
     if (targetChainId === CHAIN_ID_ETHEREAL) {
       // Use Polymarket LZ resolver for Ethereal auctions
       resolverAddress =
-        predictionMarketLZConditionalTokensResolver[CHAIN_ID_ETHEREAL]?.address;
+        predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address;
     } else {
       resolverAddress = umaResolver[targetChainId]?.address as
         | `0x${string}`

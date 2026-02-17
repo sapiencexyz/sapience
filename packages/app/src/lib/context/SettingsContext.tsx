@@ -1,5 +1,6 @@
 'use client';
 
+import { etherealChain } from '@sapience/sdk/constants';
 import type React from 'react';
 import {
   createContext,
@@ -149,7 +150,8 @@ function getDefaultAdminBase(): string {
 }
 
 function getDefaultEtherealRpcURL(): string {
-  return 'https://rpc.ethereal.trade';
+  // Respects SDK chain definitions which already have the correct RPC URLs
+  return etherealChain.rpcUrls.default.http[0];
 }
 
 function getDefaultArbitrumRpcURL(): string {
