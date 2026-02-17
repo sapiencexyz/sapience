@@ -15,11 +15,7 @@ library Encoder {
     uint16 constant CMD_FROM_UMA_MARKET_RESOLVED = 8;
     uint16 constant CMD_FROM_UMA_MARKET_DISPUTED = 9;
 
-    function decodeType(bytes memory data)
-        internal
-        pure
-        returns (uint16, bytes memory)
-    {
+    function decodeType(bytes memory data) internal pure returns (uint16, bytes memory) {
         return abi.decode(data, (uint16, bytes));
     }
 
@@ -32,9 +28,7 @@ library Encoder {
         uint256 bond,
         bytes memory claim
     ) internal pure returns (bytes memory) {
-        return abi.encode(
-            assertionId, asserter, liveness, currency, bond, claim
-        );
+        return abi.encode(assertionId, asserter, liveness, currency, bond, claim);
     }
 
     function decodeToUMAAssertTruth(bytes memory data)
@@ -42,58 +36,36 @@ library Encoder {
         pure
         returns (uint256, address, uint64, address, uint256, bytes memory)
     {
-        return abi.decode(
-            data, (uint256, address, uint64, address, uint256, bytes)
-        );
+        return abi.decode(data, (uint256, address, uint64, address, uint256, bytes));
     }
 
     // From UMA commands
-    function encodeFromUMAResolved(uint256 assertionId, bool truthfully)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function encodeFromUMAResolved(uint256 assertionId, bool truthfully) internal pure returns (bytes memory) {
         return abi.encode(assertionId, truthfully);
     }
 
-    function decodeFromUMAResolved(bytes memory data)
-        internal
-        pure
-        returns (uint256, bool)
-    {
+    function decodeFromUMAResolved(bytes memory data) internal pure returns (uint256, bool) {
         return abi.decode(data, (uint256, bool));
     }
 
-    function encodeFromUMADisputed(uint256 assertionId)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function encodeFromUMADisputed(uint256 assertionId) internal pure returns (bytes memory) {
         return abi.encode(assertionId);
     }
 
-    function decodeFromUMADisputed(bytes memory data)
-        internal
-        pure
-        returns (uint256)
-    {
+    function decodeFromUMADisputed(bytes memory data) internal pure returns (uint256) {
         return abi.decode(data, (uint256));
     }
 
     // Forward from Bridge Bond Balance commands
-    function encodeFromBalanceUpdate(
-        address submitter,
-        address bondToken,
-        uint256 deltaAmount
-    ) internal pure returns (bytes memory) {
+    function encodeFromBalanceUpdate(address submitter, address bondToken, uint256 deltaAmount)
+        internal
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(submitter, bondToken, deltaAmount);
     }
 
-    function decodeFromBalanceUpdate(bytes memory data)
-        internal
-        pure
-        returns (address, address, uint256)
-    {
+    function decodeFromBalanceUpdate(bytes memory data) internal pure returns (address, address, uint256) {
         return abi.decode(data, (address, address, uint256));
     }
 
@@ -114,19 +86,11 @@ library Encoder {
         return abi.decode(data, (bytes32, bool, bool));
     }
 
-    function encodeFromUMAMarketDisputed(bytes32 marketId)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function encodeFromUMAMarketDisputed(bytes32 marketId) internal pure returns (bytes memory) {
         return abi.encode(marketId);
     }
 
-    function decodeFromUMAMarketDisputed(bytes memory data)
-        internal
-        pure
-        returns (bytes32)
-    {
+    function decodeFromUMAMarketDisputed(bytes memory data) internal pure returns (bytes32) {
         return abi.decode(data, (bytes32));
     }
 }

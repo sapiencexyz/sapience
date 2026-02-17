@@ -2,9 +2,8 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    ManualConditionResolver
-} from "../../../v2/resolvers/mocks/ManualConditionResolver.sol";
+import { ManualConditionResolver } from
+    "../../../v2/resolvers/mocks/ManualConditionResolver.sol";
 
 /// @title Deploy Manual Condition Resolver (Mainnet)
 /// @notice Deploys a ManualConditionResolver on Ethereal mainnet

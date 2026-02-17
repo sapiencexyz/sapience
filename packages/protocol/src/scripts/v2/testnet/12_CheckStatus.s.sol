@@ -3,19 +3,15 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    PredictionMarketBridge
-} from "../../../v2/bridge/PredictionMarketBridge.sol";
-import {
-    PredictionMarketBridgeRemote
-} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketBridge } from
+    "../../../v2/bridge/PredictionMarketBridge.sol";
+import { PredictionMarketBridgeRemote } from
+    "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
+import { PredictionMarketTokenFactory } from
+    "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
-import {
-    IPredictionMarketBridgeBase
-} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import { IPredictionMarketBridgeBase } from
+    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status
 /// @notice Check deployment status and balances

@@ -3,12 +3,10 @@ pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    PredictionMarketVault
-} from "../../../../v2/vault/PredictionMarketVault.sol";
-import {
-    PredictionMarketEscrow
-} from "../../../../v2/PredictionMarketEscrow.sol";
+import { PredictionMarketVault } from
+    "../../../../v2/vault/PredictionMarketVault.sol";
+import { PredictionMarketEscrow } from
+    "../../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../../v2/interfaces/IV2Types.sol";
 
 /// @title Test Vault as Counterparty (Testnet)
@@ -24,9 +22,9 @@ contract TestVaultAsCounterparty is Script {
         address counterparty; // This is the manager
     }
 
-    struct Wagers {
-        uint256 predictorWager;
-        uint256 counterpartyWager;
+    struct Collaterals {
+        uint256 predictorCollateral;
+        uint256 counterpartyCollateral;
     }
 
     struct SignParams {
@@ -53,35 +51,34 @@ contract TestVaultAsCounterparty is Script {
         Actors memory actors = _loadActors();
 
         _vault = PredictionMarketVault(vm.envAddress("VAULT_ADDRESS"));
-        _market = PredictionMarketEscrow(
-            vm.envAddress("PREDICTION_MARKET_ADDRESS")
-        );
+        _market =
+            PredictionMarketEscrow(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         _collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
 
-        // Configurable wager amounts (default 0.002 WUSDe for testnet)
-        Wagers memory wagers;
-        wagers.predictorWager =
-            vm.envOr("PREDICTOR_WAGER", uint256(0.002 ether));
-        wagers.counterpartyWager =
-            vm.envOr("COUNTERPARTY_WAGER", uint256(0.0006 ether));
+        // Configurable collateral amounts (default 0.002 WUSDe for testnet)
+        Collaterals memory collaterals;
+        collaterals.predictorCollateral =
+            vm.envOr("PREDICTOR_COLLATERAL", uint256(0.002 ether));
+        collaterals.counterpartyCollateral =
+            vm.envOr("COUNTERPARTY_COLLATERAL", uint256(0.0006 ether));
 
-        _logSetup(actors, wagers);
+        _logSetup(actors, collaterals);
 
         // Check initial state
         uint256 vaultBalanceBefore = _collateral.balanceOf(address(_vault));
 
         // Step 1: Manager approves funds
-        _approveFunds(actors, wagers);
+        _approveFunds(actors, collaterals);
 
         // Step 2-4: Build request, fund predictor, and mint
         MintResult memory result =
-            _executeMint(actors, wagers, vaultBalanceBefore);
+            _executeMint(actors, collaterals, vaultBalanceBefore);
 
         // Log output
         _logResults(result);
     }
 
-    function _logSetup(Actors memory actors, Wagers memory wagers)
+    function _logSetup(Actors memory actors, Collaterals memory collaterals)
         internal
         view
     {
@@ -90,8 +87,10 @@ contract TestVaultAsCounterparty is Script {
         console.log("Vault Manager:", _vault.manager());
         console.log("Market:", address(_market));
         console.log("Predictor:", actors.predictor);
-        console.log("Predictor Wager:", wagers.predictorWager);
-        console.log("Counterparty Wager:", wagers.counterpartyWager);
+        console.log("Predictor Collateral:", collaterals.predictorCollateral);
+        console.log(
+            "Counterparty Collateral:", collaterals.counterpartyCollateral
+        );
         console.log("");
         console.log("=== Initial State ===");
         console.log("Vault Collateral:", _collateral.balanceOf(address(_vault)));
@@ -100,22 +99,26 @@ contract TestVaultAsCounterparty is Script {
         );
     }
 
-    function _approveFunds(Actors memory actors, Wagers memory wagers)
+    function _approveFunds(Actors memory actors, Collaterals memory collaterals)
         internal
     {
         console.log("");
         console.log("=== Step 1: Manager approves funds ===");
 
         vm.startBroadcast(actors.counterpartyPk);
-        _vault.approveFundsUsage(address(_market), wagers.counterpartyWager);
+        _vault.approveFundsUsage(
+            address(_market), collaterals.counterpartyCollateral
+        );
         vm.stopBroadcast();
 
-        console.log("Approved", wagers.counterpartyWager, "for market");
+        console.log(
+            "Approved", collaterals.counterpartyCollateral, "for market"
+        );
     }
 
     function _executeMint(
         Actors memory actors,
-        Wagers memory wagers,
+        Collaterals memory collaterals,
         uint256 vaultBalanceBefore
     ) internal returns (MintResult memory result) {
         address resolverAddr = vm.envAddress("RESOLVER_ADDRESS");
@@ -139,46 +142,53 @@ contract TestVaultAsCounterparty is Script {
         result.pickConfigId = keccak256(abi.encode(picks));
 
         IV2Types.MintRequest memory request =
-            _buildRequest(_market, _vault, picks, actors, wagers);
+            _buildRequest(_market, _vault, picks, actors, collaterals);
 
         console.log("Condition ID:", vm.toString(result.conditionId));
 
         // Step 3: Fund predictor and approve
-        _fundAndApprove(actors, wagers);
+        _fundAndApprove(actors, collaterals);
 
         // Step 4: Mint prediction
         console.log("");
         console.log("=== Step 4: Mint prediction ===");
 
         vm.startBroadcast(actors.deployerPk);
-        (
-            result.predictionId, result.predictorToken, result.counterpartyToken
-        ) = _market.mint(request);
+        (result.predictionId, result.predictorToken, result.counterpartyToken) =
+            _market.mint(request);
         vm.stopBroadcast();
 
         console.log("Prediction minted!");
 
         // Verify
-        _verifyMint(result, actors, wagers, vaultBalanceBefore);
+        _verifyMint(result, actors, collaterals, vaultBalanceBefore);
     }
 
-    function _fundAndApprove(Actors memory actors, Wagers memory wagers)
-        internal
-    {
+    function _fundAndApprove(
+        Actors memory actors,
+        Collaterals memory collaterals
+    ) internal {
         console.log("");
         console.log("=== Step 3: Fund and approve ===");
 
         // Deployer funds predictor if needed
-        if (_collateral.balanceOf(actors.predictor) < wagers.predictorWager) {
+        if (
+            _collateral.balanceOf(actors.predictor)
+                < collaterals.predictorCollateral
+        ) {
             vm.startBroadcast(actors.deployerPk);
-            _collateral.transfer(actors.predictor, wagers.predictorWager);
+            _collateral.transfer(
+                actors.predictor, collaterals.predictorCollateral
+            );
             vm.stopBroadcast();
-            console.log("Funded predictor with", wagers.predictorWager);
+            console.log(
+                "Funded predictor with", collaterals.predictorCollateral
+            );
         }
 
         // Predictor approves market
         vm.startBroadcast(actors.predictorPk);
-        _collateral.approve(address(_market), wagers.predictorWager);
+        _collateral.approve(address(_market), collaterals.predictorCollateral);
         vm.stopBroadcast();
 
         console.log("Predictor approved market");
@@ -187,7 +197,7 @@ contract TestVaultAsCounterparty is Script {
     function _verifyMint(
         MintResult memory result,
         Actors memory actors,
-        Wagers memory wagers,
+        Collaterals memory collaterals,
         uint256 vaultBalanceBefore
     ) internal view {
         console.log("");
@@ -206,16 +216,17 @@ contract TestVaultAsCounterparty is Script {
         );
 
         require(
-            vaultBalanceAfter == vaultBalanceBefore - wagers.counterpartyWager,
+            vaultBalanceAfter
+                == vaultBalanceBefore - collaterals.counterpartyCollateral,
             "Vault collateral not deducted"
         );
         // Use >= to allow for accumulated balances from previous test runs
         require(
-            predictorTokenBalance >= wagers.predictorWager,
+            predictorTokenBalance >= collaterals.predictorCollateral,
             "Predictor tokens not minted"
         );
         require(
-            vaultCounterpartyTokenBalance >= wagers.counterpartyWager,
+            vaultCounterpartyTokenBalance >= collaterals.counterpartyCollateral,
             "Vault counterparty tokens not minted"
         );
 
@@ -248,15 +259,15 @@ contract TestVaultAsCounterparty is Script {
         PredictionMarketVault vault,
         IV2Types.Pick[] memory picks,
         Actors memory actors,
-        Wagers memory wagers
+        Collaterals memory collaterals
     ) internal view returns (IV2Types.MintRequest memory request) {
         // Compute prediction hash
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                wagers.predictorWager,
-                wagers.counterpartyWager,
+                collaterals.predictorCollateral,
+                collaterals.counterpartyCollateral,
                 actors.predictor,
                 address(vault)
             )
@@ -277,18 +288,18 @@ contract TestVaultAsCounterparty is Script {
 
         // Sign for predictor (EOA signature)
         bytes memory predictorSig = _signPredictor(
-            signParams, actors, wagers.predictorWager, predictorNonce
+            signParams, actors, collaterals.predictorCollateral, predictorNonce
         );
 
         // Sign for vault (manager signs via ERC-1271)
         bytes memory vaultSig = _signVaultApproval(
-            signParams, actors, wagers.counterpartyWager, vaultNonce
+            signParams, actors, collaterals.counterpartyCollateral, vaultNonce
         );
 
         request = IV2Types.MintRequest({
             picks: picks,
-            predictorWager: wagers.predictorWager,
-            counterpartyWager: wagers.counterpartyWager,
+            predictorCollateral: collaterals.predictorCollateral,
+            counterpartyCollateral: collaterals.counterpartyCollateral,
             predictor: actors.predictor,
             counterparty: address(vault),
             predictorNonce: predictorNonce,
@@ -299,24 +310,25 @@ contract TestVaultAsCounterparty is Script {
             counterpartySignature: vaultSig,
             refCode: bytes32(0),
             predictorSessionKeyData: "",
-            counterpartySessionKeyData: ""
+            counterpartySessionKeyData: "",
+            predictorSponsor: address(0),
+            predictorSponsorData: ""
         });
     }
 
     function _signPredictor(
         SignParams memory params,
         Actors memory actors,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.predictor,
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.predictor,
+            collateral,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -325,18 +337,17 @@ contract TestVaultAsCounterparty is Script {
     function _signVaultApproval(
         SignParams memory params,
         Actors memory actors,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
         // Step 1: Get the mint approval hash that the market will pass to vault.isValidSignature
-        bytes32 mintApprovalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                address(params.vault),
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 mintApprovalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            address(params.vault),
+            collateral,
+            nonce,
+            params.deadline
+        );
 
         // Step 2: Get the hash that the manager needs to sign
         // The vault wraps the mint approval hash with the manager address

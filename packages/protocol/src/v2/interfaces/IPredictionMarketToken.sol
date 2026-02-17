@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * @title IPredictionMarketToken
  * @notice Interface for V2 position tokens (predictor or counterparty)
  * @dev Fungible tokens shared across predictions with the same picks.
- *      Supply is dynamic (equals total wagers). Holders can transfer and redeem.
+ *      Supply is dynamic (equals total collateral). Holders can transfer and redeem.
  */
 interface IPredictionMarketToken is IERC20 {
     /// @notice Get the pick configuration ID this token belongs to
@@ -16,7 +16,7 @@ interface IPredictionMarketToken is IERC20 {
     /// @notice Check if this is the predictor token (vs counterparty)
     function isPredictorToken() external view returns (bool);
 
-    /// @notice Mint new tokens (used when new bets are placed)
+    /// @notice Mint new tokens (used when new predictions are created)
     /// @param to The address to mint tokens to
     /// @param amount The amount to mint
     /// @dev Only callable by market contract

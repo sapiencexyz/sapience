@@ -172,7 +172,7 @@ forge script src/scripts/v2/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $S
 | 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
 | 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
 | 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
-| 09 | MintPredictionMarketTokens | Ethereal | Mint tokens (predictor/counterparty wager) |
+| 09 | MintPredictionMarketTokens | Ethereal | Mint tokens (predictor/counterparty collateral) |
 | 10 | TestBridgeToRemote | Ethereal | Predictor bridges tokens to SM Network |
 | 11 | TestBridgeBack | Arbitrum | Predictor bridges tokens back to PM Network |
 | 12a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status & balances |

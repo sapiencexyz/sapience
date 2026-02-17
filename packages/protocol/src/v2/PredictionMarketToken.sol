@@ -8,7 +8,7 @@ import "./interfaces/IPredictionMarketToken.sol";
  * @title PredictionMarketToken
  * @notice ERC20 token representing a position in a prediction (predictor or counterparty)
  * @dev Fungible token shared across predictions with same picks.
- *      Supply is dynamic (equals total wagers). Created by PredictionMarketEscrow.
+ *      Supply is dynamic (equals total collateral). Created by PredictionMarketEscrow.
  */
 contract PredictionMarketToken is ERC20, IPredictionMarketToken {
     /// @inheritdoc IPredictionMarketToken
@@ -38,7 +38,7 @@ contract PredictionMarketToken is ERC20, IPredictionMarketToken {
         pickConfigId = pickConfigId_;
         isPredictorToken = isPredictorToken_;
         market = market_;
-        // No initial mint - tokens are minted dynamically when bets are placed
+        // No initial mint - tokens are minted dynamically when predictions are created
     }
 
     /// @inheritdoc IPredictionMarketToken

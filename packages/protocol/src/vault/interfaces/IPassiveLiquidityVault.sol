@@ -13,45 +13,29 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     struct PendingRequest {
         uint256 shares;
         uint256 assets;
-        uint64 timestamp;
+        uint64  timestamp;
         address user;
-        bool isDeposit;
-        bool processed;
+        bool    isDeposit;
+        bool    processed;
     }
 
     // ============ Events ============
+    
+    event PendingRequestCreated(address indexed user, bool direction, uint256 shares, uint256 assets);
+    event PendingRequestProcessed(address indexed user, bool direction, uint256 shares, uint256 assets);
+    event PendingRequestCancelled(address indexed user, bool direction, uint256 shares, uint256 assets);
 
-    event PendingRequestCreated(
-        address indexed user, bool direction, uint256 shares, uint256 assets
-    );
-    event PendingRequestProcessed(
-        address indexed user, bool direction, uint256 shares, uint256 assets
-    );
-    event PendingRequestCancelled(
-        address indexed user, bool direction, uint256 shares, uint256 assets
-    );
-
-    event FundsApproved(
-        address indexed manager, uint256 assets, address targetProtocol
-    );
-    event ProjectedUtilizationRateUpdated(
-        uint256 currentUtilizationRate, uint256 newProjectedRate
-    );
+    event FundsApproved(address indexed manager, uint256 assets, address targetProtocol);
+    event ProjectedUtilizationRateUpdated(uint256 currentUtilizationRate, uint256 newProjectedRate);
     event MaxUtilizationRateUpdated(uint256 oldRate, uint256 newRate);
-    event EmergencyWithdrawal(
-        address indexed user, uint256 shares, uint256 assets
-    );
-    event ManagerUpdated(
-        address indexed oldManager, address indexed newManager
-    );
-    event ExpirationTimeUpdated(
-        uint256 oldExpirationTime, uint256 newExpirationTime
-    );
+    event EmergencyWithdrawal(address indexed user, uint256 shares, uint256 assets);
+    event ManagerUpdated(address indexed oldManager, address indexed newManager);
+    event ExpirationTimeUpdated(uint256 oldExpirationTime, uint256 newExpirationTime);
     event InteractionDelayUpdated(uint256 oldDelay, uint256 newDelay);
     event EmergencyModeUpdated(bool emergencyMode);
 
     // ============ State Variables ============
-
+    
     function manager() external view returns (address);
     function expirationTime() external view returns (uint256);
     function interactionDelay() external view returns (uint256);
@@ -60,9 +44,9 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function totalDeployed() external view returns (uint256);
     function emergencyMode() external view returns (bool);
     // ============ Request-based Deposit/Withdrawal Functions ============
-
-    function requestDeposit(uint256 assets, uint256 expectedShares) external;
-    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external;
+    
+    function requestDeposit(uint256 assets, uint256 expectedShares) external ;
+    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external ;
 
     function cancelWithdrawal() external;
     function cancelDeposit() external;
@@ -70,10 +54,10 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function emergencyWithdraw(uint256 shares) external;
 
     // ============ Manager Functions ============
-
+    
     function processDeposit(address requestedBy) external;
     function processWithdrawal(address requestedBy) external;
-
+    
     function batchProcessDeposit(address[] calldata requesters) external;
     function batchProcessWithdrawal(address[] calldata requesters) external;
 
@@ -87,7 +71,7 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function cleanInactiveProtocols() external;
 
     // ============ View Functions ============
-
+    
     function getActiveProtocolsCount() external view returns (uint256);
     function getActiveProtocols() external view returns (address[] memory);
     function getActiveProtocol(uint256 index) external view returns (address);
@@ -95,7 +79,7 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function getAvailableShares(address user) external view returns (uint256);
 
     // ============ Admin Functions ============
-
+    
     function setManager(address newManager) external;
     function setMaxUtilizationRate(uint256 newMaxRate) external;
     function setExpirationTime(uint256 newExpirationTime) external;
@@ -104,12 +88,13 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     function pause() external;
     function unpause() external;
 
+
     // ============ Additional Functions Available in Contract ============
     // Note: The following functions are implemented in the contract but not declared in this interface
-
+    
     // IERC1271 Signature Validation Function
     // function isValidSignature(bytes32 messageHash, bytes memory signature) external view returns (bytes4);
-
+    
     // Custom Errors (defined in contract, not in interface)
     // The contract uses custom errors for gas-efficient error handling instead of string-based require statements
 }

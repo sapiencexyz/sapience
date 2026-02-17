@@ -17,4 +17,4 @@ interface IETHManagement {
     function depositETH() external payable;
     function withdrawETH(uint256 amount) external;
     function getETHBalance() external view returns (uint256);
-}
+} 

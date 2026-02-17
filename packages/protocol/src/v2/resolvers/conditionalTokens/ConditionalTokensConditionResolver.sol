@@ -7,12 +7,10 @@ import {
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppReceiver.sol";
 import { OAppCore } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppCore.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {
-    IConditionalTokensConditionResolver
-} from "./interfaces/IConditionalTokensConditionResolver.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IConditionalTokensConditionResolver } from
+    "./interfaces/IConditionalTokensConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { LZTypes } from "../shared/LZTypes.sol";

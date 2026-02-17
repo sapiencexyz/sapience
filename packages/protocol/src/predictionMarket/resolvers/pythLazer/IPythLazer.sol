@@ -6,9 +6,9 @@ pragma solidity ^0.8.19;
 interface IPythLazer {
     function verification_fee() external view returns (uint256);
 
-    function verifyUpdate(bytes calldata update)
-        external
-        payable
-        returns (bytes calldata payload, address signer);
+    function verifyUpdate(
+        bytes calldata update
+    ) external payable returns (bytes calldata payload, address signer);
 }
+
 

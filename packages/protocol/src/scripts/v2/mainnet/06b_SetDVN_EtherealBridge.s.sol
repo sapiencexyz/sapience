@@ -2,18 +2,14 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    ILayerZeroEndpointV2
-} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import {
-    SetConfigParam
-} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import {
-    UlnConfig
-} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
-import {
-    ExecutorConfig
-} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
+import { ILayerZeroEndpointV2 } from
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { SetConfigParam } from
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import { UlnConfig } from
+    "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import { ExecutorConfig } from
+    "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
 
 /// @title Set DVN Configuration for PM Network Bridge (Mainnet)
 /// @notice Configures SendLib, ReceiveLib, DVN, and Executor for the Ethereal mainnet bridge
@@ -50,14 +46,16 @@ contract SetDVN_EtherealBridge is Script {
         vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         // 1. Set send library
-        ILayerZeroEndpointV2(endpoint)
-            .setSendLibrary(bridge, remoteEid, sendLib);
+        ILayerZeroEndpointV2(endpoint).setSendLibrary(
+            bridge, remoteEid, sendLib
+        );
         console.log("Send library set");
 
         // 2. Set receive library
         uint32 gracePeriod = uint32(vm.envOr("GRACE_PERIOD", uint256(0)));
-        ILayerZeroEndpointV2(endpoint)
-            .setReceiveLibrary(bridge, remoteEid, receiveLib, gracePeriod);
+        ILayerZeroEndpointV2(endpoint).setReceiveLibrary(
+            bridge, remoteEid, receiveLib, gracePeriod
+        );
         console.log("Receive library set");
 
         // 3. Set receive ULN config (DVN for incoming messages)

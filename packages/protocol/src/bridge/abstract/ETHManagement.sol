@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import { FeeManagement } from "./FeeManagement.sol";
-import { IETHManagement } from "../interfaces/IETHManagement.sol";
+import {FeeManagement} from "./FeeManagement.sol";
+import {IETHManagement} from "../interfaces/IETHManagement.sol";
 
 /**
  * @title ETHManagement
@@ -19,7 +19,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
      * @notice Constructor for ETHManagement
      * @param _owner The owner of the contract
      */
-    constructor(address _owner) FeeManagement(_owner) { }
+    constructor(address _owner) FeeManagement(_owner) {}
 
     /**
      * @notice Deposit ETH to the contract for fee payments
@@ -38,7 +38,7 @@ abstract contract ETHManagement is FeeManagement, IETHManagement {
             revert InsufficientETHBalance(amount, address(this).balance);
         }
 
-        (bool success,) = payable(owner()).call{ value: amount }("");
+        (bool success, ) = payable(owner()).call{value: amount}("");
         if (!success) {
             revert ETHTransferFailed(owner(), amount);
         }

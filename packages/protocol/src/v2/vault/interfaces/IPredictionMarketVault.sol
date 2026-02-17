@@ -60,7 +60,8 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
     // ============ Request-based Deposit/Withdrawal Functions ============
 
     function requestDeposit(uint256 assets, uint256 expectedShares) external;
-    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external;
+    function requestWithdrawal(uint256 shares, uint256 expectedAssets)
+        external;
 
     function cancelWithdrawal() external;
     function cancelDeposit() external;
@@ -86,10 +87,7 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
 
     function getLockedShares(address user) external view returns (uint256);
     function getAvailableShares(address user) external view returns (uint256);
-    function getPendingWithdrawals()
-        external
-        view
-        returns (uint256 shares, uint256 assets);
+    function getPendingWithdrawals() external view returns (uint256 shares);
 
     // ============ Admin Functions ============
 

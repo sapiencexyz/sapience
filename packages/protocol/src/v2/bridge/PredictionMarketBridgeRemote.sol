@@ -3,12 +3,10 @@ pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    OptionsBuilder
-} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { SafeERC20 } from
+    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OptionsBuilder } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridgeRemote.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
@@ -184,9 +182,8 @@ contract PredictionMarketBridgeRemote is
         PendingBridge storage pending = _pendingBridges[bridgeId];
         address sourceToken = remoteToSource[pending.token];
         // Build sample message for quote
-        bytes memory payload = abi.encode(
-            bridgeId, sourceToken, pending.recipient, pending.amount
-        );
+        bytes memory payload =
+            abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
         // Include ACK fee with buffer in the quote
@@ -206,9 +203,8 @@ contract PredictionMarketBridgeRemote is
         returns (bytes memory message, uint128 gasLimit)
     {
         address sourceToken = remoteToSource[pending.token];
-        bytes memory payload = abi.encode(
-            bridgeId, sourceToken, pending.recipient, pending.amount
-        );
+        bytes memory payload =
+            abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;
     }
@@ -268,7 +264,9 @@ contract PredictionMarketBridgeRemote is
 
         // Track minted tokens (for audit trail)
         _mintedBridges[bridgeId] = MintedBridge({
-            token: remoteToken, recipient: recipient, amount: amount
+            token: remoteToken,
+            recipient: recipient,
+            amount: amount
         });
 
         emit BridgeProcessed(bridgeId, false);
@@ -290,8 +288,9 @@ contract PredictionMarketBridgeRemote is
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IPredictionMarketTokenBridged(pending.token)
-                .burn(address(this), pending.amount);
+            IPredictionMarketTokenBridged(pending.token).burn(
+                address(this), pending.amount
+            );
 
             emit BridgeCompleted(bridgeId);
         }

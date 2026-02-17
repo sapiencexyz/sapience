@@ -4,7 +4,7 @@ Sapience is a pnpm monorepo (Node ≥ 20.14, pnpm 9.x). Run `pnpm install` to se
 
 **Packages:** `api` (TypeGraphQL + Prisma), `app` (Next.js 14), `sdk` (shared TS library), `ui` (component library), `relayer` (WebSocket service), `protocol` (Solidity/Foundry), `polymarket-keeper` (cron scripts), `docs` (Vocs).
 
-For deeper context on a specific package, check for a package-level `AGENTS.md` (e.g. `packages/api/AGENTS.md`).
+For deeper context on a specific package, check for a package-level `AGENTS.md` and `CLAUDE.md` (e.g. `packages/api/AGENTS.md`).
 
 ## Quick local check
 ```bash
