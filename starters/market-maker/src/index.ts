@@ -5,7 +5,7 @@ import { loadSdk } from './sdk.js';
 import { parseEther, decodeAbiParameters, createPublicClient, createWalletClient, erc20Abi, http, getAddress, defineChain, type Address, type Hex, type Chain } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries';
 import { privateKeyToAccount } from 'viem/accounts';
-import { arbitrum, base, optimism, mainnet, polygon } from 'viem/chains';
+import { arbitrum } from 'viem/chains';
 
 // Minimal ANSI color helpers for readable logs
 const ANSI = {
@@ -71,10 +71,6 @@ const CHAIN_ID = Number(process.env.CHAIN_ID || String(CHAIN_ID_ETHEREAL));
 const chainsById: Record<number, Chain> = {
   [CHAIN_ID_ETHEREAL]: etherealChain,
   [arbitrum.id]: arbitrum,
-  [base.id]: base,
-  [optimism.id]: optimism,
-  [mainnet.id]: mainnet,
-  [polygon.id]: polygon,
 };
 const CHAIN_NAME: string = chainsById[CHAIN_ID]?.name || String(CHAIN_ID);
 const DEFAULT_RPC = chainsById[CHAIN_ID]?.rpcUrls?.default?.http?.[0] || chainsById[CHAIN_ID]?.rpcUrls?.public?.http?.[0];

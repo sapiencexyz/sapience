@@ -11,6 +11,7 @@
     "preview": "vocs preview"
   },
   "dependencies": {
+    "@vercel/analytics": "1.4.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "vocs": "1.4.1"

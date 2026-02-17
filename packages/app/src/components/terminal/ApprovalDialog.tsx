@@ -21,14 +21,12 @@ import {
   erc20Abi,
   parseAbi,
 } from 'viem';
-import {
-  predictionMarket,
-  predictionMarketEscrow,
-} from '@sapience/sdk/contracts';
-import { predictionMarketAbi, predictionMarketEscrowAbi } from '@sapience/sdk';
+import { predictionMarket } from '@sapience/sdk/contracts';
+import { predictionMarketAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  ETHEREAL_WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
@@ -48,12 +46,7 @@ import { useApprovalDialog } from './ApprovalDialogContext';
 
 const GAS_RESERVE = 0.5;
 
-// wUSDe addresses per chain
-const WUSDE_ADDRESSES: Record<number, `0x${string}`> = {
-  [CHAIN_ID_ETHEREAL]: '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D',
-  [CHAIN_ID_ETHEREAL_TESTNET]: '0xb7AE43711D85C23Dc862C85B9C95A64DC6351F90',
-};
-
+// wUSDe configuration for Ethereal chain
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
   'function withdraw(uint256 amount)',
@@ -64,8 +57,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId: number = CHAIN_ID_ETHEREAL_TESTNET;
+  const chainId = CHAIN_ID_ETHEREAL;
   const { address } = useAccount();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();
@@ -73,25 +65,18 @@ const ApprovalDialog: React.FC = () => {
   const isEtherealChain =
     chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 
-  const WUSDE_ADDRESS = WUSDE_ADDRESSES[chainId];
-
-  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
-  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const SPENDER_ADDRESS = (
-    isV2Chain
-      ? predictionMarketEscrow[chainId]?.address
-      : predictionMarket[chainId]?.address
-  ) as `0x${string}` | undefined;
+  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
   // Read collateral token address from PredictionMarket contract config
-  // V2 uses collateralToken() directly, V1 uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: SPENDER_ADDRESS
       ? [
           {
             address: SPENDER_ADDRESS,
-            abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
-            functionName: isV2Chain ? 'collateralToken' : 'getConfig',
+            abi: predictionMarketAbi,
+            functionName: 'getConfig',
             chainId: chainId,
           },
         ]
@@ -102,19 +87,15 @@ const ApprovalDialog: React.FC = () => {
   const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
-      // V2 returns address directly, V1 returns struct
-      if (isV2Chain) {
-        return item.result as `0x${string}`;
-      }
       const cfg = item.result as { collateralToken: `0x${string}` };
       return cfg?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data, isV2Chain]);
+  }, [predictionMarketConfigRead.data]);
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {
-    return isEtherealChain ? WUSDE_ADDRESS : COLLATERAL_ADDRESS;
+    return isEtherealChain ? ETHEREAL_WUSDE_ADDRESS : COLLATERAL_ADDRESS;
   }, [isEtherealChain, COLLATERAL_ADDRESS]);
 
   const { data: decimals } = useReadContract({
@@ -135,7 +116,7 @@ const ApprovalDialog: React.FC = () => {
   // Read wUSDe balance (for Ethereal chain)
   const { data: wusdeBalance, refetch: refetchWusde } = useReadContract({
     abi: erc20Abi,
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId,
@@ -348,7 +329,7 @@ const ApprovalDialog: React.FC = () => {
           chainId,
           calls: [
             {
-              to: WUSDE_ADDRESS,
+              to: ETHEREAL_WUSDE_ADDRESS,
               data: wrapCalldata,
               value: wrapAmount,
             },

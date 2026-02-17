@@ -200,7 +200,7 @@ ws.send(
       ],
       resolver: '0x...',
       takerNonce: 1,
-      chainId: 42161,
+      chainId: 5064014,
     },
   })
 );
@@ -219,7 +219,7 @@ const payload = {
   predictedOutcomes: ['0x...', '0x...'],
   resolver: '0x...',
   takerNonce: 1,
-  chainId: 42161,
+  chainId: 5064014,
 };
 
 // Generate SIWE signature
@@ -305,6 +305,5 @@ pnpm --filter @sapience/relayer run start
 - `PORT`: Server port (default: 3002)
 - `ENABLE_AUCTION_WS`: Enable auction WebSocket (default: true)
 - `NODE_ENV`: Environment (development/production/test)
-- `INFURA_API_KEY`: Optional Infura API key for blockchain RPC
-- `RPC_URL`: Optional custom RPC URL for specific chains
+- `CHAIN_5064014_RPC_URL`: Optional custom RPC URL for EtherealChain
 

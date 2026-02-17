@@ -1,24 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-
-interface ForecasterRankResult {
-  accuracyScore: number | null;
-  rank: number | null;
-  totalForecasters: number;
-}
-
-const GET_ACCURACY_RANK = /* GraphQL */ `
-  query AccuracyRankByAddress($attester: String!) {
-    accuracyRankByAddress(attester: $attester) {
-      attester
-      accuracyScore
-      rank
-      totalForecasters
-    }
-  }
-`;
+import {
+  fetchForecasterRank,
+  type ForecasterRankResult,
+} from '@sapience/sdk/queries';
 
 export const useForecasterRank = (attester?: string) => {
   const enabled = Boolean(attester && attester.trim() !== '');
@@ -27,22 +13,7 @@ export const useForecasterRank = (attester?: string) => {
   return useQuery<ForecasterRankResult>({
     queryKey: ['forecasterRank', a],
     enabled,
-    queryFn: async () => {
-      const data = await graphqlRequest<{
-        accuracyRankByAddress: {
-          accuracyScore: number;
-          rank: number | null;
-          totalForecasters: number;
-        };
-      }>(GET_ACCURACY_RANK, { attester: a });
-      const r = data?.accuracyRankByAddress;
-      if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
-      return {
-        accuracyScore: r.accuracyScore ?? 0,
-        rank: r.rank,
-        totalForecasters: r.totalForecasters ?? 0,
-      };
-    },
+    queryFn: () => fetchForecasterRank(a),
     staleTime: 60_000,
     refetchInterval: 300_000,
   });

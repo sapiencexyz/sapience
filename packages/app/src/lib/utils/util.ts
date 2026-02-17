@@ -207,8 +207,6 @@ export const formatFiveSigFigs = (rawValue: number): string => {
 // Helper function to get chain short name from chainId
 export const getChainShortName = (id: number): string => {
   switch (id) {
-    case 432:
-      return 'converge';
     case 42161:
       return 'arb1';
     default: {

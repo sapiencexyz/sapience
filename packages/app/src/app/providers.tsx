@@ -3,14 +3,14 @@
 import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { sepolia, base, cannon, type Chain, arbitrum } from 'viem/chains';
+import { cannon, type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
 import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
-import { etherealChain, etherealTestnetChain } from '@sapience/sdk/constants';
+import { etherealChain } from '@sapience/sdk/constants';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
@@ -40,31 +40,19 @@ const cannonAtLocalhost = {
 // Build chains and transports
 const buildChainsAndTransports = () => {
   const transports: Record<number, HttpTransport> = {
-    [sepolia.id]: http(
-      process.env.NEXT_PUBLIC_INFURA_API_KEY
-        ? `https://sepolia.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-        : 'https://ethereum-sepolia-rpc.publicnode.com'
-    ),
-    [base.id]: http(
-      process.env.NEXT_PUBLIC_INFURA_API_KEY
-        ? `https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
-        : 'https://base-rpc.publicnode.com'
-    ),
     [arbitrum.id]: http(
       process.env.NEXT_PUBLIC_INFURA_API_KEY
         ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
         : 'https://arbitrum-rpc.publicnode.com'
     ),
     [etherealChain.id]: http('https://rpc.ethereal.trade'),
-    [etherealTestnetChain.id]: http('https://rpc.etherealtest.net'),
   };
 
-  const chains: Chain[] = [arbitrum, base, etherealChain, etherealTestnetChain];
+  const chains: Chain[] = [arbitrum, etherealChain];
 
   if (process.env.NODE_ENV !== 'production') {
     transports[cannonAtLocalhost.id] = http('http://localhost:8545');
     chains.push(cannonAtLocalhost);
-    chains.push(sepolia);
   }
 
   return { chains, transports };

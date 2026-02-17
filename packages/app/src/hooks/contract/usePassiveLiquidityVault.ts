@@ -1,16 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
+import { erc20Abi } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import {
-  erc20Abi,
-  formatUnits,
-  parseUnits,
-  encodeFunctionData,
-  parseAbi,
-} from 'viem';
+import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import type { Abi } from 'abitype';
-import { liquidityVaultAbi } from '@sapience/sdk';
+import {
+  liquidityVaultAbi,
+  abiHasFunction,
+  formatVaultAssetAmount,
+  formatVaultSharesAmount,
+  formatUtilizationRate,
+  formatInteractionDelay,
+  buildDepositCalls,
+  buildWithdrawalCall,
+  parsePendingRequest,
+  computeInteractionDelayRemaining,
+  buildVaultQuoteMessage,
+} from '@sapience/sdk';
 import { useReadContracts, useBalance, useReadContract } from 'wagmi';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { verifyMessage } from 'viem';
@@ -21,28 +27,11 @@ import { useVaultShareQuoteWs } from '~/hooks/data/useVaultShareQuoteWs';
 // Default to address can be overridden by hook config
 const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 
-// wUSDe contract address on Ethereal
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
-
 // Use ABI from SDK
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
-
-// ABI helper: check if contract implements a function with optional arity
-const hasFunction = (name: string, inputsLength?: number) => {
-  try {
-    const abiItems = liquidityVaultAbi as unknown as Array<any>;
-    return abiItems.some(
-      (f: any) =>
-        f?.type === 'function' &&
-        f?.name === name &&
-        (inputsLength === undefined ||
-          (Array.isArray(f?.inputs) && f.inputs.length === inputsLength))
-    );
-  } catch {
-    return false;
-  }
-};
+// ABI helper: uses SDK's abiHasFunction
+const hasFunction = (name: string, inputsLength?: number) =>
+  abiHasFunction(liquidityVaultAbi as unknown as readonly unknown[], name, inputsLength);
 
 interface VaultData {
   availableAssets: bigint;
@@ -273,7 +262,7 @@ export function usePassiveLiquidityVault(
   // wUSDe balance (for combined balance display)
   const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
     abi: erc20Abi,
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     functionName: 'balanceOf',
     args: currentAddress ? [currentAddress] : undefined,
     chainId: TARGET_CHAIN_ID,
@@ -287,7 +276,7 @@ export function usePassiveLiquidityVault(
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
-      address: WUSDE_ADDRESS,
+      address: ETHEREAL_WUSDE_ADDRESS,
       functionName: 'allowance',
       args:
         currentAddress && VAULT_ADDRESS
@@ -415,17 +404,10 @@ export function usePassiveLiquidityVault(
   const lastInteractionAt: bigint =
     (lastInteractionData?.[0]?.result as bigint) || 0n;
 
-  const interactionDelayRemainingSec: number = useMemo(() => {
-    try {
-      const nowSec = Math.floor(Date.now() / 1000);
-      const target = lastInteractionAt + interactionDelay;
-      const remaining =
-        target > BigInt(nowSec) ? Number(target - BigInt(nowSec)) : 0;
-      return remaining > 0 ? remaining : 0;
-    } catch {
-      return 0;
-    }
-  }, [lastInteractionAt, interactionDelay]);
+  const interactionDelayRemainingSec: number = useMemo(
+    () => computeInteractionDelayRemaining(lastInteractionAt, interactionDelay),
+    [lastInteractionAt, interactionDelay]
+  );
 
   // Only consider cooldown active if address has stabilized and queries have loaded
   const isInteractionDelayActive =
@@ -522,45 +504,10 @@ export function usePassiveLiquidityVault(
     };
   }, [userQueueDetails, userDepositIdx, userWithdrawalIdx]);
 
-  const pendingRequest: PendingRequestDetails | null = useMemo(() => {
-    try {
-      const raw = pendingMapping?.[0]?.result as any;
-      if (!raw) return null;
-      // Support both named tuple object and array tuple
-      if (Array.isArray(raw)) {
-        const [shares, assets, timestamp, user, isDeposit, processed] = raw as [
-          bigint,
-          bigint,
-          bigint,
-          Address,
-          boolean,
-          boolean,
-        ];
-        if (
-          !user ||
-          (user as string).toLowerCase() === ZERO_ADDRESS.toLowerCase()
-        )
-          return null;
-        return { user, isDeposit, shares, assets, timestamp, processed };
-      }
-      const candidate = {
-        user: raw.user as Address,
-        isDeposit: Boolean(raw.isDeposit),
-        shares: BigInt(raw.shares ?? 0n),
-        assets: BigInt(raw.assets ?? 0n),
-        timestamp: BigInt(raw.timestamp ?? 0n),
-        processed: Boolean(raw.processed),
-      } as PendingRequestDetails;
-      if (
-        !candidate.user ||
-        (candidate.user as string).toLowerCase() === ZERO_ADDRESS.toLowerCase()
-      )
-        return null;
-      return candidate;
-    } catch {
-      return null;
-    }
-  }, [pendingMapping]);
+  const pendingRequest: PendingRequestDetails | null = useMemo(
+    () => parsePendingRequest(pendingMapping?.[0]?.result) as PendingRequestDetails | null,
+    [pendingMapping]
+  );
 
   const wsQuote = useVaultShareQuoteWs({
     chainId: TARGET_CHAIN_ID,
@@ -603,13 +550,7 @@ export function usePassiveLiquidityVault(
           }
           return;
         }
-        const canonical = [
-          'Sapience Vault Share Quote',
-          `Vault: ${raw.vaultAddress.toLowerCase()}`,
-          `ChainId: ${raw.chainId}`,
-          `CollateralPerShare: ${String(raw.vaultCollateralPerShare)}`,
-          `Timestamp: ${raw.timestamp}`,
-        ].join('\n');
+        const canonical = buildVaultQuoteMessage(raw);
         const ok = await verifyMessage({
           address: raw.signedBy.toLowerCase() as `0x${string}`,
           message: canonical,
@@ -652,105 +593,21 @@ export function usePassiveLiquidityVault(
     async (amount: string, chainId: number) => {
       if (!parsedVaultData?.asset || !amount) return;
 
-      const amountWei = parseUnits(amount, assetDecimals);
-
-      // Compute minShares using the provided decimal quote (no slippage)
-      const ppsScaled = parseUnits(
-        pricePerShareDecimal && pricePerShareDecimal !== '0'
-          ? pricePerShareDecimal
-          : '1',
-        assetDecimals
+      const calls = buildDepositCalls(
+        {
+          amount,
+          assetAddress: parsedVaultData.asset,
+          vaultAddress: VAULT_ADDRESS,
+          vaultAbi: PASSIVE_VAULT_ABI,
+          pricePerShare: pricePerShareDecimal,
+          wrappedBalance: wrappedUsdeBalance,
+          currentAllowance,
+          decimals: assetDecimals,
+        },
+        hasFunctionCb
       );
-      const estSharesWei =
-        ppsScaled === 0n
-          ? 0n
-          : (amountWei * 10n ** BigInt(assetDecimals)) / ppsScaled;
-      const minSharesWei = estSharesWei;
 
-      // Prepare calldata for requestDeposit (with or without min)
-      const supportsRequestDepositWithMin =
-        hasFunctionCb('requestDeposit', 2) ||
-        hasFunctionCb('requestDepositWithMin', 2);
-      const requestDepositAbi: Abi = supportsRequestDepositWithMin
-        ? ([
-            {
-              type: 'function',
-              name: hasFunctionCb('requestDepositWithMin', 2)
-                ? 'requestDepositWithMin'
-                : 'requestDeposit',
-              stateMutability: 'nonpayable',
-              inputs: [
-                { name: 'amount', type: 'uint256' },
-                { name: 'minShares', type: 'uint256' },
-              ],
-              outputs: [{ name: 'queuePosition', type: 'uint256' }],
-            },
-          ] as unknown as Abi)
-        : PASSIVE_VAULT_ABI;
-
-      const requestFunctionName = supportsRequestDepositWithMin
-        ? hasFunctionCb('requestDepositWithMin', 2)
-          ? 'requestDepositWithMin'
-          : 'requestDeposit'
-        : 'requestDeposit';
-
-      const requestDepositCalldata = encodeFunctionData({
-        abi:
-          requestFunctionName === 'requestDeposit' &&
-          !supportsRequestDepositWithMin
-            ? PASSIVE_VAULT_ABI
-            : requestDepositAbi,
-        functionName: requestFunctionName as any,
-        args: supportsRequestDepositWithMin
-          ? [amountWei, minSharesWei]
-          : [amountWei],
-      });
-
-      // Smart wrapping: only wrap the delta if existing wUSDe is insufficient
-      const existingWusde = wrappedUsdeBalance;
-      const amountToWrap =
-        amountWei > existingWusde ? amountWei - existingWusde : 0n;
-
-      const calls: { to: Address; data: `0x${string}`; value: bigint }[] = [];
-
-      // Only add wrap call if we need to wrap some native USDe
-      if (amountToWrap > 0n) {
-        const wrapCalldata = encodeFunctionData({
-          abi: parseAbi(['function deposit() payable']),
-          functionName: 'deposit',
-        });
-        calls.push({
-          to: parsedVaultData.asset, // wUSDe contract address
-          data: wrapCalldata,
-          value: amountToWrap, // Only wrap what's needed
-        });
-      }
-
-      // Only add approve call if current allowance is insufficient
-      if (currentAllowance < amountWei) {
-        const approveCalldata = encodeFunctionData({
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [VAULT_ADDRESS, amountWei],
-        });
-        calls.push({
-          to: parsedVaultData.asset, // wUSDe contract address
-          data: approveCalldata,
-          value: 0n,
-        });
-      }
-
-      // Add deposit call
-      calls.push({
-        to: VAULT_ADDRESS,
-        data: requestDepositCalldata,
-        value: 0n,
-      });
-
-      await sendCalls({
-        chainId,
-        calls,
-      });
+      await sendCalls({ chainId, calls });
     },
     [
       parsedVaultData?.asset,
@@ -760,6 +617,7 @@ export function usePassiveLiquidityVault(
       VAULT_ADDRESS,
       wrappedUsdeBalance,
       currentAllowance,
+      assetDecimals,
     ]
   );
 
@@ -768,56 +626,23 @@ export function usePassiveLiquidityVault(
     async (shares: string, chainId: number) => {
       if (!shares) return;
 
-      const sharesWei = parseUnits(shares, assetDecimals);
-
-      // Compute minAssets using the provided decimal quote (no slippage)
-      const ppsScaled = parseUnits(
-        pricePerShareDecimal && pricePerShareDecimal !== '0'
-          ? pricePerShareDecimal
-          : '1',
-        assetDecimals
+      const call = buildWithdrawalCall(
+        {
+          shares,
+          vaultAddress: VAULT_ADDRESS,
+          vaultAbi: PASSIVE_VAULT_ABI,
+          pricePerShare: pricePerShareDecimal,
+          decimals: assetDecimals,
+        },
+        hasFunctionCb
       );
-      const estAssetsWei =
-        (sharesWei * ppsScaled) / 10n ** BigInt(assetDecimals);
-      const minAssetsWei = estAssetsWei;
-
-      const supportsWithdrawalWithMin =
-        hasFunctionCb('requestWithdrawal', 2) ||
-        hasFunctionCb('requestWithdrawalWithMin', 2);
-      const withdrawalAbi: Abi = supportsWithdrawalWithMin
-        ? ([
-            {
-              type: 'function',
-              name: hasFunctionCb('requestWithdrawalWithMin', 2)
-                ? 'requestWithdrawalWithMin'
-                : 'requestWithdrawal',
-              stateMutability: 'nonpayable',
-              inputs: [
-                { name: 'shares', type: 'uint256' },
-                { name: 'minAssets', type: 'uint256' },
-              ],
-              outputs: [{ name: 'queuePosition', type: 'uint256' }],
-            },
-          ] as unknown as Abi)
-        : PASSIVE_VAULT_ABI;
-
-      const functionName = supportsWithdrawalWithMin
-        ? hasFunctionCb('requestWithdrawalWithMin', 2)
-          ? 'requestWithdrawalWithMin'
-          : 'requestWithdrawal'
-        : 'requestWithdrawal';
 
       await writeVaultContract({
         chainId,
-        address: VAULT_ADDRESS,
-        abi:
-          functionName === 'requestWithdrawal' && !supportsWithdrawalWithMin
-            ? PASSIVE_VAULT_ABI
-            : withdrawalAbi,
-        functionName: functionName as any,
-        args: supportsWithdrawalWithMin
-          ? [sharesWei, minAssetsWei]
-          : [sharesWei],
+        address: call.address,
+        abi: call.abi,
+        functionName: call.functionName as any,
+        args: call.args as any,
       });
     },
     [
@@ -916,31 +741,21 @@ export function usePassiveLiquidityVault(
     [VAULT_ADDRESS, hasFunctionCb, writeVaultContract, toast]
   );
 
-  // Format functions
+  // Format functions — thin wrappers around SDK utilities
   const formatAssetAmount = useCallback(
-    (amount: bigint) => {
-      return formatUnits(amount, assetDecimals);
-    },
+    (amount: bigint) => formatVaultAssetAmount(amount, assetDecimals),
     [assetDecimals]
   );
 
   const formatSharesAmount = useCallback(
-    (amount: bigint) => {
-      return formatUnits(amount, assetDecimals);
-    },
+    (amount: bigint) => formatVaultSharesAmount(amount, assetDecimals),
     [assetDecimals]
   );
 
-  const formatUtilizationRate = useCallback((rate: bigint) => {
-    return (Number(rate) / 1e16).toFixed(2);
-  }, []);
-
-  const formatinteractionDelay = useCallback((delay: bigint) => {
-    const days = Number(delay) / (24 * 60 * 60);
-    return days >= 1
-      ? `${days.toFixed(1)} days`
-      : `${Number(delay) / 3600} hours`;
-  }, []);
+  const formatinteractionDelay = useCallback(
+    (delay: bigint) => formatInteractionDelay(delay),
+    []
+  );
 
   return {
     // Data

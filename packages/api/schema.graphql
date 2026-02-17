@@ -290,6 +290,7 @@ type Condition {
   endTime: Int!
   id: String!
   openInterest: String!
+  predictionCount: Int!
   predictions(cursor: PredictionWhereUniqueInput, distinct: [PredictionScalarFieldEnum!], orderBy: [PredictionOrderByWithRelationInput!], skip: Int, take: Int, where: PredictionWhereInput): [Prediction!]!
   public: Boolean!
   question: String!
@@ -415,6 +416,7 @@ input ConditionOrderByWithRelationInput {
   endTime: SortOrder
   id: SortOrder
   openInterest: SortOrder
+  predictionCount: SortOrder
   predictions: PredictionOrderByRelationAggregateInput
   public: SortOrder
   question: SortOrder
@@ -445,6 +447,7 @@ enum ConditionScalarFieldEnum {
   endTime
   id
   openInterest
+  predictionCount
   public
   question
   resolvedToYes
@@ -485,6 +488,7 @@ input ConditionWhereInput {
   endTime: IntFilter
   id: StringFilter
   openInterest: StringFilter
+  predictionCount: IntFilter
   predictions: PredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
@@ -516,6 +520,7 @@ input ConditionWhereUniqueInput {
   endTime: IntFilter
   id: String
   openInterest: StringFilter
+  predictionCount: IntFilter
   predictions: PredictionListRelationFilter
   public: BoolFilter
   question: StringFilter
@@ -1109,6 +1114,7 @@ enum QueryMode {
 type Question {
   condition: Condition
   group: ConditionGroup
+  predictionCount: Int
   questionType: String!
 }
 
