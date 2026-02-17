@@ -58,8 +58,29 @@ const corsOptions: cors.CorsOptions = {
 
 const app = express();
 
-// Middleware
-app.use(helmet());
+// Middleware — configure Helmet CSP to allow Apollo Sandbox's embedded explorer
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        'script-src': [
+          "'self'",
+          "'unsafe-inline'",
+          'https://embeddable-sandbox.cdn.apollographql.com',
+        ],
+        'frame-src': ["'self'", 'https://sandbox.embed.apollographql.com'],
+        'img-src': [
+          "'self'",
+          'data:',
+          'https://apollo-server-landing-page.cdn.apollographql.com',
+        ],
+        'connect-src': ["'self'", 'https://*.apollographql.com'],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(express.json());
 app.use(cors(corsOptions));
 app.use(rateLimiter);
