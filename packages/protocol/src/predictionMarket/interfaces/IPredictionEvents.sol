@@ -10,9 +10,9 @@ import "./IPredictionStructs.sol";
 interface IPredictionEvents {
     // ============ Events ============
 
+    // delta paid by taker to reach the payout amount
+    // total payout to the winner,
     event PredictionMinted( // locked in the pool from maker
-        // delta paid by taker to reach the payout amount
-        // total payout to the winner,
         address indexed maker,
         address indexed taker,
         bytes encodedPredictedOutcomes,
