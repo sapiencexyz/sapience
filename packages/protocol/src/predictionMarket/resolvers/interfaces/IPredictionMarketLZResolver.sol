@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { IPredictionMarketResolver } from
-    "../../interfaces/IPredictionMarketResolver.sol";
+import {IPredictionMarketResolver} from "../../interfaces/IPredictionMarketResolver.sol";
 
 /**
  * @title IPredictionMarketLZResolver

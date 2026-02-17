@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { PredictionMarketLZResolverUmaSide } from
-    "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {PredictionMarketLZResolverUmaSide} from "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 /**
  * @title MockOptimisticOracleV3ForPMResolver
@@ -32,42 +31,31 @@ contract MockOptimisticOracleV3ForPMResolver {
         return lastAssertionId;
     }
 
-    function getAssertionData(bytes32 assertionId)
-        external
-        view
-        returns (AssertionData memory)
-    {
+    function getAssertionData(bytes32 assertionId) external view returns (AssertionData memory) {
         return assertionData[assertionId];
     }
 
-    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully)
-        external
-    {
+    function resolveAssertion(bytes32 assertionId, bool assertedTruthfully) external {
         if (resolver != address(0)) {
-            PredictionMarketLZResolverUmaSide(resolver)
-                .assertionResolvedCallback(assertionId, assertedTruthfully);
+            PredictionMarketLZResolverUmaSide(resolver).assertionResolvedCallback(assertionId, assertedTruthfully);
         }
     }
 
     function disputeAssertion(bytes32 assertionId) external {
         if (resolver != address(0)) {
-            PredictionMarketLZResolverUmaSide(resolver)
-                .assertionDisputedCallback(assertionId);
+            PredictionMarketLZResolverUmaSide(resolver).assertionDisputedCallback(assertionId);
         }
     }
 
     function defaultIdentifier() public pure returns (bytes32) {
-        return bytes32(
-            0x1337000000000000000000000000000000000000000000000000000000000000
-        );
+        return bytes32(0x1337000000000000000000000000000000000000000000000000000000000000);
     }
 
     function assertTruth(
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address,
-        /* escalationManager */
+        address /* escalationManager */,
         uint64 liveness,
         address currency,
         uint256 bond,
@@ -76,13 +64,7 @@ contract MockOptimisticOracleV3ForPMResolver {
     ) public returns (bytes32 assertionId) {
         assertionId = keccak256(
             abi.encodePacked(
-                claim,
-                asserter,
-                callbackRecipient,
-                liveness,
-                currency,
-                bond,
-                block.timestamp
+                claim, asserter, callbackRecipient, liveness, currency, bond, block.timestamp
             )
         );
 
@@ -100,19 +82,11 @@ contract MockOptimisticOracleV3ForPMResolver {
         return assertionId;
     }
 
-    function getAssertion(bytes32 /* assertionId */ )
-        external
-        pure
-        returns (bytes memory)
-    {
+    function getAssertion(bytes32 /* assertionId */ ) external pure returns (bytes memory) {
         return "";
     }
 
-    function syncUmaParams(
-        bytes32,
-        /* identifier */
-        address /* currency */
-    ) external {
+    function syncUmaParams(bytes32 /* identifier */, address /* currency */ ) external {
         // Mock implementation
     }
 
@@ -120,3 +94,4 @@ contract MockOptimisticOracleV3ForPMResolver {
         return 0.1 ether; // Mock minimum bond
     }
 }
+

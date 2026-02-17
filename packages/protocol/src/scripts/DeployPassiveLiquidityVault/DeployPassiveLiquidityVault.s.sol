@@ -2,7 +2,7 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import { PassiveLiquidityVault } from "../../vault/PassiveLiquidityVault.sol";
+import {PassiveLiquidityVault} from "../../vault/PassiveLiquidityVault.sol";
 
 /// @title Deploy PassiveLiquidityVault to Arbitrum One
 /// @notice Deploys the PassiveLiquidityVault contract with specified parameters
@@ -16,10 +16,14 @@ contract DeployPassiveLiquidityVault is Script {
 
         // Deploy the contract
         vm.startBroadcast(vm.envUint("PRIVATE_KEY"));
-
-        PassiveLiquidityVault vault =
-            new PassiveLiquidityVault(asset, manager, name, symbol);
-
+        
+        PassiveLiquidityVault vault = new PassiveLiquidityVault(
+            asset,
+            manager,
+            name,
+            symbol
+        );
+        
         vm.stopBroadcast();
 
         // Log deployment info
@@ -34,3 +38,4 @@ contract DeployPassiveLiquidityVault is Script {
         console.log("===========================================");
     }
 }
+

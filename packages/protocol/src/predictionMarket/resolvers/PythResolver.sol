@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { IPredictionMarketResolver } from
-    "../interfaces/IPredictionMarketResolver.sol";
-import { IPythLazer } from "./pythLazer/IPythLazer.sol";
-import { PythLazerLib } from "./pythLazer/PythLazerLib.sol";
-import { PythLazerLibBytes } from "./pythLazer/PythLazerLibBytes.sol";
-import { PythLazerStructs } from "./pythLazer/PythLazerStructs.sol";
+import {IPredictionMarketResolver} from "../interfaces/IPredictionMarketResolver.sol";
+import {IPythLazer} from "./pythLazer/IPythLazer.sol";
+import {PythLazerLib} from "./pythLazer/PythLazerLib.sol";
+import {PythLazerLibBytes} from "./pythLazer/PythLazerLibBytes.sol";
+import {PythLazerStructs} from "./pythLazer/PythLazerStructs.sol";
 
 /// @title PythResolver
 /// @notice Resolver for binary options settled using Pyth Lazer verified historical updates.
@@ -28,7 +26,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
 
     // ============ Events ============
     event ConfigInitialized(
-        address indexed pythLazer, uint256 maxPredictionMarkets
+        address indexed pythLazer,
+        uint256 maxPredictionMarkets
     );
 
     event MarketSettled(
@@ -59,8 +58,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         bool overWinsOnTie; // default true (price >= strike)
     }
 
-    /// @notice One predicted outcome in a multi-pick prediction.
-    /// @dev `prediction` is the predictor's choice: true = Over, false = Under.
+    /// @notice One predicted outcome in a parlay.
+    /// @dev `prediction` is the maker's bet: true = Over, false = Under.
     struct BinaryOptionOutcome {
         bytes32 priceId;
         uint64 endTime;
@@ -101,8 +100,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
             uint64 publishTimeMicros
         )
     {
-        PythLazerStructs.Update memory u =
-            PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
+        PythLazerStructs.Update memory u = PythLazerLibBytes
+            .parseUpdateFromPayloadBytes(payload);
 
         // Payload header timestamp is microseconds.
         publishTimeMicros = u.timestamp;
@@ -127,22 +126,19 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         maxPredictionMarkets = _config.maxPredictionMarkets;
         pythLazer = _config.pythLazer;
 
-        emit ConfigInitialized(
-            address(_config.pythLazer), _config.maxPredictionMarkets
-        );
+        emit ConfigInitialized(address(_config.pythLazer), _config.maxPredictionMarkets);
     }
 
     // ============ Resolver Interface ============
-    function validatePredictionMarkets(bytes calldata encodedPredictedOutcomes)
-        external
-        view
-        returns (bool isValid, Error error)
-    {
+    function validatePredictionMarkets(
+        bytes calldata encodedPredictedOutcomes
+    ) external view returns (bool isValid, Error error) {
         isValid = true;
         error = Error.NO_ERROR;
 
-        BinaryOptionOutcome[] memory outcomes =
-            decodePredictionOutcomes(encodedPredictedOutcomes);
+        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
 
         if (outcomes.length == 0) revert MustHaveAtLeastOneMarket();
         if (outcomes.length > maxPredictionMarkets) revert TooManyMarkets();
@@ -166,15 +162,14 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         }
     }
 
-    function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
-        external
-        view
-        returns (bool isResolved, Error error, bool predictionSuccess)
-    {
-        BinaryOptionOutcome[] memory outcomes =
-            decodePredictionOutcomes(encodedPredictedOutcomes);
+    function getPredictionResolution(
+        bytes calldata encodedPredictedOutcomes
+    ) external view returns (bool isResolved, Error error, bool parlaySuccess) {
+        BinaryOptionOutcome[] memory outcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
 
-        predictionSuccess = true;
+        parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
         bool hasUnsettledMarkets = false;
@@ -234,9 +229,7 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         nonReentrant
         returns (bytes32 marketId, bool resolvedToOver)
     {
-        if (market.priceId == bytes32(0)) {
-            revert InvalidMarketData();
-        }
+        if (market.priceId == bytes32(0)) revert InvalidMarketData();
         // Ensure priceId cannot alias multiple distinct markets onto the same uint32 feed id.
         // (We encode the uint32 feed id in the low bits of bytes32.)
         uint32 feedId = _asFeedId(market.priceId);
@@ -261,19 +254,20 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         uint64 publishTimeSec;
         uint64 publishTimeMicros;
         {
-            (bytes memory payload,) =
-                pythLazer.verifyUpdate{ value: fee }(updateData[0]);
-            (benchmarkPrice, benchmarkExpo, publishTimeSec, publishTimeMicros) =
-                _benchmarkFromVerifiedPayload(payload, feedId);
+            (bytes memory payload, ) = pythLazer.verifyUpdate{value: fee}(
+                updateData[0]
+            );
+            (benchmarkPrice, benchmarkExpo, publishTimeSec, publishTimeMicros) = _benchmarkFromVerifiedPayload(
+                payload,
+                feedId
+            );
         }
 
         // Enforce exact-second alignment: timestamp must be divisible by 1,000,000 (microseconds per second)
         if (publishTimeMicros % 1_000_000 != 0) {
             revert InvalidMarketData();
         }
-        if (publishTimeSec != expectedPublishTimeSec) {
-            revert InvalidMarketData();
-        }
+        if (publishTimeSec != expectedPublishTimeSec) revert InvalidMarketData();
 
         // Preferred: avoid rounding by requiring exact exponent match.
         if (benchmarkExpo != market.strikeExpo) {
@@ -304,41 +298,38 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
 
         // Refund excess ETH (if any)
         if (msg.value > fee) {
-            (bool ok,) = msg.sender.call{ value: msg.value - fee }("");
+            (bool ok, ) = msg.sender.call{value: msg.value - fee}("");
             if (!ok) revert RefundFailed();
         }
     }
 
     // ============ Encoding / Decoding ============
-    function encodePredictionOutcomes(BinaryOptionOutcome[] calldata outcomes)
-        external
-        pure
-        returns (bytes memory)
-    {
+    function encodePredictionOutcomes(
+        BinaryOptionOutcome[] calldata outcomes
+    ) external pure returns (bytes memory) {
         return abi.encode(outcomes);
     }
 
-    function decodePredictionOutcomes(bytes calldata encodedPredictedOutcomes)
-        public
-        pure
-        returns (BinaryOptionOutcome[] memory)
-    {
+    function decodePredictionOutcomes(
+        bytes calldata encodedPredictedOutcomes
+    ) public pure returns (BinaryOptionOutcome[] memory) {
         return abi.decode(encodedPredictedOutcomes, (BinaryOptionOutcome[]));
     }
 
-    function getMarketId(BinaryOptionMarket memory market)
-        public
-        pure
-        returns (bytes32)
-    {
-        return keccak256(
-            abi.encode(
-                market.priceId,
-                market.endTime,
-                market.strikePrice,
-                market.strikeExpo,
-                market.overWinsOnTie
-            )
-        );
+    function getMarketId(
+        BinaryOptionMarket memory market
+    ) public pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    market.priceId,
+                    market.endTime,
+                    market.strikePrice,
+                    market.strikeExpo,
+                    market.overWinsOnTie
+                )
+            );
     }
 }
+
+

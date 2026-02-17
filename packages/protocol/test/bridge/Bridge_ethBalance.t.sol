@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import { TestHelperOz5 } from
-    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { TestETHManagement } from "./mocks/TestETHManagement.sol";
-import { BridgeTypes } from "../../src/bridge/BridgeTypes.sol";
-import { IETHManagement } from "../../src/bridge/interfaces/IETHManagement.sol";
-import { IFeeManagement } from "../../src/bridge/interfaces/IFeeManagement.sol";
-import { ILayerZeroBridge } from
-    "../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import {TestHelperOz5} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {TestETHManagement} from "./mocks/TestETHManagement.sol";
+import {BridgeTypes} from "../../src/bridge/BridgeTypes.sol";
+import {IETHManagement} from "../../src/bridge/interfaces/IETHManagement.sol";
+import {IFeeManagement} from "../../src/bridge/interfaces/IFeeManagement.sol";
+import {ILayerZeroBridge} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -63,7 +61,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 depositAmount = 10 ether;
 
         vm.prank(user);
-        testContract.depositETH{ value: depositAmount }();
+        testContract.depositETH{value: depositAmount}();
 
         assertEq(
             address(testContract).balance,
@@ -79,7 +77,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         emit IETHManagement.ETHDeposited(user, depositAmount);
 
         vm.prank(user);
-        testContract.depositETH{ value: depositAmount }();
+        testContract.depositETH{value: depositAmount}();
     }
 
     function test_depositETH_anyoneCanDeposit() public {
@@ -87,11 +85,9 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(randomUser, 10 ether);
 
         vm.prank(randomUser);
-        testContract.depositETH{ value: 5 ether }();
+        testContract.depositETH{value: 5 ether}();
 
-        assertEq(
-            address(testContract).balance, 105 ether, "Balance should increase"
-        );
+        assertEq(address(testContract).balance, 105 ether, "Balance should increase");
     }
 
     // ============ ETH Withdrawal Tests ============
@@ -162,11 +158,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(address(revertingContract), 10 ether);
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                IETHManagement.ETHTransferFailed.selector,
-                address(receiver),
-                5 ether
-            )
+            abi.encodeWithSelector(IETHManagement.ETHTransferFailed.selector, address(receiver), 5 ether)
         );
 
         vm.prank(address(receiver));
@@ -182,7 +174,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_getETHBalance_afterDeposit() public {
         vm.prank(user);
-        testContract.depositETH{ value: 20 ether }();
+        testContract.depositETH{value: 20 ether}();
 
         uint256 balance = testContract.getETHBalance();
         assertEq(balance, 120 ether, "Should return updated balance");
@@ -194,7 +186,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 initialBalance = address(testContract).balance;
         uint256 sendAmount = 5 ether;
 
-        (bool success,) = address(testContract).call{ value: sendAmount }("");
+        (bool success, ) = address(testContract).call{value: sendAmount}("");
         assertTrue(success, "Receive should succeed");
 
         assertEq(
@@ -207,7 +199,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     // ============ Fee Management Tests ============
 
     function test_setLzReceiveCost() public {
-        uint128 newCost = 2_000_000;
+        uint128 newCost = 2000000;
         testContract.setLzReceiveCost(newCost);
 
         uint128 retrievedCost = testContract.getLzReceiveCost();
@@ -217,11 +209,11 @@ contract BridgeTestEthBalance is TestHelperOz5 {
     function test_setLzReceiveCost_onlyOwner() public {
         vm.prank(user);
         vm.expectRevert();
-        testContract.setLzReceiveCost(1_000_000);
+        testContract.setLzReceiveCost(1000000);
     }
 
     function test_setLzReceiveCost_emitsEvent() public {
-        uint128 newCost = 1_500_000;
+        uint128 newCost = 1500000;
 
         vm.expectEmit(false, false, false, true);
         emit IFeeManagement.LzReceiveCostUpdated(newCost);
@@ -237,9 +229,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         (uint256 warning, uint256 critical) = testContract.getGasThresholds();
         assertEq(warning, warningThreshold, "Warning threshold should be set");
-        assertEq(
-            critical, criticalThreshold, "Critical threshold should be set"
-        );
+        assertEq(critical, criticalThreshold, "Critical threshold should be set");
     }
 
     function test_setGasThresholds_onlyOwner() public {
@@ -280,9 +270,7 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         uint256 criticalThreshold = 0.2 ether;
 
         vm.expectEmit(false, false, false, true);
-        emit IFeeManagement.GasThresholdsUpdated(
-            warningThreshold, criticalThreshold
-        );
+        emit IFeeManagement.GasThresholdsUpdated(warningThreshold, criticalThreshold);
 
         testContract.setGasThresholds(warningThreshold, criticalThreshold);
     }
@@ -338,14 +326,9 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
         testContract.setBridgeConfig(newConfig);
 
-        BridgeTypes.BridgeConfig memory retrieved =
-            testContract.getBridgeConfig();
+        BridgeTypes.BridgeConfig memory retrieved = testContract.getBridgeConfig();
         assertEq(retrieved.remoteEid, 999, "Remote EID should be set");
-        assertEq(
-            retrieved.remoteBridge,
-            address(0x1234),
-            "Remote bridge should be set"
-        );
+        assertEq(retrieved.remoteBridge, address(0x1234), "Remote bridge should be set");
     }
 
     function test_setBridgeConfig_onlyOwner() public {

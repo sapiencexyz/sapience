@@ -6,7 +6,7 @@ import "../../../src/predictionMarket/interfaces/IPredictionStructs.sol";
 
 contract MockResolver is IPredictionMarketResolver {
     bool public shouldValidate = true;
-    bool public predictionSuccess = true;
+    bool public parlaySuccess = true;
     Error public validationError = Error.NO_ERROR;
     Error public resolutionError = Error.NO_ERROR;
 
@@ -14,8 +14,8 @@ contract MockResolver is IPredictionMarketResolver {
         shouldValidate = _shouldValidate;
     }
 
-    function setPredictionSuccess(bool _predictionSuccess) external {
-        predictionSuccess = _predictionSuccess;
+    function setParlaySuccess(bool _parlaySuccess) external {
+        parlaySuccess = _parlaySuccess;
     }
 
     function setValidationResult(bool _shouldValidate, Error _error) external {
@@ -23,29 +23,21 @@ contract MockResolver is IPredictionMarketResolver {
         validationError = _error;
     }
 
-    function setResolutionResult(
-        bool _isResolved,
-        Error _error,
-        bool _predictionSuccess
-    ) external {
+    function setResolutionResult(bool _isResolved, Error _error, bool _parlaySuccess) external {
         shouldValidate = _isResolved;
         resolutionError = _error;
-        predictionSuccess = _predictionSuccess;
+        parlaySuccess = _parlaySuccess;
     }
 
-    function validatePredictionMarkets(bytes calldata)
-        external
-        view
-        returns (bool, Error)
-    {
+    function validatePredictionMarkets(
+        bytes calldata
+    ) external view returns (bool, Error) {
         return (shouldValidate, validationError);
     }
 
-    function getPredictionResolution(bytes calldata)
-        external
-        view
-        returns (bool, Error, bool)
-    {
-        return (shouldValidate, resolutionError, predictionSuccess);
+    function getPredictionResolution(
+        bytes calldata
+    ) external view returns (bool, Error, bool) {
+        return (shouldValidate, resolutionError, parlaySuccess);
     }
 }

@@ -14,19 +14,19 @@ interface IPredictionStructs {
 
     struct PredictionData {
         // Prediction metadata
-        uint256 predictionId; // slot 0
-        uint256 makerNftTokenId; // slot 1
-        uint256 takerNftTokenId; // slot 2
-        uint256 makerCollateral; // slot 3
-        uint256 takerCollateral; // slot 4
+        uint256 predictionId;        // slot 0
+        uint256 makerNftTokenId;     // slot 1
+        uint256 takerNftTokenId;     // slot 2
+        uint256 makerCollateral;     // slot 3
+        uint256 takerCollateral;     // slot 4
         // Prediction data
         bytes encodedPredictedOutcomes; // slot 5 (dynamic)
         // Packed fields in slot 6
-        address resolver; // slot 6 (packed with addresses and bools)
-        address maker; // slot 6 (packed)
-        address taker; // slot 6 (packed)
-        bool settled; // slot 6 (packed)
-        bool makerWon; // slot 6 (packed)
+        address resolver;            // slot 6 (packed with addresses and bools)
+        address maker;               // slot 6 (packed)
+        address taker;               // slot 6 (packed)
+        bool settled;                // slot 6 (packed)
+        bool makerWon;               // slot 6 (packed)
     }
 
     // Struct to mint prediction data
@@ -55,13 +55,13 @@ interface IPredictionStructs {
 
     // Struct to mint prediction data
     struct LimitOrderData {
-        uint256 orderId; // slot 0
-        uint256 makerCollateral; // slot 1
-        uint256 takerCollateral; // slot 2
-        uint256 orderDeadline; // slot 3
+        uint256 orderId;             // slot 0
+        uint256 makerCollateral;     // slot 1
+        uint256 takerCollateral;     // slot 2
+        uint256 orderDeadline;       // slot 3
         bytes encodedPredictedOutcomes; // slot 4 (dynamic)
-        address resolver; // slot 5 (packed with addresses)
-        address maker; // slot 5 (packed)
-        address taker; // slot 5 (packed)
+        address resolver;            // slot 5 (packed with addresses)
+        address maker;               // slot 5 (packed)
+        address taker;               // slot 5 (packed)
     }
 }

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { IFeeManagement } from "../interfaces/IFeeManagement.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IFeeManagement} from "../interfaces/IFeeManagement.sol";
 
 /**
  * @title FeeManagement
@@ -25,7 +25,7 @@ abstract contract FeeManagement is
      * @notice Constructor for FeeManagement
      * @param _owner The owner of the contract
      */
-    constructor(address _owner) Ownable(_owner) { }
+    constructor(address _owner) Ownable(_owner) {}
 
     /**
      * @notice Set the LayerZero receive cost for operations
@@ -54,9 +54,7 @@ abstract contract FeeManagement is
         uint256 _criticalGasThreshold
     ) external onlyOwner {
         if (_warningGasThreshold <= _criticalGasThreshold) {
-            revert InvalidThresholdValues(
-                _warningGasThreshold, _criticalGasThreshold
-            );
+            revert InvalidThresholdValues(_warningGasThreshold, _criticalGasThreshold);
         }
         WARNING_GAS_THRESHOLD = _warningGasThreshold;
         CRITICAL_GAS_THRESHOLD = _criticalGasThreshold;
