@@ -1,50 +1,8 @@
 import { Resolver, Query, Arg } from 'type-graphql';
 import prisma from '../../db';
 
-async function calculateVolumeForAddress(address: string): Promise<string> {
-  const normalizedAddress = address.toLowerCase();
-
-  const positions = await prisma.position.findMany({
-    where: {
-      OR: [
-        { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
-        { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
-      ],
-    },
-    select: {
-      predictor: true,
-      counterparty: true,
-      predictorCollateral: true,
-      counterpartyCollateral: true,
-    },
-  });
-
-  let total = BigInt(0);
-
-  for (const position of positions) {
-    const predictorIsUser =
-      position.predictor.toLowerCase() === normalizedAddress;
-    const counterpartyIsUser =
-      position.counterparty.toLowerCase() === normalizedAddress;
-
-    if (predictorIsUser && position.predictorCollateral) {
-      try {
-        total += BigInt(position.predictorCollateral);
-      } catch {
-        // Skip invalid values
-      }
-    }
-
-    if (counterpartyIsUser && position.counterpartyCollateral) {
-      try {
-        total += BigInt(position.counterpartyCollateral);
-      } catch {
-        // Skip invalid values
-      }
-    }
-  }
-
-  return total.toString();
+interface VolumeRow {
+  total: string;
 }
 
 @Resolver()
@@ -53,6 +11,23 @@ export class VolumeResolver {
   async tradingVolumeByAddress(
     @Arg('address', () => String) address: string
   ): Promise<string> {
-    return calculateVolumeForAddress(address);
+    const addr = address.toLowerCase();
+
+    // Single SQL aggregation instead of loading all positions into memory
+    const [result] = await prisma.$queryRaw<VolumeRow[]>`
+      SELECT COALESCE(SUM(
+        CASE WHEN LOWER(predictor) = ${addr}
+             THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+             ELSE 0 END
+        +
+        CASE WHEN LOWER(counterparty) = ${addr}
+             THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+             ELSE 0 END
+      ), 0)::TEXT as total
+      FROM position
+      WHERE LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}
+    `;
+
+    return result?.total ?? '0';
   }
 }

@@ -364,7 +364,7 @@ const FeedPageContent: React.FC = () => {
                             Predictor
                           </th>
                           <th className="px-4 py-3 text-left align-middle font-medium">
-                            Opponent
+                            Counterparty
                           </th>
                           <th className="px-4 py-3 text-left align-middle font-medium">
                             Total
@@ -483,7 +483,7 @@ const FeedPageContent: React.FC = () => {
                               <td className="px-4 py-3 whitespace-nowrap">
                                 <div>
                                   <div className="xl:hidden text-xs text-muted-foreground mb-1">
-                                    Opponent
+                                    Counterparty
                                   </div>
                                   <div className="flex flex-col gap-0.5">
                                     <span
@@ -542,7 +542,7 @@ const FeedPageContent: React.FC = () => {
                                     </span>
                                   ) : opponentWon ? (
                                     <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
-                                      Opponent won
+                                      Counterparty won
                                     </span>
                                   ) : (
                                     <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">

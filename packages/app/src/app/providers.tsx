@@ -80,22 +80,25 @@ const wagmiConfig = createConfig({
     storage: typeof window !== 'undefined' ? window.localStorage : undefined,
   }),
   chains: chains as unknown as readonly [Chain, ...Chain[]],
-  connectors: [
-    injected(),
-    coinbaseWallet({
-      appName: 'Sapience',
-    }),
-    walletConnect({
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
-      metadata: {
-        name: 'Sapience',
-        description: 'Prediction markets on Ethereum',
-        url: 'https://sapience.xyz',
-        icons: ['https://sapience.xyz/logo.svg'],
-      },
-      showQrModal: true,
-    }),
-  ],
+  connectors:
+    typeof window !== 'undefined'
+      ? [
+          injected(),
+          coinbaseWallet({
+            appName: 'Sapience',
+          }),
+          walletConnect({
+            projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || '',
+            metadata: {
+              name: 'Sapience',
+              description: 'Prediction markets on Ethereum',
+              url: 'https://sapience.xyz',
+              icons: ['https://sapience.xyz/logo.svg'],
+            },
+            showQrModal: true,
+          }),
+        ]
+      : [],
   transports,
 });
 
