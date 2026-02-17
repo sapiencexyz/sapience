@@ -31,6 +31,7 @@ const RequiredReferralCodeDialog = ({
 }: RequiredReferralCodeDialogProps) => {
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [submitLabel, setSubmitLabel] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const { toast } = useToast();
@@ -69,6 +70,7 @@ const RequiredReferralCodeDialog = ({
     if (!walletAddress) return;
 
     setSubmitting(true);
+    setSubmitLabel('Confirm in wallet...');
 
     const normalizedAddress = walletAddress.toLowerCase();
     const normalizedCode = code.trim().toLowerCase();
@@ -102,6 +104,7 @@ const RequiredReferralCodeDialog = ({
     }
 
     // Step 2: Submit claim to the server
+    setSubmitLabel('Submitting...');
     try {
       const resp = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/claim`,
@@ -190,6 +193,7 @@ const RequiredReferralCodeDialog = ({
       });
     } finally {
       setSubmitting(false);
+      setSubmitLabel('');
     }
   };
 
@@ -234,7 +238,7 @@ const RequiredReferralCodeDialog = ({
                 className="shrink-0"
                 disabled={submitting || !code.trim()}
               >
-                {submitting ? 'Submitting...' : 'Submit'}
+                {submitting ? (submitLabel || 'Submitting...') : 'Submit'}
               </Button>
             </div>
           </div>
