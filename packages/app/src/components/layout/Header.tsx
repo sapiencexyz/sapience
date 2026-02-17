@@ -400,11 +400,11 @@ const Header = () => {
     }
   };
 
-  const handleLogout = () => {
-    // End any active session first
+  const handleLogout = async () => {
+    // End any active session first (revokes on-chain, then clears local state)
     if (isSessionActive) {
       console.debug('[Header] Ending active session before logout');
-      endSession();
+      await endSession();
     } else {
       console.debug('[Header] No active session to end');
     }

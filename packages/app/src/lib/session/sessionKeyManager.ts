@@ -17,6 +17,7 @@ import {
   createKernelAccountClient,
   createZeroDevPaymasterClient,
   addressToEmptyAccount, // Still needed for getSmartAccountAddress
+  uninstallPlugin,
   type KernelAccountClient,
 } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
@@ -831,6 +832,199 @@ export function clearSession(): void {
   if (typeof window === 'undefined') return;
   console.debug('[SessionKeyManager] Clearing session from localStorage');
   localStorage.removeItem(SESSION_STORAGE_KEY);
+}
+
+/**
+ * Revoke a session key on-chain by calling `uninstallValidation` on the kernel account.
+ * This makes the session key permanently unusable, even if the private key is compromised.
+ * Requires the owner's wallet to sign the UserOperation (sudo validator).
+ *
+ * @param ownerSigner - The owner's wallet signer
+ * @param serialized - The serialized session containing the session key to revoke
+ * @returns Hash of the revocation transaction(s)
+ */
+export async function revokeSessionKey(
+  ownerSigner: OwnerSigner,
+  serialized: SerializedSession
+): Promise<{ etherealTxHash: Hash; arbitrumTxHash: Hash | null }> {
+  console.debug('[SessionKeyManager] Revoking session key on-chain...');
+
+  const sessionKeyAccount = privateKeyToAccount(serialized.sessionPrivateKey);
+  const sessionKeySigner = await toECDSASigner({
+    signer: sessionKeyAccount,
+  });
+
+  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
+
+  // --- Revoke Ethereal session (always exists) ---
+  console.debug('[SessionKeyManager] Revoking Ethereal session key...');
+  await ownerSigner.switchChain(etherealChain.id);
+
+  const etherealOwnerValidator = await signerToEcdsaValidator(
+    etherealPublicClient,
+    {
+      signer: ownerSigner.provider,
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    }
+  );
+
+  // Reconstruct the permission plugin that was installed during session creation
+  // We need the same permissionId, policies, and signer to identify the validator to uninstall
+  const nowInSeconds = Math.floor(serialized.createdAt / 1000);
+  const validUntilInSeconds = Math.floor(
+    serialized.config.expiresAt / 1000
+  );
+
+  const etherealPermissionId = slice(
+    keccak256(
+      `0x${sessionKeyAccount.address.slice(2)}${nowInSeconds.toString(16).padStart(16, '0')}` as Hex
+    ),
+    0,
+    4
+  );
+
+  const etherealCallPolicy = toCallPolicy({
+    policyVersion: CallPolicyVersion.V0_0_4,
+    permissions: [
+      {
+        target: PREDICTION_MARKET_ETHEREAL,
+        abi: predictionMarketAbi,
+        functionName: 'mint',
+      },
+      {
+        target: WUSDE_ADDRESS_ETHEREAL,
+        abi: collateralTokenAbi,
+        functionName: 'approve',
+      },
+      {
+        target: WUSDE_ADDRESS_ETHEREAL,
+        abi: WUSDE_ABI,
+        functionName: 'deposit',
+      },
+      {
+        target: WUSDE_ADDRESS_ETHEREAL,
+        abi: WUSDE_ABI,
+        functionName: 'withdraw',
+      },
+      {
+        target: VAULT_ETHEREAL,
+        abi: liquidityVaultAbi,
+        functionName: 'approveMint',
+      },
+    ],
+  });
+
+  const timestampPolicy = toTimestampPolicy({
+    validAfter: nowInSeconds,
+    validUntil: validUntilInSeconds,
+  });
+
+  const etherealPermissionPlugin = await toPermissionValidator(
+    etherealPublicClient,
+    {
+      entryPoint: ENTRY_POINT,
+      signer: sessionKeySigner,
+      policies: [etherealCallPolicy, timestampPolicy],
+      kernelVersion: KERNEL_VERSION,
+      permissionId: etherealPermissionId,
+    }
+  );
+
+  const etherealAccount = await createKernelAccount(etherealPublicClient, {
+    plugins: {
+      sudo: etherealOwnerValidator,
+      regular: etherealPermissionPlugin,
+    },
+    entryPoint: ENTRY_POINT,
+    kernelVersion: KERNEL_VERSION,
+  });
+
+  const etherealClient = createChainClient(etherealChain, etherealAccount);
+
+  const etherealTxHash = await uninstallPlugin(etherealClient, {
+    plugin: etherealPermissionPlugin,
+  });
+
+  console.debug(
+    '[SessionKeyManager] Ethereal session key revoked, tx:',
+    etherealTxHash
+  );
+
+  // --- Revoke Arbitrum session (if it was created) ---
+  let arbitrumTxHash: Hash | null = null;
+
+  if (serialized.arbitrumApproval) {
+    console.debug('[SessionKeyManager] Revoking Arbitrum session key...');
+    await ownerSigner.switchChain(arbitrum.id);
+
+    const arbitrumOwnerValidator = await signerToEcdsaValidator(
+      arbitrumPublicClient,
+      {
+        signer: ownerSigner.provider,
+        entryPoint: ENTRY_POINT,
+        kernelVersion: KERNEL_VERSION,
+      }
+    );
+
+    const arbitrumPermissionId = slice(
+      keccak256(
+        `0x${sessionKeyAccount.address.slice(2)}${nowInSeconds.toString(16).padStart(16, '0')}arb` as Hex
+      ),
+      0,
+      4
+    );
+
+    const arbitrumCallPolicy = toCallPolicy({
+      policyVersion: CallPolicyVersion.V0_0_4,
+      permissions: [
+        {
+          target: EAS_ARBITRUM,
+          abi: EAS_ABI,
+          functionName: 'attest',
+        },
+      ],
+    });
+
+    const arbitrumTimestampPolicy = toTimestampPolicy({
+      validAfter: nowInSeconds,
+      validUntil: validUntilInSeconds,
+    });
+
+    const arbitrumPermissionPlugin = await toPermissionValidator(
+      arbitrumPublicClient,
+      {
+        entryPoint: ENTRY_POINT,
+        signer: sessionKeySigner,
+        policies: [arbitrumCallPolicy, arbitrumTimestampPolicy],
+        kernelVersion: KERNEL_VERSION,
+        permissionId: arbitrumPermissionId,
+      }
+    );
+
+    const arbitrumAccount = await createKernelAccount(arbitrumPublicClient, {
+      plugins: {
+        sudo: arbitrumOwnerValidator,
+        regular: arbitrumPermissionPlugin,
+      },
+      entryPoint: ENTRY_POINT,
+      kernelVersion: KERNEL_VERSION,
+    });
+
+    const arbitrumClient = createChainClient(arbitrum, arbitrumAccount);
+
+    arbitrumTxHash = await uninstallPlugin(arbitrumClient, {
+      plugin: arbitrumPermissionPlugin,
+    });
+
+    console.debug(
+      '[SessionKeyManager] Arbitrum session key revoked, tx:',
+      arbitrumTxHash
+    );
+  }
+
+  console.debug('[SessionKeyManager] Session key fully revoked on-chain');
+  return { etherealTxHash, arbitrumTxHash };
 }
 
 /**

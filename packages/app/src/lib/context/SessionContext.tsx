@@ -21,6 +21,7 @@ import {
   saveSession,
   loadSession,
   clearSession,
+  revokeSessionKey,
   type SessionConfig,
   type OwnerSigner,
   type EnableTypedData,
@@ -129,7 +130,7 @@ interface SessionContextValue {
 
   // Session actions
   startSession: (params: { durationHours: number }) => Promise<void>;
-  endSession: () => void;
+  endSession: () => Promise<void>;
 
   // Status
   isStartingSession: boolean;
@@ -570,10 +571,38 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [walletAddress, connector, switchChainAsync]
   );
 
-  // End the current session
-  const endSession = useCallback(() => {
+  // End the current session — revoke on-chain, then clear local state
+  const endSession = useCallback(async () => {
+    // Attempt on-chain revocation before clearing local state
+    // Best-effort: if revocation fails, we still clear the session locally.
+    // The session key will expire naturally via the timestamp policy.
+    if (serializedSession && connector && walletAddress) {
+      try {
+        console.debug(
+          '[SessionContext] Revoking session key on-chain before clearing...'
+        );
+        const provider = (await connector.getProvider()) as EIP1193Provider;
+        const ownerSigner: OwnerSigner = {
+          address: walletAddress,
+          provider,
+          switchChain: createChainSwitcher(switchChainAsync),
+        };
+        const result = await revokeSessionKey(ownerSigner, serializedSession);
+        console.debug(
+          '[SessionContext] Session key revoked on-chain:',
+          result.etherealTxHash,
+          result.arbitrumTxHash
+        );
+      } catch (error) {
+        console.warn(
+          '[SessionContext] Failed to revoke session key on-chain (will expire naturally):',
+          error
+        );
+      }
+    }
+
     endSessionInternal();
-  }, [endSessionInternal]);
+  }, [endSessionInternal, serializedSession, connector, walletAddress, switchChainAsync]);
 
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates
