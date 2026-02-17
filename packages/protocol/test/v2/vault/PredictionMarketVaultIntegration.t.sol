@@ -2,25 +2,19 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
-import {
-    PredictionMarketVault
-} from "../../../src/v2/vault/PredictionMarketVault.sol";
-import {
-    IPredictionMarketVault
-} from "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
-import {
-    PredictionMarketEscrow
-} from "../../../src/v2/PredictionMarketEscrow.sol";
-import {
-    IPredictionMarketEscrow
-} from "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import {
-    ManualConditionResolver
-} from "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
+import { PredictionMarketVault } from
+    "../../../src/v2/vault/PredictionMarketVault.sol";
+import { IPredictionMarketVault } from
+    "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
+import { PredictionMarketEscrow } from
+    "../../../src/v2/PredictionMarketEscrow.sol";
+import { IPredictionMarketEscrow } from
+    "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
+import { ManualConditionResolver } from
+    "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import { IV2Types } from "../../../src/v2/interfaces/IV2Types.sol";
-import {
-    IPredictionMarketToken
-} from "../../../src/v2/interfaces/IPredictionMarketToken.sol";
+import { IPredictionMarketToken } from
+    "../../../src/v2/interfaces/IPredictionMarketToken.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
@@ -175,6 +169,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createPick(bytes32 conditionId, IV2Types.OutcomeSide outcome)
@@ -207,9 +203,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
@@ -277,9 +273,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
 
@@ -320,9 +316,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
@@ -373,9 +369,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         IV2Types.Pick[] memory picks1 = new IV2Types.Pick[](1);
         picks1[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
         IV2Types.MintRequest memory request1 =
-            _createMintRequestWithVaultCounterparty(
-                picks1, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks1, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
         (bytes32 predictionId1, address predictorToken1,) =
             market.mint(request1);
 
@@ -383,9 +379,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
         picks2[0] = _createPick(conditionId2, IV2Types.OutcomeSide.NO);
         IV2Types.MintRequest memory request2 =
-            _createMintRequestWithVaultCounterparty(
-                picks2, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks2, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
         (bytes32 predictionId2,, address counterpartyToken2) =
             market.mint(request2);
 
@@ -430,9 +426,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[1] = _createPick(condition2, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
@@ -475,9 +471,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
@@ -530,9 +526,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         // Should revert because vault doesn't have enough approved
         vm.expectRevert();
@@ -542,7 +538,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
     /**
      * @notice Test: Emergency mode blocks new predictions but allows redemption
      */
-    function test_vaultEmergencyMode_existingPredictionCanStillRedeem() public {
+    function test_vaultEmergencyMode_existingPredictionCanStillRedeem()
+        public
+    {
         bytes32 conditionId = keccak256("emergency-game");
 
         vm.prank(manager);
@@ -552,9 +550,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
@@ -591,9 +589,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
             picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
             IV2Types.MintRequest memory request =
-                _createMintRequestWithVaultCounterparty(
-                    picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-                );
+            _createMintRequestWithVaultCounterparty(
+                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
+            );
 
             market.mint(request);
 
@@ -674,9 +672,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, smallPredictorWager, largecounterpartyWager
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, smallPredictorWager, largecounterpartyWager
+        );
 
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 

@@ -3,12 +3,10 @@ pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    PredictionMarketVault
-} from "../../../../v2/vault/PredictionMarketVault.sol";
-import {
-    PredictionMarketEscrow
-} from "../../../../v2/PredictionMarketEscrow.sol";
+import { PredictionMarketVault } from
+    "../../../../v2/vault/PredictionMarketVault.sol";
+import { PredictionMarketEscrow } from
+    "../../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../../v2/interfaces/IV2Types.sol";
 
 /// @title Test Vault as Counterparty (Testnet)
@@ -53,9 +51,8 @@ contract TestVaultAsCounterparty is Script {
         Actors memory actors = _loadActors();
 
         _vault = PredictionMarketVault(vm.envAddress("VAULT_ADDRESS"));
-        _market = PredictionMarketEscrow(
-            vm.envAddress("PREDICTION_MARKET_ADDRESS")
-        );
+        _market =
+            PredictionMarketEscrow(vm.envAddress("PREDICTION_MARKET_ADDRESS"));
         _collateral = IERC20(vm.envAddress("COLLATERAL_TOKEN_ADDRESS"));
 
         // Configurable wager amounts (default 0.002 WUSDe for testnet)
@@ -151,9 +148,8 @@ contract TestVaultAsCounterparty is Script {
         console.log("=== Step 4: Mint prediction ===");
 
         vm.startBroadcast(actors.deployerPk);
-        (
-            result.predictionId, result.predictorToken, result.counterpartyToken
-        ) = _market.mint(request);
+        (result.predictionId, result.predictorToken, result.counterpartyToken) =
+            _market.mint(request);
         vm.stopBroadcast();
 
         console.log("Prediction minted!");
@@ -299,7 +295,9 @@ contract TestVaultAsCounterparty is Script {
             counterpartySignature: vaultSig,
             refCode: bytes32(0),
             predictorSessionKeyData: "",
-            counterpartySessionKeyData: ""
+            counterpartySessionKeyData: "",
+            predictorSponsor: address(0),
+            predictorSponsorData: ""
         });
     }
 
@@ -309,14 +307,13 @@ contract TestVaultAsCounterparty is Script {
         uint256 wager,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.predictor,
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.predictor,
+            wager,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -329,14 +326,13 @@ contract TestVaultAsCounterparty is Script {
         uint256 nonce
     ) internal view returns (bytes memory) {
         // Step 1: Get the mint approval hash that the market will pass to vault.isValidSignature
-        bytes32 mintApprovalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                address(params.vault),
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 mintApprovalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            address(params.vault),
+            wager,
+            nonce,
+            params.deadline
+        );
 
         // Step 2: Get the hash that the manager needs to sign
         // The vault wraps the mint approval hash with the manager address

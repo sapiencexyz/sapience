@@ -48,9 +48,8 @@ contract MockSmartAccount is IERC1271 {
 
 /// @notice Non-EIP1271 contract (no isValidSignature function)
 contract NonEIP1271Contract {
-    // Intentionally empty - does not implement IERC1271
-
-    }
+// Intentionally empty - does not implement IERC1271
+}
 
 /// @notice Contract that reverts on isValidSignature
 contract RevertingEIP1271Contract is IERC1271 {
@@ -163,12 +162,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createMintRequestWithSmartAccountPredictor(IV2Types
-                .Pick[] memory picks)
-        internal
-        view
-        returns (IV2Types.MintRequest memory request)
-    {
+    function _createMintRequestWithSmartAccountPredictor(
+        IV2Types.Pick[] memory picks
+    ) internal view returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -214,14 +210,13 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
-    function _createMintRequestWithSmartAccountCounterparty(IV2Types
-                .Pick[] memory picks)
-        internal
-        view
-        returns (IV2Types.MintRequest memory request)
-    {
+    function _createMintRequestWithSmartAccountCounterparty(
+        IV2Types.Pick[] memory picks
+    ) internal view returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -267,6 +262,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestBothSmartAccounts(IV2Types.Pick[] memory picks)
@@ -317,6 +314,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestEOA(IV2Types.Pick[] memory picks)
@@ -367,6 +366,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     // ============ EIP-1271 Tests ============
@@ -400,8 +401,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(predictorToken)
-                .balanceOf(address(predictorSmartAccount)),
+            IPredictionMarketToken(predictorToken).balanceOf(
+                address(predictorSmartAccount)
+            ),
             TOTAL_COLLATERAL
         );
 
@@ -436,8 +438,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(counterpartyToken)
-                .balanceOf(address(counterpartySmartAccount)),
+            IPredictionMarketToken(counterpartyToken).balanceOf(
+                address(counterpartySmartAccount)
+            ),
             TOTAL_COLLATERAL
         );
 
@@ -471,13 +474,15 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check tokens minted to smart accounts
         assertEq(
-            IPredictionMarketToken(predictorToken)
-                .balanceOf(address(predictorSmartAccount)),
+            IPredictionMarketToken(predictorToken).balanceOf(
+                address(predictorSmartAccount)
+            ),
             TOTAL_COLLATERAL
         );
         assertEq(
-            IPredictionMarketToken(counterpartyToken)
-                .balanceOf(address(counterpartySmartAccount)),
+            IPredictionMarketToken(counterpartyToken).balanceOf(
+                address(counterpartySmartAccount)
+            ),
             TOTAL_COLLATERAL
         );
     }
@@ -574,6 +579,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail because the contract doesn't implement EIP-1271
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
@@ -637,6 +644,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail gracefully (catch block in _isEIP1271SignatureValid)
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);

@@ -18,6 +18,7 @@ interface IV2Types {
         PREDICTOR_WINS,
         COUNTERPARTY_WINS,
         NON_DECISIVE // Tie or weighted outcome (future-proof)
+
     }
 
     /// @notice Outcome vector returned by condition resolvers
@@ -92,6 +93,9 @@ interface IV2Types {
         // Session key support (optional - empty bytes if not using session keys)
         bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
         bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
+        // Sponsorship support (optional - address(0) = self-funded)
+        address predictorSponsor; // Optional: sponsor contract that funds predictor's wager (address(0) = self-funded)
+        bytes predictorSponsorData; // Optional: opaque data passed through to sponsor's fundMint
     }
 
     /// @notice Burn request data for bilateral position exit before resolution

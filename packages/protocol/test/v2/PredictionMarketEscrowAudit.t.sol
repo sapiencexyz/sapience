@@ -115,6 +115,8 @@ contract PredictionMarketEscrowAudit is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         bytes32 pickConfigId = keccak256(abi.encode(request.picks));
         bytes32 predictionHash = keccak256(
@@ -160,15 +162,14 @@ contract PredictionMarketEscrowAudit is Test {
             address counterpartyToken
         )
     {
-        IV2Types.MintRequest memory req =
-            _buildMintRequest(
-                predictor,
-                predictorPk,
-                predictorWager,
-                counterparty,
-                counterpartyPk,
-                counterpartyWager
-            );
+        IV2Types.MintRequest memory req = _buildMintRequest(
+            predictor,
+            predictorPk,
+            predictorWager,
+            counterparty,
+            counterpartyPk,
+            counterpartyWager
+        );
         return escrow.mint(req);
     }
 

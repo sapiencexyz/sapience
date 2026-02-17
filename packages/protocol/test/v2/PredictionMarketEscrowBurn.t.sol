@@ -147,6 +147,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _mintPrediction(IV2Types.Pick[] memory picks)
@@ -947,8 +949,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             remainingTokens
         );
         assertEq(
-            IPredictionMarketToken(tp.counterpartyToken)
-                .balanceOf(counterparty),
+            IPredictionMarketToken(tp.counterpartyToken).balanceOf(counterparty),
             remainingTokens
         );
 
@@ -983,8 +984,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer counterparty tokens to predictor so same address holds both
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken)
-            .transfer(predictor, TOTAL_COLLATERAL);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            predictor, TOTAL_COLLATERAL
+        );
 
         // Same address burns both sides
         // Both nonce checks happen before increment, so both use same current nonce
@@ -1065,8 +1067,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer all predictor tokens to thirdParty
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken)
-            .transfer(thirdParty, TOTAL_COLLATERAL);
+        IPredictionMarketToken(predictorToken).transfer(
+            thirdParty, TOTAL_COLLATERAL
+        );
 
         // ThirdParty (now holding predictor tokens) burns with counterparty
         IV2Types.BurnRequest memory req = _createBurnRequest(
