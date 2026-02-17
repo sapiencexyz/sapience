@@ -26,7 +26,7 @@ import {
 } from 'viem';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -37,8 +37,6 @@ import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
-
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -94,6 +92,7 @@ export default function CollateralBalanceButton({
     balance: smartAccountBalance,
     nativeBalance: smartAccountNativeBalance,
     wrappedBalance: smartAccountWrappedBalance,
+    isLoading: isSmartAccountBalanceLoading,
     refetch: refetchSmartAccountBalance,
   } = useCollateralBalance({
     address: smartAccountAddress as `0x${string}` | undefined,
@@ -178,7 +177,7 @@ export default function CollateralBalanceButton({
         });
 
         calls.push({
-          to: WUSDE_ADDRESS,
+          to: ETHEREAL_WUSDE_ADDRESS,
           data: wrapData,
           value: wrapAmount,
         });
@@ -193,7 +192,7 @@ export default function CollateralBalanceButton({
       });
 
       calls.push({
-        to: WUSDE_ADDRESS,
+        to: ETHEREAL_WUSDE_ADDRESS,
         data: transferData,
         value: 0n,
       });
@@ -288,7 +287,7 @@ export default function CollateralBalanceButton({
       // This is a single call that can be sponsored by the paymaster
       const calls: { to: Address; data: Hex; value: bigint }[] = [
         {
-          to: WUSDE_ADDRESS,
+          to: ETHEREAL_WUSDE_ADDRESS,
           data: encodeFunctionData({
             abi: WUSDE_ABI,
             functionName: 'transfer',
@@ -345,8 +344,21 @@ export default function CollateralBalanceButton({
     ? smartAccountBalance
     : eoaBalance;
 
+  // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
+  const showFundButton =
+    isUsingSmartAccount && smartAccountBalance === 0 && !isSmartAccountBalanceLoading;
+
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
+      {showFundButton ? (
+          <button
+            type="button"
+            onClick={() => setIsGetUsdeOpen(true)}
+            className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
+          >
+            <span className="relative z-10">Fund Account</span>
+          </button>
+      ) : (
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
           <div
@@ -419,6 +431,7 @@ export default function CollateralBalanceButton({
           </div>
         </HoverCardContent>
       </HoverCard>
+      )}
 
       {/* Get USDe Dialog */}
       <Dialog open={isGetUsdeOpen} onOpenChange={setIsGetUsdeOpen}>

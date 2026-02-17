@@ -46,7 +46,7 @@ export function useMarket({ marketAddress, marketId, abi }: UseMarketProps): Use
   const { data, isLoading, isError, error: contractError } = useReadContract({
     address: marketAddress,
     abi,
-    chainId: 8453,
+    chainId: 5064014,
     functionName: 'getMarket',
     args: [marketId],
   });

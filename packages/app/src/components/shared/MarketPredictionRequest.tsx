@@ -37,6 +37,7 @@ interface MarketPredictionRequestProps {
   suppressLoadingPlaceholder?: boolean;
   prefetchedProbability?: number | null;
   skipViewportCheck?: boolean;
+  requestLabel?: string;
 }
 
 // Custom comparator for React.memo: ignore onPrediction identity changes
@@ -54,6 +55,7 @@ function arePropsEqual(
     return false;
   if (prev.skipViewportCheck !== next.skipViewportCheck) return false;
   if (prev.className !== next.className) return false;
+  if (prev.requestLabel !== next.requestLabel) return false;
 
   // Lightweight outcomes comparison (length + marketIds)
   const pO = prev.outcomes;
@@ -81,6 +83,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   suppressLoadingPlaceholder = false,
   prefetchedProbability = null,
   skipViewportCheck = false,
+  requestLabel = 'Request',
 }) => {
   // Store onPrediction in a ref so we can call the latest version without
   // depending on its identity (avoids rerenders when parent passes new lambdas).
@@ -415,7 +418,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               exit="hidden"
               transition={FADE_TRANSITION_FAST}
             >
-              Requesting...
+              {requestLabel}ing...
             </motion.span>
           ) : (
             <motion.button
@@ -429,7 +432,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               exit="hidden"
               transition={FADE_TRANSITION_FAST}
             >
-              Request
+              {requestLabel}
             </motion.button>
           )
         ) : (

@@ -1,6 +1,3 @@
-// This file is referenced by jest.config.js in setupFilesAfterEnv, but its contents are currently not needed.
-// Keeping it empty satisfies the config without running unnecessary setup code.
-
 import '@testing-library/jest-dom';
 
 // Enable React act() environment for React 19
@@ -10,11 +7,11 @@ import '@testing-library/jest-dom';
 class MockTextEncoder {
   encoding = 'utf-8';
 
-  static encode(input: string): Uint8Array {
+  encode(input: string): Uint8Array {
     return new Uint8Array(Buffer.from(input, 'utf-8'));
   }
 
-  static encodeInto(
+  encodeInto(
     source: string,
     destination: Uint8Array
   ): { read: number; written: number } {
@@ -35,7 +32,7 @@ class MockTextDecoder {
 
   ignoreBOM = false;
 
-  static decode(input?: BufferSource): string {
+  decode(input?: BufferSource): string {
     if (!input) return '';
     return Buffer.from(input as Buffer).toString('utf-8');
   }

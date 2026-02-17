@@ -22,7 +22,7 @@ import { VolumeThresholdFilter, MarketVolumeThresholdFilter, type MarketGroup } 
 import { LiquidityThresholdFilter, MarketLiquidityThresholdFilter } from './filters/liquidity-threshold';
 import { AlwaysIncludeGroupFilter, AlwaysIncludeMarketFilter, AlwaysIncludeConditionFilter, AlwaysIncludeConditionGroupFilter } from './filters/always-include';
 import { NonCryptoConditionFilter, NonCryptoGroupFilter } from './filters/exclude-crypto';
-import { ExcludeExistingMarketsFilter, checkExistingConditions } from './filters/exclude-existing';
+import { ExcludeExistingMarketsFilter } from './filters/exclude-existing';
 
 // Re-export types and utilities
 export type { Filter, FilterResult, FilterStats, PipelineResult } from './types';
@@ -135,7 +135,7 @@ export function runPipeline<T>(
 ): PipelineResult<T> {
   const stats: FilterStats[] = [];
   let current = items;
-  let allRemoved: T[] = [];
+  const allRemoved: T[] = [];
 
   for (const filter of filters) {
     const result = filter.apply(current);

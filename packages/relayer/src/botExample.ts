@@ -34,7 +34,7 @@ async function ensureApprovalIfConfigured(amount: bigint) {
     const pk = process.env.BOT_PRIVATE_KEY;
     const collateralToken = process.env.BOT_COLLATERAL_TOKEN;
     const spender = process.env.PREDICTION_MARKET_CONTRACT; // contract that will pull maker collateral
-    const chainId = Number(process.env.BOT_CHAIN_ID || '8453');
+    const chainId = Number(process.env.BOT_CHAIN_ID || '5064014');
 
     if (!rpcUrl || !pk || !collateralToken || !spender) {
       console.log(

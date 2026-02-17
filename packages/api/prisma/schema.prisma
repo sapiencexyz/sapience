@@ -177,6 +177,7 @@ model Condition {
   similarMarkets   String[]        @default([])
   chainId          Int             @default(42161)
   openInterest     String          @default("0") @db.VarChar
+  predictionCount  Int             @default(0)
   /// Canonical resolver address for this condition (latest observed wins)
   resolver         String?         @db.VarChar
   
@@ -206,6 +207,8 @@ model Condition {
   // Raw SQL indexes (not representable in Prisma, managed via migration):
   // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
   // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
+  // - IDX_condition_prediction_count: "predictionCount" DESC WHERE public = true
+  // Trigger: trg_prediction_count maintains predictionCount on prediction INSERT/DELETE
   @@map("condition")
 }
 
