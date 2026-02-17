@@ -38,18 +38,17 @@ if (process.env.NODE_ENV === "production") {
       // Browser extension lifecycle / messaging
       /Attempting to use a disconnected port object/,
       /chrome\.runtime\.sendMessage\(\) called from a webpage/,
-      /Cannot read properties of undefined \(reading 'removeListener'\)/,
       // Extension proxy conflicts (TronLink, etc.)
       /tronlinkParams/,
       /Invalid property descriptor\. Cannot both specify accessors/,
       // User-initiated wallet rejections (not bugs)
       /UserRejectedRequestError/,
       /User rejected the request/,
-      // Invalid addresses (bots/fuzzers pasting garbage)
-      /InvalidAddressError/,
+      // Invalid addresses from user input (URL params, form fields)
+      /InvalidAddressError: Address ".*" is invalid/,
       // Environment constraints (not actionable)
       /Embedded wallet is only available over HTTPS/,
-      /The source .* has not been authorized yet/,
+      /^The source .* has not been authorized yet$/,
       /indexedDB is not defined/,
     ],
 
