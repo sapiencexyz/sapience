@@ -11,6 +11,7 @@ import "./interfaces/IConditionResolver.sol";
 import "./interfaces/IPredictionMarketToken.sol";
 import "./interfaces/IV2Types.sol";
 import "./interfaces/IV2Events.sol";
+import "./interfaces/IMintSponsor.sol";
 import "./utils/SignatureValidator.sol";
 
 /**
@@ -308,9 +309,26 @@ contract PredictionMarketEscrow is
         address counterpartyToken
     ) internal {
         // Transfer collateral from both parties
-        collateralToken.safeTransferFrom(
-            request.predictor, address(this), request.predictorCollateral
-        );
+        if (request.predictorSponsor != address(0)) {
+            uint256 balBefore = collateralToken.balanceOf(address(this));
+            IMintSponsor(request.predictorSponsor).fundMint(
+                address(this),
+                request.predictor,
+                request.predictorCollateral,
+                request.picks,
+                request.predictorSponsorData
+            );
+            if (
+                collateralToken.balanceOf(address(this))
+                    < balBefore + request.predictorCollateral
+            ) {
+                revert SponsorUnderfunded();
+            }
+        } else {
+            collateralToken.safeTransferFrom(
+                request.predictor, address(this), request.predictorCollateral
+            );
+        }
         collateralToken.safeTransferFrom(
             request.counterparty, address(this), request.counterpartyCollateral
         );

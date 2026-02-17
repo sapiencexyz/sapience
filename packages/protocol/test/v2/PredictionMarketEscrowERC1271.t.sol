@@ -210,6 +210,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestWithSmartAccountCounterparty(
@@ -260,6 +262,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestBothSmartAccounts(IV2Types.Pick[] memory picks)
@@ -310,6 +314,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestEOA(IV2Types.Pick[] memory picks)
@@ -360,6 +366,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     // ============ EIP-1271 Tests ============
@@ -571,6 +579,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail because the contract doesn't implement EIP-1271
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
@@ -634,6 +644,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail gracefully (catch block in _isEIP1271SignatureValid)
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);

@@ -93,6 +93,9 @@ interface IV2Types {
         // Session key support (optional - empty bytes if not using session keys)
         bytes predictorSessionKeyData; // ABI-encoded SessionKeyData for predictor (empty if EOA)
         bytes counterpartySessionKeyData; // ABI-encoded SessionKeyData for counterparty (empty if EOA)
+        // Sponsorship support (optional - address(0) = self-funded)
+        address predictorSponsor; // Sponsor contract that funds predictor's collateral
+        bytes predictorSponsorData; // Opaque data passed through to sponsor's fundMint
     }
 
     /// @notice Burn request data for bilateral position exit before resolution

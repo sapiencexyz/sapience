@@ -140,6 +140,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _mint(uint256 predictorCollateral, uint256 counterpartyCollateral)

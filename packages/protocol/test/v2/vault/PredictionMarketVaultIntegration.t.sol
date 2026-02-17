@@ -176,6 +176,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createPick(bytes32 conditionId, IV2Types.OutcomeSide outcome)
@@ -660,6 +662,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
         market.mint(request);

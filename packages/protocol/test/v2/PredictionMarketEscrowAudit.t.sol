@@ -115,6 +115,8 @@ contract PredictionMarketEscrowAudit is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         bytes32 pickConfigId = keccak256(abi.encode(request.picks));
         bytes32 predictionHash = keccak256(
