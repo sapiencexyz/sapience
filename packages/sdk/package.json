@@ -76,7 +76,9 @@
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
-    "settle:pyth": "tsx scripts/settlePythMarkets.ts"
+    "settle:pyth": "tsx scripts/settlePythMarkets.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "abitype": "1.0.8",

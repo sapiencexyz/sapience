@@ -2,132 +2,224 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # simulate-deploy:
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v3
-
-  #     - name: Install Foundry
-  #       uses: foundry-rs/foundry-toolchain@v1
-
-  #     - name: Set up Node.js
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: "20"
-
-  #     - name: Install pnpm
-  #       run: npm install -g pnpm@9.15.4
-
-  #     - name: Install dependencies
-  #       run: pnpm install
-
-  #     - name: Forge build
-  #       run: forge build
-  #       working-directory: packages/protocol
-
-  #     - name: Simulate deploy on Sepolia
-  #       id: simulate-deploy
-  #       run: |
-  #         set -eo pipefail
-  #         pnpm run simulate-deploy:sepolia > deploy_output.log 2>&1
-  #
-  #         echo "DEPLOY_OUTPUT<<EOF" >> $GITHUB_OUTPUT
-  #         cat deploy_output.log >> $GITHUB_OUTPUT
-  #         echo "EOF" >> $GITHUB_OUTPUT
-  #       working-directory: packages/protocol
-
-  #     - name: Check for success
-  #       run: |
-  #         if grep -q "💥" deploy_output.log; then
-  #           echo "Deployment simulation successful!"
-  #         elif grep -q "ELIFECYCLE" deploy_output.log; then
-  #           echo "Deployment simulation failed. Full output:"
-  #           cat deploy_output.log
-  #           exit 1
-  #         else
-  #           echo "Unexpected output. Full log:"
-  #           cat deploy_output.log
-  #           exit 1
-  #         fi
-  #       working-directory: packages/protocol
-
-  # test-contracts:
-    # runs-on: ubuntu-latest
-
-    # steps:
-      # - name: Checkout repository
-        # uses: actions/checkout@v3
-
-      # - name: Install Foundry
-        # uses: foundry-rs/foundry-toolchain@v1
-
-      # - name: Set up Node.js
-        # uses: actions/setup-node@v3
-        # with:
-          # node-version: "20"
-
-      # - name: Install pnpm
-        # run: npm install -g pnpm@9.15.4
-
-      # - name: Install dependencies
-        # run: pnpm install
-
-      # - name: Forge build
-        # run: forge build
-        # working-directory: packages/protocol
-
-      # - name: Smart contract tests
-        # run: pnpm run test
-        # working-directory: packages/protocol
-
-  test-api:
+  changes:
     runs-on: ubuntu-latest
-
+    permissions:
+      pull-requests: read
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      app: ${{ steps.filter.outputs.app }}
+      sdk: ${{ steps.filter.outputs.sdk }}
+      protocol: ${{ steps.filter.outputs.protocol }}
+      relayer: ${{ steps.filter.outputs.relayer }}
+      ui: ${{ steps.filter.outputs.ui }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
         with:
-          node-version: '20'
+          filters: |
+            api:
+              - 'packages/api/**'
+              - 'packages/sdk/**'
+              - 'pnpm-lock.yaml'
+            app:
+              - 'packages/app/**'
+              - 'packages/sdk/**'
+              - 'packages/ui/**'
+              - 'pnpm-lock.yaml'
+            sdk:
+              - 'packages/sdk/**'
+              - 'pnpm-lock.yaml'
+            protocol:
+              - 'packages/protocol/**'
+            relayer:
+              - 'packages/relayer/**'
+              - 'packages/sdk/**'
+              - 'pnpm-lock.yaml'
+            ui:
+              - 'packages/ui/**'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
+  install:
+    needs: changes
+    if: >-
+      needs.changes.outputs.api == 'true' ||
+      needs.changes.outputs.app == 'true' ||
+      needs.changes.outputs.sdk == 'true' ||
+      needs.changes.outputs.relayer == 'true' ||
+      needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
           path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
 
-      - name: Install dependencies
-        run: pnpm install
+  test-api:
+    needs: [changes, install]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/api run prisma:generate
+      - run: pnpm --filter @sapience/api run compile
+      - run: pnpm --filter @sapience/api run test -- --run
 
-      - name: Generate Prisma client
-        run: pnpm prisma:generate
-        working-directory: packages/api
+  lint-api:
+    needs: [changes, install]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/api run prisma:generate
+      - run: pnpm --filter @sapience/api run lint
 
-      - name: Compile API
-        run: pnpm run compile
-        working-directory: packages/api
+  lint-typecheck-app:
+    needs: [changes, install]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter app run lint
+      - run: pnpm --filter app run type-check
 
-      - name: Run API tests
-        run: pnpm test -- --run
-        working-directory: packages/api
+  test-app:
+    needs: [changes, install]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter app test
+
+  lint-typecheck-sdk:
+    needs: [changes, install]
+    if: needs.changes.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter @sapience/sdk run lint
+      - run: pnpm --filter @sapience/sdk run type-check
+
+  lint-typecheck-ui:
+    needs: [changes, install]
+    if: needs.changes.outputs.ui == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter ui run lint
+      - run: pnpm --filter ui run type-check
+
+  lint-relayer:
+    needs: [changes, install]
+    if: needs.changes.outputs.relayer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/relayer run lint
+
+  test-protocol:
+    needs: changes
+    if: needs.changes.outputs.protocol == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          cache: true
+      - run: pnpm install
+      - run: forge fmt --check
+        working-directory: packages/protocol
+      - run: pnpm --filter protocol run test

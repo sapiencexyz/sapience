@@ -34,7 +34,7 @@ ws.on('open', () => {
       resolver: '0x0000000000000000000000000000000000000000',
       predictedOutcomes: ['0xdeadbeef'],
       takerNonce: 1,
-      chainId: 42161,
+      chainId: 5064014,
     },
   };
   

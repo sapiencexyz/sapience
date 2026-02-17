@@ -16,21 +16,11 @@ const BLOCK_BATCH_SIZE = 100;
 
 // EAS contract addresses on different chains
 const EAS_CONTRACTS = {
-  1: '0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587', // Ethereum Mainnet
-  11155111: '0xC2679fBD37d54388Ce493F1DB75320D236e1815e', // Sepolia
-  10: '0x4200000000000000000000000000000000000021', // Optimism
-  8453: '0x4200000000000000000000000000000000000021', // Base
   42161: '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458', // Arbitrum
-  432: '0x1ABeF822A38CC8906557cD73788ab23A607ae104',
 } as const;
 
 const EAS_START_BLOCK = {
-  1: 16756720,
-  11155111: 2958570,
-  10: 107476600,
-  8453: 3701279,
   42161: 367337046,
-  432: 1,
 } as const; // FROM https://github.com/ethereum-attestation-service/eas-indexing-service/blob/master/utils.ts
 
 // Forecast schema

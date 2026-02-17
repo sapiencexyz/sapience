@@ -20,7 +20,7 @@ const baseAuction: Omit<AuctionRequestPayload, 'takerSignature' | 'takerSignedAt
   resolver: '0x1234567890123456789012345678901234567890',
   taker: takerAccount.address,
   takerNonce: 1,
-  chainId: 42161,
+  chainId: 5064014,
 };
 
 // Helper to create a signed auction payload
@@ -120,7 +120,7 @@ describe('verifyAuctionSignature', () => {
   });
 
   it('returns false when chainId in signed message does not match payload', async () => {
-    // Create signature with chainId 42161, but change payload to chainId 1
+    // Create signature with chainId 5064014, but change payload to chainId 1
     const signedAuction = await createSignedAuction(baseAuction);
     const modifiedAuction: AuctionRequestPayload = {
       ...signedAuction,
