@@ -11,7 +11,7 @@ import "../interfaces/IV2Types.sol";
  * @title MatchedBetSponsor
  * @notice Example sponsor that funds predictor collateral with configurable controls
  * @dev Features:
- *   - Owner-managed whitelist of beneficiary addresses
+ *   - Owner-managed per-beneficiary budgets (allocated vs used tracking)
  *   - Configurable match limit (max collateral per mint)
  *   - Required condition enforcement (resolver + conditionId must be in picks)
  *   - Owner can withdraw ERC20s and native gas tokens
@@ -20,16 +20,25 @@ import "../interfaces/IV2Types.sol";
 contract MatchedBetSponsor is IMintSponsor, Ownable {
     using SafeERC20 for IERC20;
 
+    // ============ Types ============
+
+    struct Budget {
+        uint256 allocated; // Total collateral allocated to this beneficiary
+        uint256 used; // Total collateral already sponsored
+    }
+
     // ============ Events ============
 
     event Sponsored(
         address indexed predictor, uint256 collateral, address indexed escrow
     );
+    event BudgetSet(address indexed beneficiary, uint256 allocated);
 
     // ============ Errors ============
 
     error UnauthorizedEscrow();
-    error NotWhitelisted();
+    error NoBudget();
+    error BudgetExceeded();
     error CollateralExceedsMatchLimit();
     error RequiredConditionNotFound();
 
@@ -50,8 +59,8 @@ contract MatchedBetSponsor is IMintSponsor, Ownable {
     /// @notice Required condition ID (bytes32(0) = no requirement)
     bytes32 public requiredConditionId;
 
-    /// @notice Whitelisted beneficiary addresses
-    mapping(address => bool) public whitelisted;
+    /// @notice Per-beneficiary sponsorship budgets
+    mapping(address => Budget) public budgets;
 
     // ============ Constructor ============
 
@@ -77,8 +86,13 @@ contract MatchedBetSponsor is IMintSponsor, Ownable {
         bytes calldata /* sponsorData */
     ) external override {
         if (msg.sender != escrow) revert UnauthorizedEscrow();
-        if (!whitelisted[predictor]) revert NotWhitelisted();
         if (collateral > matchLimit) revert CollateralExceedsMatchLimit();
+
+        Budget storage budget = budgets[predictor];
+        if (budget.allocated == 0) revert NoBudget();
+        if (budget.used + collateral > budget.allocated) {
+            revert BudgetExceeded();
+        }
 
         // Enforce required condition if set
         if (requiredResolver != address(0)) {
@@ -95,10 +109,26 @@ contract MatchedBetSponsor is IMintSponsor, Ownable {
             if (!found) revert RequiredConditionNotFound();
         }
 
+        // Update budget
+        budget.used += collateral;
+
         // Transfer collateral to the escrow
         collateralToken.safeTransfer(escrow_, collateral);
 
         emit Sponsored(predictor, collateral, escrow_);
+    }
+
+    // ============ View Functions ============
+
+    /// @notice Get remaining budget for a beneficiary
+    function remainingBudget(address beneficiary)
+        external
+        view
+        returns (uint256)
+    {
+        Budget storage budget = budgets[beneficiary];
+        if (budget.allocated <= budget.used) return 0;
+        return budget.allocated - budget.used;
     }
 
     // ============ Admin Functions ============
@@ -117,12 +147,13 @@ contract MatchedBetSponsor is IMintSponsor, Ownable {
         requiredConditionId = conditionId;
     }
 
-    /// @notice Add or remove an address from the whitelist
-    function setWhitelisted(address beneficiary, bool status)
+    /// @notice Set a beneficiary's total budget allocation
+    function setBudget(address beneficiary, uint256 allocated)
         external
         onlyOwner
     {
-        whitelisted[beneficiary] = status;
+        budgets[beneficiary].allocated = allocated;
+        emit BudgetSet(beneficiary, allocated);
     }
 
     /// @notice Withdraw ERC20 tokens

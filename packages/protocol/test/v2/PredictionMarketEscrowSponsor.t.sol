@@ -8,11 +8,10 @@ import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "../../src/v2/interfaces/IMintSponsor.sol";
-import "../../src/v2/sponsors/MatchedBetSponsor.sol";
 import "./mocks/MockERC20.sol";
 
-/// @notice Minimal sponsor that always transfers the exact collateral
-contract GoodSponsor is IMintSponsor {
+/// @notice Mock sponsor that transfers the exact collateral. NOT FOR PRODUCTION.
+contract MockGoodSponsor is IMintSponsor {
     IERC20 public collateralToken;
 
     constructor(address collateralToken_) {
@@ -30,8 +29,8 @@ contract GoodSponsor is IMintSponsor {
     }
 }
 
-/// @notice Sponsor that intentionally transfers less than required
-contract UnderfundingSponsor is IMintSponsor {
+/// @notice Mock sponsor that intentionally transfers less than required. NOT FOR PRODUCTION.
+contract MockUnderfundingSponsor is IMintSponsor {
     IERC20 public collateralToken;
 
     constructor(address collateralToken_) {
@@ -45,7 +44,6 @@ contract UnderfundingSponsor is IMintSponsor {
         IV2Types.Pick[] calldata, /* picks */
         bytes calldata /* sponsorData */
     ) external override {
-        // Transfer only half of the collateral
         collateralToken.transfer(escrow, collateral / 2);
     }
 }
@@ -55,9 +53,8 @@ contract PredictionMarketEscrowSponsorTest is Test {
     ManualConditionResolver public resolver;
     MockERC20 public collateralToken;
 
-    GoodSponsor public goodSponsor;
-    UnderfundingSponsor public underfundingSponsor;
-    MatchedBetSponsor public matchedBetSponsor;
+    MockGoodSponsor public goodSponsor;
+    MockUnderfundingSponsor public underfundingSponsor;
 
     address public owner;
     address public predictor;
@@ -69,7 +66,6 @@ contract PredictionMarketEscrowSponsorTest is Test {
 
     uint256 public constant PREDICTOR_WAGER = 100e18;
     uint256 public constant COUNTERPARTY_WAGER = 150e18;
-    uint256 public constant MATCH_LIMIT = 200e18;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -92,17 +88,14 @@ contract PredictionMarketEscrowSponsorTest is Test {
 
         conditionId1 = keccak256(abi.encode("condition-1"));
 
-        // Deploy sponsors
-        goodSponsor = new GoodSponsor(address(collateralToken));
-        underfundingSponsor = new UnderfundingSponsor(address(collateralToken));
-        matchedBetSponsor = new MatchedBetSponsor(
-            address(market), address(collateralToken), MATCH_LIMIT, owner
-        );
+        // Deploy mock sponsors
+        goodSponsor = new MockGoodSponsor(address(collateralToken));
+        underfundingSponsor =
+            new MockUnderfundingSponsor(address(collateralToken));
 
         // Fund sponsors
         collateralToken.mint(address(goodSponsor), 100_000e18);
         collateralToken.mint(address(underfundingSponsor), 100_000e18);
-        collateralToken.mint(address(matchedBetSponsor), 100_000e18);
 
         // Approve market for sponsors
         vm.prank(address(goodSponsor));
@@ -116,14 +109,6 @@ contract PredictionMarketEscrowSponsorTest is Test {
         collateralToken.approve(address(market), type(uint256).max);
         vm.prank(predictor);
         collateralToken.approve(address(market), type(uint256).max);
-
-        // Whitelist predictor in matchedBetSponsor
-        vm.prank(owner);
-        matchedBetSponsor.setWhitelisted(predictor, true);
-
-        // Set required condition
-        vm.prank(owner);
-        matchedBetSponsor.setRequiredCondition(address(resolver), conditionId1);
     }
 
     // ============ Helpers ============
@@ -247,17 +232,14 @@ contract PredictionMarketEscrowSponsorTest is Test {
             "Sponsor should pay predictor collateral"
         );
 
-        // Counterparty still pays their own collateral
+        // Both sides receive tokens equal to total collateral
         uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
 
-        // Predictor should receive tokens
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
             totalCollateral,
             "Predictor should receive tokens"
         );
-
-        // Counterparty should receive tokens
         assertEq(
             IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
             totalCollateral,
@@ -284,15 +266,15 @@ contract PredictionMarketEscrowSponsorTest is Test {
 
     function test_sponsoredMint_revertsWhenSponsorHasNoFunds() public {
         // Deploy a good sponsor with no funds
-        GoodSponsor emptyGoodSponsor = new GoodSponsor(address(collateralToken));
+        MockGoodSponsor emptySponsor =
+            new MockGoodSponsor(address(collateralToken));
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(emptyGoodSponsor), "");
+            _createSponsoredMintRequest(picks, address(emptySponsor), "");
 
-        // Will revert because the sponsor has no tokens to transfer
         vm.expectRevert();
         market.mint(request);
     }
@@ -311,7 +293,7 @@ contract PredictionMarketEscrowSponsorTest is Test {
             address counterpartyToken
         ) = market.mint(request);
 
-        // Predictor's balance should decrease by their collateral (self-funded)
+        // Predictor self-funds
         assertEq(
             collateralToken.balanceOf(predictor),
             predictorBalBefore - PREDICTOR_WAGER,
@@ -328,119 +310,8 @@ contract PredictionMarketEscrowSponsorTest is Test {
             totalCollateral
         );
 
-        // Prediction should be recorded
         IV2Types.Prediction memory prediction =
             market.getPrediction(predictionId);
         assertEq(prediction.predictor, predictor);
-    }
-
-    // ============ MatchedBetSponsor Tests ============
-
-    function test_matchedBetSponsor_whitelistEnforcement() public {
-        // Remove predictor from whitelist
-        vm.prank(owner);
-        matchedBetSponsor.setWhitelisted(predictor, false);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(matchedBetSponsor), "");
-
-        vm.expectRevert(MatchedBetSponsor.NotWhitelisted.selector);
-        market.mint(request);
-    }
-
-    function test_matchedBetSponsor_matchLimitEnforcement() public {
-        // Set a very low match limit
-        vm.prank(owner);
-        matchedBetSponsor.setMatchLimit(10e18);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-
-        // PREDICTOR_WAGER (100e18) > matchLimit (10e18)
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(matchedBetSponsor), "");
-
-        vm.expectRevert(MatchedBetSponsor.CollateralExceedsMatchLimit.selector);
-        market.mint(request);
-    }
-
-    function test_matchedBetSponsor_requiredConditionEnforcement() public {
-        // Create a pick with a different condition
-        bytes32 wrongConditionId = keccak256(abi.encode("wrong-condition"));
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(wrongConditionId, IV2Types.OutcomeSide.YES);
-
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(matchedBetSponsor), "");
-
-        vm.expectRevert(MatchedBetSponsor.RequiredConditionNotFound.selector);
-        market.mint(request);
-    }
-
-    function test_matchedBetSponsor_successfulSponsorship() public {
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-
-        uint256 sponsorBalBefore =
-            collateralToken.balanceOf(address(matchedBetSponsor));
-
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(matchedBetSponsor), "");
-        market.mint(request);
-
-        assertEq(
-            collateralToken.balanceOf(address(matchedBetSponsor)),
-            sponsorBalBefore - PREDICTOR_WAGER,
-            "Sponsor should pay predictor collateral"
-        );
-    }
-
-    function test_matchedBetSponsor_ownerCanWithdrawERC20() public {
-        address recipient = vm.addr(10);
-        uint256 amount = 500e18;
-
-        uint256 sponsorBalBefore =
-            collateralToken.balanceOf(address(matchedBetSponsor));
-
-        vm.prank(owner);
-        matchedBetSponsor.withdrawERC20(
-            IERC20(address(collateralToken)), recipient, amount
-        );
-
-        assertEq(collateralToken.balanceOf(recipient), amount);
-        assertEq(
-            collateralToken.balanceOf(address(matchedBetSponsor)),
-            sponsorBalBefore - amount
-        );
-    }
-
-    function test_matchedBetSponsor_ownerCanWithdrawNative() public {
-        address payable recipient = payable(vm.addr(10));
-        uint256 amount = 1 ether;
-
-        // Send native tokens to sponsor
-        vm.deal(address(matchedBetSponsor), amount);
-
-        vm.prank(owner);
-        matchedBetSponsor.withdrawNative(recipient, amount);
-
-        assertEq(recipient.balance, amount);
-        assertEq(address(matchedBetSponsor).balance, 0);
-    }
-
-    function test_matchedBetSponsor_nonEscrowCallerReverts() public {
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-
-        // Try to call fundMint directly from a non-escrow address
-        vm.prank(vm.addr(99));
-        vm.expectRevert(MatchedBetSponsor.UnauthorizedEscrow.selector);
-        matchedBetSponsor.fundMint(
-            address(market), predictor, PREDICTOR_WAGER, picks, ""
-        );
     }
 }
