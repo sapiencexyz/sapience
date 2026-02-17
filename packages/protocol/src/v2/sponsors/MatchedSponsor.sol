@@ -8,7 +8,7 @@ import "../interfaces/IMintSponsor.sol";
 import "../interfaces/IV2Types.sol";
 
 /**
- * @title MatchedBetSponsor
+ * @title MatchedSponsor
  * @notice Example sponsor that funds predictor collateral with configurable controls
  * @dev Features:
  *   - Owner-managed per-beneficiary budgets (allocated vs used tracking)
@@ -17,7 +17,7 @@ import "../interfaces/IV2Types.sol";
  *   - Owner can withdraw ERC20s and native gas tokens
  *   - Only the registered escrow can call fundMint
  */
-contract MatchedBetSponsor is IMintSponsor, Ownable {
+contract MatchedSponsor is IMintSponsor, Ownable {
     using SafeERC20 for IERC20;
 
     // ============ Types ============
