@@ -212,7 +212,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
                 },
                 bid: {
                   maker: bid.maker as `0x${string}`,
-                  makerWager: bid.makerWager,
+                  makerCollateral: bid.makerCollateral,
                   makerDeadline: bid.makerDeadline,
                   makerSignature: bid.makerSignature as `0x${string}`,
                   makerNonce: lastAuctionParams.takerNonce,
@@ -244,7 +244,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const list = valid.length > 0 ? valid : filteredBids;
         const best = list.reduce((bestBid, cur) => {
           try {
-            return BigInt(cur.makerWager) > BigInt(bestBid.makerWager)
+            return BigInt(cur.makerCollateral) > BigInt(bestBid.makerCollateral)
               ? cur
               : bestBid;
           } catch {
@@ -253,7 +253,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         }, list[0]);
 
         const taker = BigInt(String(lastTakerPositionSizeWei || '0'));
-        const maker = BigInt(String(best?.makerWager || '0'));
+        const maker = BigInt(String(best?.makerCollateral || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
         const clamped = Math.max(0, Math.min(1, prob));

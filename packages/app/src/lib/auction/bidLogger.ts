@@ -7,7 +7,7 @@ import { formatUnits } from 'viem';
 export function formatBidForLog(
   bid: {
     maker: string;
-    makerWager: string;
+    makerCollateral: string;
     makerDeadline: number;
     makerNonce?: number;
   },
@@ -16,9 +16,9 @@ export function formatBidForLog(
   const makerShort = `${bid.maker.slice(0, 8)}...`;
   let positionSizeFormatted: string;
   try {
-    positionSizeFormatted = formatUnits(BigInt(bid.makerWager), decimals);
+    positionSizeFormatted = formatUnits(BigInt(bid.makerCollateral), decimals);
   } catch {
-    positionSizeFormatted = bid.makerWager;
+    positionSizeFormatted = bid.makerCollateral;
   }
   const nowSec = Math.floor(Date.now() / 1000);
   const expiresIn = Math.max(0, bid.makerDeadline - nowSec);

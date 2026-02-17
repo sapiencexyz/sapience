@@ -372,7 +372,7 @@ const CreatePositionFormInner = ({
         chainId,
         predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
         takerAddress: taker,
-        takerWager: wager,
+        takerCollateral: wager,
         takerNonce,
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,

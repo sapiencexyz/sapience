@@ -20,7 +20,7 @@ export interface UseValidatedAuctionBidsOptions {
   chainId: number;
   predictionMarketAddress?: `0x${string}`;
   takerAddress?: `0x${string}`;
-  takerWager?: string;
+  takerCollateral?: string;
   takerNonce?: number;
   encodedPredictedOutcomes?: `0x${string}`;
   resolver?: `0x${string}`;
@@ -72,7 +72,7 @@ export function useValidatedAuctionBids(
     chainId,
     predictionMarketAddress,
     takerAddress,
-    takerWager,
+    takerCollateral,
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
@@ -100,7 +100,7 @@ export function useValidatedAuctionBids(
       enabled &&
       !!predictionMarketAddress &&
       !!takerAddress &&
-      !!takerWager &&
+      !!takerCollateral &&
       takerNonce !== undefined &&
       !!encodedPredictedOutcomes &&
       !!resolver &&
@@ -110,7 +110,7 @@ export function useValidatedAuctionBids(
     enabled,
     predictionMarketAddress,
     takerAddress,
-    takerWager,
+    takerCollateral,
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
@@ -142,7 +142,7 @@ export function useValidatedAuctionBids(
       chainId,
       predictionMarketAddress: predictionMarketAddress!,
       takerAddress: takerAddress!,
-      takerWager: takerWager!,
+      takerCollateral: takerCollateral!,
       takerNonce: takerNonce!,
       encodedPredictedOutcomes: encodedPredictedOutcomes!,
       resolver: resolver!,
@@ -194,7 +194,7 @@ export function useValidatedAuctionBids(
     chainId,
     predictionMarketAddress,
     takerAddress,
-    takerWager,
+    takerCollateral,
     takerNonce,
     encodedPredictedOutcomes,
     resolver,

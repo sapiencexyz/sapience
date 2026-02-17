@@ -47,13 +47,13 @@ export const V2_RPC_URL = 'https://rpc.ethereal.trade';
 /** PredictionMarketEscrow view function ABI */
 const PREDICTION_MARKET_ESCROW_ABI = parseAbi([
   // View functions
-  'function getPrediction(bytes32 predictionId) view returns ((bytes32 predictionId, bytes32 pickConfigId, uint256 predictorWager, uint256 counterpartyWager, address predictor, address counterparty, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
+  'function getPrediction(bytes32 predictionId) view returns ((bytes32 predictionId, bytes32 pickConfigId, uint256 predictorCollateral, uint256 counterpartyCollateral, address predictor, address counterparty, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
   'function getPickConfiguration(bytes32 pickConfigId) view returns ((bytes32 pickConfigId, uint256 totalPredictorCollateral, uint256 totalCounterpartyCollateral, uint256 claimedPredictorCollateral, uint256 claimedCounterpartyCollateral, bool resolved, uint8 result))',
   'function getTokenPair(bytes32 pickConfigId) view returns ((address predictorToken, address counterpartyToken))',
   'function getNonce(address account) view returns (uint256)',
   'function canSettle(bytes32 predictionId) view returns (bool)',
   'function getPicks(bytes32 pickConfigId) view returns ((address conditionResolver, bytes32 conditionId, uint8 predictedOutcome)[])',
-  'function getEscrowRecord(bytes32 predictionId) view returns ((bytes32 pickConfigId, uint256 totalCollateral, uint256 predictorWager, uint256 counterpartyWager, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
+  'function getEscrowRecord(bytes32 predictionId) view returns ((bytes32 pickConfigId, uint256 totalCollateral, uint256 predictorCollateral, uint256 counterpartyCollateral, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
   'function getClaimableAmount(bytes32 pickConfigId, address positionToken, uint256 tokenAmount) view returns (uint256)',
   'function isPositionToken(address token) view returns (bool)',
   'function isPredictorToken(address token) view returns (bool)',
@@ -136,8 +136,8 @@ export async function getPrediction(
   return {
     predictionId: result.predictionId,
     pickConfigId: result.pickConfigId,
-    predictorWager: result.predictorWager,
-    counterpartyWager: result.counterpartyWager,
+    predictorCollateral: result.predictorCollateral,
+    counterpartyCollateral: result.counterpartyCollateral,
     predictor: result.predictor,
     counterparty: result.counterparty,
     predictorTokensMinted: result.predictorTokensMinted,
@@ -265,8 +265,8 @@ export async function getEscrowRecord(
   return {
     pickConfigId: result.pickConfigId,
     totalCollateral: result.totalCollateral,
-    predictorWager: result.predictorWager,
-    counterpartyWager: result.counterpartyWager,
+    predictorCollateral: result.predictorCollateral,
+    counterpartyCollateral: result.counterpartyCollateral,
     predictorTokensMinted: result.predictorTokensMinted,
     counterpartyTokensMinted: result.counterpartyTokensMinted,
     settled: result.settled,

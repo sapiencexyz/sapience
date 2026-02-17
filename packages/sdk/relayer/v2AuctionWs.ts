@@ -30,8 +30,8 @@ export interface V2AuctionWsHandlers {
   onAuctionStarted?: (payload: {
     auctionId: string;
     picks: PickJson[];
-    predictorWager: string;
-    counterpartyWager: string;
+    predictorCollateral: string;
+    counterpartyCollateral: string;
     predictor: string;
     predictorDeadline: number;
     chainId: number;
@@ -276,8 +276,8 @@ export function createV2AuctionWs(
  */
 export function buildV2AuctionRequest(params: {
   picks: PickJson[];
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
@@ -288,8 +288,8 @@ export function buildV2AuctionRequest(params: {
 }): V2AuctionRequestPayload {
   return {
     picks: params.picks,
-    predictorWager: params.predictorWager.toString(),
-    counterpartyWager: params.counterpartyWager.toString(),
+    predictorCollateral: params.predictorCollateral.toString(),
+    counterpartyCollateral: params.counterpartyCollateral.toString(),
     predictor: params.predictor,
     predictorNonce: params.predictorNonce,
     predictorDeadline: params.predictorDeadline,
@@ -306,7 +306,7 @@ export function buildV2AuctionRequest(params: {
 export function buildV2BidPayload(params: {
   auctionId: string;
   counterparty: string;
-  counterpartyWager: string;
+  counterpartyCollateral: string;
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;
@@ -315,7 +315,7 @@ export function buildV2BidPayload(params: {
   return {
     auctionId: params.auctionId,
     counterparty: params.counterparty,
-    counterpartyWager: params.counterpartyWager,
+    counterpartyCollateral: params.counterpartyCollateral,
     counterpartyNonce: params.counterpartyNonce,
     counterpartyDeadline: params.counterpartyDeadline,
     counterpartySignature: params.counterpartySignature,

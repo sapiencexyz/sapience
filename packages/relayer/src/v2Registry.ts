@@ -67,7 +67,7 @@ export function addV2Bid(
   const validated: V2ValidatedBid = {
     auctionId,
     counterparty: bid.counterparty,
-    counterpartyWager: bid.counterpartyWager,
+    counterpartyCollateral: bid.counterpartyCollateral,
     counterpartyNonce: bid.counterpartyNonce,
     counterpartyDeadline: bid.counterpartyDeadline,
     counterpartySignature: bid.counterpartySignature,
@@ -102,8 +102,8 @@ export function getV2AuctionDetails(
   return {
     auctionId,
     picks: rec.auction.picks,
-    predictorWager: rec.auction.predictorWager,
-    counterpartyWager: rec.auction.counterpartyWager,
+    predictorCollateral: rec.auction.predictorCollateral,
+    counterpartyCollateral: rec.auction.counterpartyCollateral,
     predictor: rec.auction.predictor,
     predictorDeadline: rec.auction.predictorDeadline,
     chainId: rec.auction.chainId,

@@ -15,8 +15,8 @@ export type V2Prediction = {
   counterparty: string;
   predictorToken: string;
   counterpartyToken: string;
-  predictorWager: string;
-  counterpartyWager: string;
+  predictorCollateral: string;
+  counterpartyCollateral: string;
   collateralDeposited?: string | null;
   collateralDepositedAt?: number | null;
   settled: boolean;
@@ -96,8 +96,8 @@ const V2_PREDICTIONS_QUERY = /* GraphQL */ `
       counterparty
       predictorToken
       counterpartyToken
-      predictorWager
-      counterpartyWager
+      predictorCollateral
+      counterpartyCollateral
       collateralDeposited
       collateralDepositedAt
       settled

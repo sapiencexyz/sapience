@@ -1531,7 +1531,7 @@ type V2PredictionType {
   counterparty: String!
   counterpartyClaimable: String
   counterpartyToken: String!
-  counterpartyWager: String!
+  counterpartyCollateral: String!
   createTxHash: String!
   id: Int!
   marketAddress: String!
@@ -1539,7 +1539,7 @@ type V2PredictionType {
   predictor: String!
   predictorClaimable: String
   predictorToken: String!
-  predictorWager: String!
+  predictorCollateral: String!
   refCode: String
   result: String!
   settleTxHash: String

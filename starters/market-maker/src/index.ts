@@ -376,7 +376,7 @@ function start() {
           logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
         }
 
-        const makerWager = BID_AMOUNT;
+        const makerCollateral = BID_AMOUNT;
         const makerDeadline = Math.floor(Date.now() / 1000) + DEADLINE_SECONDS;
 
         if (!account || !MAKER) {
@@ -394,7 +394,7 @@ function start() {
             predictedOutcomes: auction.predictedOutcomes as string[],
             wager: auction.wager as string,
           },
-          makerWager,
+          makerCollateral,
           makerDeadline,
           chainId: CHAIN_ID,
           verifyingContract: VERIFYING_CONTRACT,
@@ -416,7 +416,7 @@ function start() {
           payload: {
             auctionId,
             maker: MAKER,
-            makerWager: makerWager.toString(),
+            makerCollateral: makerCollateral.toString(),
             makerDeadline,
             makerSignature,
             makerNonce: makerNonce.toString(),
@@ -434,8 +434,8 @@ function start() {
         // ----------------------------------------------------------------
         const auction = msg.payload as V2AuctionDetails;
         const auctionId = auction.auctionId;
-        const predictorWager = BigInt(auction.predictorWager || '0');
-        const counterpartyWager = BigInt(auction.counterpartyWager || '0');
+        const predictorCollateral = BigInt(auction.predictorCollateral || '0');
+        const counterpartyCollateral = BigInt(auction.counterpartyCollateral || '0');
         const auctionChainId = auction.chainId;
 
         // Ignore auctions on different chains
@@ -444,7 +444,7 @@ function start() {
         }
 
         // Ignore auctions below minimum wager
-        if (predictorWager < MIN_MAKER_WAGER) {
+        if (predictorCollateral < MIN_MAKER_WAGER) {
           return;
         }
 
@@ -479,8 +479,8 @@ function start() {
         // Build typed data for counterparty signature
         const typedData = buildCounterpartyMintTypedData({
           picks: convertPicksFromJson(auction.picks),
-          predictorWager,
-          counterpartyWager: BID_AMOUNT,
+          predictorCollateral,
+          counterpartyCollateral: BID_AMOUNT,
           predictor: auction.predictor as Address,
           counterparty: MAKER,
           counterpartyNonce,

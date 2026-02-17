@@ -38,16 +38,16 @@ export function validateV2AuctionRequest(
   }
 
   // Validate predictor wager
-  if (!payload.predictorWager) {
-    return { valid: false, error: 'Missing predictorWager' };
+  if (!payload.predictorCollateral) {
+    return { valid: false, error: 'Missing predictorCollateral' };
   }
   try {
-    const wager = BigInt(payload.predictorWager);
+    const wager = BigInt(payload.predictorCollateral);
     if (wager <= 0n) {
-      return { valid: false, error: 'predictorWager must be positive' };
+      return { valid: false, error: 'predictorCollateral must be positive' };
     }
   } catch {
-    return { valid: false, error: 'Invalid predictorWager format' };
+    return { valid: false, error: 'Invalid predictorCollateral format' };
   }
 
   // Validate predictor address
@@ -113,17 +113,17 @@ export function validateV2Bid(
     return { valid: false, error: 'Invalid counterparty address' };
   }
 
-  // Validate counterpartyWager (wei string)
-  if (!bid.counterpartyWager || typeof bid.counterpartyWager !== 'string') {
-    return { valid: false, error: 'Missing counterpartyWager' };
+  // Validate counterpartyCollateral (wei string)
+  if (!bid.counterpartyCollateral || typeof bid.counterpartyCollateral !== 'string') {
+    return { valid: false, error: 'Missing counterpartyCollateral' };
   }
   try {
-    const wager = BigInt(bid.counterpartyWager);
+    const wager = BigInt(bid.counterpartyCollateral);
     if (wager <= 0n) {
-      return { valid: false, error: 'counterpartyWager must be positive' };
+      return { valid: false, error: 'counterpartyCollateral must be positive' };
     }
   } catch {
-    return { valid: false, error: 'Invalid counterpartyWager format' };
+    return { valid: false, error: 'Invalid counterpartyCollateral format' };
   }
 
   // Validate nonce

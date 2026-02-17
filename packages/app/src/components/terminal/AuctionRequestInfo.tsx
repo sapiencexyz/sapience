@@ -35,7 +35,7 @@ type SubmitData = {
 type Props = {
   uiTx: UiTransaction;
   bids: any[] | undefined;
-  takerWager: string | null;
+  takerCollateral: string | null;
   collateralAssetTicker: string;
   onSubmit: (data: SubmitData) => void | Promise<void>;
   maxEndTimeSec?: number | null;
@@ -48,7 +48,7 @@ type BestBidProps = {
   uiTx: UiTransaction;
   sortedBids: any[];
   now: number;
-  takerWager: string | null;
+  takerCollateral: string | null;
   collateralAssetTicker: string;
   lastTrade: {
     takerStr: string;
@@ -65,7 +65,7 @@ const BestBid: React.FC<BestBidProps> = ({
   uiTx,
   sortedBids,
   now,
-  takerWager,
+  takerCollateral,
   collateralAssetTicker,
   lastTrade,
   lastBid,
@@ -151,11 +151,11 @@ const BestBid: React.FC<BestBidProps> = ({
                 })();
                 const payoutStr = (() => {
                   try {
-                    const maker = BigInt(String(takerWager ?? '0'));
-                    const taker = BigInt(String(b?.makerWager ?? '0'));
+                    const maker = BigInt(String(takerCollateral ?? '0'));
+                    const taker = BigInt(String(b?.makerCollateral ?? '0'));
                     return (maker + taker).toString();
                   } catch {
-                    return String(b?.makerWager || '0');
+                    return String(b?.makerCollateral || '0');
                   }
                 })();
                 let payoutNumber = 0;
@@ -167,15 +167,15 @@ const BestBid: React.FC<BestBidProps> = ({
                 }
                 try {
                   takerNumber = Number(
-                    formatEther(BigInt(String(b?.makerWager ?? '0')))
+                    formatEther(BigInt(String(b?.makerCollateral ?? '0')))
                   );
                 } catch {
                   takerNumber = 0;
                 }
                 let pct: number | null = null;
                 try {
-                  const maker = BigInt(String(takerWager ?? '0'));
-                  const taker = BigInt(String(b?.makerWager ?? '0'));
+                  const maker = BigInt(String(takerCollateral ?? '0'));
+                  const taker = BigInt(String(b?.makerCollateral ?? '0'));
                   const total = maker + taker;
                   if (total > 0n) {
                     const pctTimes100 = Number((taker * 10000n) / total);
@@ -274,7 +274,7 @@ const BestBid: React.FC<BestBidProps> = ({
 const AuctionRequestInfo: React.FC<Props> = ({
   uiTx,
   bids,
-  takerWager,
+  takerCollateral,
   collateralAssetTicker,
   onSubmit,
   maxEndTimeSec,
@@ -291,18 +291,18 @@ const AuctionRequestInfo: React.FC<Props> = ({
 
   const takerAmountDisplay = useMemo(() => {
     try {
-      return Number(formatEther(BigInt(String(takerWager ?? '0'))));
+      return Number(formatEther(BigInt(String(takerCollateral ?? '0'))));
     } catch {
       return 0;
     }
-  }, [takerWager]);
+  }, [takerCollateral]);
 
   const highestTakerBidDisplay = useMemo(() => {
     try {
       if (!Array.isArray(bids) || bids.length === 0) return 0;
       const maxWei = bids.reduce((m, b) => {
         try {
-          const v = BigInt(String(b?.makerWager ?? '0'));
+          const v = BigInt(String(b?.makerCollateral ?? '0'));
           return v > m ? v : m;
         } catch {
           return m;
@@ -464,8 +464,8 @@ const AuctionRequestInfo: React.FC<Props> = ({
       if (candidates.length === 0) return null as any;
       return candidates.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? '0'));
+          const cur = BigInt(String(b?.makerCollateral ?? '0'));
+          const bestVal = BigInt(String(best?.makerCollateral ?? '0'));
           return cur > bestVal ? b : best;
         } catch {
           return best;
@@ -483,7 +483,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
     const withSortKey = list.map((b) => {
       let positionSize = 0n;
       try {
-        positionSize = BigInt(String(b?.makerWager ?? '0'));
+        positionSize = BigInt(String(b?.makerCollateral ?? '0'));
       } catch {
         positionSize = 0n;
       }
@@ -564,7 +564,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
             uiTx={uiTx}
             sortedBids={sortedBids}
             now={now}
-            takerWager={takerWager}
+            takerCollateral={takerCollateral}
             collateralAssetTicker={collateralAssetTicker}
             lastTrade={lastTrade}
             lastBid={lastBid}

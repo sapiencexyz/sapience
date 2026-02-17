@@ -2057,7 +2057,7 @@ export type V2PredictionType = {
   counterparty: Scalars['String']['output'];
   counterpartyClaimable?: Maybe<Scalars['String']['output']>;
   counterpartyToken: Scalars['String']['output'];
-  counterpartyWager: Scalars['String']['output'];
+  counterpartyCollateral: Scalars['String']['output'];
   createTxHash: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
@@ -2065,7 +2065,7 @@ export type V2PredictionType = {
   predictor: Scalars['String']['output'];
   predictorClaimable?: Maybe<Scalars['String']['output']>;
   predictorToken: Scalars['String']['output'];
-  predictorWager: Scalars['String']['output'];
+  predictorCollateral: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   result: Scalars['String']['output'];
   settleTxHash?: Maybe<Scalars['String']['output']>;

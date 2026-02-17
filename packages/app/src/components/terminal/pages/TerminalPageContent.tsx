@@ -806,7 +806,7 @@ const TerminalPageContent: React.FC = () => {
       const maker =
         (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
       const wager =
-        (m as any)?.data?.wager || (m as any)?.data?.predictorWager || '0';
+        (m as any)?.data?.wager || (m as any)?.data?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -822,12 +822,12 @@ const TerminalPageContent: React.FC = () => {
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerWager, V2 uses counterpartyWager (but we may not have it in bid)
+          // V1 uses makerCollateral, V2 uses counterpartyCollateral (but we may not have it in bid)
           const cur = BigInt(
-            String(b?.makerWager ?? b?.counterpartyWager ?? '0')
+            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
           );
           const bestVal = BigInt(
-            String(best?.makerWager ?? best?.counterpartyWager ?? '0')
+            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
           );
           return cur > bestVal ? b : best;
         } catch {
@@ -835,12 +835,12 @@ const TerminalPageContent: React.FC = () => {
         }
       }, bids[0] || null);
       const taker = top?.taker || top?.counterparty || '';
-      const makerWager = top?.makerWager || top?.counterpartyWager || '0';
+      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerWager || '0'),
+        collateral: String(makerCollateral || '0'),
         position: { owner: taker },
       } as UiTransaction;
     }
@@ -1011,9 +1011,9 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerWager={String(
+                                  takerCollateral={String(
                                     m?.data?.wager ??
-                                      m?.data?.predictorWager ??
+                                      m?.data?.predictorCollateral ??
                                       '0'
                                   )}
                                   taker={
@@ -1085,9 +1085,9 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerWager={String(
+                                      takerCollateral={String(
                                         m?.data?.wager ??
-                                          m?.data?.predictorWager ??
+                                          m?.data?.predictorCollateral ??
                                           '0'
                                       )}
                                       taker={

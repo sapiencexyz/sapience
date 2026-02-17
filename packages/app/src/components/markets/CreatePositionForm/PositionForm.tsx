@@ -319,10 +319,10 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
-    // Select the bid with highest makerWager (highest payout for user)
+    // Select the bid with highest makerCollateral (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
       try {
-        return BigInt(current.makerWager) > BigInt(acc.makerWager)
+        return BigInt(current.makerCollateral) > BigInt(acc.makerCollateral)
           ? current
           : acc;
       } catch {
@@ -330,7 +330,7 @@ export default function PositionForm({
       }
     });
 
-    const resultKey = `best:${best.maker}:${best.makerWager}`;
+    const resultKey = `best:${best.maker}:${best.makerCollateral}`;
     if (prevFilterResultRef.current !== resultKey) {
       logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
       prevFilterResultRef.current = resultKey;
@@ -474,7 +474,7 @@ export default function PositionForm({
           const v2Picks = getV2Picks();
           if (v2Picks.length > 0) {
             params.v2Picks = v2Picks;
-            // Note: counterpartyWager is NOT set here - counterparty decides their wager in their bid
+            // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
           }
         }
 

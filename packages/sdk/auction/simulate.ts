@@ -61,7 +61,7 @@ export interface SimulateBidResult {
 /** Bid data from the API (bidder/market maker). */
 export interface BidData {
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -82,7 +82,7 @@ export interface SimulateBidMintOptions {
   chainId: number;
   predictionMarketAddress: `0x${string}`;
   takerAddress: `0x${string}`;
-  takerWager: string;
+  takerCollateral: string;
   takerNonce: number;
   encodedPredictedOutcomes: `0x${string}`;
   resolver: `0x${string}`;

@@ -124,9 +124,9 @@ export async function calculatePositionPnL(
  * Calculate V2 Position P&L for users
  *
  * V2 P&L is calculated from:
- * 1. Redemptions: collateralPaid - original wager
- * 2. Burns (early exits): payout - proportional original wager
- * 3. Unredeemed settled positions: claimable - original wager
+ * 1. Redemptions: collateralPaid - original collateral
+ * 2. Burns (early exits): payout - proportional original collateral
+ * 3. Unredeemed settled positions: claimable - original collateral
  *
  * Settlement results:
  * - PREDICTOR_WINS: Predictors get proportional share of total pool
@@ -182,7 +182,7 @@ export async function calculateV2PositionPnL(
     predictionIds.add(redemption.predictionId);
   }
 
-  // Get all predictions to find original wagers
+  // Get all predictions to find original collaterals
   const predictions = await prisma.v2Prediction.findMany({
     where: {
       predictionId: { in: Array.from(predictionIds) },
@@ -203,23 +203,23 @@ export async function calculateV2PositionPnL(
 
     const stats = initOwner(holder);
 
-    // Find original wager for this holder from the prediction
+    // Find original collateral for this holder from the prediction
     const prediction = predictionById.get(redemption.predictionId);
     if (!prediction) continue;
 
-    let originalWager = 0n;
+    let originalCollateral = 0n;
     const tokensRedeemed = BigInt(redemption.tokensBurned);
 
     // Determine if holder was predictor or counterparty
     if (prediction.predictor.toLowerCase() === holder) {
-      // For predictor, wager equals tokens (1:1 ratio in V2)
-      originalWager = BigInt(prediction.predictorWager);
+      // For predictor, collateral equals tokens (1:1 ratio in V2)
+      originalCollateral = BigInt(prediction.predictorCollateral);
     } else if (prediction.counterparty.toLowerCase() === holder) {
-      originalWager = BigInt(prediction.counterpartyWager);
+      originalCollateral = BigInt(prediction.counterpartyCollateral);
     }
 
     const collateralPaid = BigInt(redemption.collateralPaid);
-    const pnl = collateralPaid - originalWager;
+    const pnl = collateralPaid - originalCollateral;
 
     stats.realizedPnL += pnl;
     stats.redemptionCount++;
@@ -239,11 +239,11 @@ export async function calculateV2PositionPnL(
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictorHolder)) {
       const stats = initOwner(predictorHolder);
 
-      // In V2, tokens burned equals wager portion
+      // In V2, tokens burned equals collateral portion
       const tokensBurned = BigInt(burn.predictorTokensBurned);
       const payout = BigInt(burn.predictorPayout);
 
-      // P&L = payout - tokens burned (tokens = wager in V2)
+      // P&L = payout - tokens burned (tokens = collateral in V2)
       stats.realizedPnL += payout - tokensBurned;
       stats.burnCount++;
       stats.positionCount++;
@@ -278,7 +278,7 @@ export async function calculateV2PositionPnL(
     // Calculate unrealized P&L for predictor
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictor)) {
       const stats = initOwner(predictor);
-      const wager = BigInt(prediction.predictorWager);
+      const wager = BigInt(prediction.predictorCollateral);
       const claimable = BigInt(prediction.predictorClaimable || '0');
 
       stats.unrealizedPnL += claimable - wager;
@@ -288,7 +288,7 @@ export async function calculateV2PositionPnL(
     // Calculate unrealized P&L for counterparty
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterparty)) {
       const stats = initOwner(counterparty);
-      const wager = BigInt(prediction.counterpartyWager);
+      const wager = BigInt(prediction.counterpartyCollateral);
       const claimable = BigInt(prediction.counterpartyClaimable || '0');
 
       stats.unrealizedPnL += claimable - wager;

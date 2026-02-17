@@ -179,7 +179,7 @@ const FeedPageContent: React.FC = () => {
     // Handle both V1 and V2 auction started messages
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
       const maker = d?.maker || d?.predictor || '';
-      const positionSize = d?.wager || d?.predictorWager || '0';
+      const positionSize = d?.wager || d?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -193,12 +193,12 @@ const FeedPageContent: React.FC = () => {
       const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerWager, V2 uses counterpartyWager
+          // V1 uses makerCollateral, V2 uses counterpartyCollateral
           const cur = BigInt(
-            String(b?.makerWager ?? b?.counterpartyWager ?? '0')
+            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
           );
           const bestVal = BigInt(
-            String(best?.makerWager ?? best?.counterpartyWager ?? '0')
+            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
           );
           return cur > bestVal ? b : best;
         } catch {
@@ -206,12 +206,12 @@ const FeedPageContent: React.FC = () => {
         }
       }, bids[0] || null);
       const taker = top?.taker || top?.counterparty || '';
-      const makerWager = top?.makerWager || top?.counterpartyWager || '0';
+      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerWager || '0'),
+        collateral: String(makerCollateral || '0'),
         position: { owner: taker },
       } as UiTransaction;
     }
@@ -655,7 +655,7 @@ const FeedPageContent: React.FC = () => {
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
-                                    makerWager={String(d?.wager ?? '0')}
+                                    makerCollateral={String(d?.wager ?? '0')}
                                     collateralAssetTicker={
                                       collateralAssetTicker
                                     }

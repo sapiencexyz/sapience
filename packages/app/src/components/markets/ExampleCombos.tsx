@@ -291,11 +291,11 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         });
         const list = valid.length > 0 ? valid : bids;
         const best = list.reduce((acc, cur) => {
-          return BigInt(cur.makerWager) > BigInt(acc.makerWager) ? cur : acc;
+          return BigInt(cur.makerCollateral) > BigInt(acc.makerCollateral) ? cur : acc;
         }, list[0]);
 
         const taker = BigInt(TAKER_POSITION_SIZE_WEI);
-        const maker = BigInt(String(best?.makerWager || '0'));
+        const maker = BigInt(String(best?.makerCollateral || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
         const safeProbability = Math.max(0, Math.min(1, prob));

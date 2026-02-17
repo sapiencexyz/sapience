@@ -20,8 +20,8 @@ interface PredictionCreatedEvent {
   counterparty: `0x${string}`;
   predictorToken: `0x${string}`;
   counterpartyToken: `0x${string}`;
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   refCode: `0x${string}`;
 }
 
@@ -397,8 +397,8 @@ class V2PredictionMarketIndexer implements IIndexer {
         counterparty: event.counterparty.toLowerCase(),
         predictorToken: event.predictorToken.toLowerCase(),
         counterpartyToken: event.counterpartyToken.toLowerCase(),
-        predictorWager: event.predictorWager.toString(),
-        counterpartyWager: event.counterpartyWager.toString(),
+        predictorCollateral: event.predictorCollateral.toString(),
+        counterpartyCollateral: event.counterpartyCollateral.toString(),
         onChainCreatedAt: timestamp,
         createTxHash: log.transactionHash || '',
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,

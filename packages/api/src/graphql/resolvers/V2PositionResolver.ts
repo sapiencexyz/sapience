@@ -96,10 +96,10 @@ class V2PredictionType {
   counterpartyToken!: string;
 
   @Field(() => String)
-  predictorWager!: string;
+  predictorCollateral!: string;
 
   @Field(() => String)
-  counterpartyWager!: string;
+  counterpartyCollateral!: string;
 
   @Field(() => String, { nullable: true })
   collateralDeposited?: string | null;
@@ -317,8 +317,8 @@ export class V2PositionResolver {
       counterparty: r.counterparty,
       predictorToken: r.predictorToken,
       counterpartyToken: r.counterpartyToken,
-      predictorWager: r.predictorWager,
-      counterpartyWager: r.counterpartyWager,
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
       collateralDepositedAt: r.collateralDepositedAt ?? null,
       settled: r.settled,
@@ -353,8 +353,8 @@ export class V2PositionResolver {
       counterparty: r.counterparty,
       predictorToken: r.predictorToken,
       counterpartyToken: r.counterpartyToken,
-      predictorWager: r.predictorWager,
-      counterpartyWager: r.counterpartyWager,
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
       collateralDepositedAt: r.collateralDepositedAt ?? null,
       settled: r.settled,

@@ -204,8 +204,8 @@ export async function verifyV2PredictorSignature(
     // Build the typed data that should have been signed
     const rawTypedData = buildPredictorMintTypedData({
       picks,
-      predictorWager: BigInt(payload.predictorWager),
-      counterpartyWager: BigInt(payload.counterpartyWager),
+      predictorCollateral: BigInt(payload.predictorCollateral),
+      counterpartyCollateral: BigInt(payload.counterpartyCollateral),
       predictor: payload.predictor as Address,
       counterparty,
       predictorNonce: BigInt(payload.predictorNonce),
@@ -329,11 +329,11 @@ export async function verifyV2CounterpartySignature(
     const picks = convertPicks(auction.picks);
 
     // Build the typed data that should have been signed
-    // counterpartyWager comes from the bid (counterparty decides their wager)
+    // counterpartyCollateral comes from the bid (counterparty decides their wager)
     const rawTypedData = buildCounterpartyMintTypedData({
       picks,
-      predictorWager: BigInt(auction.predictorWager),
-      counterpartyWager: BigInt(bid.counterpartyWager),
+      predictorCollateral: BigInt(auction.predictorCollateral),
+      counterpartyCollateral: BigInt(bid.counterpartyCollateral),
       predictor: auction.predictor as Address,
       counterparty: bid.counterparty as Address,
       counterpartyNonce: BigInt(bid.counterpartyNonce),
