@@ -253,14 +253,14 @@ contract PredictionMarketEscrowTest is Test {
         market.mint(request);
     }
 
-    function test_mint_revertIfZeroCollateral() public {
+    function test_mint_revertIfZeroAmount() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request = _createMintRequest(picks);
         request.predictorCollateral = 0;
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroCollateral.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroAmount.selector);
         market.mint(request);
     }
 

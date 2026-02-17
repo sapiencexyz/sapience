@@ -23,7 +23,7 @@ interface IPredictionMarketEscrow {
     error InvalidPicks();
     error DuplicatePick();
     error PicksNotCanonical();
-    error ZeroCollateral();
+    error ZeroAmount();
     error InvalidToken();
     error InvalidRecipient();
     error TokensStillOutstanding(

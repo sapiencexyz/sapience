@@ -31,7 +31,7 @@ interface IV2Events {
 
     /// @notice Emitted when tokens are redeemed for collateral
     event TokensRedeemed(
-        bytes32 indexed predictionId,
+        bytes32 indexed pickConfigId,
         address indexed holder,
         address indexed positionToken,
         uint256 tokensBurned,

@@ -185,7 +185,7 @@ contract PredictionMarketEscrow is
             request.predictorCollateral == 0
                 || request.counterpartyCollateral == 0
         ) {
-            revert ZeroCollateral();
+            revert ZeroAmount();
         }
 
         // Validate picks (canonical order, no duplicates, valid conditions)
@@ -384,7 +384,7 @@ contract PredictionMarketEscrow is
             request.predictorTokenAmount == 0
                 || request.counterpartyTokenAmount == 0
         ) {
-            revert ZeroCollateral();
+            revert ZeroAmount();
         }
 
         // Validate conservation: total payout must not exceed the collateral
@@ -617,7 +617,7 @@ contract PredictionMarketEscrow is
         }
 
         if (amount == 0) {
-            revert ZeroCollateral();
+            revert ZeroAmount();
         }
 
         // Determine if this is predictor or counterparty token

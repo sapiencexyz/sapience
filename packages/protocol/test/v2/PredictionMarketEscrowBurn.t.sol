@@ -703,7 +703,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroCollateral.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroAmount.selector);
         market.burn(req);
     }
 
@@ -722,7 +722,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroCollateral.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroAmount.selector);
         market.burn(req);
     }
 
