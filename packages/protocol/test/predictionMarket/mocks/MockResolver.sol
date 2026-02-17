@@ -6,7 +6,7 @@ import "../../../src/predictionMarket/interfaces/IPredictionStructs.sol";
 
 contract MockResolver is IPredictionMarketResolver {
     bool public shouldValidate = true;
-    bool public parlaySuccess = true;
+    bool public predictionSuccess = true;
     Error public validationError = Error.NO_ERROR;
     Error public resolutionError = Error.NO_ERROR;
 
@@ -14,8 +14,8 @@ contract MockResolver is IPredictionMarketResolver {
         shouldValidate = _shouldValidate;
     }
 
-    function setParlaySuccess(bool _parlaySuccess) external {
-        parlaySuccess = _parlaySuccess;
+    function setPredictionSuccess(bool _predictionSuccess) external {
+        predictionSuccess = _predictionSuccess;
     }
 
     function setValidationResult(bool _shouldValidate, Error _error) external {
@@ -26,11 +26,11 @@ contract MockResolver is IPredictionMarketResolver {
     function setResolutionResult(
         bool _isResolved,
         Error _error,
-        bool _parlaySuccess
+        bool _predictionSuccess
     ) external {
         shouldValidate = _isResolved;
         resolutionError = _error;
-        parlaySuccess = _parlaySuccess;
+        predictionSuccess = _predictionSuccess;
     }
 
     function validatePredictionMarkets(bytes calldata)
@@ -46,6 +46,6 @@ contract MockResolver is IPredictionMarketResolver {
         view
         returns (bool, Error, bool)
     {
-        return (shouldValidate, resolutionError, parlaySuccess);
+        return (shouldValidate, resolutionError, predictionSuccess);
     }
 }

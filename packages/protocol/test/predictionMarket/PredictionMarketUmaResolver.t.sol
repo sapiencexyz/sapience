@@ -589,7 +589,7 @@ contract PredictionMarketUmaResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error error,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encodedOutcomes);
 
         // Market should be settled and resolution should succeed
@@ -597,7 +597,7 @@ contract PredictionMarketUmaResolverTest is Test {
         assertEq(
             uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
-        assertTrue(parlaySuccess); // Correct prediction
+        assertTrue(predictionSuccess); // Correct prediction
     }
 
     function test_getPredictionResolution_makerLoses() public {
@@ -626,7 +626,7 @@ contract PredictionMarketUmaResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error error,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encodedOutcomes);
 
         // Market should be settled but maker should lose
@@ -634,7 +634,7 @@ contract PredictionMarketUmaResolverTest is Test {
         assertEq(
             uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
-        assertFalse(parlaySuccess); // Wrong prediction
+        assertFalse(predictionSuccess); // Wrong prediction
     }
 
     function test_getPredictionResolution_marketNotSettled() public {
@@ -657,7 +657,7 @@ contract PredictionMarketUmaResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error error,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encodedOutcomes);
 
         assertFalse(isResolved);
@@ -665,7 +665,7 @@ contract PredictionMarketUmaResolverTest is Test {
             uint256(error),
             uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED)
         );
-        assertTrue(parlaySuccess); // Default value
+        assertTrue(predictionSuccess); // Default value
     }
 
     function test_getPredictionResolution_decisiveLossDespiteUnsettledMarkets()
@@ -715,16 +715,16 @@ contract PredictionMarketUmaResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error error,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encodedOutcomes);
 
         // Despite the presence of an unsettled market, a decisive loss on a settled market
-        // should return valid with NO_ERROR and parlaySuccess = false
+        // should return valid with NO_ERROR and predictionSuccess = false
         assertTrue(isResolved);
         assertEq(
             uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
-        assertFalse(parlaySuccess);
+        assertFalse(predictionSuccess);
     }
 
     // ============ Encoding/Decoding Tests ============
@@ -859,7 +859,7 @@ contract PredictionMarketUmaResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error error,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encodedOutcomes);
 
         // Markets should be settled and resolution should succeed
@@ -867,7 +867,7 @@ contract PredictionMarketUmaResolverTest is Test {
         assertEq(
             uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
-        assertTrue(parlaySuccess); // Correct predictions
+        assertTrue(predictionSuccess); // Correct predictions
 
         // Test resolution with one wrong prediction
         outcomes[0].prediction = false; // Wrong prediction for market1
@@ -875,7 +875,7 @@ contract PredictionMarketUmaResolverTest is Test {
         // Re-encode the outcomes with the updated prediction
         encodedOutcomes = abi.encode(outcomes);
 
-        (isResolved, error, parlaySuccess) =
+        (isResolved, error, predictionSuccess) =
             resolver.getPredictionResolution(encodedOutcomes);
 
         // Markets should be settled but maker should lose
@@ -883,7 +883,7 @@ contract PredictionMarketUmaResolverTest is Test {
         assertEq(
             uint256(error), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
-        assertFalse(parlaySuccess); // One wrong prediction
+        assertFalse(predictionSuccess); // One wrong prediction
     }
 
     // ============ Edge Cases and Error Conditions ============

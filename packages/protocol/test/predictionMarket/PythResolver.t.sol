@@ -166,14 +166,14 @@ contract PythResolverTest is Test {
         (
             bool isResolved,
             IPredictionMarketResolver.Error err,
-            bool parlaySuccess
+            bool predictionSuccess
         ) = resolver.getPredictionResolution(encoded);
         assertFalse(isResolved);
         assertEq(
             uint256(err),
             uint256(IPredictionMarketResolver.Error.MARKET_NOT_SETTLED)
         );
-        assertTrue(parlaySuccess);
+        assertTrue(predictionSuccess);
     }
 
     function test_settleMarket_andResolve_overWins() public {
@@ -204,13 +204,13 @@ contract PythResolverTest is Test {
             (
                 bool isResolved,
                 IPredictionMarketResolver.Error err,
-                bool parlaySuccess
+                bool predictionSuccess
             ) = resolver.getPredictionResolution(encodedWin);
             assertTrue(isResolved);
             assertEq(
                 uint256(err), uint256(IPredictionMarketResolver.Error.NO_ERROR)
             );
-            assertTrue(parlaySuccess);
+            assertTrue(predictionSuccess);
         }
 
         // Maker predicts under -> lose
@@ -220,13 +220,13 @@ contract PythResolverTest is Test {
             (
                 bool isResolved,
                 IPredictionMarketResolver.Error err,
-                bool parlaySuccess
+                bool predictionSuccess
             ) = resolver.getPredictionResolution(encodedLose);
             assertTrue(isResolved);
             assertEq(
                 uint256(err), uint256(IPredictionMarketResolver.Error.NO_ERROR)
             );
-            assertFalse(parlaySuccess);
+            assertFalse(predictionSuccess);
         }
     }
 
@@ -288,8 +288,8 @@ contract PythResolverTest is Test {
         // Maker predicts over should win
         bytes memory encoded =
             _encodeOutcome(priceId, endTime, strike, expo, true, true);
-        (,, bool parlaySuccess) = resolver.getPredictionResolution(encoded);
-        assertTrue(parlaySuccess);
+        (,, bool predictionSuccess) = resolver.getPredictionResolution(encoded);
+        assertTrue(predictionSuccess);
     }
 
     function test_tieBehavior_overWinsOnTie_false() public {
@@ -316,8 +316,8 @@ contract PythResolverTest is Test {
         // Maker predicts over should lose
         bytes memory encoded =
             _encodeOutcome(priceId, endTime, strike, expo, false, true);
-        (,, bool parlaySuccess) = resolver.getPredictionResolution(encoded);
-        assertFalse(parlaySuccess);
+        (,, bool predictionSuccess) = resolver.getPredictionResolution(encoded);
+        assertFalse(predictionSuccess);
     }
 
     function test_settleMarket_revertOnExpoMismatch() public {
