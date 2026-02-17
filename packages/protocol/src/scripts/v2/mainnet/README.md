@@ -212,9 +212,9 @@ Add these environment variables for testing:
 PREDICTOR_PRIVATE_KEY=0x...
 COUNTERPARTY_PRIVATE_KEY=0x...
 
-# Optional: customize wager amounts (in wei, default 100 tokens / 33 tokens)
-PREDICTOR_WAGER=100000000000000000000
-COUNTERPARTY_WAGER=33333333333333333333
+# Optional: customize collateral amounts (in wei, default 100 tokens / 33 tokens)
+PREDICTOR_COLLATERAL=100000000000000000000
+COUNTERPARTY_COLLATERAL=33333333333333333333
 
 # Optional: bridge amount (default 10 tokens)
 BRIDGE_AMOUNT=10000000000000000000
@@ -292,8 +292,8 @@ forge script src/scripts/v2/mainnet/11_TestBridgeBack.s.sol \
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PREDICTOR_WAGER` | Predictor's wager amount | 100 tokens |
-| `COUNTERPARTY_WAGER` | Counterparty's wager amount | 33.33 tokens |
+| `PREDICTOR_COLLATERAL` | Predictor's collateral amount | 100 tokens |
+| `COUNTERPARTY_COLLATERAL` | Counterparty's collateral amount | 33.33 tokens |
 | `BRIDGE_AMOUNT` | Amount to bridge | 10 tokens |
 | `BRIDGE_RECIPIENT` | Override recipient address | sender |
 | `IS_PREDICTOR_TOKEN` | Bridge predictor (true) or counterparty (false) token | true |

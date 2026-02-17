@@ -3,15 +3,12 @@ pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    PredictionMarketBridgeRemote
-} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
-import {
-    IPredictionMarketBridgeBase
-} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import { PredictionMarketBridgeRemote } from
+    "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
+import { PredictionMarketTokenFactory } from
+    "../../../v2/bridge/PredictionMarketTokenFactory.sol";
+import { IPredictionMarketBridgeBase } from
+    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Check Status - SM Network (Mainnet)
 /// @notice Check deployment status on SM Network (Arbitrum mainnet)

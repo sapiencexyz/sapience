@@ -1,25 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    TestHelperOz5
-} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { TestHelperOz5 } from
+    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import { Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {
-    ConditionalTokensConditionResolver
-} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
-import {
-    ConditionalTokensReader
-} from "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
-import {
-    IConditionalTokensConditionResolver
-} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
-import {
-    IConditionalTokensReader
-} from "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
-import {
-    IConditionResolver
-} from "../../src/v2/interfaces/IConditionResolver.sol";
+import { ConditionalTokensConditionResolver } from
+    "../../src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
+import { ConditionalTokensReader } from
+    "../../src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
+import { IConditionalTokensConditionResolver } from
+    "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
+import { IConditionalTokensReader } from
+    "../../src/v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
+import { IConditionResolver } from
+    "../../src/v2/interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../src/v2/interfaces/IV2Types.sol";
 import { LZTypes } from "../../src/v2/resolvers/shared/LZTypes.sol";
 import { MockConditionalTokens } from "./mocks/MockConditionalTokens.sol";
@@ -74,15 +68,18 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         // Deploy PM-side resolver
         pmResolver = ConditionalTokensConditionResolver(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(ConditionalTokensConditionResolver).creationCode,
                     abi.encode(address(endpoints[pmEid]), owner)
-                ))
+                )
+            )
         );
 
         // Deploy Polygon-side reader
         polygonReader = ConditionalTokensReader(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(ConditionalTokensReader).creationCode,
                     abi.encode(
                         address(endpoints[polygonEid]),
@@ -91,7 +88,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
                             conditionalTokens: address(mockCT)
                         })
                     )
-                ))
+                )
+            )
         );
 
         // Wire OApps
@@ -103,12 +101,14 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         // Configure bridge
         pmResolver.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: polygonEid, remoteBridge: address(polygonReader)
+                remoteEid: polygonEid,
+                remoteBridge: address(polygonReader)
             })
         );
         polygonReader.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: pmEid, remoteBridge: address(pmResolver)
+                remoteEid: pmEid,
+                remoteBridge: address(pmResolver)
             })
         );
     }
@@ -123,7 +123,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     function test_setBridgeConfig_success() public {
         LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
-            remoteEid: 999, remoteBridge: address(0x1234)
+            remoteEid: 999,
+            remoteBridge: address(0x1234)
         });
 
         vm.expectEmit(false, false, false, true);
@@ -140,7 +141,8 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         vm.expectRevert();
         pmResolver.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: 999, remoteBridge: address(0x1234)
+                remoteEid: 999,
+                remoteBridge: address(0x1234)
             })
         );
     }
@@ -529,7 +531,9 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         returns (Origin memory)
     {
         return Origin({
-            srcEid: srcEid, sender: bytes32(uint256(uint160(sender))), nonce: 0
+            srcEid: srcEid,
+            sender: bytes32(uint256(uint160(sender))),
+            nonce: 0
         });
     }
 }

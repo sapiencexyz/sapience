@@ -79,8 +79,7 @@ contract PredictionMarket is
     // ============ Limit Order ============
     uint256 private orderIdCounter = 1; // initialize the order id counter to 1 (zero means no order)
 
-    mapping(uint256 => IPredictionStructs.LimitOrderData) private
-        unfilledOrders;
+    mapping(uint256 => IPredictionStructs.LimitOrderData) private unfilledOrders;
 
     mapping(address => EnumerableSet.UintSet) private unfilledOrdersByMaker;
 
@@ -102,7 +101,8 @@ contract PredictionMarket is
         if (_minCollateral == 0) revert InvalidMinCollateral();
 
         config = IPredictionStructs.Settings({
-            collateralToken: _collateralToken, minCollateral: _minCollateral
+            collateralToken: _collateralToken,
+            minCollateral: _minCollateral
         });
 
         _predictionIdCounter = 1;
@@ -112,8 +112,8 @@ contract PredictionMarket is
     // ============ Prediction Functions ============
 
     function mint(
-        IPredictionStructs
-                .MintPredictionRequestData calldata mintPredictionRequestData
+        IPredictionStructs.MintPredictionRequestData calldata
+            mintPredictionRequestData
     )
         external
         nonReentrant
@@ -162,19 +162,18 @@ contract PredictionMarket is
             )
         );
 
-        if (!_isApprovalValid(
+        if (
+            !_isApprovalValid(
                 messageHash,
                 mintPredictionRequestData.taker,
                 mintPredictionRequestData.takerSignature
-            )) {
+            )
+        ) {
             // Not valid signature for EOA (ERC-712),
             // Check if it's a contract that implements ERC-1271
-            try IERC1271(mintPredictionRequestData.taker)
-                .isValidSignature(
-                    messageHash, mintPredictionRequestData.takerSignature
-                ) returns (
-                bytes4 magicValue
-            ) {
+            try IERC1271(mintPredictionRequestData.taker).isValidSignature(
+                messageHash, mintPredictionRequestData.takerSignature
+            ) returns (bytes4 magicValue) {
                 if (magicValue != IERC1271.isValidSignature.selector) {
                     revert InvalidTakerSignature();
                 }
@@ -225,15 +224,15 @@ contract PredictionMarket is
         if (prediction.settled) revert PredictionAlreadySettled();
 
         // 3- Ask resolver if markets are settled, and if prediction succeeded or not, it means maker won
-        (bool isResolved,, bool parlaySuccess) = IPredictionMarketResolver(
-                prediction.resolver
-            ).getPredictionResolution(prediction.encodedPredictedOutcomes);
+        (bool isResolved,, bool predictionSuccess) = IPredictionMarketResolver(
+            prediction.resolver
+        ).getPredictionResolution(prediction.encodedPredictedOutcomes);
 
         if (!isResolved) revert PredictionResolutionFailed();
 
         // 4- Send collateral to winner
         uint256 payout = prediction.makerCollateral + prediction.takerCollateral;
-        address winner = parlaySuccess ? prediction.maker : prediction.taker;
+        address winner = predictionSuccess ? prediction.maker : prediction.taker;
 
         _safeTransferOut(config.collateralToken, winner, payout);
 
@@ -243,7 +242,7 @@ contract PredictionMarket is
 
         // 5- Set the prediction state (identify who won and set as closed)
         prediction.settled = true;
-        prediction.makerWon = parlaySuccess;
+        prediction.makerWon = predictionSuccess;
 
         // 6- Burn NFTs
         _burn(prediction.makerNftTokenId);
@@ -353,7 +352,10 @@ contract PredictionMarket is
         );
     }
 
-    function fillOrder(uint256 orderId, bytes32 refCode) external nonReentrant {
+    function fillOrder(uint256 orderId, bytes32 refCode)
+        external
+        nonReentrant
+    {
         IPredictionStructs.LimitOrderData storage order =
             unfilledOrders[orderId];
         if (order.orderId != orderId) revert OrderNotFound();
@@ -625,12 +627,9 @@ contract PredictionMarket is
         }
 
         // Use ERC-165 standard interface detection
-        try IERC165(addr)
-            .supportsInterface(
-                type(IPassiveLiquidityVault).interfaceId
-            ) returns (
-            bool supported
-        ) {
+        try IERC165(addr).supportsInterface(
+            type(IPassiveLiquidityVault).interfaceId
+        ) returns (bool supported) {
             return supported;
         } catch {
             return false;

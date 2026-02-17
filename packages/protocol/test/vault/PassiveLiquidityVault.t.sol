@@ -382,7 +382,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Check pending request details
         (
             uint256 requestShares,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1180,7 +1181,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Verify user2's pending request is still intact
         (
             ,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1300,7 +1302,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Verify the request was created successfully
         (
             ,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1365,7 +1368,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Verify the request was created successfully
         (
             ,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1477,7 +1481,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Verify the request was created successfully
         (
             ,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1539,7 +1544,8 @@ contract PassiveLiquidityVaultTest is Test {
         // Verify the request was created successfully
         (
             ,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -1980,10 +1986,9 @@ contract MockERC721WithSafeMint {
         bytes memory data
     ) private {
         if (to.code.length > 0) {
-            try IERC721Receiver(to)
-                .onERC721Received(msg.sender, from, tokenId, data) returns (
-                bytes4 retval
-            ) {
+            try IERC721Receiver(to).onERC721Received(
+                msg.sender, from, tokenId, data
+            ) returns (bytes4 retval) {
                 require(
                     retval == IERC721Receiver.onERC721Received.selector,
                     "ERC721: transfer to non ERC721Receiver implementer"

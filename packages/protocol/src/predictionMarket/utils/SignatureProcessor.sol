@@ -15,9 +15,8 @@ abstract contract SignatureProcessor is EIP712 {
         address owner,
         bytes memory signature
     ) internal view returns (bool) {
-        bytes32 structHash = keccak256(
-            abi.encode(APPROVE_TYPEHASH, messageHash, owner)
-        );
+        bytes32 structHash =
+            keccak256(abi.encode(APPROVE_TYPEHASH, messageHash, owner));
 
         bytes32 hash = _hashTypedDataV4(structHash);
         address signer = ECDSA.recover(hash, signature);

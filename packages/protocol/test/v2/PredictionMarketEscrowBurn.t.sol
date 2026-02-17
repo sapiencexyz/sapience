@@ -27,10 +27,10 @@ contract PredictionMarketEscrowBurnTest is Test {
     uint256 public counterpartyPk;
     uint256 public thirdPartyPk;
 
-    uint256 public constant PREDICTOR_WAGER = 100e18;
-    uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    uint256 public constant PREDICTOR_COLLATERAL = 100e18;
+    uint256 public constant COUNTERPARTY_COLLATERAL = 150e18;
     uint256 public constant TOTAL_COLLATERAL =
-        PREDICTOR_WAGER + COUNTERPARTY_WAGER;
+        PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -87,13 +87,13 @@ contract PredictionMarketEscrowBurnTest is Test {
     function _signMintApproval(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 approvalHash = market.getMintApprovalHash(
-            predictionHash, signer, wager, nonce, deadline
+            predictionHash, signer, collateral, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -108,8 +108,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 counterparty
             )
@@ -120,8 +120,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = predictor;
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -131,7 +131,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         request.predictorSignature = _signMintApproval(
             predictionHash,
             predictor,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -139,7 +139,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         request.counterpartySignature = _signMintApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -281,8 +281,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL, // burn all counterparty tokens
             predictor,
             counterparty,
-            PREDICTOR_WAGER, // predictor gets back their wager
-            COUNTERPARTY_WAGER, // counterparty gets back their wager
+            PREDICTOR_COLLATERAL, // predictor gets back their collateral
+            COUNTERPARTY_COLLATERAL, // counterparty gets back their collateral
             predictorPk,
             counterpartyPk
         );
@@ -300,15 +300,15 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Verify collateral returned
         assertEq(
             collateralToken.balanceOf(predictor),
-            predictorBalBefore + PREDICTOR_WAGER
+            predictorBalBefore + PREDICTOR_COLLATERAL
         );
         assertEq(
             collateralToken.balanceOf(counterparty),
-            counterpartyBalBefore + COUNTERPARTY_WAGER
+            counterpartyBalBefore + COUNTERPARTY_COLLATERAL
         );
         assertEq(
             collateralToken.balanceOf(address(market)),
-            marketBalBefore - PREDICTOR_WAGER - COUNTERPARTY_WAGER
+            marketBalBefore - PREDICTOR_COLLATERAL - COUNTERPARTY_COLLATERAL
         );
 
         // Verify accounting updated
@@ -398,11 +398,12 @@ contract PredictionMarketEscrowBurnTest is Test {
         IV2Types.PickConfiguration memory config =
             market.getPickConfiguration(pickConfigId);
         assertEq(
-            config.totalPredictorCollateral, PREDICTOR_WAGER - predictorPayout
+            config.totalPredictorCollateral,
+            PREDICTOR_COLLATERAL - predictorPayout
         );
         assertEq(
             config.totalCounterpartyCollateral,
-            COUNTERPARTY_WAGER - counterpartyPayout
+            COUNTERPARTY_COLLATERAL - counterpartyPayout
         );
 
         // Verify market still holds remaining collateral
@@ -477,11 +478,11 @@ contract PredictionMarketEscrowBurnTest is Test {
             market.getPickConfiguration(pickConfigId);
         assertEq(
             config.totalPredictorCollateral,
-            PREDICTOR_WAGER - burn1PredPayout - burn2PredPayout
+            PREDICTOR_COLLATERAL - burn1PredPayout - burn2PredPayout
         );
         assertEq(
             config.totalCounterpartyCollateral,
-            COUNTERPARTY_WAGER - burn1CtrPayout - burn2CtrPayout
+            COUNTERPARTY_COLLATERAL - burn1CtrPayout - burn2CtrPayout
         );
     }
 
@@ -550,8 +551,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -563,8 +564,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             counterparty,
             TOTAL_COLLATERAL,
             TOTAL_COLLATERAL,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             REF_CODE
         );
 
@@ -582,8 +583,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -606,8 +607,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -630,8 +631,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -652,8 +653,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -674,8 +675,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -693,16 +694,16 @@ contract PredictionMarketEscrowBurnTest is Test {
         IV2Types.BurnRequest memory req = _createBurnRequest(
             pickConfigId,
             0, // zero predictor amount
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             predictor,
             counterparty,
             0,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroCollateral.selector);
         market.burn(req);
     }
 
@@ -711,17 +712,17 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         IV2Types.BurnRequest memory req = _createBurnRequest(
             pickConfigId,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             0, // zero counterparty amount
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             0,
             predictorPk,
             counterpartyPk
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroCollateral.selector);
         market.burn(req);
     }
 
@@ -732,8 +733,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         bytes32 burnHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 counterparty,
                 uint256(100e18),
@@ -747,8 +748,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         IV2Types.BurnRequest memory req;
         req.pickConfigId = pickConfigId;
-        req.predictorTokenAmount = PREDICTOR_WAGER;
-        req.counterpartyTokenAmount = COUNTERPARTY_WAGER;
+        req.predictorTokenAmount = PREDICTOR_COLLATERAL;
+        req.counterpartyTokenAmount = COUNTERPARTY_COLLATERAL;
         req.predictorHolder = predictor;
         req.counterpartyHolder = counterparty;
         req.predictorPayout = 100e18;
@@ -760,7 +761,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.predictorSignature = _signBurnApproval(
             burnHash,
             predictor,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             100e18,
             pNonce,
             deadline,
@@ -769,7 +770,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.counterpartySignature = _signBurnApproval(
             burnHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             100e18,
             cNonce,
             deadline,
@@ -803,8 +804,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -841,12 +842,12 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Try to burn more tokens than holder has
         IV2Types.BurnRequest memory req = _createBurnRequest(
             pickConfigId,
-            PREDICTOR_WAGER + 1, // more than available
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL + 1, // more than available
+            COUNTERPARTY_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER + 1,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL + 1,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -871,8 +872,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             predictor,
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             predictorPk,
             counterpartyPk
         );
@@ -903,8 +904,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Verify accounting restored
         config = market.getPickConfiguration(pickConfigId);
-        assertEq(config.totalPredictorCollateral, PREDICTOR_WAGER);
-        assertEq(config.totalCounterpartyCollateral, COUNTERPARTY_WAGER);
+        assertEq(config.totalPredictorCollateral, PREDICTOR_COLLATERAL);
+        assertEq(config.totalCounterpartyCollateral, COUNTERPARTY_COLLATERAL);
     }
 
     function test_burn_partialThenSettleAndRedeem() public {
@@ -947,8 +948,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             remainingTokens
         );
         assertEq(
-            IPredictionMarketToken(tp.counterpartyToken)
-                .balanceOf(counterparty),
+            IPredictionMarketToken(tp.counterpartyToken).balanceOf(counterparty),
             remainingTokens
         );
 
@@ -965,8 +965,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Payout should be total remaining collateral (predictor wins all)
         // remainingPredCollateral = 50, remainingCtrCollateral = 75
-        uint256 expectedPayout =
-            (PREDICTOR_WAGER - predPayout) + (COUNTERPARTY_WAGER - ctrPayout);
+        uint256 expectedPayout = (PREDICTOR_COLLATERAL - predPayout)
+            + (COUNTERPARTY_COLLATERAL - ctrPayout);
         assertEq(payout, expectedPayout);
         assertEq(
             collateralToken.balanceOf(predictor),
@@ -983,8 +983,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer counterparty tokens to predictor so same address holds both
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken)
-            .transfer(predictor, TOTAL_COLLATERAL);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            predictor, TOTAL_COLLATERAL
+        );
 
         // Same address burns both sides
         // Both nonce checks happen before increment, so both use same current nonce
@@ -997,8 +998,8 @@ contract PredictionMarketEscrowBurnTest is Test {
                 TOTAL_COLLATERAL,
                 predictor,
                 predictor, // same address both sides
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL
             )
         );
 
@@ -1010,8 +1011,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.counterpartyTokenAmount = TOTAL_COLLATERAL;
         req.predictorHolder = predictor;
         req.counterpartyHolder = predictor; // same address
-        req.predictorPayout = PREDICTOR_WAGER;
-        req.counterpartyPayout = COUNTERPARTY_WAGER;
+        req.predictorPayout = PREDICTOR_COLLATERAL;
+        req.counterpartyPayout = COUNTERPARTY_COLLATERAL;
         req.predictorNonce = currentNonce;
         req.counterpartyNonce = currentNonce; // same nonce since checks happen before increment
         req.predictorDeadline = deadline;
@@ -1020,7 +1021,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             burnHash,
             predictor,
             TOTAL_COLLATERAL,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             currentNonce,
             deadline,
             predictorPk
@@ -1029,7 +1030,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             burnHash,
             predictor,
             TOTAL_COLLATERAL,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             currentNonce,
             deadline,
             predictorPk
@@ -1065,8 +1066,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer all predictor tokens to thirdParty
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken)
-            .transfer(thirdParty, TOTAL_COLLATERAL);
+        IPredictionMarketToken(predictorToken).transfer(
+            thirdParty, TOTAL_COLLATERAL
+        );
 
         // ThirdParty (now holding predictor tokens) burns with counterparty
         IV2Types.BurnRequest memory req = _createBurnRequest(
@@ -1075,8 +1077,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             TOTAL_COLLATERAL,
             thirdParty, // new predictor holder
             counterparty,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             thirdPartyPk,
             counterpartyPk
         );
@@ -1097,11 +1099,11 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Verify collateral sent to correct addresses
         assertEq(
             collateralToken.balanceOf(thirdParty),
-            thirdPartyBalBefore + PREDICTOR_WAGER
+            thirdPartyBalBefore + PREDICTOR_COLLATERAL
         );
         assertEq(
             collateralToken.balanceOf(counterparty),
-            counterpartyBalBefore + COUNTERPARTY_WAGER
+            counterpartyBalBefore + COUNTERPARTY_COLLATERAL
         );
     }
 }

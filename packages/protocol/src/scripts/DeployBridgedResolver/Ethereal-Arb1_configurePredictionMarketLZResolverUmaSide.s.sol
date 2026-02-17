@@ -2,9 +2,8 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {
-    PredictionMarketLZResolverUmaSide
-} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import { PredictionMarketLZResolverUmaSide } from
+    "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
 // Configure the UMA-side resolver on Arbitrum to point to PM-side peer and UMA settings
@@ -38,7 +37,8 @@ contract ConfigurePredictionMarketLZResolverUmaSide is Script {
 
         resolver.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteEid: pmSideEid, remoteBridge: pmLzResolver
+                remoteEid: pmSideEid,
+                remoteBridge: pmLzResolver
             })
         );
 
@@ -54,4 +54,3 @@ contract ConfigurePredictionMarketLZResolverUmaSide is Script {
         vm.stopBroadcast();
     }
 }
-

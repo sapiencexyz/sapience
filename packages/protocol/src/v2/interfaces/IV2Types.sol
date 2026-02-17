@@ -18,6 +18,7 @@ interface IV2Types {
         PREDICTOR_WINS,
         COUNTERPARTY_WINS,
         NON_DECISIVE // Tie or weighted outcome (future-proof)
+
     }
 
     /// @notice Outcome vector returned by condition resolvers
@@ -27,33 +28,33 @@ interface IV2Types {
         uint256 noWeight;
     }
 
-    /// @notice A single pick in a prediction/parlay
+    /// @notice A single pick in a prediction
     struct Pick {
         address conditionResolver; // Contract that resolves this condition
         bytes32 conditionId; // Opaque identifier, resolver-defined
-        OutcomeSide predictedOutcome; // What the predictor bet on
+        OutcomeSide predictedOutcome; // What the predictor chose
     }
 
     /// @notice Full prediction data stored on-chain
     /// @dev Links to a PickConfiguration for fungible token sharing
     struct Prediction {
-        bytes32 predictionId; // Unique identifier for this bet
+        bytes32 predictionId; // Unique identifier for this prediction
         bytes32 pickConfigId; // Link to shared pick configuration
-        uint256 predictorWager; // Amount from predictor
-        uint256 counterpartyWager; // Amount from counterparty
+        uint256 predictorCollateral; // Amount from predictor
+        uint256 counterpartyCollateral; // Amount from counterparty
         address predictor; // Predictor address
         address counterparty; // Counterparty address
-        uint256 predictorTokensMinted; // Tokens minted to predictor (= predictorWager)
-        uint256 counterpartyTokensMinted; // Tokens minted to counterparty (= counterpartyWager)
+        uint256 predictorTokensMinted; // Tokens minted to predictor (= predictorCollateral)
+        uint256 counterpartyTokensMinted; // Tokens minted to counterparty (= counterpartyCollateral)
         bool settled; // Whether this prediction has been settled
     }
 
-    /// @notice Pick configuration for fungible betting pools
+    /// @notice Pick configuration for fungible prediction pools
     /// @dev Multiple predictions with same picks share tokens
     struct PickConfiguration {
         bytes32 pickConfigId; // Hash of canonical picks
-        uint256 totalPredictorCollateral; // Sum of all predictor wagers
-        uint256 totalCounterpartyCollateral; // Sum of all counterparty wagers
+        uint256 totalPredictorCollateral; // Sum of all predictor collateral
+        uint256 totalCounterpartyCollateral; // Sum of all counterparty collateral
         uint256 totalPredictorTokensMinted; // Total tokens minted to predictor side
         uint256 totalCounterpartyTokensMinted; // Total tokens minted to counterparty side
         uint256 claimedPredictorCollateral; // Amount claimed by predictor token holders
@@ -78,8 +79,8 @@ interface IV2Types {
     /// @dev Supports both EOA signatures and session key signatures
     struct MintRequest {
         Pick[] picks; // Canonical ordered picks
-        uint256 predictorWager; // Amount from predictor
-        uint256 counterpartyWager; // Amount from counterparty
+        uint256 predictorCollateral; // Amount from predictor
+        uint256 counterpartyCollateral; // Amount from counterparty
         address predictor; // Predictor address (smart account if using session key)
         address counterparty; // Counterparty address (smart account if using session key)
         uint256 predictorNonce; // Nonce for predictor signature
@@ -122,14 +123,14 @@ interface IV2Types {
     }
 
     /// @notice Escrow record for a prediction
-    /// @dev Tracks individual bet for audit trail, linked to shared PickConfiguration
+    /// @dev Tracks individual prediction for audit trail, linked to shared PickConfiguration
     struct EscrowRecord {
         bytes32 pickConfigId; // Link to shared pick configuration
-        uint256 totalCollateral; // predictorWager + counterpartyWager for THIS bet
-        uint256 predictorWager; // Original predictor wager
-        uint256 counterpartyWager; // Original counterparty wager
+        uint256 totalCollateral; // predictorCollateral + counterpartyCollateral for this prediction
+        uint256 predictorCollateral; // Original predictor collateral
+        uint256 counterpartyCollateral; // Original counterparty collateral
         uint256 predictorTokensMinted; // Tokens minted to predictor
         uint256 counterpartyTokensMinted; // Tokens minted to counterparty
-        bool settled; // Whether this individual bet has been settled
+        bool settled; // Whether this individual prediction has been settled
     }
 }

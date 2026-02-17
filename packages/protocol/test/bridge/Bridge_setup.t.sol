@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {
-    TestHelperOz5
-} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { TestHelperOz5 } from
+    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import { TestETHManagement } from "./mocks/TestETHManagement.sol";
 import { BridgeTypes } from "../../src/bridge/BridgeTypes.sol";
 
@@ -25,10 +24,12 @@ contract BridgeTestSetup is TestHelperOz5 {
         setUpEndpoints(1, LibraryType.UltraLightNode);
 
         testContract = TestETHManagement(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(TestETHManagement).creationCode,
                     abi.encode(address(endpoints[eid]), owner)
-                ))
+                )
+            )
         );
 
         vm.deal(address(testContract), 100 ether);

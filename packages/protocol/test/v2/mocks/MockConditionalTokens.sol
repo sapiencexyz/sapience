@@ -32,7 +32,9 @@ contract MockConditionalTokens {
         numerators[0] = 1; // YES (index 0)
         numerators[1] = 0; // NO (index 1)
         _conditions[conditionId] = ConditionData({
-            slotCount: 2, payoutDenominator: 1, payoutNumerators: numerators
+            slotCount: 2,
+            payoutDenominator: 1,
+            payoutNumerators: numerators
         });
     }
 
@@ -42,7 +44,9 @@ contract MockConditionalTokens {
         numerators[0] = 0; // YES (index 0)
         numerators[1] = 1; // NO (index 1)
         _conditions[conditionId] = ConditionData({
-            slotCount: 2, payoutDenominator: 1, payoutNumerators: numerators
+            slotCount: 2,
+            payoutDenominator: 1,
+            payoutNumerators: numerators
         });
     }
 
@@ -52,7 +56,9 @@ contract MockConditionalTokens {
         numerators[0] = 0;
         numerators[1] = 0;
         _conditions[conditionId] = ConditionData({
-            slotCount: 2, payoutDenominator: 0, payoutNumerators: numerators
+            slotCount: 2,
+            payoutDenominator: 0,
+            payoutNumerators: numerators
         });
     }
 
@@ -62,7 +68,9 @@ contract MockConditionalTokens {
         numerators[0] = 1; // YES
         numerators[1] = 1; // NO (equal = tie)
         _conditions[conditionId] = ConditionData({
-            slotCount: 2, payoutDenominator: 2, payoutNumerators: numerators
+            slotCount: 2,
+            payoutDenominator: 2,
+            payoutNumerators: numerators
         });
     }
 
@@ -73,7 +81,9 @@ contract MockConditionalTokens {
         numerators[1] = 0;
         numerators[2] = 0;
         _conditions[conditionId] = ConditionData({
-            slotCount: 3, payoutDenominator: 1, payoutNumerators: numerators
+            slotCount: 3,
+            payoutDenominator: 1,
+            payoutNumerators: numerators
         });
     }
 

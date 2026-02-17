@@ -18,7 +18,8 @@ interface ILayerZeroBridge {
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
 
     // Common functions
-    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config) external;
+    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config)
+        external;
     function getBridgeConfig()
         external
         view

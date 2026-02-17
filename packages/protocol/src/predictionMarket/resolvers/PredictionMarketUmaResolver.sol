@@ -2,12 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "../interfaces/IPredictionMarketResolver.sol";
-import {
-    OptimisticOracleV3Interface
-} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import {
-    OptimisticOracleV3CallbackRecipientInterface
-} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import { OptimisticOracleV3Interface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import { OptimisticOracleV3CallbackRecipientInterface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -148,13 +146,11 @@ contract PredictionMarketUmaResolver is
     function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
         external
         view
-        returns (bool isResolved, Error error, bool parlaySuccess)
+        returns (bool isResolved, Error error, bool predictionSuccess)
     {
-        PredictedOutcome[] memory
-            predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
-        parlaySuccess = true;
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
+        predictionSuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
         bool hasUnsettledMarkets = false;
@@ -162,12 +158,12 @@ contract PredictionMarketUmaResolver is
         if (predictedOutcomes.length == 0) {
             isResolved = false;
             error = Error.MUST_HAVE_AT_LEAST_ONE_MARKET;
-            return (isResolved, error, parlaySuccess);
+            return (isResolved, error, predictionSuccess);
         }
         if (predictedOutcomes.length > config.maxPredictionMarkets) {
             isResolved = false;
             error = Error.TOO_MANY_MARKETS;
-            return (isResolved, error, parlaySuccess);
+            return (isResolved, error, predictionSuccess);
         }
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
@@ -195,9 +191,9 @@ contract PredictionMarketUmaResolver is
             bool marketOutcome = market.resolvedToYes;
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
-                parlaySuccess = false;
+                predictionSuccess = false;
                 // Decisive loss on a settled market: return valid with no error
-                return (true, Error.NO_ERROR, parlaySuccess);
+                return (true, Error.NO_ERROR, predictionSuccess);
             }
         }
 
@@ -207,15 +203,13 @@ contract PredictionMarketUmaResolver is
             error = Error.MARKET_NOT_SETTLED;
         }
 
-        return (isResolved, error, parlaySuccess);
+        return (isResolved, error, predictionSuccess);
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
-    function encodePredictionOutcomes(PredictedOutcome[] calldata predictedOutcomes)
-        external
-        pure
-        returns (bytes memory)
-    {
+    function encodePredictionOutcomes(
+        PredictedOutcome[] calldata predictedOutcomes
+    ) external pure returns (bytes memory) {
         return abi.encode(predictedOutcomes);
     }
 

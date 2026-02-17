@@ -11,4 +11,3 @@ interface IPythLazer {
         payable
         returns (bytes calldata payload, address signer);
 }
-

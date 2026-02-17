@@ -2,12 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
-import {
-    PredictionMarketTokenBridged
-} from "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
+import { PredictionMarketTokenFactory } from
+    "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketTokenBridged } from
+    "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
 
 /// @title PredictionMarketTokenFactoryTest
 /// @notice Test suite for CREATE3-based position token factory

@@ -185,14 +185,14 @@ contract PythResolverTest is Test {
         vm.warp(endTime);
 
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime);
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertTrue(resolvedToOver);
@@ -238,14 +238,14 @@ contract PythResolverTest is Test {
         vm.warp(endTime);
 
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime);
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (bytes32 marketId,) = resolver.settleMarket(market, updateData);
 
@@ -273,14 +273,14 @@ contract PythResolverTest is Test {
         vm.warp(endTime);
 
         bytes[] memory updateData = _updateData(priceId, strike, expo, endTime); // price == strike
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertTrue(resolvedToOver);
@@ -301,14 +301,14 @@ contract PythResolverTest is Test {
         vm.warp(endTime);
 
         bytes[] memory updateData = _updateData(priceId, strike, expo, endTime); // price == strike
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: false
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: false
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertFalse(resolvedToOver);
@@ -327,14 +327,14 @@ contract PythResolverTest is Test {
         vm.warp(endTime);
 
         bytes[] memory updateData = _updateData(priceId, 150, -8, endTime);
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: -6,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: -6,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -353,14 +353,14 @@ contract PythResolverTest is Test {
 
         // publishTimeSec doesn't match endTime, and window=0 => should revert
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime + 1);
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert(PythResolver.InvalidMarketData.selector);
         resolver.settleMarket(market, updateData);
@@ -378,17 +378,16 @@ contract PythResolverTest is Test {
         // Upstream Pyth Lazer semantics treat value==0 as "ApplicableButMissing" for Price.
         // This should revert when the resolver tries to read the price.
         bytes[] memory updateData = _updateData(priceId, 0, expo, endTime);
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 1, // any positive strike
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 1, // any positive strike
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert("Price is not present for the timestamp");
         resolver.settleMarket(market, updateData);
     }
 }
-

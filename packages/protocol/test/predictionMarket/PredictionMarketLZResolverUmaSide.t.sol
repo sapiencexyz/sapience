@@ -1,20 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    TestHelperOz5
-} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {
-    PredictionMarketLZResolverUmaSide
-} from "../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
-import {
-    IPredictionMarketLZResolverUmaSide
-} from "../../src/predictionMarket/resolvers/interfaces/IPredictionMarketLZResolverUmaSide.sol";
+import { TestHelperOz5 } from
+    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { PredictionMarketLZResolverUmaSide } from
+    "../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import { IPredictionMarketLZResolverUmaSide } from
+    "../../src/predictionMarket/resolvers/interfaces/IPredictionMarketLZResolverUmaSide.sol";
 import { Encoder } from "../../src/bridge/cmdEncoder.sol";
 import { BridgeTypes } from "../../src/bridge/BridgeTypes.sol";
-import {
-    MockOptimisticOracleV3ForPMResolver
-} from "./mocks/MockOptimisticOracleV3ForPMResolver.sol";
+import { MockOptimisticOracleV3ForPMResolver } from
+    "./mocks/MockOptimisticOracleV3ForPMResolver.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
 
 import "forge-std/Test.sol";
@@ -71,7 +67,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         // Deploy UMA-side resolver
         umaResolver = PredictionMarketLZResolverUmaSide(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(PredictionMarketLZResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEiD]),
@@ -83,12 +80,14 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                ))
+                )
+            )
         );
 
         // Deploy mock PM-side resolver (just for message simulation)
         pmResolver = PredictionMarketLZResolverUmaSide(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(PredictionMarketLZResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[pmEiD]),
@@ -100,7 +99,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                ))
+                )
+            )
         );
 
         address[] memory oapps = new address[](2);
@@ -119,7 +119,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         // Configure bridge
         umaResolver.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteEid: pmEiD, remoteBridge: address(pmResolver)
+                remoteEid: pmEiD,
+                remoteBridge: address(pmResolver)
             })
         );
 
@@ -159,7 +160,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
     function test_setBridgeConfig() public {
         BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999, remoteBridge: address(0x1234)
+            remoteEid: 999,
+            remoteBridge: address(0x1234)
         });
 
         umaResolver.setBridgeConfig(newConfig);
@@ -178,11 +180,11 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         address newBondCurrency =
             address(0x1111111111111111111111111111111111111112);
         PredictionMarketLZResolverUmaSide.Settings memory newConfig =
-            PredictionMarketLZResolverUmaSide.Settings({
-                bondCurrency: newBondCurrency,
-                bondAmount: 2 ether,
-                assertionLiveness: 7200
-            });
+        PredictionMarketLZResolverUmaSide.Settings({
+            bondCurrency: newBondCurrency,
+            bondAmount: 2 ether,
+            assertionLiveness: 7200
+        });
 
         umaResolver.setConfig(newConfig);
 
@@ -212,7 +214,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         vm.expectRevert();
         umaResolver.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteEid: pmEiD, remoteBridge: address(pmResolver)
+                remoteEid: pmEiD,
+                remoteBridge: address(pmResolver)
             })
         );
 
@@ -322,7 +325,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         vm.prank(unauthorizedUser);
         vm.expectRevert(
-            IPredictionMarketLZResolverUmaSide.OnlyApprovedAssertersCanCall
+            IPredictionMarketLZResolverUmaSide
+                .OnlyApprovedAssertersCanCall
                 .selector
         );
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, true);
@@ -347,8 +351,9 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         vm.prank(asserter);
         vm.expectRevert(
-            IPredictionMarketLZResolverUmaSide.AssertionAlreadySubmitted
-            .selector
+            IPredictionMarketLZResolverUmaSide
+                .AssertionAlreadySubmitted
+                .selector
         );
         umaResolver.submitAssertion(TEST_CLAIM, TEST_END_TIME, false);
     }
@@ -356,26 +361,29 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
     function test_submitAssertion_insufficientBond() public {
         // Create new resolver without bond funding
         PredictionMarketLZResolverUmaSide newResolver =
-            PredictionMarketLZResolverUmaSide(
-                payable(_deployOApp(
-                        type(PredictionMarketLZResolverUmaSide).creationCode,
-                        abi.encode(
-                            address(endpoints[umaEiD]),
-                            owner,
-                            address(mockOptimisticOracleV3),
-                            PredictionMarketLZResolverUmaSide.Settings({
-                                bondCurrency: address(bondCurrency),
-                                bondAmount: BOND_AMOUNT,
-                                assertionLiveness: ASSERTION_LIVENESS
-                            })
-                        )
-                    ))
-            );
+        PredictionMarketLZResolverUmaSide(
+            payable(
+                _deployOApp(
+                    type(PredictionMarketLZResolverUmaSide).creationCode,
+                    abi.encode(
+                        address(endpoints[umaEiD]),
+                        owner,
+                        address(mockOptimisticOracleV3),
+                        PredictionMarketLZResolverUmaSide.Settings({
+                            bondCurrency: address(bondCurrency),
+                            bondAmount: BOND_AMOUNT,
+                            assertionLiveness: ASSERTION_LIVENESS
+                        })
+                    )
+                )
+            )
+        );
 
         newResolver.approveAsserter(asserter);
         newResolver.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteEid: pmEiD, remoteBridge: address(pmResolver)
+                remoteEid: pmEiD,
+                remoteBridge: address(pmResolver)
             })
         );
 
@@ -438,7 +446,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         vm.prank(unauthorizedUser);
         vm.expectRevert(
-            IPredictionMarketLZResolverUmaSide.OnlyOptimisticOracleV3CanCall
+            IPredictionMarketLZResolverUmaSide
+                .OnlyOptimisticOracleV3CanCall
                 .selector
         );
         umaResolver.assertionResolvedCallback(assertionId, true);
@@ -500,7 +509,8 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
 
         vm.prank(unauthorizedUser);
         vm.expectRevert(
-            IPredictionMarketLZResolverUmaSide.OnlyOptimisticOracleV3CanCall
+            IPredictionMarketLZResolverUmaSide
+                .OnlyOptimisticOracleV3CanCall
                 .selector
         );
         umaResolver.assertionDisputedCallback(assertionId);
@@ -549,4 +559,3 @@ contract PredictionMarketLZResolverUmaSideTest is TestHelperOz5 {
         assertTrue(true);
     }
 }
-

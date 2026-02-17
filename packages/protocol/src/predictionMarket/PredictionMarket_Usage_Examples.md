@@ -119,7 +119,7 @@ console.log("Ana's current nonce:", anaNonce);
 
 ### Initial Setup
 
-**Ana** wants to bet on a prediction with the following markets:
+**Ana** wants to create a prediction with the following markets:
 - Market 1: "Will Bitcoin reach $200k by end of year?" (YES)
 - Market 2: "Will Ethereum reach $20k by end of year?" (YES)
 

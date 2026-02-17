@@ -14,7 +14,7 @@ import "../../test/v2/mocks/MockERC20.sol";
  * @notice Audit tests for C-1 (proportional minting) and C-2 (post-resolution mint block)
  *
  * C-1: Self-dealing dilution attack
- *   UNFIXED: Tokens minted 1:1 to each side's wager. Late outsized bets dilute existing holders.
+ *   UNFIXED: Tokens minted 1:1 to each side's collateral. Late outsized predictions dilute existing holders.
  *   FIXED:   Tokens minted = totalCollateral for EACH side. Every token = uniform collateral claim.
  *
  * C-2: Post-resolution minting
@@ -83,13 +83,13 @@ contract PredictionMarketEscrowAudit is Test {
     function _signApproval(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateralAmount,
         uint256 nonce,
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 digest = escrow.getMintApprovalHash(
-            predictionHash, signer, wager, nonce, deadline
+            predictionHash, signer, collateralAmount, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
@@ -98,14 +98,14 @@ contract PredictionMarketEscrowAudit is Test {
     function _buildMintRequest(
         address predictor,
         uint256 predictorPk,
-        uint256 predictorWager,
+        uint256 predictorCollateral,
         address counterparty,
         uint256 counterpartyPk,
-        uint256 counterpartyWager
+        uint256 counterpartyCollateral
     ) internal view returns (IV2Types.MintRequest memory request) {
         request.picks = _buildPicks();
-        request.predictorWager = predictorWager;
-        request.counterpartyWager = counterpartyWager;
+        request.predictorCollateral = predictorCollateral;
+        request.counterpartyCollateral = counterpartyCollateral;
         request.predictor = predictor;
         request.counterparty = counterparty;
         request.predictorNonce = escrow.getNonce(predictor);
@@ -120,8 +120,8 @@ contract PredictionMarketEscrowAudit is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                predictorWager,
-                counterpartyWager,
+                predictorCollateral,
+                counterpartyCollateral,
                 predictor,
                 counterparty
             )
@@ -130,7 +130,7 @@ contract PredictionMarketEscrowAudit is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             predictor,
-            predictorWager,
+            predictorCollateral,
             request.predictorNonce,
             request.predictorDeadline,
             predictorPk
@@ -138,7 +138,7 @@ contract PredictionMarketEscrowAudit is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            counterpartyWager,
+            counterpartyCollateral,
             request.counterpartyNonce,
             request.counterpartyDeadline,
             counterpartyPk
@@ -148,10 +148,10 @@ contract PredictionMarketEscrowAudit is Test {
     function _mint(
         address predictor,
         uint256 predictorPk,
-        uint256 predictorWager,
+        uint256 predictorCollateral,
         address counterparty,
         uint256 counterpartyPk,
-        uint256 counterpartyWager
+        uint256 counterpartyCollateral
     )
         internal
         returns (
@@ -160,15 +160,14 @@ contract PredictionMarketEscrowAudit is Test {
             address counterpartyToken
         )
     {
-        IV2Types.MintRequest memory req =
-            _buildMintRequest(
-                predictor,
-                predictorPk,
-                predictorWager,
-                counterparty,
-                counterpartyPk,
-                counterpartyWager
-            );
+        IV2Types.MintRequest memory req = _buildMintRequest(
+            predictor,
+            predictorPk,
+            predictorCollateral,
+            counterparty,
+            counterpartyPk,
+            counterpartyCollateral
+        );
         return escrow.mint(req);
     }
 
@@ -183,7 +182,7 @@ contract PredictionMarketEscrowAudit is Test {
      * @notice C-1: Self-dealing dilution attack
      *
      * Scenario:
-     *   1. Alice bets 100 YES vs Bob 50 NO
+     *   1. Alice predicts 100 YES vs Bob 50 NO
      *   2. Charlie self-deals: 10000 YES vs 1 wei NO
      *   3. YES wins
      *   4. Alice should get >= 150 (her fair share)
@@ -192,11 +191,11 @@ contract PredictionMarketEscrowAudit is Test {
      * FIXED:   Alice gets 150 (proportional minting prevents dilution)
      */
     function test_C1_selfDealingDilutionAttack() public {
-        // Bet 1: Alice 100 YES vs Bob 50 NO
+        // Prediction 1: Alice 100 YES vs Bob 50 NO
         (bytes32 pred1, address predToken,) =
             _mint(alice, ALICE_PK, 100e6, bob, BOB_PK, 50e6);
 
-        // Bet 2: Charlie self-deals 10000 YES vs 1 wei NO
+        // Prediction 2: Charlie self-deals 10000 YES vs 1 wei NO
         (bytes32 pred2,,) =
             _mint(charlie, CHARLIE_PK, 10_000e6, charlie, CHARLIE_PK, 1);
 
@@ -211,7 +210,7 @@ contract PredictionMarketEscrowAudit is Test {
         uint256 alicePayout = escrow.redeem(predToken, aliceTokens, REF_CODE);
 
         console.log("Alice payout:", alicePayout);
-        console.log("Alice wager: 100e6, expected payout >= 150e6");
+        console.log("Alice collateral: 100e6, expected payout >= 150e6");
 
         // FIXED: Alice gets her fair share (100 + Bob's 50)
         assertGe(
@@ -223,15 +222,20 @@ contract PredictionMarketEscrowAudit is Test {
 
     /**
      * @notice C-1: Verify proportional token minting amounts
-     * FIXED: Each side gets totalCollateral tokens per bet
+     * FIXED: Each side gets totalCollateral tokens per prediction
      */
     function test_C1_proportionalMintingTokenAmounts() public {
-        uint256 predictorWager = 100e6;
-        uint256 counterpartyWager = 50e6;
-        uint256 expectedTokens = predictorWager + counterpartyWager; // 150e6
+        uint256 predictorCollateral = 100e6;
+        uint256 counterpartyCollateral = 50e6;
+        uint256 expectedTokens = predictorCollateral + counterpartyCollateral; // 150e6
 
         (, address predToken, address ctrToken) = _mint(
-            alice, ALICE_PK, predictorWager, bob, BOB_PK, counterpartyWager
+            alice,
+            ALICE_PK,
+            predictorCollateral,
+            bob,
+            BOB_PK,
+            counterpartyCollateral
         );
 
         uint256 aliceTokens = IERC20(predToken).balanceOf(alice);

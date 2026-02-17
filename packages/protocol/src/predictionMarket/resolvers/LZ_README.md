@@ -149,7 +149,7 @@ PredictedOutcome[] memory outcomes = [
 ];
 
 bytes memory encodedOutcomes = resolver.encodePredictionOutcomes(outcomes);
-(bool isResolved, IPredictionMarketResolver.Error error, bool parlaySuccess) = 
+(bool isResolved, IPredictionMarketResolver.Error error, bool predictionSuccess) = 
     resolver.getPredictionResolution(encodedOutcomes);
 ```
 

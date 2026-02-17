@@ -1,16 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.2 <0.9.0;
 
-import {
-    TestHelperOz5
-} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { TestHelperOz5 } from
+    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
 import { TestETHManagement } from "./mocks/TestETHManagement.sol";
 import { BridgeTypes } from "../../src/bridge/BridgeTypes.sol";
 import { IETHManagement } from "../../src/bridge/interfaces/IETHManagement.sol";
 import { IFeeManagement } from "../../src/bridge/interfaces/IFeeManagement.sol";
-import {
-    ILayerZeroBridge
-} from "../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import { ILayerZeroBridge } from
+    "../../src/bridge/interfaces/ILayerZeroBridge.sol";
 
 import "forge-std/Test.sol";
 import "cannon-std/Cannon.sol";
@@ -47,10 +45,12 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         setUpEndpoints(1, LibraryType.UltraLightNode);
 
         testContract = TestETHManagement(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(TestETHManagement).creationCode,
                     abi.encode(address(endpoints[eid]), owner)
-                ))
+                )
+            )
         );
 
         vm.deal(address(testContract), 100 ether);
@@ -151,10 +151,12 @@ contract BridgeTestEthBalance is TestHelperOz5 {
         vm.deal(address(receiver), 0);
 
         TestETHManagement revertingContract = TestETHManagement(
-            payable(_deployOApp(
+            payable(
+                _deployOApp(
                     type(TestETHManagement).creationCode,
                     abi.encode(address(endpoints[eid]), address(receiver))
-                ))
+                )
+            )
         );
 
         vm.deal(address(revertingContract), 10 ether);
@@ -330,7 +332,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_setBridgeConfig() public {
         BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999, remoteBridge: address(0x1234)
+            remoteEid: 999,
+            remoteBridge: address(0x1234)
         });
 
         testContract.setBridgeConfig(newConfig);
@@ -347,7 +350,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_setBridgeConfig_onlyOwner() public {
         BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999, remoteBridge: address(0x1234)
+            remoteEid: 999,
+            remoteBridge: address(0x1234)
         });
 
         vm.prank(user);
@@ -357,7 +361,8 @@ contract BridgeTestEthBalance is TestHelperOz5 {
 
     function test_setBridgeConfig_emitsEvent() public {
         BridgeTypes.BridgeConfig memory newConfig = BridgeTypes.BridgeConfig({
-            remoteEid: 999, remoteBridge: address(0x1234)
+            remoteEid: 999,
+            remoteBridge: address(0x1234)
         });
 
         vm.expectEmit(true, true, false, true);

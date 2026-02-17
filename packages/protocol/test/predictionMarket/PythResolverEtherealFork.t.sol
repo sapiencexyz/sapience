@@ -15,8 +15,7 @@ import "../../src/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
 contract PythResolverEtherealForkTest is Test {
     using stdJson for string;
 
-    string internal constant DEFAULT_ETHEREAL_RPC =
-        "https://rpc.ethereal.trade";
+    string internal constant DEFAULT_ETHEREAL_RPC = "https://rpc.ethereal.trade";
     string internal constant DEFAULT_PYTH_LAZER_BASE =
         "https://pyth-lazer.dourolabs.app";
 
@@ -110,9 +109,8 @@ contract PythResolverEtherealForkTest is Test {
         uint32 feedId
     ) internal {
         // Deploy resolver configured for Ethereal Lazer verifier and settle the market.
-        PythResolver.Settings memory settings = PythResolver.Settings({
-            maxPredictionMarkets: 1, pythLazer: lazer
-        });
+        PythResolver.Settings memory settings =
+            PythResolver.Settings({ maxPredictionMarkets: 1, pythLazer: lazer });
         PythResolver resolver = new PythResolver(settings);
 
         bytes[] memory updateData = new bytes[](1);
@@ -125,14 +123,14 @@ contract PythResolverEtherealForkTest is Test {
         (int64 price, int32 expo) =
             _decodePriceExpoFromVerifiedPayload(payload, feedId);
 
-        PythResolver.BinaryOptionMarket memory market =
-            PythResolver.BinaryOptionMarket({
-                priceId: bytes32(uint256(feedId)),
-                endTime: endTime,
-                strikePrice: price - 1,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+        PythResolver.BinaryOptionMarket memory market = PythResolver
+            .BinaryOptionMarket({
+            priceId: bytes32(uint256(feedId)),
+            endTime: endTime,
+            strikePrice: price - 1,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (bytes32 marketId, bool resolvedToOver) =
             resolver.settleMarket{ value: fee }(market, updateData);
@@ -171,27 +169,35 @@ contract PythResolverEtherealForkTest is Test {
         (bool trustOk, bool isTrusted, string memory trustMethod) =
             _probeIsTrustedSigner(ETHEREAL_PYTH_LAZER_VERIFIER, recovered);
         if (trustOk) {
-            emit log_string(string.concat(
+            emit log_string(
+                string.concat(
                     "verifier ",
                     trustMethod,
                     " => ",
                     isTrusted ? "true" : "false"
-                ));
+                )
+            );
         } else {
-            emit log_string("verifier trust check not readable (no isTrusted* view)");
+            emit log_string(
+                "verifier trust check not readable (no isTrusted* view)"
+            );
         }
 
         (bool expOk, uint256 expiresAt, string memory expMethod) =
             _probeTrustedSignerExpiry(ETHEREAL_PYTH_LAZER_VERIFIER, recovered);
         if (expOk) {
-            emit log_string(string.concat(
+            emit log_string(
+                string.concat(
                     "verifier ",
                     expMethod,
                     " => expiresAt=",
                     vm.toString(expiresAt)
-                ));
+                )
+            );
         } else {
-            emit log_string("verifier expiry not readable (no trustedSigners* view)");
+            emit log_string(
+                "verifier expiry not readable (no trustedSigners* view)"
+            );
         }
     }
 
@@ -290,12 +296,11 @@ contract PythResolverEtherealForkTest is Test {
         view
         returns (bool ok, uint256 expiresAt, string memory method)
     {
-        bytes4[3] memory
-            sels = [
-                bytes4(keccak256("trustedSigners(address)")),
-                bytes4(keccak256("trustedSignerExpiresAt(address)")),
-                bytes4(keccak256("trustedSignerExpirations(address)"))
-            ];
+        bytes4[3] memory sels = [
+            bytes4(keccak256("trustedSigners(address)")),
+            bytes4(keccak256("trustedSignerExpiresAt(address)")),
+            bytes4(keccak256("trustedSignerExpirations(address)"))
+        ];
         string[3] memory names = [
             "trustedSigners(address)",
             "trustedSignerExpiresAt(address)",
@@ -351,9 +356,8 @@ contract PythResolverEtherealForkTest is Test {
     ///   PYTH_LAZER_TIMESTAMP_US=... \
     ///   forge test --ffi \
     ///     --match-path test/predictionMarket/PythResolverEtherealFork.t.sol -vvv
-    function test_e2e_etherealFork_settleMarket_fetchFromHttps_withoutWhitelisting()
-        public
-    {
+    function test_e2e_etherealFork_settleMarket_fetchFromHttps_withoutWhitelisting(
+    ) public {
         bool runFork = vm.envOr("RUN_PYTH_ETHEREAL_FORK_TESTS", false);
         if (!runFork) vm.skip(true);
 
@@ -410,4 +414,3 @@ contract PythResolverEtherealForkTest is Test {
         this._settleSingleMarketExternal(fetchedBlob, endTime, feedId);
     }
 }
-

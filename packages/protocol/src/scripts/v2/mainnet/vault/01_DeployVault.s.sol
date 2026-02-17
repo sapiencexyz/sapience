@@ -2,9 +2,8 @@
 pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    PredictionMarketVault
-} from "../../../../v2/vault/PredictionMarketVault.sol";
+import { PredictionMarketVault } from
+    "../../../../v2/vault/PredictionMarketVault.sol";
 
 /// @title Deploy PredictionMarketVault (Mainnet)
 /// @notice Deploys and configures PredictionMarketVault on Ethereal mainnet

@@ -6,31 +6,24 @@ import {
     Origin,
     MessagingFee
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    OptimisticOracleV3Interface
-} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import {
-    OptimisticOracleV3CallbackRecipientInterface
-} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
-import {
-    IPredictionMarketLZResolverUmaSide
-} from "./interfaces/IPredictionMarketLZResolverUmaSide.sol";
+import { SafeERC20 } from
+    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OptimisticOracleV3Interface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import { OptimisticOracleV3CallbackRecipientInterface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import { IPredictionMarketLZResolverUmaSide } from
+    "./interfaces/IPredictionMarketLZResolverUmaSide.sol";
 import { Encoder } from "../../bridge/cmdEncoder.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
-import {
-    OptionsBuilder
-} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { OptionsBuilder } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import { ETHManagement } from "../../bridge/abstract/ETHManagement.sol";
-import {
-    MessagingReceipt
-} from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
+import { MessagingReceipt } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /**
  * @title PredictionMarketLZResolverUmaSide
@@ -131,7 +124,11 @@ contract PredictionMarketLZResolverUmaSide is
         emit AsserterRevoked(asserter);
     }
 
-    function isAsserterApproved(address asserter) external view returns (bool) {
+    function isAsserterApproved(address asserter)
+        external
+        view
+        returns (bool)
+    {
         return approvedAsserters[asserter];
     }
 

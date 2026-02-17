@@ -80,27 +80,31 @@ contract PredictionMarketEscrowDustAudit is Test {
     function _signApproval(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateralAmount,
         uint256 nonce,
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 digest = escrow.getMintApprovalHash(
-            predictionHash, signer, wager, nonce, deadline
+            predictionHash, signer, collateralAmount, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, digest);
         return abi.encodePacked(r, s, v);
     }
 
     function _buildMintRequest(
-        uint256 predictorWager,
-        uint256 counterpartyWager
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral
     ) internal view returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _buildPicks();
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                pickConfigId, predictorWager, counterpartyWager, alice, bob
+                pickConfigId,
+                predictorCollateral,
+                counterpartyCollateral,
+                alice,
+                bob
             )
         );
 
@@ -109,8 +113,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = predictorWager;
-        request.counterpartyWager = counterpartyWager;
+        request.predictorCollateral = predictorCollateral;
+        request.counterpartyCollateral = counterpartyCollateral;
         request.predictor = alice;
         request.counterparty = bob;
         request.predictorNonce = pNonce;
@@ -118,17 +122,27 @@ contract PredictionMarketEscrowDustAudit is Test {
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
         request.predictorSignature = _signApproval(
-            predictionHash, alice, predictorWager, pNonce, deadline, ALICE_PK
+            predictionHash,
+            alice,
+            predictorCollateral,
+            pNonce,
+            deadline,
+            ALICE_PK
         );
         request.counterpartySignature = _signApproval(
-            predictionHash, bob, counterpartyWager, cNonce, deadline, BOB_PK
+            predictionHash,
+            bob,
+            counterpartyCollateral,
+            cNonce,
+            deadline,
+            BOB_PK
         );
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
     }
 
-    function _mint(uint256 predictorWager, uint256 counterpartyWager)
+    function _mint(uint256 predictorCollateral, uint256 counterpartyCollateral)
         internal
         returns (
             bytes32 predictionId,
@@ -137,7 +151,7 @@ contract PredictionMarketEscrowDustAudit is Test {
         )
     {
         IV2Types.MintRequest memory req =
-            _buildMintRequest(predictorWager, counterpartyWager);
+            _buildMintRequest(predictorCollateral, counterpartyCollateral);
         return escrow.mint(req);
     }
 
@@ -201,7 +215,7 @@ contract PredictionMarketEscrowDustAudit is Test {
      * FIXED:   sweepDust only requires winning-side supply == 0 for decisive outcomes.
      */
     function test_M1_sweepDustAfterDecisiveOutcome() public {
-        // Create a bet with amounts that produce rounding dust
+        // Create a prediction with amounts that produce rounding dust
         // 100e6 + 33e6 = 133e6 total. If predictor wins, they get 133e6.
         // But with proportional minting, there may be rounding dust.
         (bytes32 pred1, address predToken, address ctrToken) =
@@ -231,8 +245,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.PickConfiguration memory config = escrow.getPickConfiguration(
             escrow.getPickConfigIdFromToken(predToken)
         );
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;

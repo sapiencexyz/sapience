@@ -6,17 +6,14 @@ import {
     Origin,
     MessagingFee
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {
-    IPredictionMarketLZResolver
-} from "./interfaces/IPredictionMarketLZResolver.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IPredictionMarketLZResolver } from
+    "./interfaces/IPredictionMarketLZResolver.sol";
 import { Encoder } from "../../bridge/cmdEncoder.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
-import {
-    OptionsBuilder
-} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { OptionsBuilder } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import { ETHManagement } from "../../bridge/abstract/ETHManagement.sol";
 
 /**
@@ -123,13 +120,11 @@ contract PredictionMarketLZResolver is
     function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
         external
         view
-        returns (bool isResolved, Error error, bool parlaySuccess)
+        returns (bool isResolved, Error error, bool predictionSuccess)
     {
-        PredictedOutcome[] memory
-            predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
-        parlaySuccess = true;
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
+        predictionSuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
         bool hasUnsettledMarkets = false;
@@ -137,12 +132,12 @@ contract PredictionMarketLZResolver is
         if (predictedOutcomes.length == 0) {
             isResolved = false;
             error = Error.MUST_HAVE_AT_LEAST_ONE_MARKET;
-            return (isResolved, error, parlaySuccess);
+            return (isResolved, error, predictionSuccess);
         }
         if (predictedOutcomes.length > config.maxPredictionMarkets) {
             isResolved = false;
             error = Error.TOO_MANY_MARKETS;
-            return (isResolved, error, parlaySuccess);
+            return (isResolved, error, predictionSuccess);
         }
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
@@ -168,8 +163,8 @@ contract PredictionMarketLZResolver is
             bool marketOutcome = market.resolvedToYes;
 
             if (predictedOutcomes[i].prediction != marketOutcome) {
-                parlaySuccess = false;
-                return (true, Error.NO_ERROR, parlaySuccess);
+                predictionSuccess = false;
+                return (true, Error.NO_ERROR, predictionSuccess);
             }
         }
 
@@ -178,15 +173,13 @@ contract PredictionMarketLZResolver is
             error = Error.MARKET_NOT_SETTLED;
         }
 
-        return (isResolved, error, parlaySuccess);
+        return (isResolved, error, predictionSuccess);
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
-    function encodePredictionOutcomes(PredictedOutcome[] calldata predictedOutcomes)
-        external
-        pure
-        returns (bytes memory)
-    {
+    function encodePredictionOutcomes(
+        PredictedOutcome[] calldata predictedOutcomes
+    ) external pure returns (bytes memory) {
         return abi.encode(predictedOutcomes);
     }
 

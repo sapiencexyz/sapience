@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    PredictionMarketLZResolverUmaSide
-} from "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import { PredictionMarketLZResolverUmaSide } from
+    "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 /**
  * @title MockOptimisticOracleV3ForPMResolver
@@ -101,9 +100,7 @@ contract MockOptimisticOracleV3ForPMResolver {
         return assertionId;
     }
 
-    function getAssertion(
-        bytes32 /* assertionId */
-    )
+    function getAssertion(bytes32 /* assertionId */ )
         external
         pure
         returns (bytes memory)
@@ -115,8 +112,7 @@ contract MockOptimisticOracleV3ForPMResolver {
         bytes32,
         /* identifier */
         address /* currency */
-    )
-        external {
+    ) external {
         // Mock implementation
     }
 
@@ -124,4 +120,3 @@ contract MockOptimisticOracleV3ForPMResolver {
         return 0.1 ether; // Mock minimum bond
     }
 }
-

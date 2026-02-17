@@ -2,9 +2,8 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {
-    PredictionMarketLZResolver
-} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import { PredictionMarketLZResolver } from
+    "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
 
 // Prediction Market is on Ethereal chain
 // Deploy this resolver on Ethereal (receives LZ messages from UMA side)
@@ -30,4 +29,3 @@ contract DeployPredictionMarketLZResolver is Script {
         );
     }
 }
-

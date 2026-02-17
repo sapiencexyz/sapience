@@ -8,15 +8,12 @@ import {
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppSender.sol";
 import { OAppCore } from "@layerzerolabs/oapp-evm/contracts/oapp/OAppCore.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import {
-    OptionsBuilder
-} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {
-    IConditionalTokensReader
-} from "./interfaces/IConditionalTokensReader.sol";
+import { OptionsBuilder } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { IConditionalTokensReader } from
+    "./interfaces/IConditionalTokensReader.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 
 /// @notice Minimal subset of Gnosis ConditionalTokens needed for resolution
@@ -192,10 +189,12 @@ contract ConditionalTokensReader is
                 .getOutcomeSlotCount(conditionId),
             payoutDenominator: IConditionalTokens(config.conditionalTokens)
                 .payoutDenominator(conditionId),
-            noPayout: IConditionalTokens(config.conditionalTokens)
-                .payoutNumerators(conditionId, NO_INDEX),
-            yesPayout: IConditionalTokens(config.conditionalTokens)
-                .payoutNumerators(conditionId, YES_INDEX)
+            noPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(
+                conditionId, NO_INDEX
+            ),
+            yesPayout: IConditionalTokens(config.conditionalTokens).payoutNumerators(
+                conditionId, YES_INDEX
+            )
         });
     }
 
@@ -231,7 +230,10 @@ contract ConditionalTokensReader is
             return data;
         } catch {
             return ConditionData({
-                slotCount: 0, payoutDenominator: 0, noPayout: 0, yesPayout: 0
+                slotCount: 0,
+                payoutDenominator: 0,
+                noPayout: 0,
+                yesPayout: 0
             });
         }
     }

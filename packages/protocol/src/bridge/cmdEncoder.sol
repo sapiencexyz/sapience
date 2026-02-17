@@ -32,9 +32,8 @@ library Encoder {
         uint256 bond,
         bytes memory claim
     ) internal pure returns (bytes memory) {
-        return abi.encode(
-            assertionId, asserter, liveness, currency, bond, claim
-        );
+        return
+            abi.encode(assertionId, asserter, liveness, currency, bond, claim);
     }
 
     function decodeToUMAAssertTruth(bytes memory data)

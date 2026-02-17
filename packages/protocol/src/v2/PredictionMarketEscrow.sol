@@ -15,8 +15,8 @@ import "./utils/SignatureValidator.sol";
 
 /**
  * @title PredictionMarketEscrow
- * @notice Unified prediction market contract with fungible betting pools
- * @dev Same picks share tokens. Token supply = total wagers. Parimutuel model.
+ * @notice Unified prediction market contract with fungible prediction pools
+ * @dev Same picks share tokens. Token supply = total collateral. Parimutuel model.
  */
 contract PredictionMarketEscrow is
     IPredictionMarketEscrow,
@@ -146,8 +146,8 @@ contract PredictionMarketEscrow is
         }
 
         // Calculate remaining dust
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;
@@ -181,8 +181,11 @@ contract PredictionMarketEscrow is
         if (request.picks.length == 0) {
             revert InvalidPicks();
         }
-        if (request.predictorWager == 0 || request.counterpartyWager == 0) {
-            revert ZeroWager();
+        if (
+            request.predictorCollateral == 0
+                || request.counterpartyCollateral == 0
+        ) {
+            revert ZeroCollateral();
         }
 
         // Validate picks (canonical order, no duplicates, valid conditions)
@@ -191,7 +194,7 @@ contract PredictionMarketEscrow is
         // Compute pickConfigId from canonical picks (shared across same picks)
         bytes32 pickConfigId = _computePickConfigId(request.picks);
 
-        // Compute unique predictionId for this specific bet
+        // Compute unique predictionId for this specific prediction
         predictionId = keccak256(
             abi.encode(
                 pickConfigId,
@@ -201,27 +204,29 @@ contract PredictionMarketEscrow is
             )
         );
 
-        // Compute prediction hash for signatures (includes wagers and addresses)
+        // Compute prediction hash for signatures (includes collateral and addresses)
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                request.predictorWager,
-                request.counterpartyWager,
+                request.predictorCollateral,
+                request.counterpartyCollateral,
                 request.predictor,
                 request.counterparty
             )
         );
 
         // Validate predictor signature (EOA or session key)
-        if (!_validatePartySignature(
+        if (
+            !_validatePartySignature(
                 predictionHash,
                 request.predictor,
-                request.predictorWager,
+                request.predictorCollateral,
                 request.predictorNonce,
                 request.predictorDeadline,
                 request.predictorSignature,
                 request.predictorSessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         if (request.predictorNonce != _nonces[request.predictor]) {
@@ -229,15 +234,17 @@ contract PredictionMarketEscrow is
         }
 
         // Validate counterparty signature (EOA or session key)
-        if (!_validatePartySignature(
+        if (
+            !_validatePartySignature(
                 predictionHash,
                 request.counterparty,
-                request.counterpartyWager,
+                request.counterpartyCollateral,
                 request.counterpartyNonce,
                 request.counterpartyDeadline,
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         if (request.counterpartyNonce != _nonces[request.counterparty]) {
@@ -251,7 +258,7 @@ contract PredictionMarketEscrow is
         // Create or reuse token pair for this pick configuration
         IV2Types.TokenPair storage tokenPair = _tokenPairs[pickConfigId];
         if (tokenPair.predictorToken == address(0)) {
-            // First bet with these picks - create tokens and store picks
+            // First prediction with these picks - create tokens and store picks
             (predictorToken, counterpartyToken) = _createTokenPair(pickConfigId);
 
             // Store picks for this configuration
@@ -302,37 +309,39 @@ contract PredictionMarketEscrow is
     ) internal {
         // Transfer collateral from both parties
         collateralToken.safeTransferFrom(
-            request.predictor, address(this), request.predictorWager
+            request.predictor, address(this), request.predictorCollateral
         );
         collateralToken.safeTransferFrom(
-            request.counterparty, address(this), request.counterpartyWager
+            request.counterparty, address(this), request.counterpartyCollateral
         );
 
         uint256 totalCollateral =
-            request.predictorWager + request.counterpartyWager;
+            request.predictorCollateral + request.counterpartyCollateral;
 
-        // C-1: Mint tokens proportional to total collateral on the bet.
+        // C-1: Mint tokens proportional to total collateral on the prediction.
         // Each token represents a 1:1 claim on collateral, making fungibility safe
-        // regardless of the odds at which any individual bet was placed.
-        IPredictionMarketToken(predictorToken)
-            .mint(request.predictor, totalCollateral);
-        IPredictionMarketToken(counterpartyToken)
-            .mint(request.counterparty, totalCollateral);
+        // regardless of the odds at which any individual prediction was placed.
+        IPredictionMarketToken(predictorToken).mint(
+            request.predictor, totalCollateral
+        );
+        IPredictionMarketToken(counterpartyToken).mint(
+            request.counterparty, totalCollateral
+        );
 
         // Update pick configuration totals
         IV2Types.PickConfiguration storage config =
             _pickConfigurations[pickConfigId];
-        config.totalPredictorCollateral += request.predictorWager;
-        config.totalCounterpartyCollateral += request.counterpartyWager;
+        config.totalPredictorCollateral += request.predictorCollateral;
+        config.totalCounterpartyCollateral += request.counterpartyCollateral;
         config.totalPredictorTokensMinted += totalCollateral;
         config.totalCounterpartyTokensMinted += totalCollateral;
 
-        // Store escrow record for this specific bet (audit trail)
+        // Store escrow record for this specific prediction (audit trail)
         _escrowRecords[predictionId] = IV2Types.EscrowRecord({
             pickConfigId: pickConfigId,
             totalCollateral: totalCollateral,
-            predictorWager: request.predictorWager,
-            counterpartyWager: request.counterpartyWager,
+            predictorCollateral: request.predictorCollateral,
+            counterpartyCollateral: request.counterpartyCollateral,
             predictorTokensMinted: totalCollateral,
             counterpartyTokensMinted: totalCollateral,
             settled: false
@@ -342,8 +351,8 @@ contract PredictionMarketEscrow is
         _predictions[predictionId] = IV2Types.Prediction({
             predictionId: predictionId,
             pickConfigId: pickConfigId,
-            predictorWager: request.predictorWager,
-            counterpartyWager: request.counterpartyWager,
+            predictorCollateral: request.predictorCollateral,
+            counterpartyCollateral: request.counterpartyCollateral,
             predictor: request.predictor,
             counterparty: request.counterparty,
             predictorTokensMinted: totalCollateral,
@@ -357,8 +366,8 @@ contract PredictionMarketEscrow is
             request.counterparty,
             predictorToken,
             counterpartyToken,
-            request.predictorWager,
-            request.counterpartyWager,
+            request.predictorCollateral,
+            request.counterpartyCollateral,
             request.refCode
         );
 
@@ -366,13 +375,16 @@ contract PredictionMarketEscrow is
     }
 
     /// @inheritdoc IPredictionMarketEscrow
-    function burn(IV2Types.BurnRequest calldata request) external nonReentrant {
+    function burn(IV2Types.BurnRequest calldata request)
+        external
+        nonReentrant
+    {
         // Validate token amounts
         if (
             request.predictorTokenAmount == 0
                 || request.counterpartyTokenAmount == 0
         ) {
-            revert ZeroWager();
+            revert ZeroCollateral();
         }
 
         // Validate conservation: total payout must not exceed the collateral
@@ -384,17 +396,17 @@ contract PredictionMarketEscrow is
         {
             IV2Types.PickConfiguration storage _config =
                 _pickConfigurations[request.pickConfigId];
-            uint256 predictorCollateralBacking = _config.totalPredictorTokensMinted
-                > 0
-                ? (request.predictorTokenAmount
-                        * _config.totalPredictorCollateral)
+            uint256 predictorCollateralBacking = _config
+                .totalPredictorTokensMinted > 0
+                ? (request.predictorTokenAmount * _config.totalPredictorCollateral)
                     / _config.totalPredictorTokensMinted
                 : 0;
-            uint256 counterpartyCollateralBacking = _config.totalCounterpartyTokensMinted
-                > 0
-                ? (request.counterpartyTokenAmount
-                        * _config.totalCounterpartyCollateral)
-                    / _config.totalCounterpartyTokensMinted
+            uint256 counterpartyCollateralBacking = _config
+                .totalCounterpartyTokensMinted > 0
+                ? (
+                    request.counterpartyTokenAmount
+                        * _config.totalCounterpartyCollateral
+                ) / _config.totalCounterpartyTokensMinted
                 : 0;
             if (
                 request.predictorPayout + request.counterpartyPayout
@@ -431,7 +443,8 @@ contract PredictionMarketEscrow is
         );
 
         // Validate predictor signature
-        if (!_validateBurnPartySignature(
+        if (
+            !_validateBurnPartySignature(
                 burnHash,
                 request.predictorHolder,
                 request.predictorTokenAmount,
@@ -440,7 +453,8 @@ contract PredictionMarketEscrow is
                 request.predictorDeadline,
                 request.predictorSignature,
                 request.predictorSessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         if (request.predictorNonce != _nonces[request.predictorHolder]) {
@@ -448,7 +462,8 @@ contract PredictionMarketEscrow is
         }
 
         // Validate counterparty signature
-        if (!_validateBurnPartySignature(
+        if (
+            !_validateBurnPartySignature(
                 burnHash,
                 request.counterpartyHolder,
                 request.counterpartyTokenAmount,
@@ -457,7 +472,8 @@ contract PredictionMarketEscrow is
                 request.counterpartyDeadline,
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         if (request.counterpartyNonce != _nonces[request.counterpartyHolder]) {
@@ -479,12 +495,14 @@ contract PredictionMarketEscrow is
         IV2Types.PickConfiguration storage config
     ) internal {
         // Burn predictor tokens from holder
-        IPredictionMarketToken(tokenPair.predictorToken)
-            .burn(request.predictorHolder, request.predictorTokenAmount);
+        IPredictionMarketToken(tokenPair.predictorToken).burn(
+            request.predictorHolder, request.predictorTokenAmount
+        );
 
         // Burn counterparty tokens from holder
-        IPredictionMarketToken(tokenPair.counterpartyToken)
-            .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
+        IPredictionMarketToken(tokenPair.counterpartyToken).burn(
+            request.counterpartyHolder, request.counterpartyTokenAmount
+        );
 
         // Update collateral tracking proportionally (compute before decrementing tokens)
         uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
@@ -492,10 +510,9 @@ contract PredictionMarketEscrow is
             ? (request.predictorTokenAmount * config.totalPredictorCollateral)
                 / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
-            > 0
-            ? (request.counterpartyTokenAmount
-                    * config.totalCounterpartyCollateral)
+        uint256 counterpartyCollateralReturned = config
+            .totalCounterpartyTokensMinted > 0
+            ? (request.counterpartyTokenAmount * config.totalCounterpartyCollateral)
                 / config.totalCounterpartyTokensMinted
             : 0;
         config.totalPredictorCollateral -= predictorCollateralReturned;
@@ -565,10 +582,11 @@ contract PredictionMarketEscrow is
         _escrowRecords[predictionId].settled = true;
 
         // Calculate claimable amounts for this prediction's contribution
-        (uint256 predictorClaimable, uint256 counterpartyClaimable) = _calculateClaimableForPrediction(
+        (uint256 predictorClaimable, uint256 counterpartyClaimable) =
+        _calculateClaimableForPrediction(
             config.result,
-            prediction.predictorWager,
-            prediction.counterpartyWager
+            prediction.predictorCollateral,
+            prediction.counterpartyCollateral
         );
 
         emit PredictionSettled(
@@ -599,7 +617,7 @@ contract PredictionMarketEscrow is
         }
 
         if (amount == 0) {
-            revert ZeroWager();
+            revert ZeroCollateral();
         }
 
         // Determine if this is predictor or counterparty token
@@ -858,12 +876,9 @@ contract PredictionMarketEscrow is
     function _validatePicks(IV2Types.Pick[] calldata picks) internal view {
         for (uint256 i = 0; i < picks.length; i++) {
             // Check condition is valid with try/catch to prevent DoS
-            try IConditionResolver(picks[i].conditionResolver)
-            .isValidCondition{ gas: RESOLVER_GAS_LIMIT }(
-                picks[i].conditionId
-            ) returns (
-                bool isValid
-            ) {
+            try IConditionResolver(picks[i].conditionResolver).isValidCondition{
+                gas: RESOLVER_GAS_LIMIT
+            }(picks[i].conditionId) returns (bool isValid) {
                 if (!isValid) {
                     revert InvalidPicks();
                 }
@@ -907,14 +922,14 @@ contract PredictionMarketEscrow is
     /// @notice Calculate claimable amounts for a prediction based on result
     function _calculateClaimableForPrediction(
         IV2Types.SettlementResult result,
-        uint256 predictorWager,
-        uint256 counterpartyWager
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral
     )
         internal
         pure
         returns (uint256 predictorClaimable, uint256 counterpartyClaimable)
     {
-        uint256 totalCollateral = predictorWager + counterpartyWager;
+        uint256 totalCollateral = predictorCollateral + counterpartyCollateral;
 
         if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             predictorClaimable = totalCollateral;
@@ -923,8 +938,8 @@ contract PredictionMarketEscrow is
             predictorClaimable = 0;
             counterpartyClaimable = totalCollateral;
         } else if (result == IV2Types.SettlementResult.NON_DECISIVE) {
-            predictorClaimable = predictorWager;
-            counterpartyClaimable = counterpartyWager;
+            predictorClaimable = predictorCollateral;
+            counterpartyClaimable = counterpartyCollateral;
         }
     }
 
@@ -940,8 +955,8 @@ contract PredictionMarketEscrow is
         uint256 totalCounterpartyCollateral,
         bool isPredictor
     ) internal pure returns (uint256 claimablePool) {
-        uint256 totalCollateral = totalPredictorCollateral
-            + totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            totalPredictorCollateral + totalCounterpartyCollateral;
 
         if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             claimablePool = isPredictor ? totalCollateral : 0;
@@ -957,7 +972,7 @@ contract PredictionMarketEscrow is
 
     // ============ Internal: Resolution ============
 
-    /// @notice Resolve a pick configuration using integrated parlay logic
+    /// @notice Resolve a pick configuration using integrated multi-pick prediction logic
     /// @dev Optimized to use batch resolution when all picks use the same resolver
     function _resolvePrediction(bytes32 pickConfigId)
         internal
@@ -1006,10 +1021,9 @@ contract PredictionMarketEscrow is
         // Single batch call to resolver with try/catch to prevent DoS
         bool[] memory resolved;
         IV2Types.OutcomeVector[] memory outcomes;
-        try IConditionResolver(resolver)
-        .getResolutions{ gas: RESOLVER_GAS_LIMIT }(
-            conditionIds
-        ) returns (
+        try IConditionResolver(resolver).getResolutions{
+            gas: RESOLVER_GAS_LIMIT
+        }(conditionIds) returns (
             bool[] memory _resolved, IV2Types.OutcomeVector[] memory _outcomes
         ) {
             resolved = _resolved;
@@ -1057,10 +1071,9 @@ contract PredictionMarketEscrow is
             // Call resolver with try/catch to prevent DoS from malicious resolvers
             bool isResolved;
             IV2Types.OutcomeVector memory outcome;
-            try IConditionResolver(pick.conditionResolver)
-            .getResolution{ gas: RESOLVER_GAS_LIMIT }(
-                pick.conditionId
-            ) returns (
+            try IConditionResolver(pick.conditionResolver).getResolution{
+                gas: RESOLVER_GAS_LIMIT
+            }(pick.conditionId) returns (
                 bool _isResolved, IV2Types.OutcomeVector memory _outcome
             ) {
                 isResolved = _isResolved;
@@ -1122,7 +1135,7 @@ contract PredictionMarketEscrow is
     function _validatePartySignature(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         bytes calldata signature,
@@ -1131,7 +1144,7 @@ contract PredictionMarketEscrow is
         if (sessionKeyData.length == 0) {
             // EOA or EIP-1271 (smart account) signature
             return _isApprovalValidWithEIP1271Fallback(
-                predictionHash, signer, wager, nonce, deadline, signature
+                predictionHash, signer, collateral, nonce, deadline, signature
             );
         } else {
             // Session key signature - decode and validate
@@ -1151,7 +1164,7 @@ contract PredictionMarketEscrow is
             return _isSessionKeyApprovalValid(
                 predictionHash,
                 signer,
-                wager,
+                collateral,
                 nonce,
                 deadline,
                 signature,

@@ -2,25 +2,19 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
-import {
-    PredictionMarketVault
-} from "../../../src/v2/vault/PredictionMarketVault.sol";
-import {
-    IPredictionMarketVault
-} from "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
-import {
-    PredictionMarketEscrow
-} from "../../../src/v2/PredictionMarketEscrow.sol";
-import {
-    IPredictionMarketEscrow
-} from "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import {
-    ManualConditionResolver
-} from "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
+import { PredictionMarketVault } from
+    "../../../src/v2/vault/PredictionMarketVault.sol";
+import { IPredictionMarketVault } from
+    "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
+import { PredictionMarketEscrow } from
+    "../../../src/v2/PredictionMarketEscrow.sol";
+import { IPredictionMarketEscrow } from
+    "../../../src/v2/interfaces/IPredictionMarketEscrow.sol";
+import { ManualConditionResolver } from
+    "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import { IV2Types } from "../../../src/v2/interfaces/IV2Types.sol";
-import {
-    IPredictionMarketToken
-} from "../../../src/v2/interfaces/IPredictionMarketToken.sol";
+import { IPredictionMarketToken } from
+    "../../../src/v2/interfaces/IPredictionMarketToken.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
@@ -45,10 +39,10 @@ contract PredictionMarketVaultIntegrationTest is Test {
     uint256 public predictorPk;
 
     uint256 public constant INITIAL_DEPOSIT = 100_000e18;
-    uint256 public constant PREDICTOR_WAGER = 1000e18;
-    uint256 public constant COUNTERPARTY_WAGER = 1500e18;
+    uint256 public constant PREDICTOR_COLLATERAL = 1000e18;
+    uint256 public constant COUNTERPARTY_COLLATERAL = 1500e18;
     uint256 public constant TOTAL_COLLATERAL =
-        PREDICTOR_WAGER + COUNTERPARTY_WAGER;
+        PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("vault-integration-test");
 
     function setUp() public {
@@ -114,12 +108,12 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
     function _signPredictorApproval(
         bytes32 predictionHash,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) internal view returns (bytes memory) {
         bytes32 approvalHash = market.getMintApprovalHash(
-            predictionHash, predictor, wager, nonce, deadline
+            predictionHash, predictor, collateral, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -127,13 +121,13 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
     function _signVaultApproval(
         bytes32 predictionHash,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) internal view returns (bytes memory) {
         // Get the mint approval hash that the market will pass to vault.isValidSignature
         bytes32 mintApprovalHash = market.getMintApprovalHash(
-            predictionHash, address(vault), wager, nonce, deadline
+            predictionHash, address(vault), collateral, nonce, deadline
         );
 
         // Get the hash that the manager needs to sign (vault wraps the mint approval hash)
@@ -147,12 +141,18 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
     function _createMintRequestWithVaultCounterparty(
         IV2Types.Pick[] memory picks,
-        uint256 pWager,
-        uint256 cWager
+        uint256 pCollateral,
+        uint256 cCollateral
     ) internal view returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = market.computePickConfigId(picks);
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, pWager, cWager, predictor, address(vault))
+            abi.encode(
+                pickConfigId,
+                pCollateral,
+                cCollateral,
+                predictor,
+                address(vault)
+            )
         );
 
         uint256 pNonce = market.getNonce(predictor);
@@ -160,18 +160,19 @@ contract PredictionMarketVaultIntegrationTest is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = pWager;
-        request.counterpartyWager = cWager;
+        request.predictorCollateral = pCollateral;
+        request.counterpartyCollateral = cCollateral;
         request.predictor = predictor;
         request.counterparty = address(vault);
         request.predictorNonce = pNonce;
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature =
-            _signPredictorApproval(predictionHash, pWager, pNonce, deadline);
+        request.predictorSignature = _signPredictorApproval(
+            predictionHash, pCollateral, pNonce, deadline
+        );
         request.counterpartySignature =
-            _signVaultApproval(predictionHash, cWager, cNonce, deadline);
+            _signVaultApproval(predictionHash, cCollateral, cNonce, deadline);
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
@@ -200,16 +201,16 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Manager approves funds for the market
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         // Create prediction with vault as counterparty
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
@@ -223,7 +224,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Verify collateral was taken from vault
         assertEq(
             collateralToken.balanceOf(address(vault)),
-            vaultBalanceBefore - COUNTERPARTY_WAGER
+            vaultBalanceBefore - COUNTERPARTY_COLLATERAL
         );
 
         // Verify position tokens minted (proportional: totalCollateral each)
@@ -251,7 +252,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(predictor),
-            predictorBalanceBefore - PREDICTOR_WAGER + TOTAL_COLLATERAL
+            predictorBalanceBefore - PREDICTOR_COLLATERAL + TOTAL_COLLATERAL
         );
 
         // Vault's counterparty tokens are worthless
@@ -270,16 +271,16 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Manager approves funds for the market
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         // Create prediction with vault as counterparty
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
 
@@ -300,29 +301,29 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         assertEq(payout, TOTAL_COLLATERAL);
 
-        // Vault balance should be original minus wager plus winnings
+        // Vault balance should be original minus collateral plus winnings
         assertEq(
             collateralToken.balanceOf(address(vault)),
-            vaultBalanceBefore - COUNTERPARTY_WAGER + TOTAL_COLLATERAL
+            vaultBalanceBefore - COUNTERPARTY_COLLATERAL + TOTAL_COLLATERAL
         );
     }
 
     /**
-     * @notice Test: Vault as counterparty - tie (both get wagers back)
+     * @notice Test: Vault as counterparty - tie (both get collateral back)
      */
     function test_vaultAsCounterparty_tie() public {
         bytes32 conditionId = keccak256("game-tie");
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         uint256 vaultBalanceBefore = collateralToken.balanceOf(address(vault));
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
@@ -340,7 +341,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem (full TOTAL_COLLATERAL each) - get original wagers back
+        // Both redeem (full TOTAL_COLLATERAL each) - get original collateral back
         vm.prank(predictor);
         uint256 predictorPayout =
             market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
@@ -349,8 +350,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         uint256 vaultPayout =
             market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        assertEq(predictorPayout, PREDICTOR_WAGER);
-        assertEq(vaultPayout, COUNTERPARTY_WAGER);
+        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
+        assertEq(vaultPayout, COUNTERPARTY_COLLATERAL);
 
         // Both end up with original balances
         assertEq(collateralToken.balanceOf(predictor), predictorBalanceBefore);
@@ -365,7 +366,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         bytes32 conditionId2 = keccak256("game-2");
 
         // Manager approves enough for both predictions
-        uint256 totalApproval = COUNTERPARTY_WAGER * 2;
+        uint256 totalApproval = COUNTERPARTY_COLLATERAL * 2;
         vm.prank(manager);
         vault.approveFundsUsage(address(market), totalApproval);
 
@@ -373,9 +374,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         IV2Types.Pick[] memory picks1 = new IV2Types.Pick[](1);
         picks1[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
         IV2Types.MintRequest memory request1 =
-            _createMintRequestWithVaultCounterparty(
-                picks1, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks1, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
         (bytes32 predictionId1, address predictorToken1,) =
             market.mint(request1);
 
@@ -383,9 +384,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
         picks2[0] = _createPick(conditionId2, IV2Types.OutcomeSide.NO);
         IV2Types.MintRequest memory request2 =
-            _createMintRequestWithVaultCounterparty(
-                picks2, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks2, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
         (bytes32 predictionId2,, address counterpartyToken2) =
             market.mint(request2);
 
@@ -393,7 +394,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vm.prank(settler);
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
 
-        // Settle second condition - YES wins (predictor bet NO, so vault wins prediction 2)
+        // Settle second condition - YES wins (predictor predicted NO, so vault wins prediction 2)
         vm.prank(settler);
         resolver.settleCondition(conditionId2, IV2Types.OutcomeVector(1, 0));
 
@@ -415,35 +416,35 @@ contract PredictionMarketVaultIntegrationTest is Test {
     }
 
     /**
-     * @notice Test: Vault parlay prediction (multiple picks)
+     * @notice Test: Vault multi-pick prediction (multiple picks)
      */
-    function test_vaultAsCounterparty_parlay() public {
+    function test_vaultAsCounterparty_multiPickPrediction() public {
         bytes32 condition1 = bytes32(uint256(1));
         bytes32 condition2 = bytes32(uint256(2));
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
-        // Create parlay with 2 picks
+        // Create multi-pick prediction with 2 picks
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = _createPick(condition1, IV2Types.OutcomeSide.YES);
         picks[1] = _createPick(condition2, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
 
-        // Settle conditions - predictor wins first, loses second (parlay fails)
+        // Settle conditions - predictor wins first, loses second (multi-pick prediction fails)
         vm.startPrank(settler);
         resolver.settleCondition(condition1, IV2Types.OutcomeVector(1, 0)); // YES
         resolver.settleCondition(condition2, IV2Types.OutcomeVector(0, 1)); // NO (predictor loses)
         vm.stopPrank();
 
-        // Settle prediction - vault wins because predictor's parlay failed
+        // Settle prediction - vault wins because predictor's multi-pick prediction failed
         market.settle(predictionId, REF_CODE);
 
         IV2Types.Prediction memory prediction =
@@ -469,15 +470,15 @@ contract PredictionMarketVaultIntegrationTest is Test {
         bytes32 conditionId = keccak256("profitable-game");
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
@@ -524,15 +525,15 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Manager approves less than needed
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER / 2);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL / 2);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         // Should revert because vault doesn't have enough approved
         vm.expectRevert();
@@ -542,19 +543,21 @@ contract PredictionMarketVaultIntegrationTest is Test {
     /**
      * @notice Test: Emergency mode blocks new predictions but allows redemption
      */
-    function test_vaultEmergencyMode_existingPredictionCanStillRedeem() public {
+    function test_vaultEmergencyMode_existingPredictionCanStillRedeem()
+        public
+    {
         bytes32 conditionId = keccak256("emergency-game");
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+        );
 
         (bytes32 predictionId,, address counterpartyToken) =
             market.mint(request);
@@ -585,15 +588,15 @@ contract PredictionMarketVaultIntegrationTest is Test {
             bytes32 conditionId = keccak256(abi.encode("game", i));
 
             vm.prank(manager);
-            vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+            vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
             IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
             picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
             IV2Types.MintRequest memory request =
-                _createMintRequestWithVaultCounterparty(
-                    picks, PREDICTOR_WAGER, COUNTERPARTY_WAGER
-                );
+            _createMintRequestWithVaultCounterparty(
+                picks, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
+            );
 
             market.mint(request);
 
@@ -608,7 +611,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         bytes32 conditionId = keccak256("invalid-sig-game");
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), COUNTERPARTY_WAGER);
+        vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
@@ -617,8 +620,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 address(vault)
             )
@@ -630,8 +633,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         IV2Types.MintRequest memory request;
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = predictor;
         request.counterparty = address(vault);
         request.predictorNonce = pNonce;
@@ -639,11 +642,15 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
         request.predictorSignature = _signPredictorApproval(
-            predictionHash, PREDICTOR_WAGER, pNonce, deadline
+            predictionHash, PREDICTOR_COLLATERAL, pNonce, deadline
         );
         // Sign with wrong key (predictor key instead of manager key)
         bytes32 mintApprovalHash = market.getMintApprovalHash(
-            predictionHash, address(vault), COUNTERPARTY_WAGER, cNonce, deadline
+            predictionHash,
+            address(vault),
+            COUNTERPARTY_COLLATERAL,
+            cNonce,
+            deadline
         );
         bytes32 vaultApprovalHash =
             vault.getApprovalHash(mintApprovalHash, manager);
@@ -659,24 +666,24 @@ contract PredictionMarketVaultIntegrationTest is Test {
     }
 
     /**
-     * @notice Test: Asymmetric wagers with vault as counterparty
+     * @notice Test: Asymmetric collateral amounts with vault as counterparty
      */
-    function test_vaultAsCounterparty_asymmetricWagers() public {
+    function test_vaultAsCounterparty_asymmetricCollaterals() public {
         bytes32 conditionId = keccak256("asymmetric-game");
 
-        uint256 smallPredictorWager = 100e18;
-        uint256 largecounterpartyWager = 10_000e18;
+        uint256 smallPredictorCollateral = 100e18;
+        uint256 largecounterpartyCollateral = 10_000e18;
 
         vm.prank(manager);
-        vault.approveFundsUsage(address(market), largecounterpartyWager);
+        vault.approveFundsUsage(address(market), largecounterpartyCollateral);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
-            _createMintRequestWithVaultCounterparty(
-                picks, smallPredictorWager, largecounterpartyWager
-            );
+        _createMintRequestWithVaultCounterparty(
+            picks, smallPredictorCollateral, largecounterpartyCollateral
+        );
 
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 
@@ -687,7 +694,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         resolver.settleCondition(conditionId, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
-        uint256 totalCollateral = smallPredictorWager + largecounterpartyWager;
+        uint256 totalCollateral =
+            smallPredictorCollateral + largecounterpartyCollateral;
         vm.prank(predictor);
         uint256 payout =
             market.redeem(predictorToken, totalCollateral, REF_CODE);
@@ -695,7 +703,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         assertEq(payout, totalCollateral);
         assertEq(
             collateralToken.balanceOf(predictor),
-            predictorBalanceBefore - smallPredictorWager + totalCollateral
+            predictorBalanceBefore - smallPredictorCollateral + totalCollateral
         );
     }
 }

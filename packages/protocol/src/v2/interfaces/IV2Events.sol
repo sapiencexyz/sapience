@@ -15,8 +15,8 @@ interface IV2Events {
         address indexed counterparty,
         address predictorToken,
         address counterpartyToken,
-        uint256 predictorWager,
-        uint256 counterpartyWager,
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral,
         bytes32 refCode
     );
 

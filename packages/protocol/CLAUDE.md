@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized prediction market protocol with fungible betting pools using a parimutuel model and cross-chain bridge support.
+Foil Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
 
 ## Commands
 
@@ -93,12 +93,12 @@ See `src/v2/v2.md` for the complete specification.
 
 - **Pick**: A single prediction (conditionResolver, conditionId, predictedOutcome)
 - **Pick Configuration**: Set of picks that share fungible tokens, identified by `pickConfigId = keccak256(picks)`
-- **Prediction**: Individual bet with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, nonce)`
-- **Position Tokens**: ERC20 tokens representing shares in the collateral pool (1:1 ratio with wager)
+- **Prediction**: Individual prediction with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, nonce)`
+- **Position Tokens**: ERC20 tokens representing shares in the collateral pool (1:1 ratio with collateral)
 
 ### Parimutuel Model
 
-Users with the same picks share tokens. Token supply equals total wagers:
+Users with the same picks share tokens. Token supply equals total collateral:
 - Mint 50 USDE -> receive 50 predictor tokens
 - Winner side gets all collateral proportionally
 
@@ -120,7 +120,7 @@ Located in `src/v2/resolvers/`:
 
 1. Condition resolvers return `OutcomeVector [yesWeight, noWeight]`
    - `[1,0]` = YES wins, `[0,1]` = NO wins, `[1,1]` = tie
-2. PredictionMarketEscrow applies parlay logic:
+2. PredictionMarketEscrow applies prediction logic:
    - All picks match predicted outcome -> PREDICTOR_WINS
    - Any pick decisively against -> COUNTERPARTY_WINS
    - Any non-decisive pick -> NON_DECISIVE (tie)

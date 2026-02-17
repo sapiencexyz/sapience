@@ -3,9 +3,8 @@ pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    PredictionMarketVault
-} from "../../../../v2/vault/PredictionMarketVault.sol";
+import { PredictionMarketVault } from
+    "../../../../v2/vault/PredictionMarketVault.sol";
 
 /// @title Test Deposit and Withdrawal (Mainnet)
 /// @notice Tests deposit and withdrawal flow on PredictionMarketVault
@@ -76,8 +75,7 @@ contract TestDepositWithdrawal is Script {
         );
         console.log("Vault Balance After Deposit:", vaultBalanceAfterDeposit);
         require(
-            predictorSharesAfterDeposit
-                == predictorSharesBefore + depositAmount,
+            predictorSharesAfterDeposit == predictorSharesBefore + depositAmount,
             "Incorrect shares minted"
         );
         require(

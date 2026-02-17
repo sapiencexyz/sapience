@@ -959,12 +959,7 @@ contract PassiveLiquidityVault is
         uint256,
         /* tokenId */
         bytes calldata /* data */
-    )
-        external
-        pure
-        override
-        returns (bytes4)
-    {
+    ) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
     }
 }

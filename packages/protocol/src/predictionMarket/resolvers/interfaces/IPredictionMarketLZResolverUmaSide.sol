@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    ILayerZeroBridge
-} from "../../../bridge/interfaces/ILayerZeroBridge.sol";
+import { ILayerZeroBridge } from
+    "../../../bridge/interfaces/ILayerZeroBridge.sol";
 import { BridgeTypes } from "../../../bridge/BridgeTypes.sol";
 
 /**
@@ -71,7 +70,10 @@ interface IPredictionMarketLZResolverUmaSide is ILayerZeroBridge {
     // Asserter management
     function approveAsserter(address asserter) external;
     function revokeAsserter(address asserter) external;
-    function isAsserterApproved(address asserter) external view returns (bool);
+    function isAsserterApproved(address asserter)
+        external
+        view
+        returns (bool);
 
     // Owner bond withdrawal (for stuck tokens)
     function withdrawBond(address token, uint256 amount, address to) external;

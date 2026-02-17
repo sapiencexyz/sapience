@@ -7,7 +7,10 @@ import "./interfaces/IPredictionMarketTokenBridged.sol";
 /// @title PredictionMarketTokenBridged
 /// @notice ERC20 token representing a bridged position (on remote chain)
 /// @dev Mintable/burnable only by the bridge contract
-contract PredictionMarketTokenBridged is ERC20, IPredictionMarketTokenBridged {
+contract PredictionMarketTokenBridged is
+    ERC20,
+    IPredictionMarketTokenBridged
+{
     /// @inheritdoc IPredictionMarketTokenBridged
     bytes32 public immutable pickConfigId;
 

@@ -2,13 +2,11 @@
 pragma solidity ^0.8.22;
 
 import { OApp } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import {
-    Origin
-} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { Origin } from
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
 import { ETHManagement } from "../../../src/bridge/abstract/ETHManagement.sol";
-import {
-    ILayerZeroBridge
-} from "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
+import { ILayerZeroBridge } from
+    "../../../src/bridge/interfaces/ILayerZeroBridge.sol";
 import { BridgeTypes } from "../../../src/bridge/BridgeTypes.sol";
 
 /**

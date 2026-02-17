@@ -22,7 +22,7 @@ import "./IAccountFactory.sol";
 abstract contract SignatureValidator is EIP712 {
     /// @notice EIP-712 typehash for mint approval
     bytes32 public constant MINT_APPROVAL_TYPEHASH = keccak256(
-        "MintApproval(bytes32 predictionHash,address signer,uint256 wager,uint256 nonce,uint256 deadline)"
+        "MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)"
     );
 
     /// @notice EIP-712 typehash for burn approval
@@ -67,7 +67,7 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Validate a mint approval signature
     /// @param predictionHash Hash of the prediction parameters
     /// @param signer Expected signer address
-    /// @param wager Wager amount for this signer
+    /// @param collateral Collateral amount for this signer
     /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
     /// @param signature The EIP-712 signature
@@ -75,7 +75,7 @@ abstract contract SignatureValidator is EIP712 {
     function _isApprovalValid(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         bytes memory signature
@@ -90,7 +90,7 @@ abstract contract SignatureValidator is EIP712 {
                 MINT_APPROVAL_TYPEHASH,
                 predictionHash,
                 signer,
-                wager,
+                collateral,
                 nonce,
                 deadline
             )
@@ -125,9 +125,7 @@ abstract contract SignatureValidator is EIP712 {
         }
         try IERC1271(signer).isValidSignature{ gas: EIP1271_GAS_LIMIT }(
             hash, signature
-        ) returns (
-            bytes4 magicValue
-        ) {
+        ) returns (bytes4 magicValue) {
             return magicValue == IERC1271.isValidSignature.selector;
         } catch {
             return false;
@@ -137,7 +135,7 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Validate signature for EOA or smart contract with EIP-1271 fallback
     /// @param predictionHash Hash of the prediction parameters
     /// @param signer Expected signer address (EOA or smart contract)
-    /// @param wager Wager amount for this signer
+    /// @param collateral Collateral amount for this signer
     /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
     /// @param signature The signature (ECDSA for EOA, or signature validated by EIP-1271)
@@ -145,7 +143,7 @@ abstract contract SignatureValidator is EIP712 {
     function _isApprovalValidWithEIP1271Fallback(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         bytes memory signature
@@ -155,9 +153,11 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (_isApprovalValid(
-                predictionHash, signer, wager, nonce, deadline, signature
-            )) {
+        if (
+            _isApprovalValid(
+                predictionHash, signer, collateral, nonce, deadline, signature
+            )
+        ) {
             return true;
         }
 
@@ -168,7 +168,7 @@ abstract contract SignatureValidator is EIP712 {
                     MINT_APPROVAL_TYPEHASH,
                     predictionHash,
                     signer,
-                    wager,
+                    collateral,
                     nonce,
                     deadline
                 )
@@ -183,14 +183,14 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Get the hash that should be signed offchain for mint approval
     /// @param predictionHash Hash of the prediction parameters
     /// @param signer Signer address
-    /// @param wager Wager amount
+    /// @param collateral Collateral amount
     /// @param nonce Nonce
     /// @param deadline Deadline timestamp
     /// @return hash The EIP-712 typed data hash to sign
     function getMintApprovalHash(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) public view returns (bytes32 hash) {
@@ -199,7 +199,7 @@ abstract contract SignatureValidator is EIP712 {
                 MINT_APPROVAL_TYPEHASH,
                 predictionHash,
                 signer,
-                wager,
+                collateral,
                 nonce,
                 deadline
             )
@@ -274,7 +274,8 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (_isBurnApprovalValid(
+        if (
+            _isBurnApprovalValid(
                 burnHash,
                 signer,
                 tokenAmount,
@@ -282,7 +283,8 @@ abstract contract SignatureValidator is EIP712 {
                 nonce,
                 deadline,
                 signature
-            )) {
+            )
+        ) {
             return true;
         }
 
@@ -457,7 +459,7 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Validate a mint approval signed by a session key
     /// @param predictionHash Hash of the prediction parameters
     /// @param smartAccount The smart account address (expected signer)
-    /// @param wager Wager amount
+    /// @param collateral Collateral amount
     /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
     /// @param sessionKeySignature The session key's signature on the mint approval
@@ -466,7 +468,7 @@ abstract contract SignatureValidator is EIP712 {
     function _isSessionKeyApprovalValid(
         bytes32 predictionHash,
         address smartAccount,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         bytes memory sessionKeySignature,
@@ -493,7 +495,7 @@ abstract contract SignatureValidator is EIP712 {
                 MINT_APPROVAL_TYPEHASH,
                 predictionHash,
                 smartAccount,
-                wager,
+                collateral,
                 nonce,
                 deadline
             )

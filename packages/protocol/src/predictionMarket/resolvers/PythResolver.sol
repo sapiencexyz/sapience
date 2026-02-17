@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import {
-    IPredictionMarketResolver
-} from "../interfaces/IPredictionMarketResolver.sol";
+import { IPredictionMarketResolver } from
+    "../interfaces/IPredictionMarketResolver.sol";
 import { IPythLazer } from "./pythLazer/IPythLazer.sol";
 import { PythLazerLib } from "./pythLazer/PythLazerLib.sol";
 import { PythLazerLibBytes } from "./pythLazer/PythLazerLibBytes.sol";
@@ -61,8 +59,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         bool overWinsOnTie; // default true (price >= strike)
     }
 
-    /// @notice One predicted outcome in a parlay.
-    /// @dev `prediction` is the maker's bet: true = Over, false = Under.
+    /// @notice One predicted outcome in a multi-pick prediction.
+    /// @dev `prediction` is the predictor's choice: true = Over, false = Under.
     struct BinaryOptionOutcome {
         bytes32 priceId;
         uint64 endTime;
@@ -103,9 +101,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
             uint64 publishTimeMicros
         )
     {
-        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(
-                payload
-            );
+        PythLazerStructs.Update memory u =
+            PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
 
         // Payload header timestamp is microseconds.
         publishTimeMicros = u.timestamp;
@@ -172,12 +169,12 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
     function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
         external
         view
-        returns (bool isResolved, Error error, bool parlaySuccess)
+        returns (bool isResolved, Error error, bool predictionSuccess)
     {
-        BinaryOptionOutcome[] memory
-            outcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
+        BinaryOptionOutcome[] memory outcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
 
-        parlaySuccess = true;
+        predictionSuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
         bool hasUnsettledMarkets = false;
@@ -345,4 +342,3 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         );
     }
 }
-

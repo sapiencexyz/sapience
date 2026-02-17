@@ -2,12 +2,10 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    PredictionMarketBridge
-} from "../../../v2/bridge/PredictionMarketBridge.sol";
-import {
-    IPredictionMarketBridgeBase
-} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import { PredictionMarketBridge } from
+    "../../../v2/bridge/PredictionMarketBridge.sol";
+import { IPredictionMarketBridgeBase } from
+    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 
 /// @title Retry Bridge from PM Network (Mainnet)

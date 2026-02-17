@@ -116,24 +116,24 @@ forge script src/scripts/v2/testnet/vault/03_TestVaultAsCounterparty.s.sol \
 - `PICK_CONFIG_ID`
 
 **Optional env vars:**
-- `PREDICTOR_WAGER` - Predictor's wager (default: 0.005 ether)
-- `COUNTERPARTY_WAGER` - Vault's wager (default: 0.0016 ether)
+- `PREDICTOR_COLLATERAL` - Predictor's collateral (default: 0.005 ether)
+- `COUNTERPARTY_COLLATERAL` - Vault's collateral (default: 0.0016 ether)
 - `CONDITION_ID` - Use existing condition ID
 
 ## Test Amounts
 
 For testnet, use small amounts (< 0.01 WUSDe):
 - Deposit: 0.005 WUSDe
-- Predictor wager: 0.005 WUSDe
-- Counterparty wager: 0.0016 WUSDe
+- Predictor collateral: 0.005 WUSDe
+- Counterparty collateral: 0.0016 WUSDe
 
 ## Signature Flow (ERC-1271)
 
 When the vault acts as counterparty, the manager signs on its behalf:
 
 ```
-1. Compute predictionHash = keccak256(pickConfigId, pWager, cWager, predictor, vault)
-2. Get mintApprovalHash = market.getMintApprovalHash(predictionHash, vault, cWager, nonce, deadline)
+1. Compute predictionHash = keccak256(pickConfigId, pCollateral, cCollateral, predictor, vault)
+2. Get mintApprovalHash = market.getMintApprovalHash(predictionHash, vault, cCollateral, nonce, deadline)
 3. Get vaultApprovalHash = vault.getApprovalHash(mintApprovalHash, manager)
 4. Manager signs vaultApprovalHash
 5. Market calls vault.isValidSignature(mintApprovalHash, signature)

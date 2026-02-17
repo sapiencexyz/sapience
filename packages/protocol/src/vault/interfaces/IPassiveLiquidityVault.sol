@@ -62,7 +62,8 @@ interface IPassiveLiquidityVault is IERC1271, IERC165 {
     // ============ Request-based Deposit/Withdrawal Functions ============
 
     function requestDeposit(uint256 assets, uint256 expectedShares) external;
-    function requestWithdrawal(uint256 shares, uint256 expectedAssets) external;
+    function requestWithdrawal(uint256 shares, uint256 expectedAssets)
+        external;
 
     function cancelWithdrawal() external;
     function cancelDeposit() external;

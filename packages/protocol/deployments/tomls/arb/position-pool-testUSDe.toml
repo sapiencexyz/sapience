@@ -1,4 +1,4 @@
-name="parlay-pool"
+name="prediction-pool"
 version="1.0.0"
 preset="test-arb"
 
@@ -14,14 +14,14 @@ depends = []
 [deploy.ParlayNFTMaker]
 artifact="ParlayNFT"
 args=[
-  "Parlay Maker",
+  "Predictor",
   "PMKR"
 ]
 
 [deploy.ParlayNFTTaker]
 artifact="ParlayNFT"
 args=[
-  "Parlay Taker",
+  "Counterparty",
   "PTKR"
 ]
 
