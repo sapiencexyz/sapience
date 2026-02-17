@@ -21,12 +21,22 @@ jest.mock('viem', () => ({
   parseAbi: jest.fn().mockReturnValue([]),
 }));
 
+const mockPrepareMintCalls = jest.fn().mockReturnValue([
+  { to: '0xMarket' as `0x${string}`, data: '0xEncodedCalldata' as `0x${string}` },
+]);
 jest.mock('@sapience/sdk', () => ({
   predictionMarketAbi: [],
+  toBigIntSafe: (value: string | number | bigint | undefined) => {
+    if (value === undefined) return undefined;
+    return BigInt(value);
+  },
+  validateTakerFunds: jest.fn().mockResolvedValue(undefined),
+  prepareMintCalls: (...args: unknown[]) => mockPrepareMintCalls(...args),
 }));
 
 jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
+  ETHEREAL_WUSDE_ADDRESS: '0xWUSDe',
 }));
 
 const mockSendCalls = jest.fn();
