@@ -27,7 +27,7 @@ if (process.env.NODE_ENV === "production") {
     // Setting this option to true will print useful information to the console while you're setting up Sentry.
     debug: false,
 
-    // Filter out noise from wallet extensions — only things that can NEVER be our code
+    // Filter out noise — only things that can NEVER be our code
     ignoreErrors: [
       // Wallet extension errors (MetaMask, Coinbase, etc.)
       /Failed to connect to MetaMask/,
@@ -35,6 +35,22 @@ if (process.env.NODE_ENV === "production") {
       /Can't find variable: CONFIG/,
       // Safari in-app browser WebView bridge
       /webkit\.messageHandlers/,
+      // Browser extension lifecycle / messaging
+      /Attempting to use a disconnected port object/,
+      /chrome\.runtime\.sendMessage\(\) called from a webpage/,
+      /Cannot read properties of undefined \(reading 'removeListener'\)/,
+      // Extension proxy conflicts (TronLink, etc.)
+      /tronlinkParams/,
+      /Invalid property descriptor\. Cannot both specify accessors/,
+      // User-initiated wallet rejections (not bugs)
+      /UserRejectedRequestError/,
+      /User rejected the request/,
+      // Invalid addresses (bots/fuzzers pasting garbage)
+      /InvalidAddressError/,
+      // Environment constraints (not actionable)
+      /Embedded wallet is only available over HTTPS/,
+      /The source .* has not been authorized yet/,
+      /indexedDB is not defined/,
     ],
 
     // Ignore errors originating from browser extensions
