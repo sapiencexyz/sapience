@@ -4,9 +4,8 @@
   "private": true,
   "version": "1.0.1",
   "scripts": {
-    "dev": "cannon build deployments/tomls/cannonfile.dev.toml --keep-alive --anvil.port 8545 --write-deployments ./deployments/outputs/13370",
     "docgen": "forge doc",
-    "test": "forge build --ast && cannon test deployments/tomls/cannonfile.test.toml --forge.vv",
+    "test": "forge test",
     "lint": "forge lint",
     "format": "forge fmt",
     "format:check": "forge fmt --check"
@@ -20,9 +19,10 @@
   "dependencies": {
     "@layerzerolabs/lz-evm-protocol-v2": "3.0.123",
     "@layerzerolabs/oapp-evm": "0.3.2",
+    "@layerzerolabs/toolbox-foundry": "0.1.13",
     "@openzeppelin/contracts": "5.0.2",
     "@synthetixio/core-contracts": "3.6.4",
     "@uma/core": "2.59.1",
-    "@usecannon/cli": "2.24.1"
+    "solady": "0.1.26"
   }
 }

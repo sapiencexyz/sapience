@@ -1,5 +1,12 @@
 # Sapience Protocol
 
-See [deployments](https://usecannon.com/packages/sapience)
+Solidity smart contracts for the Sapience prediction market protocol. Built with Foundry.
 
-`pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all`
+## Commands
+
+```bash
+forge build          # Compile contracts
+forge test           # Run all tests
+forge fmt            # Format Solidity files
+forge doc            # Generate documentation
+```

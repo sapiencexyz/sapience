@@ -6,7 +6,7 @@ import {
 } from '../utils/getProviderForChain';
 
 describe('getProviderForChain', () => {
-  const supportedChainIds = [13370, 5064014];
+  const supportedChainIds = [5064014];
 
   it.each(supportedChainIds)(
     'returns a PublicClient for chain ID %i',
@@ -28,22 +28,10 @@ describe('getProviderForChain', () => {
       const client2 = getProviderForChain(5064014);
       expect(client1).toBe(client2);
     });
-
-    it('returns different instances for different chain IDs', () => {
-      const clientCannon = getProviderForChain(13370);
-      const clientEthereal = getProviderForChain(5064014);
-      expect(clientCannon).not.toBe(clientEthereal);
-    });
   });
 });
 
 describe('getChainById', () => {
-  it('returns chain definition for cannon (13370)', () => {
-    const chain = getChainById(13370);
-    expect(chain).toBeDefined();
-    expect(chain!.id).toBe(13370);
-  });
-
   it('returns chain definition for ethereal (5064014)', () => {
     const chain = getChainById(5064014);
     expect(chain).toBeDefined();

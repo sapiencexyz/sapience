@@ -6,7 +6,7 @@ import {
   webSocket,
   type Transport,
 } from 'viem';
-import { cannon, arbitrum } from 'viem/chains';
+import { arbitrum } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
@@ -85,7 +85,6 @@ const createChainClient = (
   });
 };
 
-export const cannonPublicClient = createChainClient(cannon, 'cannon', true);
 export const arbitrumPublicClient = createChainClient(
   arbitrum,
   'arbitrum-mainnet'
@@ -99,9 +98,6 @@ export function getProviderForChain(chainId: number): PublicClient {
   let newClient: PublicClient;
 
   switch (chainId) {
-    case 13370:
-      newClient = cannonPublicClient;
-      break;
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
       break;

@@ -3,7 +3,7 @@
 import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
-import { cannon, type Chain, arbitrum } from 'viem/chains';
+import { type Chain, arbitrum } from 'viem/chains';
 import { http } from 'wagmi';
 import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
@@ -29,14 +29,6 @@ const queryClient = new QueryClient({
   },
 });
 
-const cannonAtLocalhost = {
-  ...cannon,
-  rpcUrls: {
-    ...cannon.rpcUrls,
-    default: { http: ['http://localhost:8545'] },
-  },
-};
-
 // Build chains and transports
 const buildChainsAndTransports = () => {
   const transports: Record<number, HttpTransport> = {
@@ -49,11 +41,6 @@ const buildChainsAndTransports = () => {
   };
 
   const chains: Chain[] = [arbitrum, etherealChain];
-
-  if (process.env.NODE_ENV !== 'production') {
-    transports[cannonAtLocalhost.id] = http('http://localhost:8545');
-    chains.push(cannonAtLocalhost);
-  }
 
   return { chains, transports };
 };

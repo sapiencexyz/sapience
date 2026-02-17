@@ -4,26 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized marketplace for onchain computing resources, specifically focused on prediction markets. The protocol uses Solidity smart contracts built with Foundry framework and deployed using Cannon CLI.
+Foil Protocol is a decentralized marketplace for onchain computing resources, specifically focused on prediction markets. The protocol uses Solidity smart contracts built with Foundry framework.
 
 ## Commands
 
 ### Development
 ```bash
-pnpm dev                    # Start local development with Anvil on port 8545
-pnpm test                   # Run all tests using Cannon and Forge
+pnpm test                   # Run all tests using Forge
 pnpm docgen                 # Generate documentation with Forge
-```
-
-### Deployment
-```bash
-pnpm deploy:sepolia         # Deploy to Sepolia testnet
-pnpm deploy:base           # Deploy to Base mainnet
-pnpm simulate-deploy:sepolia # Dry-run deployment on Sepolia
-pnpm simulate-deploy:base   # Dry-run deployment on Base
-
-# Manual cannon deployment (example from README)
-pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all
 ```
 
 ### Testing Individual Files
@@ -71,16 +59,15 @@ Key storage contracts:
 3. Positions can be settled based on final price
 4. Special handling for fee collectors and liquidations
 
-### Deployment Configuration
-Cannon deployment system using TOML files in `deployments/tomls/`:
-- `cannonfile.dev.toml`: Local development
-- `cannonfile.test.toml`: Test configuration
-- `cannonfile.sepolia.toml`: Sepolia testnet
-- `cannonfile.base.blobs.toml`: Base mainnet with blob storage
+## Rules
+
+- All tests must pass before commit
+- Run lint and format before commit
+- To run lint and format, execute `pnpm format && pnpm lint` inside protocol package folder
 
 ## Key Dependencies
 - **@synthetixio/core-contracts**: Core infrastructure patterns
 - **@uma/core**: Optimistic Oracle V3 for price discovery
 - **@openzeppelin/contracts**: Standard implementations
 - **@layerzerolabs**: Cross-chain messaging (oapp-evm, lz-evm-protocol-v2)
-- **cannon-std**: Deployment and testing utilities
+- **@layerzerolabs/lz-evm-oapp-v2**: Cross-chain messaging
