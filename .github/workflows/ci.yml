@@ -133,6 +133,25 @@ jobs:
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter app run lint
       - run: pnpm --filter app run type-check
+
+  test-app:
+    needs: [changes, install]
+    if: needs.changes.outputs.app == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter app test
+
   lint-typecheck-sdk:
     needs: [changes, install]
     if: needs.changes.outputs.sdk == 'true'
