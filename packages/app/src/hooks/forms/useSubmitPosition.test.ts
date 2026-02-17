@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSubmitPosition } from './useSubmitPosition';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
@@ -156,11 +156,13 @@ describe('useSubmitPosition', () => {
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
-    await act(async () => {
-      await result.current.submitPosition(mintData);
+    act(() => {
+      result.current.submitPosition(mintData);
     });
 
-    expect(result.current.error).toContain('Address mismatch');
+    await waitFor(() => {
+      expect(result.current.error).toContain('Address mismatch');
+    });
   });
 
   it('sets error when on-chain nonce differs from provided nonce', async () => {
@@ -178,11 +180,13 @@ describe('useSubmitPosition', () => {
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
-    await act(async () => {
-      await result.current.submitPosition(mintData);
+    act(() => {
+      result.current.submitPosition(mintData);
     });
 
-    expect(result.current.error).toContain('nonce');
+    await waitFor(() => {
+      expect(result.current.error).toContain('nonce');
+    });
   });
 
   it('retries once with fresh nonce on InvalidMakerNonce for non-auction submissions', async () => {
@@ -217,13 +221,15 @@ describe('useSubmitPosition', () => {
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
-    await act(async () => {
-      await result.current.submitPosition(mintData);
+    act(() => {
+      result.current.submitPosition(mintData);
     });
 
     // Should NOT retry - only called once
-    expect(mockSendCalls).toHaveBeenCalledTimes(1);
-    expect(result.current.error).toContain('stale');
+    await waitFor(() => {
+      expect(mockSendCalls).toHaveBeenCalledTimes(1);
+      expect(result.current.error).toContain('stale');
+    });
   });
 
   it('onSuccess callback sets success and clears error', () => {
