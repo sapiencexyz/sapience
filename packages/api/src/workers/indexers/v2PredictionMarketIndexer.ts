@@ -20,10 +20,8 @@ interface PredictionCreatedEvent {
   counterparty: `0x${string}`;
   predictorToken: `0x${string}`;
   counterpartyToken: `0x${string}`;
-  // ABI uses 'predictorWager'/'counterpartyWager' (pre-rename deployment)
-  // Aliased here for clarity — viem decodes using ABI param names
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   refCode: `0x${string}`;
 }
 
@@ -36,7 +34,7 @@ interface PredictionSettledEvent {
 }
 
 interface TokensRedeemedEvent {
-  predictionId: `0x${string}`;
+  pickConfigId: `0x${string}`;
   holder: `0x${string}`;
   positionToken: `0x${string}`;
   tokensBurned: bigint;
@@ -423,8 +421,8 @@ class V2PredictionMarketIndexer implements IIndexer {
         counterparty: event.counterparty.toLowerCase(),
         predictorToken: event.predictorToken.toLowerCase(),
         counterpartyToken: event.counterpartyToken.toLowerCase(),
-        predictorCollateral: event.predictorWager.toString(),
-        counterpartyCollateral: event.counterpartyWager.toString(),
+        predictorCollateral: event.predictorCollateral.toString(),
+        counterpartyCollateral: event.counterpartyCollateral.toString(),
         onChainCreatedAt: timestamp,
         createTxHash: log.transactionHash || '',
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
@@ -475,11 +473,12 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: predictionId=${event.predictionId}, holder=${event.holder}`
+      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
     const timestamp = Number(block.timestamp);
-    const predictionIdLower = event.predictionId.toLowerCase();
+    // ABI param is pickConfigId; stored as predictionId in DB for now (to be renamed)
+    const predictionIdLower = event.pickConfigId.toLowerCase();
 
     // Create redemption record
     await prisma.v2RedemptionRecord.create({
