@@ -3,12 +3,12 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "_endpoint",
+        "name": "endpoint_",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "_owner",
+        "name": "owner_",
         "type": "address",
         "internalType": "address"
       }
@@ -18,6 +18,19 @@
   {
     "type": "receive",
     "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "MIN_RETRY_DELAY",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -57,38 +70,36 @@
   },
   {
     "type": "function",
-    "name": "conditions",
+    "name": "bridge",
     "inputs": [
       {
-        "name": "",
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "refCode",
         "type": "bytes32",
         "internalType": "bytes32"
       }
     ],
     "outputs": [
       {
-        "name": "conditionId",
+        "name": "bridgeId",
         "type": "bytes32",
         "internalType": "bytes32"
-      },
-      {
-        "name": "settled",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "resolvedToYes",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "depositETH",
-    "inputs": [],
-    "outputs": [],
     "stateMutability": "payable"
   },
   {
@@ -112,7 +123,7 @@
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct LZTypes.BridgeConfig",
+        "internalType": "struct IPredictionMarketBridgeBase.BridgeConfig",
         "components": [
           {
             "name": "remoteEid",
@@ -123,32 +134,13 @@
             "name": "remoteBridge",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "ackFeeEstimate",
+            "type": "uint128",
+            "internalType": "uint128"
           }
         ]
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getCondition",
-    "inputs": [
-      {
-        "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "settled",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "resolvedToYes",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -168,16 +160,17 @@
   },
   {
     "type": "function",
-    "name": "getGasThresholds",
-    "inputs": [],
+    "name": "getEscrowedBalance",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
     "outputs": [
       {
-        "name": "warning",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "critical",
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -186,47 +179,67 @@
   },
   {
     "type": "function",
-    "name": "getLzReceiveCost",
+    "name": "getMinRetryDelay",
     "inputs": [],
     "outputs": [
       {
         "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
-    "stateMutability": "view"
+    "stateMutability": "pure"
   },
   {
     "type": "function",
-    "name": "getResolution",
+    "name": "getPendingBridge",
     "inputs": [
       {
-        "name": "conditionId",
+        "name": "bridgeId",
         "type": "bytes32",
         "internalType": "bytes32"
       }
     ],
     "outputs": [
       {
-        "name": "isResolved",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "outcome",
+        "name": "",
         "type": "tuple",
-        "internalType": "struct IV2Types.OutcomeVector",
+        "internalType": "struct IPredictionMarketBridgeBase.PendingBridge",
         "components": [
           {
-            "name": "yesWeight",
+            "name": "token",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "sender",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "recipient",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "amount",
             "type": "uint256",
             "internalType": "uint256"
           },
           {
-            "name": "noWeight",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "createdAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "lastRetryAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "status",
+            "type": "uint8",
+            "internalType": "enum IPredictionMarketBridgeBase.BridgeStatus"
           }
         ]
       }
@@ -235,36 +248,38 @@
   },
   {
     "type": "function",
-    "name": "getResolutions",
+    "name": "getPendingBridges",
     "inputs": [
       {
-        "name": "conditionIds",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "name": "sender",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "resolved",
-        "type": "bool[]",
-        "internalType": "bool[]"
-      },
+        "name": "bridgeIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isBridgeProcessed",
+    "inputs": [
       {
-        "name": "outcomes",
-        "type": "tuple[]",
-        "internalType": "struct IV2Types.OutcomeVector[]",
-        "components": [
-          {
-            "name": "yesWeight",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "noWeight",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
+        "name": "bridgeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -317,14 +332,8 @@
   },
   {
     "type": "function",
-    "name": "isFinalized",
-    "inputs": [
-      {
-        "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
+    "name": "isConfigComplete",
+    "inputs": [],
     "outputs": [
       {
         "name": "",
@@ -333,25 +342,6 @@
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "isValidCondition",
-    "inputs": [
-      {
-        "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "pure"
   },
   {
     "type": "function",
@@ -479,10 +469,137 @@
   },
   {
     "type": "function",
+    "name": "quoteBridge",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "fee",
+        "type": "tuple",
+        "internalType": "struct MessagingFee",
+        "components": [
+          {
+            "name": "nativeFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lzTokenFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "quoteRetry",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "fee",
+        "type": "tuple",
+        "internalType": "struct MessagingFee",
+        "components": [
+          {
+            "name": "nativeFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lzTokenFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "renounceOwnership",
     "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "renounceOwnershipSafe",
+    "inputs": [],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "retry",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "refCode",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "sendAckWithFee",
+    "inputs": [
+      {
+        "name": "message",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "options",
+        "type": "bytes",
+        "internalType": "bytes"
+      },
+      {
+        "name": "fee",
+        "type": "tuple",
+        "internalType": "struct MessagingFee",
+        "components": [
+          {
+            "name": "nativeFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "lzTokenFee",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -491,7 +608,7 @@
       {
         "name": "config",
         "type": "tuple",
-        "internalType": "struct LZTypes.BridgeConfig",
+        "internalType": "struct IPredictionMarketBridgeBase.BridgeConfig",
         "components": [
           {
             "name": "remoteEid",
@@ -502,6 +619,11 @@
             "name": "remoteBridge",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "ackFeeEstimate",
+            "type": "uint128",
+            "internalType": "uint128"
           }
         ]
       }
@@ -517,37 +639,6 @@
         "name": "_delegate",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setGasThresholds",
-    "inputs": [
-      {
-        "name": "warningThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "criticalThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setLzReceiveCost",
-    "inputs": [
-      {
-        "name": "cost",
-        "type": "uint128",
-        "internalType": "uint128"
       }
     ],
     "outputs": [],
@@ -589,6 +680,11 @@
     "name": "withdrawETH",
     "inputs": [
       {
+        "name": "to",
+        "type": "address",
+        "internalType": "address payable"
+      },
+      {
         "name": "amount",
         "type": "uint256",
         "internalType": "uint256"
@@ -599,13 +695,83 @@
   },
   {
     "type": "event",
+    "name": "AckInsufficientBalance",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "required",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "available",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AckSendFailed",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "AckSent",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "fee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BridgeCompleted",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "BridgeConfigUpdated",
     "inputs": [
       {
         "name": "config",
         "type": "tuple",
         "indexed": false,
-        "internalType": "struct LZTypes.BridgeConfig",
+        "internalType": "struct IPredictionMarketBridgeBase.BridgeConfig",
         "components": [
           {
             "name": "remoteEid",
@@ -616,6 +782,11 @@
             "name": "remoteBridge",
             "type": "address",
             "internalType": "address"
+          },
+          {
+            "name": "ackFeeEstimate",
+            "type": "uint128",
+            "internalType": "uint128"
           }
         ]
       }
@@ -624,43 +795,30 @@
   },
   {
     "type": "event",
-    "name": "ConditionResolved",
+    "name": "BridgeInitiated",
     "inputs": [
       {
-        "name": "conditionId",
+        "name": "bridgeId",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
       },
       {
-        "name": "resolvedToYes",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "assertedTruthfully",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "resolutionTime",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ETHDeposited",
-    "inputs": [
-      {
-        "name": "depositor",
+        "name": "token",
         "type": "address",
         "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sender",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "recipient",
+        "type": "address",
+        "indexed": false,
         "internalType": "address"
       },
       {
@@ -668,6 +826,56 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "createdAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      },
+      {
+        "name": "refCode",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BridgeProcessed",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "alreadyProcessed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "BridgeRetried",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "refCode",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false
@@ -677,7 +885,7 @@
     "name": "ETHWithdrawn",
     "inputs": [
       {
-        "name": "recipient",
+        "name": "to",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -687,64 +895,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasReserveCritical",
-    "inputs": [
-      {
-        "name": "currentBalance",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasReserveLow",
-    "inputs": [
-      {
-        "name": "currentBalance",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasThresholdsUpdated",
-    "inputs": [
-      {
-        "name": "warningThreshold",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "criticalThreshold",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "LzReceiveCostUpdated",
-    "inputs": [
-      {
-        "name": "lzReceiveCost",
-        "type": "uint128",
-        "indexed": false,
-        "internalType": "uint128"
       }
     ],
     "anonymous": false
@@ -788,32 +938,74 @@
     "anonymous": false
   },
   {
-    "type": "error",
-    "name": "ConditionAlreadySettled",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ETHTransferFailed",
+    "type": "event",
+    "name": "TokensReleased",
     "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
       {
         "name": "recipient",
         "type": "address",
+        "indexed": true,
         "internalType": "address"
       },
       {
         "name": "amount",
         "type": "uint256",
+        "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AddressEmptyCode",
+    "inputs": [
+      {
+        "name": "target",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },
   {
     "type": "error",
-    "name": "InsufficientETHBalance",
+    "name": "AddressInsufficientBalance",
     "inputs": [
       {
-        "name": "required",
+        "name": "account",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ETHTransferFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "FailedInnerCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InsufficientEscrowBalance",
+    "inputs": [
+      {
+        "name": "requested",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -821,6 +1013,43 @@
         "name": "available",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InsufficientFee",
+    "inputs": [
+      {
+        "name": "required",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provided",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidBridgeStatus",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "expected",
+        "type": "uint8",
+        "internalType": "enum IPredictionMarketBridgeBase.BridgeStatus"
+      },
+      {
+        "name": "actual",
+        "type": "uint8",
+        "internalType": "enum IPredictionMarketBridgeBase.BridgeStatus"
       }
     ]
   },
@@ -844,6 +1073,17 @@
     "type": "error",
     "name": "InvalidEndpointCall",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidOptionType",
+    "inputs": [
+      {
+        "name": "optionType",
+        "type": "uint16",
+        "internalType": "uint16"
+      }
+    ]
   },
   {
     "type": "error",
@@ -879,17 +1119,12 @@
   },
   {
     "type": "error",
-    "name": "InvalidThresholdValues",
+    "name": "InvalidToken",
     "inputs": [
       {
-        "name": "warning",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "critical",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
       }
     ]
   },
@@ -972,6 +1207,69 @@
   {
     "type": "error",
     "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RefundFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RetryTooSoon",
+    "inputs": [
+      {
+        "name": "bridgeId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "lastRetryAt",
+        "type": "uint64",
+        "internalType": "uint64"
+      },
+      {
+        "name": "minNextRetry",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeCastOverflowedUintDowncast",
+    "inputs": [
+      {
+        "name": "bits",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "SafeERC20FailedOperation",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAmount",
     "inputs": []
   }
 ]
