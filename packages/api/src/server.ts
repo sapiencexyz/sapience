@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+  import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';
@@ -19,7 +19,7 @@ import {
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
 
-const PORT = 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 initSentry();
 
