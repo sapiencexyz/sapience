@@ -1,6 +1,6 @@
 /**
- * V2 Auction Types for Relayer
- * Re-exports and extends V2 types from SDK for relayer-specific use
+ * Escrow Auction Types for Relayer
+ * Re-exports and extends escrow types from SDK for relayer-specific use
  */
 
 // Re-export auction types from SDK
@@ -15,16 +15,16 @@ export type {
   PickJson,
 } from '@sapience/sdk/types';
 
-// Relayer-internal V2 auction record
-export interface V2AuctionRecord {
+// Relayer-internal escrow auction record
+export interface EscrowAuctionRecord {
   auction: import('@sapience/sdk/types').AuctionRequestPayload;
   bids: import('@sapience/sdk/types').ValidatedBid[];
   deadlineMs: number; // absolute epoch ms after which auction expires
   pickConfigId: string; // computed from picks
 }
 
-// Type guard for V2 client messages
-export function isV2ClientMessage(
+// Type guard for escrow client messages
+export function isEscrowClientMessage(
   msg: unknown
 ): msg is import('@sapience/sdk/types').ClientToServerMessage {
   if (!msg || typeof msg !== 'object' || !('type' in msg)) {
@@ -33,11 +33,11 @@ export function isV2ClientMessage(
   const msgObj = msg as Record<string, unknown>;
   return (
     typeof msgObj.type === 'string' &&
-    (msgObj.type === 'v2.auction.start' ||
-      msgObj.type === 'v2.auction.subscribe' ||
-      msgObj.type === 'v2.auction.unsubscribe' ||
-      msgObj.type === 'v2.bid.submit' ||
-      msgObj.type === 'v2.burn.request' ||
+    (msgObj.type === 'auction.start' ||
+      msgObj.type === 'auction.subscribe' ||
+      msgObj.type === 'auction.unsubscribe' ||
+      msgObj.type === 'bid.submit' ||
+      msgObj.type === 'burn.request' ||
       msgObj.type === 'ping')
   );
 }

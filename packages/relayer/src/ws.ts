@@ -2,8 +2,14 @@ import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import type { IncomingMessage } from 'http';
 import { verifyMessage, type Abi } from 'viem';
 import { getProviderForChain } from './utils/getProviderForChain';
-import { addBid, getBids, upsertAuction, getAuction } from './registry';
-import { basicValidateBid } from './sim';
+import {
+  upsertEscrowAuction,
+  getEscrowAuction,
+  addEscrowBid,
+  getEscrowBids,
+  getEscrowAuctionDetails,
+} from './escrowRegistry';
+import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
 import {
   activeConnections,
   connectionsTotal,
@@ -21,34 +27,12 @@ import {
 import { config } from './config';
 import Sentry from './instrument';
 import type {
-  BotToServerMessage,
   ClientToServerMessage,
   ServerToClientMessage,
   AuctionRequestPayload,
   BidPayload,
-} from './types';
-import { verifyAuctionSignature } from './auctionSigVerify';
-
-function isClientMessage(msg: unknown): msg is ClientToServerMessage {
-  if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
-    return false;
-  }
-  const msgObj = msg as Record<string, unknown>;
-  return (
-    typeof msgObj.type === 'string' &&
-    (msgObj.type === 'auction.start' || 
-     msgObj.type === 'auction.subscribe' || 
-     msgObj.type === 'auction.unsubscribe')
-  );
-}
-
-function isBotMessage(msg: unknown): msg is BotToServerMessage {
-  if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
-    return false;
-  }
-  const msgObj = msg as Record<string, unknown>;
-  return msgObj.type === 'bid.submit';
-}
+} from './escrowTypes';
+import { isEscrowClientMessage } from './escrowTypes';
 
 function safeParse<T = unknown>(data: RawData): T | null {
   try {
@@ -453,7 +437,7 @@ export function createAuctionWebSocketServer() {
         return;
       }
       const msg = safeParse<
-        ClientToServerMessage | BotToServerMessage | { type?: string }
+        ClientToServerMessage | { type?: string }
       >(data);
       if (!msg || typeof msg !== 'object') {
         messagesReceived.inc({ type: 'invalid' });
@@ -640,66 +624,38 @@ export function createAuctionWebSocketServer() {
         }
       }
 
-      // Handle Auction client messages
-      if (isClientMessage(msg)) {
+      // Handle Escrow Auction client messages
+      if (isEscrowClientMessage(msg)) {
         if (msg.type === 'auction.start') {
           const payload = msg.payload as AuctionRequestPayload;
-          const auctionStartTime = startTime; // Capture for timing logs
-          let pendingAuctionId = 'pending'; // Will be set after upsert
+          const auctionStartTime = startTime;
+          let pendingAuctionId = 'pending';
 
           logTiming(pendingAuctionId, 'received', auctionStartTime, {
-            taker: payload.taker?.slice(0, 10) || 'unknown',
-            hasSig: payload.takerSignature ? 1 : 0,
+            predictor: payload.predictor?.slice(0, 10) || 'unknown',
+            picks: payload.picks?.length ?? 0,
           });
 
-          // Verify signature if provided
-          if (payload.takerSignature) {
-            try {
-              const isValidSignature = await verifyAuctionSignature(
-                payload,
-                domain,
-                wsUri
-              );
-
-              if (!isValidSignature) {
-                errorsTotal.inc({ type: 'signature', message_type: 'auction.start' });
-                console.warn(
-                  `[Relayer] Invalid taker signature for taker=${payload.taker}`
-                );
-                send(ws, {
-                  type: 'auction.ack',
-                  payload: { auctionId: '', error: 'invalid_signature' },
-                });
-                
-                trackDuration(msgType, startTime);
-                return;
-              }
-              logTiming(pendingAuctionId, 'sig_verified', auctionStartTime);
-              console.log(
-                `[Relayer] Valid signature verified for taker=${payload.taker}`
-              );
-            } catch (err) {
-              errorsTotal.inc({ type: 'signature', message_type: 'auction.start' });
-              console.error('[Relayer] Signature verification error:', err);
-              send(ws, {
-                type: 'auction.ack',
-                payload: {
-                  auctionId: '',
-                  error: 'signature_verification_failed',
-                },
-              });
-              
-              trackDuration(msgType, startTime);
-              return;
-            }
+          // Validate auction request structure
+          const validation = validateEscrowAuctionRequest(payload);
+          if (!validation.valid) {
+            errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+            console.warn(
+              `[Relayer] auction.start rejected: ${validation.error}`
+            );
+            send(ws, {
+              type: 'auction.ack',
+              payload: { auctionId: '', error: validation.error || 'invalid_payload' },
+            });
+            trackDuration(msgType, startTime);
+            return;
           }
 
-          const auctionId = upsertAuction(payload);
-          pendingAuctionId = auctionId; // Update for subsequent timing logs
+          const auctionId = upsertEscrowAuction(payload);
+          pendingAuctionId = auctionId;
           logTiming(auctionId, 'created', auctionStartTime);
 
           auctionsStarted.inc();
-          // Subscribe this client to the auction channel
           subscribeToAuction(auctionId, ws, auctionSubscriptions);
           subscriptionsActive.inc({ subscription_type: 'auction' });
 
@@ -712,26 +668,29 @@ export function createAuctionWebSocketServer() {
           });
           logTiming(auctionId, 'ack_sent', auctionStartTime);
 
-          // Broadcast the auction.started to bots/listeners (all clients for now)
-          const requested = JSON.stringify({
-            type: 'auction.started',
-            payload: { ...payload, auctionId },
-          });
-          const botCount = wss.clients.size;
-          wss.clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) client.send(requested);
-          });
-          logTiming(auctionId, 'broadcast', auctionStartTime, { bots: botCount });
+          // Broadcast auction.started with auction details to all connected clients
+          const details = getEscrowAuctionDetails(auctionId);
+          if (details) {
+            const requested = JSON.stringify({
+              type: 'auction.started',
+              payload: details,
+            });
+            const botCount = wss.clients.size;
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) client.send(requested);
+            });
+            logTiming(auctionId, 'broadcast', auctionStartTime, { bots: botCount });
+          }
 
-          // Immediately stream current bids for this auction if any
-          const bids = getBids(auctionId);
+          // Immediately stream current bids if any
+          const bids = getEscrowBids(auctionId);
           if (bids.length > 0) {
             send(ws, {
               type: 'auction.bids',
               payload: { auctionId, bids },
             });
           }
-          
+
           trackDuration(msgType, startTime);
           return;
         }
@@ -740,8 +699,7 @@ export function createAuctionWebSocketServer() {
           if (typeof auctionId === 'string' && auctionId.length > 0) {
             subscribeToAuction(auctionId, ws, auctionSubscriptions);
             subscriptionsActive.inc({ subscription_type: 'auction' });
-            // Immediately stream current bids if any
-            const bids = getBids(auctionId);
+            const bids = getEscrowBids(auctionId);
             if (bids.length > 0) {
               send(ws, {
                 type: 'auction.bids',
@@ -759,7 +717,7 @@ export function createAuctionWebSocketServer() {
               payload: { error: 'missing_auction_id' },
             });
           }
-          
+
           trackDuration(msgType, startTime);
           return;
         }
@@ -779,87 +737,97 @@ export function createAuctionWebSocketServer() {
               payload: { error: 'missing_auction_id' },
             });
           }
-          
+
           trackDuration(msgType, startTime);
           return;
         }
-      }
-
-      // Handle bot bid messages
-      if (isBotMessage(msg)) {
-        const bid = msg.payload as BidPayload;
-        const bidStartTime = startTime;
-        logTiming(bid.auctionId || 'unknown', 'bid_received', bidStartTime, {
-          maker: bid.maker?.slice(0, 10) || 'unknown',
-        });
-
-        const rec = getAuction(bid.auctionId);
-        if (!rec) {
-          bidsSubmitted.inc({ status: 'rejected' });
-          errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
-          send(ws, {
-            type: 'bid.ack',
-            payload: { error: 'auction_not_found_or_expired' },
+        if (msg.type === 'bid.submit') {
+          const bid = msg.payload as BidPayload;
+          const bidStartTime = startTime;
+          logTiming(bid.auctionId || 'unknown', 'bid_received', bidStartTime, {
+            counterparty: bid.counterparty?.slice(0, 10) || 'unknown',
           });
-          console.warn(
-            `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
+
+          const rec = getEscrowAuction(bid.auctionId);
+          if (!rec) {
+            bidsSubmitted.inc({ status: 'rejected' });
+            errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
+            send(ws, {
+              type: 'bid.ack',
+              payload: { error: 'auction_not_found_or_expired' },
+            });
+            console.warn(
+              `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
+            );
+
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          // Validate bid structure
+          const bidValidation = validateEscrowBid(bid, rec.auction);
+          if (!bidValidation.valid) {
+            bidsSubmitted.inc({ status: 'rejected' });
+            errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
+            send(ws, {
+              type: 'bid.ack',
+              payload: { error: bidValidation.error || 'invalid_bid' },
+            });
+            console.warn(
+              `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${bidValidation.error || 'invalid_bid'}`
+            );
+
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          const validated = addEscrowBid(bid.auctionId, bid);
+          if (!validated) {
+            bidsSubmitted.inc({ status: 'error' });
+            errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
+            send(ws, {
+              type: 'bid.ack',
+              payload: { error: 'auction_not_found_or_expired' },
+            });
+            console.warn(
+              `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
+            );
+            return;
+          }
+          logTiming(bid.auctionId, 'bid_validated', bidStartTime);
+
+          bidsSubmitted.inc({ status: 'success' });
+          send(ws, { type: 'bid.ack', payload: {} });
+
+          // Broadcast updated bids to auction subscribers
+          const currentBids = getEscrowBids(bid.auctionId);
+          const broadcastPayload: ServerToClientMessage = {
+            type: 'auction.bids',
+            payload: { auctionId: bid.auctionId, bids: currentBids },
+          };
+          const subscriberCount = auctionSubscriptions.get(bid.auctionId)?.size || 0;
+          broadcastToAuctionSubscribers(
+            bid.auctionId,
+            broadcastPayload,
+            auctionSubscriptions
           );
-          
+          logTiming(bid.auctionId, 'bid_broadcast', bidStartTime, {
+            bidCount: currentBids.length,
+            subscribers: subscriberCount,
+          });
+
           trackDuration(msgType, startTime);
           return;
         }
-        const sim = basicValidateBid(rec.auction, bid);
-        if (!sim.ok) {
-          bidsSubmitted.inc({ status: 'rejected' });
-          errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
+        if (msg.type === 'burn.request') {
+          // TODO: Handle burn requests
           send(ws, {
-            type: 'bid.ack',
-            payload: { error: sim.reason || 'invalid_bid' },
-          });
-          console.warn(
-            `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${sim.reason || 'invalid_bid'}`
-          );
-          
+            type: 'burn.ack' as any,
+            payload: { error: 'burn_not_implemented' },
+          } as any);
           trackDuration(msgType, startTime);
           return;
         }
-        const validated = addBid(bid.auctionId, bid);
-        if (!validated) {
-          bidsSubmitted.inc({ status: 'error' });
-          errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
-          send(ws, {
-            type: 'bid.ack',
-            payload: { error: 'auction_not_found_or_expired' },
-          });
-          console.warn(
-            `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
-          );
-          return;
-        }
-        logTiming(bid.auctionId, 'bid_validated', bidStartTime);
-
-        bidsSubmitted.inc({ status: 'success' });
-        send(ws, { type: 'bid.ack', payload: {} });
-
-        // Broadcast updated top bids only to auction subscribers
-        const currentBids = getBids(bid.auctionId);
-        const payload: ServerToClientMessage = {
-          type: 'auction.bids',
-          payload: { auctionId: bid.auctionId, bids: currentBids },
-        };
-        const subscriberCount = auctionSubscriptions.get(bid.auctionId)?.size || 0;
-        broadcastToAuctionSubscribers(
-          bid.auctionId,
-          payload,
-          auctionSubscriptions
-        );
-        logTiming(bid.auctionId, 'bid_broadcast', bidStartTime, {
-          bidCount: currentBids.length,
-          subscribers: subscriberCount,
-        });
-        
-        trackDuration(msgType, startTime);
-        return;
       }
 
       trackDuration(msgType, startTime);

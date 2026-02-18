@@ -44,7 +44,7 @@ function useAuctionBids(auctionId: string | null) {
     const client = getSharedAuctionWsClient(wsUrl);
 
     // Subscribe to auction
-    client.send({ type: 'v2.auction.subscribe', payload: { auctionId } });
+    client.send({ type: 'auction.subscribe', payload: { auctionId } });
 
     // Listen for bid updates
     const removeListener = client.addMessageListener((msg: unknown) => {
@@ -53,7 +53,7 @@ function useAuctionBids(auctionId: string | null) {
         payload?: { auctionId?: string; bids?: ValidatedBid[] };
       };
       if (
-        data?.type === 'v2.auction.bids' &&
+        data?.type === 'auction.bids' &&
         data.payload?.auctionId === auctionId
       ) {
         setBids(data.payload.bids ?? []);
@@ -62,7 +62,7 @@ function useAuctionBids(auctionId: string | null) {
 
     return () => {
       removeListener();
-      client.send({ type: 'v2.auction.unsubscribe', payload: { auctionId } });
+      client.send({ type: 'auction.unsubscribe', payload: { auctionId } });
     };
   }, [auctionId, wsUrl]);
 

@@ -20,7 +20,7 @@ export function usePositionsByConditionId(params: {
   const enabled = options?.enabled ?? Boolean(conditionId);
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['positionsByConditionId', conditionId, take, skip, chainId],
+    queryKey: ['legacyPositionsByConditionId', conditionId, take, skip, chainId],
     enabled,
     staleTime: options?.staleTime ?? 30_000,
     gcTime: 5 * 60 * 1000,

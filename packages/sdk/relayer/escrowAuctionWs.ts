@@ -19,7 +19,7 @@ export interface AuctionWsHandlers {
   onError?: (err: unknown) => void;
   onParseError?: (err: unknown, rawData: RawData) => void;
 
-  // V2-specific message handlers
+  // Escrow-specific message handlers
   onAuctionAck?: (payload: {
     auctionId?: string;
     error?: string;
@@ -71,7 +71,7 @@ export interface AuctionWsOptions {
 }
 
 /**
- * Create a V2 auction WebSocket client with typed message handling
+ * Create an escrow auction WebSocket client with typed message handling
  */
 export function createEscrowAuctionWs(
   url: string,
@@ -106,25 +106,25 @@ export function createEscrowAuctionWs(
 
   function handleMessage(msg: ServerToClientMessage) {
     switch (msg.type) {
-      case 'v2.auction.ack':
+      case 'auction.ack':
         handlers.onAuctionAck?.(msg.payload);
         break;
-      case 'v2.bid.ack':
+      case 'bid.ack':
         handlers.onBidAck?.(msg.payload);
         break;
-      case 'v2.auction.started':
+      case 'auction.started':
         handlers.onAuctionStarted?.(msg.payload);
         break;
-      case 'v2.auction.bids':
+      case 'auction.bids':
         handlers.onAuctionBids?.(msg.payload);
         break;
-      case 'v2.auction.filled':
+      case 'auction.filled':
         handlers.onAuctionFilled?.(msg.payload);
         break;
-      case 'v2.auction.expired':
+      case 'auction.expired':
         handlers.onAuctionExpired?.(msg.payload);
         break;
-      case 'v2.burn.ack':
+      case 'burn.ack':
         handlers.onBurnAck?.(msg.payload);
         break;
       case 'pong':
@@ -203,38 +203,38 @@ export function createEscrowAuctionWs(
     },
 
     /**
-     * Start a new V2 auction
+     * Start a new escrow auction
      */
     startAuction(payload: AuctionRequestPayload): boolean {
-      return send({ type: 'v2.auction.start', payload });
+      return send({ type: 'auction.start', payload });
     },
 
     /**
      * Subscribe to auction updates
      */
     subscribeAuction(auctionId: string): boolean {
-      return send({ type: 'v2.auction.subscribe', payload: { auctionId } });
+      return send({ type: 'auction.subscribe', payload: { auctionId } });
     },
 
     /**
      * Unsubscribe from auction updates
      */
     unsubscribeAuction(auctionId: string): boolean {
-      return send({ type: 'v2.auction.unsubscribe', payload: { auctionId } });
+      return send({ type: 'auction.unsubscribe', payload: { auctionId } });
     },
 
     /**
      * Submit a bid as counterparty
      */
     submitBid(payload: BidPayload): boolean {
-      return send({ type: 'v2.bid.submit', payload });
+      return send({ type: 'bid.submit', payload });
     },
 
     /**
      * Request a bilateral burn (pre-resolution exit)
      */
     requestBurn(payload: BurnRequestPayload): boolean {
-      return send({ type: 'v2.burn.request', payload });
+      return send({ type: 'burn.request', payload });
     },
 
     /**
@@ -272,7 +272,7 @@ export function createEscrowAuctionWs(
 // ============================================================================
 
 /**
- * Build a V2 auction request payload
+ * Build an escrow auction request payload
  */
 export function buildAuctionRequest(params: {
   picks: PickJson[];
@@ -301,7 +301,7 @@ export function buildAuctionRequest(params: {
 }
 
 /**
- * Build a V2 bid payload
+ * Build an escrow bid payload
  */
 export function buildBidPayload(params: {
   auctionId: string;
@@ -324,7 +324,7 @@ export function buildBidPayload(params: {
 }
 
 /**
- * Build a V2 burn request payload
+ * Build an escrow burn request payload
  */
 export function buildBurnRequest(params: {
   pickConfigId: string;

@@ -182,7 +182,7 @@ export interface BurnRequestJson {
 // ============================================================================
 
 /**
- * V2 auction request payload - initiates a prediction match request
+ * Escrow auction request payload - initiates a prediction match request
  * The predictor submits their side and waits for a counterparty to fill
  */
 export interface AuctionRequestPayload {
@@ -199,7 +199,7 @@ export interface AuctionRequestPayload {
 }
 
 /**
- * V2 bid payload - counterparty fills an auction
+ * Escrow bid payload - counterparty fills an auction
  */
 export interface BidPayload {
   auctionId: string;
@@ -212,7 +212,7 @@ export interface BidPayload {
 }
 
 /**
- * V2 burn request payload - bilateral exit before resolution
+ * Escrow burn request payload - bilateral exit before resolution
  */
 export interface BurnRequestPayload {
   pickConfigId: string;
@@ -237,11 +237,11 @@ export interface BurnRequestPayload {
 // ----- Client to Server Messages -----
 
 export type ClientToServerMessage =
-  | { type: 'v2.auction.start'; payload: AuctionRequestPayload }
-  | { type: 'v2.auction.subscribe'; payload: { auctionId: string } }
-  | { type: 'v2.auction.unsubscribe'; payload: { auctionId: string } }
-  | { type: 'v2.bid.submit'; payload: BidPayload }
-  | { type: 'v2.burn.request'; payload: BurnRequestPayload }
+  | { type: 'auction.start'; payload: AuctionRequestPayload }
+  | { type: 'auction.subscribe'; payload: { auctionId: string } }
+  | { type: 'auction.unsubscribe'; payload: { auctionId: string } }
+  | { type: 'bid.submit'; payload: BidPayload }
+  | { type: 'burn.request'; payload: BurnRequestPayload }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
@@ -272,7 +272,7 @@ export interface ValidatedBid {
 
 export type ServerToClientMessage =
   | {
-      type: 'v2.auction.ack';
+      type: 'auction.ack';
       payload: {
         auctionId?: string;
         error?: string;
@@ -281,11 +281,11 @@ export type ServerToClientMessage =
         id?: string; // Request ID for correlation with sendWithAck
       };
     }
-  | { type: 'v2.bid.ack'; payload: { bidId?: string; error?: string } }
-  | { type: 'v2.auction.started'; payload: AuctionDetails }
-  | { type: 'v2.auction.bids'; payload: { auctionId: string; bids: ValidatedBid[] } }
+  | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
+  | { type: 'auction.started'; payload: AuctionDetails }
+  | { type: 'auction.bids'; payload: { auctionId: string; bids: ValidatedBid[] } }
   | {
-      type: 'v2.auction.filled';
+      type: 'auction.filled';
       payload: {
         auctionId: string;
         predictionId: string;
@@ -294,11 +294,11 @@ export type ServerToClientMessage =
       };
     }
   | {
-      type: 'v2.auction.expired';
+      type: 'auction.expired';
       payload: { auctionId: string; reason: string };
     }
   | {
-      type: 'v2.burn.ack';
+      type: 'burn.ack';
       payload: {
         burnId?: string;
         transactionHash?: string;

@@ -95,7 +95,7 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getV2Picks } =
+  const { selections, removeSelection, getPicks } =
     useCreatePositionContext();
   const { address: takerAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
@@ -143,12 +143,12 @@ export default function PositionForm({
     useCollateralBalanceContext();
 
   // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
-  // V2 (testnet) uses getNonce, V1 uses nonces
-  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  // Escrow (testnet) uses getNonce, legacy uses nonces
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
   const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
-    functionName: isV2Chain ? 'getNonce' : 'nonces',
+    abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
+    functionName: isEscrowChain ? 'getNonce' : 'nonces',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
@@ -469,12 +469,12 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        // For V2-capable chains with conditional token selections, add v2Picks to trigger V2 auction
-        const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-        if (isV2Chain && hasUma && !hasPyth) {
-          const v2Picks = getV2Picks();
-          if (v2Picks.length > 0) {
-            params.v2Picks = v2Picks;
+        // For V2-capable chains with conditional token selections, add escrowPicks to trigger V2 auction
+        const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+        if (isEscrowChain && hasUma && !hasPyth) {
+          const escrowPicks = getPicks();
+          if (escrowPicks.length > 0) {
+            params.escrowPicks = escrowPicks;
             // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
           }
         }
@@ -522,7 +522,7 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
-      getV2Picks,
+      getPicks,
     ]
   );
 

@@ -1,6 +1,6 @@
 /**
- * V2 Signature Verification
- * Verifies EIP-712 typed data signatures for V2 predictions
+ * Escrow Signature Verification
+ * Verifies EIP-712 typed data signatures for escrow predictions
  */
 
 import {
@@ -23,9 +23,9 @@ import {
 } from './sessionAuth';
 
 /**
- * Decoded V2 SessionKeyData struct from ABI-encoded bytes
+ * Decoded Escrow SessionKeyData struct from ABI-encoded bytes
  */
-interface DecodedV2SessionKeyData {
+interface DecodedEscrowSessionKeyData {
   sessionKey: Address;
   owner: Address;
   validUntil: bigint;
@@ -35,12 +35,12 @@ interface DecodedV2SessionKeyData {
 }
 
 /**
- * Decode V2 SessionKeyData from ABI-encoded hex bytes
+ * Decode Escrow SessionKeyData from ABI-encoded hex bytes
  * The data has a 32-byte offset pointer prefix followed by the struct fields
  */
-function decodeV2SessionKeyData(data: string): DecodedV2SessionKeyData | null {
+function decodeEscrowSessionKeyData(data: string): DecodedEscrowSessionKeyData | null {
   try {
-    // V2 ABI-encoded data starts with 0x and has offset pointer
+    // ABI-encoded data starts with 0x and has offset pointer
     if (!data.startsWith('0x') || data.length < 66) {
       return null;
     }
@@ -70,16 +70,16 @@ function decodeV2SessionKeyData(data: string): DecodedV2SessionKeyData | null {
       ownerSignature: decoded[5] as Hex,
     };
   } catch (e) {
-    console.debug('[V2-Sig] Failed to decode V2 session key data:', e);
+    console.debug('[Escrow-Sig] Failed to decode escrow session key data:', e);
     return null;
   }
 }
 
 /**
- * Verify V2 SessionKeyData by checking the owner's signature on the SessionKeyApproval
+ * Verify Escrow SessionKeyData by checking the owner's signature on the SessionKeyApproval
  */
-async function verifyV2SessionKeyData(
-  sessionKeyData: DecodedV2SessionKeyData,
+async function verifyEscrowSessionKeyData(
+  sessionKeyData: DecodedEscrowSessionKeyData,
   smartAccount: Address,
   verifyingContract: Address
 ): Promise<{ valid: boolean; sessionKeyAddress?: Address }> {
@@ -119,7 +119,7 @@ async function verifyV2SessionKeyData(
 
     // Verify the recovered signer is the declared owner
     if (recoveredOwner.toLowerCase() !== sessionKeyData.owner.toLowerCase()) {
-      console.warn('[V2-Sig] Owner signature invalid:', {
+      console.warn('[Escrow-Sig] Owner signature invalid:', {
         expected: sessionKeyData.owner,
         recovered: recoveredOwner,
       });
@@ -129,7 +129,7 @@ async function verifyV2SessionKeyData(
     // Verify the session is not expired
     const nowSeconds = Math.floor(Date.now() / 1000);
     if (Number(sessionKeyData.validUntil) < nowSeconds) {
-      console.warn('[V2-Sig] Session expired:', {
+      console.warn('[Escrow-Sig] Session expired:', {
         validUntil: Number(sessionKeyData.validUntil),
         now: nowSeconds,
       });
@@ -139,7 +139,7 @@ async function verifyV2SessionKeyData(
     // Optionally verify smart account is derived from owner
     // (Skip for now - contract will validate this)
 
-    console.debug('[V2-Sig] V2 session key data verified:', {
+    console.debug('[Escrow-Sig] Escrow session key data verified:', {
       sessionKey: sessionKeyData.sessionKey,
       owner: sessionKeyData.owner,
       smartAccount,
@@ -147,7 +147,7 @@ async function verifyV2SessionKeyData(
 
     return { valid: true, sessionKeyAddress: sessionKeyData.sessionKey };
   } catch (e) {
-    console.error('[V2-Sig] V2 session key verification error:', e);
+    console.error('[Escrow-Sig] Escrow session key verification error:', e);
     return { valid: false };
   }
 }
@@ -182,14 +182,14 @@ function convertTypedDataForViem<T extends { domain: { chainId?: bigint | number
 }
 
 /**
- * Verifies the predictor's EIP-712 signature for a V2 auction request
+ * Verifies the predictor's EIP-712 signature for an escrow auction request
  *
- * @param payload - The V2 auction request payload
+ * @param payload - The escrow auction request payload
  * @param verifyingContract - The PredictionMarketEscrow contract address
  * @param counterparty - Placeholder counterparty address (can be zero for auction start)
  * @returns true if signature is valid
  */
-export async function verifyV2PredictorSignature(
+export async function verifyEscrowPredictorSignature(
   payload: AuctionRequestPayload,
   verifyingContract: Address,
   counterparty: Address = '0x0000000000000000000000000000000000000000'
@@ -226,7 +226,7 @@ export async function verifyV2PredictorSignature(
       const sessionApprovalPayload: SessionApprovalPayload = {
         approval: payload.predictorSessionKeyData,
         chainId: payload.chainId,
-        typedData: undefined, // V2 uses EIP-712, not session typed data for the approval itself
+        typedData: undefined, // Uses EIP-712, not session typed data for the approval itself
       };
 
       const sessionResult = await verifySessionApproval(
@@ -245,7 +245,7 @@ export async function verifyV2PredictorSignature(
           recoveredSigner.toLowerCase() !==
           sessionResult.sessionKeyAddress.toLowerCase()
         ) {
-          console.warn('[V2-Sig] Predictor signature not from session key:', {
+          console.warn('[Escrow-Sig] Predictor signature not from session key:', {
             expected: sessionResult.sessionKeyAddress,
             recovered: recoveredSigner,
           });
@@ -254,7 +254,7 @@ export async function verifyV2PredictorSignature(
 
         if (process.env.NODE_ENV !== 'production') {
           console.debug(
-            '[V2-Sig] Valid predictor session approval for account:',
+            '[Escrow-Sig] Valid predictor session approval for account:',
             predictorAddress
           );
         }
@@ -272,7 +272,7 @@ export async function verifyV2PredictorSignature(
 
       if (recoveredSigner.toLowerCase() === predictorAddress.toLowerCase()) {
         if (process.env.NODE_ENV !== 'production') {
-          console.debug('[V2-Sig] Valid predictor EOA signature');
+          console.debug('[Escrow-Sig] Valid predictor EOA signature');
         }
         return true;
       }
@@ -291,7 +291,7 @@ export async function verifyV2PredictorSignature(
     if (expectedSmartAccount.toLowerCase() === predictorAddress.toLowerCase()) {
       if (process.env.NODE_ENV !== 'production') {
         console.debug(
-          '[V2-Sig] Valid predictor smart account owner signature, owner:',
+          '[Escrow-Sig] Valid predictor smart account owner signature, owner:',
           recoveredOwner
         );
       }
@@ -299,24 +299,24 @@ export async function verifyV2PredictorSignature(
     }
 
     console.warn(
-      '[V2-Sig] Predictor signature verification failed: recovered signer does not match'
+      '[Escrow-Sig] Predictor signature verification failed: recovered signer does not match'
     );
     return false;
   } catch (error) {
-    console.error('[V2-Sig] Predictor verification error:', error);
+    console.error('[Escrow-Sig] Predictor verification error:', error);
     return false;
   }
 }
 
 /**
- * Verifies the counterparty's EIP-712 signature for a V2 bid
+ * Verifies the counterparty's EIP-712 signature for an escrow bid
  *
- * @param bid - The V2 bid payload
- * @param auction - The V2 auction request (to get picks and wagers)
+ * @param bid - The escrow bid payload
+ * @param auction - The escrow auction request (to get picks and wagers)
  * @param verifyingContract - The PredictionMarketEscrow contract address
  * @returns true if signature is valid
  */
-export async function verifyV2CounterpartySignature(
+export async function verifyEscrowCounterpartySignature(
   bid: BidPayload,
   auction: AuctionRequestPayload,
   verifyingContract: Address
@@ -350,16 +350,16 @@ export async function verifyV2CounterpartySignature(
 
     // Path 1: If session key data is present, try to verify
     if (bid.counterpartySessionKeyData) {
-      // Path 1a: Try V2 ABI-encoded format (hex starting with 0x)
-      const v2SessionData = decodeV2SessionKeyData(bid.counterpartySessionKeyData);
-      if (v2SessionData) {
-        const v2Result = await verifyV2SessionKeyData(
-          v2SessionData,
+      // Path 1a: Try ABI-encoded format (hex starting with 0x)
+      const escrowSessionData = decodeEscrowSessionKeyData(bid.counterpartySessionKeyData);
+      if (escrowSessionData) {
+        const escrowResult = await verifyEscrowSessionKeyData(
+          escrowSessionData,
           counterpartyAddress,
           verifyingContract
         );
 
-        if (v2Result.valid && v2Result.sessionKeyAddress) {
+        if (escrowResult.valid && escrowResult.sessionKeyAddress) {
           const recoveredSigner = await recoverTypedDataAddress({
             ...typedData,
             signature,
@@ -367,17 +367,17 @@ export async function verifyV2CounterpartySignature(
 
           if (
             recoveredSigner.toLowerCase() !==
-            v2Result.sessionKeyAddress.toLowerCase()
+            escrowResult.sessionKeyAddress.toLowerCase()
           ) {
-            console.warn('[V2-Sig] Counterparty signature not from V2 session key:', {
-              expected: v2Result.sessionKeyAddress,
+            console.warn('[Escrow-Sig] Counterparty signature not from escrow session key:', {
+              expected: escrowResult.sessionKeyAddress,
               recovered: recoveredSigner,
             });
             return false;
           }
 
           console.debug(
-            '[V2-Sig] Valid counterparty V2 session approval for account:',
+            '[Escrow-Sig] Valid counterparty escrow session approval for account:',
             counterpartyAddress
           );
           return true;
@@ -406,7 +406,7 @@ export async function verifyV2CounterpartySignature(
           recoveredSigner.toLowerCase() !==
           sessionResult.sessionKeyAddress.toLowerCase()
         ) {
-          console.warn('[V2-Sig] Counterparty signature not from ZeroDev session key:', {
+          console.warn('[Escrow-Sig] Counterparty signature not from ZeroDev session key:', {
             expected: sessionResult.sessionKeyAddress,
             recovered: recoveredSigner,
           });
@@ -415,7 +415,7 @@ export async function verifyV2CounterpartySignature(
 
         if (process.env.NODE_ENV !== 'production') {
           console.debug(
-            '[V2-Sig] Valid counterparty ZeroDev session approval for account:',
+            '[Escrow-Sig] Valid counterparty ZeroDev session approval for account:',
             counterpartyAddress
           );
         }
@@ -432,7 +432,7 @@ export async function verifyV2CounterpartySignature(
 
       if (recoveredSigner.toLowerCase() === counterpartyAddress.toLowerCase()) {
         if (process.env.NODE_ENV !== 'production') {
-          console.debug('[V2-Sig] Valid counterparty EOA signature');
+          console.debug('[Escrow-Sig] Valid counterparty EOA signature');
         }
         return true;
       }
@@ -451,7 +451,7 @@ export async function verifyV2CounterpartySignature(
     if (expectedSmartAccount.toLowerCase() === counterpartyAddress.toLowerCase()) {
       if (process.env.NODE_ENV !== 'production') {
         console.debug(
-          '[V2-Sig] Valid counterparty smart account owner signature, owner:',
+          '[Escrow-Sig] Valid counterparty smart account owner signature, owner:',
           recoveredOwner
         );
       }
@@ -459,11 +459,11 @@ export async function verifyV2CounterpartySignature(
     }
 
     console.warn(
-      '[V2-Sig] Counterparty signature verification failed: recovered signer does not match'
+      '[Escrow-Sig] Counterparty signature verification failed: recovered signer does not match'
     );
     return false;
   } catch (error) {
-    console.error('[V2-Sig] Counterparty verification error:', error);
+    console.error('[Escrow-Sig] Counterparty verification error:', error);
     return false;
   }
 }

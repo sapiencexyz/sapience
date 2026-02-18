@@ -242,14 +242,14 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
                 type?: string;
                 payload?: { bidId?: string; error?: string };
               };
-              if (data?.type === 'v2.bid.ack') {
+              if (data?.type === 'bid.ack') {
                 clearTimeout(timeout);
                 removeListener();
                 resolve(data.payload ?? {});
               }
             });
 
-            client.send({ type: 'v2.bid.submit', payload: bidPayload });
+            client.send({ type: 'bid.submit', payload: bidPayload });
           }
         );
 
@@ -268,7 +268,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
           // Dispatch event for UI updates
           try {
             window.dispatchEvent(
-              new CustomEvent('v2.bid.submitted', {
+              new CustomEvent('bid.submitted', {
                 detail: { auctionId: auction.auctionId, bidId },
               })
             );

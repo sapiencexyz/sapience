@@ -587,8 +587,8 @@ export function useAuctionMatching({
         return;
       }
 
-      // Extract auction context from auction.started or v2.auction.started message
-      // V2 uses different field names: predictor, predictorCollateral, predictorNonce
+      // Extract auction context from auction.started message
+      // Escrow uses different field names: predictor, predictorCollateral, predictorNonce
       const auctionId = entry.channel || null;
       const resolverAddr =
         (entry?.data as any)?.resolver ??
@@ -718,14 +718,9 @@ export function useAuctionMatching({
   const handleAuctionMessage = useCallback(
     (entry: AuctionFeedMessage) => {
       if (!entry || typeof entry !== 'object') return;
-      // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
-      if (entry.type === 'auction.bids' || entry.type === 'v2.auction.bids') {
+      if (entry.type === 'auction.bids') {
         handleCopyTradeMatches(entry);
-        // Handle both V1 (auction.started) and V2 (v2.auction.started)
-      } else if (
-        entry.type === 'auction.started' ||
-        entry.type === 'v2.auction.started'
-      ) {
+      } else if (entry.type === 'auction.started') {
         handleConditionMatches(entry);
       }
     },

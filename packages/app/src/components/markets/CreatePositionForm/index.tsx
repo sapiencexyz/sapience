@@ -167,7 +167,7 @@ const CreatePositionFormInner = ({
     selections,
     clearSelections,
     positionsWithMarketData,
-    getV2Picks,
+    getPicks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -268,9 +268,9 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
-  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
-  const isV2Chain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const PREDICTION_MARKET_ADDRESS = isV2Chain
+  // Escrow (testnet) uses PredictionMarketEscrow, legacy uses PredictionMarket
+  const isEscrowChain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isEscrowChain
     ? predictionMarketEscrow[positionChainId]?.address
     : predictionMarket[positionChainId]?.address;
 
@@ -278,13 +278,13 @@ const CreatePositionFormInner = ({
   const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
-  // V2 uses collateralToken() directly, V1 uses getConfig()
+  // Escrow uses collateralToken() directly, legacy uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
-        functionName: isV2Chain ? 'collateralToken' : 'getConfig',
+        abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
+        functionName: isEscrowChain ? 'collateralToken' : 'getConfig',
         chainId: positionChainId,
       },
     ],
@@ -296,14 +296,14 @@ const CreatePositionFormInner = ({
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
-      // V2 returns address directly, V1 returns struct with collateralToken
-      if (isV2Chain) {
+      // Escrow returns address directly, legacy returns struct with collateralToken
+      if (isEscrowChain) {
         return item.result as Address;
       }
       return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data, isV2Chain]);
+  }, [predictionMarketConfigRead.data, isEscrowChain]);
 
   // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
   // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
@@ -421,14 +421,14 @@ const CreatePositionFormInner = ({
   ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
-    // V2 doesn't have minCollateral concept, so return undefined
-    if (isV2Chain) return undefined;
+    // Escrow doesn't have minCollateral concept, so return undefined
+    if (isEscrowChain) return undefined;
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
       return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data, isV2Chain]);
+  }, [predictionMarketConfigRead.data, isEscrowChain]);
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
@@ -896,31 +896,31 @@ const CreatePositionFormInner = ({
           setIsPopoverOpen(false);
 
           // For V2, add picks directly from selections (ensures exact match with counterparty signature)
-          if (isV2Chain) {
-            const v2Picks = getV2Picks();
-            console.log('[V2 Form] Building v2Picks from selections:', {
+          if (isEscrowChain) {
+            const escrowPicks = getPicks();
+            console.log('[Escrow Form] Building escrowPicks from selections:', {
               selectionsCount: selections.length,
-              v2PicksCount: v2Picks.length,
+              escrowPicksCount: escrowPicks.length,
               selections: selections.map((s) => ({
                 conditionId: s.conditionId.slice(0, 10) + '...',
                 prediction: s.prediction,
                 resolverAddress: s.resolverAddress || 'MISSING',
               })),
-              v2Picks: v2Picks.map((p) => ({
+              escrowPicks: escrowPicks.map((p) => ({
                 resolver: p.conditionResolver,
                 conditionId: p.conditionId.slice(0, 10) + '...',
                 outcome: p.predictedOutcome,
               })),
             });
-            if (v2Picks.length > 0) {
-              mintReq.v2Picks = v2Picks.map((p) => ({
+            if (escrowPicks.length > 0) {
+              mintReq.escrowPicks = escrowPicks.map((p) => ({
                 conditionResolver: p.conditionResolver,
                 conditionId: p.conditionId,
                 predictedOutcome: p.predictedOutcome,
               }));
             } else {
               console.warn(
-                '[V2 Form] No v2Picks available - selections may be missing resolverAddress'
+                '[Escrow Form] No escrowPicks available - selections may be missing resolverAddress'
               );
             }
           }

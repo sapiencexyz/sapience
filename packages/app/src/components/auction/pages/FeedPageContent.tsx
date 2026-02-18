@@ -102,8 +102,7 @@ const FeedPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of messages) {
-        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
-          continue;
+        if (m.type !== 'auction.started') continue;
         const d = m.data as Record<string, unknown> | null;
         const arr = Array.isArray(d?.predictedOutcomes)
           ? (d.predictedOutcomes as string[])
@@ -176,8 +175,7 @@ const FeedPageContent: React.FC = () => {
   }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
     const d = m.data as Record<string, any> | null;
-    // Handle both V1 and V2 auction started messages
-    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+    if (m.type === 'auction.started') {
       const maker = d?.maker || d?.predictor || '';
       const positionSize = d?.wager || d?.predictorCollateral || '0';
       return {
@@ -188,12 +186,11 @@ const FeedPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    // Handle both V1 and V2 auction bids messages
-    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
+    if (m.type === 'auction.bids') {
       const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerCollateral, V2 uses counterpartyCollateral
+          // V1 uses makerCollateral, escrow uses counterpartyCollateral
           const cur = BigInt(
             String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
           );
@@ -264,7 +261,7 @@ const FeedPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: unknown }) {
     try {
-      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+      if (m.type !== 'auction.started')
         return <span className="text-muted-foreground">—</span>;
       const d = m.data as Record<string, unknown> | null;
       const arr = Array.isArray(d?.predictedOutcomes)
@@ -576,10 +573,8 @@ const FeedPageContent: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="auctions">
-            {displayMessages.filter(
-              (m) =>
-                m.type === 'auction.started' || m.type === 'v2.auction.started'
-            ).length === 0 ? (
+            {displayMessages.filter((m) => m.type === 'auction.started')
+              .length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="inline-flex items-center gap-1 text-foreground">
                   <span className="inline-block h-[6px] w-[6px] rounded-full bg-foreground opacity-80 animate-ping mr-1.5" />
@@ -612,11 +607,7 @@ const FeedPageContent: React.FC = () => {
                     </thead>
                     <tbody>
                       {displayMessages
-                        .filter(
-                          (m) =>
-                            m.type === 'auction.started' ||
-                            m.type === 'v2.auction.started'
-                        )
+                        .filter((m) => m.type === 'auction.started')
                         .map((m, idx) => (
                           <tr
                             key={`started-${idx}`}

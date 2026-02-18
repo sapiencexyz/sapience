@@ -1,30 +1,30 @@
 /**
- * V2 Auction Registry
- * Stores and manages V2 auctions and bids
+ * Escrow Auction Registry
+ * Stores and manages escrow auctions and bids
  */
 
 import type {
   AuctionRequestPayload,
   ValidatedBid,
 } from '@sapience/sdk/types';
-import type { V2AuctionRecord, BidPayload } from './escrowTypes';
-import { validateV2Bid } from './escrowHelpers';
-import { computeV2PickConfigId } from './escrowHelpers';
+import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
+import { validateEscrowBid } from './escrowHelpers';
+import { computeEscrowPickConfigId } from './escrowHelpers';
 
-const v2Auctions = new Map<string, V2AuctionRecord>();
+const escrowAuctions = new Map<string, EscrowAuctionRecord>();
 
 /**
- * Create or update a V2 auction
+ * Create or update an escrow auction
  */
-export function upsertV2Auction(auction: AuctionRequestPayload): string {
+export function upsertEscrowAuction(auction: AuctionRequestPayload): string {
   const auctionId = crypto.randomUUID();
   const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
 
   // Compute pickConfigId from picks
-  const pickConfigId = computeV2PickConfigId(auction.picks);
+  const pickConfigId = computeEscrowPickConfigId(auction.picks);
 
-  v2Auctions.set(auctionId, {
+  escrowAuctions.set(auctionId, {
     auction,
     bids: [],
     deadlineMs,
@@ -35,32 +35,32 @@ export function upsertV2Auction(auction: AuctionRequestPayload): string {
 }
 
 /**
- * Get a V2 auction by ID
+ * Get an escrow auction by ID
  */
-export function getV2Auction(auctionId: string): V2AuctionRecord | undefined {
-  const rec = v2Auctions.get(auctionId);
+export function getEscrowAuction(auctionId: string): EscrowAuctionRecord | undefined {
+  const rec = escrowAuctions.get(auctionId);
   if (!rec) return undefined;
   if (Date.now() > rec.deadlineMs) {
-    v2Auctions.delete(auctionId);
+    escrowAuctions.delete(auctionId);
     return undefined;
   }
   return rec;
 }
 
 /**
- * Add a bid to a V2 auction
+ * Add a bid to an escrow auction
  */
-export function addV2Bid(
+export function addEscrowBid(
   auctionId: string,
   bid: BidPayload
 ): ValidatedBid | undefined {
-  const rec = getV2Auction(auctionId);
+  const rec = getEscrowAuction(auctionId);
   if (!rec) return undefined;
 
   // Validate bid structure
-  const validation = validateV2Bid(bid, rec.auction);
+  const validation = validateEscrowBid(bid, rec.auction);
   if (!validation.valid) {
-    console.warn(`[V2Registry] Bid validation failed: ${validation.error}`);
+    console.warn(`[EscrowRegistry] Bid validation failed: ${validation.error}`);
     return undefined;
   }
 
@@ -77,26 +77,26 @@ export function addV2Bid(
 
   rec.bids.push(validated);
   rec.deadlineMs = Math.max(rec.deadlineMs, bid.counterpartyDeadline * 1000);
-  v2Auctions.set(auctionId, rec);
+  escrowAuctions.set(auctionId, rec);
 
   return validated;
 }
 
 /**
- * Get all bids for a V2 auction
+ * Get all bids for an escrow auction
  */
-export function getV2Bids(auctionId: string): ValidatedBid[] {
-  const rec = getV2Auction(auctionId);
+export function getEscrowBids(auctionId: string): ValidatedBid[] {
+  const rec = getEscrowAuction(auctionId);
   return rec?.bids ?? [];
 }
 
 /**
  * Get auction details for broadcast
  */
-export function getV2AuctionDetails(
+export function getEscrowAuctionDetails(
   auctionId: string
 ): import('@sapience/sdk/types').AuctionDetails | undefined {
-  const rec = getV2Auction(auctionId);
+  const rec = getEscrowAuction(auctionId);
   if (!rec) return undefined;
 
   return {
@@ -114,9 +114,9 @@ export function getV2AuctionDetails(
 // Periodic cleanup of expired auctions
 setInterval(() => {
   const now = Date.now();
-  for (const [id, rec] of v2Auctions.entries()) {
+  for (const [id, rec] of escrowAuctions.entries()) {
     if (now > rec.deadlineMs) {
-      v2Auctions.delete(id);
+      escrowAuctions.delete(id);
     }
   }
 }, 30_000).unref?.();

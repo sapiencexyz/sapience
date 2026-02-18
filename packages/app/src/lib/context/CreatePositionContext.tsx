@@ -24,7 +24,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
   }
 }
 import type { Address, Hex } from 'viem';
-import type { Pick as V2Pick } from '@sapience/sdk/types';
+import type { Pick as EscrowPick } from '@sapience/sdk/types';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
 import type { MarketGroupClassification } from '~/lib/types';
@@ -95,11 +95,11 @@ interface CreatePositionContextType {
   setIsPopoverOpen: (open: boolean) => void;
   // New properties for market data
   positionsWithMarketData: PositionWithMarketData[];
-  // V2 protocol helpers
-  /** Convert current selections to V2 Pick[] array */
-  getV2Picks: () => V2Pick[];
-  /** Compute V2 pickConfigId from current selections */
-  getV2PickConfigId: () => Hex | null;
+  // Escrow protocol helpers
+  /** Convert current selections to Pick[] array */
+  getPicks: () => EscrowPick[];
+  /** Compute pickConfigId from current selections */
+  getPickConfigId: () => Hex | null;
 }
 
 export const CreatePositionContext = createContext<
@@ -343,8 +343,8 @@ export const CreatePositionProvider = ({
     setSelections([]);
   }, []);
 
-  // V2 helpers: convert selections to V2 Pick[] array
-  const getV2Picks = useCallback((): V2Pick[] => {
+  // Escrow helpers: convert selections to Pick[] array
+  const getPicks = useCallback((): EscrowPick[] => {
     return selections
       .filter((s) => s.resolverAddress) // Only include selections with resolver address
       .map((s) => ({
@@ -354,12 +354,12 @@ export const CreatePositionProvider = ({
       }));
   }, [selections]);
 
-  // V2 helper: compute pickConfigId from current selections
-  const getV2PickConfigId = useCallback((): Hex | null => {
-    const picks = getV2Picks();
+  // Escrow helper: compute pickConfigId from current selections
+  const getPickConfigId = useCallback((): Hex | null => {
+    const picks = getPicks();
     if (picks.length === 0) return null;
     return computePickConfigId(picks);
-  }, [getV2Picks]);
+  }, [getPicks]);
 
   const value: CreatePositionContextType = {
     createPositionEntries: singlePositions,
@@ -376,8 +376,8 @@ export const CreatePositionProvider = ({
     isPopoverOpen,
     setIsPopoverOpen,
     positionsWithMarketData,
-    getV2Picks,
-    getV2PickConfigId,
+    getPicks,
+    getPickConfigId,
   };
 
   return (

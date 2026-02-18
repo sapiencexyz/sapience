@@ -10,7 +10,7 @@ export function useRecentPositions(params: {
   const { take = 20, skip = 0, chainId, status } = params;
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['recentPositions', take, skip, chainId, status],
+    queryKey: ['recentLegacyPositions', take, skip, chainId, status],
     staleTime: 15_000,
     gcTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,

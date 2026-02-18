@@ -2,7 +2,7 @@ import 'dotenv/config';
 import WebSocket from 'ws';
 import type { RawData } from 'ws';
 import { loadSdk } from './sdk.js';
-import { parseEther, decodeAbiParameters, createPublicClient, createWalletClient, erc20Abi, http, getAddress, defineChain, type Address, type Hex, type Chain } from 'viem';
+import { parseEther, createPublicClient, createWalletClient, erc20Abi, http, getAddress, defineChain, type Address, type Hex, type Chain } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrum } from 'viem/chains';
@@ -82,8 +82,6 @@ const PRIVATE_KEY_HEX = PRIVATE_KEY
 
 const sdk = await loadSdk();
 type ContractsMap = typeof import('@sapience/sdk/contracts').contracts;
-type BuildMakerBidTypedData = typeof import('@sapience/sdk/auction/signing').buildMakerBidTypedData;
-type SignMakerBid = typeof import('@sapience/sdk/auction/signing').signMakerBid;
 type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
 // Escrow types
 type BuildCounterpartyMintTypedData = typeof import('@sapience/sdk/auction/escrowSigning').buildCounterpartyMintTypedData;
@@ -94,30 +92,23 @@ type AuctionDetails = import('@sapience/sdk/types').AuctionDetails;
 type PickJson = import('@sapience/sdk/types').PickJson;
 
 const addressBook = sdk.contracts as ContractsMap;
-const buildMakerBidTypedData = sdk.buildMakerBidTypedData as BuildMakerBidTypedData;
-const signMakerBid = sdk.signMakerBid as SignMakerBid;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
-// V2 signing utilities
+// Escrow signing utilities
 const buildCounterpartyMintTypedData = sdk.buildCounterpartyMintTypedData as BuildCounterpartyMintTypedData | undefined;
 const computePredictionHashFromPicks = sdk.computePredictionHashFromPicks as ComputePredictionHashFromPicks | undefined;
 // OutcomeSide enum values (matching SDK)
 const OutcomeSide = { YES: 0, NO: 1 } as const;
 
-// V1 contract addresses
-const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarket as any)[CHAIN_ID]?.address) as Address;
+// Contract addresses
+const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarketEscrow as any)?.[CHAIN_ID]?.address) as Address | undefined;
 const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || (addressBook.collateralToken as any)[CHAIN_ID]?.address) as Address;
-const POLYMARKET_RESOLVER = ((addressBook.predictionMarketLZConditionalTokensResolver as any)[CHAIN_ID]?.address as string | undefined)?.toLowerCase();
-
-// V2 contract addresses
-const V2_VERIFYING_CONTRACT = (process.env.V2_VERIFYING_CONTRACT || (addressBook.predictionMarketEscrow as any)?.[CHAIN_ID]?.address) as Address | undefined;
-const V2_ENABLED = process.env.V2_ENABLED !== 'false' && !!V2_VERIFYING_CONTRACT && !!buildCounterpartyMintTypedData;
 
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
-const MIN_MAKER_POSITION_SIZE_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
+const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
 
 const BID_AMOUNT = parseEther(BID_AMOUNT_DEC);
-const MIN_MAKER_POSITION_SIZE = parseEther(MIN_MAKER_POSITION_SIZE_DEC);
+const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
 
 const account = PRIVATE_KEY_HEX
   ? privateKeyToAccount(PRIVATE_KEY_HEX)
@@ -181,7 +172,7 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
 }
 
 /**
- * Convert V2 PickJson array to typed Pick array
+ * Convert PickJson array to typed Pick array
  */
 function convertPicksFromJson(picks: PickJson[]): Pick[] {
   return picks.map((p) => ({
@@ -206,24 +197,22 @@ async function prepareCollateral() {
       return;
     }
 
-    const spenders = [VERIFYING_CONTRACT];
-    if (V2_ENABLED && V2_VERIFYING_CONTRACT) {
-      spenders.push(V2_VERIFYING_CONTRACT);
+    if (!VERIFYING_CONTRACT) {
+      logger.warn('Skipping collateral preparation: VERIFYING_CONTRACT not set');
+      return;
     }
 
     logger.info([
       '🔐 Preparing collateral for trading',
       fmt.bullet(fmt.field('chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
       fmt.bullet(fmt.field('collateral', fmt.value(formatAddress(COLLATERAL_TOKEN)))),
-      fmt.bullet(fmt.field('V1 spender', fmt.value(formatAddress(VERIFYING_CONTRACT)))),
-      V2_ENABLED && V2_VERIFYING_CONTRACT ? fmt.bullet(fmt.field('V2 spender', fmt.value(formatAddress(V2_VERIFYING_CONTRACT)))) : '',
-    ].filter(Boolean).join('\n'));
+      fmt.bullet(fmt.field('spender', fmt.value(formatAddress(VERIFYING_CONTRACT)))),
+    ].join('\n'));
 
     // On Ethereal, use prepareForTrade to handle USDe wrapping + approval
     if (CHAIN_ID === CHAIN_ID_ETHEREAL && prepareForTrade) {
       logger.info('📦 Using prepareForTrade for Ethereal (wrap USDe -> WUSDe + approve)');
 
-      // Prepare for V1 contract
       const result = await prepareForTrade({
         privateKey: PRIVATE_KEY_HEX,
         collateralAmount: BID_AMOUNT,
@@ -235,20 +224,7 @@ async function prepareCollateral() {
         logger.success(`Wrapped USDe -> WUSDe: ${result.wrapTxHash}`);
       }
       if (result.approvalTxHash) {
-        logger.success(`Approved WUSDe for V1: ${result.approvalTxHash}`);
-      }
-
-      // Also prepare for V2 contract if enabled
-      if (V2_ENABLED && V2_VERIFYING_CONTRACT) {
-        const v2Result = await prepareForTrade({
-          privateKey: PRIVATE_KEY_HEX,
-          collateralAmount: BID_AMOUNT,
-          spender: V2_VERIFYING_CONTRACT,
-          rpcUrl: RPC_URL,
-        });
-        if (v2Result.approvalTxHash) {
-          logger.success(`Approved WUSDe for V2: ${v2Result.approvalTxHash}`);
-        }
+        logger.success(`Approved WUSDe: ${result.approvalTxHash}`);
       }
 
       logger.success(`Ready for trading. WUSDe balance: ${result.wusdBalance}`);
@@ -263,35 +239,38 @@ async function prepareCollateral() {
 
     const MAX = (1n << 256n) - 1n;
 
-    for (const spender of spenders) {
-      const current = (await publicClient.readContract({
-        address: COLLATERAL_TOKEN,
-        abi: erc20Abi,
-        functionName: 'allowance',
-        args: [MAKER as Address, spender],
-      })) as bigint;
+    const current = (await publicClient.readContract({
+      address: COLLATERAL_TOKEN,
+      abi: erc20Abi,
+      functionName: 'allowance',
+      args: [MAKER as Address, VERIFYING_CONTRACT],
+    })) as bigint;
 
-      if (current >= MAX / 2n) {
-        logger.success(`Approval already sufficient for ${formatAddress(spender)}`);
-        continue;
-      }
-
-      const hash = (await walletClient.writeContract({
-        address: COLLATERAL_TOKEN,
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [spender, MAX],
-        chain,
-      })) as Hex;
-      await publicClient.waitForTransactionReceipt({ hash });
-      logger.success(`Approval tx for ${formatAddress(spender)}: ${hash}`);
+    if (current >= MAX / 2n) {
+      logger.success(`Approval already sufficient for ${formatAddress(VERIFYING_CONTRACT)}`);
+      return;
     }
+
+    const hash = (await walletClient.writeContract({
+      address: COLLATERAL_TOKEN,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [VERIFYING_CONTRACT, MAX],
+      chain,
+    })) as Hex;
+    await publicClient.waitForTransactionReceipt({ hash });
+    logger.success(`Approval tx for ${formatAddress(VERIFYING_CONTRACT)}: ${hash}`);
   } catch (e) {
     logger.error('Collateral preparation failed:', e);
   }
 }
 
 function start() {
+  if (!VERIFYING_CONTRACT || !buildCounterpartyMintTypedData) {
+    logger.error('Cannot start: PredictionMarketEscrow contract address or escrow signing not available');
+    return;
+  }
+
   void prepareCollateral();
 
   const ws = new WebSocket(RELAYER_WS_URL);
@@ -303,8 +282,7 @@ function start() {
       fmt.bullet(fmt.field('Chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
       fmt.bullet(fmt.field('Bid amount', fmt.value(`${BID_AMOUNT_DEC}`))),
       fmt.bullet(fmt.field('Min maker wager', fmt.value(`${MIN_MAKER_WAGER_DEC}`))),
-      fmt.bullet(fmt.field('V1 enabled', VERIFYING_CONTRACT ? fmt.yes() : fmt.no())),
-      fmt.bullet(fmt.field('V2 enabled', V2_ENABLED ? fmt.yes() : fmt.no())),
+      fmt.bullet(fmt.field('Contract', fmt.value(formatAddress(VERIFYING_CONTRACT!)))),
       MAKER ? fmt.bullet(fmt.field('Maker', fmt.value(formatAddress(MAKER)))) : fmt.bullet(fmt.field('Maker', fmt.no('not configured (dry run)'))),
     ].join('\n'));
   });
@@ -316,126 +294,12 @@ function start() {
       if (!type) return;
 
       if (type === 'auction.started') {
-        const auction = msg.payload || {};
-        const auctionId = auction.auctionId as string;
-        const takerPositionSize = BigInt(auction.wager || '0');
-        const auctionChainId = (auction.chainId as number | undefined);
-        const makerNonce = BigInt(auction.takerNonce as number ?? 0);
-
-
-        // Ignore auctions on different chains
-        if (auctionChainId && auctionChainId !== CHAIN_ID) {
-          return;
-        }
-
-        // Verify resolver matches Polymarket LZ resolver
-        const auctionResolver = String(auction.resolver || '').toLowerCase();
-        if (POLYMARKET_RESOLVER && auctionResolver !== POLYMARKET_RESOLVER) {
-          logger.warn(`Skipping auction ${auctionId} - unexpected resolver: ${auction.resolver}`);
-          return;
-        }
-
-        // Ignore auctions below minimum position size before logging anything
-        if (takerPositionSize < MIN_MAKER_POSITION_SIZE) {
-          return;
-        }
-
-        // Decode first predictedOutcomes blob to extract conditionIds and yes/no
-        try {
-          const arr = Array.isArray(auction.predictedOutcomes) ? (auction.predictedOutcomes as string[]) : [];
-          if (arr.length > 0) {
-            const decodedUnknown = decodeAbiParameters(
-              [
-                {
-                  type: 'tuple[]',
-                  components: [
-                    { name: 'marketId', type: 'bytes32' },
-                    { name: 'prediction', type: 'bool' },
-                  ],
-                },
-              ] as const,
-              arr[0] as `0x${string}`
-            ) as unknown;
-            const decodedArr = Array.isArray(decodedUnknown) ? (decodedUnknown as any)[0] : [];
-            const legs = (decodedArr || []) as { marketId: `0x${string}`; prediction: boolean }[];
-            const conditionIds = legs.map((l) => l.marketId as string);
-            const idToCond = await getConditionsByIds(conditionIds);
-            const legLines = legs
-              .map((l) => {
-                const c = idToCond.get(l.marketId) || {};
-                const name = (c.shortName && String(c.shortName).trim()) || (c.question && String(c.question).trim()) || l.marketId;
-                const yn = l.prediction ? fmt.yes('Yes') : fmt.no('No');
-                return fmt.bullet(`${name}: ${yn}`);
-              })
-              .join('\n');
-            logger.info([`🎯 Auction started ${fmt.id(auctionId)}`, legLines].join('\n'));
-          } else {
-            logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
-          }
-        } catch {
-          logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
-        }
-
-        const makerCollateral = BID_AMOUNT;
-        const makerDeadline = Math.floor(Date.now() / 1000) + DEADLINE_SECONDS;
-
-        if (!account || !MAKER) {
-          logger.info(
-            `Would bid ${BID_AMOUNT_DEC} on auction ${auctionId} but skipping signing/submission: PRIVATE_KEY not set`
-          );
-          return;
-        }
-
-
-        const { domain, types, primaryType, message } = buildMakerBidTypedData({
-          auction: {
-            taker: auction.taker as Address,
-            resolver: auction.resolver as Address,
-            predictedOutcomes: auction.predictedOutcomes as string[],
-            wager: auction.wager as string,
-          },
-          makerCollateral,
-          makerDeadline,
-          chainId: CHAIN_ID,
-          verifyingContract: VERIFYING_CONTRACT,
-          maker: MAKER,
-          makerNonce,
-        });
-
-        const makerSignature = await signMakerBid({
-          privateKey: PRIVATE_KEY_HEX as Hex,
-          domain,
-          types,
-          primaryType,
-          message,
-        });
-
-
-        const bid = {
-          type: 'bid.submit',
-          payload: {
-            auctionId,
-            maker: MAKER,
-            makerCollateral: makerCollateral.toString(),
-            makerDeadline,
-            makerSignature,
-            makerNonce: makerNonce.toString(),
-          },
-        };
-
-        logger.info(`📤 Sending bid ${fmt.value(BID_AMOUNT_DEC)} on ${fmt.id(auctionId)}`);
-        ws.send(JSON.stringify(bid), (err?: Error) => {
-          if (err) logger.error('⛔️ Bid send failed:', err);
-          else logger.success('📨 Bid sent');
-        });
-      } else if (type === 'v2.auction.started' && V2_ENABLED && V2_VERIFYING_CONTRACT && buildCounterpartyMintTypedData) {
         // ----------------------------------------------------------------
-        // V2 Auction Handling
+        // Escrow Auction Handling
         // ----------------------------------------------------------------
         const auction = msg.payload as AuctionDetails;
         const auctionId = auction.auctionId;
         const predictorCollateral = BigInt(auction.predictorCollateral || '0');
-        const counterpartyCollateral = BigInt(auction.counterpartyCollateral || '0');
         const auctionChainId = auction.chainId;
 
         // Ignore auctions on different chains
@@ -461,23 +325,23 @@ function start() {
               return fmt.bullet(`${name}: ${yn}`);
             })
             .join('\n');
-          logger.info([`🎯 V2 Auction started ${fmt.id(auctionId)}`, legLines].join('\n'));
+          logger.info([`🎯 Auction started ${fmt.id(auctionId)}`, legLines].join('\n'));
         } catch {
-          logger.info(`🎯 V2 Auction started ${fmt.id(auctionId)}`);
+          logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
         }
 
         if (!account || !MAKER) {
           logger.info(
-            `Would bid ${BID_AMOUNT_DEC} on V2 auction ${auctionId} but skipping: PRIVATE_KEY not set`
+            `Would bid ${BID_AMOUNT_DEC} on auction ${auctionId} but skipping: PRIVATE_KEY not set`
           );
           return;
         }
 
         const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
-        const counterpartyNonce = 0n; // Fresh nonce for counterparty
+        const counterpartyNonce = 0n;
 
         // Build typed data for counterparty signature
-        const typedData = buildCounterpartyMintTypedData({
+        const typedData = buildCounterpartyMintTypedData!({
           picks: convertPicksFromJson(auction.picks),
           predictorCollateral,
           counterpartyCollateral: BID_AMOUNT,
@@ -485,7 +349,7 @@ function start() {
           counterparty: MAKER,
           counterpartyNonce,
           counterpartyDeadline,
-          verifyingContract: V2_VERIFYING_CONTRACT,
+          verifyingContract: VERIFYING_CONTRACT!,
           chainId: CHAIN_ID,
         });
 
@@ -500,44 +364,36 @@ function start() {
           message: typedData.message,
         });
 
-        const v2Bid = {
-          type: 'v2.bid.submit',
+        const bid = {
+          type: 'bid.submit',
           payload: {
             auctionId,
             counterparty: MAKER,
+            counterpartyCollateral: BID_AMOUNT.toString(),
             counterpartyNonce: Number(counterpartyNonce),
             counterpartyDeadline: Number(counterpartyDeadline),
             counterpartySignature,
           },
         };
 
-        logger.info(`📤 Sending V2 bid ${fmt.value(BID_AMOUNT_DEC)} on ${fmt.id(auctionId)}`);
-        ws.send(JSON.stringify(v2Bid), (err?: Error) => {
-          if (err) logger.error('⛔️ V2 Bid send failed:', err);
-          else logger.success('📨 V2 Bid sent');
+        logger.info(`📤 Sending bid ${fmt.value(BID_AMOUNT_DEC)} on ${fmt.id(auctionId)}`);
+        ws.send(JSON.stringify(bid), (err?: Error) => {
+          if (err) logger.error('⛔️ Bid send failed:', err);
+          else logger.success('📨 Bid sent');
         });
-      } else if (type === 'v2.bid.ack') {
-        const err = msg?.payload?.error as string | undefined;
-        if (err) logger.warn('⛔️ V2 Bid rejected:', err);
-        else logger.success('✅ V2 Bid acknowledged by relayer');
-      } else if (type === 'v2.auction.bids') {
-        // V2 bids update visibility
-        const count = (msg?.payload?.bids?.length as number | undefined) ?? 0;
-        if (count > 0) logger.info(`📈 V2 Bids update for ${fmt.id(String(msg?.payload?.auctionId))}: ${fmt.value(String(count))}`);
-      } else if (type === 'v2.auction.filled') {
-        const payload = msg?.payload || {};
-        logger.success(`🎉 V2 Auction filled ${fmt.id(String(payload.auctionId))} - tx: ${fmt.value(String(payload.transactionHash))}`);
-      } else if (type === 'v2.auction.expired') {
-        const payload = msg?.payload || {};
-        logger.warn(`⏰ V2 Auction expired ${fmt.id(String(payload.auctionId))}: ${payload.reason || 'unknown'}`);
       } else if (type === 'bid.ack') {
         const err = msg?.payload?.error as string | undefined;
         if (err) logger.warn('⛔️ Bid rejected:', err);
         else logger.success('✅ Bid acknowledged by relayer');
       } else if (type === 'auction.bids') {
-        // Optional visibility
         const count = (msg?.payload?.bids?.length as number | undefined) ?? 0;
         if (count > 0) logger.info(`📈 Bids update for ${fmt.id(String(msg?.payload?.auctionId))}: ${fmt.value(String(count))}`);
+      } else if (type === 'auction.filled') {
+        const payload = msg?.payload || {};
+        logger.success(`🎉 Auction filled ${fmt.id(String(payload.auctionId))} - tx: ${fmt.value(String(payload.transactionHash))}`);
+      } else if (type === 'auction.expired') {
+        const payload = msg?.payload || {};
+        logger.warn(`⏰ Auction expired ${fmt.id(String(payload.auctionId))}: ${payload.reason || 'unknown'}`);
       }
     } catch (e) {
       logger.error('💥 Message error:', e);
@@ -555,4 +411,3 @@ function start() {
 }
 
 start();
-

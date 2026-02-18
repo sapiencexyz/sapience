@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Auction WebSocket API enables real-time communication between takers and makers, facilitated by a relayer, for creating and managing prediction market auctions using the `PredictionMarket.sol` contract. Takers create auctions with their wagers and predictions, makers submit competitive bids, and the relayer facilitates the matching process by validating signatures and broadcasting auction data. The system supports a mint-based flow where positions (represented as NFTs) are created immediately when both parties provide valid signatures.
+The Auction WebSocket API enables real-time communication between predictors and counterparties, facilitated by a relayer, for creating and managing prediction market auctions using the `PredictionMarketEscrow` contract. Predictors create auctions with their picks and collateral, counterparties submit bids, and the relayer facilitates matching by validating payloads and broadcasting auction data. Both parties sign EIP-712 typed data to authorize the on-chain mint.
 
 ## Quick Start
 
@@ -14,296 +14,230 @@ pnpm dev:auction
 pnpm --filter @sapience/relayer start
 ```
 
-## API Documentation
-
-## Overview
-
-The Auction WebSocket API enables real-time communication between takers and makers, facilitated by a relayer, for creating and managing prediction market auctions using the `PredictionMarket.sol` contract. Takers create auctions with their wagers and predictions, makers submit competitive bids, and the relayer facilitates the matching process by validating signatures and broadcasting auction data. The system supports a mint-based flow where positions (represented as NFTs) are created immediately when both parties provide valid signatures.
-
 ## Message Types
 
-### 1. auction.start
+### Client -> Server
 
-Starts a new auction to receive bids from makers.
+#### 1. `auction.start`
+
+Starts a new auction. The predictor submits their picks, collateral, and EIP-712 signature.
 
 ```typescript
 {
   type: 'auction.start',
   payload: {
-    taker: string,                    // Taker's EOA address (starts the auction)
-    wager: string,                    // Taker's wager amount (wei)
-    resolver: string,                  // Contract address for market validation (0x...)
-    predictedOutcomes: string[],      // Array of bytes strings that the resolver validates/understands
-    takerNonce: number,               // Nonce for taker-side binding/deduplication
-    chainId: number,                  // Chain ID where the market executes
-    takerSignature?: string,          // Optional: EIP-191 signature of the taker (SIWE format)
-    takerSignedAt?: string            // Optional: ISO timestamp when signature was created (required if takerSignature is provided)
+    picks: [                              // Array of condition picks
+      {
+        conditionResolver: string,        // Resolver contract address (0x...)
+        conditionId: string,              // Condition identifier (bytes32 hex)
+        predictedOutcome: 0 | 1           // 0 = YES, 1 = NO
+      }
+    ],
+    predictorCollateral: string,          // Predictor's collateral (wei string)
+    counterpartyCollateral: string,       // Requested counterparty collateral (wei string)
+    predictor: string,                    // Predictor's address (EOA or smart account)
+    predictorNonce: number,               // Nonce for deduplication
+    predictorDeadline: number,            // Unix timestamp when approval expires
+    predictorSignature: string,           // EIP-712 MintApproval signature
+    chainId: number,                      // Chain ID (e.g. 5064014 for Ethereal)
+    refCode?: string,                     // Optional referral code
+    predictorSessionKeyData?: string      // Optional ZeroDev session key data
   }
 }
 ```
 
-**Note:** `takerSignature` and `takerSignedAt` are optional fields. 
-- **Unsigned requests**: Used for price discovery/quoting only. Market makers may respond with quote-only bids (where `maker` is `0x0000...` and `makerSignature` is `0x0000...`).
-- **Signed requests**: Required by some market makers (like the vault) to respond with actionable, signed bids that can be executed on-chain. When provided, the relayer verifies the signature to ensure the requester authorized the auction request.
+#### 2. `auction.subscribe`
 
-### 2. Response (auction.ack)
-
-Confirms receipt of an Auction start and automatically subscribes the taker to a channel for bids for that auctionId.
+Subscribe to bid updates for an auction. The predictor is auto-subscribed on `auction.start`.
 
 ```typescript
 {
-  type: 'auction.ack',
-  payload: {
-    auctionId: string
-  }
+  type: 'auction.subscribe',
+  payload: { auctionId: string }
 }
 ```
 
-### 3. auction.started (Broadcast)
+#### 3. `auction.unsubscribe`
 
-Broadcasts new Auction starts to all connected makers.
+Unsubscribe from auction updates.
 
 ```typescript
 {
-  type: 'auction.started',
-  payload: {
-    auctionId: string,                // Server-generated unique identifier for this Auction
-    taker: string,                    // Taker's EOA address
-    wager: string,                    // Taker's wager amount (wei)
-    predictedOutcomes: string[],      // Array of bytes strings that the resolver validates/understands
-    resolver: string,                  // Contract address for market validation (0x...)
-    takerNonce: number,
-    chainId: number,
-  }
+  type: 'auction.unsubscribe',
+  payload: { auctionId: string }
 }
 ```
 
-### 4. bid.submit
+#### 4. `bid.submit`
 
-Submits a bid/quote for an Auction. The payload MUST explicitly include the maker address, maker wager, and a quote expiration. These values are NOT derivable from a signature and must be provided and then verified against the signed payload.
+Submit a bid as counterparty for an open auction.
 
 ```typescript
 {
   type: 'bid.submit',
   payload: {
-    auctionId: string,                // Auction ID to bid on
-    maker: string,                    // Maker's EOA address (bidding party)
-    makerWager: string,               // Maker's wager contribution (wei)
-    makerDeadline: number,            // Unix timestamp when quote expires
-    makerSignature: string,           // Off-chain signature over the typed payload to authorize this bid
-    makerNonce: number                // Maker's nonce
+    auctionId: string,                    // Auction to bid on
+    counterparty: string,                 // Counterparty's address
+    counterpartyCollateral: string,       // Counterparty's collateral (wei string)
+    counterpartyNonce: number,            // Nonce for deduplication
+    counterpartyDeadline: number,         // Unix timestamp when approval expires
+    counterpartySignature: string,        // EIP-712 MintApproval signature
+    counterpartySessionKeyData?: string   // Optional ZeroDev session key data
   }
 }
 ```
 
-### 5. Response (bid.ack)
+#### 5. `burn.request`
 
-Confirms receipt of a bid or reports an error.
+Request a bilateral burn (pre-resolution exit). Both parties must sign.
 
 ```typescript
 {
-  type: 'bid.ack',
+  type: 'burn.request',
   payload: {
-    error?: string                    // Error message if bid rejected
+    pickConfigId: string,
+    predictorTokenAmount: string,         // Predictor tokens to burn (wei)
+    counterpartyTokenAmount: string,      // Counterparty tokens to burn (wei)
+    predictorHolder: string,
+    counterpartyHolder: string,
+    predictorPayout: string,              // Predictor payout (wei)
+    counterpartyPayout: string,           // Counterparty payout (wei)
+    predictorNonce: number,
+    counterpartyNonce: number,
+    predictorDeadline: number,
+    counterpartyDeadline: number,
+    predictorSignature: string,
+    counterpartySignature: string,
+    chainId: number,
+    refCode?: string,
+    predictorSessionKeyData?: string,
+    counterpartySessionKeyData?: string
   }
 }
 ```
 
-### 6. auction.bids (Broadcast)
+#### 6. `ping`
 
-Broadcasts current bids for an Auction to subscribed takers only. Takers are automatically subscribed to an auction channel when they send an `auction.start` for that specific auction ID.
+Keep-alive message. Server responds with `pong`.
 
 ```typescript
-{
-  type: 'auction.bids',
-  payload: {
-    auctionId: string,
-    bids: [                           // Array of validated bids
-      {
-        auctionId: string,            // Auction ID this bid is for
-        makerSignature: string,       // Maker's off-chain signature authorizing the bid
-        maker: string,                // Maker's EOA address
-        makerWager: string,           // Maker's wager contribution (collateral units, typically represented with 18 decimals)
-        makerDeadline: number         // Unix timestamp when quote expires
-      }
-    ]
-  }
-}
+{ type: 'ping' }
 ```
 
-**Quote-only vs Actionable Bids:**
-- **Quote-only bids**: When `maker` is `0x0000000000000000000000000000000000000000` and `makerSignature` is `0x00000000...`, this indicates a price quote only, not an actionable bid that can be executed on-chain. These are typically returned in response to unsigned auction requests.
-- **Actionable bids**: When `maker` is a valid address and `makerSignature` is a real signature, the bid can be accepted and executed on-chain. These are returned in response to signed auction requests (required by some market makers like the vault).
+### Server -> Client
+
+| Type | Description |
+|------|-------------|
+| `auction.ack` | Confirms auction start/subscribe/unsubscribe. Contains `{ auctionId, subscribed?, unsubscribed?, error? }` |
+| `auction.started` | Broadcast to all clients when a new auction opens. Contains full `AuctionDetails`. |
+| `auction.bids` | Sent to auction subscribers when bids update. Contains `{ auctionId, bids: ValidatedBid[] }` |
+| `auction.filled` | Sent when prediction is minted on-chain. Contains `{ auctionId, predictionId, pickConfigId, transactionHash }` |
+| `auction.expired` | Sent when auction deadline passes. Contains `{ auctionId, reason }` |
+| `bid.ack` | Confirms bid receipt or reports error. Contains `{ bidId?, error? }` |
+| `burn.ack` | Confirms burn request. Contains `{ burnId?, transactionHash?, error? }` |
+| `pong` | Response to `ping` |
+| `error` | Server error. Contains `{ message, code? }` |
+
+## Vault Quote Protocol
+
+The vault quote protocol is multiplexed on the same `/auction` endpoint.
+
+| Client Message | Description |
+|---|---|
+| `vault_quote.subscribe` | Subscribe to vault share price updates. Payload: `{ chainId, vaultAddress }` |
+| `vault_quote.unsubscribe` | Unsubscribe from vault updates. Payload: `{ chainId, vaultAddress }` |
+| `vault_quote.publish` | Publish a signed vault quote (vault manager only). |
+| `vault_quote.observe` | Observe all vault quote activity (debug). |
+
+Server responds with `vault_quote.ack` and `vault_quote.update` messages.
+
+## Example Flow
+
+### 1. Predictor Creates Auction
+
+```typescript
+import { createEscrowAuctionWs, buildAuctionRequest } from '@sapience/sdk/relayer/escrowAuctionWs';
+
+const client = createEscrowAuctionWs('wss://relayer.sapience.xyz/auction', {
+  onAuctionAck: ({ auctionId }) => console.log('Auction created:', auctionId),
+  onAuctionBids: ({ auctionId, bids }) => console.log('Bids:', bids),
+  onAuctionFilled: ({ transactionHash }) => console.log('Filled:', transactionHash),
+});
+
+client.startAuction({
+  picks: [
+    {
+      conditionResolver: '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE',
+      conditionId: '0x...',
+      predictedOutcome: 0, // YES
+    },
+  ],
+  predictorCollateral: '1000000000000000000', // 1 WUSDe
+  counterpartyCollateral: '1000000000000000000',
+  predictor: '0xYourAddress',
+  predictorNonce: 1,
+  predictorDeadline: Math.floor(Date.now() / 1000) + 300,
+  predictorSignature: '0x...', // EIP-712 signature
+  chainId: 5064014,
+});
+```
+
+### 2. Counterparty Submits Bid
+
+```typescript
+client.submitBid({
+  auctionId: 'auction-uuid',
+  counterparty: '0xCounterpartyAddress',
+  counterpartyCollateral: '1000000000000000000',
+  counterpartyNonce: 1,
+  counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+  counterpartySignature: '0x...', // EIP-712 signature
+});
+```
+
+### 3. On-Chain Execution
+
+After the predictor selects a bid, both signatures are submitted to `PredictionMarketEscrow.mint()` on-chain. The contract verifies both EIP-712 signatures, transfers collateral from both parties into escrow, and mints position tokens.
 
 ## Connection Management
 
-### Rate Limiting
+| Limit | Value |
+|-------|-------|
+| Rate limit | 100 messages per 10s window |
+| Max message size | 64 KB |
+| Idle timeout | Configurable via `WS_IDLE_TIMEOUT_MS` |
+| Max connections | Configurable via `WS_MAX_CONNECTIONS` |
 
-- **Window**: 10 seconds
-- **Max Messages**: 100 messages per window
-- **Exceeded**: Connection closed with code `1008` and reason `rate_limited`
-
-### Message Size Limit
-
-- **Max Size**: 64KB per message
-- **Exceeded**: Connection closed with code `1009` and reason `message_too_large`
-
-## Bid Selection
-
-The UI presents the best available bid that hasn't expired yet. The best bid is determined by the highest maker wager amount among all valid (non-expired) bids.
+Exceeding rate limits or message size closes the connection with code `1008` or `1009`.
 
 ## Validation Rules
 
 ### Auction Validation
 
-- Wager must be positive
-- At least one predicted outcome required (as non-empty bytes strings)
-- Resolver address must be provided
-- Taker address must be provided and a valid `0x` address
+- `picks` must be a non-empty array with valid `conditionResolver` (address), `conditionId` (bytes32), and `predictedOutcome` (0 or 1)
+- `predictorCollateral` must be a positive wei string
+- `predictor` must be a valid address
+- `predictorDeadline` must be in the future
+- `chainId` must be a positive integer
 
 ### Bid Validation
 
-- Quote must not be expired
-- Maker wager must be positive
-- Off-chain bid signature must be provided and be a valid hex string
-
-### Token Approvals
-
-Both parties must perform standard ERC-20 approvals in their own wallets:
-
-- Maker must approve the contract to spend the maker collateral prior to minting
-- Taker must approve the contract to spend the taker collateral prior to filling
-
-### Common Error Codes
-
-- `invalid_payload`: Missing or invalid message structure
-- `quote_expired`: Quote has expired
-- `invalid_maker_wager`: Maker wager is invalid
-- `invalid_maker_bid_signature_format`: Maker bid signature format is invalid
-
-## Example Flow
-
-### 1. Taker Creates Auction
-
-**Basic example (without signature):**
-
-```javascript
-ws.send(
-  JSON.stringify({
-    type: 'auction.start',
-    payload: {
-      taker: '0xYourTakerAddressHere',
-      wager: '1000000000000000000', // 1 ETH
-      predictedOutcomes: [
-        '0x...', // Bytes string representing market prediction
-        '0x...', // Additional prediction bytes strings...
-      ],
-      resolver: '0x...',
-      takerNonce: 1,
-      chainId: 5064014,
-    },
-  })
-);
-```
-
-**With signature (required by some market makers like the vault to respond with actionable bids):**
-
-```javascript
-import { createAuctionStartSiweMessage, extractSiweDomainAndUri } from '@sapience/sdk';
-import { privateKeyToAccount } from 'viem/accounts';
-
-const account = privateKeyToAccount('0xYourPrivateKey...');
-const payload = {
-  taker: account.address,
-  wager: '1000000000000000000',
-  predictedOutcomes: ['0x...', '0x...'],
-  resolver: '0x...',
-  takerNonce: 1,
-  chainId: 5064014,
-};
-
-// Generate SIWE signature
-const { domain, uri } = extractSiweDomainAndUri('wss://relayer.sapience.xyz/auction');
-const issuedAt = new Date().toISOString();
-const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
-const signature = await account.signMessage({ message });
-
-ws.send(
-  JSON.stringify({
-    type: 'auction.start',
-    payload: {
-      ...payload,
-      takerSignature: signature,
-      takerSignedAt: issuedAt,
-    },
-  })
-);
-```
-
-### 2. Maker Responds with Bid
-
-```javascript
-ws.send(
-  JSON.stringify({
-    type: 'bid.submit',
-    payload: {
-      auctionId: 'auction-123',
-      maker: '0xMakerAddress',
-      makerWager: '500000000000000000', // 0.5 ETH
-      makerDeadline: Math.floor(Date.now() / 1000) + 60,
-      makerSignature: '0x...', // Signature over the typed payload
-      makerNonce: 1,
-    },
-  })
-);
-```
-
-### 3. Taker Executes Transaction
-
-After receiving and selecting a bid, the taker constructs the `MintParlayRequestData` struct using:
-
-- The Auction data (predictedOutcomes, resolver, takerCollateral from wager)
-- The bid data (maker, makerWager, makerSignature)
-- Their own taker signature and refCode
-
-The taker then calls the `mint()` function on the ParlayPool contract. The system will automatically detect the minting through blockchain event listeners.
-
-## Maker Example
-
-The system includes a reference maker implementation (`botExample.ts`) that:
-
-- Connects to the WebSocket endpoint
-- Listens for `auction.started` messages
-- Automatically calculates maker collateral as 50% of taker collateral
-- Submits bids with proper mint data structure
-- Handles bid acknowledgments and bid updates
-
-## Security Considerations
-
-1. **Rate Limiting**: Prevents spam and DoS attacks
-2. **Message Size Limits**: Prevents memory exhaustion
-3. **Approvals**: Standard ERC-20 approvals must be completed by both maker and taker
-4. **Collateral Validation**: Ensures reasonable collateral amounts
-5. **Expiration Checks**: Prevents execution of expired quotes/Auctions
-
-## Error Handling
-
-All errors are returned in the `bid.ack` message with descriptive error codes. Takers and makers should implement proper error handling and retry logic for transient failures.
-
-## Running the Service
-
-```bash
-# Development
-pnpm --filter @sapience/relayer run dev
-
-# Production
-pnpm --filter @sapience/relayer run start
-```
+- `counterparty` must be a valid address
+- `counterpartyCollateral` must be a positive wei string
+- `counterpartyDeadline` must be in the future
+- `counterpartySignature` must be a valid hex string
 
 ## Environment Variables
 
-- `PORT`: Server port (default: 3002)
-- `ENABLE_AUCTION_WS`: Enable auction WebSocket (default: true)
-- `NODE_ENV`: Environment (development/production/test)
-- `CHAIN_5064014_RPC_URL`: Optional custom RPC URL for EtherealChain
-
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `3002` | Server port |
+| `ENABLE_AUCTION_WS` | `true` | Enable auction WebSocket |
+| `WS_MAX_CONNECTIONS` | - | Max concurrent connections |
+| `WS_IDLE_TIMEOUT_MS` | - | Idle connection timeout |
+| `WS_ALLOWED_ORIGINS` | - | Comma-separated allowed origins |
+| `RATE_LIMIT_WINDOW_MS` | `10000` | Rate limit window |
+| `RATE_LIMIT_MAX_MESSAGES` | `100` | Max messages per window |
+| `CHAIN_5064014_RPC_URL` | - | Custom RPC for Ethereal mainnet |
+| `CHAIN_13374202_RPC_URL` | - | Custom RPC for Ethereal testnet |
+| `NODE_ENV` | `development` | Environment |

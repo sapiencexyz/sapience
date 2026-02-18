@@ -204,7 +204,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
               type?: string;
               payload?: { auctionId?: string; error?: string };
             };
-            if (data?.type === 'v2.auction.ack') {
+            if (data?.type === 'auction.ack') {
               clearTimeout(timeout);
               removeListener();
               resolve(data.payload ?? {});
@@ -237,7 +237,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
           );
           console.log('[Auction Create] chainId:', chainId);
 
-          client.send({ type: 'v2.auction.start', payload });
+          client.send({ type: 'auction.start', payload });
         });
 
         setIsSubmitting(false);
@@ -252,7 +252,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
           // Dispatch event for UI updates
           try {
             window.dispatchEvent(
-              new CustomEvent('v2.auction.started', {
+              new CustomEvent('auction.started', {
                 detail: { auctionId: response.auctionId, pickConfigId },
               })
             );

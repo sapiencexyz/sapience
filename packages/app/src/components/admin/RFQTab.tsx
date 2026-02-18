@@ -155,15 +155,15 @@ const RFQTab = ({
     useState<VisibilityFilter>('all');
   const [chainFilter, setChainFilter] = useState<string>('all');
 
-  // V2 state
-  const [protocolVersion, setProtocolVersion] = useState<'v1' | 'v2'>('v1');
-  const [v2ConditionId, setV2ConditionId] = useState('');
-  const [v2ResolverType, setV2ResolverType] = useState<
+  // Escrow state
+  const [protocolVersion, setProtocolVersion] = useState<'legacy' | 'escrow'>('legacy');
+  const [escrowConditionId, setEscrowConditionId] = useState('');
+  const [escrowResolverType, setEscrowResolverType] = useState<
     'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
   >('manual');
-  const [v2ChainId, setV2ChainId] = useState<number>(13374202); // Default to Ethereal Testnet
+  const [escrowChainId, setEscrowChainId] = useState<number>(13374202); // Default to Ethereal Testnet
 
-  // V2 resolver address helper
+  // Escrow resolver address helper
   const ESCROW_RESOLVER_MAP = {
     manual: manualConditionResolver,
     pyth: pythConditionResolver,
@@ -171,7 +171,7 @@ const RFQTab = ({
     'conditional-tokens': predictionMarketLZConditionalTokensResolver,
   };
 
-  const getV2ResolverAddress = (
+  const getEscrowResolverAddress = (
     type: keyof typeof ESCROW_RESOLVER_MAP,
     chainId: number
   ): string | null => {
@@ -269,11 +269,11 @@ const RFQTab = ({
     setResolver('');
     setEditingId(undefined);
     setEditingChainId(undefined);
-    // V2 fields
-    setProtocolVersion('v1');
-    setV2ConditionId('');
-    setV2ResolverType('manual');
-    setV2ChainId(13374202);
+    // Escrow fields
+    setProtocolVersion('legacy');
+    setEscrowConditionId('');
+    setEscrowResolverType('manual');
+    setEscrowChainId(13374202);
   };
 
   // CSV Import helper functions
@@ -909,12 +909,12 @@ const RFQTab = ({
           claimStatement,
           description,
           similarMarkets,
-          chainId: protocolVersion === 'v2' ? v2ChainId : currentChainId,
+          chainId: protocolVersion === 'escrow' ? escrowChainId : currentChainId,
           resolver: trimmedResolver.toLowerCase(),
           ...(trimmedGroupName ? { groupName: trimmedGroupName } : {}),
           // V2: pass condition ID directly via conditionHash
-          ...(protocolVersion === 'v2' && v2ConditionId
-            ? { conditionHash: v2ConditionId }
+          ...(protocolVersion === 'escrow' && escrowConditionId
+            ? { conditionHash: escrowConditionId }
             : {}),
         };
         await postJson<RFQRow>(`/conditions`, body);
@@ -1227,12 +1227,12 @@ const RFQTab = ({
               <Select
                 value={protocolVersion}
                 onValueChange={(v) => {
-                  setProtocolVersion(v as 'v1' | 'v2');
-                  // Auto-populate resolver address when switching to V2
-                  if (v === 'v2') {
-                    const addr = getV2ResolverAddress(
-                      v2ResolverType,
-                      v2ChainId
+                  setProtocolVersion(v as 'legacy' | 'escrow');
+                  // Auto-populate resolver address when switching to escrow
+                  if (v === 'escrow') {
+                    const addr = getEscrowResolverAddress(
+                      escrowResolverType,
+                      escrowChainId
                     );
                     if (addr) setResolver(addr);
                   } else {
@@ -1245,8 +1245,8 @@ const RFQTab = ({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="v1">V1 (Legacy)</SelectItem>
-                  <SelectItem value="v2">V2</SelectItem>
+                  <SelectItem value="legacy">Legacy</SelectItem>
+                  <SelectItem value="escrow">Escrow</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1285,14 +1285,14 @@ const RFQTab = ({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Chain</label>
-              {protocolVersion === 'v2' && !editingId ? (
+              {protocolVersion === 'escrow' && !editingId ? (
                 <Select
-                  value={String(v2ChainId)}
+                  value={String(escrowChainId)}
                   onValueChange={(v) => {
-                    setV2ChainId(Number(v));
+                    setEscrowChainId(Number(v));
                     // Re-populate resolver address
-                    const addr = getV2ResolverAddress(
-                      v2ResolverType,
+                    const addr = getEscrowResolverAddress(
+                      escrowResolverType,
                       Number(v)
                     );
                     if (addr) setResolver(addr);
@@ -1374,20 +1374,20 @@ const RFQTab = ({
               />
             </div>
             {/* V2-specific fields */}
-            {protocolVersion === 'v2' && !editingId && (
+            {protocolVersion === 'escrow' && !editingId && (
               <>
                 {/* Resolver Type - 4 options */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Resolver Type</label>
                   <Select
-                    value={v2ResolverType}
+                    value={escrowResolverType}
                     onValueChange={(v) => {
-                      setV2ResolverType(
+                      setEscrowResolverType(
                         v as 'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
                       );
-                      const addr = getV2ResolverAddress(
+                      const addr = getEscrowResolverAddress(
                         v as keyof typeof ESCROW_RESOLVER_MAP,
-                        v2ChainId
+                        escrowChainId
                       );
                       if (addr) setResolver(addr);
                     }}
@@ -1417,8 +1417,8 @@ const RFQTab = ({
                   <div className="flex gap-2">
                     <Input
                       placeholder="0x..."
-                      value={v2ConditionId}
-                      onChange={(e) => setV2ConditionId(e.target.value)}
+                      value={escrowConditionId}
+                      onChange={(e) => setEscrowConditionId(e.target.value)}
                       className="font-mono flex-1"
                     />
                     <Button
@@ -1427,7 +1427,7 @@ const RFQTab = ({
                       onClick={() => {
                         const uniqueData = `${claimStatement}:${endTime}:${Date.now()}`;
                         const hash = keccak256(toHex(uniqueData));
-                        setV2ConditionId(hash);
+                        setEscrowConditionId(hash);
                       }}
                     >
                       Generate
@@ -1447,7 +1447,7 @@ const RFQTab = ({
                 value={resolver}
                 onChange={(e) => setResolver(e.target.value)}
                 required={!editingId}
-                disabled={Boolean(editingId) || protocolVersion === 'v2'}
+                disabled={Boolean(editingId) || protocolVersion === 'escrow'}
                 className="font-mono"
               />
               {editingId && (
@@ -1455,7 +1455,7 @@ const RFQTab = ({
                   Resolver cannot be changed after creation
                 </p>
               )}
-              {protocolVersion === 'v2' && !editingId && (
+              {protocolVersion === 'escrow' && !editingId && (
                 <p className="text-xs text-muted-foreground">
                   Auto-populated from resolver type and chain
                 </p>
