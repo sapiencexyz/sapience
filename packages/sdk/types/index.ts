@@ -7,5 +7,8 @@ export type { Query } from './graphql';
 // V2 types
 export * from './v2';
 
+// Secondary market types
+export * from './secondary';
+
 // MAYBE DEPRECATED
 export * from './charts';
